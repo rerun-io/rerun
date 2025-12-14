@@ -245,14 +245,6 @@ impl RecordingStreamBuilder {
         self
     }
 
-    #[deprecated(since = "0.22.0", note = "use `send_properties` instead")]
-    /// Disables sending the [`RecordingInfo`] chunk.
-    #[inline]
-    pub fn disable_properties(mut self) -> Self {
-        self.should_send_properties = false;
-        self
-    }
-
     /// Whether the [`RecordingInfo`] chunk should be sent.
     #[inline]
     pub fn send_properties(mut self, should_send: bool) -> Self {
@@ -640,73 +632,6 @@ impl RecordingStreamBuilder {
         crate::spawn(opts)?;
 
         self.connect_grpc_opts(url)
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via gRPC.
-    ///
-    /// If the `open_browser` argument is `true`, your default browser will be opened with a
-    /// connected web-viewer.
-    ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli --locked`).
-    ///
-    /// ## Details
-    /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
-    ///
-    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
-    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-    ///
-    /// Calling `serve_web` is equivalent to calling [`Self::serve_grpc`] followed by [`crate::serve_web_viewer`].
-    ///
-    /// ## Example
-    ///
-    /// ```ignore
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .serve_web("0.0.0.0",
-    ///                Default::default(),
-    ///                Default::default(),
-    ///                re_sdk::MemoryLimit::from_fraction_of_total(0.25),
-    ///                true)?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    //
-    // # TODO(#5531): keep static data around.
-    #[deprecated(
-        since = "0.24.0",
-        note = "Use `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details."
-    )]
-    #[cfg(feature = "web_viewer")]
-    pub fn serve_web(
-        self,
-        bind_ip: &str,
-        web_port: WebViewerServerPort,
-        grpc_port: u16,
-        server_options: re_grpc_server::ServerOptions,
-        open_browser: bool,
-    ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, recording_info, batcher_config, batcher_hooks) = self.into_args();
-        if enabled {
-            let sink = crate::web_viewer::new_sink(
-                open_browser,
-                bind_ip,
-                web_port,
-                grpc_port,
-                server_options,
-            )?;
-            RecordingStream::new(
-                store_info,
-                recording_info,
-                batcher_config,
-                batcher_hooks,
-                sink,
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to serve() ignored");
-            Ok(RecordingStream::disabled())
-        }
     }
 
     /// Returns whether or not logging is enabled, a [`StoreInfo`] and the associated batcher
@@ -2609,63 +2534,6 @@ impl RecordingStream {
         self.set_time(
             timeline,
             TimeCell::from_timestamp_nanos_since_epoch(nanos.into()),
-        );
-    }
-
-    /// Set the current time of the recording, for the current calling thread.
-    ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the index/time setting methods.
-    ///
-    /// For example: `rec.set_time_secs("sim_time", sim_time_secs)`.
-    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
-    ///
-    /// There is no requirement of monotonicity. You can move the time backwards if you like.
-    ///
-    /// See also:
-    /// - [`Self::set_timepoint`]
-    /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_nanos`]
-    /// - [`Self::disable_timeline`]
-    /// - [`Self::reset_time`]
-    #[deprecated(
-        since = "0.23.0",
-        note = "Use either `set_duration_secs` or `set_timestamp_secs_since_epoch` instead"
-    )]
-    #[inline]
-    pub fn set_time_secs(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        self.set_duration_secs(timeline, seconds);
-    }
-
-    /// Set the current time of the recording, for the current calling thread.
-    ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the index/time setting methods.
-    ///
-    /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
-    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
-    ///
-    /// There is no requirement of monotonicity. You can move the time backwards if you like.
-    ///
-    /// See also:
-    /// - [`Self::set_timepoint`]
-    /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_secs`]
-    /// - [`Self::disable_timeline`]
-    /// - [`Self::reset_time`]
-    #[deprecated(
-        since = "0.23.0",
-        note = "Use `set_time` with either `rerun::TimeCell::from_duration_nanos` or `rerun::TimeCell::from_timestamp_nanos_since_epoch`, or with `std::time::Duration` or `std::time::SystemTime`."
-    )]
-    #[inline]
-    pub fn set_time_nanos(
-        &self,
-        timeline: impl Into<TimelineName>,
-        nanos_since_epoch: impl Into<i64>,
-    ) {
-        self.set_time(
-            timeline,
-            TimeCell::from_timestamp_nanos_since_epoch(nanos_since_epoch.into()),
         );
     }
 

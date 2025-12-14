@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import deprecated
 
 from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
@@ -95,26 +94,6 @@ class VideoFrameReferenceExt:
         return VideoFrameReference.columns(timestamp=nanoseconds)
 
     @classmethod
-    @deprecated("Renamed to `columns_secs`")
-    def columns_seconds(
-        cls,
-        seconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with seconds-based `timestamp`.
-
-        Parameters
-        ----------
-        seconds:
-            Timestamp values in seconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(seconds, dtype=np.int64) * int(1e9)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
     def columns_millis(
         cls,
         milliseconds: npt.ArrayLike,
@@ -134,47 +113,7 @@ class VideoFrameReferenceExt:
         return VideoFrameReference.columns(timestamp=nanoseconds)
 
     @classmethod
-    @deprecated("Renamed to `columns_millis`")
-    def columns_milliseconds(
-        cls,
-        milliseconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with milliseconds-based `timestamp`.
-
-        Parameters
-        ----------
-        milliseconds:
-            Timestamp values in milliseconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(milliseconds, dtype=np.int64) * int(1e6)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
     def columns_nanos(
-        cls,
-        nanoseconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with nanoseconds-based `timestamp`.
-
-        Parameters
-        ----------
-        nanoseconds:
-            Timestamp values in nanoseconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(nanoseconds, dtype=np.int64)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
-    @deprecated("Renamed to `columns_nanos`")
-    def columns_nanoseconds(
         cls,
         nanoseconds: npt.ArrayLike,
     ) -> ComponentColumnList:

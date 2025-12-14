@@ -39,10 +39,6 @@ from ._baseclasses import (
     ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
-from ._image_encoded import (
-    ImageEncoded as ImageEncoded,
-    ImageFormat as ImageFormat,
-)
 from ._log import (
     AsComponents as AsComponents,
     escape_entity_path_part as escape_entity_path_part,
@@ -60,9 +56,6 @@ from ._properties import (
 from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeColumnLike as TimeColumnLike,
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
 from .any_batch_value import (
@@ -178,7 +171,6 @@ from .recording_stream import (
     get_recording_id as get_recording_id,
     get_thread_local_data_recording as get_thread_local_data_recording,
     is_enabled as is_enabled,
-    new_recording as new_recording,
     recording_stream_generator_ctx as recording_stream_generator_ctx,
     set_global_data_recording as set_global_data_recording,
     set_thread_local_data_recording as set_thread_local_data_recording,
@@ -198,7 +190,6 @@ from .sinks import (
     send_blueprint as send_blueprint,
     send_recording as send_recording,
     serve_grpc as serve_grpc,
-    serve_web as serve_web,
     set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
@@ -207,9 +198,6 @@ from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
     set_time as set_time,
-    set_time_nanos as set_time_nanos,
-    set_time_seconds as set_time_seconds,
-    set_time_sequence as set_time_sequence,
 )
 from .web import serve_web_viewer as serve_web_viewer
 

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Protocol, TypeVar, overload
 
 import numpy as np
 import pyarrow as pa
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 import rerun_bindings as bindings
 
@@ -136,108 +135,6 @@ class TimeColumn(TimeColumnLike):
 
     def as_arrow_array(self) -> pa.Array:
         return self.times
-
-
-@deprecated(
-    """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-class TimeSequenceColumn(TimeColumnLike):
-    """
-    DEPRECATED: A column of time values that are represented as an integer sequence.
-
-    Columnar equivalent to [`rerun.set_time_sequence`][rerun.set_time_sequence].
-    """
-
-    def __init__(self, timeline: str, times: Iterable[int]) -> None:
-        """
-        Create a column of integer sequence time values.
-
-        Parameters
-        ----------
-        timeline:
-            The name of the timeline.
-        times:
-            An iterable of integer time values.
-
-        """
-        self.timeline = timeline
-        self.times = times
-
-    def timeline_name(self) -> str:
-        """Returns the name of the timeline."""
-        return self.timeline
-
-    def as_arrow_array(self) -> pa.Array:
-        return pa.array(self.times, type=pa.int64())
-
-
-@deprecated(
-    """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-class TimeSecondsColumn(TimeColumnLike):
-    """
-    DEPRECATED: A column of time values that are represented as floating point seconds.
-
-    Columnar equivalent to [`rerun.set_time_seconds`][rerun.set_time_seconds].
-    """
-
-    def __init__(self, timeline: str, times: Iterable[float]) -> None:
-        """
-        Create a column of floating point seconds time values.
-
-        Parameters
-        ----------
-        timeline:
-            The name of the timeline.
-        times:
-            An iterable of floating point second time values.
-
-        """
-        self.timeline = timeline
-        self.times = times
-
-    def timeline_name(self) -> str:
-        """Returns the name of the timeline."""
-        return self.timeline
-
-    def as_arrow_array(self) -> pa.Array:
-        return pa.array([int(t * 1e9) for t in self.times], type=pa.timestamp("ns"))
-
-
-@deprecated(
-    """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-class TimeNanosColumn(TimeColumnLike):
-    """
-    DEPRECATED: A column of time values that are represented as integer nanoseconds.
-
-    Columnar equivalent to [`rerun.set_time_nanos`][rerun.set_time_nanos].
-    """
-
-    def __init__(self, timeline: str, times: Iterable[int]) -> None:
-        """
-        Create a column of integer nanoseconds time values.
-
-        Parameters
-        ----------
-        timeline:
-            The name of the timeline.
-        times:
-            An iterable of integer nanosecond time values.
-
-        """
-        self.timeline = timeline
-        self.times = times
-
-    def timeline_name(self) -> str:
-        """Returns the name of the timeline."""
-        return self.timeline
-
-    def as_arrow_array(self) -> pa.Array:
-        return pa.array(self.times, type=pa.timestamp("ns"))
 
 
 TArchetype = TypeVar("TArchetype", bound=Archetype)

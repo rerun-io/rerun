@@ -1003,15 +1003,6 @@ impl TimeColumn {
         )
     }
 
-    /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    #[deprecated = "Use `TimeColumn::new_duration_secs` or `new_timestamp_secs_since_epoch` instead"]
-    pub fn new_seconds(
-        name: impl Into<re_log_types::TimelineName>,
-        seconds: impl IntoIterator<Item = impl Into<f64>>,
-    ) -> Self {
-        Self::new_duration_secs(name, seconds)
-    }
-
     /// Creates a new [`TimeColumn`] measuring duration in nanoseconds.
     pub fn new_duration_nanos(
         name: impl Into<re_log_types::TimelineName>,
@@ -1068,15 +1059,6 @@ impl TimeColumn {
             Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
-    }
-
-    /// Creates a new [`TimeColumn`] of nanoseconds type.
-    #[deprecated = "Use `TimeColumn::new_duration_nanos` or `new_timestamp_nanos_since_epoch` instead"]
-    pub fn new_nanos(
-        name: impl Into<re_log_types::TimelineName>,
-        nanos: impl IntoIterator<Item = impl Into<i64>>,
-    ) -> Self {
-        Self::new_duration_nanos(name, nanos)
     }
 
     /// Parse the given [`ArrowArray`] as a time column.

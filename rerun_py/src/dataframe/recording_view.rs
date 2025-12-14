@@ -387,12 +387,6 @@ impl PyRecordingView {
         })
     }
 
-    /// DEPRECATED: Renamed to `filter_range_secs`.
-    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        self.filter_range_secs(start, end)
-    }
-
     #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
