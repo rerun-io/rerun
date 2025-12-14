@@ -9,39 +9,42 @@ used in the recompose project's own CI/development workflow.
 cd recompose
 
 # See all available tasks
-uv run python examples/app.py --help
+./run --help
 
 # Run individual tasks
-uv run python examples/app.py lint
-uv run python examples/app.py test
+./run lint
+./run test
 
 # Run the CI flow
-uv run python examples/app.py ci
+./run ci
 
 # Inspect a flow without running it
-uv run python examples/app.py inspect ci
+./run inspect ci
 ```
 
 ## Directory Structure
 
 ```
-examples/
-├── app.py              # Unified entrypoint - run all tasks from here
-├── README.md           # This file
-│
-├── tutorial/           # Learning recompose (start here!)
-│   ├── intro_tasks.py      # 1. Basic tasks, Results, subprocess
-│   ├── intro_taskclass.py  # 2. Task classes for grouped operations
-│   └── intro_flows.py      # 3. Composing tasks into flows
-│
-├── tasks/              # Real tasks for recompose project
-│   ├── __init__.py
-│   ├── lint.py             # lint, format_check, format
-│   └── test.py             # test
-│
-└── flows/              # Real flows for CI
-    ├── __init__.py
-    └── ci.py               # CI pipeline flow
+recompose/
+├── run                     # Entry point script
+└── examples/
+    ├── __init__.py         # Package marker
+    ├── app.py              # Main app (use via ./run)
+    ├── README.md           # This file
+    │
+    ├── tutorial/           # Learning recompose (start here!)
+    │   ├── intro_tasks.py      # 1. Basic tasks, Results, subprocess
+    │   ├── intro_taskclass.py  # 2. Task classes for grouped operations
+    │   └── intro_flows.py      # 3. Composing tasks into flows
+    │
+    ├── tasks/              # Real tasks for recompose project
+    │   ├── __init__.py
+    │   ├── lint.py             # lint, format_check, format
+    │   └── test.py             # test
+    │
+    └── flows/              # Real flows for CI
+        ├── __init__.py
+        └── ci.py               # CI pipeline flow
 ```
 
 ## Tutorial: Learning Recompose
@@ -58,15 +61,15 @@ Learn the fundamentals:
 - **`recompose.run()`** - Execute subprocesses
 
 ```bash
-# Run the tutorial
-uv run python examples/tutorial/intro_tasks.py --help
+# Run the tutorial (tutorials are standalone scripts)
+uv run python -m examples.tutorial.intro_tasks --help
 
 # Try individual tasks
-uv run python examples/tutorial/intro_tasks.py hello
-uv run python examples/tutorial/intro_tasks.py greet --name="Alice"
-uv run python examples/tutorial/intro_tasks.py check_tool --tool=git
-uv run python examples/tutorial/intro_tasks.py divide --a=10 --b=2
-uv run python examples/tutorial/intro_tasks.py divide --a=10 --b=0  # Error case
+uv run python -m examples.tutorial.intro_tasks hello
+uv run python -m examples.tutorial.intro_tasks greet --name="Alice"
+uv run python -m examples.tutorial.intro_tasks check_tool --tool=git
+uv run python -m examples.tutorial.intro_tasks divide --a=10 --b=2
+uv run python -m examples.tutorial.intro_tasks divide --a=10 --b=0  # Error case
 ```
 
 ### 2. Task Classes (`tutorial/intro_taskclass.py`)
@@ -78,15 +81,15 @@ Learn to group related tasks:
 
 ```bash
 # Run the tutorial
-uv run python examples/tutorial/intro_taskclass.py --help
+uv run python -m examples.tutorial.intro_taskclass --help
 
 # Try the Counter taskclass
-uv run python examples/tutorial/intro_taskclass.py counter.increment --start=10 --by=5
-uv run python examples/tutorial/intro_taskclass.py counter.show --start=42
+uv run python -m examples.tutorial.intro_taskclass counter.increment --start=10 --by=5
+uv run python -m examples.tutorial.intro_taskclass counter.show --start=42
 
 # Try the FileOps taskclass
-uv run python examples/tutorial/intro_taskclass.py fileops.list --directory=/tmp
-uv run python examples/tutorial/intro_taskclass.py fileops.count --directory=/tmp
+uv run python -m examples.tutorial.intro_taskclass fileops.list --directory=/tmp
+uv run python -m examples.tutorial.intro_taskclass fileops.count --directory=/tmp
 ```
 
 ### 3. Flows (`tutorial/intro_flows.py`)
@@ -99,16 +102,16 @@ Learn to compose tasks:
 
 ```bash
 # Run the tutorial
-uv run python examples/tutorial/intro_flows.py --help
+uv run python -m examples.tutorial.intro_flows --help
 
 # Run flows
-uv run python examples/tutorial/intro_flows.py tool_check
-uv run python examples/tutorial/intro_flows.py greeting_pipeline --name="Alice"
-uv run python examples/tutorial/intro_flows.py math_pipeline --a=20 --b=4
+uv run python -m examples.tutorial.intro_flows tool_check
+uv run python -m examples.tutorial.intro_flows greeting_pipeline --name="Alice"
+uv run python -m examples.tutorial.intro_flows math_pipeline --a=20 --b=4
 
 # Inspect flows without running
-uv run python examples/tutorial/intro_flows.py inspect tool_check
-uv run python examples/tutorial/intro_flows.py inspect math_pipeline
+uv run python -m examples.tutorial.intro_flows inspect tool_check
+uv run python -m examples.tutorial.intro_flows inspect math_pipeline
 ```
 
 ## Real Tasks
@@ -124,9 +127,9 @@ The `tasks/` directory contains the actual development workflow tasks.
 | `format` | Apply formatting fixes | No (local only) |
 
 ```bash
-uv run python examples/app.py lint
-uv run python examples/app.py format_check
-uv run python examples/app.py format  # Modifies files!
+./run lint
+./run format_check
+./run format  # Modifies files!
 ```
 
 ### Test Tasks (`tasks/test.py`)
@@ -136,9 +139,9 @@ uv run python examples/app.py format  # Modifies files!
 | `test` | Run pytest suite | Yes |
 
 ```bash
-uv run python examples/app.py test
-uv run python examples/app.py test --verbose
-uv run python examples/app.py test --coverage
+./run test
+./run test --verbose
+./run test --coverage
 ```
 
 ## Real Flows
@@ -154,10 +157,10 @@ The `ci` flow runs the full CI pipeline:
 
 ```bash
 # Run the full CI pipeline
-uv run python examples/app.py ci
+./run ci
 
 # Inspect the CI flow
-uv run python examples/app.py inspect ci
+./run inspect ci
 ```
 
 ## Core Concepts Summary

@@ -366,16 +366,17 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         # Create or use provided workspace
         ws = create_workspace(flow_name, workspace=workspace)
 
-        # Get script path - use the entry point that was used to launch the app
-        # This ensures subprocess invocations use the same script with all imports set up
-        script_path = get_entry_point()
-        if script_path is None:
-            # Fallback to the module where the flow is defined (for testing)
-            script_path = inspect.getfile(fn)
+        # Get entry point info - use the same invocation method as the parent
+        entry_point = get_entry_point()
+        if entry_point is None:
+            # Fallback to script mode with the module where the flow is defined
+            entry_point = ("script", inspect.getfile(fn))
+
+        entry_type, entry_value = entry_point
 
         if is_debug():
             dbg(f"Flow: {flow_name}")
-            dbg(f"Script: {script_path}")
+            dbg(f"Entry point: {entry_type} -> {entry_value}")
             dbg(f"Workspace: {ws}")
             dbg(f"Steps: {[s[0] for s in steps]}")
             dbg(f"Params: {kwargs}")
@@ -390,21 +391,27 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             params=kwargs,
             steps=[s[0] for s in steps],
             created_at=datetime.now().isoformat(),
-            script_path=script_path,
+            script_path=entry_value,  # Store the module name or script path
         )
         write_params(ws, flow_params)
 
         # Execute each step as a subprocess
         for step_name, _node in steps:
-            cmd = [
-                sys.executable,
-                script_path,
-                flow_name,
-                "--step",
-                step_name,
-                "--workspace",
-                str(ws),
-            ]
+            # Build command based on entry point type
+            if entry_type == "module":
+                cmd = [sys.executable, "-m", entry_value]
+            else:
+                cmd = [sys.executable, entry_value]
+
+            cmd.extend(
+                [
+                    flow_name,
+                    "--step",
+                    step_name,
+                    "--workspace",
+                    str(ws),
+                ]
+            )
 
             if is_debug():
                 dbg(f"Running: {' '.join(cmd)}")

@@ -541,8 +541,17 @@ def main(name: str | None = None) -> None:
     """
     import sys
 
-    # Store the entry point so run_isolated can use it
-    set_entry_point(sys.argv[0])
+    # Detect if we're running as a module (python -m) or as a script
+    # When running as a module, __spec__ is set in the calling module
+    caller_frame = sys._getframe(1)
+    caller_spec = caller_frame.f_globals.get("__spec__")
+
+    if caller_spec is not None and caller_spec.name:
+        # Running as a module - store module name for -m invocation
+        set_entry_point("module", caller_spec.name)
+    else:
+        # Running as a script - store the script path
+        set_entry_point("script", sys.argv[0])
 
     @click.group(name=name)
     @click.option("--debug/--no-debug", default=False, help="Enable debug output")

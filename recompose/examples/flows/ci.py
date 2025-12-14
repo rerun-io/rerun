@@ -4,11 +4,9 @@ CI flows for the recompose project.
 These flows compose tasks into pipelines that run in CI.
 """
 
-# isort: off
 import recompose
 
-from tasks import format_check, lint, test  # noqa: F401 - registers tasks
-# isort: on
+from ..tasks import format_check, lint, test
 
 
 @recompose.flow
