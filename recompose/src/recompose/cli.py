@@ -161,15 +161,11 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         # Print result
         console.print()
         if result.ok:
-            console.print(
-                f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s"
-            )
+            console.print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
             if result.value is not None:
                 console.print(f"[dim]→[/dim] {result.value}")
         else:
-            console.print(
-                f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s"
-            )
+            console.print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
             if result.error:
                 console.print(f"[red]Error:[/red] {result.error}")
             if result.traceback:
@@ -398,15 +394,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
             # Print result
             if result.ok:
-                console.print(
-                    f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s"
-                )
+                console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
                 if result.value is not None:
                     console.print(f"[dim]→[/dim] {result.value}")
             else:
-                console.print(
-                    f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s"
-                )
+                console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
                 if result.error:
                     console.print(f"[red]Error:[/red] {result.error}")
                 sys.exit(1)
@@ -427,13 +419,9 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
             console.print()
             if result.ok:
-                console.print(
-                    f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s"
-                )
+                console.print(f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s")
             else:
-                console.print(
-                    f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s"
-                )
+                console.print(f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s")
                 if result.error:
                     console.print(f"[red]Error:[/red] {result.error}")
 

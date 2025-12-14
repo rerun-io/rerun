@@ -232,10 +232,7 @@ def taskclass(cls: type[T]) -> type[T]:
 
     # Get __init__ parameters (excluding 'self')
     init_sig = inspect.signature(cls.__init__)
-    init_params = [
-        p for name, p in init_sig.parameters.items()
-        if name != "self"
-    ]
+    init_params = [p for name, p in init_sig.parameters.items() if name != "self"]
 
     # Scan class for @task-decorated methods
     for attr_name in dir(cls):
@@ -255,10 +252,7 @@ def taskclass(cls: type[T]) -> type[T]:
 
         # Get method signature (excluding 'self')
         method_sig = inspect.signature(method)
-        method_params = [
-            p for name, p in method_sig.parameters.items()
-            if name != "self"
-        ]
+        method_params = [p for name, p in method_sig.parameters.items() if name != "self"]
 
         # Build combined signature: init params + method params
         combined_params = init_params + method_params
@@ -272,6 +266,7 @@ def taskclass(cls: type[T]) -> type[T]:
             cls: type, method_name: str, init_param_names: list[str], full_task_name: str
         ) -> Callable[..., Any]:
             """Create a wrapper for a specific method."""
+
             def wrapper(**kwargs: Any) -> Result[Any]:
                 from .flow import DirectTaskCallInFlowError, get_current_plan
 

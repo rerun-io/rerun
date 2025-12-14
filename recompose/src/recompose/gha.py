@@ -142,6 +142,7 @@ checkout = _gha_action(
     "actions/checkout@v4",
 )
 
+
 # Setup Python
 def setup_python(version: str = "3.11", **kwargs: Any) -> GHAAction:
     """
@@ -315,6 +316,7 @@ class WorkflowSpec:
 
     def to_yaml(self) -> str:
         """Render as YAML string."""
+
         # Custom representer to handle multi-line strings nicely
         def str_representer(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
             if "\n" in data:
@@ -564,6 +566,7 @@ def render_automation_workflow(
         # Build inputs JSON if there are params
         if dispatch.params:
             import json
+
             inputs_json = json.dumps(dispatch.params)
             run_cmd = f"gh workflow run {workflow_file} --json <<< '{inputs_json}'"
         else:

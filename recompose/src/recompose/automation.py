@@ -54,9 +54,7 @@ class AutomationPlan:
 
 
 # Context variable for the current automation plan
-_current_automation_plan: ContextVar[AutomationPlan | None] = ContextVar(
-    "recompose_automation_plan", default=None
-)
+_current_automation_plan: ContextVar[AutomationPlan | None] = ContextVar("recompose_automation_plan", default=None)
 
 
 def get_current_automation_plan() -> AutomationPlan | None:

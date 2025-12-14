@@ -446,9 +446,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
         plan = get_current_automation_plan()
         if plan is None:
-            raise RuntimeError(
-                f"{info.name}.dispatch() can only be called inside an @automation-decorated function."
-            )
+            raise RuntimeError(f"{info.name}.dispatch() can only be called inside an @automation-decorated function.")
 
         dispatch = FlowDispatch(
             flow_name=info.name,

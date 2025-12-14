@@ -135,9 +135,7 @@ def run_integration_tests(*, binary: str) -> recompose.Result[int]:
 
 
 @recompose.task
-def package_artifact(
-    *, binary: str, unit_tests: int, integration_tests: int
-) -> recompose.Result[str]:
+def package_artifact(*, binary: str, unit_tests: int, integration_tests: int) -> recompose.Result[str]:
     """Package the binary into a distributable artifact."""
     total_tests = unit_tests + integration_tests
     recompose.out(f"Packaging {binary} (verified with {total_tests} tests)...")
@@ -233,9 +231,7 @@ def build_pipeline(*, repo: str = "main") -> None:
     integration_tests = run_integration_tests.flow(binary=binary)
 
     # Package depends on all tests completing
-    package_artifact.flow(
-        binary=binary, unit_tests=unit_tests, integration_tests=integration_tests
-    )
+    package_artifact.flow(binary=binary, unit_tests=unit_tests, integration_tests=integration_tests)
 
 
 if __name__ == "__main__":

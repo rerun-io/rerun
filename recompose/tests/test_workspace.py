@@ -203,7 +203,7 @@ class TestRunIsolated:
         # Import the flow_demo module to get a real flow
         import sys
 
-        sys.path.insert(0, str(Path(__file__).parent.parent / "examples"))
+        sys.path.insert(0, str(Path(__file__).parent.parent / "examples" / "demos"))
 
         from flow_demo import build_pipeline
 
