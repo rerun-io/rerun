@@ -500,6 +500,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 #   `meilisearch`).
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
+actionlint = ">=1.7" # For validating GitHub Actions workflows
 aiohttp = ">=3.9.3,<3.10" # For `zombie_todos.py`
 attrs = ">=23.1.0"
 clang = "16.0.6.*"
