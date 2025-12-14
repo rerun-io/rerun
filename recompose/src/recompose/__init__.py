@@ -20,6 +20,14 @@ Basic usage:
 """
 
 from . import gha
+from .automation import (
+    AutomationInfo,
+    AutomationPlan,
+    FlowDispatch,
+    automation,
+    get_automation,
+    get_automation_registry,
+)
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
 from .flow import (
@@ -84,6 +92,13 @@ __all__ = [
     "read_step_result",
     # GHA generation
     "gha",
+    # Automations
+    "automation",
+    "AutomationInfo",
+    "AutomationPlan",
+    "FlowDispatch",
+    "get_automation",
+    "get_automation_registry",
 ]
 
 __version__ = "0.1.0"

@@ -27,6 +27,7 @@ class FlowWrapper(Protocol):
     Flow wrappers are callable (returning Result[None]) and have:
     - .plan(): Inspect the task graph without execution
     - .run_isolated(): Execute each step as a separate subprocess
+    - .dispatch(): Trigger this flow from within an automation
     """
 
     _flow_info: FlowInfo
@@ -36,6 +37,8 @@ class FlowWrapper(Protocol):
     def plan(self, **kwargs: Any) -> FlowPlan: ...
 
     def run_isolated(self, **kwargs: Any) -> Result[None]: ...
+
+    def dispatch(self, **kwargs: Any) -> Any: ...
 
 
 # Context variable for declarative flow plan building
@@ -425,10 +428,41 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
     )
     _flow_registry[info.full_name] = info
 
-    # Attach flow info, plan method, and run_isolated to wrapper
+    def dispatch_impl(runs_on: str | None = None, **kwargs: Any) -> Any:
+        """
+        Dispatch this flow from within an automation.
+
+        This method can only be called inside an @automation-decorated function.
+        It records the dispatch in the automation plan.
+
+        Args:
+            runs_on: Optional runner override for this specific dispatch
+            **kwargs: Flow parameters to pass when dispatching
+
+        Returns:
+            FlowDispatch handle representing the dispatched workflow
+        """
+        from .automation import FlowDispatch, get_current_automation_plan
+
+        plan = get_current_automation_plan()
+        if plan is None:
+            raise RuntimeError(
+                f"{info.name}.dispatch() can only be called inside an @automation-decorated function."
+            )
+
+        dispatch = FlowDispatch(
+            flow_name=info.name,
+            params=kwargs,
+            runs_on=runs_on,
+        )
+        plan.add_dispatch(dispatch)
+        return dispatch
+
+    # Attach flow info, plan method, run_isolated, and dispatch to wrapper
     wrapper._flow_info = info  # type: ignore[attr-defined]
     wrapper.plan = plan_only  # type: ignore[attr-defined]
     wrapper.run_isolated = run_isolated_impl  # type: ignore[attr-defined]
+    wrapper.dispatch = dispatch_impl  # type: ignore[attr-defined]
 
     # Cast to FlowWrapper to satisfy type checker
     return cast(FlowWrapper, wrapper)
