@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "click>=8.0",
     "pydantic>=2.0",
+    "pyyaml>=6.0",
     "rich>=13.0",
 ]
 

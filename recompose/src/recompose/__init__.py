@@ -19,6 +19,7 @@ Basic usage:
     recompose.main()
 """
 
+from . import gha
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
 from .flow import (
@@ -81,6 +82,8 @@ __all__ = [
     "read_params",
     "write_step_result",
     "read_step_result",
+    # GHA generation
+    "gha",
 ]
 
 __version__ = "0.1.0"
