@@ -94,7 +94,7 @@ class GHAAction:
         """
         return Ok(None)
 
-    def flow(self, **kwargs: Any) -> "TaskNode[None]":
+    def flow(self, **kwargs: Any) -> TaskNode[None]:
         """
         Add this action to the current flow plan.
 

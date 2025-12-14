@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import functools
 import inspect
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
