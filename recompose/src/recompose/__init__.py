@@ -36,6 +36,7 @@ from .flowgraph import FlowPlan, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, TaskWrapper, get_registry, get_task, task, taskclass
+from .workspace import FlowParams, create_workspace, read_params, read_step_result, write_params, write_step_result
 
 __all__ = [
     # Result types
@@ -73,6 +74,13 @@ __all__ = [
     "get_current_plan",
     # CLI
     "main",
+    # Workspace (for subprocess isolation)
+    "FlowParams",
+    "create_workspace",
+    "write_params",
+    "read_params",
+    "write_step_result",
+    "read_step_result",
 ]
 
 __version__ = "0.1.0"

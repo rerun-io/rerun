@@ -63,7 +63,7 @@ def test_flow_tracks_task_executions():
 
     @flow
     def tracking_flow() -> None:
-        a = tracked_task_a.flow()
+        _a = tracked_task_a.flow()
         tracked_task_b.flow()
 
     result = tracking_flow()

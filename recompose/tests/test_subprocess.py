@@ -1,6 +1,5 @@
 """Tests for subprocess helpers."""
 
-import os
 import tempfile
 from pathlib import Path
 

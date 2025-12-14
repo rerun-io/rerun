@@ -23,8 +23,9 @@ class FlowWrapper(Protocol):
     """
     Protocol describing a flow-decorated function.
 
-    Flow wrappers are callable (returning Result[None]) and have a .plan() method
-    for inspecting the task graph without execution.
+    Flow wrappers are callable (returning Result[None]) and have:
+    - .plan(): Inspect the task graph without execution
+    - .run_isolated(): Execute each step as a separate subprocess
     """
 
     _flow_info: FlowInfo
@@ -32,6 +33,8 @@ class FlowWrapper(Protocol):
     def __call__(self, **kwargs: Any) -> Result[None]: ...
 
     def plan(self, **kwargs: Any) -> FlowPlan: ...
+
+    def run_isolated(self, **kwargs: Any) -> Result[None]: ...
 
 
 # Context variable for declarative flow plan building
@@ -327,6 +330,74 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         finally:
             set_current_plan(None)
 
+    def run_isolated_impl(**kwargs: Any) -> Result[None]:
+        """
+        Execute the flow with each step running as a separate subprocess.
+
+        This is useful for:
+        - Testing subprocess isolation locally
+        - Debugging step-by-step execution
+        - Matching the behavior of generated GitHub Actions workflows
+
+        Returns:
+            Result[None] indicating success or failure of the flow.
+        """
+        import subprocess
+        import sys
+
+        from .workspace import create_workspace, read_step_result, write_params
+
+        flow_name = fn.__name__
+
+        # Build the plan to get step names
+        plan = plan_only(**kwargs)
+        plan.assign_step_names()
+        steps = plan.get_steps()
+
+        # Create workspace
+        ws = create_workspace(flow_name)
+
+        # Get script path - use the module where the flow is defined
+        script_path = inspect.getfile(fn)
+
+        # Write params (setup step)
+        from datetime import datetime
+
+        from .workspace import FlowParams
+
+        flow_params = FlowParams(
+            flow_name=flow_name,
+            params=kwargs,
+            steps=[s[0] for s in steps],
+            created_at=datetime.now().isoformat(),
+            script_path=script_path,
+        )
+        write_params(ws, flow_params)
+
+        # Execute each step as a subprocess
+        for step_name, _node in steps:
+            cmd = [
+                sys.executable,
+                script_path,
+                flow_name,
+                "--step",
+                step_name,
+                "--workspace",
+                str(ws),
+            ]
+
+            result = subprocess.run(cmd, capture_output=False)
+
+            if result.returncode != 0:
+                # Step failed - read its result if available
+                step_result = read_step_result(ws, step_name)
+                if step_result.failed:
+                    return Err(step_result.error or f"Step {step_name} failed")
+                return Err(f"Step {step_name} failed with exit code {result.returncode}")
+
+        # All steps succeeded
+        return Ok(None)
+
     # Create flow info
     info = FlowInfo(
         name=fn.__name__,
@@ -338,9 +409,10 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
     )
     _flow_registry[info.full_name] = info
 
-    # Attach flow info and plan method to wrapper
+    # Attach flow info, plan method, and run_isolated to wrapper
     wrapper._flow_info = info  # type: ignore[attr-defined]
     wrapper.plan = plan_only  # type: ignore[attr-defined]
+    wrapper.run_isolated = run_isolated_impl  # type: ignore[attr-defined]
 
     # Cast to FlowWrapper to satisfy type checker
     return cast(FlowWrapper, wrapper)

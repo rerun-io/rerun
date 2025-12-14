@@ -21,13 +21,14 @@ T = TypeVar("T")
 @dataclass
 class TaskNode(Generic[T]):
     """
-    Represents a deferred task execution in a flow graph.
+    Represents a deferred task execution in a flow graph (a "step").
 
     When you call `task.flow(arg=value)` inside a flow, it returns a TaskNode
     instead of executing immediately. The TaskNode captures:
     - What task to run
     - What arguments to pass (which may include other TaskNodes as dependencies)
     - A unique ID for tracking
+    - A step_name assigned by the FlowPlan (e.g., "01_fetch_source")
 
     The generic parameter T represents the type of Result[T] the task will
     produce when executed.
@@ -43,6 +44,7 @@ class TaskNode(Generic[T]):
     task_info: TaskInfo
     kwargs: dict[str, Any] = field(default_factory=dict)
     node_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    step_name: str | None = field(default=None)  # Assigned by FlowPlan.assign_step_names()
 
     @property
     def name(self) -> str:
@@ -161,10 +163,83 @@ class FlowPlan:
 
         return groups
 
+    def assign_step_names(self) -> None:
+        """
+        Assign sequential step names to all nodes based on execution order.
+
+        Step names have the format "NN_task_name" where NN is a zero-padded
+        sequence number (e.g., "01_fetch_source", "02_compile_source").
+
+        This makes execution order explicit and ensures unique names even
+        when the same task is used multiple times in a flow.
+        """
+        execution_order = self.get_execution_order()
+        num_digits = len(str(len(execution_order)))  # Enough digits to fit all steps
+
+        for i, node in enumerate(execution_order, start=1):
+            node.step_name = f"{i:0{num_digits}d}_{node.task_info.name}"
+
+    def get_step(self, step_ref: str) -> TaskNode[Any] | None:
+        """
+        Find a step by name, number, or task name.
+
+        Args:
+            step_ref: Can be:
+                - Full step name: "03_run_unit_tests"
+                - Just the number: "03" or "3"
+                - Task name (if unambiguous): "run_unit_tests"
+
+        Returns:
+            The matching TaskNode, or None if not found.
+        """
+        # Ensure step names are assigned
+        if self.nodes and self.nodes[0].step_name is None:
+            self.assign_step_names()
+
+        # Try exact match on step_name
+        for node in self.nodes:
+            if node.step_name == step_ref:
+                return node
+
+        # Try matching by number (with or without leading zeros)
+        try:
+            step_num = int(step_ref)
+            for node in self.nodes:
+                if node.step_name:
+                    # Extract number from "NN_task_name"
+                    num_part = node.step_name.split("_")[0]
+                    if int(num_part) == step_num:
+                        return node
+        except ValueError:
+            pass
+
+        # Try matching by task name (if unambiguous)
+        matches = [n for n in self.nodes if n.task_info.name == step_ref]
+        if len(matches) == 1:
+            return matches[0]
+
+        return None
+
+    def get_steps(self) -> list[tuple[str, TaskNode[Any]]]:
+        """
+        Return all steps in execution order with their step names.
+
+        Returns:
+            List of (step_name, node) tuples.
+        """
+        if self.nodes and self.nodes[0].step_name is None:
+            self.assign_step_names()
+
+        return [(n.step_name or n.name, n) for n in self.get_execution_order()]
+
     def visualize(self) -> str:
         """Return an ASCII representation of the flow graph."""
         if not self.nodes:
             return "(empty flow)"
+
+        # Ensure step names are assigned
+        if self.nodes[0].step_name is None:
+            self.assign_step_names()
 
         lines: list[str] = []
         groups = self.get_parallelizable_groups()
@@ -173,15 +248,17 @@ class FlowPlan:
             level_str = f"Level {i}: "
             node_strs = []
             for node in group:
-                deps = [d.name for d in node.dependencies]
+                display_name = node.step_name or node.name
+                deps = [d.step_name or d.name for d in node.dependencies]
                 if deps:
-                    node_strs.append(f"{node.name} <- [{', '.join(deps)}]")
+                    node_strs.append(f"{display_name} <- [{', '.join(deps)}]")
                 else:
-                    node_strs.append(node.name)
+                    node_strs.append(display_name)
             lines.append(level_str + " | ".join(node_strs))
 
         if self.terminal:
-            lines.append(f"Terminal: {self.terminal.name}")
+            terminal_name = self.terminal.step_name or self.terminal.name
+            lines.append(f"Terminal: {terminal_name}")
 
         return "\n".join(lines)
 

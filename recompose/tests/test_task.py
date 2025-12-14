@@ -1,6 +1,6 @@
 """Tests for the @task decorator."""
 
-from recompose import Err, Ok, Result, get_registry, task
+from recompose import Ok, Result, get_registry, task
 
 
 def test_task_registers_function():
