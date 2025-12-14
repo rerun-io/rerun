@@ -1,23 +1,29 @@
 # NOW
 
-**P06_gha_generation** - Phases 1-2 complete, continuing with Phase 3.
+**P06_gha_generation** - Complete! All 3 phases done.
 
-Phase 1 delivered:
+Phase 1: Basic YAML generation
 - `gha.py` module with WorkflowSpec, JobSpec, StepSpec dataclasses
-- `generate-gha` CLI command: `./app.py generate-gha flow_name`
+- `generate-gha` CLI command
 - Flow params → workflow_dispatch inputs
 - actionlint validation via `--validate` flag
 
-Phase 2 delivered:
-- `GHAAction` class for virtual tasks that map to `uses:` steps
-- Pre-defined actions: `checkout`, `setup_python`, `setup_uv`, `setup_rust`, `cache`
-- Actions are no-ops locally but generate `uses:` steps in YAML
-- Use in flows: `gha.checkout.flow()`, `gha.setup_python(version="3.11").flow()`
+Phase 2: GHA setup actions
+- `GHAAction` class for virtual tasks (`uses:` steps)
+- Pre-defined: `checkout`, `setup_python`, `setup_uv`, `setup_rust`, `cache`
+- No-ops locally, generate `uses:` in YAML
 
-Next: Phase 3 - Automations (`@automation` decorator, workflow_run orchestration)
+Phase 3: Automations
+- `@automation` decorator with GHA config (triggers, runner, env, timeout)
+- `.dispatch()` method on flows
+- Automations orchestrate flows via `gh workflow run`
+
+Next: Consider what to tackle next or test the system end-to-end.
 
 # COMPLETED
 
+- **P06_gha_generation Phase 3** - Automations. `@automation` decorator with GHA config,
+  `.dispatch()` method on flows, orchestrates flows via `gh workflow run`.
 - **P06_gha_generation Phase 2** - GHA setup actions. `GHAAction` class for virtual tasks,
   pre-defined actions (checkout, setup_python, setup_uv, setup_rust, cache).
 - **P06_gha_generation Phase 1** - Basic GHA workflow generation. `generate-gha` CLI command,
