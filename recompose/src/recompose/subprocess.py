@@ -45,9 +45,7 @@ class SubprocessError(Exception):
     def __init__(self, result: RunResult):
         self.result = result
         cmd_str = " ".join(result.command)
-        super().__init__(
-            f"Command '{cmd_str}' failed with exit code {result.returncode}"
-        )
+        super().__init__(f"Command '{cmd_str}' failed with exit code {result.returncode}")
 
 
 def run(

@@ -1,6 +1,5 @@
 """Tests for class-based member tasks."""
 
-
 from recompose import Ok, Result, get_registry, task, taskclass
 
 
