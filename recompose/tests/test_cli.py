@@ -3,7 +3,7 @@
 from click.testing import CliRunner
 
 import recompose
-from recompose.cli import _build_command, main
+from recompose.cli import _build_command
 from recompose.task import _task_registry, get_registry
 
 

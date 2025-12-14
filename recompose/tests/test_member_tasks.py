@@ -1,9 +1,7 @@
 """Tests for class-based member tasks."""
 
-from pathlib import Path
 
-import recompose
-from recompose import Err, Ok, Result, get_registry, task, taskclass
+from recompose import Ok, Result, get_registry, task, taskclass
 
 
 def test_taskclass_registers_method_tasks():

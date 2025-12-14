@@ -193,9 +193,48 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
 def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     """Build a Click command from a flow."""
+    import sys
+
+    from .workspace import (
+        FlowParams,
+        create_workspace,
+        get_workspace_from_env,
+        read_params,
+        read_step_result,
+        write_params,
+        write_step_result,
+    )
+
     sig = flow_info.signature
     params: list[click.Parameter] = []
 
+    # Add flow-specific options for subprocess isolation
+    params.append(
+        click.Option(
+            ["--setup"],
+            is_flag=True,
+            default=False,
+            help="Initialize workspace and write flow parameters (for subprocess mode)",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--step"],
+            type=str,
+            default=None,
+            help="Execute a specific step (e.g., '01_fetch_source' or just '01')",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--workspace"],
+            type=click.Path(path_type=Path),
+            default=None,
+            help="Workspace directory for subprocess mode (default: auto-generated or $RECOMPOSE_WORKSPACE)",
+        )
+    )
+
+    # Add flow parameters
     for param_name, param in sig.parameters.items():
         if param_name == "self":
             continue
@@ -256,15 +295,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                 )
             )
 
-    def callback(**kwargs: Any) -> None:
-        """Execute the flow and display results."""
+    def callback(setup: bool, step: str | None, workspace: Path | None, **kwargs: Any) -> None:
+        """Execute the flow, setup, or a specific step."""
+        from datetime import datetime
+
         flow_name = flow_info.name
-
-        start_time = time.perf_counter()
-
-        # Print flow header
-        console.print(f"\n[bold magenta]▶[/bold magenta] [bold]flow:{flow_name}[/bold]")
-        console.print()
 
         # Convert enum values back to enum if needed
         for param_name, param in sig.parameters.items():
@@ -275,43 +310,148 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     if value is not None:
                         kwargs[param_name] = annotation(value)
 
-        # Execute the flow
-        result: Result[Any] = flow_info.fn(**kwargs)
+        # Determine workspace
+        ws = workspace or get_workspace_from_env()
 
-        # Get flow context from result (attached by the flow decorator)
-        flow_ctx = getattr(result, "_flow_context", None)
+        if setup:
+            # --setup mode: Create workspace and write params
+            if ws is None:
+                ws = create_workspace(flow_name)
 
-        elapsed = time.perf_counter() - start_time
+            # Build the plan to get step names
+            plan = flow_info.fn.plan(**kwargs)  # type: ignore[attr-defined]
+            plan.assign_step_names()
 
-        # Print sub-task summary if available
-        if flow_ctx and flow_ctx.executions:
+            step_names = [n.step_name for n in plan.get_execution_order() if n.step_name]
+
+            flow_params = FlowParams(
+                flow_name=flow_name,
+                params=kwargs,
+                steps=step_names,
+                created_at=datetime.now().isoformat(),
+                script_path=sys.argv[0],
+            )
+            write_params(ws, flow_params)
+
+            console.print(f"\n[bold green]✓[/bold green] Setup complete for [bold]{flow_name}[/bold]")
+            console.print(f"[dim]Workspace:[/dim] {ws}")
+            console.print("[dim]Steps:[/dim]")
+            for s in step_names:
+                console.print(f"    {s}")
             console.print()
-            console.print("[dim]Tasks executed:[/dim]")
-            for ex in flow_ctx.executions:
-                status_icon = "[green]✓[/green]" if ex.result.ok else "[red]✗[/red]"
-                console.print(f"  {status_icon} {ex.task_name} ({ex.duration:.2f}s)")
 
-        # Print result
-        console.print()
-        if result.ok:
-            console.print(
-                f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s"
-            )
-            if result.value is not None:
-                console.print(f"[dim]→[/dim] {result.value}")
+        elif step:
+            # --step mode: Execute a specific step
+            if ws is None:
+                ws = get_workspace_from_env()
+                if ws is None:
+                    console.print("[red]Error:[/red] --workspace required or set $RECOMPOSE_WORKSPACE")
+                    sys.exit(1)
+
+            # Read params from workspace
+            try:
+                flow_params = read_params(ws)
+            except FileNotFoundError:
+                console.print(f"[red]Error:[/red] No _params.json in {ws}")
+                console.print("[dim]Run --setup first to initialize the workspace[/dim]")
+                sys.exit(1)
+
+            # Rebuild the plan using stored params
+            plan = flow_info.fn.plan(**flow_params.params)  # type: ignore[attr-defined]
+            plan.assign_step_names()
+
+            # Find the requested step
+            target_node = plan.get_step(step)
+            if target_node is None:
+                console.print(f"[red]Error:[/red] Step '{step}' not found")
+                console.print("[dim]Available steps:[/dim]")
+                for s in flow_params.steps:
+                    console.print(f"    {s}")
+                sys.exit(1)
+
+            step_name = target_node.step_name or target_node.name
+
+            console.print(f"\n[bold cyan]▶[/bold cyan] [bold]{step_name}[/bold]")
+            console.print()
+
+            # Resolve dependencies from workspace
+            resolved_kwargs: dict[str, Any] = {}
+            for kwarg_name, kwarg_value in target_node.kwargs.items():
+                if isinstance(kwarg_value, type(target_node)):  # TaskNode dependency
+                    dep_node = kwarg_value
+                    dep_step_name = dep_node.step_name or dep_node.name
+                    dep_result = read_step_result(ws, dep_step_name)
+                    if dep_result.failed:
+                        console.print(f"[red]Error:[/red] Dependency '{dep_step_name}' failed or not found")
+                        sys.exit(1)
+                    resolved_kwargs[kwarg_name] = dep_result.value
+                else:
+                    resolved_kwargs[kwarg_name] = kwarg_value
+
+            # Execute the task
+            start_time = time.perf_counter()
+            result: Result[Any] = target_node.task_info.original_fn(**resolved_kwargs)
+            elapsed = time.perf_counter() - start_time
+
+            # Write result to workspace
+            write_step_result(ws, step_name, result)
+
+            # Print result
+            if result.ok:
+                console.print(
+                    f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s"
+                )
+                if result.value is not None:
+                    console.print(f"[dim]→[/dim] {result.value}")
+            else:
+                console.print(
+                    f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s"
+                )
+                if result.error:
+                    console.print(f"[red]Error:[/red] {result.error}")
+                sys.exit(1)
+
+            console.print()
+
         else:
-            console.print(
-                f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s"
-            )
-            if result.error:
-                console.print(f"[red]Error:[/red] {result.error}")
-            if result.traceback:
-                from .context import is_debug
+            # Normal mode: Execute the entire flow in-process
+            start_time = time.perf_counter()
 
-                if is_debug():
-                    console.print(f"[dim]{result.traceback}[/dim]")
+            console.print(f"\n[bold magenta]▶[/bold magenta] [bold]flow:{flow_name}[/bold]")
+            console.print()
 
-        console.print()
+            result = flow_info.fn(**kwargs)
+
+            flow_ctx = getattr(result, "_flow_context", None)
+            elapsed = time.perf_counter() - start_time
+
+            if flow_ctx and flow_ctx.executions:
+                console.print()
+                console.print("[dim]Tasks executed:[/dim]")
+                for ex in flow_ctx.executions:
+                    status_icon = "[green]✓[/green]" if ex.result.ok else "[red]✗[/red]"
+                    console.print(f"  {status_icon} {ex.task_name} ({ex.duration:.2f}s)")
+
+            console.print()
+            if result.ok:
+                console.print(
+                    f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s"
+                )
+                if result.value is not None:
+                    console.print(f"[dim]→[/dim] {result.value}")
+            else:
+                console.print(
+                    f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s"
+                )
+                if result.error:
+                    console.print(f"[red]Error:[/red] {result.error}")
+                if result.traceback:
+                    from .context import is_debug
+
+                    if is_debug():
+                        console.print(f"[dim]{result.traceback}[/dim]")
+
+            console.print()
 
     cmd = click.Command(
         name=flow_info.name,

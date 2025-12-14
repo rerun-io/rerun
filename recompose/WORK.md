@@ -1,14 +1,15 @@
 # NOW
 
-Ready to start **P05d_flows_subprocess** - Subprocess isolation for flow tasks.
+Ready to start **P06_gha_generation** - GitHub Actions workflow generation from flows.
 
-This is needed for GHA generation: each task in a flow should be able to run as a separate
-subprocess invocation via the CLI. Results need to be serialized and passed between tasks.
-
-**Deferred:** P05c_flows_parallel - Not needed yet. Linear execution matches GHA step model.
+Now that flows support subprocess isolation with file-based result passing, we can map
+flow steps directly to GHA job steps. Each step invokes the CLI with `--step <name> --workspace <path>`.
 
 # COMPLETED
 
+- **P05d_flows_subprocess** - Subprocess isolation for flow tasks. Each step runs as a separate
+  subprocess, results serialized to JSON in workspace directory. Includes `run_isolated()` method
+  for local testing. See `proj/P05d_flows_subprocess_DONE.md`
 - **P05b_declarative_flows** - Declarative flow execution with `.flow()` API. Tasks build a graph
   before execution. Includes `flow.plan()` for dry-run inspection. See `proj/P05b_declarative_flows_DONE.md`
 - **P05a_flows** - Sequential flows with `@flow` decorator. Tasks tracked, results passed. See `proj/P05a_flows_DONE.md`
@@ -20,9 +21,13 @@ subprocess invocation via the CLI. Results need to be serialized and passed betw
 # UPCOMING
 
 1. **P06_gha_generation** - GitHub Actions workflow generation from flows
+   - Map flow steps to GHA job steps
+   - Each step: `python script.py flow_name --step <step_name> --workspace <path>`
+   - Handle GHA-specific setup tasks (setup-rust, setup-python, etc.)
+   - Output valid workflow YAML
 
 **Deferred:**
-- P05c_flows_parallel - Linear execution sufficient for now
+- P05c_flows_parallel - Linear execution sufficient for now (matches GHA step model)
 
 # ARCHITECTURE DECISIONS
 
