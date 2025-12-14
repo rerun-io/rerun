@@ -214,7 +214,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             ["--setup"],
             is_flag=True,
             default=False,
-            help="Initialize workspace and write flow parameters (for subprocess mode)",
+            help="Initialize workspace only, don't run (for CI orchestration)",
         )
     )
     params.append(
@@ -222,7 +222,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             ["--step"],
             type=str,
             default=None,
-            help="Execute a specific step (e.g., '01_fetch_source' or just '01')",
+            help="Execute a single step only (for CI orchestration)",
         )
     )
     params.append(
@@ -230,7 +230,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             ["--workspace"],
             type=click.Path(path_type=Path),
             default=None,
-            help="Workspace directory for subprocess mode (default: auto-generated or $RECOMPOSE_WORKSPACE)",
+            help="Workspace directory for step results (default: auto-generated in ~/.recompose/runs/)",
         )
     )
 
@@ -414,42 +414,28 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             console.print()
 
         else:
-            # Normal mode: Execute the entire flow in-process
+            # Normal mode: Execute the entire flow with subprocess isolation
+            # This matches CI behavior where each step is a separate process
             start_time = time.perf_counter()
 
             console.print(f"\n[bold magenta]▶[/bold magenta] [bold]flow:{flow_name}[/bold]")
             console.print()
 
-            result = flow_info.fn(**kwargs)
+            result = flow_info.fn.run_isolated(workspace=ws, **kwargs)  # type: ignore[attr-defined]
 
-            flow_ctx = getattr(result, "_flow_context", None)
             elapsed = time.perf_counter() - start_time
-
-            if flow_ctx and flow_ctx.executions:
-                console.print()
-                console.print("[dim]Tasks executed:[/dim]")
-                for ex in flow_ctx.executions:
-                    status_icon = "[green]✓[/green]" if ex.result.ok else "[red]✗[/red]"
-                    console.print(f"  {status_icon} {ex.task_name} ({ex.duration:.2f}s)")
 
             console.print()
             if result.ok:
                 console.print(
                     f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s"
                 )
-                if result.value is not None:
-                    console.print(f"[dim]→[/dim] {result.value}")
             else:
                 console.print(
                     f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s"
                 )
                 if result.error:
                     console.print(f"[red]Error:[/red] {result.error}")
-                if result.traceback:
-                    from .context import is_debug
-
-                    if is_debug():
-                        console.print(f"[dim]{result.traceback}[/dim]")
 
             console.print()
 

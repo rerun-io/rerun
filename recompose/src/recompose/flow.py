@@ -9,6 +9,7 @@ import traceback
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
 from .context import Context, get_context, set_context
@@ -330,7 +331,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         finally:
             set_current_plan(None)
 
-    def run_isolated_impl(**kwargs: Any) -> Result[None]:
+    def run_isolated_impl(workspace: Path | None = None, **kwargs: Any) -> Result[None]:
         """
         Execute the flow with each step running as a separate subprocess.
 
@@ -339,12 +340,17 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         - Debugging step-by-step execution
         - Matching the behavior of generated GitHub Actions workflows
 
+        Args:
+            workspace: Optional workspace directory. If not provided, one is auto-generated.
+            **kwargs: Flow parameters.
+
         Returns:
             Result[None] indicating success or failure of the flow.
         """
         import subprocess
         import sys
 
+        from .context import dbg, is_debug
         from .workspace import create_workspace, read_step_result, write_params
 
         flow_name = fn.__name__
@@ -354,11 +360,18 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         plan.assign_step_names()
         steps = plan.get_steps()
 
-        # Create workspace
-        ws = create_workspace(flow_name)
+        # Create or use provided workspace
+        ws = create_workspace(flow_name, workspace=workspace)
 
         # Get script path - use the module where the flow is defined
         script_path = inspect.getfile(fn)
+
+        if is_debug():
+            dbg(f"Flow: {flow_name}")
+            dbg(f"Script: {script_path}")
+            dbg(f"Workspace: {ws}")
+            dbg(f"Steps: {[s[0] for s in steps]}")
+            dbg(f"Params: {kwargs}")
 
         # Write params (setup step)
         from datetime import datetime
@@ -385,6 +398,9 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
                 "--workspace",
                 str(ws),
             ]
+
+            if is_debug():
+                dbg(f"Running: {' '.join(cmd)}")
 
             result = subprocess.run(cmd, capture_output=False)
 
