@@ -19,24 +19,30 @@ The final result should be:
 Restructured examples to be both instructional AND real:
 
 ```
-examples/
-├── README.md                    # Concept introduction + walkthrough
-├── app.py                       # Unified entrypoint (imports all)
-├── tutorial/                    # Incremental tutorials
-│   ├── intro_tasks.py           # Basic tasks, Results, subprocess
-│   ├── intro_taskclass.py       # @taskclass
-│   └── intro_flows.py           # Flows (imports from intro_tasks.py)
-├── tasks/                       # Real tasks for recompose
-│   ├── __init__.py
-│   ├── lint.py                  # lint, format_check, format
-│   └── test.py                  # test
-└── flows/                       # Real flows
-    ├── __init__.py
-    └── ci.py                    # ci flow (lint + format_check + test)
+recompose/
+├── run                          # THE entry point: ./run lint, ./run ci
+└── examples/
+    ├── __init__.py              # Makes examples a proper package
+    ├── README.md                # Concept introduction + walkthrough
+    ├── app.py                   # Unified entrypoint (imports all)
+    ├── tutorial/                # Incremental tutorials
+    │   ├── intro_tasks.py       # Basic tasks, Results, subprocess
+    │   ├── intro_taskclass.py   # @taskclass
+    │   └── intro_flows.py       # Flows (imports from intro_tasks.py)
+    ├── tasks/                   # Real tasks for recompose
+    │   ├── __init__.py
+    │   ├── lint.py              # lint, format_check, format
+    │   └── test.py              # test
+    └── flows/                   # Real flows
+        ├── __init__.py
+        └── ci.py                # ci flow (lint + format_check + test)
 ```
 
-Also fixed `run_isolated` to use entry point from `main()` instead of
-`inspect.getfile(fn)`, eliminating path hackery in flow files.
+Key implementation details:
+- `./run` wrapper script uses `python -m examples.app` for proper package imports
+- Added entry point detection (`__spec__`) to preserve module invocation across subprocess calls
+- `run_isolated` now uses `-m module` when entry point was invoked as module
+- All examples use clean relative imports (no sys.path hackery)
 
 **P07b - Build & distribution tasks**
 - `build_wheel` task - create wheel with `uv build`
@@ -47,11 +53,10 @@ Also fixed `run_isolated` to use entry point from `main()` instead of
 This validates that the package actually works when installed, not just when
 run from source. Important distinction for catching packaging issues.
 
-**P07c - Unified entrypoint**
-- Create `recompose/run` script as THE canonical entrypoint
-- Imports and combines all tasks/flows from examples
-- This becomes the single way to run recompose tasks for dev and CI
-- Should be usable as: `./run lint` or `./run ci` etc.
+**P07c - Unified entrypoint** ✅ DONE (merged into P07a)
+Already completed as part of P07a:
+- `./run` wrapper script is THE canonical entrypoint
+- Usage: `./run lint`, `./run test`, `./run ci`, `./run inspect ci`
 
 **P07d - Workflow generation & validation**
 - Create flows that compose tasks for CI (e.g., `ci_flow` = lint + format-check + test)
