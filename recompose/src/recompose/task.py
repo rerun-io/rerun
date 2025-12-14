@@ -51,6 +51,10 @@ class TaskInfo:
     method_name: str | None = None  # Original method name (without class prefix)
     init_params: list[inspect.Parameter] = field(default_factory=list)  # __init__ params (excluding self)
 
+    # GHA action fields (for virtual tasks that map to `uses:` steps)
+    is_gha_action: bool = False  # True if this is a GHA virtual action
+    gha_uses: str | None = None  # The action to use, e.g., "actions/checkout@v4"
+
     @property
     def full_name(self) -> str:
         """Full qualified name of the task."""

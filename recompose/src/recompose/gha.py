@@ -2,6 +2,7 @@
 
 This module provides:
 - Dataclasses for representing GHA workflow structure
+- Virtual tasks for GHA-specific actions (checkout, setup-python, etc.)
 - Functions to generate workflow YAML from flows
 - Validation via actionlint
 """
@@ -13,11 +14,217 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from .flow import FlowInfo, get_flow
+from .result import Ok, Result
+from .task import TaskInfo
+
+if TYPE_CHECKING:
+    from .flowgraph import TaskNode
+
+
+# =============================================================================
+# GHA Actions - Virtual tasks that map to `uses:` steps
+# =============================================================================
+
+
+class GHAAction:
+    """
+    A virtual task that represents a GitHub Actions `uses:` step.
+
+    GHA actions are no-ops when run locally but generate `uses:` steps
+    in workflow YAML. They can be used in flows via `.flow()` like regular tasks.
+
+    Example:
+        @recompose.flow
+        def build_pipeline(*, repo: str = "main") -> None:
+            recompose.gha.checkout()  # Adds checkout step
+            recompose.gha.setup_python(version="3.11")  # Adds setup-python step
+
+            source = fetch_source.flow(repo=repo)
+            ...
+    """
+
+    def __init__(
+        self,
+        name: str,
+        uses: str,
+        *,
+        with_params: dict[str, str] | None = None,
+        doc: str | None = None,
+    ):
+        """
+        Create a GHA action.
+
+        Args:
+            name: Display name for the action (e.g., "checkout", "setup_python")
+            uses: The action reference (e.g., "actions/checkout@v4")
+            with_params: Default `with:` parameters for the action
+            doc: Documentation string
+        """
+        self.name = name
+        self.uses = uses
+        self.default_with_params = with_params or {}
+        self.doc = doc
+
+        # Create a TaskInfo for this action
+        # The function is a no-op that returns Ok(None)
+        def noop_fn(**kwargs: Any) -> Result[None]:
+            return Ok(None)
+
+        self._task_info = TaskInfo(
+            name=f"gha.{name}",
+            module="recompose.gha",
+            fn=noop_fn,
+            original_fn=noop_fn,
+            signature=inspect.Signature(),  # Will be updated per-call
+            doc=doc,
+            is_gha_action=True,
+            gha_uses=uses,
+        )
+
+    def __call__(self, **kwargs: Any) -> Result[None]:
+        """
+        Execute the action (no-op when run locally).
+
+        When called directly (not in a flow), this returns Ok(None) immediately.
+        """
+        return Ok(None)
+
+    def flow(self, **kwargs: Any) -> "TaskNode[None]":
+        """
+        Add this action to the current flow plan.
+
+        Args:
+            **kwargs: Parameters to pass to the action (becomes `with:` in YAML)
+
+        Returns:
+            TaskNode representing this action in the flow graph.
+        """
+        from .flow import get_current_plan
+        from .flowgraph import TaskNode
+
+        plan = get_current_plan()
+        if plan is None:
+            raise RuntimeError(
+                f"gha.{self.name}.flow() can only be called inside a @flow-decorated function. "
+                f"Use gha.{self.name}() for direct execution (no-op locally)."
+            )
+
+        # Merge default params with provided kwargs
+        merged_params = {**self.default_with_params, **kwargs}
+
+        # Create a TaskNode with the merged parameters
+        node: TaskNode[None] = TaskNode(task_info=self._task_info, kwargs=merged_params)
+        plan.add_node(node)
+        return node
+
+
+def _gha_action(
+    name: str,
+    uses: str,
+    **default_params: str,
+) -> GHAAction:
+    """Helper to create a GHA action with default parameters."""
+    return GHAAction(name, uses, with_params=default_params if default_params else None)
+
+
+# =============================================================================
+# Pre-defined GHA Actions
+# =============================================================================
+
+# Checkout repository
+checkout = _gha_action(
+    "checkout",
+    "actions/checkout@v4",
+)
+
+# Setup Python
+def setup_python(version: str = "3.11", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-python action with the specified version.
+
+    Args:
+        version: Python version to install (default: "3.11")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used in flows via .flow()
+    """
+    return GHAAction(
+        "setup_python",
+        "actions/setup-python@v5",
+        with_params={"python-version": version, **kwargs},
+    )
+
+
+# Setup uv
+def setup_uv(version: str = "latest", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-uv action.
+
+    Args:
+        version: uv version to install (default: "latest")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used in flows via .flow()
+    """
+    params = {**kwargs}
+    if version != "latest":
+        params["version"] = version
+    return GHAAction(
+        "setup_uv",
+        "astral-sh/setup-uv@v4",
+        with_params=params if params else None,
+    )
+
+
+# Setup Rust
+def setup_rust(toolchain: str = "stable", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-rust action.
+
+    Args:
+        toolchain: Rust toolchain to install (default: "stable")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used in flows via .flow()
+    """
+    return GHAAction(
+        "setup_rust",
+        "dtolnay/rust-toolchain@master",
+        with_params={"toolchain": toolchain, **kwargs},
+    )
+
+
+# Cache
+def cache(path: str, key: str, **kwargs: Any) -> GHAAction:
+    """
+    Create a cache action.
+
+    Args:
+        path: Path(s) to cache
+        key: Cache key
+        **kwargs: Additional parameters (e.g., restore-keys)
+
+    Returns:
+        GHAAction that can be used in flows via .flow()
+    """
+    return GHAAction(
+        "cache",
+        "actions/cache@v4",
+        with_params={"path": path, "key": key, **kwargs},
+    )
+
+
+# =============================================================================
+# Workflow Spec Dataclasses
+# =============================================================================
 
 
 @dataclass
@@ -204,6 +411,21 @@ def _build_task_step(step_name: str, flow_name: str, script_path: str) -> StepSp
     )
 
 
+def _build_gha_action_step(step_name: str, node: Any) -> StepSpec:
+    """Build a step for a GHA action (uses: instead of run:)."""
+    task_info = node.task_info
+    uses = task_info.gha_uses
+
+    # Get with: parameters from node kwargs
+    with_params = node.kwargs if node.kwargs else None
+
+    return StepSpec(
+        name=step_name,
+        uses=uses,
+        with_=with_params,
+    )
+
+
 def render_flow_workflow(
     flow_info: FlowInfo,
     script_path: str = "app.py",
@@ -247,23 +469,41 @@ def render_flow_workflow(
     plan.assign_step_names()
     steps_info = plan.get_steps()
 
+    # Check if flow has any GHA actions
+    has_gha_actions = any(node.task_info.is_gha_action for _, node in steps_info)
+
     # Build job steps
     job_steps: list[StepSpec] = []
 
-    # 1. Checkout
-    job_steps.append(
-        StepSpec(
-            name="Checkout",
-            uses="actions/checkout@v4",
+    # If no GHA actions in flow, add checkout automatically for convenience
+    if not has_gha_actions:
+        job_steps.append(
+            StepSpec(
+                name="Checkout",
+                uses="actions/checkout@v4",
+            )
         )
-    )
 
-    # 2. Setup step
-    job_steps.append(_build_setup_step(flow_info, script_path))
+    # Collect GHA action steps first (they run before task steps)
+    gha_steps: list[StepSpec] = []
+    task_step_infos: list[tuple[str, Any]] = []
 
-    # 3. Task steps
-    for step_name, _node in steps_info:
-        job_steps.append(_build_task_step(step_name, flow_info.name, script_path))
+    for step_name, node in steps_info:
+        if node.task_info.is_gha_action:
+            gha_steps.append(_build_gha_action_step(step_name, node))
+        else:
+            task_step_infos.append((step_name, node))
+
+    # Add GHA action steps
+    job_steps.extend(gha_steps)
+
+    # Add setup step (only if there are task steps)
+    if task_step_infos:
+        job_steps.append(_build_setup_step(flow_info, script_path))
+
+        # Add task steps
+        for step_name, _node in task_step_infos:
+            job_steps.append(_build_task_step(step_name, flow_info.name, script_path))
 
     # Build the job
     job = JobSpec(
