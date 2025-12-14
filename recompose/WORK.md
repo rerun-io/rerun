@@ -1,12 +1,19 @@
 # NOW
 
-Ready to start **P06_gha_generation** - GitHub Actions workflow generation from flows.
+**P06_gha_generation** - Phase 1 complete, continuing with Phase 2.
 
-Now that flows support subprocess isolation with file-based result passing, we can map
-flow steps directly to GHA job steps. Each step invokes the CLI with `--step <name> --workspace <path>`.
+Phase 1 delivered:
+- `gha.py` module with WorkflowSpec, JobSpec, StepSpec dataclasses
+- `generate-gha` CLI command: `./app.py generate-gha flow_name`
+- Flow params → workflow_dispatch inputs
+- actionlint validation via `--validate` flag
+
+Next: Phase 2 - GHA Setup Actions (virtual tasks for checkout, setup-python, etc.)
 
 # COMPLETED
 
+- **P06_gha_generation Phase 1** - Basic GHA workflow generation. `generate-gha` CLI command,
+  flow params → workflow_dispatch inputs, actionlint validation. See `proj/P06_gha_generation_IN_PROGRESS.md`
 - **P05d_flows_subprocess** - Subprocess isolation for flow tasks. Each step runs as a separate
   subprocess, results serialized to JSON in workspace directory. Includes `run_isolated()` method
   for local testing. See `proj/P05d_flows_subprocess_DONE.md`
