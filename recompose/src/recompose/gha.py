@@ -520,6 +520,80 @@ def render_flow_workflow(
     )
 
 
+def render_automation_workflow(
+    automation_info: Any,  # AutomationInfo, but avoid circular import
+) -> WorkflowSpec:
+    """
+    Generate a WorkflowSpec from an automation.
+
+    Automations dispatch flows via workflow_dispatch. The generated workflow
+    contains steps that use `gh workflow run` to trigger child flows.
+
+    Args:
+        automation_info: The automation to generate a workflow for.
+
+    Returns:
+        A WorkflowSpec that can be rendered to YAML.
+    """
+    # Build the plan to get dispatches
+    plan = automation_info.fn.plan()  # type: ignore[attr-defined]
+
+    # Determine the trigger
+    if automation_info.gha_on:
+        on_trigger = automation_info.gha_on
+    else:
+        # Default to workflow_dispatch if no trigger specified
+        on_trigger = {"workflow_dispatch": {}}
+
+    # Build job steps
+    job_steps: list[StepSpec] = []
+
+    # Add checkout (needed for gh CLI authentication in some cases)
+    job_steps.append(
+        StepSpec(
+            name="Checkout",
+            uses="actions/checkout@v4",
+        )
+    )
+
+    # Add a step for each flow dispatch
+    for i, dispatch in enumerate(plan.dispatches, 1):
+        # Build the gh workflow run command
+        workflow_file = f"{dispatch.flow_name}.yml"
+
+        # Build inputs JSON if there are params
+        if dispatch.params:
+            import json
+            inputs_json = json.dumps(dispatch.params)
+            run_cmd = f"gh workflow run {workflow_file} --json <<< '{inputs_json}'"
+        else:
+            run_cmd = f"gh workflow run {workflow_file}"
+
+        job_steps.append(
+            StepSpec(
+                name=f"Dispatch {dispatch.flow_name}",
+                run=run_cmd,
+                env={"GH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
+            )
+        )
+
+    # Build the job
+    job = JobSpec(
+        name=automation_info.name,
+        runs_on=automation_info.gha_runs_on,
+        steps=job_steps,
+        env=automation_info.gha_env,
+        timeout_minutes=automation_info.gha_timeout_minutes,
+    )
+
+    # Build the workflow
+    return WorkflowSpec(
+        name=automation_info.name,
+        on=on_trigger,
+        jobs={automation_info.name: job},
+    )
+
+
 def generate_workflow_yaml(
     flow_name: str,
     script_path: str = "app.py",

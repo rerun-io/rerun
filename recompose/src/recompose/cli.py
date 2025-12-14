@@ -574,19 +574,19 @@ def main(name: str | None = None) -> None:
 
     # Add generate-gha command
     @cli.command("generate-gha")
-    @click.argument("flow_name")
+    @click.argument("target_name")
     @click.option("--output", "-o", type=click.Path(path_type=Path), help="Output file path")
     @click.option("--script", default=None, help="Script path (default: auto-detect)")
     @click.option("--runs-on", default="ubuntu-latest", help="GitHub runner (default: ubuntu-latest)")
     @click.option("--validate/--no-validate", default=True, help="Validate with actionlint")
     def generate_gha_command(
-        flow_name: str,
+        target_name: str,
         output: Path | None,
         script: str | None,
         runs_on: str,
         validate: bool,
     ) -> None:
-        """Generate GitHub Actions workflow YAML for a flow.
+        """Generate GitHub Actions workflow YAML for a flow or automation.
 
         Examples:
 
@@ -594,18 +594,31 @@ def main(name: str | None = None) -> None:
 
             ./app.py generate-gha build_pipeline --output .github/workflows/build.yml
 
+            ./app.py generate-gha nightly_release  # automation
+
             ./app.py generate-gha build_pipeline --no-validate
         """
+        from .automation import get_automation
         from .flow import get_flow
-        from .gha import render_flow_workflow, validate_workflow
+        from .gha import render_automation_workflow, render_flow_workflow, validate_workflow
 
-        # Find the flow
-        flow_info = get_flow(flow_name)
-        if flow_info is None:
-            console.print(f"[red]Error:[/red] Flow '{flow_name}' not found")
+        # Try to find as a flow first
+        flow_info = get_flow(target_name)
+        automation_info = get_automation(target_name)
+
+        if flow_info is None and automation_info is None:
+            console.print(f"[red]Error:[/red] '{target_name}' not found as flow or automation")
             console.print("\n[dim]Available flows:[/dim]")
             for f_info in flow_registry.values():
                 console.print(f"  {f_info.name}")
+
+            from .automation import get_automation_registry
+
+            auto_registry = get_automation_registry()
+            if auto_registry:
+                console.print("\n[dim]Available automations:[/dim]")
+                for a_info in auto_registry.values():
+                    console.print(f"  {a_info.name}")
             return
 
         # Determine script path
@@ -616,7 +629,10 @@ def main(name: str | None = None) -> None:
 
         # Generate workflow
         try:
-            spec = render_flow_workflow(flow_info, script_path=script, runs_on=runs_on)
+            if flow_info is not None:
+                spec = render_flow_workflow(flow_info, script_path=script, runs_on=runs_on)
+            else:
+                spec = render_automation_workflow(automation_info)
             yaml_content = spec.to_yaml()
         except ValueError as e:
             console.print(f"[red]Error:[/red] {e}")
