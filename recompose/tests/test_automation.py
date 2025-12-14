@@ -6,7 +6,6 @@ import yaml
 import recompose
 from recompose.automation import (
     AutomationPlan,
-    FlowDispatch,
     get_automation,
     get_automation_registry,
 )
