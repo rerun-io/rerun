@@ -353,7 +353,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         import subprocess
         import sys
 
-        from .context import dbg, is_debug
+        from .context import dbg, get_entry_point, is_debug
         from .workspace import create_workspace, read_step_result, write_params
 
         flow_name = fn.__name__
@@ -366,8 +366,12 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         # Create or use provided workspace
         ws = create_workspace(flow_name, workspace=workspace)
 
-        # Get script path - use the module where the flow is defined
-        script_path = inspect.getfile(fn)
+        # Get script path - use the entry point that was used to launch the app
+        # This ensures subprocess invocations use the same script with all imports set up
+        script_path = get_entry_point()
+        if script_path is None:
+            # Fallback to the module where the flow is defined (for testing)
+            script_path = inspect.getfile(fn)
 
         if is_debug():
             dbg(f"Flow: {flow_name}")

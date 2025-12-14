@@ -11,7 +11,7 @@ from typing import Any, get_args, get_origin
 import click
 from rich.console import Console
 
-from .context import set_debug
+from .context import set_debug, set_entry_point
 from .flow import FlowInfo, get_flow_registry
 from .result import Result
 from .task import TaskInfo, get_registry
@@ -539,6 +539,10 @@ def main(name: str | None = None) -> None:
     Args:
         name: Optional name for the CLI group. Defaults to the script name.
     """
+    import sys
+
+    # Store the entry point so run_isolated can use it
+    set_entry_point(sys.argv[0])
 
     @click.group(name=name)
     @click.option("--debug/--no-debug", default=False, help="Enable debug output")
