@@ -101,6 +101,7 @@ class TestWorkspaceIO:
         """read_step_result returns Err when file doesn't exist."""
         result = read_step_result(tmp_path, "nonexistent")
         assert result.failed
+        assert result.error is not None
         assert "not found" in result.error.lower()
 
     def test_step_result_exists(self, tmp_path: Path) -> None:

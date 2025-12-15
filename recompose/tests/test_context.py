@@ -49,6 +49,7 @@ def test_output_captured_in_context():
         out("Line 2")
         dbg("Debug line")
         ctx = get_context()
+        assert ctx is not None
         return Ok(str(len(ctx.output)))
 
     result = capturing_task()

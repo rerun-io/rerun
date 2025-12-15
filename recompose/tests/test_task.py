@@ -60,7 +60,7 @@ def test_task_catches_exceptions():
 def test_task_wraps_non_result_return():
     @task
     def non_result_task() -> Result[int]:
-        return 42  # type: ignore - intentionally returning wrong type
+        return 42  # type: ignore[return-value]  # intentionally returning wrong type
 
     result = non_result_task()
     assert result.ok
