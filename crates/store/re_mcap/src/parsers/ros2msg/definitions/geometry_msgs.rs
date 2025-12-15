@@ -4,6 +4,8 @@
 //!
 use serde::{Deserialize, Serialize};
 
+use super::std_msgs::Header;
+
 /// This represents a vector in free space.
 ///
 /// This is semantically different than a point.
@@ -38,4 +40,11 @@ pub struct Point {
 pub struct Pose {
     pub position: Point,
     pub orientation: Quaternion,
+}
+
+// A Pose with reference coordinate frame and timestamp.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PoseStamped {
+    pub header: Header,
+    pub pose: Pose,
 }

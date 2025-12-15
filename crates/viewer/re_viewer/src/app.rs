@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
-use re_data_source::{FileContents, LogDataSource};
+use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{
@@ -22,10 +22,10 @@ use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_ba
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
-    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
-    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel, sanitize_file_name,
+    CommandSender, ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand,
+    FallbackProviderRegistry, Item, NeedsRepaint, RecordingOrTable, StorageContext, StoreContext,
+    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
 
 use crate::AppState;
@@ -1075,8 +1075,8 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
-            SystemCommand::EditRedapServerModal(origin) => {
-                self.state.redap_servers.open_edit_server_modal(origin);
+            SystemCommand::EditRedapServerModal(command) => {
+                self.state.redap_servers.open_edit_server_modal(command);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -1275,6 +1275,18 @@ impl App {
         }
     }
 
+    pub fn auth_error_handler(sender: CommandSender) -> AuthErrorHandler {
+        Arc::new(move |url, _err| {
+            sender.send_system(SystemCommand::EditRedapServerModal(
+                EditRedapServerModalCommand {
+                    origin: url.origin.clone(),
+                    open_on_success: Some(url.to_string()),
+                    title: Some("Authenticate to see this recording".to_owned()),
+                },
+            ));
+        })
+    }
+
     /// Loads a data source into the viewer.
     ///
     /// Tries to detect whether the datasource is already present (either still streaming in or already loaded),
@@ -1390,7 +1402,11 @@ impl App {
             }
         }
 
-        let stream = data_source.clone().stream(&self.connection_registry);
+        let sender = self.command_sender.clone();
+        let stream = data_source
+            .clone()
+            .stream(Self::auth_error_handler(sender), &self.connection_registry);
+
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
             let data_source_analytics = data_source.analytics();
@@ -2565,12 +2581,12 @@ impl App {
             ONCE.call_once(|| {
                 // Tell the user there is a faster native viewer they can use instead of the web viewer:
                 let notification = re_ui::notifications::Notification::new(
-                        re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
-                        re_ui::Link {
-                            text: "Install…".into(),
-                            url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
-                        }
-                    )
+                    re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                    re_ui::Link {
+                        text: "Install…".into(),
+                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                    }
+                )
                     .no_toast()
                     .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
                 self.command_sender

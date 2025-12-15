@@ -1,4 +1,5 @@
 use arrow::array::Array as _;
+use re_byte_size::SizeBytes;
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::ComponentIdentifier;
 
@@ -13,6 +14,14 @@ use crate::{Chunk, RowId};
 pub struct LatestAtQuery {
     timeline: TimelineName,
     at: TimeInt,
+}
+
+impl SizeBytes for LatestAtQuery {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { timeline, at } = self;
+
+        timeline.heap_size_bytes() + at.heap_size_bytes()
+    }
 }
 
 impl std::fmt::Debug for LatestAtQuery {
