@@ -125,7 +125,7 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
 
     let mut bytes = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
 
-    let speed = (0.05 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
+    let speed = (0.02 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
 
     ui.add(
         egui::DragValue::new(&mut bytes)
@@ -145,6 +145,7 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
                     Some(re_format::parse_bytes(s)? as f64)
                 }
             })
+            .update_while_editing(false)
             .range(0..=UPPER_LIMIT_BYTES)
             .speed(speed),
     );
