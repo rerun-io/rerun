@@ -1,6 +1,6 @@
 # NOW
 
-**P07_real_examples** - In progress (P07a complete).
+**P07_real_examples** - In progress (P07a, P07b, P07c complete).
 
 The goal is to create a **real, working CI/dev workflow** for the recompose project itself.
 Not toy demos, but actual tasks that we use day-to-day. This proves the system works end-to-end
@@ -44,14 +44,16 @@ Key implementation details:
 - `run_isolated` now uses `-m module` when entry point was invoked as module
 - All examples use clean relative imports (no sys.path hackery)
 
-**P07b - Build & distribution tasks**
-- `build_wheel` task - create wheel with `uv build`
-- `create_test_venv` task - create isolated venv for testing
-- `install_wheel` task - install wheel into test venv
-- `test_installed` task - run tests against the installed wheel (not source)
+**P07b - Build & distribution tasks** ✅ DONE
+Added `examples/tasks/build.py` with:
+- `build_wheel` - creates wheel with `uv build`
+- `create_test_venv` - creates isolated venv for testing
+- `install_wheel` - installs wheel + pytest into test venv
+- `smoke_test` - quick validation using `examples/tasks/smoke_test.py`
+- `test_installed` - runs full pytest suite against installed package
 
-This validates that the package actually works when installed, not just when
-run from source. Important distinction for catching packaging issues.
+Key insight: using `{venv}/bin/python -m pytest {project}/tests/` ensures
+tests run against the installed package (not source). All 144 tests pass.
 
 **P07c - Unified entrypoint** ✅ DONE (merged into P07a)
 Already completed as part of P07a:
