@@ -1,7 +1,7 @@
 """Tests for automation decorator and workflow generation."""
 
 import pytest
-import yaml
+from ruamel.yaml import YAML
 
 import recompose
 from recompose.automation import (
@@ -194,7 +194,8 @@ class TestRenderAutomationWorkflow:
         yaml_str = spec.to_yaml()
 
         # Should be parseable
-        parsed = yaml.safe_load(yaml_str)
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
         assert parsed["name"] == "scheduled_automation"
         assert "schedule" in parsed["on"]
 

@@ -3,7 +3,7 @@
 import shutil
 
 import pytest
-import yaml
+from ruamel.yaml import YAML
 
 import recompose
 from recompose.gha import (
@@ -199,7 +199,8 @@ class TestWorkflowSpec:
         yaml_str = workflow.to_yaml()
 
         # Parse it back to verify it's valid YAML
-        parsed = yaml.safe_load(yaml_str)
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
         assert parsed["name"] == "CI"
         assert "workflow_dispatch" in parsed["on"]
 
@@ -284,7 +285,8 @@ class TestRenderFlowWorkflow:
         yaml_str = spec.to_yaml()
 
         # Should be parseable
-        parsed = yaml.safe_load(yaml_str)
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
         assert parsed["name"] == "param_flow"
         assert "jobs" in parsed
 
@@ -406,7 +408,8 @@ class TestFlowWithGHAActions:
         yaml_str = spec.to_yaml()
 
         # Should be parseable
-        parsed = yaml.safe_load(yaml_str)
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
         assert parsed["name"] == "flow_with_gha_actions"
 
         # Check the uses steps
