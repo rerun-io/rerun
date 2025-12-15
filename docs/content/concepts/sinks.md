@@ -33,7 +33,7 @@ One of the most powerful features of Rerun's sink system is the ability to send 
 
 snippet: howto/set_sinks
 
-This pattern is incredibly useful when:
+This pattern is useful when:
 
 - You want to monitor a long-running process while archiving the data
 - You're debugging and want both live feedback and a recording to analyze later
