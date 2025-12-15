@@ -451,9 +451,6 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
                 continue;
             }
 
-            // Only remove files that are:
-            // 1. Not in the files map (orphaned), AND
-            // 2. Either there's no .gitattributes OR the file is listed as generated in .gitattributes
             if !files.contains_key(&filepath) {
                 re_log::info!("Removing {filepath:?}");
                 if let Err(err) = std::fs::remove_file(&filepath) {

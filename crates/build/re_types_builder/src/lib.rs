@@ -541,7 +541,10 @@ pub fn generate_python_code(
     // NOTE: In rerun_py we have a directory where we share generated code with handwritten code.
     // Make sure to filter out that directory, or else we will end up removing those handwritten
     // files.
-    let orphan_path_opt_out = output_pkg_path.as_ref().join("blueprint");
+    let orphan_path_opt_out = output_pkg_path
+        .as_ref()
+        .join("blueprint")
+        .join("visualizers");
 
     generate_code(
         reporter,
