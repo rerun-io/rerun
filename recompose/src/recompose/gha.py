@@ -47,6 +47,7 @@ class GHAAction:
 
             source = fetch_source.flow(repo=repo)
             ...
+
     """
 
     def __init__(
@@ -65,6 +66,7 @@ class GHAAction:
             uses: The action reference (e.g., "actions/checkout@v4")
             with_params: Default `with:` parameters for the action
             doc: Documentation string
+
         """
         self.name = name
         self.uses = uses
@@ -104,6 +106,7 @@ class GHAAction:
 
         Returns:
             TaskNode representing this action in the flow graph.
+
         """
         from .flow import get_current_plan
         from .flowgraph import TaskNode
@@ -155,6 +158,7 @@ def setup_python(version: str = "3.11", **kwargs: Any) -> GHAAction:
 
     Returns:
         GHAAction that can be used in flows via .flow()
+
     """
     return GHAAction(
         "setup_python",
@@ -174,6 +178,7 @@ def setup_uv(version: str = "latest", **kwargs: Any) -> GHAAction:
 
     Returns:
         GHAAction that can be used in flows via .flow()
+
     """
     params = {**kwargs}
     if version != "latest":
@@ -196,6 +201,7 @@ def setup_rust(toolchain: str = "stable", **kwargs: Any) -> GHAAction:
 
     Returns:
         GHAAction that can be used in flows via .flow()
+
     """
     return GHAAction(
         "setup_rust",
@@ -216,6 +222,7 @@ def cache(path: str, key: str, **kwargs: Any) -> GHAAction:
 
     Returns:
         GHAAction that can be used in flows via .flow()
+
     """
     return GHAAction(
         "cache",
@@ -312,6 +319,7 @@ def generate_workflow_header(source: str | None = None) -> str:
 
     Returns:
         Header comment string to prepend to YAML content.
+
     """
     lines = [
         "# ============================================================================",
@@ -372,10 +380,10 @@ class WorkflowSpec:
 
         Returns:
             YAML string, optionally with header.
+
         """
         yaml = YAML()
         yaml.default_flow_style = False
-        yaml.width = 120
 
         stream = StringIO()
         yaml.dump(self.to_dict(), stream)
@@ -456,20 +464,17 @@ def _create_setup_workspace_task_info() -> TaskInfo:
     )
 
 
-def _build_setup_step(
-    step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str
-) -> StepSpec:
+def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
 
     # Build the run command with all input parameters
+    # Note: workspace is set via RECOMPOSE_WORKSPACE env var at job level
     cmd_parts = [
         python_cmd,
         script_path,
         flow_info.name,
         "--setup",
-        "--workspace",
-        ".recompose",
     ]
 
     # Add each parameter from workflow_dispatch inputs
@@ -485,9 +490,10 @@ def _build_setup_step(
 
 def _build_task_step(step_name: str, flow_name: str, script_path: str, python_cmd: str) -> StepSpec:
     """Build a step that executes a single task."""
+    # Note: workspace is set via RECOMPOSE_WORKSPACE env var at job level
     return StepSpec(
         name=step_name,
-        run=f"{python_cmd} {script_path} {flow_name} --step {step_name} --workspace .recompose",
+        run=f"{python_cmd} {script_path} {flow_name} --step {step_name}",
     )
 
 
@@ -525,6 +531,7 @@ def render_flow_workflow(
 
     Returns:
         A WorkflowSpec that can be rendered to YAML.
+
     """
     # Build workflow_dispatch inputs from flow parameters
     inputs = _flow_params_to_inputs(flow_info)
@@ -591,6 +598,7 @@ def render_flow_workflow(
         runs_on=runs_on,
         steps=job_steps,
         working_directory=working_directory,
+        env={"RECOMPOSE_WORKSPACE": ".recompose"},
     )
 
     # Build the workflow
@@ -615,6 +623,7 @@ def render_automation_workflow(
 
     Returns:
         A WorkflowSpec that can be rendered to YAML.
+
     """
     # Build the plan to get dispatches
     plan = automation_info.fn.plan()
@@ -694,6 +703,7 @@ def generate_workflow_yaml(
 
     Raises:
         ValueError: If flow not found.
+
     """
     flow_info = get_flow(flow_name)
     if flow_info is None:
@@ -713,6 +723,7 @@ def validate_workflow(yaml_content: str, filepath: Path | None = None) -> tuple[
 
     Returns:
         Tuple of (success, message). If success is False, message contains errors.
+
     """
     # Check if actionlint is installed
     actionlint_path = shutil.which("actionlint")

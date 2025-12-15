@@ -20,6 +20,7 @@ def test(*, verbose: bool = False, coverage: bool = False) -> recompose.Result[N
     Args:
         verbose: Show verbose test output
         coverage: Enable coverage reporting
+
     """
     recompose.out("Running tests...")
 

@@ -13,7 +13,7 @@ Basic usage:
     # Call directly as a function:
     result = greet(name="World")
     assert result.ok
-    print(result.value)  # "greeted World"
+    print(result.value())  # "greeted World"
 
     # Or use the CLI:
     recompose.main()
@@ -52,7 +52,7 @@ from .flow import (
     get_flow_context,
     get_flow_registry,
 )
-from .flowgraph import FlowPlan, InputPlaceholder, TaskNode
+from .flowgraph import FlowPlan, Input, InputPlaceholder, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, TaskWrapper, get_registry, get_task, task, taskclass
@@ -91,6 +91,7 @@ __all__ = [
     "FlowContext",
     "FlowPlan",
     "TaskNode",
+    "Input",
     "InputPlaceholder",
     "DirectTaskCallInFlowError",
     "get_flow",

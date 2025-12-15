@@ -167,7 +167,7 @@ def _resolve_kwargs(kwargs: dict[str, Any], results: dict[str, Result[Any]]) -> 
                 raise RuntimeError(f"Dependency {v.name} ({v.node_id}) has not been executed yet")
             if node_result.failed:
                 raise RuntimeError(f"Dependency {v.name} failed: {node_result.error}")
-            resolved[k] = node_result.value
+            resolved[k] = node_result.value()
         else:
             resolved[k] = v
     return resolved
@@ -256,6 +256,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
     The flow wrapper provides:
     - Direct call: Builds the graph and executes it
     - flow.plan(**kwargs): Build the plan without executing (for dry-run)
+
     """
 
     @functools.wraps(fn)
@@ -298,8 +299,8 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             return result
 
         except Exception as e:
-            if isinstance(e, (DirectTaskCallInFlowError, ValueError)):
-                raise  # Re-raise flow construction errors
+            if isinstance(e, (DirectTaskCallInFlowError, ValueError, TypeError)):
+                raise  # Re-raise flow construction errors (programming mistakes)
             tb = traceback.format_exc()
             err_result: Result[None] = Err(f"{type(e).__name__}: {e}", traceback=tb)
             err_result._flow_context = flow_ctx  # type: ignore[attr-defined]
@@ -320,6 +321,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
         Returns:
             FlowPlan with all TaskNodes and their dependencies.
+
         """
         plan = FlowPlan()
         set_current_plan(plan)
@@ -349,6 +351,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
         Returns:
             Result[None] indicating success or failure of the flow.
+
         """
         import subprocess
         import sys
@@ -452,6 +455,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
         Returns:
             FlowDispatch handle representing the dispatched workflow
+
         """
         from .automation import FlowDispatch, get_current_automation_plan
 

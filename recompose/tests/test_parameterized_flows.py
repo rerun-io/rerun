@@ -149,6 +149,216 @@ class TestInputPlaceholder:
             assert node.kwargs["message"].name == "message"
 
 
+class TestInputTypeAlias:
+    """Tests for the Input[T] type alias."""
+
+    def test_input_type_alias_exists(self) -> None:
+        """Test that Input is exported from recompose."""
+        from recompose import Input
+
+        # Input[str] should be a Union type
+        input_str = Input[str]
+        assert "Union" in str(input_str) or "str" in str(input_str)
+
+    def test_input_type_alias_components(self) -> None:
+        """Test that Input[T] includes the expected component types."""
+        from typing import get_args
+
+        from recompose import Input
+
+        args = get_args(Input[str])
+        arg_names = [str(a) for a in args]
+
+        # Should include str, TaskNode[str], InputPlaceholder[str]
+        assert any("str" in name and "TaskNode" not in name and "InputPlaceholder" not in name for name in arg_names)
+        assert any("TaskNode" in name for name in arg_names)
+        assert any("InputPlaceholder" in name for name in arg_names)
+
+
+class TestFlowMethodSignature:
+    """Tests for .flow() method signature and validation."""
+
+    def test_flow_method_has_signature(self) -> None:
+        """Test that .flow() method has __signature__ from original task."""
+        import inspect
+
+        sig = inspect.signature(greet.flow)
+        param_names = list(sig.parameters.keys())
+        assert "name" in param_names
+
+    def test_flow_method_rejects_unknown_kwargs(self) -> None:
+        """Test that .flow() raises TypeError for unknown kwargs."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            # This should raise TypeError for unknown kwarg
+            greet.flow(name="test", unknown_arg="bad")  # type: ignore[call-arg]
+
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            test_flow()
+
+    def test_flow_method_rejects_missing_required(self) -> None:
+        """Test that .flow() raises TypeError for missing required args."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            # greet requires 'name' parameter
+            greet.flow()  # type: ignore[call-arg]
+
+        with pytest.raises(TypeError, match="missing required keyword argument"):
+            test_flow()
+
+    def test_flow_method_accepts_optional_missing(self) -> None:
+        """Test that .flow() accepts missing optional args."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            # count has default for 'n', so this should work
+            count.flow()
+
+        # Should not raise
+        result = test_flow()
+        assert result.ok
+
+    def test_flow_method_accepts_task_node_as_value(self) -> None:
+        """Test that .flow() accepts TaskNode from another .flow() call."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            greeting = greet.flow(name="World")
+            # echo accepts message: str, but TaskNode[str] should also work at runtime
+            echo.flow(message=greeting)  # type: ignore[arg-type]
+
+        result = test_flow()
+        assert result.ok
+
+    def test_flow_method_accepts_input_placeholder(self) -> None:
+        """Test that .flow() accepts InputPlaceholder values."""
+
+        @recompose.flow
+        def test_flow(*, name: str) -> None:
+            greet.flow(name=name)
+
+        # Build plan with placeholder
+        placeholder = InputPlaceholder[str](name="name")
+        plan = test_flow.plan(name=placeholder)
+
+        assert len(plan.nodes) == 1
+        assert plan.nodes[0].kwargs["name"] is placeholder
+
+
+class TestValueBasedComposition:
+    """Tests for the type-safe .value() pattern in flow composition."""
+
+    def test_task_node_has_value_method(self) -> None:
+        """Test that TaskNode has a .value() method that returns itself."""
+        import inspect
+
+        from recompose.flowgraph import TaskNode
+        from recompose.task import TaskInfo
+
+        # Create a mock TaskInfo
+        def dummy_fn() -> recompose.Result[str]:
+            return recompose.Ok("test")
+
+        info = TaskInfo(
+            name="dummy",
+            module="test",
+            fn=dummy_fn,
+            original_fn=dummy_fn,
+            signature=inspect.signature(dummy_fn),
+            doc=None,
+        )
+
+        node: TaskNode[str] = TaskNode(task_info=info, kwargs={})
+
+        # .value() should return the node itself
+        assert node.value() is node
+
+    def test_task_node_mimics_result_interface(self) -> None:
+        """Test that TaskNode has ok, failed, error properties like Result."""
+        import inspect
+
+        from recompose.flowgraph import TaskNode
+        from recompose.task import TaskInfo
+
+        def dummy_fn() -> recompose.Result[str]:
+            return recompose.Ok("test")
+
+        info = TaskInfo(
+            name="dummy",
+            module="test",
+            fn=dummy_fn,
+            original_fn=dummy_fn,
+            signature=inspect.signature(dummy_fn),
+            doc=None,
+        )
+
+        node: TaskNode[str] = TaskNode(task_info=info, kwargs={})
+
+        # Should mimic a successful Result
+        assert node.ok is True
+        assert node.failed is False
+        assert node.error is None
+
+    def test_input_placeholder_has_value_method(self) -> None:
+        """Test that InputPlaceholder has a .value() method that returns itself."""
+        placeholder = InputPlaceholder[str](name="test")
+
+        # .value() should return the placeholder itself
+        assert placeholder.value() is placeholder
+
+    def test_flow_composition_with_value(self) -> None:
+        """Test the type-safe .value() pattern for flow composition."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            # The new pattern: use .value() to pass between tasks
+            result = greet.flow(name="World")
+            echo.flow(message=result.value())
+
+        # This should work and create proper dependencies
+        result = test_flow()
+        assert result.ok
+
+    def test_flow_plan_tracks_value_dependencies(self) -> None:
+        """Test that using .value() creates proper dependencies in the plan."""
+
+        @recompose.flow
+        def test_flow() -> None:
+            result = greet.flow(name="World")
+            echo.flow(message=result.value())
+
+        plan = test_flow.plan()
+
+        # Should have 2 nodes
+        assert len(plan.nodes) == 2
+
+        # Second node should depend on first
+        greet_node = plan.nodes[0]
+        echo_node = plan.nodes[1]
+
+        assert greet_node.task_info.name == "greet"
+        assert echo_node.task_info.name == "echo"
+
+        # The echo node's kwargs should contain the greet node (via .value())
+        assert echo_node.kwargs["message"] is greet_node
+
+    def test_flow_plan_with_placeholder_value(self) -> None:
+        """Test that InputPlaceholder.value() works in flow composition."""
+
+        @recompose.flow
+        def test_flow(*, name: str) -> None:
+            greet.flow(name=name)
+
+        # Build plan with placeholder - simulating GHA generation
+        placeholder = InputPlaceholder[str](name="name")
+        plan = test_flow.plan(name=placeholder)
+
+        # The placeholder should be in the node's kwargs
+        assert plan.nodes[0].kwargs["name"] is placeholder
+
+
 class TestParameterizedFlowYamlOutput:
     """Tests for the YAML output of parameterized flows."""
 

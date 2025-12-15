@@ -82,7 +82,7 @@ class TestWorkspaceIO:
 
         restored = read_step_result(ws, "1_fetch")
         assert restored.ok
-        assert restored.value == "/path/to/output"
+        assert restored.value() == "/path/to/output"
 
     def test_write_and_read_step_result_failure(self, tmp_path: Path) -> None:
         """Failed results preserve error and traceback."""
@@ -129,7 +129,7 @@ class TestWorkspaceIO:
 
         # Read back
         restored = read_step_result(ws, "step")
-        assert restored.value == "/some/path"
+        assert restored.value() == "/some/path"
 
 
 class TestFlowPlanSteps:
@@ -149,7 +149,7 @@ class TestFlowPlanSteps:
         @recompose.flow
         def test_flow() -> None:
             a = step_a.flow()
-            step_b.flow(dep=a)
+            step_b.flow(dep=a.value())
 
         plan = test_flow.plan()
         plan.assign_step_names()
@@ -217,8 +217,8 @@ class TestRunIsolated:
         @recompose.flow
         def simple_pipeline() -> None:
             a = step_one.flow()
-            b = step_two.flow(prev=a)
-            step_three.flow(prev=b)
+            b = step_two.flow(prev=a.value())
+            step_three.flow(prev=b.value())
 
         result = simple_pipeline.run_isolated()
         assert result.ok, f"run_isolated failed: {result.error}"
@@ -237,7 +237,7 @@ class TestRunIsolated:
         @recompose.flow
         def param_flow(*, name: str = "default") -> None:
             v = echo_param.flow(value=name)
-            process.flow(input=v)
+            process.flow(input=v.value())
 
         result = param_flow.run_isolated(name="test-value")
         assert result.ok, f"run_isolated failed: {result.error}"

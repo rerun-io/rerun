@@ -1,14 +1,14 @@
 """Real tasks for the recompose project."""
 
 from .build import build_wheel, create_test_venv, install_wheel, smoke_test, test_installed
-from .lint import format, format_check, lint
+from .lint import format_check, format_code, lint
 from .test import test
 
 __all__ = [
     # Lint & format
     "lint",
     "format_check",
-    "format",
+    "format_code",
     # Test
     "test",
     # Build & distribution

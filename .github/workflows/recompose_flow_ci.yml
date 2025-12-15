@@ -17,6 +17,8 @@ jobs:
     defaults:
       run:
         working-directory: recompose
+    env:
+      RECOMPOSE_WORKSPACE: .recompose
     steps:
     - name: 1_gha.checkout
       uses: actions/checkout@v4
@@ -27,12 +29,12 @@ jobs:
     - name: 3_gha.setup_uv
       uses: astral-sh/setup-uv@v4
     - name: 4_setup_workspace
-      run: uv run python -m examples.app ci --setup --workspace .recompose
+      run: uv run python -m examples.app ci --setup
     - name: 5_lint
-      run: uv run python -m examples.app ci --step 5_lint --workspace .recompose
+      run: uv run python -m examples.app ci --step 5_lint
     - name: 6_format_check
-      run: uv run python -m examples.app ci --step 6_format_check --workspace .recompose
+      run: uv run python -m examples.app ci --step 6_format_check
     - name: 7_test
-      run: uv run python -m examples.app ci --step 7_test --workspace .recompose
+      run: uv run python -m examples.app ci --step 7_test
     - name: 8_generate_gha
-      run: uv run python -m examples.app ci --step 8_generate_gha --workspace .recompose
+      run: uv run python -m examples.app ci --step 8_generate_gha

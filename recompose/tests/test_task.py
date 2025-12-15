@@ -19,7 +19,7 @@ def test_task_returns_result():
 
     result = simple_task()
     assert result.ok
-    assert result.value == 42
+    assert result.value() == 42
 
 
 def test_task_with_arguments():
@@ -29,7 +29,7 @@ def test_task_with_arguments():
 
     result = add_task(a=2, b=3)
     assert result.ok
-    assert result.value == 5
+    assert result.value() == 5
 
 
 def test_task_with_default_arguments():
@@ -39,11 +39,11 @@ def test_task_with_default_arguments():
 
     result = greet_task(name="World")
     assert result.ok
-    assert result.value == "Hello, World!"
+    assert result.value() == "Hello, World!"
 
     result2 = greet_task(name="World", greeting="Hi")
     assert result2.ok
-    assert result2.value == "Hi, World!"
+    assert result2.value() == "Hi, World!"
 
 
 def test_task_catches_exceptions():
@@ -64,7 +64,7 @@ def test_task_wraps_non_result_return():
 
     result = non_result_task()
     assert result.ok
-    assert result.value == 42
+    assert result.value() == 42
 
 
 def test_task_preserves_docstring():

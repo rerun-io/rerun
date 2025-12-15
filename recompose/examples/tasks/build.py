@@ -25,6 +25,7 @@ def build_wheel(*, output_dir: str | None = None) -> recompose.Result[str]:
 
     Returns:
         Path to the built wheel file as a string.
+
     """
     if output_dir is None:
         dist_dir = PROJECT_ROOT / "dist"
@@ -73,6 +74,7 @@ def create_test_venv(*, location: str | None = None) -> recompose.Result[str]:
 
     Returns:
         Path to the created venv as a string.
+
     """
     if location is None:
         # Create a temp directory that persists until explicitly cleaned
@@ -109,6 +111,7 @@ def install_wheel(*, wheel: str, venv: str, with_test_deps: bool = True) -> reco
         wheel: Path to the wheel file to install.
         venv: Path to the virtual environment.
         with_test_deps: Also install pytest for running tests.
+
     """
     wheel_path = Path(wheel)
     venv_path = Path(venv)
@@ -161,6 +164,7 @@ def smoke_test(*, venv: str) -> recompose.Result[None]:
 
     Args:
         venv: Path to the virtual environment with recompose installed.
+
     """
     venv_path = Path(venv)
     python = venv_path / "bin" / "python"
@@ -197,6 +201,7 @@ def test_installed(*, venv: str, verbose: bool = False) -> recompose.Result[None
     Args:
         venv: Path to the virtual environment with recompose installed.
         verbose: Show verbose test output.
+
     """
     venv_path = Path(venv)
     python = venv_path / "bin" / "python"

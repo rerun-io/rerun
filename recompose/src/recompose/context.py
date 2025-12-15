@@ -85,6 +85,7 @@ def set_entry_point(entry_type: str, value: str) -> None:
     Args:
         entry_type: "module" or "script"
         value: Module name (e.g., "examples.app") or script path
+
     """
     global _entry_point
     _entry_point = (entry_type, value)
@@ -97,6 +98,7 @@ def get_entry_point() -> tuple[str, str] | None:
     Returns:
         Tuple of (type, value) where type is "module" or "script",
         or None if not set.
+
     """
     return _entry_point
 
@@ -107,6 +109,7 @@ def set_python_cmd(cmd: str) -> None:
 
     Args:
         cmd: Command to invoke Python (e.g., "python", "uv run python").
+
     """
     global _python_cmd
     _python_cmd = cmd
@@ -118,6 +121,7 @@ def get_python_cmd() -> str:
 
     Returns:
         Command to invoke Python (default: "python").
+
     """
     return _python_cmd
 
@@ -128,6 +132,7 @@ def set_working_directory(directory: str | None) -> None:
 
     Args:
         directory: Working directory relative to repo root, or None for repo root.
+
     """
     global _working_directory
     _working_directory = directory
@@ -139,6 +144,7 @@ def get_working_directory() -> str | None:
 
     Returns:
         Working directory relative to repo root, or None for repo root.
+
     """
     return _working_directory
 

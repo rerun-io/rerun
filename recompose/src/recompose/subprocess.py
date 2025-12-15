@@ -21,6 +21,7 @@ class RunResult:
         stdout: Captured stdout (empty string if streaming).
         stderr: Captured stderr (empty string if streaming).
         command: The command that was executed.
+
     """
 
     returncode: int
@@ -84,6 +85,7 @@ def run(
         >>> result = run("git", "status", "--porcelain", capture=True)
         >>> if result.stdout:
         ...     print("Working directory has changes")
+
     """
     # Convert Path objects to strings
     cmd = [str(arg) for arg in args]
