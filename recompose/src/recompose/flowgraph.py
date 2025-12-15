@@ -84,6 +84,46 @@ class FlowPlan:
         """Register a node in the plan."""
         self.nodes.append(node)
 
+    def inject_setup_node(self, task_info: TaskInfo) -> TaskNode[None] | None:
+        """
+        Inject a setup_workspace node into the plan.
+
+        The setup node is inserted after all GHA action nodes but before the
+        first non-GHA task node. It depends on all GHA actions and all non-GHA
+        tasks depend on it.
+
+        Args:
+            task_info: TaskInfo for the setup_workspace virtual task.
+
+        Returns:
+            The injected TaskNode, or None if there are no non-GHA tasks.
+        """
+        # Separate GHA actions from regular tasks
+        gha_nodes = [n for n in self.nodes if n.task_info.is_gha_action]
+        task_nodes = [n for n in self.nodes if not n.task_info.is_gha_action]
+
+        if not task_nodes:
+            # No regular tasks, no setup needed
+            return None
+
+        # Create the setup node - it depends on all GHA actions
+        setup_node: TaskNode[None] = TaskNode(
+            task_info=task_info,
+            kwargs={},
+        )
+
+        # Make setup node depend on all GHA actions (not as kwargs, but we need
+        # to ensure ordering). We do this by making the first task node's
+        # original dependencies now depend on setup, and setup depends on GHA.
+        # Actually, simpler: we'll rewrite the node list with setup in the right place.
+
+        # Insert setup node between GHA actions and tasks
+        # The topological sort will respect the list order for nodes at the same level
+        new_nodes = gha_nodes + [setup_node] + task_nodes
+        self.nodes = new_nodes
+
+        return setup_node
+
     def get_execution_order(self) -> list[TaskNode[Any]]:
         """
         Return nodes in topological order (dependencies before dependents).

@@ -262,7 +262,7 @@ class TestRenderFlowWorkflow:
         # Verify step names are in order
         step_names = [s.name for s in job.steps]
         assert step_names[0] == "Checkout"
-        assert step_names[1] == "Setup workspace"
+        assert "setup_workspace" in step_names[1]  # Numbered, e.g., "1_setup_workspace"
         assert "simple_task" in step_names[2]
         assert "param_task" in step_names[3]
 
@@ -379,8 +379,8 @@ class TestFlowWithGHAActions:
         assert job.steps[1].with_ == {"python-version": "3.11"}
         assert job.steps[2].uses == "astral-sh/setup-uv@v4"
 
-        # Fourth should be setup step
-        assert "Setup" in job.steps[3].name
+        # Fourth should be setup step (numbered, e.g., "4_setup_workspace")
+        assert "setup_workspace" in job.steps[3].name
         assert job.steps[3].run is not None
 
         # Fifth should be task step

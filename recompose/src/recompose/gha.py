@@ -434,7 +434,31 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
     return inputs
 
 
-def _build_setup_step(flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
+def _create_setup_workspace_task_info() -> TaskInfo:
+    """Create a virtual TaskInfo for the setup_workspace step."""
+    from .result import Ok
+
+    def setup_workspace_fn(**kwargs: Any) -> Result[None]:
+        # No-op when called directly as a function.
+        # The actual work happens via CLI: `app.py flow_name --setup`
+        # which writes _params.json to the workspace for subprocess isolation.
+        return Ok(None)
+
+    return TaskInfo(
+        name="setup_workspace",
+        module="recompose.gha",
+        fn=setup_workspace_fn,
+        original_fn=setup_workspace_fn,
+        signature=inspect.Signature(),
+        doc="Initialize workspace and write flow parameters for subprocess isolation",
+        is_gha_action=False,
+        is_setup_step=True,
+    )
+
+
+def _build_setup_step(
+    step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str
+) -> StepSpec:
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
 
@@ -454,7 +478,7 @@ def _build_setup_step(flow_info: FlowInfo, script_path: str, python_cmd: str) ->
         cmd_parts.append(f"${{{{ inputs.{inp.name} }}}}")
 
     return StepSpec(
-        name="Setup workspace",
+        name=step_name,
         run=" ".join(cmd_parts),
     )
 
@@ -526,6 +550,14 @@ def render_flow_workflow(
             "Cannot generate workflow without default values for all parameters."
         )
 
+    # Check if flow has any non-GHA tasks (need setup step for those)
+    has_regular_tasks = any(not n.task_info.is_gha_action for n in plan.nodes)
+
+    # Inject setup_workspace node into the plan if there are regular tasks
+    if has_regular_tasks:
+        setup_task_info = _create_setup_workspace_task_info()
+        plan.inject_setup_node(setup_task_info)
+
     plan.assign_step_names()
     steps_info = plan.get_steps()
 
@@ -544,25 +576,13 @@ def render_flow_workflow(
             )
         )
 
-    # Collect GHA action steps first (they run before task steps)
-    gha_steps: list[StepSpec] = []
-    task_step_infos: list[tuple[str, Any]] = []
-
+    # Build steps from the plan (now includes setup_workspace in the right place)
     for step_name, node in steps_info:
         if node.task_info.is_gha_action:
-            gha_steps.append(_build_gha_action_step(step_name, node))
+            job_steps.append(_build_gha_action_step(step_name, node))
+        elif node.task_info.is_setup_step:
+            job_steps.append(_build_setup_step(step_name, flow_info, script_path, python_cmd))
         else:
-            task_step_infos.append((step_name, node))
-
-    # Add GHA action steps
-    job_steps.extend(gha_steps)
-
-    # Add setup step (only if there are task steps)
-    if task_step_infos:
-        job_steps.append(_build_setup_step(flow_info, script_path, python_cmd))
-
-        # Add task steps
-        for step_name, _node in task_step_infos:
             job_steps.append(_build_task_step(step_name, flow_info.name, script_path, python_cmd))
 
     # Build the job
