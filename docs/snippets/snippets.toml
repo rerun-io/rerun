@@ -165,12 +165,12 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/file_sink" = [ # pseudo-code
+"concepts/file_sink" = [ # these will create a file on disk and are only meant to illustrate usage
   "py",
   "cpp",
   "rust",
 ]
-"concepts/grpc_sink" = [ # pseudo-code
+"concepts/grpc_sink" = [ # these will fail to run without a server to connect to
   "py",
   "cpp",
   "rust",
