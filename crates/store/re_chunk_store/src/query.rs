@@ -3,16 +3,18 @@ use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use saturating_cast::SaturatingCast as _;
+
 use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
-use saturating_cast::SaturatingCast as _;
 
 use crate::ChunkStore;
+use crate::store::ChunkIdSetPerTime;
+
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
-use crate::store::ChunkIdSetPerTime;
 
 // ---
 
@@ -39,6 +41,77 @@ impl ChunkStore {
             .cloned()
             .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
             .collect()
+    }
+
+    /// Returns a vector with all the chunks in this store, sorted in descending order relative to
+    /// their distance from the given `(timline, time)` cursor.
+    pub fn find_temporal_chunks_furthest_from(
+        &self,
+        timeline: &TimelineName,
+        time: TimeInt,
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!();
+
+        self.chunks_per_chunk_id
+            .values()
+            .filter_map(|chunk| {
+                let times = chunk.timelines().get(timeline)?;
+
+                let min_dist = if times.is_sorted() {
+                    let pivot = times.times_raw().partition_point(|t| *t < time.as_i64());
+                    let min_value1 = times
+                        .times_raw()
+                        .get(pivot.saturating_sub(1))
+                        .map(|t| t.abs_diff(time.as_i64()));
+                    let min_value2 = times
+                        .times_raw()
+                        .get(pivot)
+                        .map(|t| t.abs_diff(time.as_i64()));
+
+                    // NOTE: Do *not* compare these options directly, if any of them turns out to
+                    // be None, it'll be a disaster.
+                    // min_value1.min(min_value2).min(min_value3);
+                    [min_value1, min_value2].into_iter().flatten().min()
+                } else {
+                    times
+                        .times()
+                        .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                        .min()
+                };
+
+                min_dist.map(|max_dist| (chunk, max_dist))
+            })
+            .sorted_by(|(_chunk1, dist1), (_chunk2, dist2)| std::cmp::Ord::cmp(dist2, dist1)) // descending
+            .map(|(chunk, _dist)| chunk.clone())
+            .collect_vec()
+    }
+
+    /// An implementation of `find_temporal_chunk_furthest_from` that focuses solely on correctness.
+    ///
+    /// Used to compare with results obtained from the optimized implementation.
+    #[cfg(test)]
+    pub(crate) fn find_temporal_chunks_furthest_from_slow(
+        &self,
+        timeline: &TimelineName,
+        time: TimeInt,
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!();
+
+        self.chunks_per_chunk_id
+            .values()
+            .filter_map(|chunk| {
+                let times = chunk.timelines().get(timeline)?;
+
+                let min_dist = times
+                    .times()
+                    .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                    .min();
+
+                min_dist.map(|max_dist| (chunk, max_dist))
+            })
+            .sorted_by(|(_chunk1, dist1), (_chunk2, dist2)| std::cmp::Ord::cmp(dist2, dist1)) // descending
+            .map(|(chunk, _dist)| chunk.clone())
+            .collect_vec()
     }
 
     /// Retrieve all [`EntityPath`]s in the store.

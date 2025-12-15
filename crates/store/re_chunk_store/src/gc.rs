@@ -5,10 +5,11 @@ use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
 use nohash_hasher::IntMap;
+use web_time::Instant;
+
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use web_time::Instant;
 
 // Used all over in docstrings.
 #[expect(unused_imports)]
@@ -53,6 +54,9 @@ pub struct GarbageCollectionOptions {
 
     /// Do not remove any data within these time ranges.
     pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
+
+    /// Remove chunks giving priority to those that are the furthest away from this timestamp.
+    pub furthest_from: Option<(TimelineName, TimeInt)>,
 }
 
 impl GarbageCollectionOptions {
@@ -62,6 +66,7 @@ impl GarbageCollectionOptions {
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
             protected_time_ranges: Default::default(),
+            furthest_from: None,
         }
     }
 
@@ -270,57 +275,91 @@ impl ChunkStore {
     ) -> Vec<ChunkStoreDiff> {
         re_tracing::profile_function!(re_format::format_bytes(num_bytes_to_drop));
 
+        let mut chunk_ids_dangling = HashSet::default();
         let mut chunk_ids_to_be_removed =
             RemovableChunkIdPerTimePerComponentPerTimelinePerEntity::default();
-        let mut chunk_ids_dangling = HashSet::default();
 
         let start_time = Instant::now();
-
         {
             re_tracing::profile_scope!("mark");
 
-            for chunk_id in self
-                .chunk_ids_per_min_row_id
-                .values()
-                .filter(|chunk_id| !protected_chunk_ids.contains(chunk_id))
+            // These chunks cannot be dangling by definition, since we need to access their data in
+            // order to sort them in the first place.
+            //
+            // TODO(cmc): we would very much like that to be iterative or at least paginated in
+            // some way, so that it doesn't eat away all of the mark phase's time budget for no
+            // reason, but that requires making things much more complicated, so let's see how fair
+            // we get with a simple "sort and collect everything" approach first.
+            let chunks_furthest_away = if let Some((timeline, time)) =
+                options.furthest_from.as_ref()
             {
-                if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
-                    if options.is_chunk_protected(chunk) {
-                        continue;
-                    }
+                let chunks = self.find_temporal_chunks_furthest_from(timeline, *time);
 
-                    // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
-                    // and would count as amortized (i.e. 0 bytes).
-                    num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(chunk) as f64;
+                // This will only apply for tests run from this crate's src/ directory, which is good
+                // enough for our purposes.
+                #[cfg(test)]
+                {
+                    let chunks_slow = self.find_temporal_chunks_furthest_from_slow(timeline, *time);
+                    assert_eq!(chunks_slow, chunks);
+                }
 
-                    // NOTE: We cannot blindly `retain` across all temporal tables, it's way too costly
-                    // and slow. Rather we need to surgically remove the superfluous chunks.
-                    let entity_path = chunk.entity_path();
-                    let per_timeline = chunk_ids_to_be_removed
-                        .entry(entity_path.clone())
-                        .or_default();
-                    for (&timeline, time_column) in chunk.timelines() {
-                        let per_component = per_timeline.entry(timeline).or_default();
-                        for component in chunk.components_identifiers() {
-                            let per_time = per_component.entry(component).or_default();
+                chunks
+            } else {
+                vec![]
+            };
 
-                            // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
-                            // have perfectly overlapping chunks.
-                            let time_range = time_column.time_range();
+            let chunks_in_min_row_id_order =
+                self.chunk_ids_per_min_row_id
+                    .iter()
+                    .filter_map(|(_, chunk_id)| {
+                        if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
+                            Some(chunk.clone())
+                        } else {
+                            chunk_ids_dangling.insert(*chunk_id);
+                            None
+                        }
+                    });
+
+            let chunks_in_priority_order = chunks_furthest_away
+                .into_iter()
+                .chain(chunks_in_min_row_id_order);
+
+            for chunk in
+                chunks_in_priority_order.filter(|chunk| !protected_chunk_ids.contains(&chunk.id()))
+            {
+                if options.is_chunk_protected(&chunk) {
+                    continue;
+                }
+
+                // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
+                // and would count as amortized (i.e. 0 bytes).
+                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+
+                // NOTE: We cannot blindly `retain` across all temporal tables, it's way too costly
+                // and slow. Rather we need to surgically remove the superfluous chunks.
+                let entity_path = chunk.entity_path();
+                let per_timeline = chunk_ids_to_be_removed
+                    .entry(entity_path.clone())
+                    .or_default();
+                for (&timeline, time_column) in chunk.timelines() {
+                    let per_component = per_timeline.entry(timeline).or_default();
+                    for component in chunk.components_identifiers() {
+                        let per_time = per_component.entry(component).or_default();
+
+                        // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
+                        // have perfectly overlapping chunks.
+                        let time_range = time_column.time_range();
+                        per_time
+                            .entry(time_range.min())
+                            .or_default()
+                            .push(chunk.id());
+                        if time_range.min() != time_range.max() {
                             per_time
-                                .entry(time_range.min())
+                                .entry(time_range.max())
                                 .or_default()
                                 .push(chunk.id());
-                            if time_range.min() != time_range.max() {
-                                per_time
-                                    .entry(time_range.max())
-                                    .or_default()
-                                    .push(chunk.id());
-                            }
                         }
                     }
-                } else {
-                    chunk_ids_dangling.insert(*chunk_id);
                 }
 
                 // NOTE: There is no point in spending more than a fourth of the time budget on the
@@ -332,26 +371,26 @@ impl ChunkStore {
             }
         }
 
-        {
-            re_tracing::profile_scope!("sweep");
+        let Self {
+            id: _,
+            config: _,
+            time_type_registry: _,
+            type_registry: _,
+            per_column_metadata: _, // column metadata is additive only
+            chunks_per_chunk_id,
+            chunk_ids_per_min_row_id,
+            temporal_chunk_ids_per_entity_per_component,
+            temporal_chunk_ids_per_entity,
+            temporal_chunks_stats: _,
+            static_chunk_ids_per_entity: _, // we don't GC static data
+            static_chunks_stats: _,         // we don't GC static data
+            insert_id: _,
+            gc_id: _,
+            event_id: _,
+        } = self;
 
-            let Self {
-                id: _,
-                config: _,
-                time_type_registry: _,
-                type_registry: _,
-                per_column_metadata: _, // column metadata is additive only
-                chunks_per_chunk_id,
-                chunk_ids_per_min_row_id,
-                temporal_chunk_ids_per_entity_per_component,
-                temporal_chunk_ids_per_entity,
-                temporal_chunks_stats: _,
-                static_chunk_ids_per_entity: _, // we don't GC static data
-                static_chunks_stats: _,         // we don't GC static data
-                insert_id: _,
-                gc_id: _,
-                event_id: _,
-            } = self;
+        {
+            re_tracing::profile_scope!("dangling");
 
             let mut diffs = Vec::new();
 
@@ -438,6 +477,8 @@ impl ChunkStore {
             }
 
             if !chunk_ids_to_be_removed.is_empty() {
+                re_tracing::profile_scope!("sweep");
+
                 diffs.extend(self.remove_chunks(
                     chunk_ids_to_be_removed,
                     Some((start_time, options.time_budget)),
@@ -675,18 +716,16 @@ impl ChunkStore {
             }
         }
 
-        {
-            let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
-                let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
-                chunk.row_id_range().map(|(min, _)| min)
-            });
-            for row_id in min_row_ids_removed {
-                if self.chunk_ids_per_min_row_id.remove(&row_id).is_none() {
-                    re_log::warn!(
-                        %row_id,
-                        "Row ID marked for removal was not found, there's bug in the Chunk Store"
-                    );
-                }
+        let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
+            let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
+            chunk.row_id_range().map(|(min, _)| min)
+        });
+        for row_id in min_row_ids_removed {
+            if self.chunk_ids_per_min_row_id.remove(&row_id).is_none() {
+                re_log::warn!(
+                    %row_id,
+                    "Row ID marked for removal was not found, there's bug in the Chunk Store"
+                );
             }
         }
 
@@ -700,6 +739,61 @@ impl ChunkStore {
                 })
                 .map(ChunkStoreDiff::deletion)
                 .collect()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::TimePoint;
+    use re_log_types::{StoreId, Timeline, TimelineName};
+    use re_sdk_types::{RowId, archetypes};
+
+    use crate::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions};
+
+    use super::*;
+
+    #[test]
+    fn gc_furthest_from() {
+        const NUM_CHUNKS: i64 = 10_000;
+        const NUM_ROWS_PER_CHUNK: i64 = 1_000;
+
+        fn setup_store() -> ChunkStore {
+            let store_id = StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+            let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+
+            for i in 0..NUM_CHUNKS {
+                let timepoint = (i * NUM_ROWS_PER_CHUNK
+                    ..i * NUM_ROWS_PER_CHUNK + NUM_ROWS_PER_CHUNK)
+                    .map(|t| (Timeline::log_tick(), t))
+                    .collect::<TimePoint>();
+                let p = i as f64;
+                let chunk = Chunk::builder("my_entity")
+                    .with_archetype(
+                        RowId::new(),
+                        timepoint,
+                        &archetypes::Points3D::new([[p, p, p]]),
+                    )
+                    .build()
+                    .unwrap();
+                store.insert_chunk(&Arc::new(chunk)).unwrap();
+            }
+
+            store
+        }
+
+        // The implementation performs some extra assertions for correctness when running in cfg(test).
+        for pivot in [0, NUM_CHUNKS / 2, NUM_CHUNKS] {
+            let mut store = setup_store();
+
+            assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+            store.gc(&GarbageCollectionOptions {
+                furthest_from: Some((TimelineName::log_tick(), TimeInt::new_temporal(pivot))),
+                ..GarbageCollectionOptions::gc_everything()
+            });
+            assert_eq!(0, store.num_chunks());
         }
     }
 }
