@@ -283,6 +283,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 
 | Archetype | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | :----: | :--: | :-------: |
+| **`ActiveVisualizers`** | `tutorials⁠/⁠visualizer-overrides` | Log a scalar over time and override the visualizer | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/visualizer-overrides.py) |  |  |
 | **`Background`** | `tutorials⁠/⁠annotation_context` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.cpp) |
 | **`DataframeQuery`** | `reference⁠/⁠dataframe_view_query` | Query and display the first 10 rows of a recording in a dataframe view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_view_query.py) |  |  |
 | **`DataframeQuery`** | `views⁠/⁠dataframe` | Use a blueprint to customize a DataframeView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/dataframe.py) |  |  |
@@ -311,4 +312,3 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | **`VisualBounds2D`** | `tutorials⁠/⁠extra_values` | Log extra values with a `Points2D` | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.cpp) |
 | **`VisualBounds2D`** | `views⁠/⁠graph` | Use a blueprint to customize a graph view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/graph.py) |  |  |
 | **`VisualBounds2D`** | `views⁠/⁠spatial2d` | Use a blueprint to customize a Spatial2DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial2d.py) |  |  |
-| **`VisualizerOverrides`** | `tutorials⁠/⁠visualizer-overrides` | Log a scalar over time and override the visualizer | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/visualizer-overrides.py) |  |  |

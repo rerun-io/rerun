@@ -25,6 +25,12 @@ from .text_log_column_kind import (
     TextLogColumnKindLike,
 )
 from .timeline_column import TimelineColumn, TimelineColumnArrayLike, TimelineColumnBatch, TimelineColumnLike
+from .visualizer_component_mapping import (
+    VisualizerComponentMapping,
+    VisualizerComponentMappingArrayLike,
+    VisualizerComponentMappingBatch,
+    VisualizerComponentMappingLike,
+)
 
 __all__ = [
     "ComponentColumnSelector",
@@ -59,4 +65,8 @@ __all__ = [
     "TimelineColumnArrayLike",
     "TimelineColumnBatch",
     "TimelineColumnLike",
+    "VisualizerComponentMapping",
+    "VisualizerComponentMappingArrayLike",
+    "VisualizerComponentMappingBatch",
+    "VisualizerComponentMappingLike",
 ]

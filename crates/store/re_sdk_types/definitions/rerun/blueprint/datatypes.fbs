@@ -7,3 +7,4 @@ include "./datatypes/selected_columns.fbs";
 include "./datatypes/tensor_dimension_index_slider.fbs";
 include "./datatypes/text_log_column.fbs";
 include "./datatypes/timeline_column.fbs";
+include "./datatypes/visualizer_component_mapping.fbs";

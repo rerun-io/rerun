@@ -1,12 +1,12 @@
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 
-use super::ViewContext;
+use super::{ViewContext, VisualizerComponentMappings};
 use crate::{
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, SmallVisualizerSet,
-    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, SystemExecutionOutput,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -22,6 +22,26 @@ pub enum ViewClassLayoutPriority {
     /// Give this view lots of space.
     /// Used for spatial views (2D/3D).
     High,
+}
+
+pub struct RecommendedVisualizers(pub IntMap<ViewSystemIdentifier, VisualizerComponentMappings>);
+
+impl RecommendedVisualizers {
+    pub fn empty() -> Self {
+        Self(Default::default())
+    }
+
+    pub fn default(visualizer: ViewSystemIdentifier) -> Self {
+        Self(std::iter::once((visualizer, Default::default())).collect())
+    }
+
+    pub fn default_many(visualizers: impl IntoIterator<Item = ViewSystemIdentifier>) -> Self {
+        let recommended = visualizers
+            .into_iter()
+            .map(|v| (v, Default::default()))
+            .collect();
+        Self(recommended)
+    }
 }
 
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.
@@ -114,7 +134,7 @@ pub trait ViewClass: Send + Sync {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         let available_visualizers =
             visualizable_entities_per_visualizer
                 .iter()
@@ -126,18 +146,20 @@ pub trait ViewClass: Send + Sync {
                     }
                 });
 
-        available_visualizers
+        let recommended = available_visualizers
             .filter_map(|visualizer| {
                 if indicated_entities_per_visualizer
                     .get(visualizer)
                     .is_some_and(|matching_list| matching_list.contains(entity_path))
                 {
-                    Some(*visualizer)
+                    Some((*visualizer, Default::default()))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect();
+
+        RecommendedVisualizers(recommended)
     }
 
     /// Determines which views should be spawned by default for this class.

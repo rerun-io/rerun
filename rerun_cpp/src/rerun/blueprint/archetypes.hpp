@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/archetypes/active_visualizers.hpp"
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/dataframe_query.hpp"
@@ -35,4 +36,4 @@
 #include "blueprint/archetypes/viewport_blueprint.hpp"
 #include "blueprint/archetypes/visible_time_ranges.hpp"
 #include "blueprint/archetypes/visual_bounds2d.hpp"
-#include "blueprint/archetypes/visualizer_overrides.hpp"
+#include "blueprint/archetypes/visualizer_instruction.hpp"

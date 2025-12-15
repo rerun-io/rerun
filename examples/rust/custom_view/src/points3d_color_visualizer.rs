@@ -51,13 +51,15 @@ impl VisualizerSystem for Points3DColorVisualizer {
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             // Query components while taking into account blueprint overrides
             // and visible history if enabled.
             let results = data_result.query_components_with_history(
                 ctx,
                 query,
                 [rerun::Points3D::descriptor_colors().component],
+                instruction,
             );
 
             // From the query result, get all the color arrays as `[u32]` slices.

@@ -11,9 +11,9 @@ use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
-    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
-    suggest_view_for_each_entity,
+    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -106,7 +106,7 @@ impl ViewClass for BarChartView {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> re_viewer_context::SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
         // since they're not indicated with a BarChart indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
@@ -116,9 +116,9 @@ impl ViewClass for BarChartView {
             .get(&BarChartVisualizerSystem::identifier())
             .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            std::iter::once(BarChartVisualizerSystem::identifier()).collect()
+            RecommendedVisualizers::default(BarChartVisualizerSystem::identifier())
         } else {
-            Default::default()
+            RecommendedVisualizers::empty()
         }
     }
 
