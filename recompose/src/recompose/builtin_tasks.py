@@ -210,7 +210,7 @@ def generate_gha(
             out(f"  [!] {filename} - ERROR: {e}")
 
     if errors:
-        return Err(f"Errors generating workflows:\n" + "\n".join(errors))
+        return Err("Errors generating workflows:\n" + "\n".join(errors))
 
     if check_only and changes:
         return Err(
