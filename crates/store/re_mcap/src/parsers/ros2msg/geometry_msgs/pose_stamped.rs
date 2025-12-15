@@ -1,9 +1,9 @@
 use super::super::definitions::geometry_msgs::PoseStamped;
 use re_chunk::{Chunk, ChunkId};
 
-use re_types::archetypes::{CoordinateFrame, InstancePoses3D};
-use re_types::components::{RotationQuat, Translation3D};
-use re_types::datatypes::Quaternion;
+use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D};
+use re_sdk_types::components::{RotationQuat, Translation3D};
+use re_sdk_types::datatypes::Quaternion;
 
 use super::super::Ros2MessageParser;
 use crate::parsers::{
