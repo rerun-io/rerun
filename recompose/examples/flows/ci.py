@@ -15,12 +15,18 @@ def ci() -> None:
     CI pipeline: lint, format check, and test.
 
     This flow runs:
-    1. lint - Check for code quality issues
-    2. format_check - Verify code formatting
-    3. test - Run the test suite
+    1. GHA setup (checkout, python, uv)
+    2. lint - Check for code quality issues
+    3. format_check - Verify code formatting
+    4. test - Run the test suite
 
     All checks must pass for CI to succeed.
     """
+    # GHA setup steps (no-op when run locally)
+    recompose.gha.checkout.flow()
+    recompose.gha.setup_python(version="3.12").flow()
+    recompose.gha.setup_uv().flow()
+
     # Run lint and format_check (could run in parallel in future)
     lint.flow()
     format_check.flow()
