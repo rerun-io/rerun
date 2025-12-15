@@ -782,12 +782,12 @@ impl ViewClass for TimeSeriesView {
                         re_sdk_types::blueprint::components::TimeRange(TimeRange {
                             start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range.start() as i64 + time_offset,
+                                    new_x_range.start().floor() as i64 + time_offset,
                                 ),
                             ),
                             end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range.end() as i64 + time_offset,
+                                    new_x_range.end().floor() as i64 + time_offset,
                                 ),
                             ),
                         });
