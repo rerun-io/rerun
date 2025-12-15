@@ -1,0 +1,52 @@
+name: Bazel Checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'bazel/**'
+      - 'MODULE.bazel'
+      - 'MODULE.bazel.lock'
+      - 'BUILD.bazel'
+      - '.bazelrc'
+      - 'Cargo.lock'
+      - '**/*.toml'
+  push:
+    branches: [main]
+
+jobs:
+  bazel-check:
+    name: Bazel Build & Test
+    runs-on: ubuntu-latest-16-cores
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - name: Install Bazelisk
+        run: |
+          curl -Lo /tmp/bazel https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64
+          chmod +x /tmp/bazel
+          sudo mv /tmp/bazel /usr/local/bin/bazel
+
+      - name: Check MODULE.bazel.lock is up to date
+        run: |
+          # Verify that MODULE.bazel.lock is in sync with MODULE.bazel and Cargo.lock
+          bazel sync --only=crates
+          if ! git diff --exit-code MODULE.bazel.lock; then
+            echo "❌ MODULE.bazel.lock is out of sync!"
+            echo "Please run: bazel sync --only=crates"
+            exit 1
+          fi
+
+      - name: Bazel Build (all crates)
+        run: bazel build //crates/...
+
+      - name: Bazel Test (all crates)
+        run: bazel test //crates/... --test_output=errors
+
+      - name: Bazel Clippy
+        run: bazel build --config=clippy //crates/...

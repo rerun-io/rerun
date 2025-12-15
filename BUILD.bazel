@@ -1,0 +1,17 @@
+# Global build configurations
+
+config_setting(
+    name = "tracing_server_enabled",
+    define_values = {
+        "tracing_server": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "tracing_server_disabled",
+    define_values = {
+        "tracing_server": "false",
+    },
+    visibility = ["//visibility:public"],
+)

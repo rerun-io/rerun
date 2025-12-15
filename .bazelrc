@@ -1,0 +1,14 @@
+# Usage: bazel build --config=clippy //target
+build:clippy --aspects=@rules_rust//rust:defs.bzl%rust_clippy_aspect
+build:clippy --output_groups=+clippy_checks
+
+# Usage: bazel build --config=rustfmt //target
+build:rustfmt --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
+build:rustfmt --output_groups=+rustfmt_checks
+
+# Tracing/profiling server configuration
+# Enabled by default for performance profiling
+build --define=tracing_server=true
+
+# To disable tracing server: bazel build --config=no-tracing-server //target
+build:no-tracing-server --define=tracing_server=false

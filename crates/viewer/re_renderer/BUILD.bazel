@@ -1,0 +1,32 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = [
+        "//crates/build/re_build_tools",
+    ] + all_crate_deps(build = True),
+)
+
+rust_library(
+    name = "re_renderer",
+    srcs = glob(["src/**/*.rs"]),
+    crate_features = ["import-obj", "import-gltf", "import-stl", "serde"],
+    compile_data = glob(["shader/**/*"]) + ["Cargo.toml"],
+    rustc_env = {
+        "CARGO_MANIFEST_DIR": "$${pwd}/crates/viewer/re_renderer",
+    },
+    deps = [
+        ":build",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_error",
+        "//crates/utils/re_log",
+        "//crates/utils/re_tracing",
+        "//crates/utils/re_video",
+    ] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+)

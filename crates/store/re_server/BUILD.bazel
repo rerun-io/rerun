@@ -1,0 +1,40 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = [
+        "//crates/build/re_build_tools",
+    ] + all_crate_deps(build = True),
+)
+
+rust_library(
+    name = "re_server",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        ":build",
+        "//crates/build/re_build_info",
+        "//crates/store/re_chunk_store",
+        "//crates/store/re_entity_db",
+        "//crates/store/re_grpc_server",
+        "//crates/store/re_log_encoding",
+        "//crates/store/re_log_types",
+        "//crates/store/re_protos",
+        "//crates/store/re_sorbet",
+        "//crates/store/re_types_core",
+        "//crates/utils/re_arrow_util",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_log",
+        "//crates/utils/re_span",
+        "//crates/utils/re_tuid",
+    ] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    compile_data = ["Cargo.toml"],
+    rustc_env = {
+        "CARGO_MANIFEST_DIR": "$${pwd}/crates/store/re_server",
+    },
+)

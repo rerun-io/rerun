@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_mcap",
+    deps = [
+        "//crates/store/re_chunk",
+        "//crates/store/re_log_types",
+        "//crates/store/re_sdk_types",
+        "//crates/utils/re_log",
+        "//crates/utils/re_ros_msg",
+        "//crates/utils/re_tracing",
+    ],
+)

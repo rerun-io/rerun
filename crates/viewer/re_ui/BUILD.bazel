@@ -1,0 +1,28 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = [
+        "//crates/build/re_build_tools",
+    ] + all_crate_deps(build = True),
+)
+
+re_simple_crate(
+    name = "re_ui",
+    crate_features = ["analytics", "testing"],
+    compile_data = glob(["data/**/*"]),
+    deps = [
+        ":build",
+        "//crates/store/re_entity_db",
+        "//crates/utils/re_analytics",
+        "//crates/utils/re_format",
+        "//crates/utils/re_log",
+        "//crates/store/re_log_types",
+        "//crates/utils/re_tracing",
+    ],
+)

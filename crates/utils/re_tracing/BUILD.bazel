@@ -1,0 +1,50 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test", "rust_doc", "rust_doc_test")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+# re_tracing library (server feature controlled via config)
+rust_library(
+    name = "re_tracing",
+    srcs = glob(["src/**/*.rs"]),
+    crate_features = select({
+        "//:tracing_server_enabled": ["server"],
+        "//conditions:default": [],
+    }),
+    deps = select({
+        "//:tracing_server_enabled": [
+            "//crates/utils/re_log",
+            "@crates//:puffin_http",
+            "@crates//:rfd",
+        ],
+        "//conditions:default": [],
+    }) + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    compile_data = ["Cargo.toml"],
+    rustc_env = {
+        "CARGO_MANIFEST_DIR": "$${pwd}/crates/utils/re_tracing",
+    },
+)
+
+# Test target
+rust_test(
+    name = "test",
+    crate = ":re_tracing",
+    size = "small",
+    deps = all_crate_deps(normal_dev = True),
+    proc_macro_deps = all_crate_deps(proc_macro_dev = True),
+)
+
+# Doc test target
+rust_doc_test(
+    name = "doctest",
+    crate = ":re_tracing",
+    deps = all_crate_deps(normal_dev = True),
+    proc_macro_deps = all_crate_deps(proc_macro_dev = True),
+)
+
+# Documentation target
+rust_doc(
+    name = "doc",
+    crate = ":re_tracing",
+)

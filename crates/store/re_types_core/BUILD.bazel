@@ -1,0 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_types_core",
+    crate_features = ["serde"],
+    deps = [
+        "//crates/utils/re_arrow_util",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_case",
+        "//crates/utils/re_error",
+        "//crates/utils/re_log",
+        "//crates/utils/re_string_interner",
+        "//crates/utils/re_tracing",
+        "//crates/utils/re_tuid",
+    ],
+)

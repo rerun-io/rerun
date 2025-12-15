@@ -1,0 +1,34 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_viewer_context",
+    deps = [
+        "//crates/store/re_chunk",
+        "//crates/store/re_chunk_store",
+        "//crates/store/re_data_source",
+        "//crates/store/re_entity_db",
+        "//crates/store/re_log_channel",
+        "//crates/store/re_log_encoding",
+        "//crates/store/re_log_types",
+        "//crates/store/re_query",
+        "//crates/store/re_redap_client",
+        "//crates/store/re_sdk_types",
+        "//crates/store/re_tf",
+        "//crates/store/re_types_core",
+        "//crates/store/re_uri",
+        "//crates/utils/re_arrow_util",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_capabilities",
+        "//crates/utils/re_error",
+        "//crates/utils/re_format",
+        "//crates/utils/re_log",
+        "//crates/utils/re_string_interner",
+        "//crates/utils/re_tracing",
+        "//crates/utils/re_video",
+        "//crates/viewer/re_arrow_ui",
+        "//crates/viewer/re_renderer",
+        "//crates/viewer/re_ui",
+    ],
+)

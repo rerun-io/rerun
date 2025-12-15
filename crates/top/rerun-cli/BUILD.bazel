@@ -1,0 +1,41 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = [
+        "//crates/build/re_build_tools",
+    ] + all_crate_deps(build = True),
+)
+
+rust_binary(
+    name = "rerun",
+    srcs = ["src/bin/rerun.rs"],
+    crate_features = [
+        "base",
+        "lance",
+        "map_view",
+        "nasm",
+        "native_viewer",
+        "oss_server",
+        "perf_telemetry",
+    ],
+    compile_data = ["Cargo.toml"],
+    rustc_env = {
+        "CARGO_MANIFEST_DIR": "$${pwd}/crates/top/rerun-cli",
+    },
+    deps = [
+        ":build",
+        "//crates/build/re_build_info",
+        "//crates/store/re_server",
+        "//crates/top/rerun",
+        "//crates/utils/re_error",
+        "//crates/utils/re_log",
+        "//crates/utils/re_memory",
+    ] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+)

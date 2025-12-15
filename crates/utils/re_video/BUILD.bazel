@@ -1,0 +1,26 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = all_crate_deps(build = True),
+)
+
+rust_library(
+    name = "re_video",
+    srcs = glob(["src/**/*.rs"]),
+    crate_features = ["ffmpeg", "serde"],
+    rustc_flags = ["--cfg=with_ffmpeg", "--cfg=native"],
+    deps = [
+        ":build",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_log",
+        "//crates/utils/re_span",
+        "//crates/utils/re_tracing",
+    ] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+)

@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_component_fallbacks",
+    deps = [
+        "//crates/store/re_log_types",
+        "//crates/store/re_sdk_types",
+        "//crates/viewer/re_viewer_context",
+    ],
+)

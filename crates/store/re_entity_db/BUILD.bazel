@@ -1,0 +1,26 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_entity_db",
+    crate_features = ["serde"],
+    deps = [
+        "//crates/build/re_build_info",
+        "//crates/store/re_chunk",
+        "//crates/store/re_chunk_store",
+        "//crates/store/re_log_channel",
+        "//crates/store/re_log_encoding",
+        "//crates/store/re_log_types",
+        "//crates/store/re_query",
+        "//crates/store/re_sorbet",
+        "//crates/store/re_types_core",
+        "//crates/store/re_uri",
+        "//crates/utils/re_arrow_util",
+        "//crates/utils/re_byte_size",
+        "//crates/utils/re_format",
+        "//crates/utils/re_int_histogram",
+        "//crates/utils/re_log",
+        "//crates/utils/re_tracing",
+    ],
+)

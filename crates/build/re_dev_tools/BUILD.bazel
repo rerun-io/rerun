@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_dev_tools",
+    deps = [
+        "//crates/build/re_build_tools",
+        "//crates/utils/re_format",
+    ],
+)

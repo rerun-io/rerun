@@ -1,0 +1,21 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_redap_browser",
+    deps = [
+        "//crates/store/re_datafusion",
+        "//crates/store/re_log_types",
+        "//crates/store/re_protos",
+        "//crates/store/re_redap_client",
+        "//crates/store/re_sorbet",
+        "//crates/store/re_uri",
+        "//crates/utils/re_auth",
+        "//crates/utils/re_log",
+        "//crates/viewer/re_component_ui",
+        "//crates/viewer/re_dataframe_ui",
+        "//crates/viewer/re_ui",
+        "//crates/viewer/re_viewer_context",
+    ],
+)

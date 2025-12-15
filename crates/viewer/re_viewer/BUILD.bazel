@@ -1,0 +1,76 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//cargo:defs.bzl", "cargo_build_script")
+load("@crates//:defs.bzl", "all_crate_deps")
+
+cargo_build_script(
+    name = "build",
+    srcs = ["build.rs"],
+    deps = [
+        "//crates/build/re_build_tools",
+    ] + all_crate_deps(build = True),
+)
+
+rust_library(
+    name = "re_viewer",
+    srcs = glob(["src/**/*.rs"]),
+    crate_features = ["analytics", "map_view", "perf_telemetry"],
+    compile_data = glob(["data/**/*"]) + ["Cargo.toml"],
+    rustc_env = {
+        "CARGO_MANIFEST_DIR": "$${pwd}/crates/viewer/re_viewer",
+        "DEFAULT_EXAMPLES_MANIFEST_URL": "https://app.rerun.io/version/nightly/examples_manifest.json",
+    },
+    deps = [
+        ":build",
+        "//crates/build/re_build_info",
+        "//crates/store/re_chunk",
+        "//crates/store/re_chunk_store",
+        "//crates/store/re_data_loader",
+        "//crates/store/re_data_source",
+        "//crates/store/re_entity_db",
+        "//crates/store/re_log_channel",
+        "//crates/store/re_log_encoding",
+        "//crates/store/re_log_types",
+        "//crates/store/re_query",
+        "//crates/store/re_redap_client",
+        "//crates/store/re_sdk_types",
+        "//crates/store/re_types_core",
+        "//crates/store/re_uri",
+        "//crates/utils/re_analytics",
+        "//crates/utils/re_auth",
+        "//crates/utils/re_capabilities",
+        "//crates/utils/re_error",
+        "//crates/utils/re_format",
+        "//crates/utils/re_log",
+        "//crates/utils/re_memory",
+        "//crates/utils/re_perf_telemetry",
+        "//crates/utils/re_tracing",
+        "//crates/utils/re_video",
+        "//crates/viewer/re_blueprint_tree",
+        "//crates/viewer/re_chunk_store_ui",
+        "//crates/viewer/re_component_fallbacks",
+        "//crates/viewer/re_component_ui",
+        "//crates/viewer/re_data_ui",
+        "//crates/viewer/re_dataframe_ui",
+        "//crates/viewer/re_recording_panel",
+        "//crates/viewer/re_redap_browser",
+        "//crates/viewer/re_renderer",
+        "//crates/viewer/re_selection_panel",
+        "//crates/viewer/re_time_panel",
+        "//crates/viewer/re_ui",
+        "//crates/viewer/re_view_bar_chart",
+        "//crates/viewer/re_view_dataframe",
+        "//crates/viewer/re_view_graph",
+        "//crates/viewer/re_view_map",
+        "//crates/viewer/re_view_spatial",
+        "//crates/viewer/re_view_tensor",
+        "//crates/viewer/re_view_text_document",
+        "//crates/viewer/re_view_text_log",
+        "//crates/viewer/re_view_time_series",
+        "//crates/viewer/re_viewer_context",
+        "//crates/viewer/re_viewport",
+        "//crates/viewer/re_viewport_blueprint",
+    ] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+)

@@ -1,0 +1,13 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_auth",
+    compile_data = ["src/status_page.html"],
+    crate_features = ["cli", "oauth"],
+    deps = [
+        "//crates/utils/re_analytics",
+        "//crates/utils/re_log",
+    ],
+)

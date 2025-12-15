@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_view_time_series",
+    deps = [
+        "//crates/store/re_chunk_store",
+        "//crates/store/re_log_types",
+        "//crates/store/re_query",
+        "//crates/store/re_sdk_types",
+        "//crates/utils/re_format",
+        "//crates/utils/re_log",
+        "//crates/utils/re_tracing",
+        "//crates/viewer/re_renderer",
+        "//crates/viewer/re_test_context",
+        "//crates/viewer/re_test_viewport",
+        "//crates/viewer/re_ui",
+        "//crates/viewer/re_view",
+        "//crates/viewer/re_viewer_context",
+        "//crates/viewer/re_viewport_blueprint",
+    ],
+)

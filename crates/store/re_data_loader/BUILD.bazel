@@ -1,0 +1,22 @@
+package(default_visibility = ["//visibility:public"])
+
+load("//:bazel/re_simple_crate.bzl", "re_simple_crate")
+
+re_simple_crate(
+    name = "re_data_loader",
+    deps = [
+        "//crates/build/re_build_info",
+        "//crates/store/re_chunk",
+        "//crates/store/re_log_channel",
+        "//crates/store/re_log_encoding",
+        "//crates/store/re_log_types",
+        "//crates/store/re_mcap",
+        "//crates/store/re_sdk_types",
+        "//crates/utils/re_arrow_util",
+        "//crates/utils/re_crash_handler",
+        "//crates/utils/re_error",
+        "//crates/utils/re_log",
+        "//crates/utils/re_tracing",
+        "//crates/utils/re_video",
+    ],
+)
