@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import platform
 import tempfile
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import rerun as rr
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_init_twice() -> None:
