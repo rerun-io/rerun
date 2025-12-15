@@ -18,9 +18,10 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         "\"\"\"Constants for the names of the visualizers.\"\"\"",
         2,
     );
-    code.push_unindented("from __future__ import annotations\n\n", 0);
+    code.push_unindented("from __future__ import annotations\n\n", 1);
 
     code.push_indented(0, "from typing import Any", 2);
+    code.push_indented(0, "from ._base import Visualizer", 2);
 
     let mut visualizers: Vec<(String, String)> = Vec::new();
     let mut archetypes_without_attr = Vec::new();
@@ -65,12 +66,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         code.push_indented(0, format!("{archetype_name} = {visualizer_id:?}"), 1);
     }
 
-    // TODO(RR-3173): This should not be experimental anymore.
-    // Generate experimental module with visualizer classes
-    code.push_unindented("\n\n# Experimental API for configuring visualizers", 1);
-    code.push_indented(0, "class experimental:", 1);
-
-    code.push_indented(1, "from ..experimental import Visualizer", 2);
+    code.push_indented(0, "class _GeneratedVisualizerClasses:", 1);
 
     // Generated visualizer classes
     for (archetype_name, visualizer_id) in &visualizers {

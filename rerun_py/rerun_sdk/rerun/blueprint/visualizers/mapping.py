@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ._base import Visualizer
+
 Arrows2D = "Arrows2D"
 Arrows3D = "Arrows3D"
 Asset3D = "Asset3D"
@@ -40,10 +42,7 @@ VideoFrameReference = "VideoFrameReference"
 VideoStream = "VideoStream"
 
 
-# Experimental API for configuring visualizers
-class experimental:
-    from ..experimental import Visualizer
-
+class _GeneratedVisualizerClasses:
     class Arrows2D(Visualizer):
         def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:
             super().__init__("Arrows2D", overrides=overrides, mappings=mappings)
