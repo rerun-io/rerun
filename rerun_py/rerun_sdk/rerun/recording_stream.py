@@ -564,8 +564,7 @@ class RecordingStream:
 
         Closes all gRPC connections, servers, and files that have been opened with
         [`rerun.RecordingStream.connect_grpc`][], [`rerun.RecordingStream.serve_grpc`][],
-        [`rerun.RecordingStream.serve_web`][] , [`rerun.RecordingStream.save`][] or
-        [`rerun.RecordingStream.spawn`][].
+        [`rerun.RecordingStream.save`][] or [`rerun.RecordingStream.spawn`][].
         """
 
         from .sinks import disconnect
@@ -1119,8 +1118,7 @@ class RecordingStream:
             See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
         indexes:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-            of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
-            [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
+            of timestamps. Generally, you should use one of the provided class [`TimeColumn`][rerun.TimeColumn].
         columns:
             The columns of components to log. Each object represents a single column of data.
 
