@@ -165,6 +165,16 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/file_sink" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/grpc_sink" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
 "howto/check_connection_status" = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist

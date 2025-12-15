@@ -1,4 +1,4 @@
-// Create and set a FileSink
+// Create and set a file sink.
 
 #include <rerun.hpp>
 
