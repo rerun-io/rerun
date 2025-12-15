@@ -32,7 +32,7 @@ def run(args: Namespace) -> None:
     # NOTE: This dataloader works by creating a new recording for each episode.
     # So that means we need to log the README to each recording.
     for i in range(3):
-        rec = rr.script_setup(args, f"{Path(__file__).name}", recording_id=f"episode_{i}")
+        rec = rr.script_setup(args, Path(__file__).name, recording_id=f"episode_{i}")
         rec.set_time("frame_index", sequence=0)
         rec.log("/readme", rr.TextDocument(README), static=True)
 

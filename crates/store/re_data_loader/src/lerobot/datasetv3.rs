@@ -7,7 +7,7 @@ use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotEr
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::Sender;
+use std::sync::{Arc, mpsc::Sender};
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
@@ -25,8 +25,6 @@ use re_log_types::ApplicationId;
 use re_sdk_types::archetypes::{TextDocument, VideoStream};
 
 use crate::{DataLoaderError, LoadedData};
-
-use std::sync::Arc;
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
 /// Parquet files.
@@ -785,45 +783,45 @@ impl LeRobotEpisodeData {
             let column_name = field.name();
 
             // Look for columns like "videos/{feature_name}/chunk_index"
-            if let Some(rest) = column_name.strip_prefix("videos/") {
-                if let Some((feature_name, field_name)) = rest.rsplit_once('/') {
-                    let entry = features.entry(Arc::from(feature_name)).or_default();
+            if let Some(rest) = column_name.strip_prefix("videos/")
+                && let Some((feature_name, field_name)) = rest.rsplit_once('/')
+            {
+                let entry = features.entry(Arc::from(feature_name)).or_default();
 
-                    match field_name {
-                        "chunk_index" => {
-                            if let Some(col) = batch
-                                .column_by_name(column_name)
-                                .and_then(|c| c.downcast_array_ref::<Int64Array>())
-                            {
-                                entry.chunk_index = Some(col.clone());
-                            }
+                match field_name {
+                    "chunk_index" => {
+                        if let Some(col) = batch
+                            .column_by_name(column_name)
+                            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+                        {
+                            entry.chunk_index = Some(col.clone());
                         }
-                        "file_index" => {
-                            if let Some(col) = batch
-                                .column_by_name(column_name)
-                                .and_then(|c| c.downcast_array_ref::<Int64Array>())
-                            {
-                                entry.file_index = Some(col.clone());
-                            }
-                        }
-                        "from_timestamp" => {
-                            if let Some(col) = batch
-                                .column_by_name(column_name)
-                                .and_then(|c| c.downcast_array_ref::<Float64Array>())
-                            {
-                                entry.from_timestamp = Some(col.clone());
-                            }
-                        }
-                        "to_timestamp" => {
-                            if let Some(col) = batch
-                                .column_by_name(column_name)
-                                .and_then(|c| c.downcast_array_ref::<Float64Array>())
-                            {
-                                entry.to_timestamp = Some(col.clone());
-                            }
-                        }
-                        _ => {} // Ignore unknown fields
                     }
+                    "file_index" => {
+                        if let Some(col) = batch
+                            .column_by_name(column_name)
+                            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+                        {
+                            entry.file_index = Some(col.clone());
+                        }
+                    }
+                    "from_timestamp" => {
+                        if let Some(col) = batch
+                            .column_by_name(column_name)
+                            .and_then(|c| c.downcast_array_ref::<Float64Array>())
+                        {
+                            entry.from_timestamp = Some(col.clone());
+                        }
+                    }
+                    "to_timestamp" => {
+                        if let Some(col) = batch
+                            .column_by_name(column_name)
+                            .and_then(|c| c.downcast_array_ref::<Float64Array>())
+                        {
+                            entry.to_timestamp = Some(col.clone());
+                        }
+                    }
+                    _ => {} // Ignore unknown fields
                 }
             }
         }
@@ -986,8 +984,8 @@ impl LeRobotDatasetV3Tasks {
         let reader = ParquetRecordBatchReaderBuilder::try_new(parquet_data)?.build()?;
 
         let tasks = reader
-            .filter_map(|b| {
-                let b = b.ok()?;
+            .filter_map(|record_batch| {
+                let b = record_batch.ok()?;
                 let task_index_col = b.column_by_name("task_index")?;
                 let task_col = b.column_by_name("__index_level_0__")?;
                 let task_index = task_index_col.as_any().downcast_ref::<Int64Array>()?;
