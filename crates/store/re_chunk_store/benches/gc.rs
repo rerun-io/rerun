@@ -52,6 +52,24 @@ fn gc(c: &mut Criterion) {
             criterion::BatchSize::PerIteration,
         );
     });
+
+    c.bench_function("gc_everything/ordered_by_distance_from_cursor", |b| {
+        b.iter_batched(
+            || store.clone(),
+            |mut store| {
+                assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+                store.gc(&GarbageCollectionOptions {
+                    furthest_from: Some((
+                        TimelineName::log_tick(),
+                        TimeInt::new_temporal(NUM_CHUNKS / 2),
+                    )),
+                    ..GarbageCollectionOptions::gc_everything()
+                });
+                assert_eq!(0, store.num_chunks());
+            },
+            criterion::BatchSize::PerIteration,
+        );
+    });
 }
 
 criterion_group!(benches, gc);
