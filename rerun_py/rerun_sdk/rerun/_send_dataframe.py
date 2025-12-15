@@ -11,15 +11,15 @@ from ._send_columns import TimeColumnLike, send_columns
 if TYPE_CHECKING:
     from .recording_stream import RecordingStream
 
-_SORBET_INDEX_NAME = b"rerun:index_name"
-_SORBET_ENTITY_PATH = b"rerun:entity_path"
-_SORBET_ARCHETYPE_NAME = b"rerun:archetype"
-_SORBET_COMPONENT = b"rerun:component"
-_SORBET_COMPONENT_TYPE = b"rerun:component_type"
-_SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
-_RERUN_KIND = b"rerun:kind"
-_RERUN_KIND_CONTROL = b"control"
-_RERUN_KIND_INDEX = b"index"
+SORBET_INDEX_NAME = b"rerun:index_name"
+SORBET_ENTITY_PATH = b"rerun:entity_path"
+SORBET_ARCHETYPE_NAME = b"rerun:archetype"
+SORBET_COMPONENT = b"rerun:component"
+SORBET_COMPONENT_TYPE = b"rerun:component_type"
+SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
+RERUN_KIND = b"rerun:kind"
+RERUN_KIND_CONTROL = b"control"
+RERUN_KIND_INDEX = b"index"
 
 
 class _RawIndexColumn(TimeColumnLike):
@@ -28,7 +28,7 @@ class _RawIndexColumn(TimeColumnLike):
         self.col = col
 
     def timeline_name(self) -> str:
-        name = self.metadata.get(_SORBET_INDEX_NAME, "unknown")
+        name = self.metadata.get(SORBET_INDEX_NAME, "unknown")
         if isinstance(name, bytes):
             name = name.decode("utf-8")
         return name
@@ -44,12 +44,12 @@ class _RawComponentBatchLike(ComponentColumn):
 
     def component_descriptor(self) -> ComponentDescriptor:
         kwargs = {}
-        if _SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype"] = self.metadata[_SORBET_ARCHETYPE_NAME].decode("utf-8")
-        if _SORBET_COMPONENT_TYPE in self.metadata:
-            kwargs["component_type"] = self.metadata[_SORBET_COMPONENT_TYPE].decode("utf-8")
-        if _SORBET_COMPONENT in self.metadata:
-            kwargs["component"] = self.metadata[_SORBET_COMPONENT].decode("utf-8")
+        if SORBET_ARCHETYPE_NAME in self.metadata:
+            kwargs["archetype"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
+        if SORBET_COMPONENT_TYPE in self.metadata:
+            kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
+        if SORBET_COMPONENT in self.metadata:
+            kwargs["component"] = self.metadata[SORBET_COMPONENT].decode("utf-8")
 
         if "component_type" not in kwargs:
             kwargs["component_type"] = "Unknown"
@@ -68,19 +68,19 @@ def send_record_batch(batch: pa.RecordBatch, recording: RecordingStream | None =
     archetypes: defaultdict[str, set[Any]] = defaultdict(set)
     for col in batch.schema:
         metadata = col.metadata or {}
-        if metadata.get(_RERUN_KIND) == _RERUN_KIND_CONTROL:
+        if metadata.get(RERUN_KIND) == RERUN_KIND_CONTROL:
             continue
-        if _SORBET_INDEX_NAME in metadata or metadata.get(_RERUN_KIND) == _RERUN_KIND_INDEX:
-            if _SORBET_INDEX_NAME not in metadata:
-                metadata[_SORBET_INDEX_NAME] = col.name
+        if SORBET_INDEX_NAME in metadata or metadata.get(RERUN_KIND) == RERUN_KIND_INDEX:
+            if SORBET_INDEX_NAME not in metadata:
+                metadata[SORBET_INDEX_NAME] = col.name
             indexes.append(_RawIndexColumn(metadata, batch.column(col.name)))
         else:
-            entity_path = metadata.get(_SORBET_ENTITY_PATH, col.name.split(":")[0])
+            entity_path = metadata.get(SORBET_ENTITY_PATH, col.name.split(":")[0])
             if isinstance(entity_path, bytes):
                 entity_path = entity_path.decode("utf-8")
             data[entity_path].append(_RawComponentBatchLike(metadata, batch.column(col.name)))
-            if _SORBET_ARCHETYPE_NAME in metadata:
-                archetypes[entity_path].add(metadata[_SORBET_ARCHETYPE_NAME].decode("utf-8"))
+            if SORBET_ARCHETYPE_NAME in metadata:
+                archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
 
     for entity_path, columns in data.items():
         send_columns(

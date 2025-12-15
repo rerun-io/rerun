@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    import pyarrow as pa
     import numpy as np
+    import pyarrow as pa
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
     from rerun.memory import MemoryRecording
