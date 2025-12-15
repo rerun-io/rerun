@@ -26,13 +26,13 @@ jobs:
         python-version: '3.12'
     - name: 3_gha.setup_uv
       uses: astral-sh/setup-uv@v4
-    - name: Setup workspace
+    - name: 4_setup_workspace
       run: uv run python -m examples.app ci --setup --workspace .recompose
-    - name: 4_lint
-      run: uv run python -m examples.app ci --step 4_lint --workspace .recompose
-    - name: 5_format_check
-      run: uv run python -m examples.app ci --step 5_format_check --workspace .recompose
-    - name: 6_test
-      run: uv run python -m examples.app ci --step 6_test --workspace .recompose
-    - name: 7_generate_gha
-      run: uv run python -m examples.app ci --step 7_generate_gha --workspace .recompose
+    - name: 5_lint
+      run: uv run python -m examples.app ci --step 5_lint --workspace .recompose
+    - name: 6_format_check
+      run: uv run python -m examples.app ci --step 6_format_check --workspace .recompose
+    - name: 7_test
+      run: uv run python -m examples.app ci --step 7_test --workspace .recompose
+    - name: 8_generate_gha
+      run: uv run python -m examples.app ci --step 8_generate_gha --workspace .recompose

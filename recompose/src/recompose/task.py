@@ -55,6 +55,9 @@ class TaskInfo:
     is_gha_action: bool = False  # True if this is a GHA virtual action
     gha_uses: str | None = None  # The action to use, e.g., "actions/checkout@v4"
 
+    # Setup step field (for workspace initialization infrastructure)
+    is_setup_step: bool = False  # True if this is the setup_workspace step
+
     @property
     def full_name(self) -> str:
         """Full qualified name of the task."""
