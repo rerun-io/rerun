@@ -14,7 +14,7 @@ use re_sdk::{
 };
 use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
 use re_viewer::external::re_entity_db::EntityDb;
-use re_viewer::external::re_types;
+use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};
@@ -66,10 +66,6 @@ pub trait HarnessExt<'h> {
     // Click at a position in the UI.
     fn click_at(&mut self, pos: egui::Pos2);
 
-    // Drag-and-drop functions based on position
-    fn drag_at(&mut self, pos: egui::Pos2);
-    fn hover_at(&mut self, pos: egui::Pos2);
-    fn drop_at(&mut self, pos: egui::Pos2);
     fn right_click_at(&mut self, pos: egui::Pos2);
 
     // Gets the cursor icon
@@ -252,14 +248,14 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .expect("Failed to set recording name");
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::from(0),
+                    &re_sdk_types::components::Timestamp::from(0),
                 )
                 .expect("Failed to set recording start time");
         }
@@ -271,9 +267,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .expect("Failed to set recording property");
             recording_store
@@ -282,9 +278,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .expect("Failed to set recording property");
         }
@@ -319,32 +315,6 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             });
             self.run();
         }
-    }
-
-    fn drag_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerButton {
-            pos,
-            button: PointerButton::Primary,
-            pressed: true,
-            modifiers: Modifiers::NONE,
-        });
-        self.run_ok();
-    }
-
-    fn hover_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerMoved(pos));
-        self.run_ok();
-    }
-
-    fn drop_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerButton {
-            pos,
-            button: PointerButton::Primary,
-            pressed: false,
-            modifiers: Modifiers::NONE,
-        });
-        self.remove_cursor();
-        self.run_ok();
     }
 
     fn right_click_at(&mut self, pos: egui::Pos2) {

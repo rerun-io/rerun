@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
-use re_types::ComponentIdentifier;
+use re_sdk_types::ComponentIdentifier;
 use re_viewer_context::{DataResult, ViewContext, typed_fallback_for};
 
 use crate::chunks_with_component::ChunksWithComponent;

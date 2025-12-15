@@ -1,4 +1,4 @@
-use re_types::blueprint::components::TextLogColumn;
+use re_sdk_types::blueprint::components::TextLogColumn;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::visible_dnd::visible_dnd;

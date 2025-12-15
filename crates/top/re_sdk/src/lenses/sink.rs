@@ -2,7 +2,7 @@ use re_chunk::Chunk;
 use re_log_types::{LogMsg, StoreId};
 
 use super::Lens;
-use super::ast::Lenses;
+use super::ast::{Lenses, OutputMode};
 use crate::sink::LogSink;
 
 /// A sink which can transform a [`LogMsg`] and forward the result to an underlying backing [`LogSink`].
@@ -24,7 +24,7 @@ impl<S: LogSink> LensesSink<S> {
     pub fn new(sink: S) -> Self {
         Self {
             sink,
-            lenses: Default::default(),
+            lenses: Lenses::new(OutputMode::DropUnmatched),
             strict: false,
         }
     }
@@ -32,6 +32,14 @@ impl<S: LogSink> LensesSink<S> {
     /// Adds a [`Lens`] to this sink.
     pub fn with_lens(mut self, lens: Lens) -> Self {
         self.lenses.add_lens(lens);
+        self
+    }
+
+    /// Configure how to handle matched and unmatched data.
+    ///
+    /// See [`OutputMode`] for more details.
+    pub fn output_mode(mut self, mode: OutputMode) -> Self {
+        self.lenses.set_output_mode(mode);
         self
     }
 

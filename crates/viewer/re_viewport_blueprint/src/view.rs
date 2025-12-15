@@ -3,10 +3,10 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{self as blueprint_archetypes};
-use re_types::blueprint::components::{self as blueprint_components, ViewOrigin};
-use re_types::components::{Name, Visible};
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrigin};
+use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
@@ -314,7 +314,7 @@ impl ViewBlueprint {
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
             self.entity_path(),
-            &re_types::archetypes::Clear::recursive(),
+            &re_sdk_types::archetypes::Clear::recursive(),
         );
     }
 
@@ -455,11 +455,11 @@ mod tests {
     use re_chunk::{ComponentIdentifier, RowId};
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
     use re_log_types::{StoreKind, TimePoint};
+    use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
-    use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
         IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
-        ViewClassPlaceholder, VisualizableEntities,
+        ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -494,21 +494,19 @@ mod tests {
             visualizable_entities
                 .0
                 .entry("Points3D".into())
-                .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
+                .or_insert_with(|| {
+                    VisualizableEntities(
+                        entity_paths
+                            .into_iter()
+                            .map(|ent| (ent, VisualizableReason::Always))
+                            .collect(),
+                    )
+                });
         }
 
         let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
             view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities
-                .0
-                .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        VisualizableEntities(entities.iter().cloned().collect()),
-                    )
-                })
-                .collect(),
+            per_visualizer: visualizable_entities.0.clone(),
         };
 
         // Basic blueprint - a single view that queries everything.
@@ -769,14 +767,16 @@ mod tests {
                     .expect("view class should be registered"),
             );
 
-            resolver.update_overrides(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                ctx.time_ctrl.timeline(),
-                ctx.view_class_registry(),
-                &mut query_result,
-                view_state,
-            );
+            if let Some(timeline) = ctx.time_ctrl.timeline() {
+                resolver.update_overrides(
+                    ctx.blueprint_db(),
+                    ctx.blueprint_query,
+                    timeline,
+                    ctx.view_class_registry(),
+                    &mut query_result,
+                    view_state,
+                );
+            }
 
             result = Some(query_result.clone());
         });

@@ -1,5 +1,5 @@
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_viewer_context::{Item, ViewId};
 use re_viewport_blueprint::ViewProperty;
 
@@ -21,19 +21,13 @@ impl ContextMenuAction for TrackEntity {
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => false,
             Item::DataResult(view_id, instance_path) => {
-                let mut show = false;
-
-                if is_3d_view(ctx, view_id)
+                is_3d_view(ctx, view_id)
                     // We need to check if the focused entity is logged
                     // because entities without any data don't have bounding boxes or positions.
                     && ctx
                         .viewer_context
                         .recording()
                         .is_logged_entity(&instance_path.entity_path)
-                {
-                    show = true;
-                }
-                show
             }
         }
     }
@@ -57,7 +51,7 @@ impl ContextMenuAction for TrackEntity {
         eye_property.save_blueprint_component(
             ctx.viewer_context,
             &EyeControls3D::descriptor_tracking_entity(),
-            &re_types::components::EntityPath::from(&instance_path.entity_path),
+            &re_sdk_types::components::EntityPath::from(&instance_path.entity_path),
         );
     }
 }

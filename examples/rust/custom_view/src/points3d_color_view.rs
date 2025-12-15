@@ -4,7 +4,7 @@ use rerun::external::egui;
 use rerun::external::re_data_ui::{DataUi, item_ui};
 use rerun::external::re_entity_db::InstancePath;
 use rerun::external::re_log_types::EntityPath;
-use rerun::external::re_types::ViewClassIdentifier;
+use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
     HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
@@ -116,7 +116,7 @@ impl ViewClass for ColorCoordinatesView {
         if ctx
             .visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.iter().any(include_entity))
+            .is_some_and(|entities| entities.keys().any(include_entity))
         {
             ViewSpawnHeuristics::root()
         } else {
@@ -137,7 +137,7 @@ impl ViewClass for ColorCoordinatesView {
     ) -> SmallVisualizerSet {
         if visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             SmallVisualizerSet::from_slice(&[Points3DColorVisualizer::identifier()])
         } else {

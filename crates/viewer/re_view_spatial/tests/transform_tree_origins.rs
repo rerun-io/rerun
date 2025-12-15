@@ -1,9 +1,10 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_sdk_types::blueprint::archetypes::SpatialInformation;
+use re_sdk_types::blueprint::components::Enabled;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_types::blueprint::archetypes::SpatialInformation;
-use re_types::blueprint::components::Enabled;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -18,7 +19,7 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP(),
+                &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP(),
             )
         });
 
@@ -27,7 +28,7 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
+                &re_sdk_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
                     .with_radii([0.6])
                     .with_colors([0xFFC800FF]),
             )
@@ -37,7 +38,7 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
+                &re_sdk_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
                     .with_radii([0.4]) // Yes it's a big planet ;-)
                     .with_colors([0x2850C8FF]),
             )
@@ -49,14 +50,14 @@ pub fn test_transform_tree_origins() {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &re_types::archetypes::Boxes3D::from_half_sizes([[0.1, 0.1, 0.1]])
+                    &re_sdk_types::archetypes::Boxes3D::from_half_sizes([[0.1, 0.1, 0.1]])
                         .with_colors([0x6495EDFF]) // cornflower blue
-                        .with_fill_mode(re_types::components::FillMode::Solid),
+                        .with_fill_mode(re_sdk_types::components::FillMode::Solid),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
-                    &re_types::archetypes::InstancePoses3D::new().with_translations(
+                    &re_sdk_types::archetypes::InstancePoses3D::new().with_translations(
                         (0..6).flat_map(|x| {
                             (0..6).map(move |y| [x as f32 - 3.0, y as f32 - 3.0, 0.0])
                         }),
@@ -68,7 +69,7 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
+                &re_sdk_types::archetypes::Points3D::new([[0.0, 0.0, 0.0]])
                     .with_radii([0.15])
                     .with_colors([0xB4B4B4FF]),
             )
@@ -84,8 +85,8 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::LineStrips3D::new([
-                    re_types::components::LineStrip3D::from_iter(
+                &re_sdk_types::archetypes::LineStrips3D::new([
+                    re_sdk_types::components::LineStrip3D::from_iter(
                         circle
                             .iter()
                             .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),
@@ -98,8 +99,8 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::LineStrips3D::new([
-                    re_types::components::LineStrip3D::from_iter(
+                &re_sdk_types::archetypes::LineStrips3D::new([
+                    re_sdk_types::components::LineStrip3D::from_iter(
                         circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),
                     ),
                 ]),
@@ -114,11 +115,11 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Transform3D::from_translation_rotation(
+                &re_sdk_types::archetypes::Transform3D::from_translation_rotation(
                     [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],
-                    re_types::datatypes::RotationAxisAngle {
+                    re_sdk_types::datatypes::RotationAxisAngle {
                         axis: [1.0, 0.0, 0.0].into(),
-                        angle: re_types::datatypes::Angle::from_degrees(20.0),
+                        angle: re_sdk_types::datatypes::Angle::from_degrees(20.0),
                     },
                 ),
             )
@@ -128,19 +129,20 @@ pub fn test_transform_tree_origins() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Transform3D::from_translation_rotation(
+                &re_sdk_types::archetypes::Transform3D::from_translation_rotation(
                     [r_moon.cos() * d_moon, r_moon.sin() * d_moon, 0.0],
                     // This rotation only really has a visual effect when we put the origin to the moon. Which we're going to do!
-                    re_types::datatypes::RotationAxisAngle {
+                    re_sdk_types::datatypes::RotationAxisAngle {
                         axis: [0.0, 0.0, 1.0].into(),
-                        angle: re_types::datatypes::Angle::from_degrees(20.0),
+                        angle: re_sdk_types::datatypes::Angle::from_degrees(20.0),
                     },
                 )
-                .with_relation(re_types::components::TransformRelation::ChildFromParent),
+                .with_relation(re_sdk_types::components::TransformRelation::ChildFromParent),
             )
         });
     }
 
+    let mut snapshot_results = SnapshotResults::new();
     for origin in ["/sun", "/sun/planet", "/sun/planet/moon"] {
         let view_id = setup_blueprint(&mut test_context, origin);
         run_view_ui_and_save_snapshot(
@@ -148,6 +150,7 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
+            &mut snapshot_results,
         );
     }
 }
@@ -194,6 +197,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_3d(size)
@@ -206,4 +210,5 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.snapshot(name);
+    snapshot_results.extend_harness(&mut harness);
 }

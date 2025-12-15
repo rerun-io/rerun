@@ -3,8 +3,8 @@ use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::RenderContext;
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::archetypes::Mesh3D;
-use re_types::components::ImageFormat;
+use re_sdk_types::archetypes::Mesh3D;
+use re_sdk_types::components::ImageFormat;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,

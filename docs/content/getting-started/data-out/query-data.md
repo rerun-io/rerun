@@ -101,11 +101,10 @@ In order to add additional recordings to a dataset we use the `register` API.
 ```python
 # For OSS server you must register files local to your machine
 # To synchronously register a single recording
-dataset.register(Path("oss_demo.rrd").resolve().as_uri())
+dataset.register(Path("oss_demo.rrd").resolve().as_uri()).wait()
 # To asynchronously register many recordings
-timeout_seconds = 100
-tasks = dataset.register_batch([Path("oss_demo.rrd").resolve().as_uri()])
-tasks.wait(100)
+handle = dataset.register([Path("oss_demo.rrd").resolve().as_uri()])
+handle.wait(timeout_secs=100)
 ```
 
 ### Inspecting datasets

@@ -9,6 +9,16 @@ pub struct TimeSelection {
     pub range: AbsoluteTimeRange,
 }
 
+impl TimeSelection {
+    pub fn format(&self, timestamp_format: re_log_types::TimestampFormat) -> String {
+        format!(
+            "{}-{}",
+            TimeCell::new(self.timeline.typ(), self.range.min).format_compact(timestamp_format),
+            TimeCell::new(self.timeline.typ(), self.range.max).format_compact(timestamp_format),
+        )
+    }
+}
+
 impl From<TimeSelection> for AbsoluteTimeRangeF {
     fn from(range: TimeSelection) -> Self {
         range.range.into()

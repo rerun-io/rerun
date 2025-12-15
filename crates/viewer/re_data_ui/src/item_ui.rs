@@ -2,13 +2,12 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
-use egui::NumExt as _;
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
-use re_types::archetypes::RecordingInfo;
-use re_types::components::{Name, Timestamp};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -515,7 +514,7 @@ pub fn timeline_button_to(
     text: impl Into<egui::WidgetText>,
     timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.time_ctrl.timeline().name() == timeline_name;
+    let is_selected = ctx.time_ctrl.timeline_name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
@@ -710,17 +709,8 @@ pub fn entity_db_button_ui(
     }
     .unwrap_or_else(|| "<unknown>".to_owned());
 
-    let partial_postfix = if entity_db
-        .store_info()
-        .is_some_and(|store_info| store_info.is_partial)
-    {
-        " (partial)"
-    } else {
-        ""
-    };
-
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{recording_name}{partial_postfix} - {size}");
+    let title = format!("{app_id_prefix}{recording_name} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
@@ -764,7 +754,7 @@ pub fn entity_db_button_ui(
     }
 
     let response = list_item::list_item_scope(ui, "entity db button", |ui| {
-        let response = list_item
+        list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {
                 entity_db.data_ui(
@@ -774,27 +764,7 @@ pub fn entity_db_button_ui(
                     &ctx.current_query(),
                     entity_db,
                 );
-            });
-
-        if let Some(progress) = entity_db.chunk_index().progress()
-            && progress < 1.0
-        {
-            // Paint a progress bar:
-            let inner_r = 1.5;
-            let outer_r = 2.5;
-            let wrect = response.rect;
-            let outer_rect = wrect.with_min_y(wrect.bottom() - 2.0 * outer_r);
-            let inner_rect = outer_rect.shrink(outer_r - inner_r);
-            let progress_x = egui::lerp(inner_rect.x_range(), progress);
-            let progress_x = progress_x.at_least(inner_rect.left() + 3.0); // Always show a little bit of the progress bar
-            let filled_rect = inner_rect.with_max_x(progress_x);
-            ui.painter()
-                .rect_filled(outer_rect, outer_r, ui.tokens().panel_bg_color);
-            ui.painter()
-                .rect_filled(filled_rect, inner_r, ui.visuals().selection.bg_fill);
-        }
-
-        response
+            })
     })
     .inner;
 

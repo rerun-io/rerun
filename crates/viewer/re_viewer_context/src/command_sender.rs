@@ -1,3 +1,5 @@
+use std::panic::Location;
+
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
@@ -30,6 +32,9 @@ pub enum SystemCommand {
 
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
+
+    /// Open a modal to edit this redap server.
+    EditRedapServerModal(EditRedapServerModalCommand),
 
     ChangeDisplayMode(crate::DisplayMode),
 
@@ -149,6 +154,9 @@ pub enum SystemCommand {
         access_token: String,
         email: String,
     },
+
+    /// Logout from rerun cloud
+    Logout,
 }
 
 impl SystemCommand {
@@ -212,22 +220,26 @@ pub trait SystemCommandSender {
 
 // ----------------------------------------------------------------------------
 
+pub type StaticLocation = &'static Location<'static>;
+
 /// Sender that queues up the execution of commands.
 #[derive(Clone)]
 pub struct CommandSender {
-    system_sender: std::sync::mpsc::Sender<SystemCommand>,
+    system_sender: std::sync::mpsc::Sender<(StaticLocation, SystemCommand)>,
     ui_sender: std::sync::mpsc::Sender<UICommand>,
 }
 
 /// Receiver for the [`CommandSender`]
 pub struct CommandReceiver {
-    system_receiver: std::sync::mpsc::Receiver<SystemCommand>,
+    system_receiver: std::sync::mpsc::Receiver<(StaticLocation, SystemCommand)>,
     ui_receiver: std::sync::mpsc::Receiver<UICommand>,
 }
 
 impl CommandReceiver {
     /// Receive a [`SystemCommand`] to be executed if any is queued.
-    pub fn recv_system(&self) -> Option<SystemCommand> {
+    ///
+    /// Includes where it was sent from.
+    pub fn recv_system(&self) -> Option<(StaticLocation, SystemCommand)> {
         // The only way this can fail (other than being empty)
         // is if the sender has been dropped.
         self.system_receiver.try_recv().ok()
@@ -261,9 +273,10 @@ pub fn command_channel() -> (CommandSender, CommandReceiver) {
 
 impl SystemCommandSender for CommandSender {
     /// Send a command to be executed.
+    #[track_caller]
     fn send_system(&self, command: SystemCommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.system_sender.send(command).ok();
+        self.system_sender.send((Location::caller(), command)).ok();
     }
 }
 
@@ -272,5 +285,32 @@ impl UICommandSender for CommandSender {
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
         self.ui_sender.send(command).ok();
+    }
+}
+
+/// Command to open the edit redap server modal.
+///
+/// This exists as a separate struct to make it convenient to funnel it through the redap browser
+/// command system.
+pub struct EditRedapServerModalCommand {
+    /// Which server should be edited?
+    pub origin: re_uri::Origin,
+
+    /// Provide a custom url to open when the server was successfully edited.
+    ///
+    /// By default, the server dataset table is opened.
+    pub open_on_success: Option<String>,
+
+    /// Optional custom title for the modal.
+    pub title: Option<String>,
+}
+
+impl EditRedapServerModalCommand {
+    pub fn new(origin: re_uri::Origin) -> Self {
+        Self {
+            origin,
+            open_on_success: None,
+            title: None,
+        }
     }
 }

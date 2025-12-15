@@ -66,7 +66,8 @@ pub use self::cache::{
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
-    CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
+    CommandReceiver, CommandSender, EditRedapServerModalCommand, SystemCommand,
+    SystemCommandSender, command_channel,
 };
 pub use self::component_fallbacks::{
     ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for,
@@ -106,6 +107,7 @@ pub use self::time_control::{
 };
 pub use self::typed_entity_collections::{
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
+    VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{

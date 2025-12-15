@@ -11,8 +11,8 @@ use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types::ComponentDescriptor;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
 use re_viewer_context::{TimeControlCommand, ViewId, ViewerContext};
 
@@ -340,7 +340,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             false // Can't select "RowId" as a concept
                         }
                         ColumnDescriptor::Time(descr) => {
-                            &descr.timeline() == self.ctx.time_ctrl.timeline()
+                            descr.timeline().name() == self.ctx.time_ctrl.timeline_name()
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => self
                             .ctx

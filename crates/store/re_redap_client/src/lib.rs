@@ -4,11 +4,10 @@ mod connection_client;
 mod connection_registry;
 mod grpc;
 
-use connection_registry::ClientCredentialsError;
-
 pub use self::connection_client::{GenericConnectionClient, SegmentQueryParams};
 pub use self::connection_registry::{
-    ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, Credentials,
+    ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    Credentials,
 };
 pub use self::grpc::{
     RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,
@@ -92,11 +91,15 @@ pub enum ApiErrorKind {
     AlreadyExists,
     PermissionDenied,
     Unauthenticated,
+
+    /// The gRPC endpoint has not been implemented
+    Unimplemented,
     Connection,
     Timeout,
     Internal,
     InvalidArguments,
     Serialization,
+    InvalidServer,
 }
 
 impl From<tonic::Code> for ApiErrorKind {
@@ -106,6 +109,7 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::AlreadyExists => Self::AlreadyExists,
             tonic::Code::PermissionDenied => Self::PermissionDenied,
             tonic::Code::Unauthenticated => Self::Unauthenticated,
+            tonic::Code::Unimplemented => Self::Unimplemented,
             tonic::Code::Unavailable => Self::Connection,
             tonic::Code::InvalidArgument => Self::InvalidArguments,
             tonic::Code::DeadlineExceeded => Self::Timeout,
@@ -121,11 +125,13 @@ impl std::fmt::Display for ApiErrorKind {
             Self::AlreadyExists => write!(f, "AlreadyExists"),
             Self::PermissionDenied => write!(f, "PermissionDenied"),
             Self::Unauthenticated => write!(f, "Unauthenticated"),
+            Self::Unimplemented => write!(f, "Unimplemented"),
             Self::Connection => write!(f, "Connection"),
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),
             Self::Serialization => write!(f, "Serialization"),
             Self::Timeout => write!(f, "Timeout"),
+            Self::InvalidServer => write!(f, "InvalidServer"),
         }
     }
 }
@@ -183,11 +189,28 @@ impl ApiError {
         }
     }
 
+    pub fn connection_simple(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: None,
+        }
+    }
+
     pub fn credentials(err: ClientCredentialsError, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Unauthenticated,
             source: Some(Box::new(err)),
+        }
+    }
+
+    #[expect(clippy::needless_pass_by_value)]
+    pub fn invalid_server(origin: re_uri::Origin) -> Self {
+        Self {
+            message: format!("{origin} is not a valid Rerun server"),
+            kind: ApiErrorKind::InvalidServer,
+            source: None,
         }
     }
 

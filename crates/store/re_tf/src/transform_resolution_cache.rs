@@ -11,7 +11,7 @@ use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
-use re_types::{ComponentIdentifier, archetypes, components};
+use re_sdk_types::{ComponentIdentifier, archetypes, components};
 
 use crate::TransformFrameIdHash;
 use crate::frame_id_registry::FrameIdRegistry;
@@ -1041,10 +1041,10 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
+                let poses = per_timeline
+                    .get_or_create_pose_transforms_temporal(entity_path, static_timeline);
                 for (time, _) in chunk.iter_indices(timeline) {
-                    per_timeline
-                        .get_or_create_pose_transforms_temporal(entity_path, static_timeline)
-                        .invalidate_at(time);
+                    poses.invalidate_at(time);
                 }
             }
             if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
@@ -1114,16 +1114,22 @@ impl TransformResolutionCache {
                 );
                 frame_transforms.invalidate_transform_at(TimeInt::STATIC);
 
-                for (timeline, per_timeline) in &mut self.per_timeline {
-                    per_timeline
-                        .get_or_create_tree_transforms_temporal(
-                            entity_path,
-                            frame,
-                            *timeline,
-                            static_timeline,
-                            &self.frame_id_registry,
-                        )
-                        .invalidate_transform_at(TimeInt::STATIC);
+                #[cfg_attr(not(debug_assertions), expect(clippy::for_kv_map))]
+                for (_timeline, per_timeline) in &mut self.per_timeline {
+                    // Don't call `get_or_create_tree_transforms_temporal` here since we may not yet know a temporal entity that this is associated with.
+                    // Also, this may be the first time we associate with a static entity instead which `get_or_create_tree_transforms_static` takes care of.
+                    let transforms = per_timeline.get_or_create_tree_transforms_static(
+                        entity_path,
+                        frame,
+                        &self.frame_id_registry,
+                    );
+                    transforms.invalidate_transform_at(TimeInt::STATIC);
+
+                    // Entry might have been newly created. Have to ensure that its associated with the right timeline.
+                    #[cfg(debug_assertions)]
+                    {
+                        transforms.timeline = Some(*_timeline);
+                    }
                 }
             }
         }
@@ -1153,16 +1159,22 @@ impl TransformResolutionCache {
                 );
                 frame_transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
 
-                for (timeline, per_timeline) in &mut self.per_timeline {
-                    per_timeline
-                        .get_or_create_tree_transforms_temporal(
-                            entity_path,
-                            frame,
-                            *timeline,
-                            static_timeline,
-                            &self.frame_id_registry,
-                        )
-                        .invalidate_pinhole_projection_at(TimeInt::STATIC);
+                #[cfg_attr(not(debug_assertions), expect(clippy::for_kv_map))]
+                for (_timeline, per_timeline) in &mut self.per_timeline {
+                    // Don't call `get_or_create_tree_transforms_temporal` here since we may not yet know a temporal entity that this is associated with.
+                    // Also, this may be the first time we associate with a static entity instead which `get_or_create_tree_transforms_static` takes care of.
+                    let transforms = per_timeline.get_or_create_tree_transforms_static(
+                        entity_path,
+                        frame,
+                        &self.frame_id_registry,
+                    );
+                    transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
+
+                    // Entry might have been newly created. Have to ensure that its associated with the right timeline.
+                    #[cfg(debug_assertions)]
+                    {
+                        transforms.timeline = Some(*_timeline);
+                    }
                 }
             }
         }
@@ -1219,9 +1231,8 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
-                for (time, _) in chunk.iter_indices(timeline) {
-                    if let Some(poses) = per_timeline.per_entity_poses.get_mut(&entity_path.hash())
-                    {
+                if let Some(poses) = per_timeline.per_entity_poses.get_mut(&entity_path.hash()) {
+                    for (time, _) in chunk.iter_indices(timeline) {
                         poses.poses_per_time.get_mut().remove(&time);
                     }
                 }
@@ -1312,7 +1323,7 @@ mod tests {
         StoreId, StoreInfo, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
-    use re_types::{ChunkId, archetypes};
+    use re_sdk_types::{ChunkId, archetypes};
 
     use super::*;
     use crate::convert;
@@ -1917,7 +1928,7 @@ mod tests {
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
                 transform: DAffine3::from_quat(
-                    convert::quaternion_to_dquat(re_types::datatypes::Quaternion::from(
+                    convert::quaternion_to_dquat(re_sdk_types::datatypes::Quaternion::from(
                         glam::Quat::from_rotation_x(1.0)
                     ))
                     .unwrap()

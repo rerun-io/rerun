@@ -11,15 +11,15 @@ use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType};
-use re_types::archetypes::VideoStream;
-use re_types::components;
+use re_sdk_types::archetypes::VideoStream;
+use re_sdk_types::components;
 use re_video::{DecodeSettings, StableIndexDeque};
 
 use crate::{Cache, CacheMemoryReport};
 
 /// A buffer of multiple video sample data from the datastore.
 ///
-/// It's essentially a pointer into a column of [`re_types::components::VideoSample`]s inside a Rerun chunk.
+/// It's essentially a pointer into a column of [`re_sdk_types::components::VideoSample`]s inside a Rerun chunk.
 struct SampleBuffer {
     buffer: ArrowBuffer,
     source_chunk_id: ChunkId,
@@ -739,8 +739,8 @@ mod tests {
     use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
     use re_chunk_store::ChunkStoreDiff;
     use re_log_types::StoreId;
-    use re_types::archetypes::VideoStream;
-    use re_types::components::VideoCodec;
+    use re_sdk_types::archetypes::VideoStream;
+    use re_sdk_types::components::VideoCodec;
     use re_video::{VideoDataDescription, VideoEncodingDetails};
 
     use super::*;

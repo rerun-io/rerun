@@ -2,16 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::datatypes::Schema;
-use arrow::ffi_stream::ArrowArrayStreamReader;
-use arrow::pyarrow::{FromPyArrow as _, PyArrowType};
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
-use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
+use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
-use crate::catalog::table_entry::PyTableInsertMode;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
@@ -110,14 +108,22 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all dataset entries in the catalog.
-    fn dataset_entries(
+    fn datasets(
         self_: Py<Self>,
         py: Python<'_>,
+        include_hidden: bool,
     ) -> PyResult<Vec<Py<PyDatasetEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
-        let entry_details =
+        let mut entry_details =
             connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
+
+        if include_hidden {
+            entry_details.extend(connection.find_entries(
+                py,
+                EntryFilter::new().with_entry_kind(EntryKind::BlueprintDataset),
+            )?);
+        }
 
         entry_details
             .into_iter()
@@ -132,7 +138,11 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all table entries in the catalog.
-    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
+    fn tables(
+        self_: Py<Self>,
+        py: Python<'_>,
+        include_hidden: bool,
+    ) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -140,6 +150,7 @@ impl PyCatalogClientInternal {
 
         entry_details
             .into_iter()
+            .filter(|details| !details.name.starts_with("__") || include_hidden)
             .map(|details| {
                 let table_entry = connection.read_table(py, details.id)?;
                 let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
@@ -151,45 +162,8 @@ impl PyCatalogClientInternal {
 
     // ---
 
-    fn entry_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details = connection.find_entries(py, EntryFilter::new())?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn dataset_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn table_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    // ---
-
     /// Get a dataset by name or id.
-    fn get_dataset_entry(
+    fn get_dataset(
         self_: Py<Self>,
         id: Py<PyEntryId>,
         py: Python<'_>,
@@ -206,7 +180,7 @@ impl PyCatalogClientInternal {
     /// Get a table by name or id.
     ///
     /// Note: the entry table is named `__entries`.
-    fn get_table_entry(
+    fn get_table(
         self_: Py<Self>,
         py: Python<'_>,
         id: Py<PyEntryId>,
@@ -259,7 +233,7 @@ impl PyCatalogClientInternal {
         )
     }
 
-    fn create_table_entry(
+    fn create_table(
         self_: Py<Self>,
         py: Python<'_>,
         name: String,
@@ -281,22 +255,6 @@ impl PyCatalogClientInternal {
             py,
             PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
         )
-    }
-
-    fn write_table(
-        self_: Py<Self>,
-        py: Python<'_>,
-        name: String,
-        batches: &Bound<'_, PyAny>,
-        insert_mode: PyTableInsertMode,
-    ) -> PyResult<()> {
-        let connection = self_.borrow_mut(py).connection.clone();
-
-        let stream = ArrowArrayStreamReader::from_pyarrow_bound(batches)?;
-
-        connection.write_table(py, name, stream, insert_mode)?;
-
-        Ok(())
     }
 
     // ---

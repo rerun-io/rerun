@@ -1,8 +1,8 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -22,7 +22,7 @@ use crate::visualizers::register_2d_spatial_visualizers;
 #[derive(Default)]
 pub struct SpatialView2D;
 
-type ViewType = re_types::blueprint::views::Spatial2DView;
+type ViewType = re_sdk_types::blueprint::views::Spatial2DView;
 
 impl ViewClass for SpatialView2D {
     fn identifier() -> ViewClassIdentifier {
@@ -46,7 +46,7 @@ impl ViewClass for SpatialView2D {
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_fallback_provider(Background::descriptor_kind().component, |_| {
-            re_types::blueprint::components::BackgroundKind::SolidColor
+            re_sdk_types::blueprint::components::BackgroundKind::SolidColor
         });
 
         fn valid_bound(rect: &egui::Rect) -> bool {
@@ -57,7 +57,7 @@ impl ViewClass for SpatialView2D {
             VisualBounds2D::descriptor_range().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-                    return re_types::blueprint::components::VisualBounds2D::default();
+                    return re_sdk_types::blueprint::components::VisualBounds2D::default();
                 };
 
                 // TODO(andreas): It makes sense that we query the bounding box from the view_state,
@@ -79,7 +79,7 @@ impl ViewClass for SpatialView2D {
                     default_scene_rect.into()
                 } else {
                     // Nothing in scene, probably.
-                    re_types::blueprint::components::VisualBounds2D::default()
+                    re_sdk_types::blueprint::components::VisualBounds2D::default()
                 }
             },
         );

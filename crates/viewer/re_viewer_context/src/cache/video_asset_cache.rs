@@ -9,8 +9,8 @@ use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
-use re_types::ComponentIdentifier;
-use re_types::components::MediaType;
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::MediaType;
 use re_video::DecodeSettings;
 
 use crate::cache::filter_blob_removed_events;
@@ -54,7 +54,7 @@ impl VideoAssetCache {
         debug_name: String,
         blob_row_id: RowId,
         blob_component: ComponentIdentifier,
-        video_buffer: &re_types::datatypes::Blob,
+        video_buffer: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {

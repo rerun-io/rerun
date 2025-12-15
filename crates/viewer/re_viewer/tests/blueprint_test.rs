@@ -17,7 +17,7 @@ fn log_test_data_and_register_views(test_context: &mut TestContext, scalars_coun
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 0)],
-            &re_types::archetypes::Scalars::single(scalars_count as f32),
+            &re_sdk_types::archetypes::Scalars::single(scalars_count as f32),
         )
     });
 
@@ -27,7 +27,7 @@ fn log_test_data_and_register_views(test_context: &mut TestContext, scalars_coun
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::BarChart::new(vector),
+            &re_sdk_types::archetypes::BarChart::new(vector),
         )
     });
 }
@@ -40,7 +40,8 @@ fn setup_viewport(test_context: &mut TestContext) {
 
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         // Set the color override for the bar chart view.
-        let color_override = re_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
+        let color_override =
+            re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
         let override_path = re_viewport_blueprint::ViewContents::override_path_for_entity(
             view_1.id,
             &re_chunk::EntityPath::from("vector"),
@@ -77,7 +78,11 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
     test_context.setup_viewport_blueprint(|_ctx, _blueprint| {});
 }
 
-fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
+fn take_snapshot(
+    test_context: &TestContext,
+    snapshot_name: &str,
+    snapshot_results: &mut egui_kittest::SnapshotResults,
+) {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
@@ -94,6 +99,7 @@ fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
         });
     harness.run();
     harness.snapshot(snapshot_name);
+    snapshot_results.extend_harness(&mut harness);
 }
 
 #[test]
@@ -118,11 +124,17 @@ fn test_blueprint_change_and_restore() {
     });
 
     load_blueprint_from_file(&mut test_context, rbl_path);
-    take_snapshot(&test_context, "blueprint_change_and_restore");
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
+    take_snapshot(
+        &test_context,
+        "blueprint_change_and_restore",
+        &mut snapshot_results,
+    );
 }
 
 #[test]
 fn test_blueprint_load_into_new_context() {
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
     let mut test_context = TestContext::new();
     log_test_data_and_register_views(&mut test_context, 10);
 
@@ -131,11 +143,19 @@ fn test_blueprint_load_into_new_context() {
 
     setup_viewport(&mut test_context);
     save_blueprint_to_file(&test_context, rbl_path);
-    take_snapshot(&test_context, "blueprint_load_into_new_context_1");
+    take_snapshot(
+        &test_context,
+        "blueprint_load_into_new_context_1",
+        &mut snapshot_results,
+    );
 
     let mut test_context_2 = TestContext::new();
     log_test_data_and_register_views(&mut test_context_2, 20);
 
     load_blueprint_from_file(&mut test_context_2, rbl_path);
-    take_snapshot(&test_context_2, "blueprint_load_into_new_context_2");
+    take_snapshot(
+        &test_context_2,
+        "blueprint_load_into_new_context_2",
+        &mut snapshot_results,
+    );
 }

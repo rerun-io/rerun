@@ -17,8 +17,8 @@ use re_ros_msg::MessageSchema;
 use re_ros_msg::deserialize::primitive_array::PrimitiveArray;
 use re_ros_msg::deserialize::{MapResolver, MessageSeed, Value};
 use re_ros_msg::message_spec::{ArraySize, BuiltInType, ComplexType, MessageSpecification, Type};
-use re_types::ComponentDescriptor;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use serde::de::DeserializeSeed as _;
 
 use crate::parsers::{MessageParser, ParserContext, dds};

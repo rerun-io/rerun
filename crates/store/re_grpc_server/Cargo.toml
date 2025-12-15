@@ -31,7 +31,7 @@ re_memory.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_uri.workspace = true
 
 # External

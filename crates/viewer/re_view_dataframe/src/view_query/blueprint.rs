@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{AbsoluteTimeRange, Timeline, TimelineName};
+use re_sdk_types::blueprint::archetypes::DataframeQuery;
+use re_sdk_types::blueprint::{components, datatypes};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
-use re_types::blueprint::archetypes::DataframeQuery;
-use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 use crate::dataframe_ui::HideColumnAction;
@@ -29,7 +29,7 @@ impl Query {
         if let Some(timeline_name) = timeline_name {
             Ok(timeline_name.into())
         } else {
-            let timeline_name = *ctx.time_ctrl.timeline().name();
+            let timeline_name = *ctx.time_ctrl.timeline_name();
             self.save_timeline_name(ctx, &timeline_name);
 
             Ok(timeline_name)

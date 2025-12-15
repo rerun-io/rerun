@@ -1,12 +1,12 @@
 //! Test child-parent transform relations all logged at the same time stamp.
 
 use re_log_types::{TimePoint, Timeline};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::Position3D;
+use re_sdk_types::datatypes::Angle;
+use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::components::Position3D;
-use re_types::datatypes::Angle;
-use re_types::{archetypes, components};
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use arrow::ffi_stream::ArrowArrayStreamReader;
+use arrow::pyarrow::FromPyArrow as _;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::PyRuntimeError;
@@ -71,8 +73,7 @@ impl PyTableEntryInternal {
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
-    // add `ctx=None, name=None`
-    pub fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+    pub fn reader(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let client = self_.client.borrow(py);
@@ -94,7 +95,7 @@ impl PyTableEntryInternal {
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyAny>> {
-        let df = Self::df(self_)?;
+        let df = Self::reader(self_)?;
 
         py.import("pyarrow")?
             .getattr("RecordBatchReader")?
@@ -109,6 +110,26 @@ impl PyTableEntryInternal {
 
     pub fn __str__(&self) -> String {
         format!("TableEntry(url='{}')", self.url.clone().unwrap_or_default())
+    }
+
+    /// Write record batches to the table.
+    #[instrument(skip_all)]
+    fn write_batches(
+        self_: Py<Self>,
+        py: Python<'_>,
+        batches: &Bound<'_, PyAny>,
+        insert_mode: PyTableInsertMode,
+    ) -> PyResult<()> {
+        let entry_id = self_.borrow(py).entry_details.id;
+        let connection = self_
+            .borrow_mut(py)
+            .client
+            .borrow_mut(py)
+            .connection()
+            .clone();
+        let stream = ArrowArrayStreamReader::from_pyarrow_bound(batches)?;
+        connection.write_table(py, entry_id, stream, insert_mode)?;
+        Ok(())
     }
 }
 

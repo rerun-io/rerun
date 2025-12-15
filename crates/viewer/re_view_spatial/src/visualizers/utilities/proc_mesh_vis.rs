@@ -2,9 +2,9 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{PickingLayerInstanceId, RenderContext};
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::{self, FillMode};
 use re_tf::convert;
-use re_types::ComponentIdentifier;
-use re_types::components::{self, FillMode};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 #[cfg(doc)]
 use re_viewer_context::VisualizerSystem;
@@ -56,7 +56,7 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
 
     pub line_radii: &'a [components::Radius],
     pub colors: &'a [components::Color],
-    pub labels: &'a [re_types::ArrowString],
+    pub labels: &'a [re_sdk_types::ArrowString],
     pub show_labels: Option<components::ShowLabels>,
     pub class_ids: &'a [components::ClassId],
 }

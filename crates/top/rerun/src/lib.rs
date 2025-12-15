@@ -173,9 +173,9 @@ pub mod external {
     #[cfg(any(feature = "sdk", feature = "server"))]
     pub use re_sdk::external::*;
     #[cfg(feature = "sdk")]
-    pub use re_types;
+    pub use re_sdk_types;
     #[cfg(feature = "sdk")]
-    pub use re_types::external::*;
+    pub use re_sdk_types::external::*;
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
     #[cfg(feature = "native_viewer")]

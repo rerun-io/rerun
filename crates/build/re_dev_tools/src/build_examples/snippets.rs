@@ -153,9 +153,9 @@ fn collect_snippets_recursively(
             .map(|value| value.replace("$config_dir", snippet_root_path.parent().unwrap().as_str()))
             .collect();
         snippets.push(Snippet {
-            extra_args,
-            name,
             path,
+            name,
+            extra_args,
         });
     }
 

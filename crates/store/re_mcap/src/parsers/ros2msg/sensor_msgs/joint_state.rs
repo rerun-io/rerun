@@ -1,6 +1,6 @@
 use re_chunk::external::arrow::array::{Float64Builder, ListBuilder, StringBuilder};
 use re_chunk::{Chunk, ChunkId};
-use re_types::archetypes::{Scalars, SeriesLines};
+use re_sdk_types::archetypes::{Scalars, SeriesLines};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;

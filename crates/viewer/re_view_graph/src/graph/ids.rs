@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, EntityPathHash};
-use re_types::components;
+use re_sdk_types::components;
 
 use super::GraphNodeHash;
 

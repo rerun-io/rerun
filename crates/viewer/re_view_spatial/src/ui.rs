@@ -3,9 +3,9 @@ use egui::text::TextWrapping;
 use egui::{NumExt as _, WidgetText};
 use macaw::BoundingBox;
 use re_format::format_f32;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::blueprint::components::VisualBounds2D;
-use re_types::image::ImageKind;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,

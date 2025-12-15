@@ -50,7 +50,7 @@ TODO(ab)
 ## Code generation
 
 Keeping the various SDKs in sync with the Rerun Viewer requires automation to be tractable.
-The Python SDK is no exception, and large parts of its implementation is generated using the `re_types` and `re_types_builder` crates, based on the object definitions found in `crates/store/re_types/definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
+The Python SDK is no exception, and large parts of its implementation is generated using the `re_sdk_types` and `re_types_builder` crates, based on the object definitions found in `crates/store/re_sdk_types/definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
 
 #### Archetype
 

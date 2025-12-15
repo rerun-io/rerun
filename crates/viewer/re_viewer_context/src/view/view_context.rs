@@ -1,7 +1,7 @@
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
+use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use super::VisualizerCollection;
 use crate::blueprint_helpers::BlueprintContext as _;

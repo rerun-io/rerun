@@ -111,11 +111,12 @@ impl CommandPalette {
                 .lock_focus(true),
         );
         text_response.request_focus();
-        let mut scroll_to_selected_alternative = false;
-        if text_response.changed() {
+        let scroll_to_selected_alternative = if text_response.changed() {
             self.selected_alternative = 0;
-            scroll_to_selected_alternative = true;
-        }
+            true
+        } else {
+            false
+        };
 
         let selected_command = egui::ScrollArea::vertical()
             .auto_shrink([false, true])

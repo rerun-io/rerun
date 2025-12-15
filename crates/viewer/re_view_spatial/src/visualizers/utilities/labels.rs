@@ -75,18 +75,18 @@ pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     ///
     /// The number of per-instance labels actually drawn is the minimum of the lengths of
     /// `instance_positions` and `labels`.
-    pub labels: &'a [re_types::ArrowString],
+    pub labels: &'a [re_sdk_types::ArrowString],
 
     /// Colors from the batch to apply to the labels.
     ///
     /// Length 1 is treated as a color for the whole batch.
     pub colors: &'a [egui::Color32],
 
-    /// The [`re_types::components::ShowLabels`] component value.
+    /// The [`re_sdk_types::components::ShowLabels`] component value.
     ///
     /// If no value is available from the data, use the fallback
     /// registry to obtain it.
-    pub show_labels: re_types::components::ShowLabels,
+    pub show_labels: re_sdk_types::components::ShowLabels,
 
     pub annotation_infos: &'a ResolvedAnnotationInfos,
 }

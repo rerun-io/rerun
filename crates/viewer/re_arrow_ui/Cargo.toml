@@ -27,7 +27,7 @@ jiff.workspace = true
 egui.workspace = true
 
 [dev-dependencies]
-re_types.workspace = true
+re_sdk_types.workspace = true
 
 egui_kittest.workspace = true
 insta.workspace = true

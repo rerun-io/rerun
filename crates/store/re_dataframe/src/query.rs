@@ -1324,8 +1324,8 @@ mod tests {
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{EntityPath, Timeline, build_frame_nr, build_log_time};
     use re_query::StorageEngine;
+    use re_sdk_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_sorbet::ComponentColumnSelector;
-    use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_types_core::components;
 
     use super::*;
@@ -2462,9 +2462,8 @@ mod tests {
                 let mut cx = std::task::Context::from_waker(
                     // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
                     unsafe {
-                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
-                            &RAW_WAKER_NOOP,
-                        )
+                        &*std::ptr::from_ref::<std::task::RawWaker>(&RAW_WAKER_NOOP)
+                            .cast::<std::task::Waker>()
                     },
                 );
 

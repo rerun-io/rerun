@@ -2,20 +2,22 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use arrow::error::ArrowError;
-use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_types::{
-    AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
-    LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
+    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource,
 };
-use re_protos::cloud::v1alpha1::ext::Query;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_uri::{Origin, TimeSelection};
+use re_uri::Origin;
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
+use crate::{
+    ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
+    SegmentQueryParams,
+};
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> ApiResult<tonic_web_wasm_client::Client> {
@@ -320,7 +322,6 @@ pub async fn stream_blueprint_and_segment_from_server(
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
-            is_partial: false,
         };
 
         stream_segment_from_server(
@@ -329,7 +330,6 @@ pub async fn stream_blueprint_and_segment_from_server(
             &tx,
             blueprint_dataset,
             blueprint_segment,
-            None,
             re_uri::Fragment::default(),
         )
         .await?;
@@ -356,7 +356,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         origin: _,
         dataset_id,
         segment_id,
-        time_range,
         fragment,
     } = uri;
 
@@ -365,7 +364,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
-        is_partial: time_range.is_some(),
     };
 
     stream_segment_from_server(
@@ -374,7 +372,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         &tx,
         dataset_id.into(),
         segment_id.into(),
-        time_range,
         fragment,
     )
     .await?;
@@ -389,7 +386,6 @@ async fn stream_segment_from_server(
     tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
     segment_id: SegmentId,
-    time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
 ) -> ApiResult {
     let store_id = store_info.store_id.clone();
@@ -411,41 +407,20 @@ async fn stream_segment_from_server(
     }
 
     // Send UI commands for recording (as opposed to blueprint) stores.
-    if store_id.is_recording() {
-        let valid_range_msg = if let Some(time_range) = time_range {
-            DataSourceUiCommand::AddValidTimeRange {
-                store_id: store_id.clone(),
-                timeline: Some(*time_range.timeline.name()),
-                time_range: time_range.into(),
-            }
-        } else {
-            DataSourceUiCommand::AddValidTimeRange {
-                store_id: store_id.clone(),
-                timeline: None,
-                time_range: AbsoluteTimeRange::EVERYTHING,
-            }
-        };
-
-        if tx.send(valid_range_msg.into()).is_err() {
+    #[expect(clippy::collapsible_if)]
+    if store_id.is_recording() && !fragment.is_empty() {
+        if tx
+            .send(
+                DataSourceUiCommand::SetUrlFragment {
+                    store_id: store_id.clone(),
+                    fragment: fragment.to_string(),
+                }
+                .into(),
+            )
+            .is_err()
+        {
             re_log::debug!("Receiver disconnected");
             return Ok(());
-        }
-
-        #[expect(clippy::collapsible_if)]
-        if !fragment.is_empty() {
-            if tx
-                .send(
-                    DataSourceUiCommand::SetUrlFragment {
-                        store_id: store_id.clone(),
-                        fragment: fragment.to_string(),
-                    }
-                    .into(),
-                )
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(());
-            }
         }
     }
 
@@ -454,23 +429,42 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
+    let manifest_result = client
+        .get_rrd_manifest(dataset_id, segment_id.clone())
+        .await;
+    match manifest_result {
+        Ok(rrd_manifest) => {
+            if tx
+                .send(DataSourceMessage::RrdManifest(
+                    store_id.clone(),
+                    rrd_manifest.into(),
+                ))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(()); // cancelled
+            }
+        }
+        Err(err) => {
+            if err.kind == ApiErrorKind::Unimplemented {
+                // TODO(RR-3110): implement rrd manifest on cloud
+            } else {
+                re_log::warn!("Failed to load RRD manifest: {err}");
+            }
+        }
+    }
+
     // Retrieve the chunk IDs we're interested in:
-    let chunk_index_messages = client
+    // TODO(RR-3110): use the rrd manifest instead
+    let batches = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: time_range.map(|time_range| {
-                Query::latest_at_range(time_range.timeline.name(), time_range.range).into()
-            }),
+            query: None,
         })
         .await?;
-
-    let batches = chunk_index_messages
-        .iter()
-        .map(|m| m.record_batch().clone())
-        .collect_vec();
 
     if batches.is_empty() {
         re_log::info!("Empty recording"); // We likely won't get here even on empty recording
@@ -483,16 +477,6 @@ async fn stream_segment_from_server(
     // Prioritize the chunks:
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
-
-    for msg in chunk_index_messages {
-        if tx
-            .send(DataSourceMessage::ChunkIndexMessage(store_id.clone(), msg))
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok(()); // cancelled
-        }
-    }
 
     // Fetch the chunks base on the ids:
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;

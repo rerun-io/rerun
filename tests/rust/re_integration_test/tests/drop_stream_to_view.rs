@@ -7,7 +7,7 @@ use std::f64::consts::TAU;
 use egui::Modifiers;
 use re_integration_test::HarnessExt as _;
 use re_sdk::log::RowId;
-use re_viewer::external::re_types;
+use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
@@ -23,14 +23,14 @@ fn make_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
             builder.with_archetype(
                 RowId::new(),
                 [(timeline, i)],
-                &re_types::archetypes::Scalars::single((i as f64 / 100.0 * TAU).sin()),
+                &re_sdk_types::archetypes::Scalars::single((i as f64 / 100.0 * TAU).sin()),
             )
         });
         harness.log_entity("line_curve", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 [(timeline, i)],
-                &re_types::archetypes::Scalars::single(i as f64 / 100.0),
+                &re_sdk_types::archetypes::Scalars::single(i as f64 / 100.0),
             )
         });
     }

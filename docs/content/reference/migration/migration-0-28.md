@@ -76,6 +76,22 @@ Naturally, if any update to a transform always changes the same components, this
 the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
 on send and query!
 
+## URDF loader: sending transform updates now requires `parent_frame` and `child_frame` fields to be set
+
+Previous versions of the built-in [URDF](https://en.wikipedia.org/wiki/URDF) data-loader in Rerun required you to send transform updates with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
+Depending on the complexity of your robot model, this could quickly lead to long entity paths.
+E.g. when you wanted to update a joint deeper in your model hierarchy.
+
+In 0.28, this is now dropped in favor of transforms with _named_ frame IDs (`parent_frame`, `child_frame`).
+This is more in line with the TF2 system in ROS and allows you to send all transform updates on one single entity (e.g. a `transforms` entity).
+
+In particular, this results in two changes compared after you load an `URDF` model into Rerun compared to previous releases:
+
+1. To update a joint with a `Transform3D`, the `parent_frame` and `child_frame` fields need to be set (analogous to how the joint is specified in the `URDF` file).
+2. The transformation must have both rotation and translation (again, analogous to the `URDF`). Updating only the rotation is no longer supported.
+
+For more details about loading & updating `URDF` models, we added a "Loading URDF models" page to our documentation in this release.
+
 ## Python SDK: "partition" renamed to "segment" in catalog APIs
 
 <!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date -->
@@ -83,22 +99,22 @@ on send and query!
 In the `rerun.catalog` module, all APIs using "partition" terminology have been renamed to use "segment" instead.
 The old APIs are deprecated and will be removed in a future release.
 
-| Old API | New API |
-|---------|---------|
-| `DatasetEntry.partition_ids()` | `DatasetEntry.segment_ids()` |
-| `DatasetEntry.partition_table()` | `DatasetEntry.segment_table()` |
-| `DatasetEntry.partition_url()` | `DatasetEntry.segment_url()` |
-| `DatasetEntry.download_partition()` | `DatasetEntry.download_segment()` |
-| `DatasetEntry.default_blueprint_partition_id()` | `DatasetEntry.default_blueprint_segment_id()` |
-| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint_segment_id()` |
-| `DataframeQueryView.filter_partition_id()` | `DataframeQueryView.filter_segment_id()` |
+| Old API                                             | New API                                           |
+|-----------------------------------------------------|---------------------------------------------------|
+| `DatasetEntry.partition_ids()`                      | `DatasetEntry.segment_ids()`                      |
+| `DatasetEntry.partition_table()`                    | `DatasetEntry.segment_table()`                    |
+| `DatasetEntry.partition_url()`                      | `DatasetEntry.segment_url()`                      |
+| `DatasetEntry.download_partition()`                 | `DatasetEntry.download_segment()`                 |
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`                |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()`            |
+| `DataframeQueryView.filter_partition_id()`          | `DataframeQueryView.filter_segment_id()`          |
 
 The DataFusion utility functions in `rerun.utilities.datafusion.functions.url_generation` have also been renamed:
 
-| Old API | New API |
-|---------|---------|
-| `partition_url()` | `segment_url()` |
-| `partition_url_udf()` | `segment_url_udf()` |
+| Old API                            | New API                          |
+|------------------------------------|----------------------------------|
+| `partition_url()`                  | `segment_url()`                  |
+| `partition_url_udf()`              | `segment_url_udf()`              |
 | `partition_url_with_timeref_udf()` | `segment_url_with_timeref_udf()` |
 
 The partition table columns have also been renamed from `rerun_partition_id` to `rerun_segment_id`.
@@ -116,3 +132,319 @@ def on_event(event):
 ```
 
 This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.
+
+## Python SDK: `segment_table()` and `manifest()` now return DataFrame directly
+
+The `DatasetEntry.segment_table()` and `DatasetEntry.manifest()` methods now return `datafusion.DataFrame` directly instead of a `DataFusionTable`. The `.df()` method call is no longer needed:
+
+```python
+# Before (0.27)
+df = dataset.partition_table().df()
+manifest_df = dataset.manifest().df()
+
+# After (0.28)
+df = dataset.segment_table()
+manifest_df = dataset.manifest()
+```
+
+Additionally, `segment_table()` now accepts optional `join_meta` and `join_key` parameters to join with external metadata:
+
+```python
+# Join segment table with a metadata table
+df = dataset.segment_table(join_meta=metadata_table, join_key="rerun_segment_id")
+```
+
+## Python SDK: catalog entry listing APIs renamed
+
+The `CatalogClient` methods for listing catalog entries have been renamed for clarity:
+
+| Old API                           | New API                    |
+|-----------------------------------|----------------------------|
+| `CatalogClient.all_entries()`     | `CatalogClient.entries()`  |
+| `CatalogClient.dataset_entries()` | `CatalogClient.datasets()` |
+| `CatalogClient.table_entries()`   | `CatalogClient.tables()`   |
+
+The old methods are deprecated and will be removed in a future release.
+
+Additionally, the new methods accept an optional `include_hidden` parameter:
+- `datasets(include_hidden=True)`: includes blueprint datasets
+- `tables(include_hidden=True)`: includes system tables (e.g., `__entries`)
+- `entries(include_hidden=True)`: includes both
+
+## Python SDK: removed DataFrame-returning entry listing methods
+
+The following methods that returned `datafusion.DataFrame` objects have been removed without deprecation:
+
+| Removed method                                   | Replacement                                                                  |
+|--------------------------------------------------|------------------------------------------------------------------------------|
+| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").reader()`                         |
+| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
+| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
+
+The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").reader()`.
+
+## Python SDK: entry name listing methods now support `include_hidden`
+
+The `CatalogClient` methods for listing entry names now accept an optional `include_hidden` parameter, matching the behavior of `entries()`, `datasets()`, and `tables()`:
+
+- `entry_names(include_hidden=True)`: includes hidden entries (blueprint datasets and system tables like `__entries`)
+- `dataset_names(include_hidden=True)`: includes blueprint datasets
+- `table_names(include_hidden=True)`: includes system tables (e.g., `__entries`)
+
+## Python SDK: entry access methods renamed
+
+The `CatalogClient` methods for accessing individual entries have been renamed:
+
+| Old API                              | New API                        |
+|--------------------------------------|--------------------------------|
+| `CatalogClient.get_dataset_entry()`  | `CatalogClient.get_dataset()`  |
+| `CatalogClient.get_table_entry()`    | `CatalogClient.get_table()`    |
+| `CatalogClient.create_table_entry()` | `CatalogClient.create_table()` |
+
+The existing `CatalogClient.create_dataset()` method is already aligned with the new naming scheme and remains unchanged.
+The old methods are deprecated and will be removed in a future release.
+
+## Python SDK: `get_table()` now returns `TableEntry` instead of DataFrame
+
+The `CatalogClient.get_table()` method has been changed to return a `TableEntry` object instead of a `datafusion.DataFrame`. This is a **breaking change**.
+
+```python
+# Before (0.27)
+df = client.get_table(name="my_table")  # returns DataFrame
+
+# After (0.28)
+table_entry = client.get_table(name="my_table")  # returns TableEntry
+df = table_entry.reader()  # call reader() to get the DataFrame
+```
+
+This change aligns `get_table()` with `get_dataset()`, which returns a `DatasetEntry`. Both methods now consistently return entry objects that provide access to metadata and data.
+
+## Python SDK: table write operations moved to `TableEntry`
+
+Write operations for tables have been moved from `CatalogClient` to `TableEntry`. The new methods provide a cleaner API that operates directly on table entries:
+
+| Old API                                              | New API                           |
+|------------------------------------------------------|-----------------------------------|
+| `CatalogClient.write_table(name, batches, mode)`     | `TableEntry.append(batches)`      |
+|                                                      | `TableEntry.overwrite(batches)`   |
+|                                                      | `TableEntry.upsert(batches)`      |
+| `CatalogClient.append_to_table(name, batches)`       | `TableEntry.append(batches)`      |
+| `CatalogClient.update_table(name, batches)`          | `TableEntry.upsert(batches)`      |
+
+The old methods are deprecated and will be removed in a future release.
+
+```python
+# Before (0.27)
+client.write_table("my_table", batches, TableInsertMode.APPEND)
+client.append_to_table("my_table", batches)
+client.update_table("my_table", batches)
+
+# After (0.28)
+table = client.get_table(name="my_table")
+table.append(batches)
+table.overwrite(batches)
+table.upsert(batches)
+```
+
+The new `TableEntry` methods also support writing Python objects directly via keyword arguments:
+
+```python
+table.append(col1=[1, 2, 3], col2=["a", "b", "c"])
+```
+
+Note: `TableInsertMode` is no longer needed with the new API and will be removed in a future release.
+
+## Python SDK: schema and column types moved to `rerun.catalog`
+
+The `Schema` class and related column descriptor/selector types have moved from `rerun.dataframe` to `rerun.catalog`.
+
+| Old import (0.27)                                       | New import (0.28)                                      |
+|---------------------------------------------------------|--------------------------------------------------------|
+| `from rerun.dataframe import Schema`                    | `from rerun.catalog import Schema`                     |
+| `from rerun.dataframe import ComponentColumnDescriptor` | `from rerun.catalog import ComponentColumnDescriptor`  |
+| `from rerun.dataframe import ComponentColumnSelector`   | `from rerun.catalog import ComponentColumnSelector`    |
+| `from rerun.dataframe import IndexColumnDescriptor`     | `from rerun.catalog import IndexColumnDescriptor`      |
+| `from rerun.dataframe import IndexColumnSelector`       | `from rerun.catalog import IndexColumnSelector`        |
+
+The previous import paths are still supported but will be removed in a future release.
+
+## Python SDK: `DatasetEntry.dataframe_query_view()` replaced by `DatasetEntry.reader()`
+
+The `DatasetEntry.dataframe_query_view()` method and the `DataframeQueryView` class have been removed. Their functionality is now available through `DatasetEntry.reader()`, optionally combined with `DatasetEntry.filter_segments()` and `DatasetEntry.filter_contents()` which return a `DatasetView`.
+
+### Migration paths
+
+**Index selection**: Now a parameter to `reader()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.df()
+
+# After (0.28)
+df = dataset.reader(index="timeline")
+```
+
+**Content filtering**: Use `filter_contents()` to create a `DatasetView`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", contents={"/points": ["Position2D"]})
+df = view.df()
+
+# After (0.28)
+view = dataset.filter_contents(["/points/**"])
+df = view.reader(index="timeline")
+```
+
+**Segment filtering**: Use `filter_segments()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_partition_id(["recording_0"]).df()
+
+# After (0.28)
+view = dataset.filter_segments(["recording_0"])
+df = view.reader(index="timeline")
+```
+
+**Row filtering**: Use DataFusion filtering on the returned DataFrame:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_is_not_null(...).df()
+
+# After (0.28)
+from datafusion import col
+df = dataset.reader(index="timeline").filter(col("/world/robot:Points3D:positions").is_not_null())
+```
+
+**Latest-at fill**: Now a parameter to `reader()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", fill_latest_at=True)
+df = view.df()
+
+# After (0.28)
+df = dataset.reader(index="timeline", fill_latest_at=True)
+```
+
+## Python SDK: `TableEntry.df()` renamed to `TableEntry.reader()`
+
+The `TableEntry.df()` method has been renamed to `TableEntry.reader()` for consistency with `DatasetView.reader()`. This is a **breaking change**.
+
+```python
+# Before (0.27)
+table = client.get_table(name="my_table")
+df = table.df()
+
+# After (0.28)
+table = client.get_table(name="my_table")
+df = table.reader()
+```
+
+## Python SDK: `DatasetEntry.download_segments()` is deprecated
+
+<!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
+
+This method is deprecated and will be removed in a future release.
+
+## Python SDK: blueprint APIs simplified
+
+The blueprint-related methods on `DatasetEntry` have been simplified:
+
+| Old API                                             | New API                                |
+|-----------------------------------------------------|----------------------------------------|
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`     |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+| `DatasetEntry.blueprint_dataset_id()`               | Removed (use `blueprint_dataset()`)    |
+
+New methods have been added for common blueprint operations:
+
+```python
+# Register a blueprint and set it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl")
+
+# Register a blueprint without setting it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl", set_default=False)
+
+# List all registered blueprints
+blueprint_names = dataset.blueprints()
+
+# Get/set the default blueprint
+current = dataset.default_blueprint()
+dataset.set_default_blueprint("my_blueprint")
+```
+
+## Python SDK: `register()` and `register_batch()` merged into unified `register()` API
+
+The `DatasetEntry.register()` and `DatasetEntry.register_batch()` methods have been merged into a single `register()` method that returns a `RegistrationHandle`. The `DatasetEntry.register_prefix()` now also returns a `RegistrationHandle`. The `Tasks` and `Task` classes have been removed. The `recording_layer` parameter has been renamed to `layer_name`.
+
+`RegisterHandle` has  `wait()` method similar to the former `Tasks.wait()` method. It no longer requires at timeout value, and now returns a `RegisteredSegments` object containing the segment IDs of the registered segments.
+
+Single URI registration:
+
+```python
+# Before (0.27)
+segment_id = dataset.register("s3://bucket/recording.rrd")
+
+# After (0.28)
+segment_id = dataset.register("s3://bucket/recording.rrd").wait().segment_ids[0]
+```
+
+Batch registration:
+
+```python
+# Before (0.27)
+dataset.register_batch(["file:///uri1.rrd", "file:///uri2.rrd"], recording_layers=["base", "base"]).wait()
+# Note: no direct way to get segment IDs
+
+# After (0.28)
+handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
+result = handle.wait()
+segment_ids = result.segment_ids
+```
+
+Streaming results with progress tracking:
+
+```python
+from tqdm import tqdm
+from rerun.catalog import SegmentRegistrationResult
+
+uris = ["file:///uri1.rrd", "file:///uri2.rrd"]
+handle = dataset.register(uris, layer_name="base")
+
+for result in tqdm(handle.iter_results(), total=len(uris), desc="Registering"):
+    if result.is_error:
+        print(f"Failed to register {result.uri}: {result.error}")
+    else:
+        print(f"Registered {result.uri} as {result.segment_id}")
+```
+
+## Python SDK: search index APIs
+
+So far, our APIs use of the "index" term for two distinct things: the dataset index columns, and the FTS/vector indexes. To reduce this ambiguity, we renamed our vector and FTS APIs to use the "search index" term:
+
+| Old API                              | New API                                     |
+|--------------------------------------|---------------------------------------------|
+| `DatasetEntry.create_fts_index()`    | `DatasetEntry.create_fts_search_index()`    |
+| `DatasetEntry.create_vector_index()` | `DatasetEntry.create_vector_search_index()` |
+| `DatasetEntry.list_indexes()`        | `DatasetEntry.list_search_indexes()`        |
+| `DatasetEntry.delete_indexes()`      | `DatasetEntry.delete_search_indexes()`      |
+
+The old methods are deprecated and will be removed in a future release.
+
+In addition, for consistency with the other API updates, the `DatasetEntry.search_fts()` and `DatasetEntry.search_vector()` methods now return `datafusion.DataFrame` directly instead of `DataFusionTable`. `DataFusionTable` no longer exists. This is a **breaking change**.
+
+```python
+# Before (0.27)
+result = dataset.search_fts("query", column).df()
+result = dataset.search_vector(embedding, column, top_k=10).df()
+
+# After (0.28)
+result = dataset.search_fts("query", column)
+result = dataset.search_vector(embedding, column, top_k=10)
+```

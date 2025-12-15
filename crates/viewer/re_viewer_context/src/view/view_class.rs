@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 
 use super::ViewContext;
 use crate::{
@@ -119,7 +119,7 @@ pub trait ViewClass: Send + Sync {
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
+                    if ents.contains_key(entity_path) {
                         Some(visualizer)
                     } else {
                         None

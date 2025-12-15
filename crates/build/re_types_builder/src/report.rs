@@ -75,7 +75,8 @@ impl Reporter {
         if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
             path.display().to_string()
         } else if let Ok(path) =
-            Utf8Path::new(&format!("crates/store/re_types/definitions/{virtpath}")).canonicalize()
+            Utf8Path::new(&format!("crates/store/re_sdk_types/definitions/{virtpath}"))
+                .canonicalize()
         {
             path.display().to_string()
         } else {

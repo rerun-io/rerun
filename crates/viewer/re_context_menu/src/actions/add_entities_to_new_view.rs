@@ -2,7 +2,7 @@ use egui::{Response, Ui};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -93,14 +93,16 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
         // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
         // of its sub-entities, are visualizable.
 
-        let covered = entities_of_interest.iter().all(|entity| {
+        let covered = entities_of_interest.iter().all(|candidate_entity| {
             ctx.viewer_context
                 .iter_visualizable_entities_for_view_class(entry.identifier)
-                .any(|(_visualizer, entities)| {
-                    entities
+                .any(|(_visualizer, visualizable_entities)| {
+                    visualizable_entities
                         .0
                         .iter()
-                        .any(|visualizable_entity| visualizable_entity.starts_with(entity))
+                        .any(|(visualizable_entity, _reason)| {
+                            visualizable_entity.starts_with(candidate_entity)
+                        })
                 })
         });
 

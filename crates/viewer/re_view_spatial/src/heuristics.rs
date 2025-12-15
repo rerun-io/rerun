@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, ViewerContext};
 
 use crate::view_kind::SpatialViewKind;
@@ -70,7 +70,11 @@ fn default_visualized_entities_for_visualizer_kind(
             if data.preferred_view_kind == Some(visualizer_kind) {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 let visualizable = ctx.visualizable_entities_per_visualizer.get(&id)?;
-                Some(indicator_matching.intersection(visualizable))
+                Some(
+                    indicator_matching
+                        .iter()
+                        .filter(|e| visualizable.contains_key(e)),
+                )
             } else {
                 None
             }
