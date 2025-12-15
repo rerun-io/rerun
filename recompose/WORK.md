@@ -67,16 +67,18 @@ Already completed as part of P07a:
 - Usage: `./run lint`, `./run test`, `./run ci`, `./run inspect ci`
 
 **P07d - Workflow generation & validation** ✅ DONE
-Added `examples/tasks/workflows.py` with:
-- `update_workflows` - regenerates workflow files (local dev task)
-- `validate_workflows` - checks generated == committed (CI task)
+Consolidated into built-in `generate_gha` task (in `src/recompose/builtin_tasks.py`):
+- `./run generate_gha` - regenerates workflow files (default: all flows/automations)
+- `./run generate_gha --check_only` - validates generated == committed (for CI)
+- Defaults to `.github/workflows/` in git root
+- Named as `recompose_flow_<name>.yml` and `recompose_automation_<name>.yml`
 
 Updated `examples/flows/ci.py` to include GHA setup actions:
 - `recompose.gha.checkout.flow()` - checkout repository
 - `recompose.gha.setup_python(version="3.12").flow()` - setup Python
 - `recompose.gha.setup_uv().flow()` - setup uv
 
-Generated workflow written to `.github/workflows/recompose_ci.yml` with header
+Generated workflow written to `.github/workflows/recompose_flow_ci.yml` with header
 identifying it as generated and instructions for modification.
 
 # UPCOMING
@@ -165,9 +167,10 @@ identifying it as generated and instructions for modification.
 ## Workflow Generation
 
 - Workflows sync to top-level `.github/workflows/` directory
+- Named as `recompose_flow_<name>.yml` and `recompose_automation_<name>.yml`
 - Generated files include header comment identifying them as generated
 - CI validates that committed workflows match what generator produces
-- Local `update_workflows` task regenerates; CI `validate_workflows` task checks
+- Single built-in task handles both: `generate_gha` (regen) / `generate_gha --check_only` (validate)
 
 ## Local-only vs CI Tasks
 

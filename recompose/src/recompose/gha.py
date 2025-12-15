@@ -321,10 +321,12 @@ def generate_workflow_header(source: str | None = None) -> str:
     ]
     if source:
         lines.append(f"# Source: {source}")
-    lines.extend([
-        "# ============================================================================",
-        "",
-    ])
+    lines.extend(
+        [
+            "# ============================================================================",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 

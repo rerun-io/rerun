@@ -199,8 +199,7 @@ def generate_gha(
             results.append(spec)
 
             # Print status
-            status_icon = {"created": "+", "updated": "~", "unchanged": "=",
-                          "would change": "~", "would create": "+"}
+            status_icon = {"created": "+", "updated": "~", "unchanged": "=", "would change": "~", "would create": "+"}
             icon = status_icon.get(status, "?")
             desc = f" - {description}" if description else ""
             out(f"  [{icon}] {filename}{desc}")
@@ -213,10 +212,7 @@ def generate_gha(
         return Err("Errors generating workflows:\n" + "\n".join(errors))
 
     if check_only and changes:
-        return Err(
-            f"Workflows out of sync ({len(changes)} file(s) would change).\n"
-            "Run without --check_only to update."
-        )
+        return Err(f"Workflows out of sync ({len(changes)} file(s) would change).\nRun without --check_only to update.")
 
     if check_only:
         out("All workflows up-to-date!")
@@ -343,9 +339,7 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
         # Get plan
         try:
             plan = automation_info.fn.plan()  # type: ignore[attr-defined]
-            result["dispatches"] = [
-                {"flow": d.flow_name, "params": d.params} for d in plan.dispatches
-            ]
+            result["dispatches"] = [{"flow": d.flow_name, "params": d.params} for d in plan.dispatches]
         except Exception as e:
             result["plan_error"] = str(e)
 
