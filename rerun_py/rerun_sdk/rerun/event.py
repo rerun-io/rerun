@@ -6,7 +6,6 @@ from typing import Literal
 
 from typing_extensions import deprecated
 
-
 # Type definitions based on `crates/viewer/re_viewer/src/event.rs`
 # NOTE: In Python, we need to update both the type definitions
 #       and the serialization code, which is in `viewer_event_from_json`.
