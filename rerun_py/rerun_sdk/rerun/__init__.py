@@ -65,6 +65,10 @@ from ._send_columns import (
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
+from ._send_dataframe import (
+    send_dataframe as send_dataframe,
+    send_record_batch as send_record_batch,
+)
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
 )

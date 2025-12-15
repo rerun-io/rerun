@@ -413,7 +413,7 @@ class TestDataframe:
 
             with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
                 rec.save(rrd)
-                rr.dataframe.send_dataframe(df, rec=rec)
+                rr.dataframe.send_dataframe(df, recording=rec)
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 

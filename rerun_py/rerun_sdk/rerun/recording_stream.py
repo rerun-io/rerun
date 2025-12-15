@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
+    import pyarrow as pa
     import numpy as np
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
@@ -1419,6 +1420,21 @@ class RecordingStream:
         from ._send_columns import send_columns
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
+
+    def send_record_batch(self, batch: pa.RecordBatch) -> None:
+        """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
+
+        from ._send_dataframe import send_record_batch
+
+        send_record_batch(batch, recording=self)
+
+    # TODO(RR-3198): this should accept a `datafusion.DataFrame` as a soft dependency
+    def send_dataframe(self, df: pa.RecordBatchReader | pa.Table) -> None:
+        """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
+
+        from ._send_dataframe import send_dataframe
+
+        send_dataframe(df, recording=self)
 
     def __str__(self) -> str:
         return str(self.inner)
