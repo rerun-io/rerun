@@ -336,6 +336,15 @@ class WorkflowSpec:
     on: dict[str, Any]
     jobs: dict[str, JobSpec]
 
+    def __str__(self) -> str:
+        """User-friendly string representation."""
+        num_jobs = len(self.jobs)
+        total_steps = sum(len(job.steps) for job in self.jobs.values())
+        triggers = ", ".join(self.on.keys())
+        return f"WorkflowSpec({self.name}) - {num_jobs} job(s), {total_steps} step(s), on: {triggers}"
+
+    __repr__ = __str__
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict for YAML serialization."""
         return {
