@@ -11,7 +11,7 @@ from typing import Any, get_args, get_origin
 import click
 from rich.console import Console
 
-from .context import set_debug, set_entry_point
+from .context import set_debug, set_entry_point, set_python_cmd, set_working_directory
 from .flow import FlowInfo, get_flow_registry
 from .result import Result
 from .task import TaskInfo, get_registry
@@ -437,7 +437,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     return cmd
 
 
-def main(name: str | None = None) -> None:
+def main(
+    name: str | None = None,
+    python_cmd: str = "python",
+    working_directory: str | None = None,
+) -> None:
     """
     Build and run the CLI from registered tasks.
 
@@ -445,8 +449,16 @@ def main(name: str | None = None) -> None:
 
     Args:
         name: Optional name for the CLI group. Defaults to the script name.
+        python_cmd: Command to invoke Python in generated GHA workflows.
+                   Use "uv run python" for uv-managed projects.
+        working_directory: Working directory for GHA workflows (relative to repo root).
+                          If set, workflows will cd to this directory before running.
     """
     import sys
+
+    # Store config for GHA workflow generation
+    set_python_cmd(python_cmd)
+    set_working_directory(working_directory)
 
     # Detect if we're running as a module (python -m) or as a script
     # When running as a module, __spec__ is set in the calling module

@@ -26,4 +26,4 @@ from .tasks import format, format_check, lint, test
 _ = (ci, format, format_check, lint, test)
 
 if __name__ == "__main__":
-    recompose.main()
+    recompose.main(python_cmd="uv run python", working_directory="recompose")
