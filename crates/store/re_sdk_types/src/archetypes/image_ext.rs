@@ -135,7 +135,7 @@ impl Image {
     ///
     /// This will spend CPU cycles decoding the image.
     /// To save CPU time and storage, we recommend you instead use
-    /// [`EncodedImage::from_file_contents`].
+    /// [`super::EncodedImage::from_file_contents`].
     ///
     /// Requires the `image` feature.
     #[inline]

@@ -21,8 +21,6 @@ use re_log_types::{
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::Timestamp;
 use re_sdk_types::{AsComponents, SerializationError, SerializedComponentColumn};
-#[cfg(feature = "web_viewer")]
-use re_web_viewer_server::WebViewerServerPort;
 
 use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage, SinkFlushError};
@@ -1096,7 +1094,7 @@ impl RecordingStream {
     /// arrays will act as a single logical row.
     ///
     /// Note that this API ignores any stateful index/time set on the log stream via the
-    /// [`Self::set_time`]/[`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// [`Self::set_time`]/[`Self::set_timepoint`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     pub fn send_columns(
         &self,
@@ -2545,8 +2543,6 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_secs`]
-    /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
         let f = move |inner: &RecordingStreamInner| {
@@ -2569,8 +2565,6 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_secs`]
-    /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     pub fn reset_time(&self) {
         let f = move |inner: &RecordingStreamInner| {
