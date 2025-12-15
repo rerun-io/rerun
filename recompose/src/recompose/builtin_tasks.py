@@ -5,6 +5,7 @@ These tasks are always available and can be used in flows/automations
 just like any user-defined task.
 """
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -13,100 +14,189 @@ from .result import Err, Ok, Result
 from .task import task
 
 
+def _find_git_root() -> Path | None:
+    """Find the root of the git repository."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _get_default_workflows_dir() -> Path | None:
+    """Get the default .github/workflows directory."""
+    git_root = _find_git_root()
+    if git_root:
+        return git_root / ".github" / "workflows"
+    return None
+
+
 @task
 def generate_gha(
     *,
-    target: str,
-    output: str | None = None,
+    target: str | None = None,
+    output_dir: str | None = None,
     script: str | None = None,
     runs_on: str = "ubuntu-latest",
-    validate: bool = True,
-    include_header: bool = True,
-) -> Result[str]:
+    check_only: bool = False,
+) -> Result[dict[str, str]]:
     """
-    Generate GitHub Actions workflow YAML for a flow or automation.
+    Generate GitHub Actions workflow YAML for flows and automations.
+
+    By default, generates workflows for ALL registered flows and automations
+    to .github/workflows/ in the git repository root.
 
     Args:
-        target: Name of the flow or automation to generate workflow for.
-        output: Output file path. If not provided, prints to stdout.
+        target: Specific flow/automation to generate. If not provided, generates all.
+        output_dir: Output directory for workflow files. Default: .github/workflows/
         script: Script path for workflow steps (default: auto-detect from sys.argv[0]).
         runs_on: GitHub runner to use (default: ubuntu-latest).
-        validate: Validate generated YAML with actionlint (default: True).
-        include_header: Include "GENERATED FILE" header comment (default: True).
+        check_only: If True, only check if files are up-to-date (don't write).
+                   Returns Err if any files would change.
 
     Returns:
-        The generated YAML content.
+        Dict mapping workflow names to their YAML content.
 
     Examples:
-        # Generate and print to stdout
+        # Generate all workflows
+        ./run generate_gha
+
+        # Generate specific workflow
         ./run generate_gha --target=ci
 
-        # Generate to file
-        ./run generate_gha --target=ci --output=.github/workflows/ci.yml
+        # Check if workflows are up-to-date (for CI)
+        ./run generate_gha --check-only
 
-        # Skip validation
-        ./run generate_gha --target=ci --no-validate
+        # Generate to custom directory
+        ./run generate_gha --output-dir=/tmp/workflows
     """
     import sys
 
-    from .automation import get_automation
-    from .flow import get_flow
-    from .gha import render_automation_workflow, render_flow_workflow, validate_workflow
+    from .automation import get_automation, get_automation_registry
+    from .flow import get_flow, get_flow_registry
+    from .gha import render_automation_workflow, render_flow_workflow
 
-    # Find target as flow or automation
-    flow_info = get_flow(target)
-    automation_info = get_automation(target)
+    # Determine output directory
+    if output_dir:
+        workflows_dir = Path(output_dir)
+    else:
+        workflows_dir = _get_default_workflows_dir()
+        if workflows_dir is None:
+            return Err("Could not find git root. Specify --output-dir explicitly.")
 
-    if flow_info is None and automation_info is None:
-        # List available options
-        from .automation import get_automation_registry
-        from .flow import get_flow_registry
+    # Determine script path (relative to git root)
+    git_root = _find_git_root()
+    if script:
+        script_path = script
+    elif git_root:
+        # Try to make script path relative to git root
+        script_abs = Path(sys.argv[0]).resolve()
+        try:
+            script_path = str(script_abs.relative_to(git_root))
+        except ValueError:
+            script_path = sys.argv[0]
+    else:
+        script_path = sys.argv[0]
 
-        flow_names = list(get_flow_registry().keys())
-        auto_names = list(get_automation_registry().keys())
+    # Collect targets to generate
+    # Use short name (after colon) for filename, full key for lookup
+    targets: list[tuple[str, str, str, Any]] = []  # (short_name, full_key, type, info)
 
-        msg = f"'{target}' not found as flow or automation.\n"
-        if flow_names:
-            msg += f"Available flows: {', '.join(flow_names)}\n"
-        if auto_names:
-            msg += f"Available automations: {', '.join(auto_names)}"
-        return Err(msg)
+    if target:
+        # Specific target
+        flow_info = get_flow(target)
+        automation_info = get_automation(target)
 
-    # Determine script path
-    script_path = script if script else sys.argv[0]
+        if flow_info is None and automation_info is None:
+            flow_names = list(get_flow_registry().keys())
+            auto_names = list(get_automation_registry().keys())
+            msg = f"'{target}' not found.\n"
+            if flow_names:
+                msg += f"Flows: {', '.join(flow_names)}\n"
+            if auto_names:
+                msg += f"Automations: {', '.join(auto_names)}"
+            return Err(msg)
 
-    # Generate workflow
-    try:
-        if flow_info is not None:
-            spec = render_flow_workflow(flow_info, script_path=script_path, runs_on=runs_on)
-            source = f"flow: {flow_info.name}"
+        if flow_info:
+            short_name = flow_info.name.split(":")[-1]  # Get name after colon
+            targets.append((short_name, flow_info.name, "flow", flow_info))
         else:
-            spec = render_automation_workflow(automation_info)
-            source = f"automation: {automation_info.name}"
+            short_name = automation_info.name.split(":")[-1]
+            targets.append((short_name, automation_info.name, "automation", automation_info))
+    else:
+        # All flows and automations
+        for full_key, info in get_flow_registry().items():
+            short_name = info.name.split(":")[-1]
+            targets.append((short_name, full_key, "flow", info))
+        for full_key, info in get_automation_registry().items():
+            short_name = info.name.split(":")[-1]
+            targets.append((short_name, full_key, "automation", info))
 
-        yaml_content = spec.to_yaml(include_header=include_header, source=source)
-    except ValueError as e:
-        return Err(str(e))
+    if not targets:
+        return Err("No flows or automations registered.")
 
-    # Validate if requested
-    if validate:
-        success, message = validate_workflow(yaml_content)
-        if not success:
-            if "not found" in message:
-                out(f"Warning: actionlint not found, skipping validation")
+    # Generate workflows
+    results: dict[str, str] = {}
+    changes: list[str] = []
+    errors: list[str] = []
+
+    mode = "Checking" if check_only else "Generating"
+    out(f"{mode} {len(targets)} workflow(s) to {workflows_dir}")
+
+    for short_name, full_key, target_type, info in targets:
+        output_file = workflows_dir / f"{short_name}.yml"
+
+        try:
+            if target_type == "flow":
+                spec = render_flow_workflow(info, script_path=script_path, runs_on=runs_on)
             else:
-                return Err(f"Validation failed:\n{message}")
-        else:
-            out("actionlint validation passed")
+                spec = render_automation_workflow(info)
 
-    # Output
-    if output:
-        output_path = Path(output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(yaml_content)
-        out(f"Wrote workflow to {output_path}")
+            yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {short_name}")
+            results[short_name] = yaml_content
 
-    return Ok(yaml_content)
+            # Check for changes
+            if output_file.exists():
+                existing = output_file.read_text()
+                if existing != yaml_content:
+                    changes.append(f"{short_name}.yml (modified)")
+                    out(f"  {short_name}.yml - {'would change' if check_only else 'updated'}")
+                else:
+                    out(f"  {short_name}.yml - unchanged")
+            else:
+                changes.append(f"{short_name}.yml (new)")
+                out(f"  {short_name}.yml - {'would create' if check_only else 'created'}")
+
+            # Write file if not check_only
+            if not check_only:
+                workflows_dir.mkdir(parents=True, exist_ok=True)
+                output_file.write_text(yaml_content)
+
+        except Exception as e:
+            errors.append(f"{short_name}: {e}")
+            out(f"  {short_name}.yml - ERROR: {e}")
+
+    if errors:
+        return Err(f"Errors generating workflows:\n" + "\n".join(errors))
+
+    if check_only and changes:
+        return Err(
+            f"Workflows out of sync ({len(changes)} file(s) would change):\n"
+            + "\n".join(f"  - {c}" for c in changes)
+            + "\n\nRun without --check-only to update."
+        )
+
+    if check_only:
+        out("All workflows up-to-date!")
+    else:
+        out(f"Generated {len(results)} workflow(s)")
+
+    return Ok(results)
 
 
 @task

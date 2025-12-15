@@ -3,7 +3,6 @@
 from .build import build_wheel, create_test_venv, install_wheel, smoke_test, test_installed
 from .lint import format, format_check, lint
 from .test import test
-from .workflows import update_workflows, validate_workflows
 
 __all__ = [
     # Lint & format
@@ -18,7 +17,4 @@ __all__ = [
     "install_wheel",
     "smoke_test",
     "test_installed",
-    # Workflow management
-    "update_workflows",
-    "validate_workflows",
 ]
