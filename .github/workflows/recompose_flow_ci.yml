@@ -31,3 +31,5 @@ jobs:
       run: python recompose/examples/app.py ci --step 5_format_check --workspace .recompose
     - name: 6_test
       run: python recompose/examples/app.py ci --step 6_test --workspace .recompose
+    - name: 7_generate_gha
+      run: python recompose/examples/app.py ci --step 7_generate_gha --workspace .recompose
