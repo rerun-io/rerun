@@ -4,6 +4,7 @@ This module provides the types needed for declarative flow execution:
 - Input[T]: Type alias for flow inputs (literal values or task outputs)
 - TaskNode[T]: Represents a deferred task execution in a flow graph
 - FlowPlan: The execution graph for a flow
+- InputPlaceholder[T]: Placeholder for flow inputs during plan construction
 """
 
 from __future__ import annotations
@@ -16,6 +17,51 @@ if TYPE_CHECKING:
     from .task import TaskInfo
 
 T = TypeVar("T")
+
+
+@dataclass
+class InputPlaceholder(Generic[T]):
+    """
+    Placeholder for a flow input parameter during plan construction.
+
+    When building a FlowPlan for GHA generation, we don't have actual values
+    for required flow parameters. InputPlaceholder stands in for these values,
+    allowing the flow function body to execute and build the task graph.
+
+    When the placeholder is passed to a task's .flow() call, it's stored in
+    the TaskNode kwargs. Later, when generating GHA YAML, we recognize these
+    placeholders and emit references like `${{ inputs.name }}`.
+
+    Example:
+        # During GHA generation for a flow with required 'repo' parameter:
+        placeholder = InputPlaceholder[str](name="repo")
+
+        # The flow body receives this placeholder:
+        @flow
+        def build_flow(*, repo: str) -> None:
+            clone.flow(repo=repo)  # repo is actually an InputPlaceholder
+
+        # The placeholder is stored in the TaskNode kwargs and later
+        # serialized to "${{ inputs.repo }}" in the GHA workflow YAML.
+    """
+
+    name: str
+    """The name of the flow parameter this placeholder represents."""
+
+    annotation: type[T] | None = None
+    """The type annotation of the parameter (for documentation/debugging)."""
+
+    default: T | None = None
+    """The default value, if any (used for optional params)."""
+
+    def __repr__(self) -> str:
+        type_str = self.annotation.__name__ if self.annotation else "Any"
+        return f"InputPlaceholder({self.name}: {type_str})"
+
+    def __str__(self) -> str:
+        # Return a string representation that looks like the GHA reference
+        # This is useful for debugging and makes errors more understandable
+        return f"${{{{ inputs.{self.name} }}}}"
 
 
 @dataclass

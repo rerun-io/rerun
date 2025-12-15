@@ -52,7 +52,7 @@ from .flow import (
     get_flow_context,
     get_flow_registry,
 )
-from .flowgraph import FlowPlan, TaskNode
+from .flowgraph import FlowPlan, InputPlaceholder, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, TaskWrapper, get_registry, get_task, task, taskclass
@@ -91,6 +91,7 @@ __all__ = [
     "FlowContext",
     "FlowPlan",
     "TaskNode",
+    "InputPlaceholder",
     "DirectTaskCallInFlowError",
     "get_flow",
     "get_flow_registry",
