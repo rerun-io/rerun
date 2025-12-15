@@ -57,7 +57,6 @@ web-time.workspace = true
 [dev-dependencies]
 re_format.workspace = true
 re_sdk_types = { workspace = true, features = ["testing"] }
-re_query.workspace = true
 
 anyhow.workspace = true
 criterion.workspace = true
