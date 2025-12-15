@@ -13,6 +13,7 @@ use crate::parsers::ros2msg::sensor_msgs::{
     TemperatureMessageParser,
 };
 use crate::parsers::ros2msg::std_msgs::StringMessageParser;
+use crate::parsers::ros2msg::tf2_msgs::tf_message::TfMessageMessageParser;
 
 type ParserFactory = fn(usize) -> Box<dyn MessageParser>;
 
@@ -54,6 +55,8 @@ impl McapRos2Layer {
             .register_parser::<TemperatureMessageParser>("sensor_msgs/msg/Temperature")
             // std_msgs
             .register_parser::<StringMessageParser>("std_msgs/msg/String")
+            // tf2_msgs
+            .register_parser::<TfMessageMessageParser>("tf2_msgs/msg/TFMessage")
     }
 
     /// Registers a new message parser for the given schema name
