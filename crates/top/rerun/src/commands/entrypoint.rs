@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::LogDataSource;
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -870,6 +870,8 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use re_viewer::external::re_viewer_context;
+
     use crate::external::re_ui::{UICommand, UICommandSender as _};
 
     let startup_options = native_startup_options_from_args(args)?;
@@ -877,7 +879,9 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
 
-    let (command_tx, command_rx) = re_viewer::command_channel();
+    let (command_tx, command_rx) = re_viewer_context::command_channel();
+
+    let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
     #[allow(clippy::allow_attributes, unused_mut)]
     let ReceiversFromUrlParams {
@@ -887,7 +891,7 @@ fn start_native_viewer(
         url_or_paths,
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
-        Some(command_tx.clone()),
+        Some(auth_error_handler),
     )?;
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -1469,12 +1473,11 @@ struct ReceiversFromUrlParams {
 
 impl ReceiversFromUrlParams {
     /// Processes all incoming URLs according to the given config.
-    #[expect(clippy::needless_pass_by_value)]
     fn new(
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
-        sender: Option<re_viewer::CommandSender>,
+        auth_error_handler: Option<AuthErrorHandler>,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1517,19 +1520,15 @@ impl ReceiversFromUrlParams {
             }
         }
 
+        let auth_error_handler = auth_error_handler.unwrap_or_else(|| {
+            std::sync::Arc::new(|uri, err| {
+                re_log::error!("Authentication error for data source {uri}: {err}");
+            })
+        });
+
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                let auth_error_handler = sender
-                    .clone()
-                    .map(re_viewer::App::auth_error_handler)
-                    .unwrap_or_else(|| {
-                        Box::new(|uri, err| {
-                            re_log::error!("Authentication error for data source {uri}: {err}");
-                        })
-                    });
-                data_source.stream(auth_error_handler, connection_registry)
-            })
+            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {

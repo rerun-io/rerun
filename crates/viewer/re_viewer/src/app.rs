@@ -1276,7 +1276,7 @@ impl App {
     }
 
     pub fn auth_error_handler(sender: CommandSender) -> AuthErrorHandler {
-        Box::new(move |url, _err| {
+        Arc::new(move |url, _err| {
             sender.send_system(SystemCommand::EditRedapServerModal(
                 EditRedapServerModalCommand {
                     origin: url.origin.clone(),

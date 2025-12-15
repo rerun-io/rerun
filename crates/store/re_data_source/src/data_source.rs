@@ -1,13 +1,16 @@
-use crate::FileContents;
+use std::sync::Arc;
+
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::RecordingId;
 use re_redap_client::ConnectionRegistryHandle;
 
-pub type AuthErrorHandler =
-    Box<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
+use crate::FileContents;
 use crate::stream_rrd_from_http::stream_from_http_to_channel;
+
+pub type AuthErrorHandler =
+    Arc<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
 
 /// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug, PartialEq, Eq)]
