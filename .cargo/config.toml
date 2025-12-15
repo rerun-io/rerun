@@ -19,6 +19,9 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # https://pyo3.rs/main/building-and-distribution.html#configuring-the-python-version
 PYO3_PYTHON = "python"
 
+# Incremental compilation blows up the size of the target folder, and is also buggy.
+CARGO_INCREMENTAL = "0"
+
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
 AR = "llvm-ar"
