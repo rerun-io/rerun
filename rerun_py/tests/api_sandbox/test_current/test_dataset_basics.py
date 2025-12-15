@@ -140,7 +140,7 @@ def test_schema_column_for_selector(complex_dataset_prefix: Path) -> None:
         assert col.component == "Points2D:colors"
 
         # Success case: ComponentColumnSelector
-        selector = rr.dataframe.ComponentColumnSelector("/points", "Points2D:positions")
+        selector = rr.catalog.ComponentColumnSelector("/points", "Points2D:positions")
         col = schema.column_for_selector(selector)
         assert col.entity_path == "/points"
         assert col.component == "Points2D:positions"

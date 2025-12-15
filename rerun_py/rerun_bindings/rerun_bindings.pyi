@@ -189,9 +189,17 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
+# TODO(RR-3130): remove RecordingView when rerun.dataframe is removed
+@deprecated(
+    """RecordingView is deprecated. Use the catalog API instead.
+    See: https://rerun.io/docs/reference/migration/migration-0-28#legacy-dataframe-api-deprecated?speculative-link""",
+)
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
+
+    .. deprecated::
+        RecordingView is deprecated. Use the catalog API instead.
 
     See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
 
@@ -452,6 +460,11 @@ class Recording:
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
 
+    # TODO(RR-3130): remove Recording.view() when rerun.dataframe is removed
+    @deprecated(
+        """Recording.view() is deprecated. Use the catalog API instead.
+        See: https://rerun.io/docs/reference/migration/migration-0-28#legacy-dataframe-api-deprecated?speculative-link""",
+    )
     def view(
         self,
         *,
@@ -462,6 +475,9 @@ class Recording:
     ) -> RecordingView:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+
+        .. deprecated::
+            Recording.view() is deprecated. Use the catalog API instead.
 
         The only type of index currently supported is the name of a timeline, or `None` (see below
         for details).
