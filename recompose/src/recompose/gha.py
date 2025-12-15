@@ -265,10 +265,13 @@ class JobSpec:
     steps: list[StepSpec] = field(default_factory=list)
     env: dict[str, str] | None = None
     timeout_minutes: int | None = None
+    working_directory: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict for YAML serialization."""
         d: dict[str, Any] = {"runs-on": self.runs_on}
+        if self.working_directory:
+            d["defaults"] = {"run": {"working-directory": self.working_directory}}
         if self.env:
             d["env"] = self.env
         if self.timeout_minutes:
@@ -431,13 +434,13 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
     return inputs
 
 
-def _build_setup_step(flow_info: FlowInfo, script_path: str) -> StepSpec:
+def _build_setup_step(flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
 
     # Build the run command with all input parameters
     cmd_parts = [
-        "python",
+        python_cmd,
         script_path,
         flow_info.name,
         "--setup",
@@ -456,11 +459,11 @@ def _build_setup_step(flow_info: FlowInfo, script_path: str) -> StepSpec:
     )
 
 
-def _build_task_step(step_name: str, flow_name: str, script_path: str) -> StepSpec:
+def _build_task_step(step_name: str, flow_name: str, script_path: str, python_cmd: str) -> StepSpec:
     """Build a step that executes a single task."""
     return StepSpec(
         name=step_name,
-        run=f"python {script_path} {flow_name} --step {step_name} --workspace .recompose",
+        run=f"{python_cmd} {script_path} {flow_name} --step {step_name} --workspace .recompose",
     )
 
 
@@ -483,6 +486,8 @@ def render_flow_workflow(
     flow_info: FlowInfo,
     script_path: str = "app.py",
     runs_on: str = "ubuntu-latest",
+    python_cmd: str = "python",
+    working_directory: str | None = None,
 ) -> WorkflowSpec:
     """
     Generate a WorkflowSpec from a flow.
@@ -491,6 +496,8 @@ def render_flow_workflow(
         flow_info: The flow to generate a workflow for.
         script_path: Path to the script that contains the flow (relative to repo root).
         runs_on: The runner to use for the job.
+        python_cmd: Command to invoke Python (e.g., "python", "uv run python").
+        working_directory: Working directory for run steps (relative to repo root).
 
     Returns:
         A WorkflowSpec that can be rendered to YAML.
@@ -552,17 +559,18 @@ def render_flow_workflow(
 
     # Add setup step (only if there are task steps)
     if task_step_infos:
-        job_steps.append(_build_setup_step(flow_info, script_path))
+        job_steps.append(_build_setup_step(flow_info, script_path, python_cmd))
 
         # Add task steps
         for step_name, _node in task_step_infos:
-            job_steps.append(_build_task_step(step_name, flow_info.name, script_path))
+            job_steps.append(_build_task_step(step_name, flow_info.name, script_path, python_cmd))
 
     # Build the job
     job = JobSpec(
         name=flow_info.name,
         runs_on=runs_on,
         steps=job_steps,
+        working_directory=working_directory,
     )
 
     # Build the workflow

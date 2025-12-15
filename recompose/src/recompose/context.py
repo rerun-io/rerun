@@ -18,6 +18,12 @@ _debug_mode: bool = False
 # Tuple of (type, value) where type is "module" or "script"
 _entry_point: tuple[str, str] | None = None
 
+# Python command for GHA workflow generation (e.g., "python", "uv run python")
+_python_cmd: str = "python"
+
+# Working directory for GHA workflow generation (relative to repo root)
+_working_directory: str | None = None
+
 
 @dataclass
 class OutputLine:
@@ -93,6 +99,48 @@ def get_entry_point() -> tuple[str, str] | None:
         or None if not set.
     """
     return _entry_point
+
+
+def set_python_cmd(cmd: str) -> None:
+    """
+    Set the Python command for GHA workflow generation.
+
+    Args:
+        cmd: Command to invoke Python (e.g., "python", "uv run python").
+    """
+    global _python_cmd
+    _python_cmd = cmd
+
+
+def get_python_cmd() -> str:
+    """
+    Get the Python command for GHA workflow generation.
+
+    Returns:
+        Command to invoke Python (default: "python").
+    """
+    return _python_cmd
+
+
+def set_working_directory(directory: str | None) -> None:
+    """
+    Set the working directory for GHA workflow generation.
+
+    Args:
+        directory: Working directory relative to repo root, or None for repo root.
+    """
+    global _working_directory
+    _working_directory = directory
+
+
+def get_working_directory() -> str | None:
+    """
+    Get the working directory for GHA workflow generation.
+
+    Returns:
+        Working directory relative to repo root, or None for repo root.
+    """
+    return _working_directory
 
 
 def out(message: str) -> None:

@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .context import out
+from .context import get_python_cmd, get_working_directory, out
 from .gha import WorkflowSpec
 from .result import Err, Ok, Result
 from .task import task
@@ -103,8 +103,9 @@ def generate_gha(
             return Err("Could not find git root. Specify --output_dir explicitly.")
         workflows_dir = maybe_workflows_dir
 
-    # Determine script path (relative to git root)
+    # Determine script path (relative to git root or working_directory)
     git_root = _find_git_root()
+    working_dir = get_working_directory()
     if script:
         script_path = script
     elif git_root:
@@ -114,6 +115,10 @@ def generate_gha(
             script_path = str(script_abs.relative_to(git_root))
         except ValueError:
             script_path = sys.argv[0]
+
+        # If working_directory is set, adjust script_path to be relative to it
+        if working_dir and script_path.startswith(working_dir + "/"):
+            script_path = script_path[len(working_dir) + 1 :]
     else:
         script_path = sys.argv[0]
 
@@ -176,7 +181,13 @@ def generate_gha(
 
         try:
             if target_type == "flow":
-                spec = render_flow_workflow(info, script_path=script_path, runs_on=runs_on)
+                spec = render_flow_workflow(
+                    info,
+                    script_path=script_path,
+                    runs_on=runs_on,
+                    python_cmd=get_python_cmd(),
+                    working_directory=get_working_directory(),
+                )
             else:
                 spec = render_automation_workflow(info)
 

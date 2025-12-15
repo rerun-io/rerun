@@ -30,7 +30,17 @@ from .automation import (
 )
 from .builtin_tasks import generate_gha, inspect
 from .cli import main
-from .context import dbg, get_context, is_debug, out, set_debug
+from .context import (
+    dbg,
+    get_context,
+    get_python_cmd,
+    get_working_directory,
+    is_debug,
+    out,
+    set_debug,
+    set_python_cmd,
+    set_working_directory,
+)
 from .flow import (
     DirectTaskCallInFlowError,
     FlowContext,
@@ -66,6 +76,10 @@ __all__ = [
     "get_context",
     "set_debug",
     "is_debug",
+    "get_python_cmd",
+    "set_python_cmd",
+    "get_working_directory",
+    "set_working_directory",
     # Subprocess helpers
     "run",
     "RunResult",
