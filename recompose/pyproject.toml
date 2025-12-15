@@ -12,12 +12,6 @@ dependencies = [
     "ruamel-yaml>=0.18.16",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "pytest-cov>=4.0",
-    "mypy>=1.0",
-]
 
 [build-system]
 requires = ["hatchling"]
@@ -40,6 +34,9 @@ select = ["E", "F", "I", "UP"]
 [dependency-groups]
 dev = [
     "ruff>=0.14.9",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
 ]
 
 [tool.mypy]
