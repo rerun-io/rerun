@@ -28,6 +28,7 @@ from .automation import (
     get_automation,
     get_automation_registry,
 )
+from .builtin_tasks import generate_gha, inspect
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
 from .flow import (
@@ -99,6 +100,9 @@ __all__ = [
     "FlowDispatch",
     "get_automation",
     "get_automation_registry",
+    # Built-in tasks
+    "generate_gha",
+    "inspect",
 ]
 
 __version__ = "0.1.0"
