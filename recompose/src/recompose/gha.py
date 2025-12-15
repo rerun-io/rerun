@@ -536,19 +536,19 @@ def render_flow_workflow(
         on_trigger["workflow_dispatch"]["inputs"] = inputs_dict
 
     # Build the plan to get step names
-    # We need to call plan() with default values for required params
-    # For now, we'll just use empty dict and let it fail if params are required
-    try:
-        # Try to build plan with no args (works if all params have defaults)
-        plan = flow_info.fn.plan()  # type: ignore[attr-defined]
-    except TypeError:
-        # If that fails, we need to handle required params differently
-        # For now, create a plan with placeholder values
-        # This is a limitation - flows with required params need special handling
-        raise ValueError(
-            f"Flow '{flow_info.name}' has required parameters. "
-            "Cannot generate workflow without default values for all parameters."
-        )
+    # For parameters without defaults, we create InputPlaceholders that allow
+    # the flow function body to execute and build the task graph
+    from .flowgraph import InputPlaceholder
+
+    plan_kwargs: dict[str, Any] = {}
+    for param_name, param in flow_info.signature.parameters.items():
+        if param.default is inspect.Parameter.empty:
+            # Required parameter - create a placeholder
+            annotation = param.annotation if param.annotation is not inspect.Parameter.empty else None
+            plan_kwargs[param_name] = InputPlaceholder(name=param_name, annotation=annotation)
+        # Optional parameters use their defaults (handled by Python)
+
+    plan = flow_info.fn.plan(**plan_kwargs)  # type: ignore[attr-defined]
 
     # Check if flow has any non-GHA tasks (need setup step for those)
     has_regular_tasks = any(not n.task_info.is_gha_action for n in plan.nodes)
