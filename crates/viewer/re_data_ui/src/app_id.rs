@@ -29,12 +29,6 @@ impl crate::DataUi for ApplicationId {
                 ui.end_row();
             });
 
-        if ui_layout.is_single_line() {
-            return;
-        }
-
-        // ---------------------------------------------------------------------
-
         // Find all recordings with this app id
         let recordings: Vec<&EntityDb> = ctx
             .storage_context
@@ -48,18 +42,32 @@ impl crate::DataUi for ApplicationId {
             })
             .collect();
 
-        // Using the same content ui also for tooltips even if it can't be interacted with.
-        // (still displays the content we want)
-        if !recordings.is_empty() {
-            ui.scope(|ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
+        match ui_layout {
+            UiLayout::List => {
+                // Too little space for anything else
+            }
+            UiLayout::Tooltip => {
+                ui.label(format!(
+                    "There are {} loaded recording{} for this app.",
+                    re_format::format_uint(recordings.len()),
+                    re_format::format_plural_s(recordings.len())
+                ));
+            }
+            UiLayout::SelectionPanel => {
+                // Using the same content ui also for tooltips even if it can't be interacted with.
+                // (still displays the content we want)
+                if !recordings.is_empty() {
+                    ui.scope(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
 
-                ui.add_space(8.0);
-                ui.strong("Loaded recordings for this app");
-                for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+                        ui.add_space(8.0);
+                        ui.strong("Loaded recordings for this app");
+                        for entity_db in recordings {
+                            entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+                        }
+                    });
                 }
-            });
+            }
         }
     }
 }
