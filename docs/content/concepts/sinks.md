@@ -1,15 +1,11 @@
 ---
 title: Sinks
-order: 150
+order: 700
 ---
 
 Sinks control where your Rerun data goes. They are the output destinations for your logged data.
 
 When you log data with Rerun, that data needs to flow somewhere, whether that's to a live viewer, a file on disk, memory, or multiple destinations at once. Sinks provide this routing layer, giving you flexible control over how and where your recordings are stored and displayed.
-
-## Why sinks matter
-
-By default, when you use `spawn=True` in Python or call methods like `spawn()` in Rust/C++, Rerun automatically sets up a sink that streams data to a newly launched viewer process.
 
 ## Available sink types
 
