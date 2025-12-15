@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .context import get_python_cmd, get_working_directory, out
+from .context import get_entry_point, get_python_cmd, get_working_directory, out
 from .gha import WorkflowSpec
 from .result import Err, Ok, Result
 from .task import task
@@ -104,10 +104,17 @@ def generate_gha(
         workflows_dir = maybe_workflows_dir
 
     # Determine script path (relative to git root or working_directory)
+    # Use entry_point info to construct the correct invocation
     git_root = _find_git_root()
     working_dir = get_working_directory()
+    entry_point = get_entry_point()
+
     if script:
         script_path = script
+    elif entry_point and entry_point[0] == "module":
+        # Running as a module - use -m style invocation
+        module_name = entry_point[1]
+        script_path = f"-m {module_name}"
     elif git_root:
         # Try to make script path relative to git root
         script_abs = Path(sys.argv[0]).resolve()
