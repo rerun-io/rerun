@@ -94,36 +94,36 @@ For more details about loading & updating `URDF` models, we added a "Loading URD
 
 ## Python SDK: catalog API overhaul
 
-This release includes a major overhaul of the `rerun.catalog` module that aims to clarify and consolidate the APIs, and make them more future-proof. This was achieved by improving naming, more consistently using DataFusion's dataframes, removing/merging redundant APIs, and exposing fewer implementation details.
+This release includes a major overhaul of the `rerun.catalog` module that aims to clarify and consolidate the APIs, and make them more future-proof. This includes improving naming, more consistently using DataFusion's dataframes, removing/merging redundant APIs, and exposing fewer implementation details.
 
 We used deprecations to ease migration where possible, but several changes required breaking the API when deprecation would have been too complex. All deprecated APIs will be removed in a future release.
 
 ### "Partition" renamed to "Segment"
 
-All APIs using "partition" terminology have been renamed to use "segment" instead. The old APIs are deprecated.
+The term "partition" is overloaded in data science, and our use of it could be confusing. To avoid this, the "partition" terminology has been renamed to "segment" instead. The old APIs are deprecated.
 
-| Old API | New API |
-|---------|---------|
-| `DatasetEntry.partition_ids()` | `DatasetEntry.segment_ids()` |
-| `DatasetEntry.partition_table()` | `DatasetEntry.segment_table()` |
-| `DatasetEntry.partition_url()` | `DatasetEntry.segment_url()` |
+| Old API                             | New API                           |
+|-------------------------------------|-----------------------------------|
+| `DatasetEntry.partition_ids()`      | `DatasetEntry.segment_ids()`      |
+| `DatasetEntry.partition_table()`    | `DatasetEntry.segment_table()`    |
+| `DatasetEntry.partition_url()`      | `DatasetEntry.segment_url()`      |
 | `DatasetEntry.download_partition()` | `DatasetEntry.download_segment()` |
-| `partition_url()` | `segment_url()` |
-| `partition_url_udf()` | `segment_url_udf()` |
+| `partition_url()`                   | `segment_url()`                   |
+| `partition_url_udf()`               | `segment_url_udf()`               |
 
-The column `rerun_partition_id` is now `rerun_segment_id`, and the `partition_id` field on viewer event classes (`PlayEvent`, `PauseEvent`, etc.) is now `segment_id`.
+The column `rerun_partition_id` is now `rerun_segment_id` (breaking change), and the `partition_id` field on viewer event classes (`PlayEvent`, `PauseEvent`, etc.) is now `segment_id` (the old name is deprecated and will be removed in a future release).
 
 ### Catalog client
 
 **Method renames** (deprecated, old names still work):
 
-| Old API | New API |
-|---------|---------|
-| `CatalogClient.all_entries()` | `CatalogClient.entries()` |
-| `CatalogClient.dataset_entries()` | `CatalogClient.datasets()` |
-| `CatalogClient.table_entries()` | `CatalogClient.tables()` |
-| `CatalogClient.get_dataset_entry()` | `CatalogClient.get_dataset()` |
-| `CatalogClient.get_table_entry()` | `CatalogClient.get_table()` |
+| Old API                              | New API                        |
+|--------------------------------------|--------------------------------|
+| `CatalogClient.all_entries()`        | `CatalogClient.entries()`      |
+| `CatalogClient.dataset_entries()`    | `CatalogClient.datasets()`     |
+| `CatalogClient.table_entries()`      | `CatalogClient.tables()`       |
+| `CatalogClient.get_dataset_entry()`  | `CatalogClient.get_dataset()`  |
+| `CatalogClient.get_table_entry()`    | `CatalogClient.get_table()`    |
 | `CatalogClient.create_table_entry()` | `CatalogClient.create_table()` |
 
 **New features:**
@@ -162,7 +162,7 @@ The new methods also support keyword arguments: `table.append(col1=[1, 2, 3], co
 
 **Breaking change:** `DataframeQueryView` has been removed. Its functionality has been split between `DatasetView` (for segment and content filtering) and standard DataFusion DataFrame operations (for row-level filtering).
 
-Use `filter_segments()` and `filter_contents()` to create a `DatasetView`, then call `reader()` to get a `datafusion.DataFrame`. Any row-level filtering (like `filter_is_not_null()`) should now be done on the resulting DataFrame using DataFusion's filtering APIs.
+Use `DatasetEntry.filter_segments()` and `DatasetEntry.filter_contents()` to create a `DatasetView`, then call `reader()` to get a `datafusion.DataFrame`. Any row-level filtering (like `filter_is_not_null()`) should now be done on the resulting DataFrame using DataFusion's filtering APIs.
 
 ```python
 # Before (0.27)
@@ -174,29 +174,14 @@ view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
 df = view.reader(index="timeline")
 ```
 
-`segment_table()` and `manifest()` now return `datafusion.DataFrame` directly (no `.df()` call needed). `segment_table()` also accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
+`DatasetEntry.segment_table()` and `DatasetEntry.manifest()` now return `datafusion.DataFrame` directly (no `.df()` call needed). `segment_table()` also accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
 
 Key migration patterns:
 - Index selection: `dataset.reader(index="timeline")`
-- Content filtering: `dataset.filter_contents(["/points/**"]).reader(...)`
-- Segment filtering: `dataset.filter_segments(["recording_0"]).reader(...)`
+- Content filtering: `dataset.filter_contents(["/points/**"]).reader(...)` <!-- NOLINT -->
+- Segment filtering: `dataset.filter_segments(["recording_0"]).reader(...)` <!-- NOLINT -->
 - Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
-- Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame
-
-### Blueprints
-
-The updated APIs now abstracted from the underlying storage mechanism (blueprint datasets).
-
-**Deprecations:**
-
-| Old API | New API |
-|---------|---------|
-| `DatasetEntry.default_blueprint_partition_id()` | `DatasetEntry.default_blueprint()` |
-| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
-
-**New methods:**
-- `dataset.register_blueprint(url, set_default=True)` - register and optionally set as default
-- `dataset.blueprints()` - list all registered blueprints
+- Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame <!-- NOLINT -->
 
 ### Registration and tasks
 
@@ -219,16 +204,31 @@ for result in handle.iter_results():
 
 The `recording_layer` parameter has been renamed to `layer_name`.
 
+### Blueprints
+
+The updated APIs now abstracted from the underlying storage mechanism (blueprint datasets).
+
+**Deprecations:**
+
+| Old API                                             | New API                                |
+|-----------------------------------------------------|----------------------------------------|
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`     |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+
+**New methods:**
+- `dataset.register_blueprint(url, set_default=True)` - register and optionally set as default
+- `dataset.blueprints()` - list all registered blueprints
+
 ### Search indexes
 
 **Deprecations:** Methods renamed to clarify "search index" vs "dataset index":
 
-| Old API | New API |
-|---------|---------|
-| `DatasetEntry.create_fts_index()` | `DatasetEntry.create_fts_search_index()` |
+| Old API                              | New API                                     |
+|--------------------------------------|---------------------------------------------|
+| `DatasetEntry.create_fts_index()`    | `DatasetEntry.create_fts_search_index()`    |
 | `DatasetEntry.create_vector_index()` | `DatasetEntry.create_vector_search_index()` |
-| `DatasetEntry.list_indexes()` | `DatasetEntry.list_search_indexes()` |
-| `DatasetEntry.delete_indexes()` | `DatasetEntry.delete_search_indexes()` |
+| `DatasetEntry.list_indexes()`        | `DatasetEntry.list_search_indexes()`        |
+| `DatasetEntry.delete_indexes()`      | `DatasetEntry.delete_search_indexes()`      |
 
 **Breaking change:** `search_fts()` and `search_vector()` now return `datafusion.DataFrame` directly:
 
@@ -246,4 +246,4 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 
 ### Other deprecations
 
-- `DatasetEntry.download_segments()` is deprecated and will be removed in a future release.
+`DatasetEntry.download_segments()` is deprecated and will be removed in a future release.
