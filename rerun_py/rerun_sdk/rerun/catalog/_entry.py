@@ -26,7 +26,7 @@ _BatchesType: TypeAlias = (
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from rerun.dataframe import Recording
+    from rerun.recording import Recording
 
     from . import (
         CatalogClient,
