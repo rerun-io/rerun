@@ -372,7 +372,7 @@ class WorkflowSpec:
         """
         yaml = YAML()
         yaml.default_flow_style = False
-        yaml.width = 120  # type: ignore[assignment]
+        yaml.width = 120
 
         stream = StringIO()
         yaml.dump(self.to_dict(), stream)
@@ -589,7 +589,7 @@ def render_automation_workflow(
         A WorkflowSpec that can be rendered to YAML.
     """
     # Build the plan to get dispatches
-    plan = automation_info.fn.plan()  # type: ignore[attr-defined]
+    plan = automation_info.fn.plan()
 
     # Determine the trigger
     if automation_info.gha_on:

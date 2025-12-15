@@ -68,7 +68,7 @@ class TestFlowDispatch:
 
     def test_dispatch_records_params(self) -> None:
         """Test that dispatch records parameters."""
-        plan = scheduled_automation.plan()  # type: ignore[attr-defined]
+        plan = scheduled_automation.plan()  # type: ignore[union-attr]
 
         assert len(plan.dispatches) == 2
         assert plan.dispatches[0].flow_name == "build_flow"
@@ -95,14 +95,14 @@ class TestAutomationDecorator:
 
     def test_automation_plan(self) -> None:
         """Test automation.plan() returns plan."""
-        plan = simple_automation.plan()  # type: ignore[attr-defined]
+        plan = simple_automation.plan()  # type: ignore[union-attr]
         assert isinstance(plan, AutomationPlan)
         assert len(plan.dispatches) == 1
 
     def test_automation_callable(self) -> None:
         """Test automation is callable (builds plan)."""
         # Calling the automation should not raise
-        simple_automation()
+        simple_automation()  # type: ignore[call-arg]
 
 
 class TestRenderAutomationWorkflow:

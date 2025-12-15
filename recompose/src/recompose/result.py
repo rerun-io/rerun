@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -58,6 +58,10 @@ def Ok(value: T) -> Result[T]:
     return Result(value=value, status="success")
 
 
-def Err(error: str, *, traceback: str | None = None) -> Result[None]:
-    """Create a failed result with an error message."""
+def Err(error: str, *, traceback: str | None = None) -> Result[Any]:
+    """Create a failed result with an error message.
+
+    Returns Result[Any] so it can be returned from any function
+    expecting Result[T] - the value is None for errors anyway.
+    """
     return Result(status="failure", error=error, traceback=traceback)

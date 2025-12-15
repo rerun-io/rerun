@@ -98,9 +98,10 @@ def generate_gha(
     if output_dir:
         workflows_dir = Path(output_dir)
     else:
-        workflows_dir = _get_default_workflows_dir()
-        if workflows_dir is None:
+        maybe_workflows_dir = _get_default_workflows_dir()
+        if maybe_workflows_dir is None:
             return Err("Could not find git root. Specify --output_dir explicitly.")
+        workflows_dir = maybe_workflows_dir
 
     # Determine script path (relative to git root)
     git_root = _find_git_root()
@@ -123,7 +124,8 @@ def generate_gha(
     def _get_description(info: Any) -> str | None:
         """Extract first line of docstring as description."""
         if info.doc:
-            return info.doc.strip().split("\n")[0]
+            first_line: str = info.doc.strip().split("\n")[0]
+            return first_line
         return None
 
     if target:
@@ -145,16 +147,17 @@ def generate_gha(
             short_name = flow_info.name.split(":")[-1]
             targets.append((short_name, "flow", flow_info, _get_description(flow_info)))
         else:
+            assert automation_info is not None  # We checked both aren't None above
             short_name = automation_info.name.split(":")[-1]
             targets.append((short_name, "automation", automation_info, _get_description(automation_info)))
     else:
         # All flows and automations
-        for full_key, info in get_flow_registry().items():
-            short_name = info.name.split(":")[-1]
-            targets.append((short_name, "flow", info, _get_description(info)))
-        for full_key, info in get_automation_registry().items():
-            short_name = info.name.split(":")[-1]
-            targets.append((short_name, "automation", info, _get_description(info)))
+        for full_key, flow in get_flow_registry().items():
+            short_name = flow.name.split(":")[-1]
+            targets.append((short_name, "flow", flow, _get_description(flow)))
+        for full_key, auto in get_automation_registry().items():
+            short_name = auto.name.split(":")[-1]
+            targets.append((short_name, "automation", auto, _get_description(auto)))
 
     if not targets:
         return Err("No flows or automations registered.")

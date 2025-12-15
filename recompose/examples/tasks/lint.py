@@ -15,13 +15,13 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 @recompose.task
 def lint() -> recompose.Result[None]:
     """
-    Run ruff linter on the codebase.
+    Run linters (ruff + mypy) on the codebase.
 
-    Checks for code quality issues without modifying files.
+    Checks for code quality and type issues without modifying files.
     Used in CI to catch lint errors.
     """
+    # Run ruff check
     recompose.out("Running ruff check...")
-
     result = recompose.run(
         "uv",
         "run",
@@ -32,11 +32,24 @@ def lint() -> recompose.Result[None]:
         "examples/",
         cwd=PROJECT_ROOT,
     )
-
     if result.failed:
-        return recompose.Err(f"Lint failed with exit code {result.returncode}")
+        return recompose.Err(f"Ruff check failed with exit code {result.returncode}")
+    recompose.out("Ruff check passed!")
 
-    recompose.out("Lint passed!")
+    # Run mypy type check
+    recompose.out("Running mypy...")
+    result = recompose.run(
+        "uv",
+        "run",
+        "mypy",
+        ".",
+        cwd=PROJECT_ROOT,
+    )
+    if result.failed:
+        return recompose.Err(f"Mypy failed with exit code {result.returncode}")
+    recompose.out("Mypy passed!")
+
+    recompose.out("All checks passed!")
     return recompose.Ok(None)
 
 
