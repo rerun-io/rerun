@@ -45,7 +45,7 @@ def param_flow(*, repo: str = "main", debug: bool = False) -> None:
 def multi_step_flow() -> None:
     """A flow with multiple steps."""
     a = simple_task.flow()
-    param_task.flow(name=a, count=10)
+    param_task.flow(name=a.value(), count=10)
 
 
 class TestStepSpec:
@@ -300,7 +300,7 @@ class TestGHAActions:
 
         result = checkout()
         assert result.ok
-        assert result.value is None
+        assert result.value() is None
 
     def test_checkout_flow_outside_flow_raises(self) -> None:
         """Test that .flow() outside a flow raises."""

@@ -55,7 +55,7 @@ def test_output_captured_in_context():
     result = capturing_task()
     assert result.ok
     # 2 out lines + 1 dbg line = 3 total
-    assert result.value == "3"
+    assert result.value() == "3"
 
 
 def test_is_debug():

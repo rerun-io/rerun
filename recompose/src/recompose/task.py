@@ -19,19 +19,34 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-class TaskWrapper(Protocol[T]):
+class TaskWrapper(Protocol[P, T]):
     """
     Protocol describing a task-decorated function.
 
     Task wrappers are callable (returning Result[T]) and have a .flow() method
-    for use in declarative flows (returning TaskNode[T]).
+    for use in declarative flows.
+
+    Both __call__ and flow() have the same parameter signature (P), preserving
+    the original function's parameter names and types. Both return Result[T]
+    to the type checker, enabling type-safe flow composition:
+
+        @flow
+        def my_flow():
+            result = greet.flow(name="World")  # Type: Result[str]
+            echo.flow(message=result.value())  # Type: str (from Result.value())
+
+    At runtime, flow() actually returns a TaskNode[T] that mimics Result[T].
+    The TaskNode.value() method returns itself, allowing it to be passed as
+    a dependency to other .flow() calls. The receiving .flow() validates
+    that inputs are either literal values or Input[T] types (TaskNode or
+    InputPlaceholder).
     """
 
     _task_info: TaskInfo
 
-    def __call__(self, **kwargs: Any) -> Result[T]: ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Result[T]: ...
 
-    def flow(self, **kwargs: Any) -> TaskNode[T]: ...
+    def flow(self, *args: P.args, **kwargs: P.kwargs) -> Result[T]: ...
 
 
 @dataclass
@@ -94,7 +109,7 @@ def _is_method_signature(fn: Callable[..., Any]) -> bool:
     return len(params) > 0 and params[0] == "self"
 
 
-def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
+def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     """
     Decorator to mark a function as a recompose task.
 
@@ -117,8 +132,15 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
         # Direct execution:
         result = compile(source=Path("src/"))  # Returns Result[Path]
 
-        # Inside a declarative flow:
-        node = compile.flow(source=Path("src/"))  # Returns TaskNode[Path]
+        # Inside a declarative flow - type-safe composition:
+        @flow
+        def build_flow():
+            compiled = compile.flow(source=Path("src/"))  # Type: Result[Path]
+            test.flow(binary=compiled.value)              # Type: Path
+
+    The .flow() method returns Result[T] to the type checker, enabling
+    type-safe composition via .value. At runtime, it returns a TaskNode
+    that mimics Result[T] and tracks dependencies.
     """
     # Check if this looks like a method
     if _is_method_signature(fn):
@@ -171,20 +193,27 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
     # Add .flow() method for declarative flow building
     def flow_variant(**kwargs: Any) -> Any:
         """
-        Create a TaskNode for this task (for use in declarative flows).
+        Build a task node for deferred execution in a flow.
 
         This method can only be called inside a @flow-decorated function.
-        It returns a TaskNode that represents a deferred execution of this task.
+        It returns a TaskNode that mimics Result[T] for type-safe composition.
+
+        Type-safe usage pattern:
+            result = my_task.flow(arg="value")   # Type: Result[T]
+            other_task.flow(input=result.value()) # Type: T (actually TaskNode at runtime)
 
         Args:
             **kwargs: The arguments to pass to the task when executed.
-                      May include TaskNode values from other .flow() calls.
+                      Accepts literal values, TaskNode.value() from other .flow() calls,
+                      or InputPlaceholder for GHA workflow generation.
 
         Returns:
-            TaskNode[T] representing this task in the flow graph.
+            Result[T] to type checker, TaskNode[T] at runtime.
 
         Raises:
             RuntimeError: If called outside a @flow context.
+            TypeError: If unexpected keyword arguments are passed.
+
         """
         from .flow import get_current_plan
         from .flowgraph import TaskNode
@@ -196,10 +225,40 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
                 f"Use {info.name}() for direct execution."
             )
 
+        # Validate kwargs against the task signature
+        valid_params = set(info.signature.parameters.keys())
+        unexpected = set(kwargs.keys()) - valid_params
+        if unexpected:
+            raise TypeError(
+                f"{info.name}.flow() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
+                f"Valid arguments are: {', '.join(sorted(valid_params))}"
+            )
+
+        # Check for missing required arguments
+        missing = []
+        for name, param in info.signature.parameters.items():
+            if param.default is inspect.Parameter.empty and name not in kwargs:
+                missing.append(name)
+        if missing:
+            raise TypeError(f"{info.name}.flow() missing required keyword argument(s): {', '.join(missing)}")
+
         # Create the TaskNode
         node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs)
         plan.add_node(node)
         return node
+
+    # Copy signature from original function for IDE autocomplete support
+    flow_variant.__signature__ = info.signature  # type: ignore[attr-defined]
+    flow_variant.__doc__ = f"""Build a task node for {info.name} in a declarative flow.
+
+Parameters match the task signature. Use .value() to pass outputs between tasks:
+
+    result = {info.name}.flow(...)       # Type: Result[T]
+    other.flow(input=result.value())     # Type: T (TaskNode at runtime)
+
+Returns:
+    Result[T] to type checker, TaskNode[T] at runtime.
+"""
 
     wrapper.flow = flow_variant  # type: ignore[attr-defined]
 
@@ -207,7 +266,7 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
     # (we've added .flow and ._task_info attributes dynamically)
     from typing import cast
 
-    return cast(TaskWrapper[T], wrapper)
+    return cast(TaskWrapper[P, T], wrapper)
 
 
 def taskclass(cls: type[T]) -> type[T]:
@@ -229,6 +288,7 @@ def taskclass(cls: type[T]) -> type[T]:
                 ...
 
         # CLI: ./app.py venv.sync --location=/tmp/venv --group=dev
+
     """
     class_name = cls.__name__.lower()
     module = cls.__module__

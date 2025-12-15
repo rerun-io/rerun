@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 T = TypeVar("T")
 
@@ -16,10 +16,10 @@ class Result(BaseModel, Generic[T]):
     Use Ok(value) or Err(message) to construct results.
     """
 
-    value: T | None = None
     status: Literal["success", "failure"] = "success"
     error: str | None = None
     traceback: str | None = None
+    _value: T | None = PrivateAttr(default=None)
 
     model_config = {"frozen": True}  # Make results immutable
 
@@ -33,29 +33,29 @@ class Result(BaseModel, Generic[T]):
         """True if the task failed."""
         return self.status == "failure"
 
-    def unwrap(self) -> T:
+    def value(self) -> T:
         """
-        Get the value, raising an error if the result is a failure.
+        Get the result value.
 
-        Raises:
-            RuntimeError: If the result is a failure.
+        Returns the value if the result is successful (including None for Result[None]).
+        Raises RuntimeError if the result is a failure.
         """
         if self.failed:
-            raise RuntimeError(f"Attempted to unwrap a failed result: {self.error}")
-        if self.value is None:
-            raise RuntimeError("Attempted to unwrap a result with no value")
-        return self.value
+            raise RuntimeError(f"Attempted to get value from a failed result: {self.error}")
+        return self._value  # type: ignore[return-value]
 
-    def unwrap_or(self, default: T) -> T:
-        """Get the value, or return a default if the result is a failure."""
-        if self.ok and self.value is not None:
-            return self.value
+    def value_or(self, default: T) -> T:
+        """Get the value, or return a default if the result is a failure or has no value."""
+        if self.ok and self._value is not None:
+            return self._value
         return default
 
 
 def Ok(value: T) -> Result[T]:
     """Create a successful result with the given value."""
-    return Result(value=value, status="success")
+    result = Result[T](status="success")
+    object.__setattr__(result, "_value", value)
+    return result
 
 
 def Err(error: str, *, traceback: str | None = None) -> Result[Any]:

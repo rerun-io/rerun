@@ -46,11 +46,11 @@ def test_declarative_flow_basic():
 
     result = simple_declarative()
     assert result.ok
-    assert result.value is None  # Flows return None
+    assert result.value() is None  # Flows return None
 
 
 def test_declarative_flow_with_dependencies():
-    """Test declarative flow with task dependencies."""
+    """Test declarative flow with task dependencies using .value() pattern."""
 
     @task
     def produce(*, value: int) -> Result[int]:
@@ -63,7 +63,7 @@ def test_declarative_flow_with_dependencies():
     @flow
     def dependent_flow() -> None:
         produced = produce.flow(value=5)
-        consume.flow(input_val=produced)  # Depends on produced
+        consume.flow(input_val=produced.value())  # Use .value() for type-safe passing
 
     result = dependent_flow()
     assert result.ok
@@ -91,8 +91,8 @@ def test_declarative_flow_execution_order():
     @flow
     def ordered_flow() -> None:
         first = task_first.flow()
-        second = task_second.flow(from_first=first)
-        task_third.flow(from_second=second)
+        second = task_second.flow(from_first=first.value())
+        task_third.flow(from_second=second.value())
 
     execution_order.clear()
     result = ordered_flow()
@@ -128,9 +128,9 @@ def test_declarative_flow_parallel_structure():
     @flow
     def diamond_flow() -> None:
         src = source_task.flow()
-        a = branch_a.flow(val=src)
-        b = branch_b.flow(val=src)
-        merge_task.flow(a=a, b=b)
+        a = branch_a.flow(val=src.value())
+        b = branch_b.flow(val=src.value())
+        merge_task.flow(a=a.value(), b=b.value())
 
     execution_order.clear()
     result = diamond_flow()
@@ -187,7 +187,7 @@ def test_flow_plan_method():
     @flow
     def plannable_flow() -> None:
         a = plan_task_a.flow()
-        plan_task_b.flow(from_a=a)
+        plan_task_b.flow(from_a=a.value())
 
     # Get the plan without executing
     plan = plannable_flow.plan()
@@ -212,7 +212,7 @@ def test_flow_plan_shows_dependencies():
     @flow
     def dep_flow() -> None:
         root = dep_root.flow()
-        dep_child.flow(val=root)
+        dep_child.flow(val=root.value())
 
     plan = dep_flow.plan()
 
@@ -240,8 +240,8 @@ def test_flow_plan_execution_order():
     @flow
     def ordered_plan_flow() -> None:
         a = order_a.flow()
-        b = order_b.flow(a=a)
-        order_c.flow(b=b)
+        b = order_b.flow(a=a.value())
+        order_c.flow(b=b.value())
 
     plan = ordered_plan_flow.plan()
     order = plan.get_execution_order()
@@ -270,8 +270,8 @@ def test_flow_plan_parallelizable_groups():
     @flow
     def parallel_flow() -> None:
         root = parallel_root.flow()
-        parallel_a.flow(val=root)
-        parallel_b.flow(val=root)
+        parallel_a.flow(val=root.value())
+        parallel_b.flow(val=root.value())
 
     plan = parallel_flow.plan()
     groups = plan.get_parallelizable_groups()

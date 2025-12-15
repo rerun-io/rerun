@@ -162,8 +162,8 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         console.print()
         if result.ok:
             console.print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
-            if result.value is not None:
-                console.print(f"[dim]→[/dim] {result.value}")
+            if result._value is not None:
+                console.print(f"[dim]→[/dim] {result._value}")
         else:
             console.print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
             if result.error:
@@ -380,7 +380,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     if dep_result.failed:
                         console.print(f"[red]Error:[/red] Dependency '{dep_step_name}' failed or not found")
                         sys.exit(1)
-                    resolved_kwargs[kwarg_name] = dep_result.value
+                    resolved_kwargs[kwarg_name] = dep_result.value()
                 else:
                     resolved_kwargs[kwarg_name] = kwarg_value
 
@@ -395,8 +395,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             # Print result
             if result.ok:
                 console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
-                if result.value is not None:
-                    console.print(f"[dim]→[/dim] {result.value}")
+                if result._value is not None:
+                    console.print(f"[dim]→[/dim] {result._value}")
             else:
                 console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
                 if result.error:
@@ -453,6 +453,7 @@ def main(
                    Use "uv run python" for uv-managed projects.
         working_directory: Working directory for GHA workflows (relative to repo root).
                           If set, workflows will cd to this directory before running.
+
     """
     import sys
 

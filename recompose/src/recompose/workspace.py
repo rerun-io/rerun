@@ -61,6 +61,7 @@ def create_workspace(flow_name: str, workspace: Path | None = None) -> Path:
 
     Returns:
         Path to the workspace directory
+
     """
     if workspace is not None:
         workspace.mkdir(parents=True, exist_ok=True)
@@ -126,11 +127,12 @@ def write_step_result(workspace: Path, step_name: str, result: Result[Any]) -> N
         workspace: Workspace directory
         step_name: Name of the step (e.g., "01_fetch_source")
         result: The Result to serialize
+
     """
     result_file = workspace / f"{step_name}.json"
     data = {
         "status": result.status,
-        "value": _serialize_value(result.value),
+        "value": _serialize_value(result._value),
         "error": result.error,
         "traceback": result.traceback,
     }
@@ -147,6 +149,7 @@ def read_step_result(workspace: Path, step_name: str) -> Result[Any]:
 
     Returns:
         The deserialized Result
+
     """
     result_file = workspace / f"{step_name}.json"
     if not result_file.exists():

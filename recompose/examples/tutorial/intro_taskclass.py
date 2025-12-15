@@ -53,6 +53,7 @@ class Counter:
 
         Args:
             start: Initial counter value (becomes --start CLI option)
+
         """
         self.value = start
         recompose.dbg(f"Counter initialized with value={self.value}")
@@ -64,6 +65,7 @@ class Counter:
 
         Args:
             by: Amount to increment (becomes --by CLI option)
+
         """
         old_value = self.value
         self.value += by
@@ -107,6 +109,7 @@ class FileOps:
 
         Args:
             directory: Directory to operate on (becomes --directory CLI option)
+
         """
         self.directory = Path(directory)
         recompose.dbg(f"FileOps initialized for: {self.directory}")
@@ -118,6 +121,7 @@ class FileOps:
 
         Args:
             long: Use long format (becomes --long flag)
+
         """
         recompose.out(f"Listing files in {self.directory}")
 

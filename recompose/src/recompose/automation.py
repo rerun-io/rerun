@@ -142,6 +142,7 @@ def automation(
 
     The automation can then generate a workflow YAML via:
         ./app.py generate-gha nightly_build
+
     """
 
     def decorator(func: Callable[..., None]) -> Callable[..., None]:

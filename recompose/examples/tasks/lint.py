@@ -59,7 +59,7 @@ def format_check() -> recompose.Result[None]:
     Check code formatting without modifying files.
 
     Used in CI to verify code is properly formatted.
-    Run `format` to apply fixes.
+    Run `format_code` to apply fixes.
     """
     recompose.out("Checking code formatting...")
 
@@ -83,7 +83,7 @@ def format_check() -> recompose.Result[None]:
 
 
 @recompose.task
-def format() -> recompose.Result[None]:
+def format_code() -> recompose.Result[None]:
     """
     Apply code formatting fixes.
 

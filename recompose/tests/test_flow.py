@@ -32,7 +32,7 @@ def test_flow_returns_result():
 
     result = simple_flow()
     assert result.ok
-    assert result.value is None  # Flows always return None
+    assert result.value() is None  # Flows always return None
 
 
 def test_flow_can_call_tasks():
@@ -92,7 +92,7 @@ def test_flow_passes_results_between_tasks():
     @flow
     def math_flow(*, a: int, b: int) -> None:
         mul_result = multiply.flow(x=a, y=b)
-        add.flow(x=mul_result, y=10)
+        add.flow(x=mul_result.value(), y=10)
 
     result = math_flow(a=3, b=4)
     assert result.ok
@@ -113,7 +113,7 @@ def test_flow_handles_task_failure():
     def flow_with_failure() -> None:
         r = failing_task.flow()
         # This won't run because failing_task fails
-        succeeding_task.flow(dep=r)
+        succeeding_task.flow(dep=r.value())
 
     result = flow_with_failure()
     assert result.failed
@@ -215,8 +215,8 @@ def test_flow_auto_fails_on_task_failure():
     @flow
     def auto_fail_flow() -> None:
         a = task_a.flow()
-        b = task_b_fails.flow(dep=a)  # This fails - should stop here
-        task_c.flow(dep=b)  # This won't run
+        b = task_b_fails.flow(dep=a.value())  # This fails - should stop here
+        task_c.flow(dep=b.value())  # This won't run
 
     executed_tasks.clear()
     result = auto_fail_flow()

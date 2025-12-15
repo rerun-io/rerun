@@ -9,8 +9,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .context import get_entry_point, get_python_cmd, get_working_directory, out
-from .gha import WorkflowSpec
+from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
+from .gha import WorkflowSpec, validate_workflow
 from .result import Err, Ok, Result
 from .task import task
 
@@ -87,6 +87,7 @@ def generate_gha(
 
         # Generate to custom directory
         ./run generate_gha --output_dir=/tmp/workflows
+
     """
     import sys
 
@@ -220,6 +221,16 @@ def generate_gha(
                 workflows_dir.mkdir(parents=True, exist_ok=True)
                 output_file.write_text(yaml_content)
 
+            # Validate with actionlint if available
+            valid, validation_msg = validate_workflow(yaml_content, output_file)
+            if valid:
+                dbg(f"actionlint: {filename} passed validation")
+            elif "not found" in validation_msg:
+                dbg("actionlint: not available, skipping validation")
+            else:
+                dbg(f"actionlint: {filename} FAILED validation")
+                errors.append(f"{short_name}: actionlint: {validation_msg}")
+
             results.append(spec)
 
             # Print status
@@ -264,6 +275,7 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
         ./run inspect --target=lint
         ./run inspect --target=ci
         ./run inspect --target=ci --params="verbose=true"
+
     """
     import inspect as py_inspect
 

@@ -29,7 +29,7 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "A004", "D413"]
 
 [dependency-groups]
 dev = [

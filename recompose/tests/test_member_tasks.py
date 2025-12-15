@@ -73,7 +73,7 @@ def test_method_task_can_be_invoked():
     # Call the wrapper with combined args
     result = task_info.fn(prefix="Hi", name="World")
     assert result.ok
-    assert result.value == "Hi, World!"
+    assert result.value() == "Hi, World!"
 
 
 def test_method_task_with_defaults():
@@ -101,12 +101,12 @@ def test_method_task_with_defaults():
     # Call with all defaults
     result = task_info.fn()
     assert result.ok
-    assert result.value == 1
+    assert result.value() == 1
 
     # Call with custom values
     result = task_info.fn(start=10, by=5)
     assert result.ok
-    assert result.value == 15
+    assert result.value() == 15
 
 
 def test_method_task_exception_handling():
@@ -168,12 +168,12 @@ def test_multiple_method_tasks():
     # Call first
     result = first_info.fn(name="test")
     assert result.ok
-    assert result.value == "first: test"
+    assert result.value() == "first: test"
 
     # Call second
     result = second_info.fn(name="test", extra="!")
     assert result.ok
-    assert result.value == "second: test !"
+    assert result.value() == "second: test !"
 
 
 def test_task_decorator_still_works_for_functions():
@@ -185,7 +185,7 @@ def test_task_decorator_still_works_for_functions():
 
     result = standalone(value=21)
     assert result.ok
-    assert result.value == 42
+    assert result.value() == 42
 
 
 def test_method_task_preserves_docstring():
