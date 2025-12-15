@@ -6,30 +6,13 @@ just like any user-defined task.
 """
 
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .context import out
+from .gha import WorkflowSpec
 from .result import Err, Ok, Result
 from .task import task
-
-
-@dataclass
-class GeneratedWorkflow:
-    """Result of generating a workflow file."""
-
-    name: str
-    path: Path
-    status: str  # "created", "updated", "unchanged"
-    description: str | None = None
-
-    def __str__(self) -> str:
-        """User-friendly string representation."""
-        status_icon = {"created": "+", "updated": "~", "unchanged": "="}
-        icon = status_icon.get(self.status, "?")
-        desc = f" - {self.description}" if self.description else ""
-        return f"[{icon}] {self.path.name}{desc}"
 
 
 def _find_git_root() -> Path | None:
@@ -70,7 +53,7 @@ def generate_gha(
     script: str | None = None,
     runs_on: str = "ubuntu-latest",
     check_only: bool = False,
-) -> Result[list[GeneratedWorkflow]]:
+) -> Result[list[WorkflowSpec]]:
     """
     Generate GitHub Actions workflow YAML for flows and automations.
 
@@ -90,7 +73,7 @@ def generate_gha(
                    Returns Err if any files would change.
 
     Returns:
-        List of GeneratedWorkflow objects describing what was generated.
+        List of WorkflowSpec objects that were generated.
 
     Examples:
         # Generate all workflows
@@ -177,7 +160,7 @@ def generate_gha(
         return Err("No flows or automations registered.")
 
     # Generate workflows
-    results: list[GeneratedWorkflow] = []
+    results: list[WorkflowSpec] = []
     changes: list[str] = []
     errors: list[str] = []
 
@@ -213,23 +196,20 @@ def generate_gha(
                 workflows_dir.mkdir(parents=True, exist_ok=True)
                 output_file.write_text(yaml_content)
 
-            results.append(GeneratedWorkflow(
-                name=short_name,
-                path=output_file,
-                status=status,
-                description=description,
-            ))
+            results.append(spec)
+
+            # Print status
+            status_icon = {"created": "+", "updated": "~", "unchanged": "=",
+                          "would change": "~", "would create": "+"}
+            icon = status_icon.get(status, "?")
+            desc = f" - {description}" if description else ""
+            out(f"  [{icon}] {filename}{desc}")
 
         except Exception as e:
             errors.append(f"{short_name}: {e}")
-
-    # Print results
-    for wf in results:
-        out(f"  {wf}")
+            out(f"  [!] {filename} - ERROR: {e}")
 
     if errors:
-        for err in errors:
-            out(f"  ERROR: {err}")
         return Err(f"Errors generating workflows:\n" + "\n".join(errors))
 
     if check_only and changes:
