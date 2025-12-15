@@ -1,4 +1,4 @@
-use super::super::definitions::geometry_msgs::PoseStamped;
+use super::super::definitions::geometry_msgs::{Pose, PoseStamped};
 use re_chunk::{Chunk, ChunkId};
 
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D};
@@ -32,6 +32,10 @@ impl MessageParser for PoseStampedMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let PoseStamped { header, pose } = cdr::try_decode_message::<PoseStamped>(&msg.data)?;
+        let Pose {
+            position,
+            orientation,
+        } = pose;
 
         // Add the header timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
@@ -40,16 +44,16 @@ impl MessageParser for PoseStampedMessageParser {
 
         self.frame_ids.push(header.frame_id);
         self.translations.push(Translation3D::new(
-            pose.position.x as f32,
-            pose.position.y as f32,
-            pose.position.z as f32,
+            position.x as f32,
+            position.y as f32,
+            position.z as f32,
         ));
         self.quaternions.push(
             Quaternion::from_xyzw([
-                pose.orientation.x as f32,
-                pose.orientation.y as f32,
-                pose.orientation.z as f32,
-                pose.orientation.w as f32,
+                orientation.x as f32,
+                orientation.y as f32,
+                orientation.z as f32,
+                orientation.w as f32,
             ])
             .into(),
         );
