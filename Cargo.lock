@@ -3381,7 +3381,7 @@ checksum = "d01d34e845f01c62e3fded726961092e70417d66570c499b9817ab24674ca4ed"
 dependencies = [
  "ahash",
  "egui",
- "ehttp 0.5.0",
+ "ehttp",
  "enum-map",
  "image",
  "log",
@@ -3459,20 +3459,6 @@ dependencies = [
  "itertools 0.14.0",
  "log",
  "serde",
-]
-
-[[package]]
-name = "ehttp"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04499d3c719edecfad5c9b46031726c8540905d73be6d7e4f9788c4a298da908"
-dependencies = [
- "document-features",
- "js-sys",
- "ureq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -8339,7 +8325,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "directories",
- "ehttp 0.6.0",
+ "ehttp",
  "jiff",
  "re_build_info",
  "re_log",
@@ -8406,7 +8392,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "directories",
- "ehttp 0.6.0",
+ "ehttp",
  "getrandom 0.3.3",
  "http",
  "indicatif",
@@ -9053,7 +9039,7 @@ dependencies = [
  "arrow",
  "bytes",
  "criterion",
- "ehttp 0.6.0",
+ "ehttp",
  "insta",
  "itertools 0.14.0",
  "js-sys",
@@ -9626,7 +9612,7 @@ dependencies = [
  "chrono",
  "clap",
  "datafusion",
- "ehttp 0.6.0",
+ "ehttp",
  "futures",
  "http",
  "itertools 0.14.0",
@@ -10254,7 +10240,7 @@ dependencies = [
  "egui-wgpu",
  "egui_kittest",
  "egui_plot",
- "ehttp 0.6.0",
+ "ehttp",
  "emath",
  "glam",
  "image",
