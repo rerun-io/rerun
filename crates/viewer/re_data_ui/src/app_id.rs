@@ -54,8 +54,6 @@ impl crate::DataUi for ApplicationId {
                 ));
             }
             UiLayout::SelectionPanel => {
-                // Using the same content ui also for tooltips even if it can't be interacted with.
-                // (still displays the content we want)
                 if !recordings.is_empty() {
                     ui.scope(|ui| {
                         ui.spacing_mut().item_spacing.y = 0.0;
