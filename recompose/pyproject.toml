@@ -47,7 +47,6 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = ["examples/tutorial/"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

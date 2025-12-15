@@ -9,22 +9,22 @@ This tutorial introduces flows for composing tasks:
 - Flows can be inspected before execution
 
 Run this file to see all available commands:
-    uv run python examples/tutorial/intro_flows.py --help
+    uv run python -m examples.tutorial.intro_flows --help
 
 Run flows:
-    uv run python examples/tutorial/intro_flows.py tool_check
-    uv run python examples/tutorial/intro_flows.py greeting_pipeline --name="Alice"
-    uv run python examples/tutorial/intro_flows.py math_pipeline --a=20 --b=4
+    uv run python -m examples.tutorial.intro_flows tool_check
+    uv run python -m examples.tutorial.intro_flows greeting_pipeline --name="Alice"
+    uv run python -m examples.tutorial.intro_flows math_pipeline --a=20 --b=4
 
 Inspect flows without running:
-    uv run python examples/tutorial/intro_flows.py inspect tool_check
-    uv run python examples/tutorial/intro_flows.py inspect greeting_pipeline
+    uv run python -m examples.tutorial.intro_flows inspect tool_check
+    uv run python -m examples.tutorial.intro_flows inspect greeting_pipeline
 """
 
-# Import tasks from intro_tasks to compose into flows
-from intro_tasks import check_tool, divide, greet
-
 import recompose
+
+# Import tasks from intro_tasks to compose into flows
+from .intro_tasks import check_tool, divide, greet
 
 # =============================================================================
 # ADDITIONAL TASKS FOR FLOWS
