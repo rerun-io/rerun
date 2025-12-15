@@ -1,9 +1,26 @@
 # NOW
 
-**P08_ci_integration** - Prove it works in real CI.
+(Clean - pick up next item from UPCOMING)
 
-Next step: Push branch to GitHub and verify the generated workflow actually runs.
-This is the end-to-end validation that the whole system works.
+---
+
+**P08_ci_integration** - COMPLETE.
+
+Successfully got CI workflow running on GitHub Actions! The pipeline now:
+1. ✅ GHA setup (checkout, python, uv) - via `recompose.gha.checkout.flow()` etc.
+2. ✅ lint - ruff + mypy (required consolidating dev deps in `[dependency-groups]`)
+3. ✅ format_check - ruff format --check
+4. ✅ test - pytest (all 144 tests)
+5. ✅ generate_gha --check_only - validates workflow consistency
+
+Key implementation details for GHA:
+- Added `python_cmd` config (e.g., "uv run python") via `recompose.main(python_cmd=...)`
+- Added `working_directory` config for job-level `defaults.run.working-directory`
+- Auto-detect module vs script invocation via `__spec__` - generates `-m module` style commands
+- Script paths automatically adjusted when working_directory is set
+
+Run `#20230043377` passed all core checks (lint, format, test). The generate_gha step
+correctly detected our temporary push trigger as out of sync (expected - validates consistency).
 
 ---
 
