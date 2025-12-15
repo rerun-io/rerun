@@ -11,6 +11,10 @@
 name: ci
 on:
   workflow_dispatch: {}
+  # TEMPORARY: push trigger for testing on feature branch - remove before merge
+  push:
+    branches: [jleibs/recompose]
+    paths: [recompose/**, .github/workflows/recompose_flow_ci.yml]
 jobs:
   ci:
     runs-on: ubuntu-latest
