@@ -692,10 +692,11 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
+            let time_float_offset_id = plot_id.with("time_float_offset");
             // Since we store the x-axis view range with integers we want to store an extra temporary float offset for the view.
             let plot_x_range = ui
                 .ctx()
-                .memory(|mem| mem.data.get_temp::<Range1D>(plot_id))
+                .memory(|mem| mem.data.get_temp::<Range1D>(time_float_offset_id))
                 .map(|offset| {
                     Range1D::new(
                         x_range.start() + offset.start(),
@@ -793,7 +794,7 @@ impl ViewClass for TimeSeriesView {
                         Range1D::new(new_x_range.start().round(), new_x_range.end().round());
                     ui.ctx().memory_mut(|m| {
                         m.data.insert_temp(
-                            plot_id,
+                            time_float_offset_id,
                             Range1D::new(
                                 new_x_range.start() - new_x_range_rounded.start(),
                                 new_x_range.end() - new_x_range_rounded.end(),
