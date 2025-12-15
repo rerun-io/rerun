@@ -13,10 +13,11 @@ import inspect
 import shutil
 import subprocess
 from dataclasses import dataclass, field
+from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
+from ruamel.yaml import YAML
 
 from .flow import FlowInfo, get_flow
 from .result import Ok, Result
@@ -369,22 +370,13 @@ class WorkflowSpec:
         Returns:
             YAML string, optionally with header.
         """
+        yaml = YAML()
+        yaml.default_flow_style = False
+        yaml.width = 120  # type: ignore[assignment]
 
-        # Custom representer to handle multi-line strings nicely
-        def str_representer(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
-            if "\n" in data:
-                return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-            return dumper.represent_scalar("tag:yaml.org,2002:str", data)
-
-        yaml.add_representer(str, str_representer)
-
-        yaml_content = yaml.dump(
-            self.to_dict(),
-            default_flow_style=False,
-            sort_keys=False,
-            allow_unicode=True,
-            width=120,
-        )
+        stream = StringIO()
+        yaml.dump(self.to_dict(), stream)
+        yaml_content = stream.getvalue()
 
         if include_header:
             header_source = source if source else f"workflow: {self.name}"
