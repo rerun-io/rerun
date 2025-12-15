@@ -112,6 +112,15 @@ class Entry(ABC, Generic[InternalEntryT]):
         self._internal.update(name=name)
 
     def __eq__(self, other: object) -> bool:
+        """
+        Compare this entry to another object.
+
+        Supports comparison with `str` and `EntryId` to enable the following patterns:
+        ```py
+        "entry_name" in client.entries()
+        entry_id in client.entries()
+        ```
+        """
         match other:
             case Entry():
                 return self.id == other.id
