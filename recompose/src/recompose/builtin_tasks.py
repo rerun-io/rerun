@@ -177,6 +177,9 @@ def generate_gha(
             else:
                 spec = render_automation_workflow(info)
 
+            # Set the output path on the spec
+            spec.path = output_file
+
             yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {short_name}")
 
             # Determine status
