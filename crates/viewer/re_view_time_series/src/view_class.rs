@@ -692,6 +692,7 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
+            // Since we store the x-axis view range with integers we want to store an extra temporary float offset for the view.
             let plot_x_range = ui
                 .ctx()
                 .memory(|mem| mem.data.get_temp::<Range1D>(plot_id))
