@@ -201,11 +201,11 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         return true;
                     };
 
-                    if let Some(root) = found_root {
-                        if root != node_root_frame.root {
-                            found_root = None;
-                            multiple_roots = true;
-                        }
+                    if let Some(root) = found_root
+                        && root != node_root_frame.root
+                    {
+                        found_root = None;
+                        multiple_roots = true;
                     } else {
                         found_root = Some(node_root_frame.root);
                     }
