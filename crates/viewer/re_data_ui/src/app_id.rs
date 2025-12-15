@@ -47,11 +47,14 @@ impl crate::DataUi for ApplicationId {
                 // Too little space for anything else
             }
             UiLayout::Tooltip => {
-                ui.label(format!(
-                    "There are {} loaded recording{} for this app.",
-                    re_format::format_uint(recordings.len()),
-                    re_format::format_plural_s(recordings.len())
-                ));
+                if recordings.len() == 1 {
+                    ui.label("There is 1 loaded recording for this app.");
+                } else {
+                    ui.label(format!(
+                        "There are {} loaded recordings for this app.",
+                        re_format::format_uint(recordings.len()),
+                    ));
+                }
             }
             UiLayout::SelectionPanel => {
                 if !recordings.is_empty() {
