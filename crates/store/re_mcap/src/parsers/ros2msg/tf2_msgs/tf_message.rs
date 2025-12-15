@@ -12,14 +12,14 @@ use crate::parsers::{
 };
 use crate::util::TimestampCell;
 
-pub struct TfMessageMessageParser {
+pub struct TfMessageParser {
     translations: Vec<Translation3D>,
     quaternions: Vec<RotationQuat>,
     parent_frame_ids: Vec<String>,
     child_frame_ids: Vec<String>,
 }
 
-impl Ros2MessageParser for TfMessageMessageParser {
+impl Ros2MessageParser for TfMessageParser {
     fn new(num_rows: usize) -> Self {
         Self {
             translations: Vec::with_capacity(num_rows),
@@ -30,7 +30,7 @@ impl Ros2MessageParser for TfMessageMessageParser {
     }
 }
 
-impl MessageParser for TfMessageMessageParser {
+impl MessageParser for TfMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let TFMessage { transforms } = cdr::try_decode_message::<TFMessage>(&msg.data)?;
