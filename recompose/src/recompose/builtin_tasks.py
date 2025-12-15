@@ -6,12 +6,30 @@ just like any user-defined task.
 """
 
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .context import out
 from .result import Err, Ok, Result
 from .task import task
+
+
+@dataclass
+class GeneratedWorkflow:
+    """Result of generating a workflow file."""
+
+    name: str
+    path: Path
+    status: str  # "created", "updated", "unchanged"
+    description: str | None = None
+
+    def __str__(self) -> str:
+        """User-friendly string representation."""
+        status_icon = {"created": "+", "updated": "~", "unchanged": "="}
+        icon = status_icon.get(self.status, "?")
+        desc = f" - {self.description}" if self.description else ""
+        return f"[{icon}] {self.path.name}{desc}"
 
 
 def _find_git_root() -> Path | None:
@@ -36,6 +54,14 @@ def _get_default_workflows_dir() -> Path | None:
     return None
 
 
+def _workflow_filename(name: str, target_type: str) -> str:
+    """Generate workflow filename with recompose prefix."""
+    if target_type == "flow":
+        return f"recompose_flow_{name}.yml"
+    else:
+        return f"recompose_automation_{name}.yml"
+
+
 @task
 def generate_gha(
     *,
@@ -44,12 +70,16 @@ def generate_gha(
     script: str | None = None,
     runs_on: str = "ubuntu-latest",
     check_only: bool = False,
-) -> Result[dict[str, str]]:
+) -> Result[list[GeneratedWorkflow]]:
     """
     Generate GitHub Actions workflow YAML for flows and automations.
 
     By default, generates workflows for ALL registered flows and automations
     to .github/workflows/ in the git repository root.
+
+    Workflow files are named:
+    - recompose_flow_<name>.yml for flows
+    - recompose_automation_<name>.yml for automations
 
     Args:
         target: Specific flow/automation to generate. If not provided, generates all.
@@ -60,7 +90,7 @@ def generate_gha(
                    Returns Err if any files would change.
 
     Returns:
-        Dict mapping workflow names to their YAML content.
+        List of GeneratedWorkflow objects describing what was generated.
 
     Examples:
         # Generate all workflows
@@ -70,10 +100,10 @@ def generate_gha(
         ./run generate_gha --target=ci
 
         # Check if workflows are up-to-date (for CI)
-        ./run generate_gha --check-only
+        ./run generate_gha --check_only
 
         # Generate to custom directory
-        ./run generate_gha --output-dir=/tmp/workflows
+        ./run generate_gha --output_dir=/tmp/workflows
     """
     import sys
 
@@ -87,7 +117,7 @@ def generate_gha(
     else:
         workflows_dir = _get_default_workflows_dir()
         if workflows_dir is None:
-            return Err("Could not find git root. Specify --output-dir explicitly.")
+            return Err("Could not find git root. Specify --output_dir explicitly.")
 
     # Determine script path (relative to git root)
     git_root = _find_git_root()
@@ -104,8 +134,14 @@ def generate_gha(
         script_path = sys.argv[0]
 
     # Collect targets to generate
-    # Use short name (after colon) for filename, full key for lookup
-    targets: list[tuple[str, str, str, Any]] = []  # (short_name, full_key, type, info)
+    # (short_name, target_type, info, description)
+    targets: list[tuple[str, str, Any, str | None]] = []
+
+    def _get_description(info: Any) -> str | None:
+        """Extract first line of docstring as description."""
+        if info.doc:
+            return info.doc.strip().split("\n")[0]
+        return None
 
     if target:
         # Specific target
@@ -123,33 +159,34 @@ def generate_gha(
             return Err(msg)
 
         if flow_info:
-            short_name = flow_info.name.split(":")[-1]  # Get name after colon
-            targets.append((short_name, flow_info.name, "flow", flow_info))
+            short_name = flow_info.name.split(":")[-1]
+            targets.append((short_name, "flow", flow_info, _get_description(flow_info)))
         else:
             short_name = automation_info.name.split(":")[-1]
-            targets.append((short_name, automation_info.name, "automation", automation_info))
+            targets.append((short_name, "automation", automation_info, _get_description(automation_info)))
     else:
         # All flows and automations
         for full_key, info in get_flow_registry().items():
             short_name = info.name.split(":")[-1]
-            targets.append((short_name, full_key, "flow", info))
+            targets.append((short_name, "flow", info, _get_description(info)))
         for full_key, info in get_automation_registry().items():
             short_name = info.name.split(":")[-1]
-            targets.append((short_name, full_key, "automation", info))
+            targets.append((short_name, "automation", info, _get_description(info)))
 
     if not targets:
         return Err("No flows or automations registered.")
 
     # Generate workflows
-    results: dict[str, str] = {}
+    results: list[GeneratedWorkflow] = []
     changes: list[str] = []
     errors: list[str] = []
 
     mode = "Checking" if check_only else "Generating"
     out(f"{mode} {len(targets)} workflow(s) to {workflows_dir}")
 
-    for short_name, full_key, target_type, info in targets:
-        output_file = workflows_dir / f"{short_name}.yml"
+    for short_name, target_type, info, description in targets:
+        filename = _workflow_filename(short_name, target_type)
+        output_file = workflows_dir / filename
 
         try:
             if target_type == "flow":
@@ -158,37 +195,47 @@ def generate_gha(
                 spec = render_automation_workflow(info)
 
             yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {short_name}")
-            results[short_name] = yaml_content
 
-            # Check for changes
+            # Determine status
             if output_file.exists():
                 existing = output_file.read_text()
                 if existing != yaml_content:
-                    changes.append(f"{short_name}.yml (modified)")
-                    out(f"  {short_name}.yml - {'would change' if check_only else 'updated'}")
+                    status = "updated" if not check_only else "would change"
+                    changes.append(filename)
                 else:
-                    out(f"  {short_name}.yml - unchanged")
+                    status = "unchanged"
             else:
-                changes.append(f"{short_name}.yml (new)")
-                out(f"  {short_name}.yml - {'would create' if check_only else 'created'}")
+                status = "created" if not check_only else "would create"
+                changes.append(filename)
 
-            # Write file if not check_only
-            if not check_only:
+            # Write file if not check_only and there are changes
+            if not check_only and status in ("created", "updated"):
                 workflows_dir.mkdir(parents=True, exist_ok=True)
                 output_file.write_text(yaml_content)
 
+            results.append(GeneratedWorkflow(
+                name=short_name,
+                path=output_file,
+                status=status,
+                description=description,
+            ))
+
         except Exception as e:
             errors.append(f"{short_name}: {e}")
-            out(f"  {short_name}.yml - ERROR: {e}")
+
+    # Print results
+    for wf in results:
+        out(f"  {wf}")
 
     if errors:
+        for err in errors:
+            out(f"  ERROR: {err}")
         return Err(f"Errors generating workflows:\n" + "\n".join(errors))
 
     if check_only and changes:
         return Err(
-            f"Workflows out of sync ({len(changes)} file(s) would change):\n"
-            + "\n".join(f"  - {c}" for c in changes)
-            + "\n\nRun without --check-only to update."
+            f"Workflows out of sync ({len(changes)} file(s) would change).\n"
+            "Run without --check_only to update."
         )
 
     if check_only:
