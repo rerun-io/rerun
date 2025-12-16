@@ -196,9 +196,9 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     // Most things are hidden in the welcome screen:
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
-        (BLUEPRINT_PANEL_PATH, PanelState::Hidden),
-        (SELECTION_PANEL_PATH, PanelState::Hidden),
-        (TIME_PANEL_PATH, PanelState::Hidden),
+        (BLUEPRINT_PANEL_PATH, PanelState::Expanded), // We always want to show this to orient the user
+        (SELECTION_PANEL_PATH, PanelState::Hidden),   // There is nothing in here in welcome screen
+        (TIME_PANEL_PATH, PanelState::Hidden),        // There is nothing in here in welcome screen
     ] {
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
