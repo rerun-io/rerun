@@ -10,7 +10,7 @@ use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
 };
-use crate::util::TimestampCell;
+use crate::util::{TimestampCell, log_and_publish_timepoint_from_msg};
 
 pub struct TfMessageParser {
     translations: Vec<Translation3D>,
@@ -20,24 +20,40 @@ pub struct TfMessageParser {
 }
 
 impl Ros2MessageParser for TfMessageParser {
-    fn new(num_rows: usize) -> Self {
+    fn new(_num_rows: usize) -> Self {
+        // Note that we can't know the number of output rows in advance,
+        // as each message can contain a variable amount of transforms.
         Self {
-            translations: Vec::with_capacity(num_rows),
-            quaternions: Vec::with_capacity(num_rows),
-            parent_frame_ids: Vec::with_capacity(num_rows),
-            child_frame_ids: Vec::with_capacity(num_rows),
+            translations: Vec::new(),
+            quaternions: Vec::new(),
+            parent_frame_ids: Vec::new(),
+            child_frame_ids: Vec::new(),
         }
     }
 }
 
 impl MessageParser for TfMessageParser {
+    fn get_log_and_publish_timepoints(
+        &self,
+        msg: &mcap::Message<'_>,
+    ) -> anyhow::Result<Vec<re_chunk::TimePoint>> {
+        // We need a custom implementation of this method because we have a 1-to-N relationship between input messages and output rows.
+        // Assign each output row the same log and publish time as the input message.
+        let TFMessage { transforms } = cdr::try_decode_message::<TFMessage>(&msg.data)?;
+        Ok(vec![
+            log_and_publish_timepoint_from_msg(msg);
+            transforms.len()
+        ])
+    }
+
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let TFMessage { transforms } = cdr::try_decode_message::<TFMessage>(&msg.data)?;
 
         // Each transform in the message has its own timestamp.
         for transform in transforms {
-            // Add the header timestamp to the context, `log_time` and `publish_time` are added automatically
+            // Add the header timestamp to the context.
+            // `log_time` and `publish_time` are added via `log_and_publish_time_from_msg`.
             ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
                 transform.header.stamp.as_nanos() as u64,
             ));
@@ -76,19 +92,17 @@ impl MessageParser for TfMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let pose_components: Vec<_> = Transform3D::update_fields()
-            .with_many_translation(translations)
-            .with_many_quaternion(quaternions)
-            .with_many_child_frame(child_frame_ids)
-            .with_many_parent_frame(parent_frame_ids)
-            .columns_of_unit_batches()?
-            .collect();
-
         let chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             timelines.clone(),
-            pose_components.into_iter().collect(),
+            Transform3D::update_fields()
+                .with_many_translation(translations)
+                .with_many_quaternion(quaternions)
+                .with_many_child_frame(child_frame_ids)
+                .with_many_parent_frame(parent_frame_ids)
+                .columns_of_unit_batches()?
+                .collect(),
         )?;
 
         Ok(vec![chunk])
