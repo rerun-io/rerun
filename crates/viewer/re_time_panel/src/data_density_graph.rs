@@ -430,6 +430,7 @@ pub fn paint_loaded_indicator_bar(
         return;
     }
 
+    re_tracing::profile_function!();
     let mut ranges = db.rrd_manifest_index().time_ranges_all_chunks(timeline);
 
     let full_range = db
