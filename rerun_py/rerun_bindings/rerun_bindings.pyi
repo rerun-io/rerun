@@ -192,7 +192,7 @@ class SchemaInternal:
 # TODO(RR-3130): remove RecordingView when rerun.dataframe is removed
 @deprecated(
     """RecordingView is deprecated. Use the catalog API instead.
-    See: https://rerun.io/docs/reference/migration/migration-0-28#legacy-dataframe-api-deprecated?speculative-link""",
+    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
 )
 class RecordingView:
     """
@@ -462,7 +462,7 @@ class Recording:
     # TODO(RR-3130): remove Recording.view() when rerun.dataframe is removed
     @deprecated(
         """Recording.view() is deprecated. Use the catalog API instead.
-        See: https://rerun.io/docs/reference/migration/migration-0-28#legacy-dataframe-api-deprecated?speculative-link""",
+        See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
     )
     def view(
         self,
