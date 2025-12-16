@@ -303,13 +303,14 @@ fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
         // only referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         for recording in all_recordings().iter() {
             if recording.ref_count() <= 1 {
-                re_log::error!("Disconnecting orphaned recording");
-                recording.disconnect();
-            } else {
-                re_log::error!(
-                    "Not disconnecting recording, refcount = {}",
-                    recording.ref_count()
+                re_log::debug!(
+                    "Disconnecting orphaned recording: {}",
+                    recording
+                        .store_info()
+                        .map(|info| info.recording_id().to_string())
+                        .unwrap_or_else(|| "<unknown>".to_owned())
                 );
+                recording.disconnect();
             }
         }
 
