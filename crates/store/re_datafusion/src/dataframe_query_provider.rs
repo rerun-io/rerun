@@ -291,12 +291,16 @@ impl SegmentStreamExec {
                 LexOrdering::new(physical_ordering)
                     .expect("LexOrdering should return Some since input is not empty"),
             ]
+
+            // vec![]
         } else {
             vec![]
         };
 
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
+
+        // let eq_properties = EquivalenceProperties::new(Arc::clone(&projected_schema));
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
@@ -459,8 +463,8 @@ async fn chunk_store_cpu_worker_thread(
     Ok(())
 }
 
-/// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
-/// chunks for a single segment, so we can just take the first row's `segment_id`.
+/// Extract segment ID from a `chunk_info` `RecordBatch`. Currently standing assumption is that `chunk_info` batch contains
+/// chunks *for a single segment*, hence we can just take the first row's `segment_id`.
 fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionError> {
     let segment_ids = chunk_info
         .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
@@ -472,9 +476,9 @@ fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionErro
     Ok(segment_ids.value(0).to_owned())
 }
 
-/// Estimate the total size of all chunks in a `chunk_info` `RecordBatch` by summing
-/// the `chunk_byte_len` values for all rows.
-fn estimate_segment_size(chunk_info: &RecordBatch) -> Result<u64, DataFusionError> {
+/// Extract chunk sizes from a `chunk_info` `RecordBatch`.
+/// Returns a reference to the UInt64Array containing chunk_byte_len values.
+fn extract_chunk_sizes(chunk_info: &RecordBatch) -> Result<&UInt64Array, DataFusionError> {
     let chunk_sizes = chunk_info
         .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
         .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
@@ -482,18 +486,16 @@ fn estimate_segment_size(chunk_info: &RecordBatch) -> Result<u64, DataFusionErro
         .downcast_ref::<UInt64Array>()
         .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
 
-    let total_size = (0..chunk_sizes.len()).map(|i| chunk_sizes.value(i)).sum();
-
-    Ok(total_size)
+    Ok(chunk_sizes)
 }
 
-type BatchingResult = (Vec<Vec<RecordBatch>>, Vec<String>);
+type BatchingResult = (Vec<RecordBatch>, Vec<String>);
 
 /// Groups `chunk_infos` into batches targeting the specified size, with special handling
 /// for segments larger than the target size (which get split).
 ///
 /// Returns (batches, `segment_order`) where:
-/// - batches: Vec of batches, each containing `chunk_infos` for one request
+/// - batches: Vec of merged RecordBatches, each representing a ~target_size request
 /// - `segment_order`: Original order of segments for preserving segment order
 fn create_request_batches(
     chunk_infos: Vec<RecordBatch>,
@@ -506,7 +508,8 @@ fn create_request_batches(
 
     for chunk_info in chunk_infos {
         let segment_id = extract_segment_id(&chunk_info)?;
-        let segment_size = estimate_segment_size(&chunk_info)?;
+        let chunk_sizes = extract_chunk_sizes(&chunk_info)?;
+        let segment_size: u64 = (0..chunk_sizes.len()).map(|i| chunk_sizes.value(i)).sum();
 
         // Track original segment order
         if !segment_order.contains(&segment_id) {
@@ -515,25 +518,32 @@ fn create_request_batches(
 
         // Check if this segment would make the current batch too large
         if !current_batch.is_empty() && current_batch_size + segment_size > target_size {
-            // Send current batch and start a new one
-            request_batches.push(current_batch);
+            // Merge current batch and add to results
+            let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
+                .map_err(|err| exec_datafusion_err!("Failed to merge batch: {err}"))?;
+            request_batches.push(merged_batch);
             current_batch = Vec::new();
             current_batch_size = 0;
         }
 
         // Special handling for segments larger than target size
         if segment_size > target_size {
-            // If current batch is not empty, send it first
+            // If current batch is not empty, merge and send it first
             if !current_batch.is_empty() {
-                request_batches.push(current_batch);
+                let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
+                    .map_err(|err| exec_datafusion_err!("Failed to merge batch: {err}"))?;
+                request_batches.push(merged_batch);
                 current_batch = Vec::new();
                 current_batch_size = 0;
             }
 
             // Split the large segment into multiple requests
-            let split_batches = split_large_segments(&segment_id, &chunk_info, target_size)?;
+            let split_batches =
+                split_large_segments(&segment_id, &chunk_info, target_size, chunk_sizes)?;
+
+            // Split batches are already individual RecordBatches, add them directly
             for split_batch in split_batches {
-                request_batches.push(vec![split_batch]);
+                request_batches.push(split_batch);
             }
         } else {
             // Add segment to current batch
@@ -542,28 +552,31 @@ fn create_request_batches(
         }
     }
 
-    // Don't forget the last batch
+    // Don't forget to merge the last batch
     if !current_batch.is_empty() {
-        request_batches.push(current_batch);
+        let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
+            .map_err(|err| exec_datafusion_err!("Failed to merge final batch: {err}"))?;
+        request_batches.push(merged_batch);
     }
+
+    tracing::debug!(
+        "Batching complete: {} segments → {} batches (target_size={}KB)",
+        segment_order.len(),
+        request_batches.len(),
+        target_size / 1024
+    );
 
     Ok((request_batches, segment_order))
 }
 
-/// Split an overly large segment into multiple smaller requests. Each request will contain
-/// a subset of the chunks from the original segment, targeting approximately the batch size.
+/// Split segment larger than target size into multiple smaller requests. Each request will contain
+/// a subset of the chunks from the original segment, targeting approximately the desired size.
 fn split_large_segments(
     segment_id: &str,
     chunk_info: &RecordBatch,
     target_size: u64,
+    chunk_sizes: &UInt64Array,
 ) -> Result<Vec<RecordBatch>, DataFusionError> {
-    let chunk_sizes = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
-        .as_any()
-        .downcast_ref::<UInt64Array>()
-        .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
-
     let mut result_batches = Vec::new();
     let mut current_indices = Vec::new();
     let mut current_size = 0u64;
@@ -607,7 +620,9 @@ fn split_large_segments(
     tracing::debug!(
         "Split large segment '{}' ({} bytes) into {} requests",
         segment_id,
-        estimate_segment_size(chunk_info)?,
+        (0..chunk_info.num_rows())
+            .map(|i| chunk_sizes.value(i))
+            .sum::<u64>(),
         result_batches.len()
     );
 
@@ -651,13 +666,14 @@ fn sort_chunks_by_segment_order(chunks: &mut Vec<ChunksWithSegment>, segment_ord
 /// which is different from the Rerun `segment_id`. The sorting by time index will happen within
 /// the cpu worker thread.
 ///
-/// This optimized version batches multiple segments together into ~128MB requests to reduce
-/// round-trips while preserving ordering through client-side buffering and reordering.
-///
 /// `chunk_infos` is a list of batches with chunk information where each batch has info for
 /// a *single segment*. We also expect these to be previously sorted by segment id, otherwise
 /// our suggestion to the query planner that inputs are sorted by segment id will be incorrect.
 /// See `group_chunk_infos_by_segment_id` and `execute` for more details.
+///
+/// In order to improve performance, while maintaining ordering, we batch requests to the server
+/// and process them concurrently in groups. After data for each group is collected, it is sorted
+/// by the input segment order before being sent to the CPU worker thread.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     client: ConnectionClient,
@@ -666,7 +682,6 @@ async fn chunk_stream_io_loop(
     target_batch_size: usize,
     target_concurrency: usize,
 ) -> Result<(), DataFusionError> {
-    // Build batches of requests to optimize network round-trips while maintaining ordering
     let target_size = target_batch_size as u64;
     let (request_batches, global_segment_order) = create_request_batches(chunk_infos, target_size)?;
 
@@ -680,13 +695,15 @@ async fn chunk_stream_io_loop(
                 let mut client = client.clone();
 
                 async move {
-                    let chunk_infos_for_request: Vec<re_protos::common::v1alpha1::DataframePart> =
-                        batch.into_iter().map(Into::into).collect();
+                    let chunk_info: re_protos::common::v1alpha1::DataframePart = batch.into();
 
                     let fetch_chunks_request = FetchChunksRequest {
-                        chunk_infos: chunk_infos_for_request,
+                        chunk_infos: vec![chunk_info],
                     };
-
+                    tracing::info!(
+                        "Sending FetchChunksRequest with {} chunk infos",
+                        fetch_chunks_request.chunk_infos.len()
+                    );
                     let fetch_chunks_response_stream = client
                         .inner()
                         .fetch_chunks(fetch_chunks_request)
