@@ -1,6 +1,7 @@
 use std::ops::RangeInclusive;
 
 /// A sorted, immutable collection of inclusive ranges mapped to values.
+///
 /// Supports O(log N) queries for overlapping ranges.
 #[derive(Debug, Clone, Default)]
 pub struct SortedRangeMap<K, V> {
@@ -13,9 +14,7 @@ pub struct SortedRangeMap<K, V> {
 }
 
 impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
-    /// Build from an iterator of (range, value) pairs.
-    pub fn new(iter: impl IntoIterator<Item = (RangeInclusive<K>, V)>) -> Self {
-        let mut entries: Vec<_> = iter.into_iter().collect();
+    pub fn new(mut entries: Vec<(RangeInclusive<K>, V)>) -> Self {
         entries.sort_by(|a, b| a.0.start().cmp(b.0.start()));
 
         let mut max_end = Vec::with_capacity(entries.len());
@@ -38,13 +37,12 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     ///
     /// This is O(log N) to find the starting point, then O(K) for K results.
     #[inline]
-    pub fn query(&self, query: &RangeInclusive<K>) -> OverlapIter<'_, K, V> {
-        let start_idx = self.find_first_possible(query);
+    pub fn query(&self, query: RangeInclusive<K>) -> OverlapIter<'_, K, V> {
+        let start_idx = self.find_first_possible(&query);
 
         OverlapIter {
             map: self,
-            query_start: *query.start(),
-            query_end: *query.end(),
+            query,
             idx: start_idx,
         }
     }
@@ -53,7 +51,6 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     #[inline]
     fn find_first_possible(&self, query: &RangeInclusive<K>) -> usize {
         // We need max_end[i] >= query.start for any overlap to be possible
-        // (inclusive ranges: overlap requires max_end >= query.start, not >)
         self.max_end.partition_point(|max| *max < *query.start())
     }
 
@@ -81,8 +78,7 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
 #[derive(Debug, Clone)]
 pub struct OverlapIter<'a, K, V> {
     map: &'a SortedRangeMap<K, V>,
-    query_start: K,
-    query_end: K,
+    query: RangeInclusive<K>,
     idx: usize,
 }
 
@@ -94,16 +90,15 @@ impl<'a, K: Ord + Copy, V> Iterator for OverlapIter<'a, K, V> {
         while self.idx < self.map.entries.len() {
             let (range, value) = &self.map.entries[self.idx];
 
-            // If this range starts after query.end, we're done
-            // (all subsequent ranges start even later due to sorting)
-            if *range.start() > self.query_end {
+            if self.query.end() < range.start() {
+                // all subsequent ranges start even later due to sorting
                 return None;
             }
 
             self.idx += 1;
 
             // Check overlap: range.start <= query.end (guaranteed above) && query.start <= range.end
-            if self.query_start <= *range.end() {
+            if self.query.start() <= range.end() {
                 return Some((range, value));
             }
             // Otherwise this range ends before our query starts; skip it
@@ -125,62 +120,69 @@ mod tests {
 
     #[test]
     fn test_basic_overlap() {
-        let map =
-            SortedRangeMap::new([(0..=10, "a"), (5..=15, "b"), (20..=30, "c"), (25..=35, "d")]);
+        let map = SortedRangeMap::new(vec![
+            (0..=10, "a"),
+            (5..=15, "b"),
+            (20..=30, "c"),
+            (25..=35, "d"),
+        ]);
 
         // Query overlapping first two
-        let results: Vec<_> = map.query(&(7..=12)).collect();
+        let results: Vec<_> = map.query(7..=12).collect();
         assert_eq!(results, vec![(&(0..=10), &"a"), (&(5..=15), &"b")]);
 
         // Query overlapping none (gap between b and c)
-        let results: Vec<_> = map.query(&(16..=19)).collect();
+        let results: Vec<_> = map.query(16..=19).collect();
         assert!(results.is_empty());
 
         // Query overlapping last two
-        let results: Vec<_> = map.query(&(27..=32)).collect();
+        let results: Vec<_> = map.query(27..=32).collect();
         assert_eq!(results, vec![(&(20..=30), &"c"), (&(25..=35), &"d")]);
     }
 
     #[test]
     fn test_inclusive_boundaries() {
-        let map = SortedRangeMap::new([(10..=20, "x")]);
+        let map = SortedRangeMap::new(vec![(10..=20, "x")]);
 
         // Touching at boundaries IS overlapping for inclusive ranges
-        let results: Vec<_> = map.query(&(0..=10)).collect();
+        let results: Vec<_> = map.query(0..=10).collect();
         assert_eq!(results, vec![(&(10..=20), &"x")]);
 
-        let results: Vec<_> = map.query(&(20..=30)).collect();
+        let results: Vec<_> = map.query(20..=30).collect();
         assert_eq!(results, vec![(&(10..=20), &"x")]);
 
         // Just outside
-        assert!(map.query(&(0..=9)).next().is_none());
-        assert!(map.query(&(21..=30)).next().is_none());
+        assert!(map.query(0..=9).next().is_none());
+        assert!(map.query(21..=30).next().is_none());
     }
 
     #[test]
     fn test_point_queries() {
-        let map = SortedRangeMap::new([(0..=10, "a"), (10..=20, "b"), (20..=30, "c")]);
+        let map = SortedRangeMap::new(vec![(0..=10, "a"), (10..=20, "b"), (20..=30, "c")]);
 
         // Point query at shared boundary
-        let results: Vec<_> = map.query(&(10..=10)).collect();
+        let results: Vec<_> = map.query(10..=10).collect();
         assert_eq!(results, vec![(&(0..=10), &"a"), (&(10..=20), &"b")]);
 
         // Point query at another shared boundary
-        let results: Vec<_> = map.query(&(20..=20)).collect();
+        let results: Vec<_> = map.query(20..=20).collect();
         assert_eq!(results, vec![(&(10..=20), &"b"), (&(20..=30), &"c")]);
 
         // Point query in middle of range
-        let results: Vec<_> = map.query(&(5..=5)).collect();
+        let results: Vec<_> = map.query(5..=5).collect();
         assert_eq!(results, vec![(&(0..=10), &"a")]);
     }
 
     #[test]
     fn test_fully_contained() {
-        let map =
-            SortedRangeMap::new([(0..=100, "outer"), (20..=30, "inner1"), (40..=50, "inner2")]);
+        let map = SortedRangeMap::new(vec![
+            (0..=100, "outer"),
+            (20..=30, "inner1"),
+            (40..=50, "inner2"),
+        ]);
 
         // Query that hits all three
-        let results: Vec<_> = map.query(&(25..=45)).collect();
+        let results: Vec<_> = map.query(25..=45).collect();
         assert_eq!(
             results,
             vec![
@@ -191,32 +193,32 @@ mod tests {
         );
 
         // Query fully inside outer but missing inners
-        let results: Vec<_> = map.query(&(31..=39)).collect();
+        let results: Vec<_> = map.query(31..=39).collect();
         assert_eq!(results, vec![(&(0..=100), &"outer")]);
     }
 
     #[test]
     fn test_empty_map() {
-        let map: SortedRangeMap<i32, ()> = SortedRangeMap::new([]);
-        assert!(map.query(&(0..=100)).next().is_none());
+        let map: SortedRangeMap<i32, ()> = SortedRangeMap::new(vec![]);
+        assert!(map.query(0..=100).next().is_none());
         assert!(map.is_empty());
         assert_eq!(map.len(), 0);
     }
 
     #[test]
     fn test_single_element() {
-        let map = SortedRangeMap::new([(50..=60, "only")]);
+        let map = SortedRangeMap::new(vec![(50..=60, "only")]);
 
-        assert!(map.query(&(0..=49)).next().is_none());
-        assert!(map.query(&(61..=100)).next().is_none());
-        assert_eq!(map.query(&(50..=60)).count(), 1);
-        assert_eq!(map.query(&(55..=55)).count(), 1);
+        assert!(map.query(0..=49).next().is_none());
+        assert!(map.query(61..=100).next().is_none());
+        assert_eq!(map.query(50..=60).count(), 1);
+        assert_eq!(map.query(55..=55).count(), 1);
     }
 
     #[test]
     fn test_many_overlapping() {
         // Ranges that all overlap each other
-        let map = SortedRangeMap::new([
+        let map = SortedRangeMap::new(vec![
             (0..=10, 0),
             (1..=11, 1),
             (2..=12, 2),
@@ -225,7 +227,7 @@ mod tests {
         ]);
 
         // Query that hits all
-        let results: Vec<_> = map.query(&(5..=5)).collect();
+        let results: Vec<_> = map.query(5..=5).collect();
         assert_eq!(results.len(), 5);
 
         // Verify order is by start
@@ -235,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_disjoint_ranges() {
-        let map = SortedRangeMap::new([
+        let map = SortedRangeMap::new(vec![
             (0..=10, "a"),
             (20..=30, "b"),
             (40..=50, "c"),
@@ -244,13 +246,13 @@ mod tests {
         ]);
 
         // Query in gaps
-        assert!(map.query(&(11..=19)).next().is_none());
-        assert!(map.query(&(31..=39)).next().is_none());
-        assert!(map.query(&(51..=59)).next().is_none());
-        assert!(map.query(&(71..=79)).next().is_none());
+        assert!(map.query(11..=19).next().is_none());
+        assert!(map.query(31..=39).next().is_none());
+        assert!(map.query(51..=59).next().is_none());
+        assert!(map.query(71..=79).next().is_none());
 
         // Query spanning multiple with gaps
-        let results: Vec<_> = map.query(&(25..=65)).collect();
+        let results: Vec<_> = map.query(25..=65).collect();
         assert_eq!(
             results,
             vec![(&(20..=30), &"b"), (&(40..=50), &"c"), (&(60..=70), &"d")]
@@ -259,18 +261,18 @@ mod tests {
 
     #[test]
     fn test_query_larger_than_all() {
-        let map = SortedRangeMap::new([(10..=20, "a"), (30..=40, "b"), (50..=60, "c")]);
+        let map = SortedRangeMap::new(vec![(10..=20, "a"), (30..=40, "b"), (50..=60, "c")]);
 
-        let results: Vec<_> = map.query(&(0..=100)).collect();
+        let results: Vec<_> = map.query(0..=100).collect();
         assert_eq!(results.len(), 3);
     }
 
     #[test]
     fn test_unsorted_input() {
         // Input not sorted - should still work
-        let map = SortedRangeMap::new([(50..=60, "c"), (10..=20, "a"), (30..=40, "b")]);
+        let map = SortedRangeMap::new(vec![(50..=60, "c"), (10..=20, "a"), (30..=40, "b")]);
 
-        let results: Vec<_> = map.query(&(0..=100)).collect();
+        let results: Vec<_> = map.query(0..=100).collect();
         // Should be sorted by start in output
         let values: Vec<_> = results.iter().map(|(_, v)| **v).collect();
         assert_eq!(values, vec!["a", "b", "c"]);
@@ -278,9 +280,9 @@ mod tests {
 
     #[test]
     fn test_duplicate_starts() {
-        let map = SortedRangeMap::new([(10..=20, "a"), (10..=30, "b"), (10..=15, "c")]);
+        let map = SortedRangeMap::new(vec![(10..=20, "a"), (10..=30, "b"), (10..=15, "c")]);
 
-        let results: Vec<_> = map.query(&(12..=12)).collect();
+        let results: Vec<_> = map.query(12..=12).collect();
         assert_eq!(results.len(), 3);
     }
 }

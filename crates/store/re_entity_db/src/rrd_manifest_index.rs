@@ -246,7 +246,7 @@ impl RrdManifestIndex {
         self.chunk_intervals.clear();
         for (timeline, chunks) in per_timeline_chunks {
             self.chunk_intervals
-                .insert(timeline, SortedRangeMap::new(chunks.into_iter()));
+                .insert(timeline, SortedRangeMap::new(chunks));
         }
     }
 
@@ -380,7 +380,7 @@ impl RrdManifestIndex {
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
         let mut indices: Vec<i32> = vec![];
 
-        for (_, chunk_id) in chunks.query(&desired_range.into()) {
+        for (_, chunk_id) in chunks.query(desired_range.into()) {
             let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
                 re_log::warn_once!("Chunk {chunk_id:?} not found in RRD manifest index");
                 continue;
