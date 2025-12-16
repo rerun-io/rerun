@@ -43,7 +43,6 @@ from .context import (
     set_working_directory,
 )
 from .flow import (
-    DirectTaskCallInFlowError,
     FlowContext,
     FlowInfo,
     FlowWrapper,
@@ -103,7 +102,6 @@ __all__ = [
     "TaskNode",
     "Input",
     "InputPlaceholder",
-    "DirectTaskCallInFlowError",
     "get_flow",
     "get_flow_registry",
     "get_flow_context",

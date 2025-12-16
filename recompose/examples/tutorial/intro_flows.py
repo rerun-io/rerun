@@ -4,16 +4,16 @@ Tutorial: Flows
 
 This tutorial introduces flows for composing tasks:
 - The @flow decorator creates task pipelines
-- Tasks are wired together using the .flow() method
+- Tasks automatically detect they're in a flow and build the graph
 - Use .value() to pass results from one task to another
 - Use run_if() for conditional task execution
 - Flows can be inspected before execution
 
 Type-safe pattern:
-    result = task_a.flow(arg="value")    # Returns Result[T] to type checker
-    task_b.flow(input=result.value())    # .value() gives T to type checker
+    result = task_a(arg="value")      # Returns Result[T] to type checker
+    task_b(input=result.value())      # .value() gives T to type checker
 
-At runtime, .flow() returns a TaskNode that tracks dependencies.
+At runtime inside a @flow, task calls return TaskNodes that track dependencies.
 The .value() method returns the TaskNode itself, enabling proper wiring.
 
 Run this file to see all available commands:
@@ -94,7 +94,7 @@ def summarize(*, result: float) -> recompose.Result[str]:
 # BASIC FLOW
 # =============================================================================
 #
-# Flows use @recompose.flow decorator and wire tasks together with .flow()
+# Flows use @recompose.flow decorator and wire tasks together by calling them
 
 
 @recompose.flow
@@ -104,14 +104,14 @@ def tool_check() -> None:
 
     This flow runs check_tool for multiple tools in sequence.
 
-    The .flow() method:
-    - Registers the task in the flow graph
-    - Returns a placeholder that can be passed to dependent tasks
-    - Executes tasks in dependency order when the flow runs
+    Tasks called inside a @flow:
+    - Automatically register in the flow graph
+    - Return placeholders that can be passed to dependent tasks
+    - Execute in dependency order when the flow runs
     """
-    check_tool.flow(tool="git")
-    check_tool.flow(tool="python")
-    check_tool.flow(tool="uv")
+    check_tool(tool="git")
+    check_tool(tool="python")
+    check_tool(tool="uv")
 
 
 # =============================================================================
@@ -130,16 +130,16 @@ def greeting_pipeline(*, name: str = "World") -> None:
         greeting_pipeline --name="Alice"
 
     Tasks are wired together using .value() to pass results:
-        greeting = greet.flow(name=name)             # Returns Result[str]
-        format_result.flow(message=greeting.value()) # .value() gives str
+        greeting = greet(name=name)           # Returns Result[str]
+        format_result(message=greeting.value()) # .value() gives str
     """
     # These tasks run in parallel (no dependencies between them)
-    greeting = greet.flow(name=name)
-    tool_version = check_tool.flow(tool="python")
+    greeting = greet(name=name)
+    tool_version = check_tool(tool="python")
 
     # This task depends on both above tasks completing
     # Use .value() to extract the result for type-safe passing
-    format_result.flow(message=greeting.value(), tool_version=tool_version.value())
+    format_result(message=greeting.value(), tool_version=tool_version.value())
 
 
 # =============================================================================
@@ -164,13 +164,13 @@ def math_pipeline(*, a: int = 10, b: int = 2) -> None:
     Try: math_pipeline --a=20 --b=4
     """
     # Step 1: Divide
-    quotient = divide.flow(a=a, b=b)
+    quotient = divide(a=a, b=b)
 
     # Step 2: Multiply the result (use .value() to get the float)
-    product = multiply.flow(value=quotient.value(), factor=3)
+    product = multiply(value=quotient.value(), factor=3)
 
     # Step 3: Summarize (use .value() to get the float)
-    summarize.flow(result=product.value())
+    summarize(result=product.value())
 
 
 # =============================================================================
@@ -190,9 +190,9 @@ def risky_pipeline(*, a: int = 10, b: int = 0) -> None:
     Try: risky_pipeline --a=10 --b=2  (succeeds)
     Try: risky_pipeline --a=10 --b=0  (fails at divide)
     """
-    quotient = divide.flow(a=a, b=b)
-    product = multiply.flow(value=quotient.value(), factor=5)
-    summarize.flow(result=product.value())
+    quotient = divide(a=a, b=b)
+    product = multiply(value=quotient.value(), factor=5)
+    summarize(result=product.value())
 
 
 # =============================================================================
@@ -257,22 +257,22 @@ def conditional_pipeline(*, run_extra: bool = False) -> None:
 
         # WRONG - breaks GHA generation:
         if run_extra:
-            extra_validation.flow()
+            extra_validation()
 
         # CORRECT - use run_if():
         with recompose.run_if(run_extra):
-            extra_validation.flow()
+            extra_validation()
 
     """
     # Always runs
-    setup.flow()
+    setup()
 
     # Only runs if run_extra is True
     with recompose.run_if(run_extra):
-        extra_validation.flow()
+        extra_validation()
 
     # Always runs
-    finalize.flow()
+    finalize()
 
 
 # =============================================================================

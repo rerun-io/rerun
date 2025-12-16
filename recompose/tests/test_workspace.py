@@ -151,8 +151,8 @@ class TestFlowPlanSteps:
 
         @recompose.flow
         def test_flow() -> None:
-            a = step_a.flow()
-            step_b.flow(dep=a.value())
+            a = step_a()
+            step_b(dep=a.value())
 
         plan = test_flow.plan()
         plan.assign_step_names()
@@ -171,7 +171,7 @@ class TestFlowPlanSteps:
 
         @recompose.flow
         def simple_flow() -> None:
-            task_x.flow()
+            task_x()
 
         plan = simple_flow.plan()
         plan.assign_step_names()
@@ -189,7 +189,7 @@ class TestFlowPlanSteps:
 
         @recompose.flow
         def flow_for_lookup() -> None:
-            my_task.flow()
+            my_task()
 
         plan = flow_for_lookup.plan()
         plan.assign_step_names()
@@ -219,9 +219,9 @@ class TestRunIsolated:
 
         @recompose.flow
         def simple_pipeline() -> None:
-            a = step_one.flow()
-            b = step_two.flow(prev=a.value())
-            step_three.flow(prev=b.value())
+            a = step_one()
+            b = step_two(prev=a.value())
+            step_three(prev=b.value())
 
         result = simple_pipeline.run_isolated()
         assert result.ok, f"run_isolated failed: {result.error}"
@@ -239,8 +239,8 @@ class TestRunIsolated:
 
         @recompose.flow
         def param_flow(*, name: str = "default") -> None:
-            v = echo_param.flow(value=name)
-            process.flow(input=v.value())
+            v = echo_param(value=name)
+            process(input=v.value())
 
         result = param_flow.run_isolated(name="test-value")
         assert result.ok, f"run_isolated failed: {result.error}"

@@ -24,16 +24,16 @@ def ci() -> None:
     All checks must pass for CI to succeed.
     """
     # GHA setup steps (no-op when run locally)
-    recompose.gha.checkout.flow()
-    recompose.gha.setup_python(version="3.12").flow()
-    recompose.gha.setup_uv().flow()
+    recompose.gha.checkout()
+    recompose.gha.setup_python(version="3.12")
+    recompose.gha.setup_uv()
 
     # Run lint and format_check (could run in parallel in future)
-    lint.flow()
-    format_check.flow()
+    lint()
+    format_check()
 
     # Tests run after lint/format checks pass
-    test.flow()
+    test()
 
     # Validate that workflow files are up-to-date
-    recompose.generate_gha.flow(check_only=True)
+    recompose.generate_gha(check_only=True)

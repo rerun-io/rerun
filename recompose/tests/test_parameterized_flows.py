@@ -35,23 +35,23 @@ def echo(*, message: str) -> recompose.Result[str]:
 @recompose.flow
 def flow_with_required_param(*, name: str) -> None:
     """A flow that requires a name parameter."""
-    greet.flow(name=name)
+    greet(name=name)
 
 
 # Flow with mix of required and optional parameters
 @recompose.flow
 def flow_with_mixed_params(*, name: str, count_to: int = 10) -> None:
     """A flow with both required and optional parameters."""
-    greet.flow(name=name)
-    count.flow(n=count_to)
+    greet(name=name)
+    count(n=count_to)
 
 
 # Flow that passes required param to multiple tasks
 @recompose.flow
 def flow_with_param_reuse(*, message: str) -> None:
     """A flow that uses the same param in multiple tasks."""
-    echo.flow(message=message)
-    echo.flow(message=message)
+    echo(message=message)
+    echo(message=message)
 
 
 class TestFlowsWithRequiredParams:
@@ -175,69 +175,69 @@ class TestInputTypeAlias:
         assert any("InputPlaceholder" in name for name in arg_names)
 
 
-class TestFlowMethodSignature:
-    """Tests for .flow() method signature and validation."""
+class TestTaskSignature:
+    """Tests for task signature and validation."""
 
-    def test_flow_method_has_signature(self) -> None:
-        """Test that .flow() method has __signature__ from original task."""
+    def test_task_has_signature(self) -> None:
+        """Test that task has __signature__ from original function."""
         import inspect
 
-        sig = inspect.signature(greet.flow)
+        sig = inspect.signature(greet)
         param_names = list(sig.parameters.keys())
         assert "name" in param_names
 
-    def test_flow_method_rejects_unknown_kwargs(self) -> None:
-        """Test that .flow() raises TypeError for unknown kwargs."""
+    def test_task_rejects_unknown_kwargs_in_flow(self) -> None:
+        """Test that task raises TypeError for unknown kwargs when called in flow."""
 
         @recompose.flow
         def test_flow() -> None:
             # This should raise TypeError for unknown kwarg
-            greet.flow(name="test", unknown_arg="bad")  # type: ignore[call-arg]
+            greet(name="test", unknown_arg="bad")  # type: ignore[call-arg]
 
         with pytest.raises(TypeError, match="unexpected keyword argument"):
             test_flow()
 
     def test_flow_method_rejects_missing_required(self) -> None:
-        """Test that .flow() raises TypeError for missing required args."""
+        """Test that () raises TypeError for missing required args."""
 
         @recompose.flow
         def test_flow() -> None:
             # greet requires 'name' parameter
-            greet.flow()  # type: ignore[call-arg]
+            greet()  # type: ignore[call-arg]
 
         with pytest.raises(TypeError, match="missing required keyword argument"):
             test_flow()
 
     def test_flow_method_accepts_optional_missing(self) -> None:
-        """Test that .flow() accepts missing optional args."""
+        """Test that () accepts missing optional args."""
 
         @recompose.flow
         def test_flow() -> None:
             # count has default for 'n', so this should work
-            count.flow()
+            count()
 
         # Should not raise
         result = test_flow()
         assert result.ok
 
     def test_flow_method_accepts_task_node_as_value(self) -> None:
-        """Test that .flow() accepts TaskNode from another .flow() call."""
+        """Test that () accepts TaskNode from another () call."""
 
         @recompose.flow
         def test_flow() -> None:
-            greeting = greet.flow(name="World")
+            greeting = greet(name="World")
             # echo accepts message: str, but TaskNode[str] should also work at runtime
-            echo.flow(message=greeting)  # type: ignore[arg-type]
+            echo(message=greeting)  # type: ignore[arg-type]
 
         result = test_flow()
         assert result.ok
 
     def test_flow_method_accepts_input_placeholder(self) -> None:
-        """Test that .flow() accepts InputPlaceholder values."""
+        """Test that () accepts InputPlaceholder values."""
 
         @recompose.flow
         def test_flow(*, name: str) -> None:
-            greet.flow(name=name)
+            greet(name=name)
 
         # Build plan with placeholder
         placeholder = InputPlaceholder[str](name="name")
@@ -314,8 +314,8 @@ class TestValueBasedComposition:
         @recompose.flow
         def test_flow() -> None:
             # The new pattern: use .value() to pass between tasks
-            result = greet.flow(name="World")
-            echo.flow(message=result.value())
+            result = greet(name="World")
+            echo(message=result.value())
 
         # This should work and create proper dependencies
         result = test_flow()
@@ -326,8 +326,8 @@ class TestValueBasedComposition:
 
         @recompose.flow
         def test_flow() -> None:
-            result = greet.flow(name="World")
-            echo.flow(message=result.value())
+            result = greet(name="World")
+            echo(message=result.value())
 
         plan = test_flow.plan()
 
@@ -349,7 +349,7 @@ class TestValueBasedComposition:
 
         @recompose.flow
         def test_flow(*, name: str) -> None:
-            greet.flow(name=name)
+            greet(name=name)
 
         # Build plan with placeholder - simulating GHA generation
         placeholder = InputPlaceholder[str](name="name")

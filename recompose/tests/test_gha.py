@@ -32,20 +32,20 @@ def param_task(*, name: str, count: int = 5) -> recompose.Result[str]:
 @recompose.flow
 def simple_flow() -> None:
     """A flow with no parameters."""
-    simple_task.flow()
+    simple_task()
 
 
 @recompose.flow
 def param_flow(*, repo: str = "main", debug: bool = False) -> None:
     """A flow with parameters."""
-    simple_task.flow()
+    simple_task()
 
 
 @recompose.flow
 def multi_step_flow() -> None:
     """A flow with multiple steps."""
-    a = simple_task.flow()
-    param_task.flow(name=a.value(), count=10)
+    a = simple_task()
+    param_task(name=a.value(), count=10)
 
 
 class TestStepSpec:
@@ -302,12 +302,12 @@ class TestGHAActions:
         assert result.ok
         assert result.value() is None
 
-    def test_checkout_flow_outside_flow_raises(self) -> None:
-        """Test that .flow() outside a flow raises."""
+    def test_checkout_outside_flow_is_noop(self) -> None:
+        """Test that GHA actions are no-ops when called outside a flow."""
         from recompose.gha import checkout
 
-        with pytest.raises(RuntimeError, match="can only be called inside"):
-            checkout.flow()
+        result = checkout()
+        assert result.ok  # GHA actions return Ok(None) when run locally
 
     def test_setup_python_creates_action(self) -> None:
         """Test setup_python creates an action with version."""
@@ -348,10 +348,10 @@ def flow_with_gha_actions() -> None:
     """A flow that uses GHA actions."""
     from recompose.gha import checkout, setup_python, setup_uv
 
-    checkout.flow()
-    setup_python(version="3.11").flow()
-    setup_uv().flow()
-    simple_task.flow()
+    checkout()
+    setup_python(version="3.11")()
+    setup_uv()()
+    simple_task()
 
 
 class TestFlowWithGHAActions:

@@ -37,7 +37,7 @@ class GHAAction:
     A virtual task that represents a GitHub Actions `uses:` step.
 
     GHA actions are no-ops when run locally but generate `uses:` steps
-    in workflow YAML. They can be used in flows via `.flow()` like regular tasks.
+    in workflow YAML. They can be used in flows just like regular tasks.
 
     Example:
         @recompose.flow
@@ -45,7 +45,7 @@ class GHAAction:
             recompose.gha.checkout()  # Adds checkout step
             recompose.gha.setup_python(version="3.11")  # Adds setup-python step
 
-            source = fetch_source.flow(repo=repo)
+            source = fetch_source(repo=repo)
             ...
 
     """
@@ -91,40 +91,35 @@ class GHAAction:
 
     def __call__(self, **kwargs: Any) -> Result[None]:
         """
-        Execute the action (no-op when run locally).
+        Execute the action or add it to flow plan (context-aware).
 
-        When called directly (not in a flow), this returns Ok(None) immediately.
-        """
-        return Ok(None)
-
-    def flow(self, **kwargs: Any) -> TaskNode[None]:
-        """
-        Add this action to the current flow plan.
+        When called inside a @flow, adds a TaskNode to the plan.
+        When called directly (not in a flow), this returns Ok(None) immediately (no-op locally).
 
         Args:
             **kwargs: Parameters to pass to the action (becomes `with:` in YAML)
 
         Returns:
-            TaskNode representing this action in the flow graph.
+            Result[None] when executed directly, TaskNode[None] when in a flow.
 
         """
         from .flow import get_current_plan
         from .flowgraph import TaskNode
 
         plan = get_current_plan()
-        if plan is None:
-            raise RuntimeError(
-                f"gha.{self.name}.flow() can only be called inside a @flow-decorated function. "
-                f"Use gha.{self.name}() for direct execution (no-op locally)."
-            )
 
-        # Merge default params with provided kwargs
-        merged_params = {**self.default_with_params, **kwargs}
+        if plan is not None:
+            # FLOW-BUILDING MODE: Create TaskNode and add to plan
+            # Merge default params with provided kwargs
+            merged_params = {**self.default_with_params, **kwargs}
 
-        # Create a TaskNode with the merged parameters
-        node: TaskNode[None] = TaskNode(task_info=self._task_info, kwargs=merged_params)
-        plan.add_node(node)
-        return node
+            # Create a TaskNode with the merged parameters
+            node: TaskNode[None] = TaskNode(task_info=self._task_info, kwargs=merged_params)
+            plan.add_node(node)
+            return node  # type: ignore[return-value]
+
+        # NORMAL EXECUTION MODE: No-op locally
+        return Ok(None)
 
 
 def _gha_action(
@@ -157,7 +152,7 @@ def setup_python(version: str = "3.11", **kwargs: Any) -> GHAAction:
         **kwargs: Additional parameters for the action
 
     Returns:
-        GHAAction that can be used in flows via .flow()
+        GHAAction that can be used in flows
 
     """
     return GHAAction(
@@ -177,7 +172,7 @@ def setup_uv(version: str = "latest", **kwargs: Any) -> GHAAction:
         **kwargs: Additional parameters for the action
 
     Returns:
-        GHAAction that can be used in flows via .flow()
+        GHAAction that can be used in flows
 
     """
     params = {**kwargs}
@@ -200,7 +195,7 @@ def setup_rust(toolchain: str = "stable", **kwargs: Any) -> GHAAction:
         **kwargs: Additional parameters for the action
 
     Returns:
-        GHAAction that can be used in flows via .flow()
+        GHAAction that can be used in flows
 
     """
     return GHAAction(
@@ -221,7 +216,7 @@ def cache(path: str, key: str, **kwargs: Any) -> GHAAction:
         **kwargs: Additional parameters (e.g., restore-keys)
 
     Returns:
-        GHAAction that can be used in flows via .flow()
+        GHAAction that can be used in flows
 
     """
     return GHAAction(
