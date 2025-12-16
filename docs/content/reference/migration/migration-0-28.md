@@ -221,7 +221,7 @@ should occur immediately after the creation of the `DataFrame` to ensure they ar
 the server.
 
 ```python
-df = view.reader(index="timeline").filter(
+df = view.reader(index="log_tick").filter(
     (col("rerun_segment_id") == "recording_0") & (col("log_tick") == 123456)
 )
 ```
