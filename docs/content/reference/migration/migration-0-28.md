@@ -5,6 +5,38 @@ order: 982
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## Deprecated components and APIs have been removed
+
+This release includes a major cleanup where many components, methods, and APIs that were marked as deprecated before version 0.27 have been removed. If you have been using any deprecated APIs, you will need to update your code to use the recommended replacements.
+
+### Removed deprecated components and methods
+
+The following previously deprecated items have been removed:
+
+#### Rust SDK
+- `TimeColumn::new_seconds()` and `TimeColumn::new_nanos()` methods
+- `Timeline::new_temporal()` method
+- `Asset3D::from_file()` method (use `Asset3D::from_file_path()` instead)
+- `AssetVideo::read_frame_timestamps_ns()` method (was renamed to `read_frame_timestamps_nanos()`)
+- `Image::from_file_path()` and `Image::from_file_contents()` methods (use `EncodedImage` equivalents instead)
+- Various deprecated methods on `Pinhole` archetype (use component-specific methods instead)
+- `Scale3D::Uniform()` and `Scale3D::ThreeD()` methods (use `Scale3D::uniform()` and `Scale3D::from()` instead)
+- `VideoTimestamp::from_seconds()`, `from_milliseconds()`, and `from_nanoseconds()` methods (use `from_secs()`, `from_millis()`, and `from_nanos()` instead)
+- `Angle::Degrees()` and `Angle::Radians()` methods (use `Angle::from_degrees()` and `Angle::from_radians()` instead)
+- `RecordingStream::serve_web()` method (use combination of `serve_grpc()` and `serve_web_viewer()`)
+- `RecordingStream::set_time_secs()` and `set_time_nanos()` methods (use `set_time()` with appropriate time types)
+
+#### Python SDK
+- `ImageEncoded` and `ImageFormat` classes (use `EncodedImage` instead)
+- `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn` classes (use `TimeColumn` instead)
+- `new_recording()` function (use `RecordingStream()` constructor instead)
+- `set_time_sequence()`, `set_time_seconds()`, and `set_time_nanos()` functions (use `set_time()` instead)
+- `serve_web()` function (use combination of `serve_grpc()` and `serve_web_viewer()`)
+- `AnyValues.with_field()` and `AnyValues.with_component()` methods (use `with_component_from_data()` and `with_component_override()` instead)
+- Various deprecated methods on video and time-related components
+
+If you encounter any errors related to missing methods or components, check if they were previously deprecated and update your code to use the recommended alternatives. The deprecation warnings from previous versions should have indicated the correct replacements to use.
+
 ## `Pose*` component types have been removed
 
 The following component types have been removed in favor of their more general counterparts:
