@@ -135,7 +135,7 @@ class Entry(ABC, Generic[InternalEntryT]):
                 return NotImplemented
 
     # Make it explicit that `Entries` are view objects for which hashing cannot sensibly be implemented
-    __hash__ = None
+    __hash__ = None  # type: ignore[assignment]
 
 
 class DatasetEntry(Entry[DatasetEntryInternal]):
