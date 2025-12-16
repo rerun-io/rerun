@@ -92,9 +92,6 @@ pub struct EntityDb {
     /// A time histogram of all entities, for every timeline.
     time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
 
-    /// A tree-view (split on path components) of the entities.
-    tree: crate::EntityTree,
-
     /// The [`StorageEngine`] that backs this [`EntityDb`].
     ///
     /// This object and all its internal fields are **never** allowed to be publicly exposed,
@@ -140,7 +137,6 @@ impl EntityDb {
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
-            tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
             stats: IngestionStatistics::default(),
@@ -149,7 +145,7 @@ impl EntityDb {
 
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
-        &self.tree
+        &self.rrd_manifest_index.entity_tree
     }
 
     /// Formats the entity tree into a human-readable text representation with component schema information.
@@ -159,7 +155,7 @@ impl EntityDb {
         let storage_engine = self.storage_engine();
         let store = storage_engine.store();
 
-        self.tree.visit_children_recursively(|entity_path| {
+        self.tree().visit_children_recursively(|entity_path| {
             if entity_path.is_root() {
                 return;
             }
@@ -520,7 +516,7 @@ impl EntityDb {
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree.subtree(entity_path).is_some()
+        self.tree().subtree(entity_path).is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
@@ -616,7 +612,9 @@ impl EntityDb {
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
         self.time_histogram_per_timeline.on_events(store_events);
-        self.tree.on_store_additions(store_events);
+        self.rrd_manifest_index
+            .entity_tree
+            .on_store_additions(store_events);
 
         // It is possible for writes to trigger deletions: specifically in the case of
         // overwritten static data leading to dangling chunks.
@@ -628,8 +626,11 @@ impl EntityDb {
 
         {
             re_tracing::profile_scope!("on_store_deletions");
-            self.tree
-                .on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
+            self.rrd_manifest_index.entity_tree.on_store_deletions(
+                &engine,
+                &entity_paths_with_deletions,
+                store_events,
+            );
         }
     }
 
@@ -872,7 +873,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -895,7 +896,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -918,7 +919,7 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 
@@ -942,7 +943,7 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 
