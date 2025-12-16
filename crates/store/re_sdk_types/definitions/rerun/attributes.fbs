@@ -37,25 +37,6 @@ attribute "attr.rerun.scope";
 /// This is mandatory for view types.
 attribute "attr.rerun.view_identifier";
 
-/// Specifies the visualizer identifier for an archetype.
-///
-/// When present with a value, this archetype will be included in the generated
-/// `visualizers.py` file with the specified visualizer name.
-/// The value should be the name of the visualizer (typically the archetype name).
-///
-/// Example: `"attr.rerun.visualizer": "Points3D"`
-///
-/// Only applies to archetypes.
-attribute "attr.rerun.visualizer";
-
-/// Marks an archetype as explicitly NOT having a visualizer.
-///
-/// Use this to opt-out of visualizer generation for archetypes that shouldn't appear
-/// in the `visualizers.py` constants file.
-///
-/// Only applies to archetypes.
-attribute "attr.rerun.visualizer_none";
-
 /// Must be set on all archetypes and components.
 ///
 /// Must have one of the following values:

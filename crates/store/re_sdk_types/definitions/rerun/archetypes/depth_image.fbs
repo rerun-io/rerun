@@ -16,7 +16,6 @@ table DepthImage (
   "attr.docs.category": "Image & tensor",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
   "attr.rerun.state": "stable",
-  "attr.rerun.visualizer": "DepthImage",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

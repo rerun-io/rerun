@@ -14,8 +14,7 @@ namespace rerun.archetypes;
 table AssetVideo (
   "attr.docs.category": "Video",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
-  "attr.rerun.state": "stable",
-  "attr.rerun.visualizer_none"
+  "attr.rerun.state": "stable"
 ) {
   // --- Required ---
 

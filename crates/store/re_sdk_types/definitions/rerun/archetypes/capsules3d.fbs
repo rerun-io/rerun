@@ -18,7 +18,6 @@ table Capsules3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
   "attr.rerun.state": "stable",
-  "attr.rerun.visualizer": "Capsules3D",
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate"
 ) {

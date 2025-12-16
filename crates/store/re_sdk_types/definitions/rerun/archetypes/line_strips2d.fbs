@@ -12,7 +12,6 @@ table LineStrips2D (
   "attr.docs.category": "Spatial 2D",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
   "attr.rerun.state": "stable",
-  "attr.rerun.visualizer": "Lines2D",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

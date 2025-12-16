@@ -16,7 +16,6 @@ table Tensor (
   "attr.docs.category": "Image & tensor",
   "attr.docs.view_types": "TensorView, BarChartView: for 1D tensors",
   "attr.rerun.state": "stable",
-  "attr.rerun.visualizer": "Tensor",
   "attr.rust.derive": "PartialEq"
 ) {
   /// The tensor data
