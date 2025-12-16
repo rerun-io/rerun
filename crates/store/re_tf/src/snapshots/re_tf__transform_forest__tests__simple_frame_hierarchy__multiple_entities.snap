@@ -1,0 +1,330 @@
+---
+source: crates/store/re_tf/src/transform_forest.rs
+expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_frame,\n&transform_cache)"
+---
+{
+    tf#/transforms1: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    top: TreeTransform {
+        root: root,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                1.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    tf#/: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    tf#/transforms4: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    root: TreeTransform {
+        root: root,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    child0: TreeTransform {
+        root: root,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                3.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    child2d: TreeTransform {
+        root: pinhole,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                2.0,
+                0.0,
+            ),
+        },
+    },
+    tf#/transforms0: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    child1: TreeTransform {
+        root: root,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                4.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    pinhole: TreeTransform {
+        root: pinhole,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    tf#/transforms3: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+    tf#/transforms2: TreeTransform {
+        root: tf#/,
+        target_from_source: DAffine3 {
+            matrix3: DMat3 {
+                x_axis: DVec3(
+                    1.0,
+                    0.0,
+                    0.0,
+                ),
+                y_axis: DVec3(
+                    0.0,
+                    1.0,
+                    0.0,
+                ),
+                z_axis: DVec3(
+                    0.0,
+                    0.0,
+                    1.0,
+                ),
+            },
+            translation: DVec3(
+                0.0,
+                0.0,
+                0.0,
+            ),
+        },
+    },
+}

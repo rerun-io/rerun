@@ -41,7 +41,6 @@ nasm = [
 
 
 [dependencies]
-re_build_info.workspace = true
 re_byte_size.workspace = true
 re_log.workspace = true
 re_span.workspace = true
@@ -58,6 +57,8 @@ parking_lot.workspace = true
 poll-promise.workspace = true
 re_mp4.workspace = true
 saturating_cast.workspace = true
+scuffle-av1.workspace = true
+scuffle-bytes-util.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
@@ -104,7 +105,6 @@ re_log = { workspace = true, features = ["setup"] }
 
 # For build.rs:
 [build-dependencies]
-re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 [[example]]

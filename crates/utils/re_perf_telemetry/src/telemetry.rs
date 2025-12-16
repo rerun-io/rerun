@@ -1,13 +1,16 @@
-use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_sdk::{
-    logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
-};
 use std::sync::Arc;
+
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithTonicConfig as _;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
-use crate::{LogFormat, TelemetryArgs, shared_reader::SharedManualReader};
+use crate::shared_reader::SharedManualReader;
+use crate::{LogFormat, TelemetryArgs, TraceIdLayer};
 
 // ---
 
@@ -138,6 +141,7 @@ impl Telemetry {
             trace_endpoint,
             trace_sampler,
             trace_sampler_args,
+            tracestate,
             metric_endpoint,
             metric_interval,
             metrics_listen_address: _, // TelemetryArgs only, used at the caller site
@@ -203,6 +207,7 @@ impl Telemetry {
                 .add_directive_if_absent(base, "h2", forced)?
                 .add_directive_if_absent(base, "hyper", forced)?
                 .add_directive_if_absent(base, "hyper_util", forced)?
+                .add_directive_if_absent(base, "lance", forced)?
                 .add_directive_if_absent(base, "lance-arrow", forced)?
                 .add_directive_if_absent(base, "lance-core", forced)?
                 .add_directive_if_absent(base, "lance-datafusion", forced)?
@@ -226,7 +231,9 @@ impl Telemetry {
                 .add_directive_if_absent(base, "typespec_client_core", forced)?
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::io::exec", "off")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
                 .add_directive_if_absent(base, "lance_encoding", "off")
         };
@@ -320,16 +327,41 @@ impl Telemetry {
         let (tracer_provider, layer_traces_otlp) = if otel_enabled {
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
+                .with_compression(opentelemetry_otlp::Compression::Gzip) // use gzip compression to reduce bandwidth
                 .build()?;
 
-            let provider = SdkTracerProvider::builder()
-                .with_batch_exporter(exporter)
+            // we customize batch exporter config to ensure more optimal span exporting
+            let batch_config = BatchConfigBuilder::default()
+                // increase max queue size from default 2048 to ensure we don't drop spans during high throughput
+                .with_max_queue_size(8192)
+                // export more spans per batch to reduce number of requests (default is 512)
+                // together with queue size this help ensure more robust exporting under high throughput
+                .with_max_export_batch_size(2048)
                 .build();
 
-            // This will be used by the `TracingInjectorInterceptor` to
-            // encode the trace information into the request headers.
-            opentelemetry::global::set_text_map_propagator(
+            let batch_processor = BatchSpanProcessor::builder(exporter)
+                .with_batch_config(batch_config)
+                .build();
+
+            let provider = SdkTracerProvider::builder()
+                .with_span_processor(batch_processor)
+                .build();
+
+            // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
+            // Additional `tracestate` can be added through the relevant env var and the custom enricher below.
+            let mut propagators: Vec<
+                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
+            > = vec![Box::new(
                 opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+            )];
+
+            if !tracestate.is_empty() {
+                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate);
+                propagators.push(Box::new(enricher));
+            }
+
+            opentelemetry::global::set_text_map_propagator(
+                opentelemetry::propagation::TextMapCompositePropagator::new(propagators),
             );
 
             // This is to make sure that if some third-party system is logging raw OpenTelemetry
@@ -402,6 +434,7 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
+                    .with(TraceIdLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -415,6 +448,7 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
+                .with(TraceIdLayer::default())
                 .try_init()?;
         }
 

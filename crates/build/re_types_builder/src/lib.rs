@@ -60,7 +60,7 @@
 //! Same comment as with error handling: this code becomes irrelevant at runtime, and so testing it
 //! brings very little value.
 //!
-//! Make sure to test the behavior of its output though: `re_types`!
+//! Make sure to test the behavior of its output though: `re_sdk_types`!
 //!
 //!
 //! ### Understanding the subtleties of affixes
@@ -130,13 +130,12 @@ use re_build_tools::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
 };
 
-use crate::format::NoopCodeFormatter;
-
 pub use self::reflection::reflection::{
     BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal, Field as FbsField,
     KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema, Type as FbsType,
     root_as_schema,
 };
+use crate::format::NoopCodeFormatter;
 
 mod codegen;
 mod format;
@@ -154,19 +153,17 @@ pub mod report;
 /// etc), and finally written to disk by the I/O pass.
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
-pub use self::{
-    codegen::{
-        CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
-        SnippetsRefCodeGenerator,
-    },
-    docs::Docs,
-    format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
-    objects::{
-        Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
-    },
-    report::{Report, Reporter},
-    type_registry::TypeRegistry,
+pub use self::codegen::{
+    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+    SnippetsRefCodeGenerator,
 };
+pub use self::docs::Docs;
+pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
+pub use self::objects::{
+    Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+};
+pub use self::report::{Report, Reporter};
+pub use self::type_registry::TypeRegistry;
 
 // --- Attributes ---
 
@@ -181,10 +178,11 @@ pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
 pub const ATTR_RERUN_COMPONENT_OPTIONAL: &str = "attr.rerun.component_optional";
 pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
-pub const ATTR_RERUN_LOG_MISSING_AS_EMPTY: &str = "attr.rerun.log_missing_as_empty";
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
 pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
+pub const ATTR_RERUN_VISUALIZER: &str = "attr.rerun.visualizer";
+pub const ATTR_RERUN_VISUALIZER_NONE: &str = "attr.rerun.visualizer_none";
 pub const ATTR_RERUN_STATE: &str = "attr.rerun.state";
 pub const ATTR_RERUN_DEPRECATED_SINCE: &str = "attr.rerun.deprecated_since";
 pub const ATTR_RERUN_DEPRECATED_NOTICE: &str = "attr.rerun.deprecated_notice";
@@ -540,13 +538,21 @@ pub fn generate_python_code(
     let mut formatter =
         PythonCodeFormatter::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
 
+    // NOTE: In rerun_py we have a directory where we share generated code with handwritten code.
+    // Make sure to filter out that directory, or else we will end up removing those handwritten
+    // files.
+    let orphan_path_opt_out = output_pkg_path
+        .as_ref()
+        .join("blueprint")
+        .join("visualizers");
+
     generate_code(
         reporter,
         objects,
         type_registry,
         &mut generator,
         &mut formatter,
-        &Default::default(),
+        &std::iter::once(orphan_path_opt_out).collect(),
         check,
     );
 }

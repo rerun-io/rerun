@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use egui::emath::Rangef;
+use egui::scroll_area::ScrollSource;
 use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
+    Shape, Ui, Vec2, WidgetInfo, WidgetType, pos2,
 };
-use egui::{WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -13,11 +13,13 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
-use re_types::ComponentIdentifier;
-use re_types::blueprint::components::PanelState;
-use re_types::reflection::ComponentDescriptorExt as _;
-use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
-use re_ui::{IconText, filter_widget::format_matching_text};
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::blueprint::components::PanelState;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_ui::filter_widget::format_matching_text;
+use re_ui::{
+    ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
+};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
@@ -26,15 +28,12 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::{
-    MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks,
-    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    streams_tree_data::{EntityData, StreamsTreeData, components_for_entity},
-    time_axis::TimelineAxis,
-    time_control_ui::TimeControlUi,
-    time_ranges_ui::{self, TimeRangesUi},
-    time_selection_ui,
-};
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
+use crate::streams_tree_data::{EntityData, StreamsTreeData, components_for_entity};
+use crate::time_axis::TimelineAxis;
+use crate::time_control_ui::TimeControlUi;
+use crate::time_ranges_ui::{self, TimeRangesUi};
+use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks, time_selection_ui};
 
 #[derive(Debug, Clone)]
 pub struct TimePanelItem {
@@ -278,11 +277,13 @@ impl TimePanel {
             },
         );
 
-        ctx.command_sender()
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: entity_db.store_id().clone(),
-                time_commands,
-            });
+        if !time_commands.is_empty() {
+            ctx.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: entity_db.store_id().clone(),
+                    time_commands,
+                });
+        }
     }
 
     pub fn show_expanded_with_header(
@@ -349,7 +350,7 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let time_range = entity_db.time_range_for(time_ctrl.timeline().name());
+        let time_range = entity_db.time_range_for(time_ctrl.timeline_name());
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
@@ -369,7 +370,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_histograms(),
                         ui,
                         time_commands,
                     );
@@ -384,7 +385,7 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timeline_histograms = entity_db.timeline_histograms();
 
             if has_more_than_one_time_point {
                 self.time_control_ui
@@ -393,7 +394,7 @@ impl TimePanel {
 
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                timeline_histograms,
                 ui,
                 time_commands,
             );
@@ -424,7 +425,7 @@ impl TimePanel {
                 ui.label(
                     egui::RichText::from(format!(
                         "Waiting for timeline: {}",
-                        time_ctrl.timeline().name()
+                        time_ctrl.timeline_name()
                     ))
                     .heading()
                     .strong(),
@@ -542,14 +543,16 @@ impl TimePanel {
             ui.visuals().widgets.noninteractive.bg_stroke,
         );
 
-        paint_ticks::paint_time_ranges_and_ticks(
-            &self.time_ranges_ui,
-            ui,
-            &time_area_painter,
-            timeline_rect.top()..=timeline_rect.bottom(),
-            time_ctrl.time_type(),
-            ctx.app_options().timestamp_format,
-        );
+        if let Some(time_type) = time_ctrl.time_type() {
+            paint_ticks::paint_time_ranges_and_ticks(
+                &self.time_ranges_ui,
+                ui,
+                &time_area_painter,
+                timeline_rect.y_range(),
+                time_type,
+                ctx.app_options().timestamp_format,
+            );
+        }
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
             ui,
@@ -824,7 +827,7 @@ impl TimePanel {
         if is_visible {
             let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
                 &entity_db.storage_engine(),
-                time_ctrl.timeline().name(),
+                time_ctrl.timeline_name(),
                 entity_path,
             );
             if tree_has_data_in_current_timeline {
@@ -907,7 +910,7 @@ impl TimePanel {
                     entity_path: entity_path.clone(),
                     component: Some(component),
                 };
-                let timeline = time_ctrl.timeline();
+                let timeline = time_ctrl.timeline_name();
 
                 let response = ui
                     .list_item()
@@ -946,17 +949,17 @@ impl TimePanel {
                         store.num_static_events_for_component(entity_path, component);
                     let num_temporal_messages = store
                         .num_temporal_events_for_component_on_timeline(
-                            time_ctrl.timeline().name(),
+                            time_ctrl.timeline_name(),
                             entity_path,
                             component,
                         );
                     let total_num_messages = num_static_messages + num_temporal_messages;
 
                     if total_num_messages == 0 {
-                        ui.label(ui.ctx().warning_text(format!(
-                            "No event logged on timeline {:?}",
-                            timeline.name()
-                        )));
+                        ui.label(
+                            ui.ctx()
+                                .warning_text(format!("No event logged on timeline {timeline:?}")),
+                        );
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
                             let kind = if is_static { "Static" } else { "Temporal" };
@@ -995,7 +998,7 @@ impl TimePanel {
                             // can be confusing.
                             if is_static {
                                 let query = re_chunk_store::LatestAtQuery::new(
-                                    *time_ctrl.timeline().name(),
+                                    *time_ctrl.timeline_name(),
                                     TimeInt::MAX,
                                 );
                                 let ui_layout = UiLayout::Tooltip;
@@ -1018,7 +1021,7 @@ impl TimePanel {
                 if is_visible {
                     let component_has_data_in_current_timeline = store
                         .entity_has_component_on_timeline(
-                            time_ctrl.timeline().name(),
+                            time_ctrl.timeline_name(),
                             entity_path,
                             component,
                         );
@@ -1294,7 +1297,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_histograms(),
                         ui,
                         time_commands,
                     );
@@ -1308,13 +1311,13 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timeline_histograms = entity_db.timeline_histograms();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, ui, time_commands);
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                timeline_histograms,
                 ui,
                 time_commands,
             );
@@ -1353,9 +1356,7 @@ impl TimePanel {
         entity_db: &re_entity_db::EntityDb,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        let timeline = time_ctrl.timeline();
-
-        let Some(time_range) = entity_db.time_range_for(timeline.name()) else {
+        let Some(time_range) = entity_db.time_range_for(time_ctrl.timeline_name()) else {
             // We have no data on this timeline
             return;
         };
@@ -1363,10 +1364,10 @@ impl TimePanel {
         if time_range.min() == time_range.max() {
             // Only one time point - showing a slider that can't be moved is just annoying
         } else {
-            let space_needed_for_current_time = match timeline.typ() {
-                re_chunk_store::TimeType::Sequence => 100.0,
-                re_chunk_store::TimeType::DurationNs => 200.0,
-                re_chunk_store::TimeType::TimestampNs => 220.0,
+            let space_needed_for_current_time = match time_ctrl.time_type() {
+                Some(re_chunk_store::TimeType::Sequence) | None => 100.0,
+                Some(re_chunk_store::TimeType::DurationNs) => 200.0,
+                Some(re_chunk_store::TimeType::TimestampNs) => 220.0,
             };
 
             let mut time_range_rect = ui.available_rect_before_wrap();
@@ -1447,9 +1448,8 @@ impl TimePanel {
     ) {
         if let Some(time_int) = time_ctrl.time_int()
             && let Some(time) = time_ctrl.time()
+            && let Some(time_type) = time_ctrl.time_type()
         {
-            let time_type = time_ctrl.time_type();
-
             /// Pick number of decimals to show based on zoom level
             ///
             /// The zoom level is expressed as nanoseconds per ui point (logical pixel).
@@ -1508,7 +1508,10 @@ impl TimePanel {
     }
 }
 
-fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) -> egui::Response {
+fn archetype_label_ui(
+    ui: &mut Ui,
+    archetype: Option<re_sdk_types::ArchetypeName>,
+) -> egui::Response {
     ui.list_item()
         .with_y_offset(1.0)
         .with_height(20.0)
@@ -1619,40 +1622,30 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    let timeline = time_ctrl.timeline().name();
-    let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
-    if let Some(times) = entity_db.time_histogram(timeline) {
+    let timeline = time_ctrl.timeline_name();
+    if let Some(times) = entity_db.time_histogram(timeline)
+        && let Some(time_type) = time_ctrl.time_type()
+    {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
-            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
-            time_view = time_view.or_else(|| {
-                Some(view_everything(
-                    &x_range,
-                    &timeline_axis,
-                    time_ctrl.max_valid_range_for(*timeline),
-                ))
-            });
+            let timeline_axis = TimelineAxis::new(time_type, times);
+            time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }
     }
 
     TimeRangesUi::new(
         x_range,
-        time_view.unwrap_or(TimeView {
+        time_view.unwrap_or_else(|| TimeView {
             min: TimeReal::from(0),
             time_spanned: 1.0,
         }),
         &time_range,
-        &valid_time_ranges,
     )
 }
 
 /// Find a nice view of everything in the valid marked range.
-fn view_everything(
-    x_range: &Rangef,
-    timeline_axis: &TimelineAxis,
-    max_valid_time_range: AbsoluteTimeRange,
-) -> TimeView {
+fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
     let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = x_range.span();
@@ -1665,9 +1658,8 @@ fn view_everything(
     };
 
     let min_data_time = timeline_axis.ranges.first().min;
-    let min_valid_data_time = min_data_time.max(max_valid_time_range.min);
-    let time_spanned =
-        timeline_axis.sum_time_lengths_within(max_valid_time_range) as f64 * factor as f64;
+    let min_valid_data_time = min_data_time;
+    let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
 
     TimeView {
         min: min_valid_data_time.into(),
@@ -1777,20 +1769,12 @@ fn paint_time_ranges_gaps(
 
     let zig_zag_first_and_last_edges = true;
 
-    // We segment along the valid time subranges which may facture linear segments into several parts.
-    let valid_time_ranges = time_ranges_ui
-        .segments
-        .iter()
-        .flat_map(|segment| segment.valid_subranges.iter())
-        .cloned()
-        .collect::<Vec<_>>();
-
     // Margin for the (left or right) end of a gap.
     // Don't use an arbitrarily large value since it can cause platform-specific rendering issues.
     const GAP_END_MARGIN: f32 = 100.0;
 
-    if let Some(segment_subrange) = valid_time_ranges.first() {
-        let gap_edge = *segment_subrange.start() as f32;
+    if let Some(segment) = time_ranges_ui.segments.first() {
+        let gap_edge = *segment.x.start() as f32;
         let gap_edge_left_side = ui.ctx().content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
@@ -1807,12 +1791,12 @@ fn paint_time_ranges_gaps(
         }
     }
 
-    for (a, b) in valid_time_ranges.iter().tuple_windows() {
-        paint_time_gap(*a.end() as f32, *b.start() as f32);
+    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
+        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
     }
 
-    if let Some(segment_subrange) = valid_time_ranges.last() {
-        let gap_edge = *segment_subrange.end() as f32;
+    if let Some(segment) = time_ranges_ui.segments.last() {
+        let gap_edge = *segment.x.end() as f32;
         let gap_edge_right_side = ui.ctx().content_rect().right() + GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
@@ -1893,65 +1877,46 @@ fn pan_and_zoom_interaction(
 }
 
 /// Context menu that shows up when interacting with the streams rect.
-fn copy_timeline_properties_context_menu(
+fn timeline_properties_context_menu(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
     let mut url = ViewerOpenUrl::from_context(ctx);
-    if let Some(selected_time_range) = time_ctrl.active_loop_selection()
-        && selected_time_range.contains(hovered_time)
-    {
-        let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
-        let copy_command = url.and_then(|url| url.copy_url_command());
-        if ui
-            .add_enabled(
-                copy_command.is_ok() && has_time_range,
-                egui::Button::new("Copy link to trimmed range"),
-            )
-            .on_disabled_hover_text(if copy_command.is_err() {
-                "Can't share links to the current recording"
-            } else {
-                "The current recording doesn't support time range links"
-            })
-            .clicked()
-            && let Ok(copy_command) = copy_command
-        {
-            ctx.command_sender().send_system(copy_command);
-        }
-    } else {
-        let has_fragment = url.as_mut().is_ok_and(|url| {
-            if let Some(fragment) = url.fragment_mut() {
-                fragment.when = Some((
-                    *time_ctrl.timeline().name(),
+    let has_fragment = url.as_mut().is_ok_and(|url| {
+        if let Some(fragment) = url.fragment_mut() {
+            fragment.time_selection = None;
+            fragment.when = time_ctrl.time_type().map(|typ| {
+                (
+                    *time_ctrl.timeline_name(),
                     re_log_types::TimeCell {
-                        typ: time_ctrl.time_type(),
+                        typ,
                         value: hovered_time.floor().into(),
                     },
-                ));
-                true
-            } else {
-                false
-            }
-        });
-        let copy_command = url.and_then(|url| url.copy_url_command());
-
-        if ui
-            .add_enabled(
-                copy_command.is_ok() && has_fragment,
-                egui::Button::new("Copy link to timestamp"),
-            )
-            .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
-                format!("Can't share links to the current recording: {err}")
-            } else {
-                "The current recording doesn't support time stamp links".to_owned()
-            })
-            .clicked()
-            && let Ok(copy_command) = copy_command
-        {
-            ctx.command_sender().send_system(copy_command);
+                )
+            });
+            true
+        } else {
+            false
         }
+    });
+    let copy_command = url.and_then(|url| url.copy_url_command());
+
+    if ui
+        .add_enabled(
+            copy_command.is_ok() && has_fragment,
+            egui::Button::new("Copy link to timestamp"),
+        )
+        .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+            format!("Can't share links to the current recording: {err}")
+        } else {
+            "The current recording doesn't support time stamp links".to_owned()
+        })
+        .clicked()
+        && let Ok(copy_command) = copy_command
+    {
+        ctx.command_sender().send_system(copy_command);
     }
 
     if ui.button("Copy timestamp").clicked() {
@@ -2040,7 +2005,7 @@ impl TimePanel {
                 let popup_is_open = egui::Popup::context_menu(&response)
                     .width(300.0)
                     .show(|ui| {
-                        copy_timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
+                        timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
                     })
                     .is_some();
                 if popup_is_open {

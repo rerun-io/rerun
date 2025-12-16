@@ -2,16 +2,9 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
-"archetypes/coordinate_frame_builtin_frames" = [
-  "py",
-  "cpp",
-  "rust",
-] # TODO(RR-2777): Mark as stable when we're ready for it.
-"archetypes/transform3d_hierarchy_frames" = [
-  "py",
-  "cpp",
-  "rust",
-] # TODO(RR-2777): Mark as stable when we're ready for it.
+# Migration snippets rarely make sense as part of the snippet index.
+"migration/log_line" = ["cpp", "rust", "py"]
+"migration/transactional_transforms" = ["cpp", "rust", "py"]
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
@@ -172,10 +165,24 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/file_sink" = [ # these will create a file on disk and are only meant to illustrate usage
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/grpc_sink" = [ # these will fail to run without a server to connect to
+  "py",
+  "cpp",
+  "rust",
+]
 "howto/check_connection_status" = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
+]
+"howto/load_urdf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
@@ -207,10 +214,9 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"archetypes/transform3d_hierarchy_frames" = [
-  # TODO(RR-2685): Sample is incomplete. Implement cross language once we can have flat entity path hierarchy.
-  "cpp",
-  "rust",
+"archetypes/pinhole_projections" = [
+  "cpp", # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "archetypes/video_stream_synthetic" = [
   "cpp", # Not implemented
@@ -222,6 +228,11 @@ backwards_check = [
   "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+"migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
   "cpp",
   "rust",
   "py",

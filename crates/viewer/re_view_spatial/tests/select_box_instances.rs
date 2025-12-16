@@ -3,9 +3,11 @@
 use re_entity_db::InstancePath;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
+use re_sdk_types::components::FillMode;
+use re_sdk_types::{RowId, archetypes};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_types::{RowId, archetypes, components::FillMode};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{Item, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -44,6 +46,7 @@ fn test_select_box_instances() {
         view_id
     });
 
+    let mut snapshot_results = SnapshotResults::new();
     for selected_instance_path in [
         InstancePath::instance("shapes", 0),
         InstancePath::instance("shapes", 1),
@@ -71,5 +74,6 @@ fn test_select_box_instances() {
             "select_box_instances_all".to_owned()
         };
         harness.snapshot(name);
+        snapshot_results.extend_harness(&mut harness);
     }
 }

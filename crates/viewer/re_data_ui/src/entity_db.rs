@@ -1,11 +1,10 @@
 use jiff::SignedDuration;
 use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
+use re_log_channel::LogSource;
 use re_log_types::StoreKind;
-use re_smart_channel::SmartChannelSource;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -41,9 +40,9 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetPartitionUri { partition_id, .. }, .. }) = &self.data_source {
-                ui.grid_left_hand_label("Partition ID");
-                ui.label(partition_id);
+            if let Some(LogSource::RedapGrpcStream { uri: re_uri::DatasetSegmentUri { segment_id, .. }, .. }) = &self.data_source {
+                ui.grid_left_hand_label("Segment ID");
+                ui.label(segment_id);
                 ui.end_row();
             }
 
@@ -53,7 +52,6 @@ impl crate::DataUi for EntityDb {
                     cloned_from,
                     store_source,
                     store_version,
-                    is_partial,
                 } = store_info;
 
                 if let Some(cloned_from) = cloned_from {
@@ -79,15 +77,6 @@ impl crate::DataUi for EntityDb {
                         "store version is undefined for this recording, this is a bug"
                     );
                 }
-
-                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
-                // as all data will be pulled on-demand from a server.
-                ui.grid_left_hand_label("Partial store");
-                ui.monospace(format!("{is_partial:?}"))
-                .on_hover_text(
-                    "If true, only a subset of the recording is presented in the viewer.",
-                );
-                ui.end_row();
 
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind().to_string());

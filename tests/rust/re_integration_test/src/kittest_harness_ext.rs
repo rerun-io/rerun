@@ -1,31 +1,23 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
-use egui::Modifiers;
-use egui::PointerButton;
-use egui::accesskit::Role;
-use egui::accesskit::Toggled;
-use egui_kittest::kittest::NodeT as _;
-use egui_kittest::kittest::Queryable as _;
+use egui::accesskit::{Role, Toggled};
+use egui::{Modifiers, PointerButton};
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use parking_lot::Mutex;
+use re_sdk::external::re_log_types::{SetStoreInfo, StoreInfo};
+use re_sdk::external::re_tuid::Tuid;
+use re_sdk::log::Chunk;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
     StoreKind,
-    external::{
-        re_log_types::{SetStoreInfo, StoreInfo},
-        re_tuid::Tuid,
-    },
-    log::Chunk,
 };
-use re_viewer::{
-    SystemCommand, SystemCommandSender as _,
-    external::{
-        re_chunk::{ChunkBuilder, LatestAtQuery},
-        re_entity_db::EntityDb,
-        re_types,
-        re_viewer_context::{self, ViewerContext, blueprint_timeline},
-    },
-    viewer_test_utils::AppTestingExt as _,
-};
+use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
+use re_viewer::external::re_entity_db::EntityDb;
+use re_viewer::external::re_sdk_types;
+use re_viewer::external::re_viewer_context::{self, ViewerContext, blueprint_timeline};
+use re_viewer::viewer_test_utils::AppTestingExt as _;
+use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -71,10 +63,13 @@ pub trait HarnessExt<'h> {
     // Get the position of a node in the UI by its label.
     fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
-    // Drag-and-drop functions based on position
-    fn drag_at(&mut self, pos: egui::Pos2);
-    fn hover_at(&mut self, pos: egui::Pos2);
-    fn drop_at(&mut self, pos: egui::Pos2);
+    // Click at a position in the UI.
+    fn click_at(&mut self, pos: egui::Pos2);
+
+    fn right_click_at(&mut self, pos: egui::Pos2);
+
+    // Gets the cursor icon
+    fn cursor_icon(&mut self) -> egui::CursorIcon;
 
     // Changes the value of a dropdown menu.
     fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
@@ -109,6 +104,14 @@ pub trait HarnessExt<'h> {
     fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
     where
         'h: 'a;
+
+    /// Helper function to save the active recording to file for troubleshooting.
+    ///
+    /// Note: Right now it _only_ saves the recording and blueprints are ignored.
+    fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>);
+
+    /// Helper function to save the active blueprint to file for troubleshooting.
+    fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>);
 
     // The viewer section whose root node is the blueprint tree.
     fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
@@ -230,7 +233,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let app = self.state_mut();
         let store_hub = app.testonly_get_store_hub();
 
-        let store_info = StoreInfo::testing();
+        let store_info = StoreInfo::testing_with_recording_id("test_recording"); // Fixed id shouldn't cause any problems with store subscribers here since we tear down the entire application for every test.
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
@@ -245,14 +248,14 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .expect("Failed to set recording name");
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::now(),
+                    &re_sdk_types::components::Timestamp::from(0),
                 )
                 .expect("Failed to set recording start time");
         }
@@ -264,9 +267,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .expect("Failed to set recording property");
             recording_store
@@ -275,9 +278,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .expect("Failed to set recording property");
         }
@@ -302,30 +305,38 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
-    fn drag_at(&mut self, pos: egui::Pos2) {
+    fn click_at(&mut self, pos: egui::Pos2) {
+        for pressed in [true, false] {
+            self.event(egui::Event::PointerButton {
+                pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+            self.run();
+        }
+    }
+
+    fn right_click_at(&mut self, pos: egui::Pos2) {
         self.event(egui::Event::PointerButton {
             pos,
-            button: PointerButton::Primary,
+            button: PointerButton::Secondary,
             pressed: true,
             modifiers: Modifiers::NONE,
         });
-        self.run_ok();
-    }
-
-    fn hover_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerMoved(pos));
-        self.run_ok();
-    }
-
-    fn drop_at(&mut self, pos: egui::Pos2) {
         self.event(egui::Event::PointerButton {
             pos,
-            button: PointerButton::Primary,
+            button: PointerButton::Secondary,
             pressed: false,
             modifiers: Modifiers::NONE,
         });
-        self.remove_cursor();
-        self.run_ok();
+        self.run();
+    }
+
+    fn cursor_icon(&mut self) -> egui::CursorIcon {
+        self.run_with_viewer_context(|viewer_context| {
+            viewer_context.egui_ctx().output(|o| o.cursor_icon)
+        })
     }
 
     fn debug_viewer_state(&mut self) {
@@ -423,5 +434,41 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             harness: self,
             section_label: None,
         }
+    }
+
+    fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>) {
+        let mut file = std::fs::File::create(&path)
+            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+
+        let store_hub = self.state_mut().testonly_get_store_hub();
+        let recording_entity_db = store_hub.active_recording().expect("No active recording");
+        let messages = recording_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::Encoder::encode_into(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )
+        .expect("Failed to encode recording to file");
+    }
+
+    fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>) {
+        let mut file = std::fs::File::create(&path)
+            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+
+        let store_hub = self.state_mut().testonly_get_store_hub();
+        let blueprint_entity_db = store_hub.active_blueprint().expect("No active blueprint");
+        let messages = blueprint_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::Encoder::encode_into(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )
+        .expect("Failed to encode blueprint to file");
     }
 }

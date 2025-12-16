@@ -77,8 +77,8 @@ def test_instance_poses3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.translations == rr.components.PoseTranslation3DBatch._converter(translations)
-        assert arch.rotation_axis_angles == rr.components.PoseRotationAxisAngleBatch._converter(rotation_axis_angles)
-        assert arch.quaternions == rr.components.PoseRotationQuatBatch._converter(quaternions)
-        assert arch.scales == rr.components.PoseScale3DBatch._converter(scales)
-        assert arch.mat3x3 == rr.components.PoseTransformMat3x3Batch._converter(mat3x3)
+        assert arch.translations == rr.components.Translation3DBatch._converter(translations)
+        assert arch.rotation_axis_angles == rr.components.RotationAxisAngleBatch._converter(rotation_axis_angles)
+        assert arch.quaternions == rr.components.RotationQuatBatch._converter(quaternions)
+        assert arch.scales == rr.components.Scale3DBatch._converter(scales)
+        assert arch.mat3x3 == rr.components.TransformMat3x3Batch._converter(mat3x3)

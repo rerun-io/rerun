@@ -4,50 +4,107 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use std::collections::HashMap;
-
-use arrow::{
-    array::{Int64Array, ListArray},
-    datatypes::DataType,
-};
-
-use re_arrow_combinators::{self as transform, Transform as _};
+use arrow::array::{AsArray as _, Int64Array, ListArray};
+use arrow::compute::take;
+use arrow::datatypes::DataType;
+use itertools::Either;
+use nohash_hasher::IntMap;
+use re_arrow_combinators::Transform as _;
+use re_arrow_combinators::reshape::{Explode, Flatten};
 use re_chunk::{
-    ArrowArray as _, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath, Timeline,
+    ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
 };
 use re_log_types::{EntityPathFilter, TimeType};
-use re_types::{ComponentDescriptor, SerializedComponentColumn};
+use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
+use vec1::Vec1;
 
-use super::{Error, op};
+use super::LensError;
+use super::builder::LensBuilder;
+use super::op::{self, OpError};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
     pub component: ComponentIdentifier,
 }
 
-pub struct ComponentColumn {
-    /// The target entity path for this column.
-    ///
-    /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
-    pub new_entity_path: Option<EntityPath>,
-    pub component_descr: ComponentDescriptor,
-    pub ops: Vec<Op>,
-    // TODO(grtlr): It would be much nicer if static could be inferred from the output of the operations?
-    pub is_static: bool,
+/// Target entity path for lens outputs.
+#[derive(Debug, Clone, Default)]
+pub enum TargetEntity {
+    /// Use the matched input entity path.
+    #[default]
+    SameAsInput,
+
+    /// Use a specific entity path.
+    Explicit(EntityPath),
 }
 
-pub struct TimeColumn {
-    /// The target entity path for this column.
-    ///
-    /// If `None`, the entity path of the output column will be set to the matched entity path of the input column.
-    pub new_entity_path: Option<EntityPath>,
+/// A component output.
+///
+/// Depending on the context in which this output is used, the result from
+/// applying the `ops` should be a list array (1:1) or a list array of list arrays (1:N).
+#[derive(Debug)]
+pub struct ComponentOutput {
+    pub component_descr: ComponentDescriptor,
+    pub ops: Vec<Op>,
+}
+
+/// A time extraction output.
+#[derive(Debug)]
+pub struct TimeOutput {
     pub timeline_name: TimelineName,
     pub timeline_type: TimeType,
     pub ops: Vec<Op>,
 }
 
-type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
+#[derive(Debug)]
+/// Each input row produces exactly one output row (1:1 mapping).
+///
+/// Outputs inherit times from the input chunk.
+pub struct OneToOne {
+    pub target_entity: TargetEntity,
+
+    /// Component columns that will be created.
+    pub components: Vec1<ComponentOutput>,
+
+    /// Time columns that will be created.
+    pub times: Vec<TimeOutput>,
+}
+
+#[derive(Debug)]
+/// Each input row produces multiple output rows (1:N flat-map).
+///
+/// Outputs inherit times from the input chunk.
+pub struct OneToMany {
+    pub target_entity: TargetEntity,
+
+    /// Component columns that will be created.
+    pub components: Vec1<ComponentOutput>,
+
+    /// Time columns that will be created.
+    pub times: Vec<TimeOutput>,
+}
+
+#[derive(Debug)]
+/// Static lens: outputs have no timelines (timeless data).
+///
+/// In many cases, static lenses will omit the input column entirely.
+pub struct Static {
+    pub target_entity: TargetEntity,
+
+    /// Component columns that will be created.
+    pub components: Vec1<ComponentOutput>,
+}
+
+/// Determines how a lens transforms input rows to output rows.
+#[derive(Debug)]
+pub enum LensKind {
+    Columns(OneToOne),
+    ScatterColumns(OneToMany),
+    StaticColumns(Static),
+}
+
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, OpError> + Sync + Send>;
 
 /// Provides commonly used transformations of component columns.
 ///
@@ -100,7 +157,7 @@ impl Op {
 
     /// Ignores any input and returns a constant `ListArray`.
     ///
-    /// Commonly used with [`LensBuilder::add_static_component_column_entity`].
+    /// Commonly used with [`LensBuilder::output_static_columns`].
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
@@ -120,20 +177,18 @@ impl Op {
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, OpError> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
-            Self::Flatten => transform::Flatten::new()
-                .transform(list_array)
-                .map_err(Into::into),
+            Self::Flatten => Flatten::new().transform(list_array).map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }
@@ -151,301 +206,463 @@ impl Op {
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
 pub struct Lens {
-    input: InputColumn,
-    component_columns: Vec<ComponentColumn>,
-    time_columns: Vec<TimeColumn>,
+    pub(super) input: InputColumn,
+    pub(super) outputs: Vec<LensKind>,
 }
 
 impl Lens {
     /// Returns a new [`LensBuilder`] with the given input column.
+    ///
+    /// By default, creates a one-to-one (temporal) lens. Call `.with_static()` or `.with_to_many()`
+    /// on the builder to switch to a different mode.
     pub fn for_input_column(
         entity_path_filter: EntityPathFilter,
         component: impl Into<ComponentIdentifier>,
     ) -> LensBuilder {
-        LensBuilder::for_input_column(entity_path_filter, component)
+        LensBuilder::new(entity_path_filter, component)
     }
-}
 
-impl Lens {
-    /// Applies this lens and crates one or more chunks.
-    fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
+    /// Applies this lens and creates one or more chunks.
+    fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, PartialChunk>> {
         let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
         let Some(column) = found else {
-            return Default::default();
+            return Either::Left(std::iter::empty());
         };
 
-        let mut builders = ahash::HashMap::default();
-        for output in &self.component_columns {
-            let entity_path = output
-                .new_entity_path
-                .as_ref()
-                .unwrap_or(chunk.entity_path());
-
-            let components = builders
-                .entry((entity_path.clone(), output.is_static))
-                .or_insert_with(ChunkComponents::default);
-
-            if components.contains_key(&output.component_descr.component) {
-                re_log::warn_once!("Replacing duplicated component {}", output.component_descr);
-            }
-
-            let mut list_array_result = column.list_array.clone();
-            for op in &output.ops {
-                match op.call(&list_array_result) {
-                    Ok(result) => {
-                        list_array_result = result;
-                    }
-                    Err(err) => {
-                        re_log::error!(
-                            "Lens operation '{op:?}' failed for output column '{}' on entity '{entity_path}': {err}",
-                            output.component_descr.component,
-                        );
-                        return vec![];
-                    }
-                }
-            }
-
-            components.insert(SerializedComponentColumn::new(
-                list_array_result,
-                output.component_descr.clone(),
-            ));
-        }
-
-        let mut time_builders: ahash::HashMap<
-            &EntityPath,
-            HashMap<TimelineName, re_chunk::TimeColumn>,
-        > = ahash::HashMap::default();
-        for time in &self.time_columns {
-            let entity_path = time.new_entity_path.as_ref().unwrap_or(chunk.entity_path());
-
-            let time_entry = time_builders.entry(entity_path).or_default();
-
-            if time_entry.contains_key(&time.timeline_name) {
-                re_log::warn_once!("Replacing duplicated time column {}", time.timeline_name);
-            }
-
-            let mut list_array_result = column.list_array.clone();
-            for op in &time.ops {
-                match op.call(&list_array_result) {
-                    Ok(result) => {
-                        list_array_result = result;
-                    }
-                    Err(err) => {
-                        re_log::error!(
-                            "Lens operation '{op:?}' failed for time column '{}' on entity '{entity_path}': {err}",
-                            time.timeline_name,
-                        );
-                        return vec![];
-                    }
-                }
-            }
-
-            if let Some(values) = list_array_result
-                .values()
-                .as_any()
-                .downcast_ref::<Int64Array>()
-            {
-                let time_column = re_chunk::TimeColumn::new(
-                    None,
-                    Timeline::new(time.timeline_name, time.timeline_type),
-                    values.values().clone(),
-                );
-                time_entry.insert(time.timeline_name, time_column);
-            } else {
-                re_log::error_once!(
-                    "invalid data type for time column '{}': '{}'",
-                    time.timeline_name,
-                    list_array_result.data_type()
-                );
-            }
-        }
-
-        builders
-            .into_iter()
-            .filter_map(|((entity_path, is_static), components)| {
-                let timelines = if is_static {
-                    Default::default()
-                } else {
-                    let mut existing = chunk.timelines().clone();
-                    if let Some(columns) = time_builders.get_mut(&entity_path) {
-                        existing.extend(columns.clone());
-                    }
-                    existing
-                };
-
-                // TODO(grtlr): In case of static, should we use sparse rows instead?
-                Chunk::from_auto_row_ids(ChunkId::new(), entity_path.clone(), timelines, components)
-                    .inspect_err(|err| {
-                        re_log::error_once!(
-                            "Failed to build chunk at entity path '{entity_path}': {err}"
-                        );
-                    })
-                    .ok()
-            })
-            .collect()
+        Either::Right(self.outputs.iter().map(|output| match output {
+            LensKind::Columns(one_to_one) => one_to_one.apply(chunk, column),
+            LensKind::StaticColumns(static_columns) => static_columns.apply(chunk, column),
+            LensKind::ScatterColumns(one_to_many) => one_to_many.apply(chunk, column),
+        }))
     }
 }
 
-/// Provides convenient function to create a [`Lens`].
-pub struct LensBuilder(Lens);
-
-impl LensBuilder {
-    /// The column on which this [`Lens`] will operate on.
+/// An optional [`Chunk`] that only contains the component and time columns that we were able to compute.
+///
+/// Also contains a list of contextualized errors that describe which columns failed.
+#[derive(Debug)]
+pub struct PartialChunk {
+    /// [`Self`] is only used in an [`Result::Err`] variant.
     ///
-    /// For now, no substitutions will be performed on [`EntityPathFilter`].
-    pub fn for_input_column(
-        entity_path_filter: EntityPathFilter,
-        component: impl Into<ComponentIdentifier>,
-    ) -> Self {
-        Self(Lens {
-            input: InputColumn {
-                entity_path_filter,
-                component: component.into(),
-            },
-            component_columns: vec![],
-            time_columns: vec![],
+    /// We therefore box the actual payload to keep the happy path optimized.
+    inner: Box<PartialChunkInner>,
+}
+
+#[derive(Debug)]
+struct PartialChunkInner {
+    /// In some cases we might not be able to produce a chunk at all.
+    chunk: Option<Chunk>,
+
+    /// Collection of errors encountered while executing the Lens.
+    errors: Vec<LensError>,
+}
+
+impl PartialChunk {
+    /// Returns the partial chunk if any and consumes `self`.
+    pub fn take(self) -> Option<Chunk> {
+        self.inner.chunk
+    }
+
+    pub fn errors(&self) -> impl Iterator<Item = &LensError> {
+        self.inner.errors.iter()
+    }
+}
+
+fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, OpError> {
+    ops.iter().try_fold(initial, |array, op| op.call(&array))
+}
+
+fn collect_output_components_iter<'a>(
+    input: &'a SerializedComponentColumn,
+    components: &'a [ComponentOutput],
+) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
+    components.iter().map(
+        |output| match apply_ops(input.list_array.clone(), &output.ops) {
+            Ok(list_array) => Ok((output.component_descr.clone(), list_array)),
+            Err(source) => Err(LensError::ComponentOperationFailed {
+                component: output.component_descr.component,
+                source,
+            }),
+        },
+    )
+}
+
+fn collect_output_times_iter<'a>(
+    input: &'a SerializedComponentColumn,
+    timelines: &'a [TimeOutput],
+) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
+    timelines.iter().map(
+        |time| match apply_ops(input.list_array.clone(), &time.ops) {
+            Ok(list_array) => Ok((time.timeline_name, time.timeline_type, list_array)),
+            Err(source) => Err(LensError::TimeOperationFailed {
+                timeline_name: time.timeline_name,
+                source,
+            }),
+        },
+    )
+}
+
+/// Converts a time array to a time column.
+///
+/// Checks if the `list_array` values are [`arrow::array::Int64Array`] and if so, creates a [`re_chunk::TimeColumn`].
+fn try_convert_time_column(
+    timeline_name: TimelineName,
+    timeline_type: TimeType,
+    list_array: &ListArray,
+) -> Result<(TimelineName, TimeColumn), LensError> {
+    if let Some(time_vals) = list_array.values().as_any().downcast_ref::<Int64Array>() {
+        let time_column = re_chunk::TimeColumn::new(
+            None,
+            Timeline::new(timeline_name, timeline_type),
+            time_vals.values().clone(),
+        );
+        Ok((timeline_name, time_column))
+    } else {
+        Err(LensError::InvalidTimeColumn {
+            timeline_name,
+            actual_type: list_array.values().data_type().clone(),
         })
     }
+}
 
-    /// Can be used to define one or more output columns that are derived from the
-    /// component specified via [`Self::for_input_column`].
-    ///
-    /// The new column will be placed on the same entity path as the input column.
-    pub fn add_component_column(
-        mut self,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ComponentColumn {
-            new_entity_path: None,
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: false,
-        };
-        self.0.component_columns.push(column);
-        self
-    }
-
-    /// Can be used to define one or more output columns that are derived from the
-    /// component specified via [`Self::for_input_column`].
-    ///
-    /// The new column will be placed at `entity_path`.
-    pub fn add_component_column_entity(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ComponentColumn {
-            new_entity_path: Some(entity_path.into()),
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: false,
-        };
-        self.0.component_columns.push(column);
-        self
-    }
-
-    /// Can be used to extract a time column from the component specified via
-    /// [`Self::for_input_column`].
-    ///
-    /// The new column will be placed on the same entity path as the input column.
-    pub fn add_time_column(
-        mut self,
-        timeline_name: impl Into<TimelineName>,
-        timeline_type: TimeType,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = TimeColumn {
-            new_entity_path: None,
-            timeline_name: timeline_name.into(),
-            timeline_type,
-            ops: ops.into_iter().collect(),
-        };
-        self.0.time_columns.push(column);
-        self
-    }
-
-    /// Can be used to extract a time column from the component specified via
-    /// [`Self::for_input_column`].
-    ///
-    /// The new column will be placed at `entity_path`.
-    pub fn add_time_column_entity(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        timeline_name: impl Into<TimelineName>,
-        timeline_type: TimeType,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = TimeColumn {
-            new_entity_path: Some(entity_path.into()),
-            timeline_name: timeline_name.into(),
-            timeline_type,
-            ops: ops.into_iter().collect(),
-        };
-        self.0.time_columns.push(column);
-        self
-    }
-
-    /// Can be used to define one or more static output columns that are derived from the
-    /// component specified via [`Self::for_input_column`].
-    ///
-    /// The new column will be placed on the same entity path as the input column.
-    ///
-    /// In most cases, static columns should have a single row only.
-    pub fn add_static_component_column(
-        mut self,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ComponentColumn {
-            new_entity_path: None,
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: true,
-        };
-        self.0.component_columns.push(column);
-        self
-    }
-
-    /// Can be used to define one or more static output columns that are derived from the
-    /// component specified via [`Self::for_input_column`].
-    ///
-    /// The new column will be placed at `entity_path`.
-    ///
-    /// In most cases, static columns should have a single row only.
-    pub fn add_static_component_column_entity(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
-        let column = ComponentColumn {
-            new_entity_path: Some(entity_path.into()),
-            component_descr,
-            ops: ops.into_iter().collect(),
-            is_static: true,
-        };
-        self.0.component_columns.push(column);
-        self
-    }
-
-    /// Finalizes this builder and returns the corresponding lens.
-    pub fn build(self) -> Lens {
-        self.0
+fn resolve_entity_path<'a>(chunk: &'a Chunk, target_entity: &'a TargetEntity) -> &'a EntityPath {
+    match target_entity {
+        TargetEntity::SameAsInput => chunk.entity_path(),
+        TargetEntity::Explicit(path) => path,
     }
 }
 
-#[derive(Default)]
-pub struct LensRegistry {
+/// Creates a chunk from the given components and timelines, handling errors appropriately.
+///
+/// Returns `Ok(chunk)` if successful with no errors, or `Err(PartialChunk)` if there were
+/// errors during processing (with an optional chunk if creation succeeded despite errors).
+fn finalize_chunk(
+    entity_path: EntityPath,
+    chunk_times: IntMap<TimelineName, TimeColumn>,
+    component_results: re_chunk::ChunkComponents,
+    mut errors: Vec<LensError>,
+) -> Result<Chunk, PartialChunk> {
+    match Chunk::from_auto_row_ids(ChunkId::new(), entity_path, chunk_times, component_results) {
+        Ok(chunk) => {
+            if errors.is_empty() {
+                Ok(chunk)
+            } else {
+                Err(PartialChunk {
+                    inner: Box::new(PartialChunkInner {
+                        chunk: Some(chunk),
+                        errors,
+                    }),
+                })
+            }
+        }
+        Err(err) => {
+            errors.push(err.into());
+            Err(PartialChunk {
+                inner: Box::new(PartialChunkInner {
+                    chunk: None,
+                    errors,
+                }),
+            })
+        }
+    }
+}
+
+impl OneToOne {
+    /// Applies a one-to-one lens transformation where each input row produces exactly one output row.
+    ///
+    /// The output chunk inherits all timelines from the input chunk, with additional timelines
+    /// extracted from the component data if specified. Component columns are transformed according
+    /// to the provided operations.
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
+
+        let mut errors = Vec::new();
+
+        // Collect successful components directly into ChunkComponents, accumulate errors
+        let component_results: re_chunk::ChunkComponents =
+            collect_output_components_iter(input, &self.components)
+                .filter_map(|result| match result {
+                    Ok(component) => Some(component),
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
+                })
+                .collect();
+
+        // Inherit all existing time columns as-is (since row count doesn't change)
+        let mut chunk_times = chunk.timelines().clone();
+
+        // Collect successful time columns, accumulate errors
+        chunk_times.extend(
+            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
+                Ok((timeline_name, timeline_type, list_array)) => {
+                    match try_convert_time_column(timeline_name, timeline_type, &list_array) {
+                        Ok(time_col) => Some(time_col),
+                        Err(err) => {
+                            errors.push(err);
+                            None
+                        }
+                    }
+                }
+                Err(err) => {
+                    errors.push(err);
+                    None
+                }
+            }),
+        );
+
+        finalize_chunk(entity_path.clone(), chunk_times, component_results, errors)
+    }
+}
+
+impl Static {
+    /// Applies a static lens transformation that produces timeless output data.
+    ///
+    /// The output chunk contains no time columns, only the transformed component columns.
+    /// This is useful for metadata or other data that should not be associated with any timeline.
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
+
+        let mut errors = Vec::new();
+
+        // Collect successful components directly into ChunkComponents, accumulate errors
+        let component_results: re_chunk::ChunkComponents =
+            collect_output_components_iter(input, &self.components)
+                .filter_map(|result| match result {
+                    Ok(component) => Some(component),
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
+                })
+                .collect();
+
+        // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
+        finalize_chunk(
+            entity_path.clone(),
+            Default::default(),
+            component_results,
+            errors,
+        )
+    }
+}
+
+impl OneToMany {
+    /// Applies a one-to-many lens transformation where each input row potentially produces multiple output rows.
+    ///
+    /// The output chunk inherits all time columns from the input chunk, with additional time columns
+    /// extracted from the component data if specified. Component columns are transformed according
+    /// to the provided operations.
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
+        use arrow::array::UInt32Array;
+
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
+
+        let mut errors = Vec::new();
+
+        let mut output_components =
+            collect_output_components_iter(input, &self.components).peekable();
+
+        // Peek at the first component to establish the scatter pattern (how many output rows
+        // each input row produces). All components must have the same outer list structure.
+        // We use .peek() instead of consuming the iterator so we can still process all
+        // components (including this first one) later.
+        let reference_array = match output_components.peek() {
+            Some(Ok((_descr, reference_array))) => reference_array,
+            Some(Err(_)) => {
+                // If the first component failed, collect all errors and return
+                errors.extend(output_components.filter_map(|r| r.err()));
+                return Err(PartialChunk {
+                    inner: Box::new(PartialChunkInner {
+                        chunk: None,
+                        errors,
+                    }),
+                });
+            }
+            None => {
+                return Err(PartialChunk {
+                    inner: Box::new(PartialChunkInner {
+                        chunk: None,
+                        errors: vec![LensError::NoOutputColumnsProduced {
+                            input_entity: chunk.entity_path().clone(),
+                            input_component: input.descriptor.component,
+                            target_entity: entity_path.clone(),
+                        }],
+                    }),
+                });
+            }
+        };
+
+        // Build scatter indices: tracks which input row each output row came from
+        // Example: [0, 0, 0, 1, 2] means rows 0-2 from input 0, row 3 from input 1, row 4 from input 2
+        let mut scatter_indices = Vec::new();
+        let offsets = reference_array.value_offsets();
+
+        for (row_idx, window) in offsets.windows(2).enumerate() {
+            let start = window[0];
+            let end = window[1];
+            let count = end - start;
+
+            if reference_array.is_null(row_idx) || count == 0 {
+                // Null or empty list produces one output row
+                scatter_indices.push(row_idx as u32);
+            } else {
+                // Each element produces one output row
+                for _ in 0..count {
+                    scatter_indices.push(row_idx as u32);
+                }
+            }
+        }
+
+        let scatter_indices_array = UInt32Array::from(scatter_indices);
+
+        // Replicate all existing time values using scatter indices.
+        let mut chunk_times: IntMap<TimelineName, TimeColumn> = Default::default();
+        for (timeline_name, time_column) in chunk.timelines() {
+            let time_values = time_column.times_raw();
+            let time_values_array = Int64Array::from(time_values.to_vec());
+
+            // `arrow::compute::take` is fine to use in this context, because we want to allow nullability.
+            #[expect(clippy::disallowed_methods)]
+            match take(&time_values_array, &scatter_indices_array, None) {
+                Ok(scattered) => {
+                    let scattered_i64 = scattered.as_primitive::<arrow::datatypes::Int64Type>();
+                    let new_time_column = re_chunk::TimeColumn::new(
+                        None,
+                        *time_column.timeline(),
+                        scattered_i64.values().clone(),
+                    );
+                    chunk_times.insert(*timeline_name, new_time_column);
+                }
+                Err(source) => {
+                    errors.push(LensError::ScatterExistingTimeFailed {
+                        timeline_name: *timeline_name,
+                        source,
+                    });
+                }
+            }
+        }
+
+        // Explode all output time columns and collect errors
+        chunk_times.extend(
+            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
+                Ok((timeline_name, timeline_type, list_array)) => {
+                    match Explode.transform(&list_array) {
+                        Ok(exploded) => {
+                            match try_convert_time_column(timeline_name, timeline_type, &exploded) {
+                                Ok(time_col) => Some(time_col),
+                                Err(err) => {
+                                    errors.push(err);
+                                    None
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            errors.push(LensError::TimeOperationFailed {
+                                timeline_name,
+                                source: err.into(),
+                            });
+                            None
+                        }
+                    }
+                }
+                Err(err) => {
+                    errors.push(err);
+                    None
+                }
+            }),
+        );
+
+        // Explode all component outputs and collect errors
+        let chunk_components: re_chunk::ChunkComponents = output_components
+            .filter_map(|result| match result {
+                Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
+                    Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
+                    Err(err) => {
+                        errors.push(LensError::ComponentOperationFailed {
+                            component: component_descr.component,
+                            source: err.into(),
+                        });
+                        None
+                    }
+                },
+                Err(err) => {
+                    errors.push(err);
+                    None
+                }
+            })
+            .collect();
+
+        // Verify that all columns have the same length happens during chunk creation.
+        finalize_chunk(entity_path.clone(), chunk_times, chunk_components, errors)
+    }
+}
+
+/// Controls how data is processed when applying lenses.
+///
+/// This determines what happens to logged data when lenses are applied, particularly
+/// how unmatched original data is handled.
+#[derive(Copy, Clone)]
+pub enum OutputMode {
+    /// Forward both the transformed data from matching lenses and the original data.
+    ///
+    /// Use this when you want to preserve all original data alongside transformations.
+    ForwardAll,
+
+    /// Forward transformed data if lenses match, otherwise forward the original data unchanged.
+    ///
+    /// Use this when you want to transform matching data but ensure unmatched data isn't dropped.
+    ForwardUnmatched,
+
+    /// Only forward transformed data, drop data that doesn't match any lens.
+    ///
+    /// Use this when you want a pure transformation pipeline where only explicitly transformed
+    /// data should be output.
+    DropUnmatched,
+}
+
+/// A collection that holds multiple lenses and applies them to chunks.
+///
+/// This can hold multiple lenses that match different entity paths and components.
+/// When a chunk is processed, all relevant lenses (those whose entity path filters match
+/// the chunk's entity path) are applied.
+pub struct Lenses {
     lenses: Vec<Lens>,
+    mode: OutputMode,
 }
 
-impl LensRegistry {
+impl Lenses {
+    /// Creates a new lens collection with the specified mode.
+    pub fn new(mode: OutputMode) -> Self {
+        Self {
+            lenses: Default::default(),
+            mode,
+        }
+    }
+
+    /// Adds a lens to this collection.
     pub fn add_lens(&mut self, lens: Lens) {
         self.lenses.push(lens);
+    }
+
+    /// Adds a lens to this collection.
+    pub fn set_output_mode(&mut self, mode: OutputMode) {
+        self.mode = mode;
     }
 
     fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
@@ -455,397 +672,45 @@ impl LensRegistry {
                 .clone()
                 .resolve_without_substitutions()
                 .matches(chunk.entity_path())
+                && chunk.components().contains_component(lens.input.component)
         })
     }
 
-    /// Applies all relevant lenses to a chunk and returns the transformed chunks.
+    /// Applies all relevant lenses and returns the results.
     ///
-    /// This will only transform component columns that match registered lenses.
-    /// Other component columns are dropped. To retain original data, use identity
-    /// lenses or multi-sink configurations.
-    pub fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
-        self.relevant(chunk)
-            .flat_map(|transform| transform.apply(chunk))
-            .collect()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    #![expect(clippy::cast_possible_wrap)]
-
-    use std::sync::Arc;
-
-    use re_chunk::{
-        TimeColumn, TimelineName,
-        external::arrow::{
-            array::{
-                Float32Builder, Float64Builder, Int32Builder, ListBuilder, StringBuilder,
-                StructBuilder,
-            },
-            datatypes::{DataType, Field},
-        },
-    };
-    use re_types::{ComponentDescriptor, archetypes::Scalars};
-
-    use super::*;
-
-    /// Creates a chunk that contains all sorts of validity, nullability, and empty lists.
-    // ┌──────────────┬───────────┐
-    // │ [{a:0,b:0}]  │ ["zero"]  │
-    // ├──────────────┼───────────┤
-    // │[{a:1,b:null}]│["one","1"]│
-    // ├──────────────┼───────────┤
-    // │      []      │    []     │
-    // ├──────────────┼───────────┤
-    // │     null     │ ["three"] │
-    // ├──────────────┼───────────┤
-    // │ [{a:4,b:4}]  │   null    │
-    // ├──────────────┼───────────┤
-    // │    [null]    │ ["five"]  │
-    // ├──────────────┼───────────┤
-    // │ [{a:6,b:6}]  │  [null]   │
-    // └──────────────┴───────────┘
-    fn nullability_chunk() -> Chunk {
-        let mut struct_column_builder = ListBuilder::new(StructBuilder::new(
-            [
-                Arc::new(Field::new("a", DataType::Float32, true)),
-                Arc::new(Field::new("b", DataType::Float64, true)),
-            ],
-            vec![
-                Box::new(Float32Builder::new()),
-                Box::new(Float64Builder::new()),
-            ],
-        ));
-        let mut string_column_builder = ListBuilder::new(StringBuilder::new());
-
-        // row 0
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(0.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(0.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_value("zero");
-        string_column_builder.append(true);
-
-        // row 1
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(1.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_null();
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_value("one");
-        string_column_builder.values().append_value("1");
-        string_column_builder.append(true);
-
-        // row 2
-        struct_column_builder.append(true); // empty list
-
-        string_column_builder.append(true); // empty list
-
-        // row 3
-        struct_column_builder.append(false); // null
-
-        string_column_builder.values().append_value("three");
-        string_column_builder.append(true);
-
-        // row 4
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(4.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(4.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.append(false); // null
-
-        // row 5
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_null(); // placeholder for null struct
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_null(); // placeholder for null struct
-        struct_column_builder.values().append(false); // null struct element
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_value("five");
-        string_column_builder.append(true);
-
-        // row 6
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(6.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(6.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_null();
-        string_column_builder.append(true);
-
-        let struct_column = struct_column_builder.finish();
-        let string_column = string_column_builder.finish();
-
-        let components = [
-            (ComponentDescriptor::partial("structs"), struct_column),
-            (ComponentDescriptor::partial("strings"), string_column),
-        ]
-        .into_iter();
-
-        let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4, 5, 6]);
-
-        Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            "nullability".into(),
-            std::iter::once((TimelineName::new("tick"), time_column)).collect(),
-            components.collect(),
-        )
-        .unwrap()
-    }
-
-    #[test]
-    fn test_destructure_cast() {
-        let original_chunk = nullability_chunk();
-        println!("{original_chunk}");
-
-        let destructure =
-            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_component_column_entity(
-                    "nullability/a",
-                    Scalars::descriptor_scalars(),
-                    [Op::access_field("a"), Op::cast(DataType::Float64)],
+    /// The behavior depends on the configured [`OutputMode`]:
+    /// - [`OutputMode::ForwardAll`]: Returns both transformed and original data
+    /// - [`OutputMode::ForwardUnmatched`]: Returns transformed data if lenses match, otherwise original data
+    /// - [`OutputMode::DropUnmatched`]: Returns only transformed data, drops unmatched data
+    pub fn apply<'a>(
+        &'a self,
+        chunk: &'a Chunk,
+    ) -> impl Iterator<Item = Result<Chunk, PartialChunk>> + 'a {
+        match self.mode {
+            OutputMode::ForwardAll => {
+                // Apply all relevant lenses and also forward the original chunk
+                let chunk_clone = chunk.clone();
+                Either::Left(
+                    self.relevant(chunk)
+                        .flat_map(|lens| lens.apply(chunk))
+                        .chain(std::iter::once(Ok(chunk_clone))),
                 )
-                .build();
-
-        let pipeline = LensRegistry {
-            lenses: vec![destructure],
-        };
-
-        let res = pipeline.apply(&original_chunk);
-        assert_eq!(res.len(), 1);
-
-        let chunk = &res[0];
-        insta::assert_snapshot!("destructure_cast", format!("{chunk:-240}"));
-    }
-
-    #[test]
-    fn test_destructure() {
-        let original_chunk = nullability_chunk();
-        println!("{original_chunk}");
-
-        let destructure =
-            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "structs")
-                .add_component_column_entity(
-                    "nullability/b",
-                    Scalars::descriptor_scalars(),
-                    [Op::access_field("b")],
-                )
-                .build();
-
-        let pipeline = LensRegistry {
-            lenses: vec![destructure],
-        };
-
-        let res = pipeline.apply(&original_chunk);
-        assert_eq!(res.len(), 1);
-
-        let chunk = &res[0];
-        insta::assert_snapshot!("destructure_only", format!("{chunk:-240}"));
-    }
-
-    #[test]
-    fn test_inner_count() {
-        let original_chunk = nullability_chunk();
-        println!("{original_chunk}");
-
-        let count_fn = |list_array: &ListArray| {
-            let mut builder = ListBuilder::new(Int32Builder::new());
-
-            for maybe_array in list_array.iter() {
-                match maybe_array {
-                    None => builder.append_null(),
-                    Some(component_batch_array) => {
-                        builder
-                            .values()
-                            .append_value(component_batch_array.len() as i32);
-                        builder.append(true);
-                    }
-                }
             }
+            OutputMode::ForwardUnmatched => {
+                // Apply relevant lenses if any exist, otherwise forward the original chunk
+                let chunk_clone = chunk.clone();
+                let mut relevant_lenses = self.relevant(chunk).peekable();
+                let has_relevant = relevant_lenses.peek().is_some();
 
-            Ok(builder.finish())
-        };
-
-        let count =
-            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_component_column(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
-                .add_component_column(
-                    ComponentDescriptor::partial("original"),
-                    [], // no operations
-                )
-                .build();
-
-        let pipeline = LensRegistry {
-            lenses: vec![count],
-        };
-
-        let res = pipeline.apply(&original_chunk);
-        assert_eq!(res.len(), 1);
-
-        let chunk = &res[0];
-        insta::assert_snapshot!("inner_count", format!("{chunk:-240}"));
-    }
-
-    #[test]
-    fn test_static_chunk_creation() {
-        let original_chunk = nullability_chunk();
-
-        let mut metadata_builder_a = ListBuilder::new(StringBuilder::new());
-        metadata_builder_a
-            .values()
-            .append_value("static_metadata_a");
-        metadata_builder_a.append(true);
-
-        let mut metadata_builder_b = ListBuilder::new(StringBuilder::new());
-        metadata_builder_b
-            .values()
-            .append_value("static_metadata_b");
-        metadata_builder_b.append(true);
-
-        let static_lens =
-            Lens::for_input_column(EntityPathFilter::parse_forgiving("nullability"), "strings")
-                .add_static_component_column_entity(
-                    "nullability/static",
-                    ComponentDescriptor::partial("static_metadata_a"),
-                    [Op::constant(metadata_builder_a.finish())],
-                )
-                .add_static_component_column_entity(
-                    "nullability/static",
-                    ComponentDescriptor::partial("static_metadata_b"),
-                    [Op::constant(metadata_builder_b.finish())],
-                )
-                .build();
-
-        let pipeline = LensRegistry {
-            lenses: vec![static_lens],
-        };
-
-        let res = pipeline.apply(&original_chunk);
-        assert_eq!(res.len(), 1);
-
-        let chunk = &res[0];
-        insta::assert_snapshot!("single_static", format!("{chunk:-240}"));
-    }
-
-    #[test]
-    fn test_time_column_extraction() {
-        // Create a chunk with timestamp data that can be extracted as a time column
-        let mut timestamp_builder = ListBuilder::new(arrow::array::Int64Builder::new());
-        let mut value_builder = ListBuilder::new(Int32Builder::new());
-
-        // Add rows with timestamps and corresponding values
-        for i in 0..5 {
-            timestamp_builder.values().append_value(100 + i * 10);
-            timestamp_builder.append(true);
-
-            value_builder.values().append_value(i as i32);
-            value_builder.append(true);
+                Either::Right(Either::Left(
+                    relevant_lenses
+                        .flat_map(|lens| lens.apply(chunk))
+                        .chain((!has_relevant).then_some(Ok(chunk_clone))),
+                ))
+            }
+            OutputMode::DropUnmatched => Either::Right(Either::Right(
+                self.relevant(chunk).flat_map(|lens| lens.apply(chunk)),
+            )),
         }
-
-        let timestamp_column = timestamp_builder.finish();
-        let value_column = value_builder.finish();
-
-        let components = [
-            (
-                ComponentDescriptor::partial("my_timestamp"),
-                timestamp_column,
-            ),
-            (ComponentDescriptor::partial("value"), value_column),
-        ]
-        .into_iter();
-
-        // Create chunk without the custom timeline initially
-        let time_column = TimeColumn::new_sequence("tick", [0, 1, 2, 3, 4]);
-
-        let original_chunk = Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            "timestamped".into(),
-            std::iter::once((TimelineName::new("tick"), time_column)).collect(),
-            components.collect(),
-        )
-        .unwrap();
-
-        println!("{original_chunk}");
-
-        // Create a lens that extracts the timestamp as a time column and keeps the original timestamp as a component
-        let time_lens = Lens::for_input_column(
-            EntityPathFilter::parse_forgiving("timestamped"),
-            "my_timestamp",
-        )
-        .add_time_column("my_timeline", TimeType::Sequence, [])
-        .add_component_column(ComponentDescriptor::partial("extracted_time"), [])
-        .build();
-
-        let pipeline = LensRegistry {
-            lenses: vec![time_lens],
-        };
-
-        let res = pipeline.apply(&original_chunk);
-        assert_eq!(res.len(), 1);
-
-        let chunk = &res[0];
-        println!("{chunk}");
-
-        // Verify the chunk has both the original timeline and the new custom timeline
-        assert!(chunk.timelines().contains_key(&TimelineName::new("tick")));
-        assert!(
-            chunk
-                .timelines()
-                .contains_key(&TimelineName::new("my_timeline"))
-        );
-
-        // Verify the custom timeline has the correct values
-        let my_timeline = chunk
-            .timelines()
-            .get(&TimelineName::new("my_timeline"))
-            .unwrap();
-        assert_eq!(my_timeline.times_raw().len(), 5);
-        assert_eq!(my_timeline.times_raw()[0], 100);
-        assert_eq!(my_timeline.times_raw()[1], 110);
-        assert_eq!(my_timeline.times_raw()[2], 120);
-        assert_eq!(my_timeline.times_raw()[3], 130);
-        assert_eq!(my_timeline.times_raw()[4], 140);
     }
 }

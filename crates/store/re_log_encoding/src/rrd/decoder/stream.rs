@@ -3,7 +3,9 @@ use std::pin::Pin;
 use tokio::io::AsyncBufRead;
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState};
+use crate::RrdManifest;
+use crate::rrd::decoder::state_machine::DecoderState;
+use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
 // ---
 
@@ -107,6 +109,18 @@ pub struct DecoderStream<T, R: AsyncBufRead> {
     pub first_msg: Option<T>,
 }
 
+impl<T: DecoderEntrypoint, R: AsyncBufRead> DecoderStream<T, R> {
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        self.decoder.rrd_manifests()
+    }
+}
+
 // NOTE: This is the exact same implementation as `impl Iterator for DecoderIterator`, just asyncified.
 impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderStream<T, R> {
     type Item = Result<T, DecodeError>;
@@ -151,7 +165,7 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
                         // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if decoder.state == DecoderState::StreamHeader => {
+                        Ok(None) if decoder.state == DecoderState::WaitingForStreamHeader => {
                             return std::task::Poll::Ready(None);
                         }
 
@@ -184,16 +198,13 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
 
 #[cfg(all(test, feature = "encoder"))]
 mod tests {
-    use tokio_stream::StreamExt as _;
-
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use tokio_stream::StreamExt as _;
 
-    use crate::{
-        DecoderApp,
-        rrd::{Compression, EncodingOptions, Serializer},
-    };
+    use crate::DecoderApp;
+    use crate::rrd::{Compression, EncodingOptions, Serializer};
 
     #[expect(clippy::unwrap_used)] // acceptable for tests
     fn fake_log_messages() -> Vec<LogMsg> {
@@ -206,8 +217,8 @@ mod tests {
                     re_log_types::Timeline::new_sequence("blueprint"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),
-                &re_types::blueprint::archetypes::Background::new(
-                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                &re_sdk_types::blueprint::archetypes::Background::new(
+                    re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
                 )
                 .with_color([255, 0, 0]),
             )

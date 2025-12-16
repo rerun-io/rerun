@@ -1,10 +1,9 @@
 use std::sync::LazyLock;
 
 use ahash::HashMap;
+use re_log_types::{EntityPath, EntityPathHash};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
-
-use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{
     DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
@@ -31,7 +30,7 @@ pub struct QueryContext<'a> {
     /// Archetype name in which context the component is needed.
     ///
     /// View properties always have an archetype context, but overrides/defaults may not.
-    pub archetype_name: Option<re_types::ArchetypeName>,
+    pub archetype_name: Option<re_sdk_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
     pub query: &'a re_chunk_store::LatestAtQuery,

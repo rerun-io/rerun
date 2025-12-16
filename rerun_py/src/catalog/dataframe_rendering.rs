@@ -1,7 +1,8 @@
-use arrow::{datatypes::Schema, pyarrow::FromPyArrow as _, record_batch::RecordBatch};
+use arrow::datatypes::Schema;
+use arrow::pyarrow::FromPyArrow as _;
+use arrow::record_batch::RecordBatch;
 use comfy_table::Table;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
-
 use re_arrow_util::{RecordBatchFormatOpts, format_record_batch_opts};
 
 #[pyclass(eq, name = "RerunHtmlTable", module = "rerun_bindings.rerun_bindings")]
@@ -95,14 +96,14 @@ impl PyRerunHtmlTable {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRerunHtmlTable {
     #[new]
     #[pyo3(signature = (max_width=None, max_height=None))]
     pub fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
         Self {
-            max_height,
             max_width,
+            max_height,
         }
     }
 

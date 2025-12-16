@@ -5,14 +5,14 @@
 
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
-
-use re_blueprint_tree::{BlueprintTree, data::BlueprintTreeData};
+use re_blueprint_tree::BlueprintTree;
+use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, build_frame_nr};
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::{RecommendedView, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
@@ -173,7 +173,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
         let blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
-        blueprint_tree.show(ctx, &blueprint, ui);
+        blueprint_tree.show(ctx, &blueprint, ui, &test_context.view_states.lock());
     });
 
     if let Some(filter_query) = filter_query {
@@ -202,7 +202,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                     viewer_ctx.blueprint_query,
                 );
 
-                blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                blueprint_tree.show(viewer_ctx, &blueprint, ui, &test_context.view_states.lock());
             });
 
             test_context.handle_system_commands(ui.ctx());
@@ -214,7 +214,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
         "tests/snapshots/view_structure_test/{}",
         filter_query
             .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-            .unwrap_or("no-query".to_owned())
+            .unwrap_or_else(|| "no-query".to_owned())
     ));
 
     harness.try_snapshot_options(test_case.name, &options)
@@ -254,7 +254,7 @@ fn test_all_insta_test_cases() {
                 "snapshots/view_structure_test/{}",
                 filter_query
                     .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-                    .unwrap_or("no-query".to_owned())
+                    .unwrap_or_else(|| "no-query".to_owned())
             ));
 
             settings.bind(|| {

@@ -1,6 +1,7 @@
-use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-
-use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+use arrow::datatypes::Schema as ArrowSchema;
+use arrow::error::ArrowError;
+use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_log_types::{RecordingId, StoreKind, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -84,59 +85,59 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
     }
 }
 
-// --- PartitionId ---
+// --- SegmentId ---
 
 #[derive(
     Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
-pub struct PartitionId {
+pub struct SegmentId {
     pub id: String,
 }
 
-impl PartitionId {
+impl SegmentId {
     #[inline]
     pub fn new(id: String) -> Self {
         Self { id }
     }
 }
 
-impl From<String> for PartitionId {
+impl From<String> for SegmentId {
     fn from(id: String) -> Self {
         Self { id }
     }
 }
 
-impl From<&str> for PartitionId {
+impl From<&str> for SegmentId {
     fn from(id: &str) -> Self {
         Self { id: id.to_owned() }
     }
 }
 
-impl std::fmt::Display for PartitionId {
+impl std::fmt::Display for SegmentId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.id.fmt(f)
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
+impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::common::v1alpha1::PartitionId) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::common::v1alpha1::SegmentId) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value
                 .id
-                .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?,
+                .ok_or(missing_field!(crate::common::v1alpha1::SegmentId, "id"))?,
         })
     }
 }
 
-impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
-    fn from(value: PartitionId) -> Self {
+impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
+    fn from(value: SegmentId) -> Self {
         Self { id: Some(value.id) }
     }
 }
 
-impl AsRef<str> for PartitionId {
+impl AsRef<str> for SegmentId {
     fn as_ref(&self) -> &str {
         self.id.as_str()
     }
@@ -144,13 +145,13 @@ impl AsRef<str> for PartitionId {
 
 // shortcuts
 
-impl From<String> for crate::common::v1alpha1::PartitionId {
+impl From<String> for crate::common::v1alpha1::SegmentId {
     fn from(id: String) -> Self {
         Self { id: Some(id) }
     }
 }
 
-impl From<&str> for crate::common::v1alpha1::PartitionId {
+impl From<&str> for crate::common::v1alpha1::SegmentId {
     fn from(id: &str) -> Self {
         Self {
             id: Some(id.to_owned()),

@@ -7,14 +7,10 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
 
-use std::{
-    fmt::Display,
-    str::FromStr,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
-    },
-};
+use std::fmt::Display;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
@@ -91,11 +87,6 @@ struct WebViewerServerInner {
     server: tiny_http::Server,
     shutdown: AtomicBool,
     num_wasm_served: AtomicU64,
-
-    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
-    // while at the same time opting-out of analytics at run-time.
-    #[cfg(feature = "analytics")]
-    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl WebViewerServer {
@@ -125,9 +116,6 @@ impl WebViewerServer {
             server,
             shutdown,
             num_wasm_served: Default::default(),
-
-            #[cfg(feature = "analytics")]
-            analytics: re_analytics::Analytics::global_or_init(),
         });
 
         let inner_copy = inner.clone();
@@ -215,9 +203,7 @@ impl WebViewerServerInner {
         self.num_wasm_served.fetch_add(1, Ordering::Relaxed);
 
         #[cfg(feature = "analytics")]
-        if let Some(analytics) = &self.analytics {
-            analytics.record(re_analytics::event::ServeWasm);
-        }
+        re_analytics::record(|| re_analytics::event::ServeWasm);
     }
 
     #[cfg(disable_web_viewer_server)]

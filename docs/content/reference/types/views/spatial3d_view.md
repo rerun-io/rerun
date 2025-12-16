@@ -24,6 +24,7 @@ Configuration for the 3D line grid.
 ### `spatial_information`
 Configuration of debug drawing in the 3D view.
 
+* `target_frame`: The target reference frame for all transformations.
 * `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.
 ### `eye_controls`
@@ -77,6 +78,7 @@ snippet: views/spatial3d
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
+* [`TransformAxes3D`](../archetypes/transform_axes3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)

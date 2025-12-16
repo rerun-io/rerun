@@ -1,0 +1,31 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// A list of edges in a graph.
+///
+/// By default, edges are undirected.
+///
+/// \example archetypes/graph_undirected !api title="Simple undirected graph" image="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png"
+/// \example archetypes/graph_directed title="Simple directed graph" image="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png"
+table GraphEdges (
+  "attr.docs.category": "Graph",
+  "attr.docs.view_types": "GraphView",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "GraphEdges",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// A list of node tuples.
+  edges: [rerun.components.GraphEdge] ("attr.rerun.component_required", order: 1000);
+
+
+  // --- Recommended ---
+
+  /// Specifies if the graph is directed or undirected.
+  ///
+  /// If no [components.GraphType] is provided, the graph is assumed to be undirected.
+  graph_type: rerun.components.GraphType ("attr.rerun.component_recommended", nullable, order: 2000);
+
+}

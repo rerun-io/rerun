@@ -1,10 +1,8 @@
 //! Generate the snippets reference.
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
-    path::PathBuf,
-};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -473,16 +471,16 @@ fn collect_snippets_recursively<'o>(
         let cpp = path.with_extension("cpp").exists();
 
         let snippet = Snippet {
+            path,
             name,
             name_qualified,
-            path,
-
-            contents,
-            description,
 
             python,
             rust,
+
             cpp,
+            description,
+            contents,
 
             archetypes,
             components,

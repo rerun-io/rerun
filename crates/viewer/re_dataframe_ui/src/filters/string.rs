@@ -7,10 +7,9 @@ use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ColumnarValue, Expr, ScalarFunctionArgs, TypeSignature, col, lit, not,
 };
-use strum::VariantArray as _;
-
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 

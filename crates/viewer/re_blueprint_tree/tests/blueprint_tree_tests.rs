@@ -1,12 +1,13 @@
 #![cfg(feature = "testing")]
 
+use egui_kittest::SnapshotResults;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::build_frame_nr;
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Points3D;
 use re_viewer_context::{
     CollapseScope, RecommendedView, TimeControlCommand, ViewClass as _, ViewId,
 };
@@ -34,6 +35,7 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
+    let mut snapshot_results = SnapshotResults::new();
     for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
@@ -81,7 +83,12 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         viewer_ctx.blueprint_query,
                     );
 
-                    blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                    blueprint_tree.show(
+                        viewer_ctx,
+                        &blueprint,
+                        ui,
+                        &test_context.view_states.lock(),
+                    );
                 });
 
                 test_context.handle_system_commands(ui.ctx());
@@ -89,6 +96,8 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
 
         harness.run();
         harness.snapshot(snapshot_name);
+
+        snapshot_results.extend_harness(&mut harness);
     }
 }
 
@@ -157,7 +166,7 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
         let blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
-        blueprint_tree.show(ctx, &blueprint, ui);
+        blueprint_tree.show(ctx, &blueprint, ui, &test_context.view_states.lock());
     });
 
     if let Some(query) = query {
@@ -197,7 +206,7 @@ fn run_blueprint_panel_and_save_snapshot(
                     viewer_ctx.blueprint_query,
                 );
 
-                blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                blueprint_tree.show(viewer_ctx, &blueprint, ui, &test_context.view_states.lock());
             });
 
             test_context.handle_system_commands(ui.ctx());

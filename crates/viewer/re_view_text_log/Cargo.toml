@@ -23,13 +23,14 @@ re_chunk_store.workspace = true
 re_data_ui.workspace = true
 re_entity_db.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_query.workspace = true
-re_renderer.workspace = true
 re_view.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
+re_viewport_blueprint.workspace = true
 
 egui_extras.workspace = true
 egui.workspace = true

@@ -4,15 +4,11 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::Bencher;
-use criterion::Criterion;
 use criterion::measurement::WallTime;
+use criterion::{Bencher, Criterion};
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::AbsoluteTimeRange;
-use re_log_types::StoreId;
-use re_log_types::StoreKind;
-use re_log_types::Timeline;
+use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, Timeline};
 use re_time_panel::__bench::{
     DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi, build_density_graph,
 };
@@ -49,12 +45,8 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             let time_range = db
                 .time_range_for(timeline.name())
                 .unwrap_or(AbsoluteTimeRange::EMPTY);
-            let time_ranges_ui = TimeRangesUi::new(
-                row_rect.x_range(),
-                time_range.into(),
-                &[time_range],
-                &[AbsoluteTimeRange::EVERYTHING],
-            );
+            let time_ranges_ui =
+                TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
 
             b.iter(|| {
                 black_box(build_density_graph(
@@ -96,17 +88,18 @@ fn add_data(
         log_times.push(time);
 
         if !sorted {
-            use rand::{SeedableRng as _, seq::SliceRandom as _};
+            use rand::SeedableRng as _;
+            use rand::seq::SliceRandom as _;
             let mut rng = rand::rngs::StdRng::seed_from_u64(0xbadf00d);
             log_times.shuffle(&mut rng);
         }
 
         let components = (0..num_rows_per_chunk).map(|i| {
             let angle_deg = i as f32 % 360.0;
-            re_types::archetypes::Transform3D::from_rotation(
-                re_types::datatypes::RotationAxisAngle {
+            re_sdk_types::archetypes::Transform3D::from_rotation(
+                re_sdk_types::datatypes::RotationAxisAngle {
                     axis: (0.0, 0.0, 1.0).into(),
-                    angle: re_types::datatypes::Angle::from_degrees(angle_deg),
+                    angle: re_sdk_types::datatypes::Angle::from_degrees(angle_deg),
                 },
             )
         });
@@ -120,7 +113,7 @@ fn add_data(
                 timeline,
                 re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::ZERO),
             ),
-            &re_types::archetypes::Points3D::new([(10.0, 10.0, 10.0)]),
+            &re_sdk_types::archetypes::Points3D::new([(10.0, 10.0, 10.0)]),
         );
 
         // transforms
@@ -215,30 +208,6 @@ fn bench_many_chunks(c: &mut Criterion) {
     }
 }
 
-/// Benchmark that specifically tests the `uniform_sample_events` path.
-///
-/// This uses large chunks that exceed the individual event rendering threshold,
-/// forcing the sampling path to be taken.
-fn bench_sampling(c: &mut Criterion) {
-    let mut group = c.benchmark_group("sampling");
-
-    let sizes = [5000, 10000, 20000, 50000, 100000];
-    for size in sizes {
-        for max_sampled_events_per_chunk in [0, 4000, 8000] {
-            let id = format!("{size}/sample_{max_sampled_events_per_chunk}");
-
-            let config = DensityGraphBuilderConfig {
-                max_sampled_events_per_chunk,
-                ..Default::default()
-            };
-
-            group.bench_with_input(id, &single_chunk(size, true), |b, &entry| {
-                run(b, config, entry);
-            });
-        }
-    }
-}
-
 fn main() {
     // More noisy results, but benchmark ends a lot sooner.
     let mut criterion = Criterion::default()
@@ -250,7 +219,6 @@ fn main() {
 
     bench_single_chunks(&mut criterion);
     bench_many_chunks(&mut criterion);
-    bench_sampling(&mut criterion);
 
     criterion.final_summary();
 }

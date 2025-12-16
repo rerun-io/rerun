@@ -46,9 +46,9 @@ impl ViewerOpenUrlDescription {
                 target_short: path.file_name().map(|s| s.display().to_string()),
             },
 
-            ViewerOpenUrl::RedapDatasetPartition(uri) => Self {
-                category: "Partition",
-                target_short: Some(uri.partition_id.clone()),
+            ViewerOpenUrl::RedapDatasetSegment(uri) => Self {
+                category: "Segment",
+                target_short: Some(uri.segment_id.clone()),
             },
 
             ViewerOpenUrl::RedapProxy(_) => Self {
@@ -81,6 +81,16 @@ impl ViewerOpenUrlDescription {
                     }
                 }
             }
+
+            ViewerOpenUrl::Settings => Self {
+                category: "Settings",
+                target_short: None,
+            },
+
+            ViewerOpenUrl::ChunkStoreBrowser => Self {
+                category: "Chunk store browser",
+                target_short: None,
+            },
         }
     }
 }

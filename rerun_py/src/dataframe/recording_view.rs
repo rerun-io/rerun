@@ -4,16 +4,14 @@ use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::{PyAnyMethods as _, PyTupleMethods as _};
-use pyo3::types::PyTuple;
-use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
-
+use pyo3::types::{PyModule, PyTuple};
+use pyo3::{Bound, PyObject, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
-use super::{
-    AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle, PySchema,
-};
+use super::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle};
+use crate::catalog::PySchemaInternal;
 use crate::utils::py_rerun_warn_cstr;
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -66,6 +64,24 @@ impl PyRecordingView {
             })
             .transpose()
     }
+
+    /// Internal method to get the schema without wrapping in Python Schema class.
+    fn schema_internal(&self, py: Python<'_>) -> PySchemaInternal {
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
+                let engine = borrowed.engine();
+
+                let mut query_expression = self.query_expression.clone();
+                query_expression.selection = None;
+
+                PySchemaInternal {
+                    columns: engine.schema_for_query(&query_expression).into(),
+                    metadata: Default::default(),
+                }
+            }
+        }
+    }
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -78,26 +94,19 @@ impl PyRecordingView {
 /// was logged to a given index multiple times, only the most recent row will be included in the view, as determined
 /// by the `row_id` column. This will generally be the last value logged, as row_ids are guaranteed to be monotonically
 /// increasing when data is sent from a single process.
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecordingView {
     /// The schema describing all the columns available in the view.
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchema {
-        match &self.recording {
-            PyRecordingHandle::Local(recording) => {
-                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
-                let engine = borrowed.engine();
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = self.schema_internal(py);
 
-                let mut query_expression = self.query_expression.clone();
-                query_expression.selection = None;
-
-                PySchema {
-                    schema: engine.schema_for_query(&query_expression).into(),
-                }
-            }
-        }
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     /// Select the columns from the view.
@@ -228,8 +237,8 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)
-                    .schema
+                    .schema_internal(py)
+                    .columns
                     .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())

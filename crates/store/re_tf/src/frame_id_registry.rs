@@ -1,9 +1,10 @@
 use std::collections::hash_map::Entry;
 
 use nohash_hasher::IntMap;
+use re_byte_size::SizeBytes;
 use re_log_types::EntityPath;
-use re_types::components::TransformFrameId;
-use re_types::{TransformFrameIdHash, archetypes};
+use re_sdk_types::components::TransformFrameId;
+use re_sdk_types::{TransformFrameIdHash, archetypes};
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {
@@ -22,6 +23,16 @@ impl Default for FrameIdRegistry {
             ))
             .collect(),
         }
+    }
+}
+
+impl SizeBytes for FrameIdRegistry {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frame_id_lookup_table,
+        } = self;
+
+        frame_id_lookup_table.total_size_bytes()
     }
 }
 
@@ -48,16 +59,17 @@ impl FrameIdRegistry {
     pub fn register_all_frames_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         self.register_frame_id_from_entity_path(chunk.entity_path());
 
-        // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-        let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
-        let parent_frame_component = archetypes::Transform3D::descriptor_parent_frame().component;
-        let coordinate_frame_component =
-            archetypes::CoordinateFrame::descriptor_frame_id().component;
+        let frame_components = [
+            archetypes::Transform3D::descriptor_child_frame().component,
+            archetypes::Transform3D::descriptor_parent_frame().component,
+            archetypes::Pinhole::descriptor_child_frame().component,
+            archetypes::Pinhole::descriptor_parent_frame().component,
+            archetypes::CoordinateFrame::descriptor_frame().component,
+        ];
 
-        for frame_id_strings in chunk
-            .iter_slices::<String>(child_frame_component)
-            .chain(chunk.iter_slices::<String>(parent_frame_component))
-            .chain(chunk.iter_slices::<String>(coordinate_frame_component))
+        for frame_id_strings in frame_components
+            .iter()
+            .flat_map(|component| chunk.iter_slices::<String>(*component))
         {
             for frame_id_string in frame_id_strings {
                 let (frame_id_hash, entity_path) =
@@ -125,11 +137,12 @@ impl FrameIdRegistry {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame_id_registry::FrameIdRegistry;
     use re_chunk_store::Chunk;
     use re_log_types::{EntityPath, TimePoint};
-    use re_types::components::TransformFrameId;
-    use re_types::{TransformFrameIdHash, archetypes};
+    use re_sdk_types::components::TransformFrameId;
+    use re_sdk_types::{TransformFrameIdHash, archetypes};
+
+    use crate::frame_id_registry::FrameIdRegistry;
 
     #[test]
     fn test_entity_path_derived_frame_in_data() {

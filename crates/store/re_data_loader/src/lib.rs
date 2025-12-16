@@ -26,14 +26,12 @@ pub mod loader_mcap;
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
+pub use self::load_file::load_from_file_contents;
+pub use self::loader_archetype::ArchetypeLoader;
+pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_mcap::McapLoader;
-
-pub use self::{
-    load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
-    loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
-    loader_urdf::UrdfTree,
-};
-
+pub use self::loader_rrd::RrdLoader;
+pub use self::loader_urdf::{UrdfDataLoader, UrdfTree};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     load_file::load_from_path,
@@ -483,7 +481,7 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "urdf"];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
@@ -516,4 +514,5 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("rrd"));
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
+    assert!(is_supported_file_extension("urdf"));
 }

@@ -1,11 +1,11 @@
 use re_log_types::EntityPathHash;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::ViewClass as _;
 
 use super::UiLabel;
-use crate::{
-    PickableTexturedRect, SpatialView2D, view_kind::SpatialViewKind, visualizers::LoadingSpinner,
-};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::LoadingSpinner;
+use crate::{PickableTexturedRect, SpatialView2D};
 
 /// Common data struct for all spatial scene elements.
 ///

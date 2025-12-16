@@ -1,19 +1,16 @@
 use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{PlotBackground, PlotLegend},
-        components::{Corner2D, Enabled},
-    },
-    components::{Color, Visible},
-    datatypes::TensorBuffer,
-};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
+use re_sdk_types::blueprint::components::{Corner2D, Enabled};
+use re_sdk_types::components::{Color, Visible};
+use re_sdk_types::datatypes::TensorBuffer;
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
-use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
+use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
     ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
     suggest_view_for_each_entity,
@@ -25,7 +22,7 @@ use super::visualizer_system::{BarChartData, BarChartVisualizerSystem};
 #[derive(Default)]
 pub struct BarChartView;
 
-type ViewType = re_types::blueprint::views::BarChartView;
+type ViewType = re_sdk_types::blueprint::views::BarChartView;
 
 impl ViewClass for BarChartView {
     fn identifier() -> ViewClassIdentifier {
@@ -107,8 +104,7 @@ impl ViewClass for BarChartView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
@@ -118,7 +114,7 @@ impl ViewClass for BarChartView {
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&BarChartVisualizerSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             std::iter::once(BarChartVisualizerSystem::identifier()).collect()
         } else {
@@ -132,7 +128,7 @@ impl ViewClass for BarChartView {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, include_entity)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
@@ -144,11 +140,11 @@ impl ViewClass for BarChartView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
         });
@@ -177,7 +173,7 @@ impl ViewClass for BarChartView {
             .get::<BarChartVisualizerSystem>()?
             .charts;
 
-        let ctx = self.view_context(ctx, view_id, state);
+        let ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query(),
@@ -227,7 +223,7 @@ impl ViewClass for BarChartView {
                     indexes: impl Iterator<Item = f64>,
                     widths: impl Iterator<Item = f32>,
                     values: impl Iterator<Item = N>,
-                    color: &re_types::components::Color,
+                    color: &re_sdk_types::components::Color,
                     background_color: egui::Color32,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();

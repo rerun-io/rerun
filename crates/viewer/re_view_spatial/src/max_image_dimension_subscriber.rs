@@ -1,12 +1,12 @@
 use std::sync::OnceLock;
 
 use nohash_hasher::IntMap;
-
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::{
+use re_sdk_types::external::image;
+use re_sdk_types::{
     Archetype as _, ArchetypeName, Component as _, Loggable as _, SerializedComponentColumn,
-    archetypes, components, external::image,
+    archetypes, components,
 };
 
 bitflags::bitflags! {
@@ -261,6 +261,7 @@ fn try_size_from_video_stream_sample(
     let codec = match video_codec {
         components::VideoCodec::H264 => re_video::VideoCodec::H264,
         components::VideoCodec::H265 => re_video::VideoCodec::H265,
+        components::VideoCodec::AV1 => re_video::VideoCodec::AV1,
     };
 
     match re_video::detect_gop_start(sample, codec).ok()? {

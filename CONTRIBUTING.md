@@ -16,6 +16,21 @@ This is written for anyone who wants to contribute to the Rerun repository.
 * You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
 * We track things we would like implemented in 3rd party crates [here](https://github.com/rerun-io/opensource/issues/1).
 
+Note that maintainers do not have infinite time, and reviews take a lot of it.
+When choosing what to work on, please ensure that it is either:
+
+* A small change (+100-100 at most), or
+* A larger change that has been discussed with one or more maintainers.
+
+You can discuss these changes by:
+
+* Commenting on an existing issue,
+* Creating a new issue, or
+* Pinging one of the Rerun maintainers on our [Discord](https://discord.gg/PXtCgFBSmH)
+
+> [!NOTE]
+> PRs containing large changes which were not discussed previously may be closed without comment.
+
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
 

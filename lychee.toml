@@ -61,17 +61,15 @@ exclude_path = [
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
   "rerun_py/site/",
-  "target_pixi_wasm",
-  "target_pixi",
   "target_ra",
   "target_wasm",
   "target",
   "venv",
 
   # Actually ignored files beyond .gitignore
+  "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
+  "crates/store/re_uri/src/redap_uri.rs", # Same as above.
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
-  "crates/utils/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
-  "crates/utils/re_uri/src/redap_uri.rs", # Same as above.
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
@@ -133,6 +131,8 @@ exclude = [
   'rerun\+http://localhost:\{grpc_port\}/proxy',
   '.*scheme:/.*',
   'http(s)?://example.com/.*',
+  'file:///uri1.rrd',
+  'file:///uri2.rrd',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -176,6 +176,7 @@ exclude = [
 
   # Works but is really slow at times:
   'https://anaconda.org/conda-forge/libarrow',
+  'https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset',
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://picsum.photos/*',
 

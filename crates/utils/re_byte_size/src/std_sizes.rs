@@ -1,9 +1,7 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::sync::Arc;
 
 use crate::SizeBytes;
 

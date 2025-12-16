@@ -1,4 +1,5 @@
-use re_types::{components::MarkerShape, reflection::Enum as _};
+use re_sdk_types::components::MarkerShape;
+use re_sdk_types::reflection::Enum as _;
 use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 

@@ -1,20 +1,20 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
-use re_types::components::{self, FillMode};
-use re_types::{ArchetypeName, ComponentIdentifier};
+use re_renderer::{PickingLayerInstanceId, RenderContext};
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::{self, FillMode};
+use re_tf::convert;
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
+#[cfg(doc)]
+use re_viewer_context::VisualizerSystem;
 use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
+use vec1::smallvec_v1::SmallVec1;
 
 use crate::contexts::SpatialSceneEntityContext;
 use crate::proc_mesh::{self, ProcMeshKey};
-use crate::visualizers::{
-    SpatialViewVisualizerData, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
-};
-
-#[cfg(doc)]
-use re_viewer_context::VisualizerSystem;
+use crate::visualizers::utilities::LabeledBatch;
+use crate::visualizers::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.
@@ -44,6 +44,10 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
 pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub half_sizes: &'a [components::HalfSize3D],
 
+    pub centers: &'a [components::Translation3D],
+    pub rotation_axis_angles: &'a [components::RotationAxisAngle],
+    pub quaternions: &'a [components::RotationQuat],
+
     /// Iterator of meshes. Must be at least as long as `half_sizes`.
     pub meshes: IMesh,
 
@@ -52,9 +56,68 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
 
     pub line_radii: &'a [components::Radius],
     pub colors: &'a [components::Color],
-    pub labels: &'a [re_types::ArrowString],
+    pub labels: &'a [re_sdk_types::ArrowString],
     pub show_labels: Option<components::ShowLabels>,
     pub class_ids: &'a [components::ClassId],
+}
+
+/// Combines transform-like components on the entity with instances pose to view-origin transforms
+/// provided by the transform system.
+// TODO(#7026): We should formalize this kind of hybrid joining better.
+fn combine_instance_poses_with_archetype_transforms(
+    num_half_sizes: usize,
+    target_from_poses: &SmallVec1<[glam::DAffine3; 1]>,
+    translations: &[components::Translation3D],
+    rotation_axis_angles: &[components::RotationAxisAngle],
+    quaternions: &[components::RotationQuat],
+) -> vec1::Vec1<glam::DAffine3> {
+    // Draw as many proc meshes as we have max(instance pose count, proc mesh count), all components get repeated over that number.
+    let num_instances = num_half_sizes
+        .max(target_from_poses.len())
+        .max(translations.len())
+        .max(rotation_axis_angles.len())
+        .max(quaternions.len());
+
+    let mut iter_translation = clamped_or_nothing(translations, num_instances);
+    let mut iter_rotation_axis_angle = clamped_or_nothing(rotation_axis_angles, num_instances);
+    let mut iter_rotation_quat = clamped_or_nothing(quaternions, num_instances);
+
+    let last_target_from_instances = target_from_poses.last();
+    let clamped_target_from_instances = target_from_poses
+        .iter()
+        .chain(std::iter::repeat(last_target_from_instances))
+        .copied();
+
+    let target_from_instances = clamped_target_from_instances
+        .take(num_instances)
+        .map(|mut transform| {
+            if let Some(translation) = iter_translation.next() {
+                transform *= convert::translation_3d_to_daffine3(*translation);
+            }
+
+            if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
+                if let Ok(axis_angle) =
+                    convert::rotation_axis_angle_to_daffine3(*rotation_axis_angle)
+                {
+                    transform *= axis_angle;
+                } else {
+                    transform = glam::DAffine3::ZERO;
+                }
+            }
+
+            if let Some(rotation_quat) = iter_rotation_quat.next() {
+                if let Ok(rotation_quat) = convert::rotation_quat_to_daffine3(*rotation_quat) {
+                    transform *= rotation_quat;
+                } else {
+                    transform = glam::DAffine3::ZERO;
+                }
+            }
+
+            transform
+        })
+        .collect();
+
+    vec1::Vec1::try_from_vec(target_from_instances).expect("built from a SmallVec1, so can't fail")
 }
 
 impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
@@ -64,7 +127,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         view_query: &'ctx ViewQuery<'ctx>,
         line_batch_debug_label: impl Into<re_renderer::DebugLabel>,
     ) -> Self {
-        let mut line_builder = LineDrawableBuilder::new(render_ctx);
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -80,12 +143,10 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     }
 
     /// Add a batch of data to be drawn.
-    #[expect(clippy::too_many_arguments)]
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        archetype_name: ArchetypeName,
         color_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
@@ -97,14 +158,15 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             return Ok(());
         }
 
-        // Draw as many boxes as we have max(instances, boxes), all components get repeated over that number.
-        // TODO(#7026): We should formalize this kind of hybrid joining better.
-
-        let target_from_instances = ent_context
-            .transform_info
-            .target_from_instances(archetype_name);
-
-        let num_instances = batch.half_sizes.len().max(target_from_instances.len());
+        let target_from_poses = ent_context.transform_info.target_from_instances();
+        let target_from_instances = combine_instance_poses_with_archetype_transforms(
+            batch.half_sizes.len(),
+            target_from_poses,
+            batch.centers,
+            batch.rotation_axis_angles,
+            batch.quaternions,
+        );
+        let num_instances = target_from_instances.len();
 
         re_tracing::profile_function_if!(10_000 < num_instances);
 

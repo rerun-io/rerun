@@ -1,20 +1,16 @@
 use std::time::Duration;
 
-use web_time::Instant;
-
 use re_video::{
     DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, VideoDeliveryMethod,
 };
+use web_time::Instant;
 
-use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
-use crate::{
-    RenderContext,
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
-    video::{
-        DecoderDelayState, InsufficientSampleDataError, VideoPlayerError,
-        chunk_decoder::update_video_texture_with_frame,
-    },
-};
+use super::VideoFrameTexture;
+use super::chunk_decoder::VideoSampleDecoder;
+use crate::RenderContext;
+use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+use crate::video::chunk_decoder::update_video_texture_with_frame;
+use crate::video::{DecoderDelayState, InsufficientSampleDataError, VideoPlayerError};
 
 pub struct PlayerConfiguration {
     /// Don't report hickups lasting shorter than this.
@@ -490,7 +486,7 @@ impl VideoPlayer {
                     requested.sample_idx,
                     requested_sample
                         .map(|s| s.frame_nr.to_string())
-                        .unwrap_or("<unknown>".to_owned())
+                        .unwrap_or_else(|| "<unknown>".to_owned())
                 );
 
                 // special case: handle seeking backwards within a single GOP

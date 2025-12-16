@@ -1,13 +1,11 @@
 use smallvec::SmallVec;
 
-use crate::{RenderContext, debug_label::DebugLabel};
-
-use super::{
-    pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool},
-    resource::PoolError,
-    shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool},
-    static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor},
-};
+use super::pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool};
+use super::resource::PoolError;
+use super::shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool};
+use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
+use crate::RenderContext;
+use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
 

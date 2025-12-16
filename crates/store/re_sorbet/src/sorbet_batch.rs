@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
-    },
-    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
-    error::ArrowError,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
 };
-
+use arrow::datatypes::{Fields as ArrowFields, Schema as ArrowSchema};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 
@@ -69,6 +66,8 @@ impl SorbetBatch {
     /// The heap size of this batch in bytes, if known.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
+        // NOTE: This is *not* the size of the schema, it's the value carried in the
+        // `rerun:heap_size_bytes` key of the header metadata.
         self.schema.heap_size_bytes
     }
 
@@ -224,9 +223,8 @@ impl SorbetBatch {
 #[cfg(test)]
 mod tests {
 
-    use crate::{RowIdColumnDescriptor, sorbet_batch};
-
     use super::*;
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
 
     /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
     ///

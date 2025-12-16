@@ -168,7 +168,7 @@ def main() -> None:
             "lint-rs-files",
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
-            filter_files=r"^crates/store/re_types(_core)?/",
+            filter_files=r"^crates/store/re_sdk_types(_core)?/",
         ),
         LintJob("py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         # Even though mypy will accept a list of files, the results it generates are inconsistent
@@ -177,6 +177,7 @@ def main() -> None:
         LintJob("toml-fmt-check", extensions=[".toml"]),
         LintJob("lint-typos --force-exclude"),
         LintJob("check-large-files"),
+        LintJob("nb-strip-check", accepts_files=False),
     ]
 
     for command in skip:

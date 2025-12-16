@@ -1,16 +1,18 @@
-use std::collections::{HashMap, hash_map::Entry};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::error::Error as _;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+use re_auth::Jwt;
+use re_auth::credentials::CredentialsProviderError;
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use re_auth::Jwt;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
-
 use crate::connection_client::GenericConnectionClient;
 use crate::grpc::{RedapClient, RedapClientInner};
-use crate::{ApiError, TonicStatusError};
+use crate::{ApiError, ApiResult, TonicStatusError};
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -79,6 +81,12 @@ impl ConnectionRegistry {
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
+    #[error("error when refreshing credentials\nDetails:{0}")]
+    RefreshError(TonicStatusError),
+
+    #[error("the credentials are expired")]
+    SessionExpired,
+
     #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
@@ -166,7 +174,7 @@ impl ConnectionRegistryHandle {
     /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
-    pub async fn client(&self, origin: re_uri::Origin) -> Result<ConnectionClient, ApiError> {
+    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
         // happy path
         {
             let inner = self.inner.read().await;
@@ -244,7 +252,7 @@ impl ConnectionRegistryHandle {
     async fn try_create_raw_client(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = Credentials>,
-    ) -> Result<(RedapClient, Option<Credentials>), ApiError> {
+    ) -> ApiResult<(RedapClient, Option<Credentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
@@ -289,7 +297,7 @@ impl ConnectionRegistryHandle {
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         credentials: Option<Credentials>,
-    ) -> Result<RedapClient, ApiError> {
+    ) -> ApiResult<RedapClient> {
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
             match &credentials {
                 Some(Credentials::Token(token)) => Some(Arc::new(
@@ -300,6 +308,28 @@ impl ConnectionRegistryHandle {
                 }
                 None => None,
             };
+
+        // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+        // so if what we're trying to connect to is not a valid Rerun server, then cut out
+        // a layer of noise:
+        {
+            let res = match ehttp::fetch_async(ehttp::Request::get(format!(
+                "{}/version",
+                origin.as_url()
+            )))
+            .await
+            {
+                Ok(res) => res,
+                Err(err) => {
+                    return Err(ApiError::connection_simple(format!(
+                        "failed to connect to server '{origin}': {err}"
+                    )));
+                }
+            };
+            if !res.ok {
+                return Err(ApiError::invalid_server(origin));
+            }
+        }
 
         let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
 
@@ -322,17 +352,34 @@ impl ConnectionRegistryHandle {
                 if credentials.is_none() {
                     Err(ApiError::credentials(
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
-                        "verifying credentials",
+                        "verifying connection to server",
                     ))
                 } else {
                     Err(ApiError::credentials(
                         ClientCredentialsError::UnauthenticatedBadToken(err.into()),
-                        "verifying credentials",
+                        "verifying connection to server",
                     ))
                 }
             }
 
-            Err(err) => Err(ApiError::tonic(err, "verifying credentials")),
+            Err(err) => {
+                if let Some(cred_error) = err.source().and_then(|s| {
+                    s.downcast_ref::<re_auth::credentials::CredentialsProviderError>()
+                }) {
+                    match cred_error {
+                        CredentialsProviderError::SessionExpired => Err(ApiError::credentials(
+                            ClientCredentialsError::SessionExpired,
+                            "session expired",
+                        )),
+                        CredentialsProviderError::Custom(_) => Err(ApiError::credentials(
+                            ClientCredentialsError::RefreshError(err.into()),
+                            "refreshing credentials",
+                        )),
+                    }
+                } else {
+                    Err(ApiError::tonic(err, "verifying connection to server"))
+                }
+            }
 
             Ok(_) => Ok(raw_client),
         }

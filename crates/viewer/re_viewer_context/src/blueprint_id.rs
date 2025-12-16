@@ -46,7 +46,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
 
         path.last()
             .and_then(|last| uuid::Uuid::parse_str(last.unescaped_str()).ok())
-            .map_or(Self::invalid(), |id| Self {
+            .map_or_else(Self::invalid, |id| Self {
                 id,
                 _registry: std::marker::PhantomData,
             })
@@ -121,9 +121,9 @@ impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
     }
 }
 
-impl<T: BlueprintIdRegistry> From<re_types::datatypes::Uuid> for BlueprintId<T> {
+impl<T: BlueprintIdRegistry> From<re_sdk_types::datatypes::Uuid> for BlueprintId<T> {
     #[inline]
-    fn from(id: re_types::datatypes::Uuid) -> Self {
+    fn from(id: re_sdk_types::datatypes::Uuid) -> Self {
         Self {
             id: id.into(),
             _registry: std::marker::PhantomData,
@@ -131,7 +131,7 @@ impl<T: BlueprintIdRegistry> From<re_types::datatypes::Uuid> for BlueprintId<T> 
     }
 }
 
-impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_types::datatypes::Uuid {
+impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_sdk_types::datatypes::Uuid {
     #[inline]
     fn from(id: BlueprintId<T>) -> Self {
         id.id.into()

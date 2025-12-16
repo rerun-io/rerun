@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
-        InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
-        index_properties::Props, rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline},
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::index_properties::Props;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
+    InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
 };
+use re_protos::common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 
@@ -19,9 +18,9 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::scalars("my_partition_id1").layer_name("scalars"), //
-            LayerDefinition::text("my_partition_id1").layer_name("text"),       //
-            LayerDefinition::embeddings("my_partition_id1", 256, 3).layer_name("embeddings"), //
+            LayerDefinition::scalars("my_segment_id1").layer_name("scalars"), //
+            LayerDefinition::text("my_segment_id1").layer_name("text"),       //
+            LayerDefinition::embeddings("my_segment_id1", 256, 3).layer_name("embeddings"), //
         ],
     );
 
@@ -31,25 +30,23 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
         .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
         .await;
 
-    if let Some(indexes) = list_indexes(&service, dataset_name).await.unwrap() {
-        // TODO(RR-2779): implement indexing support in OSS
-        assert!(indexes.is_empty());
-    }
+    let indexes = list_indexes(&service, dataset_name).await.unwrap();
+    assert!(indexes.is_empty());
 
     for req in generate_search_dataset_requests() {
-        assert!({
-            let code = service
-                .search_dataset(
-                    tonic::Request::new(req)
-                        .with_entry_name(dataset_name)
-                        .unwrap(),
-                )
-                .await
-                .map(|_| ())
-                .unwrap_err()
-                .code();
-            code == tonic::Code::InvalidArgument || code == tonic::Code::Unimplemented
-        });
+        let code = service
+            .search_dataset(
+                tonic::Request::new(req)
+                    .with_entry_name(dataset_name)
+                    .unwrap(),
+            )
+            .await
+            .map(|_| ())
+            .unwrap_err()
+            .code();
+        // TODO(RR-2779): OSS returns NotFound.
+        // This is more precise and Rerun Cloud should be updated to return it.
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
     // TODO(cmc): At some point we will want to properly define what happens in case of concurrent
@@ -71,8 +68,9 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
                     .unwrap_err()
                     .code();
 
-                // TODO(RR-2779): implement indexing support in OSS
-                code == tonic::Code::InvalidArgument || code == tonic::Code::Unimplemented
+                // TODO(RR-2779): OSS returns AlreadyExists.
+                // This is more precise and Rerun Cloud should be updated to return it.
+                code == tonic::Code::InvalidArgument || code == tonic::Code::AlreadyExists
             });
         }
 
@@ -84,10 +82,8 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
             })
             .collect();
 
-        if let Some(indexes) = list_indexes(&service, dataset_name).await.unwrap() {
-            // TODO(RR-2779): implement indexing support in OSS
-            assert_eq!(expected_indexes, indexes);
-        }
+        let indexes = list_indexes(&service, dataset_name).await.unwrap();
+        assert_eq!(expected_indexes, indexes);
 
         for req in generate_search_dataset_requests() {
             search_dataset(&service, dataset_name, req).await.unwrap();
@@ -99,7 +95,7 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
                 .map(|req| (req.column.clone().unwrap(), req))
                 .collect();
         for (column, config) in expected_indexes {
-            let Some(deleted_indexes) = delete_indexes(
+            let deleted_indexes = delete_indexes(
                 &service,
                 dataset_name,
                 DeleteIndexesRequest {
@@ -107,32 +103,27 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
                 },
             )
             .await
-            .unwrap() else {
-                // TODO(RR-2779): implement indexing support in OSS
-                continue;
-            };
+            .unwrap();
 
             assert!(deleted_indexes.len() == 1);
             assert_eq!(config, deleted_indexes.into_values().next().unwrap());
 
-            if let Some(indexes) = list_indexes(&service, dataset_name).await.unwrap() {
-                // TODO(RR-2779): implement indexing support in OSS
-                assert!(!indexes.contains_key(&column));
-            }
+            let indexes = list_indexes(&service, dataset_name).await.unwrap();
+            assert!(!indexes.contains_key(&column));
 
-            assert!({
-                let code = service
-                    .search_dataset(
-                        tonic::Request::new(search_dataset_requests.remove(&column).unwrap())
-                            .with_entry_name(dataset_name)
-                            .unwrap(),
-                    )
-                    .await
-                    .map(|_| ())
-                    .unwrap_err()
-                    .code();
-                code == tonic::Code::InvalidArgument || code == tonic::Code::Unimplemented
-            });
+            let code = service
+                .search_dataset(
+                    tonic::Request::new(search_dataset_requests.remove(&column).unwrap())
+                        .with_entry_name(dataset_name)
+                        .unwrap(),
+                )
+                .await
+                .map(|_| ())
+                .unwrap_err()
+                .code();
+            // TODO(RR-2779): OSS returns NotFound.
+            // This is more precise and Rerun Cloud should be updated to return it.
+            assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
 
             for req in search_dataset_requests.values() {
                 search_dataset(&service, dataset_name, req.clone())
@@ -141,10 +132,8 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
             }
         }
 
-        if let Some(indexes) = list_indexes(&service, dataset_name).await.unwrap() {
-            // TODO(RR-2779): implement indexing support in OSS
-            assert!(indexes.is_empty());
-        }
+        let indexes = list_indexes(&service, dataset_name).await.unwrap();
+        assert!(indexes.is_empty());
     }
 }
 
@@ -157,71 +146,62 @@ pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
         .next()
         .unwrap();
 
-    // TODO(RR-2779): implement indexing support in OSS
-
-    assert!({
-        let code = service
-            .list_indexes(
-                tonic::Request::new(ListIndexesRequest {})
-                    .with_entry_name(dataset_name)
-                    .unwrap(),
-            )
-            .await
-            .unwrap_err()
-            .code();
-        code == tonic::Code::NotFound || code == tonic::Code::Unimplemented
-    });
-
-    assert!({
-        let code = service
-            .search_dataset(
-                tonic::Request::new(search_dataset_request)
-                    .with_entry_name(dataset_name)
-                    .unwrap(),
-            )
-            .await
-            .map(|_| ())
-            .unwrap_err()
-            .code();
-        code == tonic::Code::NotFound || code == tonic::Code::Unimplemented
-    });
-
-    assert!({
-        let code = service
-            .create_index(
-                tonic::Request::new(create_index_request.clone())
-                    .with_entry_name(dataset_name)
-                    .unwrap(),
-            )
-            .await
-            .unwrap_err()
-            .code();
-        code == tonic::Code::NotFound || code == tonic::Code::Unimplemented
-    });
-
-    assert!({
-        let code = service
-            .delete_indexes(
-                tonic::Request::new(DeleteIndexesRequest {
-                    column: create_index_request.config.unwrap().column,
-                })
+    let code = service
+        .list_indexes(
+            tonic::Request::new(ListIndexesRequest {})
                 .with_entry_name(dataset_name)
                 .unwrap(),
-            )
-            .await
-            .unwrap_err()
-            .code();
-        code == tonic::Code::NotFound || code == tonic::Code::Unimplemented
-    });
+        )
+        .await
+        .unwrap_err()
+        .code();
+
+    assert_eq!(code, tonic::Code::NotFound);
+
+    let code = service
+        .search_dataset(
+            tonic::Request::new(search_dataset_request)
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .map(|_| ())
+        .unwrap_err()
+        .code();
+    assert_eq!(code, tonic::Code::NotFound);
+
+    let code = service
+        .create_index(
+            tonic::Request::new(create_index_request.clone())
+                .with_entry_name(dataset_name)
+                .unwrap(),
+        )
+        .await
+        .unwrap_err()
+        .code();
+    assert_eq!(code, tonic::Code::NotFound);
+
+    let code = service
+        .delete_indexes(
+            tonic::Request::new(DeleteIndexesRequest {
+                column: create_index_request.config.unwrap().column,
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await
+        .unwrap_err()
+        .code();
+    assert_eq!(code, tonic::Code::NotFound);
 }
 
 pub async fn column_doesnt_exist(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::scalars("my_partition_id1").layer_name("scalars"), //
-            LayerDefinition::text("my_partition_id1").layer_name("text"),       //
-            LayerDefinition::embeddings("my_partition_id1", 256, 3).layer_name("embeddings"), //
+            LayerDefinition::scalars("my_segment_id1").layer_name("scalars"), //
+            LayerDefinition::text("my_segment_id1").layer_name("text"),       //
+            LayerDefinition::embeddings("my_segment_id1", 256, 3).layer_name("embeddings"), //
         ],
     );
 
@@ -262,31 +242,27 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
         *entity_path = "doesnt_exist".to_owned();
     }
 
-    if let Some(indexes) = list_indexes(&service, dataset_name).await.unwrap() {
-        // TODO(RR-2779): implement indexing support in OSS
-        assert!(indexes.is_empty());
-    }
+    let indexes = list_indexes(&service, dataset_name).await.unwrap();
+    assert!(indexes.is_empty());
 
     for req in search_dataset_requests {
-        assert!({
-            let code = service
-                .search_dataset(
-                    tonic::Request::new(req)
-                        .with_entry_name(dataset_name)
-                        .unwrap(),
-                )
-                .await
-                .map(|_| ())
-                .unwrap_err()
-                .code();
+        let code = service
+            .search_dataset(
+                tonic::Request::new(req)
+                    .with_entry_name(dataset_name)
+                    .unwrap(),
+            )
+            .await
+            .map(|_| ())
+            .unwrap_err()
+            .code();
 
-            // TODO(RR-2779): implement indexing support in OSS
-            code == tonic::Code::InvalidArgument || code == tonic::Code::Unimplemented
-        });
+        // TODO(RR-3100)
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
     for req in &create_index_requests {
-        let Some(deleted_indexes) = delete_indexes(
+        let deleted_indexes = delete_indexes(
             &service,
             dataset_name,
             DeleteIndexesRequest {
@@ -294,29 +270,24 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             },
         )
         .await
-        .unwrap() else {
-            // TODO(RR-2779): implement indexing support in OSS
-            continue;
-        };
+        .unwrap();
 
         assert!(deleted_indexes.is_empty());
     }
 
     for req in &create_index_requests {
-        assert!({
-            let code = service
-                .create_index(
-                    tonic::Request::new(req.clone())
-                        .with_entry_name(dataset_name)
-                        .unwrap(),
-                )
-                .await
-                .unwrap_err()
-                .code();
+        let code = service
+            .create_index(
+                tonic::Request::new(req.clone())
+                    .with_entry_name(dataset_name)
+                    .unwrap(),
+            )
+            .await
+            .unwrap_err()
+            .code();
 
-            // TODO(RR-2779): implement indexing support in OSS
-            code == tonic::Code::InvalidArgument || code == tonic::Code::Unimplemented
-        });
+        // TODO(RR-3100)
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 }
 
@@ -378,7 +349,6 @@ fn generate_create_index_requests() -> Vec<CreateIndexRequest> {
             config: Some(IndexConfig {
                 properties: Some(IndexProperties {
                     props: Some(Props::Vector(VectorIvfPqIndex {
-                        num_partitions: None,
                         target_partition_num_rows: Some(128),
                         num_sub_vectors: Some(16),
                         distance_metrics: re_protos::cloud::v1alpha1::VectorDistanceMetric::L2
@@ -411,14 +381,11 @@ fn generate_create_index_requests() -> Vec<CreateIndexRequest> {
 fn generate_search_dataset_requests() -> Vec<SearchDatasetRequest> {
     use std::sync::Arc;
 
-    use arrow::{
-        array::{Float32Array, RecordBatch, StringArray},
-        datatypes::Field,
-    };
-
+    use arrow::array::{Float32Array, RecordBatch, StringArray};
+    use arrow::datatypes::Field;
+    use re_protos::cloud::v1alpha1::index_query_properties::Props;
     use re_protos::cloud::v1alpha1::{
         BTreeIndexQuery, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
-        index_query_properties::Props,
     };
 
     let mut create_index_requests = generate_create_index_requests().into_iter();
@@ -497,68 +464,35 @@ async fn create_index(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: CreateIndexRequest,
-) -> Result<(), tonic::Status> {
-    let res = service
+) -> tonic::Result<()> {
+    let _res = service
         .create_index(tonic::Request::new(req).with_entry_name(dataset_name)?)
-        .await;
-
-    match res {
-        Ok(_) => {}
-
-        Err(err) if err.code() == tonic::Code::Unimplemented => {
-            // TODO(RR-2779): implement indexing support in OSS
-        }
-
-        Err(err) => Err(err)?,
-    }
+        .await?;
 
     Ok(())
 }
 
-/// Returns `Ok(())` if the operation is not supported.
 async fn search_dataset(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: SearchDatasetRequest,
-) -> Result<(), tonic::Status> {
-    let res = service
+) -> tonic::Result<()> {
+    let _res = service
         .search_dataset(tonic::Request::new(req).with_entry_name(dataset_name)?)
-        .await;
+        .await?;
 
-    match res {
-        Ok(_) => {
-            // Results are ignored. This is not about testing the search itself, it's about testing the
-            // lifecycle of the underlying index.
-        }
-
-        Err(err) if err.code() == tonic::Code::Unimplemented => {
-            // TODO(RR-2779): implement indexing support in OSS
-        }
-
-        Err(err) => Err(err)?,
-    }
-
+    // Results are ignored. This is not about testing the search itself, it's about testing the
+    // lifecycle of the underlying index.
     Ok(())
 }
 
-/// Returns `Ok(None)` if the operation is not supported.
 async fn list_indexes(
     service: &impl RerunCloudService,
     dataset_name: &str,
-) -> Result<Option<HashMap<IndexColumn, IndexConfig>>, tonic::Status> {
-    let res = match service
+) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
+    let res = service
         .list_indexes(tonic::Request::new(ListIndexesRequest {}).with_entry_name(dataset_name)?)
-        .await
-    {
-        Ok(res) => res,
-
-        Err(err) if err.code() == tonic::Code::Unimplemented => {
-            // TODO(RR-2779): implement indexing support in OSS
-            return Ok(None);
-        }
-
-        Err(err) => Err(err)?,
-    };
+        .await?;
 
     let indexes: HashMap<IndexColumn, IndexConfig> = res
         .into_inner()
@@ -567,28 +501,17 @@ async fn list_indexes(
         .map(|config| (config.column.clone().unwrap(), config))
         .collect();
 
-    Ok(Some(indexes))
+    Ok(indexes)
 }
 
-/// Returns `Ok(None)` if the operation is not supported.
 async fn delete_indexes(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: DeleteIndexesRequest,
-) -> Result<Option<HashMap<IndexColumn, IndexConfig>>, tonic::Status> {
-    let res = match service
+) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
+    let res = service
         .delete_indexes(tonic::Request::new(req).with_entry_name(dataset_name)?)
-        .await
-    {
-        Ok(res) => res,
-
-        Err(err) if err.code() == tonic::Code::Unimplemented => {
-            // TODO(RR-2779): implement indexing support in OSS
-            return Ok(None);
-        }
-
-        Err(err) => Err(err)?,
-    };
+        .await?;
 
     let indexes: HashMap<IndexColumn, IndexConfig> = res
         .into_inner()
@@ -597,5 +520,5 @@ async fn delete_indexes(
         .map(|config| (config.column.clone().unwrap(), config))
         .collect();
 
-    Ok(Some(indexes))
+    Ok(indexes)
 }

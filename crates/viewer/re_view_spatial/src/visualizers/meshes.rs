@@ -1,21 +1,20 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
-use re_renderer::{RenderContext, renderer::GpuMeshInstance};
-use re_types::{Archetype as _, archetypes::Mesh3D, components::ImageFormat};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
+use re_renderer::RenderContext;
+use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::archetypes::Mesh3D;
+use re_sdk_types::components::ImageFormat;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
-
-use crate::{
-    caches::{AnyMesh, MeshCache, MeshCacheKey},
-    contexts::SpatialSceneEntityContext,
-    mesh_loader::NativeMesh3D,
-    view_kind::SpatialViewKind,
-};
+use super::SpatialViewVisualizerData;
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::mesh_loader::NativeMesh3D;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 
@@ -81,10 +80,7 @@ impl Mesh3DVisualizer {
             if let Some(mesh) = mesh {
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): We should formalize this kind of hybrid joining better.
-                for &world_from_instance in ent_context
-                    .transform_info
-                    .target_from_instances(Mesh3D::name())
-                {
+                for &world_from_instance in ent_context.transform_info.target_from_instances() {
                     let world_from_instance = world_from_instance.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
@@ -120,21 +116,13 @@ impl VisualizerSystem for Mesh3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -142,6 +130,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -233,13 +223,13 @@ impl VisualizerSystem for Mesh3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
-            Ok(draw_data) => Ok(vec![draw_data.into()]),
-            Err(err) => {
-                re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO(andreas): Pass error on?
-            }
-        }
+        Ok(
+            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+                ctx.viewer_ctx.render_ctx(),
+                &instances,
+            )?
+            .into()]),
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

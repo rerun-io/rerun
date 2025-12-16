@@ -1,17 +1,12 @@
 use egui::{NumExt as _, Ui};
-
 use re_chunk::Timeline;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
-use re_types::{
-    Archetype as _,
-    blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
-    datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-};
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    RelativeTimeRange, TimeDragValue, UiExt as _, list_item::LabelContent,
-    relative_time_range_label_text,
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::VisibleTimeRange;
+use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
     BlueprintContext as _, QueryRange, TimeControlCommand, ViewClass, ViewState, ViewerContext,
 };
@@ -27,17 +22,21 @@ pub fn visible_time_range_ui_for_view(
     if !view_class.supports_visible_time_range() {
         return;
     }
+    let Some(timeline) = ctx.time_ctrl.timeline() else {
+        ui.weak("No active timeline");
+        return;
+    };
 
     let property_path = entity_path_for_view_property(
         view.id,
         ctx.store_context.blueprint.tree(),
-        re_types::blueprint::archetypes::VisibleTimeRanges::name(),
+        re_sdk_types::blueprint::archetypes::VisibleTimeRanges::name(),
     );
 
     let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
-        ctx.time_ctrl.timeline(),
+        timeline,
         ctx.view_class_registry(),
         view_state,
     );
@@ -76,7 +75,7 @@ fn visible_time_range_ui(
         )
         .unwrap_or_default();
 
-    let timeline_name = *ctx.time_ctrl.timeline().name();
+    let timeline_name = *ctx.time_ctrl.timeline_name();
     let mut has_individual_range = visible_time_ranges
         .iter()
         .any(|range| range.timeline.as_str() == timeline_name.as_str());
@@ -137,7 +136,7 @@ fn save_visible_time_ranges(
             existing.range = time_range;
         } else {
             visible_time_range_list.push(
-                re_types::datatypes::VisibleTimeRange {
+                re_sdk_types::datatypes::VisibleTimeRange {
                     timeline: timeline_name.as_str().into(),
                     range: time_range,
                 }
@@ -164,7 +163,10 @@ fn query_range_ui(
     is_view: bool,
 ) {
     let time_ctrl = &ctx.time_ctrl;
-    let timeline = *time_ctrl.timeline();
+    let Some(&timeline) = time_ctrl.timeline() else {
+        ui.weak("No active timeline");
+        return;
+    };
     let time_type = timeline.typ();
 
     let markdown = "# Visible time range\n
@@ -195,8 +197,8 @@ Notes:
                     });
             });
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline().name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(time_ctrl.timeline_name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     TimeDragValue::from_time_range(0..=0)
                 };

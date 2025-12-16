@@ -5,19 +5,16 @@
 
 use std::sync::Arc;
 
-use egui::{Color32, NumExt as _, Rangef, Rect, Shape, epaint::Vertex, lerp, pos2, remap};
-
+use egui::epaint::Vertex;
+use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
 use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::{
-    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    time_panel::TimePanelItem, time_ranges_ui::Segment,
-};
-
 use super::time_ranges_ui::TimeRangesUi;
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
+use crate::time_panel::TimePanelItem;
 
 // ----------------------------------------------------------------------------
 
@@ -213,8 +210,6 @@ impl DensityGraph {
         y_range: Rangef,
         painter: &egui::Painter,
         full_color: Color32,
-        segments: &[Segment],
-        outside_segment_color: Color32,
     ) {
         re_tracing::profile_function!();
 
@@ -257,23 +252,10 @@ impl DensityGraph {
         let mut mesh = egui::Mesh::default();
         mesh.vertices.reserve(4 * self.buckets.len());
 
-        let mut valid_data_x_ranges = segments
-            .iter()
-            .flat_map(|s| s.valid_subranges.iter().cloned());
-        let mut next_or_current_segment_range_x = valid_data_x_ranges.next();
-
         for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
 
             let x = self.x_from_bucket_index(i);
-
-            // Advance segments if we're ahead of the segment we looked at last.
-            while next_or_current_segment_range_x
-                .as_ref()
-                .is_some_and(|s| (*s.end() as f32) < x)
-            {
-                next_or_current_segment_range_x = valid_data_x_ranges.next();
-            }
 
             let normalized_density = data_density_graph_painter.normalize_density(density);
 
@@ -287,16 +269,7 @@ impl DensityGraph {
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
                 // Color different if we're outside of a segment.
-                let base_color = if next_or_current_segment_range_x
-                    .as_ref()
-                    .is_some_and(|s| (*s.start() as f32) <= x)
-                {
-                    full_color
-                } else {
-                    outside_segment_color
-                };
-
-                let inner_color = base_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
+                let inner_color = full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
 
                 (inner_radius, inner_color)
             };
@@ -433,7 +406,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        time_ctrl.timeline().name(),
+        time_ctrl.timeline_name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -444,8 +417,6 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
-        &time_ranges_ui.segments,
-        ui.tokens().density_graph_outside_valid_ranges,
     );
 
     if let Some(pointer) = data.hovered_pos {
@@ -563,27 +534,10 @@ pub fn build_density_graph<'a>(
                 };
 
             if should_render_individual_events {
-                // Render all individual events
                 for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
-                    data.add_chunk_point(time, num_events as f32);
-                }
-            } else if config.max_sampled_events_per_chunk > 0 {
-                let events = chunk.num_events_cumulative_per_unique_time(timeline);
-
-                if events.len() > config.max_sampled_events_per_chunk {
-                    // If there's more rows than the configured max, we sample events to get a fast, good enough density estimate.
-                    data.add_uniform_sample_from_chunk(
-                        &events,
-                        config.max_sampled_events_per_chunk,
-                    );
-                } else {
-                    // No need to sample, we can use all events.
-                    for (time, num_events) in events {
-                        data.add_chunk_point(time, num_events as f32);
-                    }
+                    data.add_chunk_point(time, num_events as usize);
                 }
             } else {
-                // Fall back to uniform distribution across the entire time range
                 data.add_chunk_range(time_range, num_events_in_chunk);
             }
         }
@@ -602,10 +556,6 @@ pub struct DensityGraphBuilderConfig {
 
     /// If an unsorted chunk has fewer events than this we show its individual events.
     pub max_events_in_unsorted_chunk: u64,
-
-    /// When a chunk is too large to render all events, uniformly sample this many events
-    /// to create a good enough density estimate instead.
-    pub max_sampled_events_per_chunk: usize,
 }
 
 impl DensityGraphBuilderConfig {
@@ -614,7 +564,6 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: 0,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: 0,
-        max_sampled_events_per_chunk: 0,
     };
 
     /// All sorted chunks will be rendered as individual events,
@@ -623,7 +572,6 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: u64::MAX,
-        max_sampled_events_per_chunk: 0,
     };
 
     /// All chunks will be rendered as individual events.
@@ -631,7 +579,6 @@ impl DensityGraphBuilderConfig {
         max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: u64::MAX,
         max_events_in_sorted_chunk: u64::MAX,
-        max_sampled_events_per_chunk: 0,
     };
 }
 
@@ -654,10 +601,6 @@ impl Default for DensityGraphBuilderConfig {
 
             // Processing unsorted events is about 20% slower than sorted events.
             max_events_in_unsorted_chunk: 8_000,
-
-            // When chunks are too large to render all events, sample this many events uniformly
-            // to create a good enough density estimate.
-            max_sampled_events_per_chunk: 8_000,
         }
     }
 }
@@ -673,7 +616,7 @@ pub fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline_name(), at_time);
 
     let TimePanelItem {
         entity_path,
@@ -720,32 +663,12 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    /// Uniformly sample events using the given sample size.
-    ///
-    /// Each sampled event's count is reweighted to preserve the total density.
-    fn add_uniform_sample_from_chunk(&mut self, events: &[(TimeInt, u64)], sample_size: usize) {
-        re_tracing::profile_function!();
-
-        let step = events.len() as f32 / sample_size as f32;
-
-        for i in 0..sample_size {
-            let idx = (i as f32 * step) as usize;
-            // This means we might miss the last event if rounding down, but that's acceptable.
-            if let Some(&(time, count)) = events.get(idx) {
-                // Reweight the count to preserve total density
-                let weighted_count = count as f32 * step;
-
-                self.add_chunk_point(time, weighted_count);
-            }
-        }
-    }
-
-    fn add_chunk_point(&mut self, time: TimeInt, weight: f32) {
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
         let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
             return;
         };
 
-        self.density_graph.add_point(x, weight);
+        self.density_graph.add_point(x, num_events as _);
 
         if let Some(pointer_pos) = self.pointer_pos
             && self.row_rect.y_range().contains(pointer_pos.y)

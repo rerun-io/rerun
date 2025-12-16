@@ -208,7 +208,6 @@ def run_sdk_build() -> None:
             "--manifest-path",
             "rerun_py/Cargo.toml",
             '--extras="tests"',
-            "--quiet",
         ],
     ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
@@ -223,7 +222,6 @@ def run_viewer_build(web: bool) -> None:
         "rerun-cli",
         "--no-default-features",
         "--features=web_viewer" if web else "--features=native_viewer",
-        "--quiet",
     ]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 

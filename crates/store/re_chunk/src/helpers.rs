@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::Array as _;
-use arrow::array::ArrayRef as ArrowArrayRef;
-
+use arrow::array::{Array as _, ArrayRef as ArrowArrayRef};
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::{Component, ComponentIdentifier};
 
@@ -368,7 +366,6 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
-    /// In debug builds, panics if the descriptor doesn't have the same type as the component type.
     #[inline]
     pub fn component_mono<C: Component>(
         &self,

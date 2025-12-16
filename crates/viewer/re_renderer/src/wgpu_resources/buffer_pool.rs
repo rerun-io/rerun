@@ -1,11 +1,8 @@
 use std::hash::Hash;
 
+use super::dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc};
+use super::resource::PoolError;
 use crate::debug_label::DebugLabel;
-
-use super::{
-    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
-    resource::PoolError,
-};
 
 slotmap::new_key_type! { pub struct GpuBufferHandle; }
 

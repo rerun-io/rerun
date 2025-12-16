@@ -1,4 +1,4 @@
-use re_types::components::ViewCoordinates;
+use re_sdk_types::components::ViewCoordinates;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 

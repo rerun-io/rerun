@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_chunk::EntityPath;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
-use re_types::external::glam;
+use re_sdk_types::external::glam;
 
 use crate::{Item, ViewId, resolve_mono_instance_path_item};
 
@@ -203,6 +203,8 @@ impl ItemCollection {
             return;
         }
 
+        use re_log_channel::LogSource;
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         enum ClipboardTextDesc {
             FilePath,
@@ -226,22 +228,20 @@ impl ItemCollection {
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
-                    re_smart_channel::SmartChannelSource::File(path) => {
+                    LogSource::File(path) => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
-                    re_smart_channel::SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                    LogSource::RrdHttpStream { url, follow: _ } => {
                         Some((ClipboardTextDesc::Url, url.clone()))
                     }
-                    re_smart_channel::SmartChannelSource::RrdWebEventListener => None,
-                    re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
-                    re_smart_channel::SmartChannelSource::Sdk => None,
-                    re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
+                    LogSource::RrdWebEvent => None,
+                    LogSource::JsChannel { .. } => None,
+                    LogSource::Sdk => None,
+                    LogSource::Stdin => None,
+                    LogSource::RedapGrpcStream { uri, .. } => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
-                    re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
-                        Some((ClipboardTextDesc::Url, uri.to_string()))
-                    }
+                    LogSource::MessageProxy(uri) => Some((ClipboardTextDesc::Url, uri.to_string())),
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),

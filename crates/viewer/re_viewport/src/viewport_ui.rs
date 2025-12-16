@@ -5,10 +5,13 @@
 use ahash::HashMap;
 use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
-
+use itertools::Either;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
+use re_ui::{
+    ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
+    design_tokens_of_visuals, icons,
+};
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
@@ -80,8 +83,17 @@ impl ViewportUi {
             blueprint.tree.clone()
         };
 
+        // Reset all error states.
+        view_states.reset_visualizer_errors();
+
         let executed_systems_per_view =
             execute_systems_for_all_views(ctx, &tree, &blueprint.views, view_states);
+
+        // Memorize new error states.
+        #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
+        for (view_id, (_, system_output)) in &executed_systems_per_view {
+            view_states.report_visualizer_errors(*view_id, system_output);
+        }
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -645,6 +657,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         ui.help_button(|ui| {
             view_class.help(ui.ctx().os()).ui(ui);
         });
+
+        self.visualizer_errors_button(ui, view_id);
     }
 
     // Styling:
@@ -702,6 +716,105 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 // modified. When the drag completes, then we get `TileDropped` and run the synchronization.
             }
         }
+    }
+}
+
+impl TilesDelegate<'_, '_> {
+    fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
+        let Some(visualizer_errors) = self.view_states.visualizer_errors(view_id) else {
+            return;
+        };
+
+        let errors = visualizer_errors
+            .values()
+            .flat_map(|err| match err {
+                re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
+                    Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
+                }
+                re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
+                    Either::Right(errors.iter().map(|(entity, err)| {
+                        (
+                            Item::DataResult(view_id, entity.clone().into()),
+                            err.clone(),
+                        )
+                    }))
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if visualizer_errors.is_empty() {
+            return;
+        }
+
+        let error_count = visualizer_errors.len();
+
+        ui.scope(|ui| {
+            let response = ui
+                .add(egui::Button::image(
+                    icons::ERROR
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .alt_text("View errors")
+                        .tint(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(format!(
+                    "Show {error_count} visualizer error{}",
+                    re_format::format_plural_s(error_count)
+                ));
+
+            egui::Popup::menu(&response)
+                .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                .show(|ui| {
+                    egui::ScrollArea::vertical()
+                        .min_scrolled_height(600.0)
+                        .max_height(600.0)
+                        .show(ui, |ui| {
+                            for (item, err) in errors {
+                                self.show_item_error(ui, item, &err);
+                            }
+                        });
+                });
+        });
+    }
+
+    fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {
+        let item_entity = match &item {
+            Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
+            _ => item
+                .to_data_path()
+                .map(|item| item.to_string())
+                .unwrap_or_default(),
+        };
+        egui::Frame::window(ui.style())
+            .corner_radius(4)
+            .inner_margin(10.0)
+            .fill(ui.tokens().notification_panel_background_color)
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.horizontal_top(|ui| {
+                    ui.add(icons::ERROR.as_image().tint(ui.visuals().error_fg_color));
+
+                    ui.vertical(|ui| {
+                        if ui
+                            .selectable_label(
+                                self.ctx.selection().contains_item(&item),
+                                item_entity,
+                            )
+                            .clicked()
+                        {
+                            self.ctx
+                                .command_sender()
+                                .send_system(SystemCommand::set_selection(item));
+                            self.ctx
+                                .command_sender()
+                                .send_ui(re_ui::UICommand::ExpandSelectionPanel);
+                        }
+                        ui.separator();
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.label(err);
+                    })
+                })
+            });
     }
 }
 

@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use egui::NumExt as _;
-
 use re_ui::{DesignTokens, UiExt as _, list_item};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]

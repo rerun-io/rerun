@@ -1,7 +1,5 @@
-use arrow::{
-    datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef},
-    error::ArrowError,
-};
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
+use arrow::error::ArrowError;
 
 /// Encode an arrow schema as IPC bytes.
 pub fn ipc_from_schema(schema: &ArrowSchema) -> Result<Vec<u8>, ArrowError> {

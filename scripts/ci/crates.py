@@ -450,6 +450,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
     package = crate.manifest["package"]
     name = package["name"]
 
+    # NOTE: `--quiet` here we run these in parallel
     publish_cmd = f"publish --quiet --locked --token {token}"
     if name == "re_web_viewer_server":
         # For some reason, cargo complains about the web viewer .wasm and .js being "dirty",

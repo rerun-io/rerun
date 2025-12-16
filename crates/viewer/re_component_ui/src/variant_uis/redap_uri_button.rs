@@ -5,9 +5,8 @@ use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
-use re_viewer_context::{
-    SystemCommand, SystemCommandSender as _, ViewerContext, open_url::ViewerOpenUrl,
-};
+use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
@@ -70,7 +69,7 @@ pub fn redap_uri_button(
                     ui.scope_builder(
                         UiBuilder::new().max_rect(ui.max_rect()).layout(
                             Layout::left_to_right(Align::Center)
-                                .with_main_justify(true)
+                                .with_main_justify(false)
                                 .with_cross_justify(true)
                                 .with_main_align(Align::Min),
                         ),
@@ -98,20 +97,8 @@ pub fn redap_uri_button(
 
     ui.horizontal(|ui| {
         if let Some(loaded_recording_info) = loaded_recording_info {
-            if loaded_recording_info.is_partial {
-                let response = ui.add(Link::new("Open full")).on_hover_text(
-                    "Part of this recording is already loaded. Click to download the rest.",
-                );
-                handle_open_full_recording_link(ui, uri, &response);
-            }
-
-            let response = link_with_copy(ui, Link::new("Switch to")).on_hover_text(
-                if loaded_recording_info.is_partial {
-                    "Part of this recording is already loaded. Click to switch to it."
-                } else {
-                    "This recording is already loaded. Click to switch to it."
-                },
-            );
+            let response = link_with_copy(ui, Link::new("Switch to"))
+                .on_hover_text("This recording is already loaded. Click to switch to it.");
             if response.clicked() {
                 // Show it:
                 ctx.command_sender()

@@ -25,7 +25,6 @@ workspace = true
 cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
 oauth = [
-  "dep:base64",
   "dep:directories",
   "dep:ehttp",
   "dep:getrandom",
@@ -38,11 +37,15 @@ oauth = [
 ]
 
 [dependencies]
+re_analytics.workspace = true
 re_log.workspace = true
 
 async-trait.workspace = true
+base64.workspace = true
 http.workspace = true
+jiff = { workspace = true, features = ["serde"] }
 jsonwebtoken.workspace = true
+parking_lot.workspace = true
 saturating_cast.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
@@ -50,7 +53,6 @@ tonic.workspace = true
 tower.workspace = true
 
 ## Optional dependencies
-base64 = { workspace = true, optional = true }
 getrandom = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
@@ -71,14 +73,7 @@ tiny_http = { workspace = true, optional = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ehttp = { workspace = true, optional = true, features = ["json"] }
 js-sys.workspace = true
-# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
-#     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:
-#         See `rerun_notebook/README.md` for how to run notebooks.
-#         Try running a cell which starts a viewer, and then running it again.
-#         There should be no errors in the browser console.
-#     For details see https://github.com/rerun-io/rerun/issues/8766
-wasm-bindgen = "=0.2.100" # ⚠️ read above notice before touching this!
+wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = ["Storage", "Window"] }
 
 [dev-dependencies]

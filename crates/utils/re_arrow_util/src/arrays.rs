@@ -1,14 +1,13 @@
-use std::{iter::repeat_n, sync::Arc};
+use std::iter::repeat_n;
+use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array, new_empty_array,
-    },
-    buffer::{NullBuffer, OffsetBuffer},
-    datatypes::{DataType, Field},
-    error::ArrowError,
+use arrow::array::{
+    Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+    PrimitiveArray, UInt32Array, new_empty_array,
 };
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
 // ---------------------------------------------------------------------------------
@@ -21,6 +20,10 @@ pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Similar to `downcast_array_ref`, but returns an error in case the downcast
     /// returns `None`.
     fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
@@ -37,6 +40,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
             ))
         })
     }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
+    }
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
@@ -52,6 +61,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
                 std::any::type_name::<T>(),
             ))
         })
+    }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
     }
 }
 
@@ -423,11 +438,9 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
 #[cfg(test)]
 mod tests {
 
-    use arrow::{
-        array::{Array as _, AsArray as _, Int32Array},
-        buffer::{NullBuffer, ScalarBuffer},
-        datatypes::{DataType, Int32Type},
-    };
+    use arrow::array::{Array as _, AsArray as _, Int32Array};
+    use arrow::buffer::{NullBuffer, ScalarBuffer};
+    use arrow::datatypes::{DataType, Int32Type};
 
     use super::*;
 

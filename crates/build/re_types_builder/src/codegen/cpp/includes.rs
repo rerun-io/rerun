@@ -3,9 +3,8 @@ use std::collections::BTreeSet;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::objects::is_testing_fqname;
-
 use super::{ANGLE_BRACKET_LEFT_TOKEN, ANGLE_BRACKET_RIGHT_TOKEN, NEWLINE_TOKEN};
+use crate::objects::is_testing_fqname;
 
 /// Keeps track of necessary includes for a file.
 pub struct Includes {

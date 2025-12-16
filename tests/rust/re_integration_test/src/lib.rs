@@ -4,11 +4,13 @@ mod kittest_harness_ext;
 mod test_data;
 mod viewer_section;
 
+use std::net::TcpListener;
+
 pub use kittest_harness_ext::HarnessExt;
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistry};
+use re_protos::common::v1alpha1::SegmentId;
+use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
-use std::net::TcpListener;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
@@ -28,7 +30,7 @@ impl TestServer {
             datasets: vec![],
             tables: vec![],
         };
-        let server_handle = args
+        let (server_handle, _) = args
             .create_server_handle()
             .await
             .expect("Can't create server");
@@ -39,16 +41,16 @@ impl TestServer {
         }
     }
 
-    pub async fn with_test_data(self) -> Self {
-        self.add_test_data().await;
-        self
+    pub async fn with_test_data(self) -> (Self, SegmentId) {
+        let url = self.add_test_data().await;
+        (self, url)
     }
 
     pub fn port(&self) -> u16 {
         self.port
     }
 
-    pub async fn client(&self) -> Result<ConnectionClient, ApiError> {
+    pub async fn client(&self) -> ApiResult<ConnectionClient> {
         let origin = re_uri::Origin {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,
@@ -59,11 +61,11 @@ impl TestServer {
             .await
     }
 
-    pub async fn add_test_data(&self) {
+    pub async fn add_test_data(&self) -> SegmentId {
         let client = self.client().await.expect("Failed to connect");
         test_data::load_test_data(client)
             .await
-            .expect("Failed to load test data");
+            .expect("Failed to load test data")
     }
 }
 

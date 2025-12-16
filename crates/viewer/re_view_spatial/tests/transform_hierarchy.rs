@@ -1,8 +1,9 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -19,11 +20,17 @@ pub fn test_transform_hierarchy() {
 
     // The Rerun logo obj's convention is y up.
     test_context.log_entity("/", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::default(),
-            &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_UP(),
-        )
+        builder
+            .with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_UP(),
+            )
+            .with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+            )
     });
 
     {
@@ -34,86 +41,130 @@ pub fn test_transform_hierarchy() {
 
         path = path / "translate";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 1)],
-                &re_types::archetypes::Transform3D::from_translation((4.0, 4.0, 4.0)),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 1)],
+                    &re_sdk_types::archetypes::Transform3D::from_translation((4.0, 4.0, 4.0)),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 1)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "translate_back";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 2)],
-                &re_types::archetypes::Transform3D::from_translation((-4.0, -4.0, -4.0)),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 2)],
+                    &re_sdk_types::archetypes::Transform3D::from_translation((-4.0, -4.0, -4.0)),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 2)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "scale";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 3)],
-                &re_types::archetypes::Transform3D::from_scale((1.0, 0.2, 1.0)),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 3)],
+                    &re_sdk_types::archetypes::Transform3D::from_scale((1.0, 0.2, 1.0)),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 3)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "scale_back_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 4)],
-                &re_types::archetypes::Transform3D::from_mat3x3([
-                    [1.0, 0.0, 0.0],
-                    [0.0, 5.0, 0.0],
-                    [0.0, 0.0, 1.0],
-                ]),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 4)],
+                    &re_sdk_types::archetypes::Transform3D::from_mat3x3([
+                        [1.0, 0.0, 0.0],
+                        [0.0, 5.0, 0.0],
+                        [0.0, 0.0, 1.0],
+                    ]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 4)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "rotate_axis_origin";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 5)],
-                &re_types::archetypes::Transform3D::from_rotation(
-                    re_types::components::RotationAxisAngle::new(
-                        (0.0, 1.0, 0.0),
-                        re_types::datatypes::Angle::from_degrees(90.0),
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 5)],
+                    &re_sdk_types::archetypes::Transform3D::from_rotation(
+                        re_sdk_types::components::RotationAxisAngle::new(
+                            (0.0, 1.0, 0.0),
+                            re_sdk_types::datatypes::Angle::from_degrees(90.0),
+                        ),
                     ),
-                ),
-            )
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 5)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "rotate_quat";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 6)],
-                &re_types::archetypes::Transform3D::from_rotation(
-                    // -45 degrees around the y axis.
-                    // Via https://www.andre-gaschler.com/rotationconverter/
-                    re_types::components::RotationQuat(re_types::datatypes::Quaternion::from_xyzw(
-                        [0.0, -0.3826834, 0.0, 0.9238796],
-                    )),
-                ),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 6)],
+                    &re_sdk_types::archetypes::Transform3D::from_rotation(
+                        // -45 degrees around the y axis.
+                        // Via https://www.andre-gaschler.com/rotationconverter/
+                        re_sdk_types::components::RotationQuat(
+                            re_sdk_types::datatypes::Quaternion::from_xyzw([
+                                0.0, -0.3826834, 0.0, 0.9238796,
+                            ]),
+                        ),
+                    ),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 6)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         path = path / "rotate_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                [(timeline_step, 7)],
-                // -45 degrees around the y axis.
-                // Via https://www.andre-gaschler.com/rotationconverter/
-                &re_types::archetypes::Transform3D::from_mat3x3([
-                    [0.7071069, 0.0000000, -0.7071066],
-                    [0.0000000, 1.0000000, 0.0000000],
-                    [0.7071066, 0.0000000, 0.7071069],
-                ]),
-            )
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 7)],
+                    // -45 degrees around the y axis.
+                    // Via https://www.andre-gaschler.com/rotationconverter/
+                    &re_sdk_types::archetypes::Transform3D::from_mat3x3([
+                        [0.7071069, 0.0000000, -0.7071066],
+                        [0.0000000, 1.0000000, 0.0000000],
+                        [0.7071066, 0.0000000, 0.7071069],
+                    ]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline_step, 7)],
+                    &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
+                )
         });
 
         // Add the Rerun asset at the end of the hierarchy.
@@ -132,7 +183,7 @@ pub fn test_transform_hierarchy() {
                 builder.with_archetype(
                     RowId::new(),
                     [(timeline_step, 0)],
-                    &re_types::archetypes::Asset3D::from_file_path(&obj_path).unwrap(),
+                    &re_sdk_types::archetypes::Asset3D::from_file_path(&obj_path).unwrap(),
                 )
             });
         }
@@ -150,12 +201,28 @@ pub fn test_transform_hierarchy() {
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
             ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
 
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
+
+        let property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            view_id,
+        );
+        property.save_blueprint_component(
+            ctx,
+            &EyeControls3D::descriptor_position(),
+            &Position3D::new(0.0, 8.0, 10.0),
+        );
+        property.save_blueprint_component(
+            ctx,
+            &EyeControls3D::descriptor_look_target(),
+            &Position3D::new(0.0, 0.0, 2.0),
+        );
 
         view_id
     })
@@ -187,24 +254,6 @@ fn run_view_ui_and_save_snapshot(
         // * 6: The logo rotated 45 degrees around the y axis (green).
         // * 7: The logo is back to normal (frame 0) again.
 
-        test_context.with_blueprint_ctx(|ctx, _| {
-            let property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
-                view_id,
-            );
-            property.save_blueprint_component(
-                &ctx,
-                &EyeControls3D::descriptor_position(),
-                &Position3D::new(0.0, 8.0, 10.0),
-            );
-            property.save_blueprint_component(
-                &ctx,
-                &EyeControls3D::descriptor_look_target(),
-                &Position3D::new(0.0, 0.0, 2.0),
-            );
-        });
-
         let mut errors = Vec::new();
         for time in 0..=7 {
             let name = format!("{name}_{}_{time}", timeline.name());
@@ -218,7 +267,7 @@ fn run_view_ui_and_save_snapshot(
             );
             test_context.handle_system_commands(&harness.ctx);
 
-            harness.run();
+            harness.run_steps(5);
 
             if let Err(err) = harness.try_snapshot(&name) {
                 errors.push(err);

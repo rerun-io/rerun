@@ -2,16 +2,12 @@
 
 use std::fmt::Formatter;
 
-use arrow::{
-    array::{Array, ArrayRef, ListArray},
-    datatypes::{DataType, Field, Fields},
-    util::display::{ArrayFormatter, FormatOptions},
-};
+use arrow::array::{Array, ArrayRef, AsArray as _, ListArray};
+use arrow::datatypes::{DataType, Field, Fields};
+use arrow::util::display::{ArrayFormatter, FormatOptions};
 use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
-
 use re_tuid::Tuid;
-use re_types_core::Loggable as _;
 
 use crate::{ArrowArrayDowncastRef as _, format_field_datatype};
 
@@ -78,7 +74,8 @@ fn custom_array_formatter<'a>(
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
 fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
     fn parse_inner(array: &dyn Array, index: usize) -> Option<Tuid> {
-        let tuids = Tuid::from_arrow(array).ok()?;
+        let array = array.as_fixed_size_binary_opt()?;
+        let tuids = Tuid::slice_from_bytes(array.value_data()).ok()?;
         tuids.get(index).copied()
     }
 
@@ -165,6 +162,14 @@ pub struct RecordBatchFormatOpts {
     /// Defaults to the terminal width if left unspecified.
     pub width: Option<usize>,
 
+    /// Don't print more rows than this.
+    pub max_rows: usize,
+
+    /// Individual cells will never exceed this size.
+    ///
+    /// When they do, their contents will be truncated and replaced with ellipses instead.
+    pub max_cell_content_width: usize,
+
     /// If `true`, displays the dataframe's metadata too.
     pub include_metadata: bool,
 
@@ -189,6 +194,8 @@ impl Default for RecordBatchFormatOpts {
         Self {
             transposed: false,
             width: None,
+            max_rows: usize::MAX,
+            max_cell_content_width: 100,
             include_metadata: true,
             include_column_metadata: true,
             trim_field_names: true,
@@ -199,12 +206,21 @@ impl Default for RecordBatchFormatOpts {
     }
 }
 
+impl RecordBatchFormatOpts {
+    /// Nicely format this record batch using the specified options.
+    pub fn format(&self, batch: &arrow::array::RecordBatch) -> Table {
+        format_record_batch_opts(batch, self)
+    }
+}
+
 /// Nicely format this record batch in a way that fits the terminal.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
     format_record_batch_with_width(batch, None, false)
 }
 
 /// Nicely format this record batch using the specified options.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch_opts(
     batch: &arrow::array::RecordBatch,
     opts: &RecordBatchFormatOpts,
@@ -221,6 +237,7 @@ pub fn format_record_batch_opts(
 ///
 /// If `transposed` is `true`, the dataframe will be printed transposed on its diagonal axis.
 /// This is very useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
@@ -231,14 +248,9 @@ pub fn format_record_batch_with_width(
         &batch.schema_ref().fields,
         batch.columns(),
         &RecordBatchFormatOpts {
-            transposed: false,
             width,
-            include_metadata: true,
-            include_column_metadata: true,
-            trim_field_names: true,
-            trim_metadata_keys: true,
-            trim_metadata_values: true,
             redact_non_deterministic,
+            ..Default::default()
         },
     )
 }
@@ -252,6 +264,8 @@ fn format_dataframe_with_metadata(
     let &RecordBatchFormatOpts {
         transposed: _,
         width,
+        max_rows: _,
+        max_cell_content_width: _,
         include_metadata,
         include_column_metadata: _,
         trim_field_names: _, // passed as part of `opts` below
@@ -308,6 +322,8 @@ fn format_dataframe_without_metadata(
     let &RecordBatchFormatOpts {
         transposed,
         width,
+        max_rows,
+        max_cell_content_width,
         include_metadata: _,
         include_column_metadata,
         trim_field_names,
@@ -329,6 +345,10 @@ fn format_dataframe_without_metadata(
     let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array, redact_non_deterministic))
         .collect_vec();
+
+    let total_rows = columns.first().map_or(0, |list_array| list_array.len());
+    let num_rows_shown = usize::min(total_rows, max_rows);
+    let hidden_rows = total_rows - num_rows_shown;
 
     let num_columns = if transposed {
         // Turns:
@@ -365,16 +385,15 @@ fn format_dataframe_without_metadata(
         for formatter in formatters {
             let mut cells = headers.pop().into_iter().collect_vec();
 
-            let Some(col) = columns.pop() else {
-                break;
-            };
-
-            for i in 0..col.len() {
+            for i in 0..num_rows_shown {
                 let cell = match formatter(i) {
-                    Ok(string) => format_cell(string),
+                    Ok(string) => format_cell(string, max_cell_content_width),
                     Err(err) => Cell::new(err),
                 };
                 cells.push(cell);
+            }
+            if 0 < hidden_rows {
+                cells.push(Cell::new(format!("… + {hidden_rows} more")));
             }
 
             table.add_row(cells);
@@ -426,17 +445,19 @@ fn format_dataframe_without_metadata(
 
         table.set_header(header);
 
-        let num_rows = columns.first().map_or(0, |list_array| list_array.len());
-
-        for row in 0..num_rows {
+        for row in 0..num_rows_shown {
             let cells: Vec<_> = formatters
                 .iter()
                 .map(|formatter| match formatter(row) {
-                    Ok(string) => format_cell(string),
+                    Ok(string) => format_cell(string, max_cell_content_width),
                     Err(err) => Cell::new(err),
                 })
                 .collect();
             table.add_row(cells);
+        }
+
+        if 0 < hidden_rows {
+            table.add_row([format!("… + {hidden_rows} more row(s)")]);
         }
 
         columns.len()
@@ -455,15 +476,13 @@ fn format_dataframe_without_metadata(
     (num_columns, table)
 }
 
-fn format_cell(string: String) -> Cell {
-    const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
-
+fn format_cell(string: String, max_cell_content_width: usize) -> Cell {
     let chars: Vec<_> = string.chars().collect();
-    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+    if chars.len() > max_cell_content_width {
         Cell::new(
             chars
                 .into_iter()
-                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                .take(max_cell_content_width.saturating_sub(1))
                 .chain(['…'])
                 .collect::<String>(),
         )

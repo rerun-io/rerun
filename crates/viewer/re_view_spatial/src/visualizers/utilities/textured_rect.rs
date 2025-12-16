@@ -1,8 +1,7 @@
 use glam::Vec3;
-
 use re_log_types::EntityPath;
 use re_renderer::renderer;
-use re_types::ArchetypeName;
+use re_sdk_types::ArchetypeName;
 use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerContext, gpu_bridge};
 
 use crate::contexts::SpatialSceneEntityContext;

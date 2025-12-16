@@ -1,9 +1,8 @@
-use std::sync::OnceLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::{Arc, OnceLock};
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
-
 use re_chunk::RowId;
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle, LatestAtQuery,
@@ -11,11 +10,9 @@ use re_chunk_store::{
 };
 use re_entity_db::EntityPath;
 use re_log_types::StoreId;
-use re_types::{
-    archetypes,
-    components::AnnotationContext,
-    datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8},
-};
+use re_sdk_types::archetypes;
+use re_sdk_types::components::AnnotationContext;
+use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
 use super::{ViewerContext, auto_color_egui};
 
@@ -46,7 +43,7 @@ impl Annotations {
     #[inline]
     pub fn resolved_class_description(
         &self,
-        class_id: Option<re_types::components::ClassId>,
+        class_id: Option<re_sdk_types::components::ClassId>,
     ) -> ResolvedClassDescription<'_> {
         let found = class_id.and_then(|class_id| self.class_map.get(&class_id.0));
         ResolvedClassDescription {
@@ -101,7 +98,7 @@ impl ResolvedClassDescription<'_> {
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
     pub fn annotation_info_with_keypoint(
         &self,
-        keypoint_id: re_types::datatypes::KeypointId,
+        keypoint_id: re_sdk_types::datatypes::KeypointId,
     ) -> ResolvedAnnotationInfo {
         if let (Some(desc), Some(keypoint_map)) = (self.class_description, self.keypoint_map) {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time

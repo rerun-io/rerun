@@ -1,0 +1,53 @@
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// Shared state for the 3 collapsible panels.
+table PanelBlueprint (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
+) {
+  // --- Required ---
+
+  // --- Optional ---
+
+  /// Current state of the panel.
+  state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
+
+  // TODO(jleibs): Add a float to track how expanded the panel is.
+}
+
+/// Time panel specific state.
+table TimePanelBlueprint (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
+) {
+  // --- Required ---
+
+  // --- Optional ---
+
+  /// Current state of the panel.
+  state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// What timeline the panel is on.
+  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// A time playback speed multiplier.
+  playback_speed: rerun.blueprint.components.PlaybackSpeed ("attr.rerun.component_optional", nullable, order: 2200);
+
+  /// Frames per second. Only applicable for sequence timelines.
+  fps: rerun.blueprint.components.Fps ("attr.rerun.component_optional", nullable, order: 2300);
+
+  /// If the time is currently paused, playing, or following.
+  ///
+  /// Defaults to either playing or following, depending on the data source.
+  play_state: rerun.blueprint.components.PlayState ("attr.rerun.component_optional", nullable, order: 2400);
+
+  /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+  ///
+  /// Defaults to off.
+  loop_mode: rerun.blueprint.components.LoopMode ("attr.rerun.component_optional", nullable, order: 2500);
+
+  /// Selects a range of time on the time panel.
+  time_selection: rerun.blueprint.components.AbsoluteTimeRange ("attr.rerun.component_optional", nullable, order: 2600);
+}

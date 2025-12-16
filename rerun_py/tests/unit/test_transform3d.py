@@ -69,7 +69,6 @@ def test_transform3d() -> None:
     rotation_axis_angle_original = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
     scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0], rr.Scale3D([1.0, 2.0, 3.0])]
-    axis_lengths = [None, 1, 1.0]
     relations = [
         None,
         rr.TransformRelation.ParentFromChild,
@@ -85,7 +84,6 @@ def test_transform3d() -> None:
         scale_arrays,
         [*MAT_3X3_INPUT, None],
         relations,
-        axis_lengths,
     )
 
     for (
@@ -95,14 +93,12 @@ def test_transform3d() -> None:
         scale,
         mat3x3,
         relation,
-        axis_length,
     ) in all_arrays:
         translation = cast("rr.datatypes.Vec3DLike | None", translation)
         quaternion = cast("rr.datatypes.QuaternionLike | None", quaternion)
         scale = cast("rr.datatypes.Vec3DLike | None", scale)
         mat3x3 = cast("rr.datatypes.Mat3x3Like | None", mat3x3)
         relation = cast("rr.components.TransformRelationLike | None", relations)
-        axis_length = cast("rr.datatypes.Float32Like | None", axis_length)
 
         print(
             f"rr.Transform3D(\n"
@@ -112,7 +108,6 @@ def test_transform3d() -> None:
             f"    scale={scale!r}\n"
             f"    mat3x3={mat3x3!r}\n"
             f"    relation={relation!r}\n"
-            f"    axis_length={axis_length!r}\n"
             f")",
         )
         arch = rr.Transform3D(
@@ -122,27 +117,35 @@ def test_transform3d() -> None:
             scale=scale,
             mat3x3=mat3x3,
             relation=relation,
-            axis_length=axis_length,
         )
         print(f"{arch}\n")
 
-        assert arch.scale == rr.components.Scale3DBatch(none_empty_or_value(scale, rr.components.Scale3D(scale)))
-        assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch(
-            none_empty_or_value(rotation_axis_angle, rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
+        assert arch.scale == none_empty_or_value(scale, rr.components.Scale3DBatch(rr.components.Scale3D(scale)))
+        assert arch.rotation_axis_angle == none_empty_or_value(
+            rotation_axis_angle,
+            rr.components.RotationAxisAngleBatch(rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
         )
-        assert arch.quaternion == rr.components.RotationQuatBatch(
-            none_empty_or_value(quaternion, rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
+        assert arch.quaternion == none_empty_or_value(
+            quaternion,
+            rr.components.RotationQuatBatch(rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
         )
-        assert arch.translation == rr.components.Translation3DBatch(
-            none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3])),
+        assert arch.translation == none_empty_or_value(
+            translation,
+            rr.components.Translation3DBatch(rr.components.Translation3D([1, 2, 3])),
         )
-        assert arch.mat3x3 == rr.components.TransformMat3x3Batch(
-            none_empty_or_value(mat3x3, rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
-        )
-        assert arch.axis_length == rr.components.AxisLengthBatch(
-            none_empty_or_value(axis_length, rr.components.AxisLength(1.0)),
+        assert arch.mat3x3 == none_empty_or_value(
+            mat3x3,
+            rr.components.TransformMat3x3Batch(rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
         )
         assert arch.relation == rr.components.TransformRelationBatch(relation)
+
+
+def test_transform_axes_3d() -> None:
+    axis_lengths = [1, 1.0]
+
+    for axis_length in axis_lengths:
+        axes = rr.TransformAxes3D(axis_length)
+        assert axes.axis_length == rr.components.AxisLengthBatch(rr.components.AxisLength(axis_length))
 
 
 def test_transform_mat3x3_snippets() -> None:

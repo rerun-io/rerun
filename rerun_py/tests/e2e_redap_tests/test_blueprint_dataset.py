@@ -2,16 +2,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 import rerun as rr
 import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .conftest import ServerInstance
+    from e2e_redap_tests.conftest import EntryFactory
 
 
-def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: Path) -> None:
+@pytest.mark.local_only
+def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """
+    Test configuring a blueprint dataset.
+
+    This test is marked as local_only because it uses RecordingStream to generate
+    .rrd and .rbl files on-the-fly, which cannot be used with remote deployments.
+    """
     # Create a recording and save it to a temporary file
     rrd_path = tmp_path / "recording.rrd"
     rec = rr.RecordingStream("rerun_example_dataset_blueprint")
@@ -24,23 +32,35 @@ def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: 
     blueprint = rrb.Blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])))
     blueprint.save("rerun_example_dataset_blueprint", rbl_path)
 
+    # Create another blueprint
+    rbl_path2 = tmp_path / "blueprint2.rbl"
+    blueprint = rrb.Blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])))
+    blueprint.save("rerun_example_dataset_blueprint", rbl_path2)
+
     # Create a new dataset
-    client = server_instance.client
-    ds = client.create_dataset("my_new_dataset")
+    ds = entry_factory.create_dataset("my_new_dataset")
 
     # Register our recording to the dataset
-    ds.register(rrd_path.absolute().as_uri())
+    ds.register(rrd_path.absolute().as_uri()).wait()
 
     # Register our blueprint to the corresponding blueprint dataset
     bds = ds.blueprint_dataset()
     assert bds is not None
 
-    blueprint_partition_id = bds.register(rbl_path.absolute().as_uri())
+    # Register first blueprint
+    ds.register_blueprint(rbl_path.absolute().as_uri())
 
-    # Set our newly registered blueprint as default for our dataset
-    ds.set_default_blueprint_partition_id(blueprint_partition_id)
+    assert len(bds.segment_ids()) == 1
+    first_blueprint_name = ds.default_blueprint()
 
-    # Uncomment this line for a chance to connect to this server using the viewer
-    # input(f"Server running on {server.address()}. Press enter to continue…"
+    # Register the second blueprint
+    ds.register_blueprint(rbl_path2.absolute().as_uri(), set_default=False)
 
-    assert ds.default_blueprint_partition_id() == blueprint_partition_id
+    assert len(bds.segment_ids()) == 2
+    assert first_blueprint_name == ds.default_blueprint()
+
+    # Get the second blueprint name
+    [second_blueprint_name] = list(set(bds.segment_ids()) - {first_blueprint_name})
+
+    ds.set_default_blueprint(second_blueprint_name)
+    assert second_blueprint_name == ds.default_blueprint()

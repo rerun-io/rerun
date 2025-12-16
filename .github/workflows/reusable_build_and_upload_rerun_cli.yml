@@ -67,6 +67,7 @@ defaults:
 
 permissions:
   contents: "read"
+  packages: "read"
   id-token: "write"
 
 jobs:
@@ -86,13 +87,13 @@ jobs:
             linux-arm64)
               runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -124,8 +125,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context
@@ -176,7 +177,7 @@ jobs:
       - name: Compare man page to CLI docs
         if: runner.os == 'Linux'
         run: |
-          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
 
       - name: Get sha
         id: get-sha
@@ -187,7 +188,7 @@ jobs:
       - name: "Upload rerun-cli (commit)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -196,7 +197,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false

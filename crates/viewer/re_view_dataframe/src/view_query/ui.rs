@@ -1,17 +1,18 @@
-use crate::view_query::Query;
+use std::collections::{BTreeSet, HashSet};
+
 use egui::PopupCloseBehavior;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
+use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
-use re_types::blueprint::components;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
-use re_viewer_context::TimeControlCommand;
-use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
-use std::collections::{BTreeSet, HashSet};
+use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};
+
+use crate::view_query::Query;
 
 // UI implementation
 impl Query {
@@ -44,8 +45,8 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value_and_type = timeline.map(|timeline| {
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     debug_assert!(
                         false,
@@ -151,7 +152,9 @@ impl Query {
             self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
-        if should_display_time_range && Some(ctx.time_ctrl.timeline()) == timeline {
+        if should_display_time_range
+            && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
+        {
             ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
                 start, end,
             ))]);

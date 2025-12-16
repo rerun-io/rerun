@@ -2,12 +2,12 @@
 
 use std::sync::LazyLock;
 
-use base64::{Engine as _, prelude::BASE64_URL_SAFE_NO_PAD};
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
 
-use crate::oauth::OAUTH_CLIENT_ID;
-
 use super::RefreshToken;
+use crate::oauth::OAUTH_CLIENT_ID;
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_SERVER_URL")
@@ -57,6 +57,10 @@ pub fn send_native<Req: IntoRequest>(
     });
 }
 
+fn is_allowed_error<Req: IntoRequest>(status: u16) -> bool {
+    Req::ALLOW_4XX && (400..=499).contains(&status)
+}
+
 pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
     let req = req.into_request()?;
 
@@ -66,7 +70,32 @@ pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
         .await
         .map_err(Error::Request)?;
 
-    if !res.ok {
+    if !res.ok && !is_allowed_error::<Req>(res.status) {
+        if !res.bytes.is_empty() {
+            re_log::trace!("error response: {:?}", res.text());
+            let err = String::from_utf8_lossy(&res.bytes).into_owned();
+            return Err(Error::Http(err));
+        } else {
+            return Err(Error::Request(res.status_text.clone()));
+        }
+    }
+
+    serde_json::from_slice::<Req::Res>(&res.bytes).map_err(Error::Deserialize)
+}
+
+/// Like `send_async`, but allows `4xx` status codes to go through.
+///
+/// The `Req::Res` type must handle deserializing the error response.
+pub async fn send_async_allow_4xx<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
+    let req = req.into_request()?;
+
+    // `fetch_async` holds a `JsValue` across an await point, which is not `Send`.
+    // But wasm is single-threaded, so we don't care.
+    let res = crate::wasm_compat::make_future_send_on_wasm(ehttp::fetch_async(req))
+        .await
+        .map_err(Error::Request)?;
+
+    if !res.ok && res.status < 400 || res.status > 499 {
         if !res.bytes.is_empty() {
             re_log::trace!("error response: {:?}", res.text());
             let err = String::from_utf8_lossy(&res.bytes).into_owned();
@@ -81,6 +110,11 @@ pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
 
 pub trait IntoRequest: Sized {
     type Res: serde::de::DeserializeOwned;
+
+    /// Whether to allow `4xx` error codes through.
+    ///
+    /// `Self::Res` must handle deserializing either the success or error responses.
+    const ALLOW_4XX: bool = false;
 
     fn into_request(self) -> Result<ehttp::Request, Error>;
 }
@@ -194,13 +228,8 @@ impl Default for Pkce {
     }
 }
 
-pub fn authorization_url(
-    redirect_uri: &str,
-    state: &str,
-    pkce: &Pkce,
-    login_hint: Option<&str>,
-) -> String {
-    let mut url = format!(
+pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
+    let url = format!(
         "\
         {base}/user_management/authorize\
         ?response_type=code\
@@ -215,10 +244,6 @@ pub fn authorization_url(
         client_id = *OAUTH_CLIENT_ID,
         code_challenge = pkce.code_challenge,
     );
-
-    if let Some(login_hint) = login_hint {
-        url = format!("{url}&login_hint={login_hint}");
-    }
 
     url
 }
@@ -294,5 +319,134 @@ impl From<User> for crate::oauth::User {
             id: value.id,
             email: value.email,
         }
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct GetDeviceAuthUrl<'a> {
+    pub client_id: &'a str,
+}
+
+#[derive(serde::Deserialize)]
+pub struct GetDeviceAuthUrlResponse {
+    pub device_code: String,
+    pub expires_in: i64,
+    #[serde(rename = "interval")]
+    pub interval_seconds: i64,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub verification_uri_complete: String,
+}
+
+impl IntoRequest for GetDeviceAuthUrl<'_> {
+    type Res = GetDeviceAuthUrlResponse;
+
+    fn into_request(self) -> Result<ehttp::Request, Error> {
+        ehttp::Request::json(
+            format_args!(
+                "{base}/user_management/authorize/device",
+                base = *WORKOS_API,
+            ),
+            &self,
+        )
+        .map_err(Error::Serialize)
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct AuthenticateWithDeviceCode<'a> {
+    client_id: &'a str,
+    device_code: &'a str,
+    grant_type: &'a str,
+}
+
+impl<'a> AuthenticateWithDeviceCode<'a> {
+    pub fn new(client_id: &'a str, device_code: &'a str) -> Self {
+        Self {
+            client_id,
+            device_code,
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        }
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+pub enum AuthenticateWithDeviceCodeResponse {
+    Success {
+        user: super::User,
+        organization_id: Option<String>,
+        access_token: String,
+        refresh_token: String,
+    },
+    Error {
+        error: DeviceCodeFlowStatus,
+        error_description: String,
+    },
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeviceCodeFlowStatus {
+    AuthorizationPending,
+    SlowDown,
+    AccessDenied,
+    ExpiredToken,
+    InvalidRequest,
+    InvalidClient,
+    InvalidGrant,
+    UnsupportedGrantType,
+}
+
+impl IntoRequest for AuthenticateWithDeviceCode<'_> {
+    type Res = AuthenticateWithDeviceCodeResponse;
+
+    const ALLOW_4XX: bool = true;
+
+    fn into_request(self) -> Result<ehttp::Request, Error> {
+        ehttp::Request::json(
+            format_args!("{base}/user_management/authenticate", base = *WORKOS_API,),
+            &self,
+        )
+        .map_err(Error::Serialize)
+    }
+}
+
+pub struct GenerateToken<'a> {
+    pub server: url::Origin,
+    pub token: &'a str,
+    pub expiration: jiff::Span,
+}
+
+#[derive(serde::Deserialize)]
+pub struct GenerateTokenResponse {
+    pub token: String,
+}
+
+impl IntoRequest for GenerateToken<'_> {
+    type Res = GenerateTokenResponse;
+
+    fn into_request(self) -> Result<ehttp::Request, Error> {
+        #[derive(serde::Serialize)]
+        struct Body {
+            expiration: jiff::Span,
+        }
+
+        let mut req = ehttp::Request::json(
+            format_args!(
+                "{origin}/generate-token",
+                origin = self.server.ascii_serialization()
+            ),
+            &Body {
+                expiration: self.expiration,
+            },
+        )
+        .map_err(Error::Serialize)?;
+        req.headers.insert(
+            "Authorization",
+            format!("Bearer {token}", token = self.token),
+        );
+
+        Ok(req)
     }
 }

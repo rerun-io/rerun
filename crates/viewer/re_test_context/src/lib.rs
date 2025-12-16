@@ -8,18 +8,15 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    external::re_tuid::Tuid,
-};
-use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
-
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
@@ -113,9 +110,12 @@ impl Default for TestContext {
 
 impl TestContext {
     pub fn new() -> Self {
+        Self::new_with_store_info(StoreInfo::testing())
+    }
+
+    pub fn new_with_store_info(store_info: StoreInfo) -> Self {
         re_log::setup_logging();
 
-        let store_info = StoreInfo::testing();
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
@@ -130,14 +130,14 @@ impl TestContext {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .unwrap();
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::from(
+                    &re_sdk_types::components::Timestamp::from(
                         "2025-06-28T19:26:42Z"
                             .parse::<jiff::Timestamp>()
                             .unwrap()
@@ -154,9 +154,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .unwrap();
             recording_store
@@ -165,9 +165,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .unwrap();
         }
@@ -210,7 +210,7 @@ impl TestContext {
             re_component_fallbacks::create_component_fallback_registry();
 
         let reflection =
-            re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+            re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
         Self {
             app_options: Default::default(),
@@ -414,8 +414,8 @@ impl TestContext {
     }
 
     /// Timeline the recording config is using by default.
-    pub fn active_timeline(&self) -> re_chunk::Timeline {
-        *self.time_ctrl.read().timeline()
+    pub fn active_timeline(&self) -> Option<re_chunk::Timeline> {
+        self.time_ctrl.read().timeline().copied()
     }
 
     pub fn active_blueprint(&mut self) -> &mut EntityDb {
@@ -486,9 +486,9 @@ impl TestContext {
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(store_context.recording.store_id());
-        let maybe_visualizable_entities_per_visualizer = self
+        let visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
+            .visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -521,6 +521,8 @@ impl TestContext {
                 display_mode: &DisplayMode::LocalRecordings(
                     store_context.recording_store_id().clone(),
                 ),
+
+                auth_context: None,
             },
             component_ui_registry: &self.component_ui_registry,
             component_fallback_registry: &self.component_fallback_registry,
@@ -528,7 +530,7 @@ impl TestContext {
             connected_receivers: &Default::default(),
             store_context: &store_context,
             storage_context: &storage_context,
-            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
+            visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),
@@ -630,7 +632,11 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -651,21 +657,31 @@ impl TestContext {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_commands(&self, egui_ctx: &egui::Context) {
-        while let Some(command) = self.command_receiver.recv_system() {
+        while let Some((_from_where, command)) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
@@ -715,11 +731,11 @@ impl TestContext {
                 } => {
                     self.with_blueprint_ctx(|blueprint_ctx, hub| {
                         let mut time_ctrl = self.time_ctrl.write();
-                        let times_per_timeline = hub
+                        let timeline_histograms = hub
                             .store_bundle()
                             .get(&store_id)
                             .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .times_per_timeline();
+                            .timeline_histograms();
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());
@@ -727,7 +743,7 @@ impl TestContext {
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
                             blueprint_ctx,
-                            times_per_timeline,
+                            timeline_histograms,
                             &time_commands,
                         );
 
@@ -746,13 +762,19 @@ impl TestContext {
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::OpenSettings
+                | SystemCommand::OpenChunkStoreBrowser
                 | SystemCommand::ResetDisplayMode
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::EditRedapServerModal { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
+                | SystemCommand::SetAuthCredentials { .. }
+                | SystemCommand::OnAuthChanged(_)
+                | SystemCommand::Logout
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
@@ -770,6 +792,7 @@ impl TestContext {
 
     pub fn test_help_view(help: impl Fn(OperatingSystem) -> Help) {
         use egui::os::OperatingSystem;
+        let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
                 ui.ctx().set_os(os);
@@ -787,6 +810,8 @@ impl TestContext {
             .to_lowercase();
             harness.fit_contents();
             harness.snapshot(&name);
+
+            snapshot_results.extend_harness(&mut harness);
         }
     }
 
@@ -837,9 +862,10 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use re_entity_db::InstancePath;
     use re_viewer_context::Item;
+
+    use super::*;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

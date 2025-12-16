@@ -1,0 +1,18 @@
+---
+source: crates/viewer/re_view_spatial/tests/topology_errors.rs
+expression: visualizer_errors
+---
+PerVisualizer(
+    {
+        "Ellipsoids3D": PerEntity(
+            {
+                /disconnected_entity: "No transform path from \"disconnected\" to the view's origin frame (\"world\").",
+            },
+        ),
+        "Boxes3D": PerEntity(
+            {
+                /misplaced_boxes3d_entity: "Can't visualize 3D content that is under a pinhole projection.",
+            },
+        ),
+    },
+)

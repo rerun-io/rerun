@@ -1,24 +1,20 @@
-use re_types::{
-    Archetype as _,
-    archetypes::Image,
-    components::{ImageFormat, Opacity},
-    image::ImageKind,
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Image;
+use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::image::ImageKind;
 use re_view::HybridResults;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-};
-
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
+use super::SpatialViewVisualizerData;
+use super::entity_iterator::process_archetype;
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -48,25 +44,20 @@ impl VisualizerSystem for ImageVisualizer {
         VisualizerQueryInfo::from_archetype::<Image>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, Image, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_image(ctx, results, spatial_ctx);
                 Ok(())
@@ -87,10 +78,10 @@ impl VisualizerSystem for ImageVisualizer {
             )
         });
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -109,8 +100,9 @@ impl ImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::{iter_component, iter_slices};
         use re_view::RangeResultsExt as _;
+
+        use super::entity_iterator::{iter_component, iter_slices};
 
         let entity_path = ctx.target_entity_path;
 

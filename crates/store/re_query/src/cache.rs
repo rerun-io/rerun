@@ -1,12 +1,9 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
-
 use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
@@ -308,6 +305,7 @@ impl ChunkStoreSubscriber for QueryCache {
             let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 chunk,
+                split_source: _, // Don't care
                 compacted,
             } = diff;
 

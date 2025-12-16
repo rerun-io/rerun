@@ -3,14 +3,16 @@ use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_viewer_context::{ContainerId, ViewClass as _};
-use re_viewer::external::{re_types, re_view_spatial};
+use re_viewer::external::re_viewer_context::{ContainerId, RecommendedView, ViewClass as _};
+use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
+        max_steps: Some(100), // Allow animations to finish
+        ..Default::default()
     });
     harness.init_recording();
 
@@ -19,19 +21,19 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)],
                 [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
             )
             .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF])
-            .with_fill_mode(re_types::components::FillMode::Solid),
+            .with_fill_mode(re_sdk_types::components::FillMode::Solid),
         )
     });
     harness.log_entity("boxes2d", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::Boxes2D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes2D::from_centers_and_half_sizes(
                 [(-1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
                 [(0.2, 0.4), (0.2, 0.2), (0.4, 0.2)],
             )
@@ -44,7 +46,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::BarChart::new(vector),
+            &re_sdk_types::archetypes::BarChart::new(vector),
         )
     });
 
@@ -53,8 +55,8 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             [(timeline, 1)],
-            &re_types::archetypes::TextLog::new("Hello World!")
-                .with_level(re_types::components::TextLogLevel::INFO),
+            &re_sdk_types::archetypes::TextLog::new("Hello World!")
+                .with_level(re_sdk_types::components::TextLogLevel::INFO),
         )
     });
 
@@ -72,11 +74,15 @@ fn add_views_to_container(
 ) {
     let x = (0..)
         .flat_map(|i| {
-            let mut view_3d =
-                ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
+            let mut view_3d = ViewBlueprint::new(
+                re_view_spatial::SpatialView3D::identifier(),
+                RecommendedView::new_single_entity("boxes3d"),
+            );
             view_3d.display_name = Some(format!("3D view {}", view_index_base + i * 4));
-            let mut view_2d =
-                ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView2D::identifier());
+            let mut view_2d = ViewBlueprint::new(
+                re_view_spatial::SpatialView2D::identifier(),
+                RecommendedView::new_single_entity("boxes2d"),
+            );
             view_2d.display_name = Some(format!("2D view {}", view_index_base + i * 4 + 1));
             let mut view_barchart = ViewBlueprint::new_with_root_wildcard(
                 re_view_bar_chart::BarChartView::identifier(),

@@ -1,40 +1,36 @@
-use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
+use egui::epaint::TextShape;
+use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_log_types::hash::Hash64;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{self, TensorScalarMapping, TensorViewFit},
-        components::ViewFit,
-    },
-    components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::TensorData,
+use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
+use re_sdk_types::blueprint::components::ViewFit;
+use re_sdk_types::components::{
+    Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
+    PerVisualizerInViewClass, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    TensorDimension,
-    dimension_mapping::TensorSliceSelection,
-    tensor_dimension_mapper::dimension_mapping_ui,
-    visualizer_system::{TensorSystem, TensorVisualization},
-};
+use crate::TensorDimension;
+use crate::dimension_mapping::TensorSliceSelection;
+use crate::tensor_dimension_mapper::dimension_mapping_ui;
+use crate::visualizer_system::{TensorSystem, TensorVisualization};
 
 #[derive(Default)]
 pub struct TensorView;
 
-type ViewType = re_types::blueprint::views::TensorView;
+type ViewType = re_sdk_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
@@ -103,8 +99,7 @@ Set the displayed dimensions in a selection panel.",
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
         // Default implementation would not suggest the Tensor visualizer for images,
@@ -114,7 +109,7 @@ Set the displayed dimensions in a selection panel.",
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             std::iter::once(TensorSystem::identifier()).collect()
         } else {
@@ -127,7 +122,7 @@ Set the displayed dimensions in a selection panel.",
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
@@ -149,7 +144,7 @@ Set the displayed dimensions in a selection panel.",
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<TensorScalarMapping>(&ctx, ui);
             view_property_ui::<TensorViewFit>(&ctx, ui);
         });
@@ -157,7 +152,7 @@ Set the displayed dimensions in a selection panel.",
         // TODO(#6075): Listitemify
         if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<
-                re_types::blueprint::archetypes::TensorSliceSelection,
+                re_sdk_types::blueprint::archetypes::TensorSliceSelection,
             >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
             let slice_selection = TensorSliceSelection::load_and_make_valid(
                 &slice_property,
@@ -206,7 +201,7 @@ Set the displayed dimensions in a selection panel.",
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, include_entity)
     }
 
     fn ui(
@@ -243,7 +238,14 @@ Set the displayed dimensions in a selection panel.",
                     });
             } else if let Some(tensor_view) = tensors.first() {
                 state.tensor = Some(tensor_view.clone());
-                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+                self.view_tensor(
+                    ctx,
+                    &mut ui,
+                    state,
+                    query.view_id,
+                    query.space_origin,
+                    &tensor_view.tensor,
+                )?;
             } else {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
             }
@@ -271,12 +273,13 @@ impl TensorView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: ViewId,
+        space_origin: &EntityPath,
         tensor: &TensorData,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let slice_property = ViewProperty::from_archetype::<
-            re_types::blueprint::archetypes::TensorSliceSelection,
+            re_sdk_types::blueprint::archetypes::TensorSliceSelection,
         >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
         let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,
@@ -323,7 +326,7 @@ impl TensorView {
         ];
 
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             if let Err(err) =
                 Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {

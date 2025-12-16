@@ -1,18 +1,18 @@
 //! Tests for time control callbacks and viewer events.
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use egui_kittest::Harness;
 use re_integration_test::HarnessExt as _;
-use re_sdk::{Timeline, external::re_log_types::TimeReal, log::RowId};
-use re_viewer::{
-    App,
-    event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind},
-    external::{
-        re_types::{archetypes::TextLog, blueprint::components::PlayState},
-        re_viewer_context::TimeControlCommand,
-    },
-    viewer_test_utils::{self, HarnessOptions},
-};
+use re_sdk::Timeline;
+use re_sdk::external::re_log_types::TimeReal;
+use re_sdk::log::RowId;
+use re_viewer::App;
+use re_viewer::event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind};
+use re_viewer::external::re_sdk_types::archetypes::TextLog;
+use re_viewer::external::re_sdk_types::blueprint::components::PlayState;
+use re_viewer::external::re_viewer_context::TimeControlCommand;
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 /// A simple event collector that records viewer events for later inspection.
 struct EventCollector {
@@ -97,8 +97,9 @@ async fn time_control_emits_timeline_switch_event() {
         });
     }
 
-    let initial_timeline = harness.run_with_viewer_context(move |ctx| *ctx.time_ctrl.timeline());
-    let alternate_timeline = if initial_timeline == timeline_a {
+    let initial_timeline =
+        harness.run_with_viewer_context(move |ctx| *ctx.time_ctrl.timeline_name());
+    let alternate_timeline = if initial_timeline == *timeline_a.name() {
         timeline_b
     } else {
         timeline_a
@@ -113,8 +114,9 @@ async fn time_control_emits_timeline_switch_event() {
             *alternate_timeline.name(),
         )],
     );
-    let timeline_after_switch = harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline());
-    assert_eq!(timeline_after_switch.name(), alternate_timeline.name());
+    let timeline_after_switch =
+        harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline_name());
+    assert_eq!(timeline_after_switch, *alternate_timeline.name());
 
     assert!(
         events.received_event(|kind| {

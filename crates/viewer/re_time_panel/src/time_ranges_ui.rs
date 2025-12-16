@@ -9,9 +9,8 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
-
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
-use re_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{TimeControlCommand, TimeView};
 
 /// The ideal gap between time segments.
@@ -45,12 +44,6 @@ pub struct Segment {
     /// Uses `f64` because the ends of this range can be way outside the screen
     /// when we are very zoomed in.
     pub x: RangeInclusive<f64>,
-
-    /// Within the range of [`Self::x`], all ranges of valid data.
-    ///
-    /// Guaranteed to fully contained in [`Self::x`].
-    /// For the common case of all data being marked as valid, this contains only [`Self::x`].
-    pub valid_subranges: smallvec::SmallVec<[RangeInclusive<f64>; 1]>,
 
     /// Matches [`Self::x`] (linear transform).
     pub time: AbsoluteTimeRangeF,
@@ -103,11 +96,11 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
+    /// "valid" means "fully loaded", as opposed to "partially loaded"
     pub fn new(
         time_x_range: Rangef,
         time_view: TimeView,
         time_ranges: &[AbsoluteTimeRange],
-        valid_time_ranges: &[AbsoluteTimeRange],
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -149,9 +142,6 @@ impl TimeRangesUi {
         );
         let expansion_in_ui = points_per_time * expansion_in_time.as_f64();
 
-        // Common case: all time ranges are marked as valid times.
-        let all_times_marked_valid = valid_time_ranges == [AbsoluteTimeRange::EVERYTHING];
-
         let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
         let segments = time_ranges
             .iter()
@@ -171,48 +161,9 @@ impl TimeRangesUi {
                     tight_time_range.max() + expansion_in_time,
                 );
 
-                // We expect very few valid ranges, so not shouldn't need to worry about optimizing this.
-                let valid_subranges = if all_times_marked_valid {
-                    smallvec::smallvec![x_range.clone()]
-                } else {
-                    let mut valid_subranges = smallvec::SmallVec::new();
-                    for valid_range in valid_time_ranges {
-                        if let Some(valid_time_subrange) =
-                            tight_time_range.intersection(*valid_range)
-                        {
-                            let range_width =
-                                valid_time_subrange.abs_length() as f64 * points_per_time;
-                            let time_offset = (valid_time_subrange.min() - tight_time_range.min())
-                                .as_f64()
-                                * points_per_time;
-                            let mut valid_range_start = x_range_unexpanded.start() + time_offset;
-                            let mut valid_range_end = valid_range_start + range_width;
-
-                            // Snap the subranges to the expanded x_range iff we're exactly on the border
-                            // of the segment's time range.
-                            // Expanding subranges _within_ the segment doesn't make sense as this
-                            // may lead to overlapping subranges.
-                            // TODO(andreas): This leads to slight visual artifacts when zooming out on a subdivided segment.
-                            // The problem is surprisingly tricky to fix as we'd
-                            if valid_time_subrange.min() == tight_time_range.min() {
-                                valid_range_start = *x_range.start();
-                            }
-                            if valid_time_subrange.max() == tight_time_range.max() {
-                                valid_range_end = *x_range.end();
-                            }
-
-                            valid_subranges.push(valid_range_start..=valid_range_end);
-                        } else if tight_time_range.max < valid_range.min {
-                            break;
-                        }
-                    }
-                    valid_subranges
-                };
-
                 Segment {
                     x: x_range,
                     time: time_range,
-                    valid_subranges,
                     tight_time: tight_time_range,
                 }
             })
@@ -230,11 +181,6 @@ impl TimeRangesUi {
             let x_translate = *x_range.start() - time_start_x;
             for segment in &mut slf.segments {
                 segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
-
-                for valid_range in &mut segment.valid_subranges {
-                    *valid_range =
-                        (*valid_range.start() + x_translate)..=(*valid_range.end() + x_translate);
-                }
             }
         }
 
@@ -297,7 +243,7 @@ impl TimeRangesUi {
             if new_time != time {
                 time_commands.push(TimeControlCommand::SetTime(new_time));
             }
-        } else if let Some(selection) = time_ctrl.loop_selection() {
+        } else if let Some(selection) = time_ctrl.time_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -309,7 +255,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_commands.push(TimeControlCommand::SetLoopSelection(
+            time_commands.push(TimeControlCommand::SetTimeSelection(
                 AbsoluteTimeRangeF::new(snapped_max - selection.length(), snapped_max).to_int(),
             ));
         }
@@ -460,8 +406,6 @@ fn test_time_ranges_ui() {
             AbsoluteTimeRange::new(1, 5),
             AbsoluteTimeRange::new(10, 100),
         ],
-        // Everything is valid.
-        &[AbsoluteTimeRange::EVERYTHING],
     );
 
     let pixel_precision = 0.5;
@@ -503,8 +447,6 @@ fn test_time_ranges_ui_2() {
             AbsoluteTimeRange::new(10, 20),
             AbsoluteTimeRange::new(30, 40),
         ],
-        // Everything is valid.
-        &[AbsoluteTimeRange::EVERYTHING],
     );
 
     let pixel_precision = 0.5;

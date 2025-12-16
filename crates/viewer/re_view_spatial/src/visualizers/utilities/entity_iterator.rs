@@ -1,12 +1,14 @@
 use re_log_types::{TimeInt, TimelineName};
-use re_types::Archetype;
+use re_sdk_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError,
+    ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
 use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
 
 // --- Chunk-based APIs ---
 
@@ -14,10 +16,15 @@ use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTr
 ///
 /// The callback passed in gets passed along a [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
+///
+/// `archetype_space_kind` determines the expected space kind of the archetype, if any.
+/// If it is not `None`, 2D entities require a pinhole parent in 3D views, and 3D entities require a pinhole at the root of 2D views.
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
+    output: &mut VisualizerExecutionOutput,
+    archetype_space_kind: Option<SpatialViewKind>,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -28,6 +35,7 @@ where
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
+    let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
     let transforms = context_systems.get::<TransformTreeContext>()?;
     let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
     let annotations = context_systems.get::<AnnotationSceneContext>()?;
@@ -37,13 +45,19 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(system_identifier) {
-        let Some(transform_info) =
-            transforms.transform_info_for_entity(data_result.entity_path.hash())
-        else {
+        let entity_path = &data_result.entity_path;
+
+        let Some(transform_info) = transform_info_for_archetype_or_report_error(
+            entity_path,
+            transforms,
+            archetype_space_kind,
+            view_kind,
+            output,
+        ) else {
             continue;
         };
 
-        let depth_offset_key = (system_identifier, data_result.entity_path.hash());
+        let depth_offset_key = (system_identifier, entity_path.hash());
         let entity_context = SpatialSceneEntityContext {
             transform_info,
             depth_offset: depth_offsets
@@ -51,10 +65,8 @@ where
                 .get(&depth_offset_key)
                 .copied()
                 .unwrap_or_default(),
-            annotations: annotations.0.find(&data_result.entity_path),
-            highlight: query
-                .highlights
-                .entity_outline_mask(data_result.entity_path.hash()),
+            annotations: annotations.0.find(entity_path),
+            highlight: query.highlights.entity_outline_mask(entity_path.hash()),
             view_class_identifier: context_systems.view_class_identifier(),
         };
 
@@ -64,7 +76,7 @@ where
         query_ctx.archetype_name = Some(A::name());
 
         {
-            re_tracing::profile_scope!(format!("{}", data_result.entity_path));
+            re_tracing::profile_scope!(format!("{entity_path}"));
             fun(&query_ctx, &entity_context, &results)?;
         }
     }
@@ -83,7 +95,7 @@ use re_chunk_store::external::re_chunk;
 /// faster.
 ///
 /// See [`re_chunk::Chunk::iter_component`] for more information.
-pub fn iter_component<'a, C: re_types::Component>(
+pub fn iter_component<'a, C: re_sdk_types::Component>(
     chunks: &'a ChunksWithComponent<'a>,
     timeline: TimelineName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {

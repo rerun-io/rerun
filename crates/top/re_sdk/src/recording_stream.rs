@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::IsTerminal as _;
-use std::sync::Weak;
-use std::sync::{Arc, atomic::AtomicI64};
+use std::sync::atomic::AtomicI64;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use ahash::HashMap;
@@ -9,7 +9,6 @@ use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
 use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-
 use re_chunk::{
     BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
@@ -19,15 +18,14 @@ use re_log_types::{
     RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
     Timeline, TimelineName,
 };
-use re_types::archetypes::RecordingInfo;
-use re_types::components::Timestamp;
-use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
-
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::Timestamp;
+use re_sdk_types::{AsComponents, SerializationError, SerializedComponentColumn};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-use crate::sink::{LogSink, MemorySinkStorage};
-use crate::{binary_stream_sink::BinaryStreamStorage, sink::SinkFlushError};
+use crate::binary_stream_sink::BinaryStreamStorage;
+use crate::sink::{LogSink, MemorySinkStorage, SinkFlushError};
 
 // ---
 
@@ -166,7 +164,7 @@ impl RecordingStreamBuilder {
 
             should_send_properties: true,
             recording_info: RecordingInfo::new()
-                .with_start_time(re_types::components::Timestamp::now()),
+                .with_start_time(re_sdk_types::components::Timestamp::now()),
         }
     }
 
@@ -189,7 +187,7 @@ impl RecordingStreamBuilder {
 
             should_send_properties: true,
             recording_info: RecordingInfo::new()
-                .with_start_time(re_types::components::Timestamp::now()),
+                .with_start_time(re_sdk_types::components::Timestamp::now()),
         }
     }
 
@@ -807,7 +805,7 @@ impl RecordingStreamBuilder {
 /// Shutting down cannot ever block.
 #[derive(Clone)]
 pub struct RecordingStream {
-    inner: Either<Arc<Option<RecordingStreamInner>>, Weak<Option<RecordingStreamInner>>>,
+    inner: Either<Arc<RecordingStreamInner>, Weak<RecordingStreamInner>>,
 }
 
 impl RecordingStream {
@@ -816,10 +814,9 @@ impl RecordingStream {
     /// This works whether the underlying stream is strong or weak.
     #[inline]
     fn with<F: FnOnce(&RecordingStreamInner) -> R, R>(&self, f: F) -> Option<R> {
-        use std::ops::Deref as _;
         match &self.inner {
-            Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
+            Either::Left(strong) => Some(f(strong)),
+            Either::Right(weak) => Some(f(&*weak.upgrade()?)),
         }
     }
 
@@ -840,6 +837,10 @@ impl RecordingStream {
     }
 
     /// Returns the current reference count of the [`RecordingStream`].
+    ///
+    /// Returns 0 if the stream was created by [`RecordingStream::disabled()`],
+    /// or if it is a [`clone_weak()`][Self::clone_weak] of a stream whose strong instances
+    /// have all been dropped.
     pub fn ref_count(&self) -> usize {
         match &self.inner {
             Either::Left(strong) => Arc::strong_count(strong),
@@ -1102,7 +1103,7 @@ impl RecordingStream {
             sink,
         )
         .map(|inner| Self {
-            inner: Either::Left(Arc::new(Some(inner))),
+            inner: Either::Left(Arc::new(inner)),
         })?;
 
         Ok(stream)
@@ -1112,9 +1113,9 @@ impl RecordingStream {
     /// any memory and doesn't spawn any threads.
     ///
     /// [`Self::is_enabled`] will return `false`.
-    pub fn disabled() -> Self {
+    pub const fn disabled() -> Self {
         Self {
-            inner: Either::Left(Arc::new(None)),
+            inner: Either::Right(Weak::new()),
         }
     }
 }
@@ -1294,7 +1295,7 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_sdk_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
@@ -1336,7 +1337,7 @@ impl RecordingStream {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_sdk_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -1424,10 +1425,8 @@ impl RecordingStream {
         let filepath = filepath.as_ref();
         let has_contents = contents.is_some();
 
-        let (tx, rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::Sdk,
-            re_smart_channel::SmartChannelSource::File(filepath.into()),
-        );
+        let (tx, rx) =
+            re_log_channel::log_channel(re_log_channel::LogSource::File(filepath.into()));
 
         let mut settings = crate::DataLoaderSettings {
             application_id: Some(store_info.application_id().clone()),
@@ -1489,13 +1488,13 @@ impl RecordingStream {
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
                         match msg {
-                            re_log_types::DataSourceMessage::LogMsg(log_msg) => {
+                            re_log_channel::DataSourceMessage::LogMsg(log_msg) => {
                                 this.record_msg(log_msg);
                             }
-                            re_log_types::DataSourceMessage::UiCommand(ui_cmd) => {
-                                re_log::debug!(
-                                    "Ignoring unexpected ui command from file {:?}",
-                                    ui_cmd
+                            unsupported => {
+                                re_log::error_once!(
+                                    "Ignoring unexpected {} in file",
+                                    unsupported.variant_name()
                                 );
                             }
                         }
@@ -2723,7 +2722,7 @@ mod tests {
     use insta::assert_debug_snapshot;
     use itertools::Itertools as _;
     use re_log_types::example_components::{MyLabel, MyPoints};
-    use re_types::SerializedComponentBatch;
+    use re_sdk_types::SerializedComponentBatch;
 
     use super::*;
 
@@ -2981,6 +2980,8 @@ mod tests {
             .memory()
             .unwrap();
 
+        assert_eq!(rec.ref_count(), 0);
+
         let rows = example_rows(false);
         for row in rows.clone() {
             rec.record_row("a".into(), row, false);
@@ -3014,7 +3015,7 @@ mod tests {
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-        use re_types::Loggable;
+        use re_sdk_types::Loggable;
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
@@ -3147,7 +3148,7 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        use re_types::ComponentBatch as _;
+        use re_sdk_types::ComponentBatch as _;
         rec.log(
             "labels",
             &labels

@@ -1,8 +1,6 @@
 use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response};
-
-use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeType, TimestampFormat};
 
 /// Drag value widget for editing time values for both sequence and temporal timelines.
@@ -33,10 +31,8 @@ pub struct TimeDragValue {
 }
 
 impl TimeDragValue {
-    pub fn from_time_histogram(times: &TimeHistogram) -> Self {
-        Self::from_time_range(
-            times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default(),
-        )
+    pub fn from_abs_time_range(times: re_log_types::AbsoluteTimeRange) -> Self {
+        Self::from_time_range(times.min.as_i64()..=times.max.as_i64())
     }
 
     pub fn from_time_range(range: RangeInclusive<i64>) -> Self {

@@ -4,13 +4,10 @@
 use std::sync::Arc;
 
 use re_chunk::RowId;
-use re_chunk_store::{
-    ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery, external::re_chunk::Chunk,
-};
-use re_log_types::{
-    EntityPath, TimeInt, TimePoint, build_frame_nr,
-    example_components::{MyColor, MyPoint, MyPoints},
-};
+use re_chunk_store::external::re_chunk::Chunk;
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery};
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+use re_log_types::{EntityPath, TimeInt, TimePoint, build_frame_nr};
 use re_query::QueryCache;
 use re_types_core::ComponentBatch as _;
 
@@ -73,7 +70,7 @@ fn simple_query_with_differently_tagged_components() {
     let row_id2 = RowId::new();
     let points2 = vec![MyPoint::new(5.0, 6.0)];
     let points2_serialized = points2
-        .serialized(re_types::ComponentDescriptor {
+        .serialized(re_sdk_types::ComponentDescriptor {
             archetype: Some("MyPoints2".into()),
             component: "points2".into(),
             component_type: Some(<MyPoint as re_types_core::Component>::name()),

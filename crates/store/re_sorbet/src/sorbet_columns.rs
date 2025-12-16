@@ -1,6 +1,5 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, TimelineName};
 
 use crate::{

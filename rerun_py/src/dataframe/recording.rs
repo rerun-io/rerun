@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyDict;
-use pyo3::{Bound, Py, PyAny, PyResult, pyclass, pymethods};
+use pyo3::types::{PyDict, PyModule};
+use pyo3::{Bound, Py, PyAny, PyObject, PyResult, Python, pyclass, pymethods};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
     ChunkStoreHandle, QueryExpression, SparseFillStrategy, StaticColumnSelection,
@@ -13,7 +13,8 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchema};
+use super::PyRecordingView;
+use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///
@@ -126,13 +127,19 @@ impl PyRecording {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self) -> PySchema {
-        PySchema {
-            schema: self.store.read().schema().into(),
-        }
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = PySchemaInternal {
+            columns: self.store.read().schema().into(),
+            metadata: Default::default(),
+        };
+
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     #[allow(
@@ -155,7 +162,7 @@ impl PyRecording {
     /// monotonically increasing when data is sent from a single process.
     ///
     /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per partition.
+    /// specified) and no index columns. It will also contain a single row per segment.
     ///
     /// Parameters
     /// ----------

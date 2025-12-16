@@ -1,4 +1,5 @@
-use re_types::{archetypes, components, image::ImageKind};
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
 
@@ -63,7 +64,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     // Axis length
     system_registry.register_fallback_provider(
-        archetypes::Transform3D::descriptor_axis_length().component,
+        archetypes::TransformAxes3D::descriptor_axis_length().component,
         |ctx| {
             let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
@@ -112,6 +113,117 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             // the heuristic will change it or it will be user edited. In the case of non-defined bounds
             // this value works better with the default camera setup.
             components::AxisLength::from(0.3)
+        },
+    );
+
+    // Show frame
+    system_registry.register_fallback_provider(
+        archetypes::TransformAxes3D::descriptor_show_frame().component,
+        |_ctx| {
+            // We don't show the label with the frame id by default.
+            components::ShowLabels(false.into())
+        },
+    );
+
+    system_registry.register_fallback_provider(
+        blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
+        |ctx| {
+            // 1. Check if the space root has a defined coordinate frame.
+            // 2. Check if all coordinate frames logged on entities included in the filter share the same
+            //    root frame, if so use that frame.
+            // 3. Use the implicit frame for the space root.
+
+            // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
+            // view properties, therefore the `QueryContext` is actually only querying the blueprint directly.
+            // However, we're now interested in something that lives on the store but may have an _override_ on the blueprint.
+            let query = ctx.view_ctx.current_query();
+
+            let query_result = ctx.view_ctx.query_result;
+
+            let space_origin = ctx.view_ctx.space_origin;
+
+            if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
+            {
+                let results = data_result
+                    .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
+                        ctx.view_ctx,
+                        &query,
+                    );
+
+                if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
+                    archetypes::CoordinateFrame::descriptor_frame().component,
+                ) {
+                    return frame_id;
+                }
+            }
+
+            'scope: {
+                let caches = ctx.store_ctx().caches;
+                let (transforms, transform_forest) =
+                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        (
+                            c.read_lock_transform_cache(ctx.recording()),
+                            c.get_transform_forest(),
+                        )
+                    });
+
+                let Some(transform_forest) = transform_forest else {
+                    break 'scope;
+                };
+
+                let mut found_root = None;
+
+                let mut multiple_roots = false;
+
+                query_result.tree.visit(&mut |node| {
+                    if multiple_roots {
+                        return false;
+                    }
+                    if node.data_result.tree_prefix_only {
+                        return true;
+                    }
+
+                    let Some(node_root_frame) = node
+                        .data_result
+                        .latest_at_with_blueprint_resolved_data_for_component(
+                            ctx.view_ctx,
+                            &query,
+                            archetypes::CoordinateFrame::descriptor_frame().component,
+                        )
+                        .get_mono::<components::TransformFrameId>(
+                            archetypes::CoordinateFrame::descriptor_frame().component,
+                        )
+                        .and_then(|frame| {
+                            transform_forest
+                                .root_from_frame(re_tf::TransformFrameIdHash::new(&frame))
+                        })
+                    else {
+                        return true;
+                    };
+
+                    if let Some(root) = found_root
+                        && root != node_root_frame.root
+                    {
+                        found_root = None;
+                        multiple_roots = true;
+                    } else {
+                        found_root = Some(node_root_frame.root);
+                    }
+
+                    true
+                });
+
+                // Pick the first (alphabetical order) non-entity path root if
+                // we can find one.
+                if let Some(frame) = found_root
+                    && let Some(frame) = transforms.frame_id_registry().lookup_frame_id(frame)
+                {
+                    return frame.clone();
+                }
+            }
+
+            // Fallback to entity path if no explicit CoordinateFrame
+            components::TransformFrameId::from_entity_path(space_origin)
         },
     );
 }

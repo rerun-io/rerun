@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::BufReader,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
 use uuid::Uuid;

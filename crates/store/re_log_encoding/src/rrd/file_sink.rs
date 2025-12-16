@@ -1,11 +1,8 @@
-use std::{
-    fmt,
-    path::PathBuf,
-    sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender},
-};
+use std::fmt;
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender};
 
 use parking_lot::Mutex;
-
 use re_log_types::LogMsg;
 
 /// An error that can occur when flushing.
@@ -205,7 +202,10 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
-            .field("path", &self.path.clone().unwrap_or("stdout".into()))
+            .field(
+                "path",
+                &self.path.clone().unwrap_or_else(|| "stdout".into()),
+            )
             .finish_non_exhaustive()
     }
 }

@@ -2,8 +2,6 @@ use std::ops::Range;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use smallvec::SmallVec;
-
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
@@ -13,6 +11,7 @@ use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
     CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
 };
+use smallvec::SmallVec;
 
 /// Window for adding/removing entities from a view.
 ///
@@ -342,7 +341,9 @@ impl EntityPickerEntryData {
             .path
             .last()
             .map(|entity_part| entity_part.ui_string());
-        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
+        let mut label = entity_part_ui_string
+            .clone()
+            .unwrap_or_else(|| "/".to_owned());
 
         let must_pop = if let Some(part) = &entity_part_ui_string {
             hierarchy.push(part.clone());
@@ -421,15 +422,13 @@ impl EntityPickerEntryData {
                 .map(Iterator::collect)
                 .unwrap_or_default();
 
+            if !node_info.is_leaf && !entity_tree.path.is_root() {
+                // Indicate that we have children
+                label.push('/');
+            }
             Self {
                 entity_path: entity_tree.path.clone(),
-                label: if node_info.is_leaf || entity_tree.path.is_root() {
-                    label
-                } else {
-                    // Indicate that we have children
-                    label.push('/');
-                    label
-                },
+                label,
                 highlight_sections,
                 children: node_info.children,
             }

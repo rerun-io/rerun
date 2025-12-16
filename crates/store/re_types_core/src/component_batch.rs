@@ -1,11 +1,10 @@
-use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
-
 use arrow::array::{ListArray as ArrowListArray, ListArray};
 use arrow::buffer::OffsetBuffer;
 
 // used in docstrings:
 #[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
 use crate::Archetype;
+use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
 
 // ---
 
@@ -146,7 +145,7 @@ impl PartialEq for SerializedComponentBatch {
 impl SerializedComponentBatch {
     #[inline]
     pub fn new(array: arrow::array::ArrayRef, descriptor: ComponentDescriptor) -> Self {
-        Self { array, descriptor }
+        Self { descriptor, array }
     }
 
     #[inline]
@@ -237,11 +236,9 @@ impl re_byte_size::SizeBytes for SerializedComponentColumn {
 impl From<SerializedComponentBatch> for SerializedComponentColumn {
     #[inline]
     fn from(batch: SerializedComponentBatch) -> Self {
-        use arrow::{
-            array::{Array as _, ListArray},
-            buffer::OffsetBuffer,
-            datatypes::Field,
-        };
+        use arrow::array::{Array as _, ListArray};
+        use arrow::buffer::OffsetBuffer;
+        use arrow::datatypes::Field;
 
         let list_array = {
             let nullable = true;

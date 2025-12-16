@@ -1,0 +1,56 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 3D arrows with optional colors, radii, labels, etc.
+///
+/// \example archetypes/arrows3d_simple title="Simple batch of 3D arrows" image="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png"
+table Arrows3D (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Arrows3D",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
+) {
+  // --- Required ---
+
+  /// All the vectors for each arrow in the batch.
+  vectors: [rerun.components.Vector3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// All the origin (base) positions for each arrow in the batch.
+  ///
+  /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+  origins: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// Optional radii for the arrows.
+  ///
+  /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+  /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional colors for the points.
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional text labels for the arrows.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
+
+  /// Optional class Ids for the points.
+  ///
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+}

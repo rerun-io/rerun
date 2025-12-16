@@ -1,14 +1,11 @@
 use std::net::SocketAddr;
 
-use pyo3::{
-    Bound, PyResult, Python,
-    exceptions::PyValueError,
-    pyclass, pymethods,
-    types::{
-        PyAnyMethods as _, PyDict, PyDictMethods as _, PyModule, PyModuleMethods as _, PyString,
-        PyStringMethods as _,
-    },
+use pyo3::exceptions::PyValueError;
+use pyo3::types::{
+    PyAnyMethods as _, PyDict, PyDictMethods as _, PyModule, PyModuleMethods as _, PyString,
+    PyStringMethods as _,
 };
+use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 use re_server::{self, Args as ServerArgs};
 
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
@@ -17,7 +14,7 @@ pub struct PyServerInternal {
     address: SocketAddr,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
     #[pyo3(signature = (*, address="0.0.0.0", port=51234, datasets=None, tables=None))]
@@ -48,7 +45,7 @@ impl PyServerInternal {
         );
 
         crate::utils::wait_for_future(py, async {
-            let handle = args.create_server_handle().await.map_err(|err| {
+            let (handle, _) = args.create_server_handle().await.map_err(|err| {
                 PyValueError::new_err(format!("Failed to start Rerun server: {err}"))
             })?;
 

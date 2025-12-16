@@ -1,6 +1,8 @@
 //! Rerun dataloader for MCAP files.
 
-use std::{io::Cursor, path::Path, sync::mpsc::Sender};
+use std::io::Cursor;
+use std::path::Path;
+use std::sync::mpsc::Sender;
 
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};

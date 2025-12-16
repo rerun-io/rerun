@@ -1,10 +1,9 @@
-use re_types::{ColormapCategory, reflection::Enum as _};
+use re_sdk_types::ColormapCategory;
+use re_sdk_types::reflection::Enum as _;
 use re_ui::list_item;
 
-use crate::{
-    MaybeMutRef,
-    gpu_bridge::{get_or_create_texture, render_image},
-};
+use crate::MaybeMutRef;
+use crate::gpu_bridge::{get_or_create_texture, render_image};
 
 const MIN_WIDTH: f32 = 150.0;
 
@@ -12,7 +11,7 @@ const MIN_WIDTH: f32 = 150.0;
 fn colormap_preview_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    colormap: re_types::components::Colormap,
+    colormap: re_sdk_types::components::Colormap,
 ) -> anyhow::Result<egui::Response> {
     re_tracing::profile_function!();
 
@@ -71,8 +70,8 @@ fn colormap_preview_ui(
 fn colormap_variant_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    option: &re_types::components::Colormap,
-    map: &mut re_types::components::Colormap,
+    option: &re_sdk_types::components::Colormap,
+    map: &mut re_sdk_types::components::Colormap,
 ) -> egui::Response {
     let list_item = list_item::ListItem::new().selected(option == map);
 
@@ -101,7 +100,7 @@ fn colormap_category_ui(
     ctx: &crate::ViewerContext<'_>,
     ui: &mut egui::Ui,
     category: ColormapCategory,
-    selected: &mut re_types::components::Colormap,
+    selected: &mut re_sdk_types::components::Colormap,
 ) -> egui::Response {
     let label_content = match category {
         ColormapCategory::Sequential => "Sequential",
@@ -119,7 +118,7 @@ fn colormap_category_ui(
                 .min_desired_width(MIN_WIDTH),
         );
 
-    for option in re_types::components::Colormap::variants()
+    for option in re_sdk_types::components::Colormap::variants()
         .iter()
         .filter(|&&colormap| colormap.category() == category)
     {
@@ -132,7 +131,7 @@ fn colormap_category_ui(
 pub fn colormap_edit_or_view_ui(
     ctx: &crate::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    map: &mut MaybeMutRef<'_, re_types::components::Colormap>,
+    map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
 ) -> egui::Response {
     if let Some(map) = map.as_mut() {
         let selected_text = map.to_string();
@@ -159,7 +158,7 @@ pub fn colormap_edit_or_view_ui(
         }
         inner_response.response
     } else {
-        let map: re_types::components::Colormap = **map;
+        let map: re_sdk_types::components::Colormap = **map;
         let colormap_response = {
             let result = colormap_preview_ui(ctx.render_ctx(), ui, map);
             if let Err(err) = &result {
@@ -177,16 +176,18 @@ pub fn colormap_edit_or_view_ui(
     }
 }
 
-pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
+pub fn colormap_to_re_renderer(
+    colormap: re_sdk_types::components::Colormap,
+) -> re_renderer::Colormap {
     match colormap {
-        re_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
-        re_types::components::Colormap::Inferno => re_renderer::Colormap::Inferno,
-        re_types::components::Colormap::Magma => re_renderer::Colormap::Magma,
-        re_types::components::Colormap::Plasma => re_renderer::Colormap::Plasma,
-        re_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
-        re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
-        re_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
-        re_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
-        re_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
+        re_sdk_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
+        re_sdk_types::components::Colormap::Inferno => re_renderer::Colormap::Inferno,
+        re_sdk_types::components::Colormap::Magma => re_renderer::Colormap::Magma,
+        re_sdk_types::components::Colormap::Plasma => re_renderer::Colormap::Plasma,
+        re_sdk_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
+        re_sdk_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
+        re_sdk_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
+        re_sdk_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
+        re_sdk_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
     }
 }

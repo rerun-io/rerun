@@ -1,21 +1,18 @@
 use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
-use re_protos::{
-    cloud::v1alpha1::{
-        ScanDatasetManifestRequest, ScanPartitionTableRequest, ScanPartitionTableResponse,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    ScanDatasetManifestRequest, ScanSegmentTableRequest, ScanSegmentTableResponse,
 };
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop,
 };
 
-pub async fn test_partition_table_column_projections(service: impl RerunCloudService) {
-    test_column_projections(service, &projected_partition_table_batch, "partition_table").await;
+pub async fn test_segment_table_column_projections(service: impl RerunCloudService) {
+    test_column_projections(service, &projected_segment_table_batch, "segment_table").await;
 }
 
 pub async fn test_dataset_manifest_column_projections(service: impl RerunCloudService) {
@@ -37,15 +34,15 @@ async fn test_column_projections<T>(
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [LayerDefinition::properties(
-            "my_partition_id",
+            "my_segment_id",
             [
                 prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                    re_sdk_types::archetypes::TextLog::new("i'm partition 1"),
                 ),
                 prop(
                     "points",
-                    re_types::archetypes::Points2D::new([(1., 2.), (3., 4.)]),
+                    re_sdk_types::archetypes::Points2D::new([(1., 2.), (3., 4.)]),
                 ),
             ],
         )],
@@ -70,14 +67,14 @@ async fn test_column_projections<T>(
 
     let partition_id_columns = project_fn(
         &service,
-        vec![ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned()],
+        vec![ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned()],
         dataset_name,
     )
     .await;
 
     assert_eq!(
         partition_id_columns,
-        vec![ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned()],
+        vec![ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned()],
         "the projection should have been applied"
     );
 
@@ -103,7 +100,7 @@ async fn test_column_projections<T>(
         &service,
         vec![
             prop_col.clone(),
-            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
         ],
         dataset_name,
     )
@@ -113,7 +110,7 @@ async fn test_column_projections<T>(
         ordered_columns,
         vec![
             prop_col,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
         ],
         "the column order should be preserved"
     );
@@ -123,8 +120,8 @@ async fn test_column_projections<T>(
     //
 
     let result = service
-        .scan_partition_table(
-            tonic::Request::new(ScanPartitionTableRequest {
+        .scan_segment_table(
+            tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec!["unknown_column".to_owned()],
             })
             .with_entry_name(dataset_name)
@@ -146,11 +143,11 @@ async fn test_column_projections<T>(
     //
 
     let result = service
-        .scan_partition_table(
-            tonic::Request::new(ScanPartitionTableRequest {
+        .scan_segment_table(
+            tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![
-                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
-                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+                    ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
+                    ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
                 ],
             })
             .with_entry_name(dataset_name)
@@ -164,7 +161,7 @@ async fn test_column_projections<T>(
             assert!(
                 status
                     .message()
-                    .contains(ScanPartitionTableResponse::FIELD_PARTITION_ID)
+                    .contains(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
             );
             assert!(status.message().contains("twice") || status.message().contains("duplicate"));
         }
@@ -172,14 +169,14 @@ async fn test_column_projections<T>(
     }
 }
 
-async fn projected_partition_table_batch(
+async fn projected_segment_table_batch(
     service: &impl RerunCloudService,
     column_projection: Vec<String>,
     dataset_name: &str,
 ) -> Vec<String> {
     let responses: Vec<_> = service
-        .scan_partition_table(
-            tonic::Request::new(ScanPartitionTableRequest {
+        .scan_segment_table(
+            tonic::Request::new(ScanSegmentTableRequest {
                 columns: column_projection,
             })
             .with_entry_name(dataset_name)

@@ -1,15 +1,14 @@
 //! General H.265 utilities.
 //!
+use cros_codecs::codec::h264::nalu::Header as _;
+use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps};
+
+use crate::nalu::{
+    ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
+    write_length_prefixed_nalus_to_annexb_stream,
+};
 use crate::{
     ChromaSubsamplingModes, Chunk, DetectGopStartError, GopStartDetection, VideoEncodingDetails,
-    nalu::{
-        ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
-        write_length_prefixed_nalus_to_annexb_stream,
-    },
-};
-use cros_codecs::codec::{
-    h264::nalu::Header as _,
-    h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps},
 };
 
 /// Retrieve [`VideoEncodingDetails`] from an H.265 SPS.
@@ -148,15 +147,18 @@ pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGo
     }
 }
 
-pub fn write_hevc_chunk_to_nalu_stream(
+/// Write an H.265 chunk to an Annex B stream without state tracking.
+///
+/// This is a fully re-entrant utility that allows explicit control over parameter set emission.
+/// Typically you'd pass `chunk.is_sync` to emit parameter sets for IDR frames only.
+pub fn write_hevc_chunk_to_annexb(
     hvcc: &re_mp4::HevcBox,
     nalu_stream: &mut dyn std::io::Write,
+    emit_parameter_sets: bool,
     chunk: &Chunk,
-    state: &mut AnnexBStreamState,
 ) -> Result<(), AnnexBStreamWriteError> {
-    if chunk.is_sync && !state.previous_frame_was_idr {
-        let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
-
+    // Emit VPS/SPS/PPS parameter sets if requested
+    if emit_parameter_sets {
         for arr in &hvcc.hvcc.arrays {
             if let Ok(nalu_type) = NaluType::try_from(arr.nal_unit_type as u32)
                 && matches!(
@@ -165,22 +167,15 @@ pub fn write_hevc_chunk_to_nalu_stream(
                 )
             {
                 for nalu in &arr.nalus {
-                    hvcc_ps.push(nalu.data.clone());
+                    nalu_stream
+                        .write_all(ANNEXB_NAL_START_CODE)
+                        .map_err(AnnexBStreamWriteError::FailedToWriteToStream)?;
+                    nalu_stream
+                        .write_all(&nalu.data)
+                        .map_err(AnnexBStreamWriteError::FailedToWriteToStream)?;
                 }
             }
         }
-
-        for ps in &hvcc_ps {
-            nalu_stream
-                .write_all(ANNEXB_NAL_START_CODE)
-                .map_err(AnnexBStreamWriteError::FailedToWriteToStream)?;
-            nalu_stream
-                .write_all(ps)
-                .map_err(AnnexBStreamWriteError::FailedToWriteToStream)?;
-        }
-        state.previous_frame_was_idr = true;
-    } else {
-        state.previous_frame_was_idr = false;
     }
 
     // Each NAL unit in mp4 is prefixed with a length prefix.
@@ -188,6 +183,20 @@ pub fn write_hevc_chunk_to_nalu_stream(
     let length_prefix_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
 
     write_length_prefixed_nalus_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
+}
+
+pub fn write_hevc_chunk_to_nalu_stream(
+    hvcc: &re_mp4::HevcBox,
+    nalu_stream: &mut dyn std::io::Write,
+    chunk: &Chunk,
+    state: &mut AnnexBStreamState,
+) -> Result<(), AnnexBStreamWriteError> {
+    let emit_parameter_sets = chunk.is_sync && !state.previous_frame_was_idr;
+
+    write_hevc_chunk_to_annexb(hvcc, nalu_stream, emit_parameter_sets, chunk)?;
+    state.previous_frame_was_idr = emit_parameter_sets;
+
+    Ok(())
 }
 
 #[cfg(test)]

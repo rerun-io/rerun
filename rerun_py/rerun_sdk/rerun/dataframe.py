@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 
+from rerun.catalog import Schema as Schema  # for backward compatibility
 from rerun_bindings import (
-    ComponentColumnDescriptor as ComponentColumnDescriptor,
-    ComponentColumnSelector as ComponentColumnSelector,
-    IndexColumnDescriptor as IndexColumnDescriptor,
-    IndexColumnSelector as IndexColumnSelector,
+    ComponentColumnDescriptor as ComponentColumnDescriptor,  # for backward compatibility
+    ComponentColumnSelector as ComponentColumnSelector,  # for backward compatibility
+    IndexColumnDescriptor as IndexColumnDescriptor,  # for backward compatibility
+    IndexColumnSelector as IndexColumnSelector,  # for backward compatibility
     Recording as Recording,
     RecordingView as RecordingView,
     RRDArchive as RRDArchive,
-    Schema as Schema,
     load_archive as load_archive,
     load_recording as load_recording,
 )
@@ -34,6 +34,7 @@ SORBET_ENTITY_PATH = b"rerun:entity_path"
 SORBET_ARCHETYPE_NAME = b"rerun:archetype"
 SORBET_COMPONENT = b"rerun:component"
 SORBET_COMPONENT_TYPE = b"rerun:component_type"
+SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
 RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"

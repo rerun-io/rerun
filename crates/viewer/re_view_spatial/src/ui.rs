@@ -1,27 +1,25 @@
-use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
+use egui::emath::OrderedFloat;
+use egui::text::TextWrapping;
+use egui::{NumExt as _, WidgetText};
 use macaw::BoundingBox;
-
 use re_format::format_f32;
-use re_types::{
-    blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
-    image::ImageKind,
-};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    Pinhole,
-    pickable_textured_rect::PickableRectSourceData,
-    picking::{PickableUiRect, PickingResult},
-    scene_bounding_boxes::SceneBoundingBoxes,
-    view_kind::SpatialViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
-};
-
-use super::{eye::Eye, ui_3d::View3DState};
+use super::eye::Eye;
+use super::ui_3d::View3DState;
+use crate::Pinhole;
+use crate::pickable_textured_rect::PickableRectSourceData;
+use crate::picking::{PickableUiRect, PickingResult};
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -340,8 +338,7 @@ pub fn paint_loading_spinners(
     eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    use glam::Vec3Swizzles as _;
-    use glam::Vec4Swizzles as _;
+    use glam::{Vec3Swizzles as _, Vec4Swizzles as _};
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 

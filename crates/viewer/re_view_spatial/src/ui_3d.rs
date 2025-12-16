@@ -1,19 +1,16 @@
-use egui::{Modifiers, NumExt as _, emath::RectTransform};
+use egui::emath::RectTransform;
+use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
-
 use macaw::BoundingBox;
-use re_renderer::{
-    LineDrawableBuilder, Size,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+use re_log_types::Instance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
+use re_renderer::{LineDrawableBuilder, Size};
+use re_sdk_types::blueprint::archetypes::{
+    Background, EyeControls3D, LineGrid3D, SpatialInformation,
 };
+use re_sdk_types::blueprint::components::{Enabled, GridSpacing};
+use re_sdk_types::components::{ViewCoordinates, Visible};
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
-use re_types::{
-    blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
-        components::{Enabled, GridSpacing},
-    },
-    components::{ViewCoordinates, Visible},
-};
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
@@ -25,15 +22,13 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    SpatialView3D,
-    space_camera_3d::SpaceCamera3D,
-    ui::{SpatialViewState, create_labels},
-    view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, collect_ui_labels},
-};
-
 use super::eye::{Eye, EyeState};
+use crate::SpatialView3D;
+use crate::eye::find_camera;
+use crate::pinhole_wrapper::PinholeWrapper;
+use crate::ui::{SpatialViewState, create_labels};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{CamerasVisualizer, collect_ui_labels};
 
 // ---
 
@@ -128,7 +123,7 @@ impl SpatialView3D {
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
-        system_output: re_viewer_context::SystemExecutionOutput,
+        mut system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -136,7 +131,7 @@ impl SpatialView3D {
         let space_cameras = &system_output
             .view_systems
             .get::<CamerasVisualizer>()?
-            .space_cameras;
+            .pinhole_cameras;
         let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
             query.space_origin,
             ctx.recording(),
@@ -152,7 +147,7 @@ impl SpatialView3D {
 
         let mut state_3d = state.state_3d.clone();
 
-        let view_context = self.view_context(ctx, query.view_id, state);
+        let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         let information_property = ViewProperty::from_archetype::<SpatialInformation>(
             ctx.blueprint_db(),
@@ -207,6 +202,7 @@ impl SpatialView3D {
                 None,
                 axis_length,
                 re_renderer::OutlineMaskPreference::NONE,
+                Instance::ALL.get(),
             );
 
             // If we are showing the axes for the space, then add the space origin to the bounding box.
@@ -313,13 +309,26 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if state.last_tracked_entity() != Some(entity_path) {
-                    eye_property.save_blueprint_component(
-                        ctx,
-                        &EyeControls3D::descriptor_tracking_entity(),
-                        &re_types::components::EntityPath::from(entity_path),
-                    );
-                    state.state_3d.eye_state.last_interaction_time = Some(ui.time());
+                if ui.ctx().input(|i| i.modifiers.alt)
+                    || find_camera(space_cameras, entity_path).is_some()
+                {
+                    if state.last_tracked_entity() != Some(entity_path) {
+                        eye_property.save_blueprint_component(
+                            ctx,
+                            &EyeControls3D::descriptor_tracking_entity(),
+                            &re_sdk_types::components::EntityPath::from(entity_path),
+                        );
+                        state.state_3d.eye_state.last_interaction_time = Some(ui.time());
+                    }
+                } else {
+                    state.state_3d.eye_state.start_interpolation();
+                    state.state_3d.eye_state.focus_entity(
+                        &self.view_context(ctx, query.view_id, state, query.space_origin),
+                        space_cameras,
+                        &state.bounding_boxes,
+                        &eye_property,
+                        entity_path,
+                    )?;
                 }
             }
 
@@ -353,7 +362,7 @@ impl SpatialView3D {
         }
 
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_line_radius = Size(*re_types::components::Radius::default().0);
+        let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
 
         if show_bounding_box {
             line_builder
@@ -383,11 +392,11 @@ impl SpatialView3D {
             scene_view_coordinates,
         );
 
-        for draw_data in system_output.draw_data {
+        for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
@@ -449,15 +458,15 @@ impl SpatialView3D {
             LineGrid3D::descriptor_spacing().component,
         )?;
         let thickness_ui = **grid_config
-            .component_or_fallback::<re_types::components::StrokeWidth>(
+            .component_or_fallback::<re_sdk_types::components::StrokeWidth>(
                 ctx,
                 LineGrid3D::descriptor_stroke_width().component,
             )?;
-        let color = grid_config.component_or_fallback::<re_types::components::Color>(
+        let color = grid_config.component_or_fallback::<re_sdk_types::components::Color>(
             ctx,
             LineGrid3D::descriptor_color().component,
         )?;
-        let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
+        let plane = grid_config.component_or_fallback::<re_sdk_types::components::Plane3D>(
             ctx,
             LineGrid3D::descriptor_plane().component,
         )?;
@@ -577,16 +586,14 @@ fn show_orbit_eye_center(
 
 fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    space_cameras: &[SpaceCamera3D],
+    cameras: &[PinholeWrapper],
     state: &SpatialViewState,
     item_context: &ItemContext,
     ray_color: egui::Color32,
 ) {
     match item_context {
         ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d)
-                && let Some(pinhole) = cam.pinhole.as_ref()
-            {
+            if let Some(cam) = cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 // Render a thick line to the actual z value if any and a weaker one as an extension
                 // If we don't have a z value, we only render the thick one.
                 let depth = if 0.0 < pos.z && pos.z.is_finite() {
@@ -594,7 +601,7 @@ fn show_projections_from_2d_space(
                 } else {
                     cam.picture_plane_distance
                 };
-                let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
+                let stop_in_image_plane = cam.pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
 
                 let world_from_image = glam::Affine3A::from(cam.world_from_camera)
                     * glam::Affine3A::from_mat3(
@@ -625,9 +632,8 @@ fn show_projections_from_2d_space(
             ..
         } => {
             if state.last_tracked_entity() != Some(tracked_entity)
-                && let Some(tracked_camera) = space_cameras
-                    .iter()
-                    .find(|cam| &cam.ent_path == tracked_entity)
+                && let Some(tracked_camera) =
+                    cameras.iter().find(|cam| &cam.ent_path == tracked_entity)
             {
                 let cam_to_pos = *pos - tracked_camera.position();
                 let distance = cam_to_pos.length();

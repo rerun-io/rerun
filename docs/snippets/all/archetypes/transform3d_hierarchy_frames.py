@@ -1,8 +1,4 @@
-"""
-Logs a transform hierarchy using explicit transform frame relationships.
-
-⚠️ This is an experimental feature ⚠️
-"""
+"""Logs a transform hierarchy using named transform frame relationships."""
 
 import numpy as np
 import rerun as rr
@@ -14,11 +10,39 @@ rr.set_time("sim_time", duration=0)
 # Planetary motion is typically in the XY plane.
 rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
-# Setup points, all are in the center of their own space:
-# TODO(#1361): Should use spheres instead of points.
-rr.log("sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]), rr.CoordinateFrame("sun_frame"))
-rr.log("planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]), rr.CoordinateFrame("planet_frame"))
-rr.log("moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]), rr.CoordinateFrame("moon_frame"))
+# Setup spheres, all are in the center of their own space:
+rr.log(
+    "sun",
+    rr.Ellipsoids3D(
+        centers=[0, 0, 0],
+        half_sizes=[1, 1, 1],
+        colors=[255, 200, 10],
+        fill_mode="solid",
+    ),
+    rr.CoordinateFrame("sun_frame"),
+)
+
+rr.log(
+    "planet",
+    rr.Ellipsoids3D(
+        centers=[0, 0, 0],
+        half_sizes=[0.4, 0.4, 0.4],
+        colors=[40, 80, 200],
+        fill_mode="solid",
+    ),
+    rr.CoordinateFrame("planet_frame"),
+)
+
+rr.log(
+    "moon",
+    rr.Ellipsoids3D(
+        centers=[0, 0, 0],
+        half_sizes=[0.15, 0.15, 0.15],
+        colors=[180, 180, 180],
+        fill_mode="solid",
+    ),
+    rr.CoordinateFrame("moon_frame"),
+)
 
 # The viewer automatically creates a 3D view at `/`. To connect it to our transform hierarchy, we set its coordinate frame
 # to `sun_frame` as well. Alternatively, we could also set a blueprint that makes `/sun` the space origin.

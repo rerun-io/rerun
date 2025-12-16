@@ -2,13 +2,15 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{Time, VideoDataDescription, decode::FrameResult};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
+use super::async_decoder_wrapper::SyncDecoder;
 use super::{
     Chunk, DecodeError, Frame, FrameContent, FrameInfo, PixelFormat, Result, YuvMatrixCoefficients,
-    YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
+    YuvPixelLayout, YuvRange,
 };
+use crate::decode::FrameResult;
+use crate::{Time, VideoDataDescription};
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,
@@ -294,6 +296,7 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::Reserved => {
             // This happens quite often. Don't issue a warning, that would be noise!
 
+            #[expect(clippy::branches_sharing_code)]
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
                 // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
                 // TODO(andreas): Other transfer characteristics may also hint at primaries.

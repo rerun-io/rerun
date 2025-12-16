@@ -1,42 +1,34 @@
-use egui::{
-    NumExt as _, Vec2, Vec2b,
-    ahash::{HashMap, HashSet},
-};
+use egui::ahash::{HashMap, HashSet};
+use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
+use re_chunk_store::TimeType;
+use re_format::time::next_grid_tick_magnitude_nanos;
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
+use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
+use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
+use re_sdk_types::datatypes::TimeRange;
+use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
+use re_view::view_property_ui;
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
-    PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    external::re_entity_db::InstancePath,
+    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    PerVisualizerInViewClass, QueryRange, RecommendedView, SmallVisualizerSet,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 
-use crate::{
-    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
-    point_visualizer_system::SeriesPointsSystem,
-};
-use re_chunk_store::TimeType;
-use re_format::time::next_grid_tick_magnitude_nanos;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_types::{
-    ComponentBatch as _, View as _, ViewClassIdentifier,
-    archetypes::{SeriesLines, SeriesPoints},
-    blueprint::{
-        archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis},
-        components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom},
-    },
-    components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible},
-    datatypes::TimeRange,
-};
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
-use re_view::{
-    controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
-    view_property_ui,
-};
+use crate::PlotSeriesKind;
+use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::point_visualizer_system::SeriesPointsSystem;
 
 // ---
 
@@ -86,7 +78,7 @@ impl ViewState for TimeSeriesViewState {
 #[derive(Default)]
 pub struct TimeSeriesView;
 
-type ViewType = re_types::blueprint::views::TimeSeriesView;
+type ViewType = re_sdk_types::blueprint::views::TimeSeriesView;
 
 impl ViewClass for TimeSeriesView {
     fn identifier() -> ViewClassIdentifier {
@@ -161,7 +153,7 @@ impl ViewClass for TimeSeriesView {
             SeriesLines::descriptor_names().component,
             SeriesPoints::descriptor_names().component,
         ] {
-            system_registry.register_fallback_provider::<re_types::components::Name>(
+            system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
                 component,
                 |ctx| {
                     let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
@@ -196,40 +188,35 @@ impl ViewClass for TimeSeriesView {
         system_registry.register_fallback_provider(
             TimeAxis::descriptor_view_range().component,
             |ctx| {
-                let times_per_timeline = ctx.viewer_ctx().recording().times_per_timeline();
-                let (timeline_min, timeline_max) = times_per_timeline
-                    .get(ctx.viewer_ctx().time_ctrl.timeline().name())
-                    .and_then(|stats| {
-                        Some((
-                            *stats.per_time.keys().next()?,
-                            *stats.per_time.keys().next_back()?,
-                        ))
-                    })
+                let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
+                let (timeline_min, timeline_max) = timeline_histograms
+                    .get(ctx.viewer_ctx().time_ctrl.timeline_name())
+                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
                     .unzip();
                 ctx.view_state()
                     .as_any()
                     .downcast_ref::<TimeSeriesViewState>()
                     .map(|s| {
-                        re_types::blueprint::components::TimeRange(TimeRange {
+                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
                             start: if Some(s.max_time_view_range.min) == timeline_min {
-                                re_types::datatypes::TimeRangeBoundary::Infinite
+                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
                             } else {
-                                re_types::datatypes::TimeRangeBoundary::Absolute(
+                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                     s.max_time_view_range.min.into(),
                                 )
                             },
                             end: if Some(s.max_time_view_range.max) == timeline_max {
-                                re_types::datatypes::TimeRangeBoundary::Infinite
+                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
                             } else {
-                                re_types::datatypes::TimeRangeBoundary::Absolute(
+                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                     s.max_time_view_range.max.into(),
                                 )
                             },
                         })
                     })
-                    .unwrap_or(re_types::blueprint::components::TimeRange(TimeRange {
-                        start: re_types::datatypes::TimeRangeBoundary::Infinite,
-                        end: re_types::datatypes::TimeRangeBoundary::Infinite,
+                    .unwrap_or(re_sdk_types::blueprint::components::TimeRange(TimeRange {
+                        start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
+                        end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
                     }))
             },
         );
@@ -264,13 +251,13 @@ impl ViewClass for TimeSeriesView {
         viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            let ctx = self.view_context(viewer_ctx, view_id, state);
+            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
@@ -327,12 +314,12 @@ impl ViewClass for TimeSeriesView {
         // Because SeriesLines is our fallback visualizer, also include any entities for which
         // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
-            .maybe_visualizable_entities_per_visualizer
+            .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
                 .0
-                .extend(maybe_visualizable.iter().cloned());
+                .extend(maybe_visualizable.keys().cloned());
         }
 
         // Ensure we don't modify this list anymore before we check the `include_entity`.
@@ -387,15 +374,14 @@ impl ViewClass for TimeSeriesView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         let available_visualizers: HashSet<&ViewSystemIdentifier> =
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
+                    if ents.contains_key(entity_path) {
                         Some(visualizer)
                     } else {
                         None
@@ -455,8 +441,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         let current_time = ctx.time_ctrl.time_i64();
-        let time_type = ctx.time_ctrl.time_type();
-        let timeline = *ctx.time_ctrl.timeline();
+        let Some(timeline) = ctx.time_ctrl.timeline() else {
+            return Ok(());
+        };
+        let time_type = timeline.typ();
 
         let timeline_name = timeline.name().to_string();
 
@@ -479,34 +467,33 @@ impl ViewClass for TimeSeriesView {
         };
         state.time_offset = time_offset;
 
-        // Get the maximum time/X value for the entire plot
-        let max_time = all_plot_series
+        // Get the min and max time/X value for the visible plot.
+        let min_view_time = all_plot_series
             .iter()
-            .map(|line| line.points.last().map(|(t, _)| *t).unwrap_or(line.min_time))
+            .filter_map(|line| line.points.first().map(|(t, _)| *t))
+            .min()
+            .unwrap_or(0);
+        let max_view_time = all_plot_series
+            .iter()
+            .filter_map(|line| line.points.last().map(|(t, _)| *t))
             .max()
             .unwrap_or(0);
 
         let recording = ctx.recording();
 
-        let timeline_start = recording
-            .time_histogram(ctx.time_ctrl.timeline().name())
-            .and_then(|times| times.min_key())
-            .unwrap_or_default();
-
-        let timeline_end = recording
-            .time_histogram(ctx.time_ctrl.timeline().name())
-            .and_then(|times| times.max_key())
-            .unwrap_or_default();
+        let timeline_range = recording
+            .time_range_for(timeline.name())
+            .unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
         state.max_time_view_range = AbsoluteTimeRange::new(
-            TimeInt::saturated_temporal_i64(min_time),
-            TimeInt::saturated_temporal_i64(max_time),
+            TimeInt::saturated_temporal_i64(min_view_time),
+            TimeInt::saturated_temporal_i64(max_view_time),
         );
 
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
-        let view_ctx = self.view_context(ctx, view_id, state);
+        let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query,
@@ -538,8 +525,11 @@ impl ViewClass for TimeSeriesView {
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
 
-        let view_current_time =
-            re_types::datatypes::TimeInt(current_time.unwrap_or_default().at_least(timeline_start));
+        let view_current_time = re_sdk_types::datatypes::TimeInt(
+            current_time
+                .unwrap_or_default()
+                .at_least(timeline_range.min.as_i64()),
+        );
 
         let query_result;
         // If we globally link the x-axis it will ignore this view's time range property and use
@@ -559,6 +549,7 @@ impl ViewClass for TimeSeriesView {
                         viewer_ctx: ctx,
                         view_id: re_viewer_context::GLOBAL_VIEW_ID,
                         view_class_identifier: Self::identifier(),
+                        space_origin: query.space_origin,
                         view_state: state,
                         query_result: &query_result,
                     },
@@ -567,28 +558,33 @@ impl ViewClass for TimeSeriesView {
         };
 
         let view_time_range = time_range_property
-            .component_or_fallback::<re_types::blueprint::components::TimeRange>(
+            .component_or_fallback::<re_sdk_types::blueprint::components::TimeRange>(
                 time_range_ctx,
                 TimeAxis::descriptor_view_range().component,
             )?;
 
-        let resolve_time_range = |view_time_range: &re_types::blueprint::components::TimeRange| {
-            make_range_sane(Range1D::new(
-                (match view_time_range.start {
-                    re_types::datatypes::TimeRangeBoundary::Infinite => timeline_start,
-                    _ => {
-                        view_time_range
-                            .start
-                            .start_boundary_time(view_current_time)
-                            .0
-                    }
-                } - time_offset) as f64,
-                (match view_time_range.end {
-                    re_types::datatypes::TimeRangeBoundary::Infinite => timeline_end,
-                    _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                } - time_offset) as f64,
-            ))
-        };
+        let resolve_time_range =
+            |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
+                make_range_sane(Range1D::new(
+                    (match view_time_range.start {
+                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+                            timeline_range.min.as_i64()
+                        }
+                        _ => {
+                            view_time_range
+                                .start
+                                .start_boundary_time(view_current_time)
+                                .0
+                        }
+                    } - time_offset) as f64,
+                    (match view_time_range.end {
+                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+                            timeline_range.max.as_i64()
+                        }
+                        _ => view_time_range.end.end_boundary_time(view_current_time).0,
+                    } - time_offset) as f64,
+                ))
+            };
 
         let x_range = resolve_time_range(&view_time_range);
 
@@ -620,18 +616,6 @@ impl ViewClass for TimeSeriesView {
             .first()
             .map(|line| line.aggregator)
             .unwrap_or_default();
-
-        // …then use that as an offset to avoid nasty precision issues with
-        // large times (nanos since epoch does not fit into a f64).
-        let time_offset = match timeline.typ() {
-            TimeType::Sequence => min_time,
-            TimeType::TimestampNs | TimeType::DurationNs => {
-                // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
-                // we need to round to a whole day:
-                round_nanos_to_start_of_day(min_time)
-            }
-        };
-        state.time_offset = time_offset;
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
@@ -708,6 +692,19 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
+            let time_float_offset_id = plot_id.with("time_float_offset");
+            // Since we store the x-axis view range with integers we want to store an extra temporary float offset for the view.
+            let plot_x_range = ui
+                .ctx()
+                .memory(|mem| mem.data.get_temp::<Range1D>(time_float_offset_id))
+                .map(|offset| {
+                    Range1D::new(
+                        x_range.start() + offset.start(),
+                        x_range.end() + offset.end(),
+                    )
+                })
+                .unwrap_or(x_range);
+
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
                 inner: _,
@@ -729,7 +726,7 @@ impl ViewClass for TimeSeriesView {
 
                 // Let the user pick x and y ranges from the blueprint:
                 plot_ui.set_plot_bounds_y(y_range);
-                plot_ui.set_plot_bounds_x(x_range);
+                plot_ui.set_plot_bounds_x(plot_x_range);
 
                 // Needed by for the visualizers' fallback provider.
                 state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -793,17 +790,28 @@ impl ViewClass for TimeSeriesView {
 
                 if unchanged_bounds != *transform.bounds() {
                     let new_x_range = transform_axis_range(transform, 0);
+                    let new_x_range_rounded =
+                        Range1D::new(new_x_range.start().round(), new_x_range.end().round());
+                    ui.ctx().memory_mut(|m| {
+                        m.data.insert_temp(
+                            time_float_offset_id,
+                            Range1D::new(
+                                new_x_range.start() - new_x_range_rounded.start(),
+                                new_x_range.end() - new_x_range_rounded.end(),
+                            ),
+                        );
+                    });
 
                     let new_view_time_range =
-                        re_types::blueprint::components::TimeRange(TimeRange {
-                            start: re_types::datatypes::TimeRangeBoundary::Absolute(
-                                re_types::datatypes::TimeInt(
-                                    new_x_range.start() as i64 + time_offset,
+                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
+                            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                                re_sdk_types::datatypes::TimeInt(
+                                    new_x_range_rounded.start() as i64 + time_offset,
                                 ),
                             ),
-                            end: re_types::datatypes::TimeRangeBoundary::Absolute(
-                                re_types::datatypes::TimeInt(
-                                    new_x_range.end() as i64 + time_offset,
+                            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                                re_sdk_types::datatypes::TimeInt(
+                                    new_x_range_rounded.end() as i64 + time_offset,
                                 ),
                             ),
                         });

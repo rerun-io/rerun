@@ -1,10 +1,8 @@
 use egui::NumExt as _;
-
-use re_entity_db::TimesPerTimeline;
+use re_entity_db::TimeHistogramPerTimeline;
 use re_log_types::TimeType;
-use re_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::{UICommand, UiExt as _, list_item};
-
 use re_viewer_context::{TimeControl, TimeControlCommand};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -15,7 +13,7 @@ impl TimeControlUi {
     pub fn timeline_selector_ui(
         &self,
         time_ctrl: &TimeControl,
-        times_per_timeline: &TimesPerTimeline,
+        timeline_histograms: &TimeHistogramPerTimeline,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -26,19 +24,19 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
             let response = egui::ComboBox::from_id_salt("timeline")
-                .selected_text(time_ctrl.timeline().name().as_str())
+                .selected_text(time_ctrl.timeline_name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline_stats in times_per_timeline.timelines_with_stats() {
-                        let timeline = &timeline_stats.timeline;
+                    for histogram in timeline_histograms.histograms() {
+                        let timeline = &histogram.timeline();
                         if ui
                             .selectable_label(
-                                timeline == time_ctrl.timeline(),
+                                timeline.name() == time_ctrl.timeline_name(),
                                 (
                                     timeline.name().as_str(),
                                     egui::Atom::grow(),
                                     egui::RichText::new(format!(
                                         "{} events",
-                                        re_format::format_uint(timeline_stats.num_events())
+                                        re_format::format_uint(histogram.num_events())
                                     ))
                                     .size(10.0)
                                     .color(ui.tokens().text_subdued),
@@ -94,7 +92,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 .at_pointer_fixed()
                 .show(|ui| {
                     if ui.button("Copy timeline name").clicked() {
-                        let timeline = format!("{}", time_ctrl.timeline().name());
+                        let timeline = format!("{}", time_ctrl.timeline_name());
                         re_log::info!("Copied timeline: {}", timeline);
                         ui.ctx().copy_text(timeline);
                     }
@@ -109,9 +107,10 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        if time_ctrl.time_type() == TimeType::Sequence
+        if time_ctrl.time_type() == Some(TimeType::Sequence)
             && let Some(mut fps) = time_ctrl.fps()
         {
+            let old_fps = fps;
             ui.scope(|ui| {
                 ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
 
@@ -123,7 +122,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 )
                 .on_hover_text("Frames per second");
             });
-            time_commands.push(TimeControlCommand::SetFps(fps));
+            if old_fps != fps {
+                time_commands.push(TimeControlCommand::SetFps(fps));
+            }
         }
     }
 

@@ -1,5 +1,4 @@
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
-
 use re_uri::Origin;
 
 pub type ViewerClient = MessageProxyServiceClient<tonic::transport::Channel>;
@@ -20,6 +19,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, tonic:
             .with_enabled_roots()
             .assume_http2(true),
     )?;
+
+    endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
 
     if false {
         // NOTE: Tried it, had no noticeable effects in any of my benchmarks.

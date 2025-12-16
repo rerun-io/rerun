@@ -7,28 +7,23 @@ use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use serde::Deserialize;
-use wasm_bindgen::prelude::*;
-
 use re_log::ResultExt as _;
+use re_log_channel::LogSender;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
+use serde::Deserialize;
+use wasm_bindgen::prelude::*;
 
-use crate::history::install_popstate_listener;
+use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
-
-struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
-    table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
-}
 
 #[wasm_bindgen]
 pub struct WebHandle {
@@ -38,7 +33,7 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    tx_channels: HashMap<String, Channel>,
+    log_senders: HashMap<String, LogSender>,
 
     /// The connection registry to use for the viewer.
     connection_registry: re_redap_client::ConnectionRegistryHandle,
@@ -64,7 +59,7 @@ impl WebHandle {
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
-            tx_channels: Default::default(),
+            log_senders: Default::default(),
             connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
@@ -250,23 +245,17 @@ impl WebHandle {
             return;
         };
 
-        if self.tx_channels.contains_key(id) {
+        if self.log_senders.contains_key(id) {
             re_log::warn!("Channel with id '{}' already exists.", id);
             return;
         }
 
-        let (log_tx, log_rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::JsChannelPush,
-            re_smart_channel::SmartChannelSource::JsChannel {
-                channel_name: channel_name.to_owned(),
-            },
-        );
-        let (table_tx, table_rx) = crossbeam::channel::unbounded();
+        let (log_tx, log_rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+            channel_name: channel_name.to_owned(),
+        });
 
         app.add_log_receiver(log_rx);
-        app.add_table_receiver(table_rx);
-        self.tx_channels
-            .insert(id.to_owned(), Channel { log_tx, table_tx });
+        self.log_senders.insert(id.to_owned(), log_tx);
     }
 
     /// Close an existing channel for streaming data.
@@ -278,11 +267,10 @@ impl WebHandle {
             return;
         };
 
-        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+        if let Some(log_tx) = self.log_senders.remove(id) {
             log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
-            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -293,13 +281,14 @@ impl WebHandle {
     /// Add an rrd to the viewer directly from a byte array.
     #[wasm_bindgen]
     pub fn send_rrd_to_channel(&self, id: &str, data: &[u8]) {
-        use std::{ops::ControlFlow, sync::Arc};
+        use std::ops::ControlFlow;
+        use std::sync::Arc;
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.log_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.egui_ctx.clone();
@@ -318,7 +307,7 @@ impl WebHandle {
                         use re_log_encoding::rrd::stream_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg.into()).is_ok() {
+                                if log_tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");
@@ -328,7 +317,8 @@ impl WebHandle {
                             // TODO(jleibs): Unclear what we want to do here. More data is coming.
                             HttpMessage::Success => ControlFlow::Continue(()),
                             HttpMessage::Failure(err) => {
-                                tx.quit(Some(err))
+                                log_tx
+                                    .quit(Some(err))
                                     .warn_on_err_once("Failed to send quit marker");
                                 ControlFlow::Break(())
                             }
@@ -345,8 +335,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.table_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
             let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
@@ -372,7 +362,7 @@ impl WebHandle {
 
             let record_batch = batches.remove(0);
 
-            let msg = match from_arrow_encoded(record_batch) {
+            let msg = match table_msg_from_record_batch(record_batch) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error_once!("Failed to decode Arrow message: {err}");
@@ -382,7 +372,7 @@ impl WebHandle {
 
             let egui_ctx = app.egui_ctx.clone();
 
-            match tx.send(msg) {
+            match log_tx.send(msg.into()) {
                 Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
@@ -435,7 +425,7 @@ impl WebHandle {
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = state.time_control(&store_id)?;
-        Some(time_ctrl.timeline().name().as_str().to_owned())
+        Some(time_ctrl.timeline_name().as_str().to_owned())
     }
 
     /// Set the active timeline.
@@ -594,6 +584,24 @@ impl WebHandle {
         });
         egui_ctx.request_repaint();
     }
+
+    #[wasm_bindgen]
+    pub fn set_credentials(&self, access_token: &str, email: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            command_sender,
+            egui_ctx,
+            ..
+        } = &mut *app;
+
+        command_sender.send_system(SystemCommand::SetAuthCredentials {
+            access_token: access_token.to_owned(),
+            email: email.to_owned(),
+        });
+        egui_ctx.request_repaint();
+    }
 }
 
 /// Best effort attempt at finding a store id based on the recording id.
@@ -630,7 +638,7 @@ enum PanelState {
     Expanded,
 }
 
-impl From<PanelState> for re_types::blueprint::components::PanelState {
+impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
     fn from(value: PanelState) -> Self {
         match value {
             PanelState::Hidden => Self::Hidden,
@@ -832,7 +840,9 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+fn table_msg_from_record_batch(
+    mut data: RecordBatch,
+) -> Result<TableMsg, Box<dyn std::error::Error>> {
     let id = data
         .schema_metadata_mut()
         .remove("__table_id")
@@ -846,9 +856,10 @@ pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::ArrowError;
     use arrow::array::{RecordBatch, RecordBatchOptions};
+
+    use super::*;
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.
@@ -874,10 +885,8 @@ mod tests {
 
     #[test]
     fn table_msg_encoded_roundtrip() {
-        use arrow::{
-            array::{ArrayRef, StringArray, UInt64Array},
-            datatypes::{DataType, Field, Schema},
-        };
+        use arrow::array::{ArrayRef, StringArray, UInt64Array};
+        use arrow::datatypes::{DataType, Field, Schema};
 
         let data = {
             let schema = Arc::new(Schema::new_with_metadata(
@@ -917,7 +926,7 @@ mod tests {
         };
 
         let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
-        let decoded = from_arrow_encoded(encoded).expect("from concatenated failed");
+        let decoded = table_msg_from_record_batch(encoded).expect("from concatenated failed");
 
         assert_eq!(msg, decoded);
     }

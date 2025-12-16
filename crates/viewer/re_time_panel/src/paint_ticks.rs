@@ -1,7 +1,4 @@
-use std::ops::RangeInclusive;
-
 use egui::{Align2, Color32, Rect, Rgba, Shape, Stroke, lerp, pos2, remap_clamp};
-
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRangeF, TimeReal, TimeType, TimestampFormat};
 
@@ -11,7 +8,7 @@ pub fn paint_time_ranges_and_ticks(
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     time_area_painter: &egui::Painter,
-    line_y_range: RangeInclusive<f32>,
+    line_y_range: egui::Rangef,
     time_type: TimeType,
     timestamp_format: TimestampFormat,
 ) {
@@ -44,7 +41,7 @@ pub fn paint_time_ranges_and_ticks(
         }
 
         let x_range = (*x_range.start() as f32)..=(*x_range.end() as f32);
-        let rect = Rect::from_x_y_ranges(x_range, line_y_range.clone());
+        let rect = Rect::from_x_y_ranges(x_range, line_y_range);
         time_area_painter
             .with_clip_rect(rect)
             .extend(paint_time_range_ticks(

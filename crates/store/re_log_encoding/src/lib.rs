@@ -75,9 +75,8 @@ pub mod external {
     pub use lz4_flex;
 }
 
-pub use self::rrd::*;
-
 pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
+pub use self::rrd::*;
 pub use self::transport_to_app::{ToApplication, ToTransport};

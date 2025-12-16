@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.27.0-alpha.8+dev"
-__version_info__ = (0, 27, 0, "alpha.8")
+__version__ = "0.28.0-alpha.1+dev"
+__version_info__ = (0, 28, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -111,12 +111,16 @@ from .archetypes import (
     TextDocument as TextDocument,
     TextLog as TextLog,
     Transform3D as Transform3D,
+    TransformAxes3D as TransformAxes3D,
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
+)
+from .auth import (
+    login as login,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,

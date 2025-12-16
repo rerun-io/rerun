@@ -1,0 +1,28 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// Empties all the components of an entity.
+///
+/// The presence of a clear means that a latest-at query of components at a given path(s)
+/// will not return any components that were logged at those paths before the clear.
+/// Any logged components after the clear are unaffected by the clear.
+///
+/// This implies that a range query that includes time points that are before the clear,
+/// still returns all components at the given path(s).
+/// Meaning that in practice clears are ineffective when making use of visible time ranges.
+/// Scalar plots are an exception: they track clears and use them to represent holes in the
+/// data (i.e. discontinuous lines).
+///
+/// \example archetypes/clear_simple title="Flat" image="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png"
+/// \example archetypes/clear_recursive !api "Recursive"
+table Clear (
+  "attr.cpp.no_default_ctor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView, TimeSeriesView",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer_none",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.override_crate": "re_types_core"
+) {
+  is_recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
+}

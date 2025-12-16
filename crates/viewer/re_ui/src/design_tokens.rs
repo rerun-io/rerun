@@ -4,11 +4,8 @@
 use anyhow::Context as _;
 use egui::{Color32, Margin, Stroke, Theme, Vec2};
 
-use crate::{
-    CUSTOM_WINDOW_DECORATIONS,
-    color_table::{ColorTable, ColorToken, Hue, Scale},
-    format_with_decimals_in_range,
-};
+use crate::color_table::{ColorTable, ColorToken, Hue, Scale};
+use crate::{CUSTOM_WINDOW_DECORATIONS, format_with_decimals_in_range};
 
 #[derive(Debug)]
 pub struct AlertVisuals {
@@ -150,6 +147,8 @@ pub struct DesignTokens {
     /// Color for table interaction noninteractive background stroke
     pub table_interaction_noninteractive_bg_stroke: Color32,
 
+    pub table_interaction_row_selection_fill: Color32,
+
     pub table_sort_icon_color: Color32,
 
     pub drag_pill_droppable_fill: Color32,
@@ -199,6 +198,8 @@ pub struct DesignTokens {
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
+
+    /// This is the color of time ranges that has only been partially loaded.
     pub density_graph_outside_valid_ranges: Color32,
 
     // Spatial view colors:
@@ -222,6 +223,7 @@ pub struct DesignTokens {
 
     pub code_index_color: Color32,
     pub code_string_color: Color32,
+    pub code_null_color: Color32,
     pub code_primitive_color: Color32,
     pub code_keyword_color: Color32,
 
@@ -237,6 +239,8 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
+
         let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
             .expect("Failed to parse data/color_table.ron");
         let colors = load_color_table(&color_table_ron);
@@ -322,6 +326,7 @@ impl DesignTokens {
             table_interaction_noninteractive_bg_stroke: get_color(
                 "table_interaction_noninteractive_bg_stroke",
             ),
+            table_interaction_row_selection_fill: get_color("table_interaction_row_selection_fill"),
             table_sort_icon_color: get_color("table_sort_icon_color"),
 
             drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
@@ -383,6 +388,7 @@ impl DesignTokens {
 
             code_index_color: get_color("code_index_color"),
             code_string_color: get_color("code_string_color"),
+            code_null_color: get_color("code_null_color"),
             code_primitive_color: get_color("code_primitive_color"),
 
             code_keyword_color: get_color("code_keyword_color"),

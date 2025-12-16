@@ -1,23 +1,19 @@
-use re_types::{
-    Archetype as _,
-    archetypes::EncodedImage,
-    components::{MediaType, Opacity},
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::EncodedImage;
+use re_sdk_types::components::{MediaType, Opacity};
 use re_view::HybridResults;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-};
-
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
+use super::SpatialViewVisualizerData;
+use super::entity_iterator::process_archetype;
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -42,25 +38,20 @@ impl VisualizerSystem for EncodedImageVisualizer {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())
@@ -81,10 +72,10 @@ impl VisualizerSystem for EncodedImageVisualizer {
             )
         });
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -103,8 +94,9 @@ impl EncodedImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::iter_slices;
         use re_view::RangeResultsExt as _;
+
+        use super::entity_iterator::iter_slices;
 
         let entity_path = ctx.target_entity_path;
 

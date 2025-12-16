@@ -4,7 +4,6 @@ use datafusion::catalog::CatalogProvider;
 use datafusion_ffi::catalog_provider::FFI_CatalogProvider;
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
-
 use re_datafusion::RedapCatalogProvider;
 use re_redap_client::ConnectionClient;
 
@@ -34,7 +33,7 @@ impl PyDataFusionCatalogProvider {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyDataFusionCatalogProvider {
     /// Returns a DataFusion catalog provider capsule.
     fn __datafusion_catalog_provider__<'py>(

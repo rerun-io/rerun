@@ -1,17 +1,15 @@
 use std::hash::Hash;
 
+use egui::emath::{GuiRounding as _, Rot2};
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, StrokeKind, Widget as _, WidgetInfo,
-    WidgetText,
-    emath::{GuiRounding as _, Rot2},
-    pos2,
+    CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
+    WidgetInfo, WidgetText, pos2,
 };
 
 use crate::alert::Alert;
-use crate::{
-    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
-    list_item::{self, LabelContent},
-};
+use crate::button::ReButton;
+use crate::list_item::{self, LabelContent};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -25,7 +23,11 @@ pub trait UiExt {
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
     fn theme(&self) -> egui::Theme {
-        self.ui().ctx().theme()
+        if self.ui().visuals().dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        }
     }
 
     fn tokens(&self) -> &'static DesignTokens {
@@ -210,19 +212,27 @@ pub trait UiExt {
         response
     }
 
-    fn re_checkbox(
+    fn primary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).primary())
+    }
+
+    fn secondary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).secondary())
+    }
+
+    fn re_checkbox<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text, false)
+        self.checkbox_indeterminate(checked, text.into_atoms(), false)
     }
 
     #[expect(clippy::disallowed_types)]
-    fn checkbox_indeterminate(
+    fn checkbox_indeterminate<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
         indeterminate: bool,
     ) -> egui::Response {
         self.ui_mut()
@@ -1201,9 +1211,7 @@ pub trait UiExt {
                             });
 
                             #[cfg(feature = "analytics")]
-                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
-                            }
+                            re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
                 })
@@ -1237,8 +1245,9 @@ pub trait UiExt {
 
     /// Show some markdown
     fn markdown_ui(&mut self, markdown: &str) {
-        use parking_lot::Mutex;
         use std::sync::Arc;
+
+        use parking_lot::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {

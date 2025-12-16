@@ -1,0 +1,249 @@
+---
+title: Migrating from 0.27 to 0.28
+order: 982
+---
+
+<!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
+
+## `Pose*` component types have been removed
+
+The following component types have been removed in favor of their more general counterparts:
+
+* `components.PoseTranslation3D` → `components.Translation3D`
+* `components.PoseRotationQuat` → `components.RotationQuat`
+* `components.PoseTransformMat3x3` → `components.TransformMat3x3`
+* `components.PoseRotationAxisAngle` → `components.RotationAxisAngle`
+* `components.PoseScale3D` →  `components.Scale3D`
+
+Existing `.rrd` files will be automatically migrated when opened.
+
+## `Transform3D` no longer supports `axis_length` for visualizing coordinate axes
+
+The `axis_length` parameter/method has been moved from `Transform3D` to a new `TransformAxes3D` archetype, which you can log alongside of `Transform3D`.
+This new archetype also works with the `CoordinateFrame` archetype.
+
+Existing `.rrd` recordings will be automatically migrated when opened (the migration converts `Transform3D:axis_length` components to `TransformAxes3D:axis_length`).
+
+## `CoordinateFrame::frame_id` has been renamed to `CoordinateFrame::frame`
+
+The `frame_id` component of `CoordinateFrame` has been renamed to just `frame`, because the component type `TransformFrameId` already conveys the information that this is an id.
+
+Existing `.rrd` recordings will be automatically migrated when opened (the migration renames the `frame_id` component).
+
+## Changes to `Transform3D`/`InstancePose3D` and `Pinhole`'s transform properties are now treated transactionally by the Viewer
+
+If you previously updated only certain components of `Transform3D`/`InstancePose3D` and relied on previously logged
+values remaining present,
+you must now re-log those previous values every time you update the `Transform3D`/`InstancePose3D`.
+
+If you always logged the same transform components on every log/send call or used the standard constructor of
+`Transform3D`, no changes are required!
+
+snippet: migration/transactional_transforms
+
+`Pinhole`'s transform properties, `resolution` & `image_from_plane` as well its new `parent_frame` & `child_frame`,
+fields are also affected by this change.
+Again, this means that any change to any of `Pinhole`'s `resolution`/`image_from_plane`/`parent_frame`/`child_frame`,
+will reset all of these fields.
+
+### Details & motivation
+
+We changed the way `Transform3D`, `InstancePose3D` & `Pinhole` are queried under the hood!
+
+Usually, when querying any collection of components with latest-at semantics, we look for the latest update of each
+individual component.
+This is useful, for example, when you log a mesh and only change its texture over time:
+a latest-at query at any point in time gets all the same vertex information, but the texture that is active at any given
+point in time may change.
+
+However, for `Transform3D`, this behavior can be very surprising,
+as the typical expectation is that logging a `Transform3D` with only a rotation will not inherit previously logged
+translations to the same path.
+Previously, to work around this, all SDKs implemented the constructor of `Transform3D` such that it set all components
+to empty arrays, thereby clearing everything that was logged before.
+This caused significant memory (and networking) bloat, as well as needlessly convoluted displays in the viewer.
+With the arrival of explicit ROS-style transform frames, per-component latest-at semantics can cause even more
+surprising side effects.
+
+Therefore, we decided to change the semantics of `Transform3D` such that any change to any of its components fully
+resets the transform state.
+
+For example, if you change its rotation and scale fields but do not write to translation, we will not look further back
+in time to find the previous value of translation.
+Instead, we assume that translation is not set at all (i.e., zero), deriving the new overall transform state only from
+rotation and scale.
+Naturally, if any update to a transform always changes the same components, this does not cause any changes other than
+the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
+on send and query!
+
+## URDF loader: sending transform updates now requires `parent_frame` and `child_frame` fields to be set
+
+Previous versions of the built-in [URDF](https://en.wikipedia.org/wiki/URDF) data-loader in Rerun required you to send transform updates with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
+Depending on the complexity of your robot model, this could quickly lead to long entity paths.
+E.g. when you wanted to update a joint deeper in your model hierarchy.
+
+In 0.28, this is now dropped in favor of transforms with _named_ frame IDs (`parent_frame`, `child_frame`).
+This is more in line with the TF2 system in ROS and allows you to send all transform updates on one single entity (e.g. a `transforms` entity).
+
+In particular, this results in two changes compared after you load an `URDF` model into Rerun compared to previous releases:
+
+1. To update a joint with a `Transform3D`, the `parent_frame` and `child_frame` fields need to be set (analogous to how the joint is specified in the `URDF` file).
+2. The transformation must have both rotation and translation (again, analogous to the `URDF`). Updating only the rotation is no longer supported.
+
+For more details about loading & updating `URDF` models, we added a "Loading URDF models" page to our documentation in this release.
+
+## Python SDK: catalog API overhaul
+
+This release includes a major overhaul of the `rerun.catalog` module that aims to clarify and consolidate the APIs, and make them more future-proof. This includes improving naming, more consistently using DataFusion's dataframes, removing/merging redundant APIs, and exposing fewer implementation details.
+
+We used deprecations to ease migration where possible, but several changes required breaking the API when deprecation would have been too complex. All deprecated APIs will be removed in a future release.
+
+### "Partition" renamed to "Segment"
+
+The term "partition" is overloaded in data science, and our use of it could be confusing. To avoid this, the "partition" terminology has been renamed to "segment" instead. The old APIs are deprecated.
+
+| Old API                             | New API                           |
+|-------------------------------------|-----------------------------------|
+| `DatasetEntry.partition_ids()`      | `DatasetEntry.segment_ids()`      |
+| `DatasetEntry.partition_table()`    | `DatasetEntry.segment_table()`    |
+| `DatasetEntry.partition_url()`      | `DatasetEntry.segment_url()`      |
+| `DatasetEntry.download_partition()` | `DatasetEntry.download_segment()` |
+| `partition_url()`                   | `segment_url()`                   |
+| `partition_url_udf()`               | `segment_url_udf()`               |
+
+The column `rerun_partition_id` is now `rerun_segment_id` (breaking change), and the `partition_id` field on viewer event classes (`PlayEvent`, `PauseEvent`, etc.) is now `segment_id` (the old name is deprecated and will be removed in a future release).
+
+### Catalog client
+
+**Method renames** (deprecated, old names still work):
+
+| Old API                              | New API                        |
+|--------------------------------------|--------------------------------|
+| `CatalogClient.all_entries()`        | `CatalogClient.entries()`      |
+| `CatalogClient.dataset_entries()`    | `CatalogClient.datasets()`     |
+| `CatalogClient.table_entries()`      | `CatalogClient.tables()`       |
+| `CatalogClient.get_dataset_entry()`  | `CatalogClient.get_dataset()`  |
+| `CatalogClient.get_table_entry()`    | `CatalogClient.get_table()`    |
+| `CatalogClient.create_table_entry()` | `CatalogClient.create_table()` |
+
+**New features:**
+- `entries()`, `datasets()`, `tables()`, and their `*_names()` variants now accept `include_hidden=True` to include blueprint datasets and system tables.
+
+**Breaking change:** The `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry`/`TableEntry`) instead of DataFrames. For DataFrame access to raw entries, use `client.get_table(name="__entries").reader()`.
+
+### Tables
+
+**Breaking changes:**
+
+`get_table()` now returns a `TableEntry` object instead of a DataFrame:
+
+```python
+# Before (0.27)
+df = client.get_table(name="my_table")
+
+# After (0.28)
+df = client.get_table(name="my_table").reader()
+```
+
+`TableEntry.df()` has been renamed to `TableEntry.reader()`.
+
+**Deprecations:** Write operations moved from `CatalogClient` to `TableEntry`:
+
+| Old API                                | New API                                                               |
+|----------------------------------------|-----------------------------------------------------------------------|
+| `client.write_table(name, data, mode)` | `table.append(data)` / `table.overwrite(data)` / `table.upsert(data)` |
+| `client.append_to_table(name, data)`   | `table.append(data)`                                                  |
+| `client.update_table(name, data)`      | `table.upsert(data)`                                                  |
+
+The new methods also support keyword arguments: `table.append(col1=[1, 2, 3], col2=["a", "b", "c"])`.
+
+
+### Dataset querying
+
+**Breaking change:** `DataframeQueryView` has been removed. Its functionality has been split between `DatasetView` (for segment and content filtering) and standard DataFusion DataFrame operations (for row-level filtering).
+
+Use `DatasetEntry.filter_segments()` and `DatasetEntry.filter_contents()` to create a `DatasetView`, then call `reader()` to get a `datafusion.DataFrame`. Any row-level filtering (like `filter_is_not_null()`) should now be done on the resulting DataFrame using DataFusion's filtering APIs.
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", contents={"/points": ["Position2D"]})
+df = view.filter_partition_id(["recording_0"]).df()
+
+# After (0.28)
+view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+df = view.reader(index="timeline")
+```
+
+`DatasetEntry.segment_table()` and `DatasetEntry.manifest()` now return `datafusion.DataFrame` directly (no `.df()` call needed). `segment_table()` also accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
+
+Key migration patterns:
+- Index selection: `dataset.reader(index="timeline")`
+- Content filtering: `dataset.filter_contents(["/points/**"]).reader(...)` <!-- NOLINT -->
+- Segment filtering: `dataset.filter_segments(["recording_0"]).reader(...)` <!-- NOLINT -->
+- Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
+- Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame <!-- NOLINT -->
+
+### Registration and tasks
+
+The dataset segment registration APIs have been consolidated, and return a `RegistrationHandle` specific to the registration process. The more generic `Tasks` object previously used has been removed.
+
+**Breaking change:** `register()` and `register_batch()` have been merged into a unified `register()` API that returns a `RegistrationHandle`:
+
+```python
+# Single registration
+segment_id = dataset.register("s3://bucket/recording.rrd").wait().segment_ids[0]
+
+# Batch registration
+handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
+segment_ids = handle.wait().segment_ids
+
+# Progress tracking
+for result in handle.iter_results():
+    print(f"Registered {result.uri} as {result.segment_id}")
+```
+
+The `recording_layer` parameter has been renamed to `layer_name`.
+
+### Blueprints
+
+The updated APIs are now abstracted from the underlying storage mechanism (blueprint datasets).
+
+**Deprecations:**
+
+| Old API                                             | New API                                |
+|-----------------------------------------------------|----------------------------------------|
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`     |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+
+**New methods:**
+- `dataset.register_blueprint(url, set_default=True)` - register and optionally set as default
+- `dataset.blueprints()` - list all registered blueprints
+
+### Search indexes
+
+**Deprecations:** Methods renamed to clarify "search index" vs "dataset index":
+
+| Old API                              | New API                                     |
+|--------------------------------------|---------------------------------------------|
+| `DatasetEntry.create_fts_index()`    | `DatasetEntry.create_fts_search_index()`    |
+| `DatasetEntry.create_vector_index()` | `DatasetEntry.create_vector_search_index()` |
+| `DatasetEntry.list_indexes()`        | `DatasetEntry.list_search_indexes()`        |
+| `DatasetEntry.delete_indexes()`      | `DatasetEntry.delete_search_indexes()`      |
+
+**Breaking change:** `search_fts()` and `search_vector()` now return `datafusion.DataFrame` directly:
+
+```python
+# Before (0.27)
+result = dataset.search_fts("query", column).df()
+
+# After (0.28)
+result = dataset.search_fts("query", column)
+```
+
+### Schema types moved
+
+The `Schema` class and column descriptor/selector types have moved from `rerun.dataframe` to `rerun.catalog`. The old import paths still work but are deprecated.
+
+### Other deprecations
+
+`DatasetEntry.download_segments()` is deprecated and will be removed in a future release.

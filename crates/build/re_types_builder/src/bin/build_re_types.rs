@@ -6,16 +6,15 @@
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 
+use camino::Utf8Path;
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
 use re_types_builder::{SourceLocations, compute_re_types_hash};
 
-use camino::Utf8Path;
-
-const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/store/re_types/source_hash.txt";
-const DEFINITIONS_DIR_PATH: &str = "crates/store/re_types/definitions";
-const ENTRYPOINT_PATH: &str = "crates/store/re_types/definitions/entry_point.fbs";
+const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/store/re_sdk_types/source_hash.txt";
+const DEFINITIONS_DIR_PATH: &str = "crates/store/re_sdk_types/definitions";
+const ENTRYPOINT_PATH: &str = "crates/store/re_sdk_types/definitions/entry_point.fbs";
 const SNIPPETS_DIR_PATH: &str = "docs/snippets/all";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";

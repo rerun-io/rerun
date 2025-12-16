@@ -1,31 +1,27 @@
-use prost::Name as _;
 use std::sync::Arc;
 
 use arrow::array::{
-    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
-    StringBuilder, UInt8Array, UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatch,
+    RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array,
+    UInt64Array,
 };
-use arrow::datatypes::FieldRef;
-use arrow::{
-    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
-    datatypes::{DataType, Field, Schema, TimeUnit},
-    error::ArrowError,
-};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema, TimeUnit};
+use arrow::error::ArrowError;
+use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::external::re_types_core::ComponentBatch as _;
+use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
 use crate::cloud::v1alpha1::{
     EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
     QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
-    ScanPartitionTableResponse, VectorDistanceMetric,
+    ScanSegmentTableResponse, VectorDistanceMetric,
 };
-use crate::common::v1alpha1::{
-    ComponentDescriptor, DataframePart, TaskId,
-    ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
-};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
+use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
@@ -35,6 +31,28 @@ macro_rules! lazy_field_ref {
         let field = FIELD.get_or_init(|| Arc::new($fld));
         Arc::clone(field)
     }};
+}
+
+// --- CreateIndexRequest
+#[derive(Debug)]
+pub struct CreateIndexRequest {
+    pub config: IndexConfig,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateIndexRequest> for CreateIndexRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::CreateIndexRequest) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::CreateIndexRequest { config } = value;
+
+        Ok(CreateIndexRequest {
+            config: config
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::CreateIndexRequest, "config")
+                })?
+                .try_into()?,
+        })
+    }
 }
 
 // --- RegisterWithDatasetRequest ---
@@ -80,7 +98,7 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
 
 #[derive(Debug, Clone)]
 pub struct QueryDatasetRequest {
-    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub segment_ids: Vec<crate::common::v1alpha1::ext::SegmentId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
@@ -94,7 +112,7 @@ pub struct QueryDatasetRequest {
 impl Default for QueryDatasetRequest {
     fn default() -> Self {
         Self {
-            partition_ids: vec![],
+            segment_ids: vec![],
             chunk_ids: vec![],
             entity_paths: vec![],
             select_all_entity_paths: true,
@@ -110,7 +128,7 @@ impl Default for QueryDatasetRequest {
 impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
     fn from(value: QueryDatasetRequest) -> Self {
         Self {
-            partition_ids: value.partition_ids.into_iter().map(Into::into).collect(),
+            segment_ids: value.segment_ids.into_iter().map(Into::into).collect(),
             chunk_ids: value
                 .chunk_ids
                 .into_iter()
@@ -131,12 +149,15 @@ impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetReques
     type Error = tonic::Status;
 
     fn try_from(value: crate::cloud::v1alpha1::QueryDatasetRequest) -> Result<Self, Self::Error> {
+        // Support both segment_ids (new) and partition_ids (deprecated) for backward compatibility
+        let segment_ids = value
+            .segment_ids
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
         Ok(Self {
-            partition_ids: value
-                .partition_ids
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
+            segment_ids,
 
             chunk_ids: value
                 .chunk_ids
@@ -180,8 +201,8 @@ impl QueryDatasetResponse {
     // These columns are guaranteed to be returned by `QueryDataset`. Additional columns may also be
     // returned.
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
-    pub const FIELD_CHUNK_PARTITION_ID: &str = "chunk_partition_id";
-    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_partition_layer";
+    pub const FIELD_CHUNK_SEGMENT_ID: &str = "chunk_segment_id";
+    pub const FIELD_CHUNK_LAYER_NAME: &str = "rerun_segment_layer";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
@@ -199,9 +220,9 @@ impl QueryDatasetResponse {
         )
     }
 
-    pub fn field_chunk_partition_id() -> FieldRef {
+    pub fn field_chunk_segment_id() -> FieldRef {
         lazy_field_ref!(
-            Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
+            Field::new(Self::FIELD_CHUNK_SEGMENT_ID, DataType::Utf8, false).with_metadata(
                 [(
                     re_sorbet::metadata::RERUN_KIND.to_owned(),
                     "control".to_owned()
@@ -253,7 +274,7 @@ impl QueryDatasetResponse {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
-            Self::field_chunk_partition_id(),
+            Self::field_chunk_segment_id(),
             Self::field_chunk_layer_name(),
             Self::field_chunk_key(),
             Self::field_chunk_entity_path(),
@@ -272,7 +293,7 @@ impl QueryDatasetResponse {
 
     pub fn create_dataframe(
         chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_partition_ids: Vec<String>,
+        chunk_segment_ids: Vec<String>,
         chunk_layer_names: Vec<String>,
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
@@ -284,7 +305,7 @@ impl QueryDatasetResponse {
             chunk_ids
                 .to_arrow()
                 .expect("to_arrow for ChunkIds never fails"),
-            Arc::new(StringArray::from(chunk_partition_ids)),
+            Arc::new(StringArray::from(chunk_segment_ids)),
             Arc::new(StringArray::from(chunk_layer_names)),
             Arc::new(BinaryArray::from(chunk_keys)),
             Arc::new(StringArray::from(chunk_entity_paths)),
@@ -305,7 +326,7 @@ impl FetchChunksRequest {
 
     //TODO(RR-2677): actually, these are also required for now.
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
-    pub const FIELD_CHUNK_PARTITION_ID: &str = QueryDatasetResponse::FIELD_CHUNK_PARTITION_ID;
+    pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
 
     pub fn required_column_names() -> Vec<String> {
@@ -313,7 +334,7 @@ impl FetchChunksRequest {
             Self::FIELD_CHUNK_KEY.to_owned(),
             //TODO(RR-2677): remove these
             Self::FIELD_CHUNK_ID.to_owned(),
-            Self::FIELD_CHUNK_PARTITION_ID.to_owned(),
+            Self::FIELD_CHUNK_SEGMENT_ID.to_owned(),
             Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
         ]
     }
@@ -322,8 +343,8 @@ impl FetchChunksRequest {
         QueryDatasetResponse::field_chunk_id()
     }
 
-    pub fn field_chunk_partition_id() -> FieldRef {
-        QueryDatasetResponse::field_chunk_partition_id()
+    pub fn field_chunk_segment_id() -> FieldRef {
+        QueryDatasetResponse::field_chunk_segment_id()
     }
 
     pub fn field_chunk_layer_name() -> FieldRef {
@@ -337,7 +358,7 @@ impl FetchChunksRequest {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
-            Self::field_chunk_partition_id(),
+            Self::field_chunk_segment_id(),
             Self::field_chunk_layer_name(),
             Self::field_chunk_key(),
         ]
@@ -572,19 +593,19 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
 
 // --- DatasetDetails ---
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
-    pub default_blueprint: Option<PartitionId>,
+    pub default_blueprint_segment: Option<SegmentId>,
 }
 
 impl DatasetDetails {
     /// Returns the default blueprint for this dataset.
     ///
-    /// Both `blueprint_dataset` and `default_blueprint` must be set.
-    pub fn default_bluprint(&self) -> Option<(EntryId, PartitionId)> {
+    /// Both `blueprint_dataset` and `default_blueprint_segment` must be set.
+    pub fn default_blueprint(&self) -> Option<(EntryId, SegmentId)> {
         let blueprint = self.blueprint_dataset.as_ref()?;
-        self.default_blueprint
+        self.default_blueprint_segment
             .as_ref()
             .map(|default| (blueprint.clone(), default.clone()))
     }
@@ -594,9 +615,14 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::cloud::v1alpha1::DatasetDetails) -> Result<Self, Self::Error> {
+        let default_blueprint_segment = value
+            .default_blueprint_segment
+            .map(TryInto::try_into)
+            .transpose()?;
+
         Ok(Self {
             blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
-            default_blueprint: value.default_blueprint.map(TryInto::try_into).transpose()?,
+            default_blueprint_segment,
         })
     }
 }
@@ -605,7 +631,7 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
     fn from(value: DatasetDetails) -> Self {
         Self {
             blueprint_dataset: value.blueprint_dataset.map(Into::into),
-            default_blueprint: value.default_blueprint.map(Into::into),
+            default_blueprint_segment: value.default_blueprint_segment.clone().map(Into::into),
         }
     }
 }
@@ -1310,6 +1336,26 @@ pub struct Query {
     pub columns_always_include_component_indexes: bool,
 }
 
+impl Query {
+    /// Create a query that returns everything that is needed to view every time point
+    /// in the given range with latest-at semantics.
+    pub fn latest_at_range(timeline_name: &TimelineName, time_range: AbsoluteTimeRange) -> Self {
+        Self {
+            // So that we can show the state at the start:
+            latest_at: Some(QueryLatestAt {
+                index: Some(timeline_name.to_string()),
+                at: time_range.min,
+            }),
+            // Show we can show everything in the range:
+            range: Some(QueryRange {
+                index: timeline_name.to_string(),
+                index_range: time_range.into(),
+            }),
+            ..Self::default()
+        }
+    }
+}
+
 impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
     type Error = tonic::Status;
 
@@ -1458,37 +1504,37 @@ impl GetDatasetSchemaResponse {
 // --- RegisterWithDatasetResponse ---
 
 impl RegisterWithDatasetResponse {
-    pub const PARTITION_ID: &str = "rerun_partition_id";
-    pub const PARTITION_LAYER: &str = "rerun_partition_layer";
-    pub const PARTITION_TYPE: &str = "rerun_partition_type";
-    pub const STORAGE_URL: &str = "rerun_storage_url";
-    pub const TASK_ID: &str = "rerun_task_id";
+    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
+    pub const FIELD_SEGMENT_LAYER: &str = "rerun_segment_layer";
+    pub const FIELD_SEGMENT_TYPE: &str = "rerun_segment_type";
+    pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+    pub const FIELD_TASK_ID: &str = "rerun_task_id";
 
     /// The Arrow schema of the dataframe in [`Self::data`].
     pub fn schema() -> Schema {
         Schema::new(vec![
-            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
-            Field::new(Self::PARTITION_LAYER, DataType::Utf8, false),
-            Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
-            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
-            Field::new(Self::TASK_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_LAYER, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_TYPE, DataType::Utf8, false),
+            Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
         ])
     }
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        partition_ids: Vec<String>,
-        partition_layers: Vec<String>,
-        partition_types: Vec<String>,
+        segment_ids: Vec<String>,
+        segment_layers: Vec<String>,
+        segment_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(partition_ids)),
-            Arc::new(StringArray::from(partition_layers)),
-            Arc::new(StringArray::from(partition_types)),
+            Arc::new(StringArray::from(segment_ids)),
+            Arc::new(StringArray::from(segment_layers)),
+            Arc::new(StringArray::from(segment_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
         ];
@@ -1502,41 +1548,41 @@ impl RegisterWithDatasetResponse {
 }
 
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RegisterWithDatasetTaskDescriptor {
-    pub partition_id: PartitionId,
-    pub partition_type: DataSourceKind,
+    pub segment_id: SegmentId,
+    pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
 }
 
-// --- ScanPartitionTableResponse --
+// --- ScanSegmentTableResponse --
 
-impl ScanPartitionTableResponse {
-    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
+impl ScanSegmentTableResponse {
+    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
 
-    /// Layer names for this partition, one per layer.
+    /// Layer names for this segment, one per layer.
     ///
     /// Should have the same length as [`Self::FIELD_STORAGE_URLS`].
     pub const FIELD_LAYER_NAMES: &str = "rerun_layer_names";
 
-    /// Storage URLs for this partition, one per layer.
+    /// Storage URLs for this segment, one per layer.
     ///
     /// Should have the same length as [`Self::FIELD_LAYER_NAMES`].
     pub const FIELD_STORAGE_URLS: &str = "rerun_storage_urls";
 
-    /// Keeps track of the most recent time any layer belonging to this partition was updated in any
+    /// Keeps track of the most recent time any layer belonging to this segment was updated in any
     /// way.
     pub const FIELD_LAST_UPDATED_AT: &str = "rerun_last_updated_at";
 
-    /// Total number of chunks for this partition.
+    /// Total number of chunks for this segment.
     pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
 
-    /// Total size in bytes for this partition.
+    /// Total size in bytes for this segment.
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
 
-    pub fn field_partition_id() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
+    pub fn field_segment_id() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false))
     }
 
     pub fn field_layer_names() -> FieldRef {
@@ -1583,7 +1629,7 @@ impl ScanPartitionTableResponse {
     // tests in `dataplatform`)
     pub fn fields() -> Vec<FieldRef> {
         vec![
-            Self::field_partition_id(),
+            Self::field_segment_id(),
             Self::field_layer_names(),
             Self::field_storage_urls(),
             Self::field_last_updated_at(),
@@ -1598,14 +1644,14 @@ impl ScanPartitionTableResponse {
 
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
-        partition_ids: Vec<String>,
+        segment_ids: Vec<String>,
         layer_names: Vec<Vec<String>>,
         storage_urls: Vec<Vec<String>>,
         last_updated_at: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
 
         let mut layer_names_builder =
@@ -1629,7 +1675,7 @@ impl ScanPartitionTableResponse {
         }
 
         let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(segment_ids)),
             Arc::new(layer_names_builder.finish()),
             Arc::new(urls_builder.finish()),
             Arc::new(TimestampNanosecondArray::from(last_updated_at)),
@@ -1656,7 +1702,7 @@ impl ScanPartitionTableResponse {
 
 impl ScanDatasetManifestResponse {
     pub const FIELD_LAYER_NAME: &str = "rerun_layer_name";
-    pub const FIELD_PARTITION_ID: &str = "rerun_partition_id";
+    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
     pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
     pub const FIELD_LAYER_TYPE: &str = "rerun_layer_type";
 
@@ -1673,8 +1719,8 @@ impl ScanDatasetManifestResponse {
         lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false))
     }
 
-    pub fn field_partition_id() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_PARTITION_ID, DataType::Utf8, false))
+    pub fn field_segment_id() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false))
     }
 
     pub fn field_storage_url() -> FieldRef {
@@ -1720,7 +1766,7 @@ impl ScanDatasetManifestResponse {
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_layer_name(),
-            Self::field_partition_id(),
+            Self::field_segment_id(),
             Self::field_storage_url(),
             Self::field_layer_type(),
             Self::field_registration_time(),
@@ -1738,7 +1784,7 @@ impl ScanDatasetManifestResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         layer_names: Vec<String>,
-        partition_ids: Vec<String>,
+        segment_ids: Vec<String>,
         storage_urls: Vec<String>,
         layer_types: Vec<String>,
         registration_times: Vec<i64>,
@@ -1747,7 +1793,7 @@ impl ScanDatasetManifestResponse {
         size_bytes: Vec<u64>,
         schema_sha256s: Vec<[u8; 32]>,
     ) -> arrow::error::Result<RecordBatch> {
-        let row_count = partition_ids.len();
+        let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
 
         let mut schema_sha256_builder = FixedSizeBinaryBuilder::with_capacity(row_count, 32);
@@ -1757,7 +1803,7 @@ impl ScanDatasetManifestResponse {
 
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(layer_names)),
-            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(segment_ids)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(layer_types)),
             Arc::new(TimestampNanosecondArray::from(registration_times)),
@@ -2023,7 +2069,7 @@ pub enum IndexProperties {
     },
 
     VectorIvfPq {
-        num_partitions: Option<u32>,
+        // see proto file for documentation
         target_partition_num_rows: Option<u32>,
         num_sub_vectors: u32,
         metric: VectorDistanceMetric,
@@ -2044,7 +2090,6 @@ impl std::fmt::Display for IndexProperties {
             ),
 
             Self::VectorIvfPq {
-                num_partitions,
                 target_partition_num_rows,
                 num_sub_vectors,
                 metric,
@@ -2053,11 +2098,6 @@ impl std::fmt::Display for IndexProperties {
                     write!(
                         f,
                         "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
-                    )
-                } else if let Some(num_partitions) = num_partitions {
-                    write!(
-                        f,
-                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
                     )
                 } else {
                     write!(
@@ -2093,14 +2133,12 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
                 )),
             },
             IndexProperties::VectorIvfPq {
-                num_partitions,
                 target_partition_num_rows,
                 num_sub_vectors,
                 metric,
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions,
                         target_partition_num_rows,
                         num_sub_vectors: Some(num_sub_vectors),
                         distance_metrics: metric.into(),
@@ -2138,7 +2176,6 @@ impl TryFrom<crate::cloud::v1alpha1::IndexProperties> for IndexProperties {
             }),
 
             Props::Vector(data) => Ok(Self::VectorIvfPq {
-                num_partitions: data.num_partitions,
                 target_partition_num_rows: data.target_partition_num_rows,
                 num_sub_vectors: data.num_sub_vectors.ok_or_else(|| {
                     missing_field!(
@@ -2282,6 +2319,47 @@ impl From<IndexConfig> for crate::cloud::v1alpha1::IndexConfig {
 
 // ---
 
+#[derive(Debug, Clone)]
+pub struct SearchDatasetRequest {
+    pub column: IndexColumn,
+    pub query: RecordBatch,
+    pub properties: IndexQueryProperties,
+    pub scan_parameters: ScanParameters,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::SearchDatasetRequest> for SearchDatasetRequest {
+    type Error = TypeConversionError;
+    fn try_from(value: crate::cloud::v1alpha1::SearchDatasetRequest) -> Result<Self, Self::Error> {
+        Ok(SearchDatasetRequest {
+            column: value
+                .column
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "column")
+                })?
+                .try_into()?,
+            query: value
+                .query
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "query")
+                })?
+                .try_into()?,
+            properties: value
+                .properties
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "properties")
+                })?
+                .try_into()?,
+            scan_parameters: value
+                .scan_parameters
+                .map(ScanParameters::try_from)
+                .transpose()?
+                .unwrap_or_default(),
+        })
+    }
+}
+
+// ---
+
 impl From<ComponentColumnDescriptor> for crate::cloud::v1alpha1::IndexColumn {
     fn from(value: ComponentColumnDescriptor) -> Self {
         Self {
@@ -2349,10 +2427,39 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 
 // --
 
+pub struct QueryTasksOnCompletionResponse {
+    pub data: arrow::record_batch::RecordBatch,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::QueryTasksOnCompletionResponse>
+    for QueryTasksOnCompletionResponse
+{
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::QueryTasksOnCompletionResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            data: value
+                .data
+                .ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::QueryTasksOnCompletionResponse,
+                        "data"
+                    )
+                })?
+                .try_into()?,
+        })
+    }
+}
+
+// --
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TableInsertMode {
     Append,
     Overwrite,
+    Replace,
 }
 
 impl Default for TableInsertMode {
@@ -2376,6 +2483,7 @@ impl From<crate::cloud::v1alpha1::TableInsertMode> for TableInsertMode {
         match value {
             cloud::TableInsertMode::Unspecified | cloud::TableInsertMode::Append => Self::Append,
             cloud::TableInsertMode::Overwrite => Self::Overwrite,
+            cloud::TableInsertMode::Replace => Self::Replace,
         }
     }
 }
@@ -2385,6 +2493,7 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
         match value {
             TableInsertMode::Append => Self::Append,
             TableInsertMode::Overwrite => Self::Overwrite,
+            TableInsertMode::Replace => Self::Replace,
         }
     }
 }
@@ -2393,13 +2502,14 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::datatypes::ToByteSlice as _;
+
+    use super::*;
 
     #[test]
     fn test_query_dataset_response_create_dataframe() {
         let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
-        let chunk_partition_id = vec!["partition_id_1".to_owned(), "partition_id_2".to_owned()];
+        let chunk_segment_ids = vec!["segment_id_1".to_owned(), "segment_id_2".to_owned()];
         let chunk_layer_names = vec!["layer1".to_owned(), "layer2".to_owned()];
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
@@ -2407,7 +2517,7 @@ mod tests {
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
-            chunk_partition_id,
+            chunk_segment_ids,
             chunk_layer_names,
             chunk_keys,
             chunk_entity_paths,
@@ -2418,16 +2528,16 @@ mod tests {
 
     /// Ensure `crate_dataframe` implementation is consistent with `schema()`
     #[test]
-    fn test_scan_partition_table_response_create_dataframe() {
-        let partition_ids = vec!["1".to_owned(), "2".to_owned()];
+    fn test_scan_segment_table_response_create_dataframe() {
+        let segment_ids = vec!["1".to_owned(), "2".to_owned()];
         let layer_names = vec![vec!["a".to_owned(), "b".to_owned()], vec!["c".to_owned()]];
         let storage_urls = vec![vec!["d".to_owned(), "e".to_owned()], vec!["f".to_owned()]];
         let last_updated_at = vec![1, 2];
         let num_chunks = vec![1, 2];
         let size_bytes = vec![1, 2];
 
-        ScanPartitionTableResponse::create_dataframe(
-            partition_ids,
+        ScanSegmentTableResponse::create_dataframe(
+            segment_ids,
             layer_names,
             storage_urls,
             last_updated_at,
@@ -2441,7 +2551,7 @@ mod tests {
     #[test]
     fn test_scan_dataset_manifest_response_create_dataframe() {
         let layer_name = vec!["a".to_owned()];
-        let partition_id = vec!["1".to_owned()];
+        let segment_id = vec!["1".to_owned()];
         let storage_url = vec!["d".to_owned()];
         let layer_type = vec!["c".to_owned()];
         let registration_time = vec![1];
@@ -2452,7 +2562,7 @@ mod tests {
 
         ScanDatasetManifestResponse::create_dataframe(
             layer_name,
-            partition_id,
+            segment_id,
             storage_url,
             layer_type,
             registration_time,

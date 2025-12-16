@@ -30,9 +30,9 @@ re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_renderer.workspace = true
-re_smart_channel.workspace = true
+re_log_channel.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = [
+re_sdk_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }
 re_types_core.workspace = true

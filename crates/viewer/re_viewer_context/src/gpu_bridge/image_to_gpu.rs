@@ -3,29 +3,24 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{Rangef, util::hash};
+use egui::Rangef;
+use egui::util::hash;
 use half::f16;
+use re_renderer::device_caps::DeviceCaps;
+use re_renderer::renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha};
+use re_renderer::resource_managers::{
+    ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+};
+use re_renderer::{RenderContext, pad_rgb_to_rgba};
+use re_sdk_types::components::ClassId;
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::image::ImageKind;
 use wgpu::TextureFormat;
 
-use re_renderer::{
-    RenderContext,
-    device_caps::DeviceCaps,
-    pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha},
-    resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
-    },
-};
-use re_types::components::ClassId;
-use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
-use re_types::image::ImageKind;
-
-use crate::{
-    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
-    image_info::ColormapWithRange,
-};
-
 use super::get_or_create_texture;
+use crate::gpu_bridge::colormap::colormap_to_re_renderer;
+use crate::image_info::ColormapWithRange;
+use crate::{Annotations, ImageInfo, ImageStats};
 
 // ----------------------------------------------------------------------------
 
@@ -237,8 +232,8 @@ pub fn texture_creation_desc_from_color_image<'a>(
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
-            re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
-            re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
         let range = if pixel_format.is_limited_yuv_range() {

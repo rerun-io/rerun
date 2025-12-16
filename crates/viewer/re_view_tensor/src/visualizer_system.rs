@@ -1,13 +1,11 @@
 use re_chunk_store::{LatestAtQuery, RowId};
-use re_types::{
-    Archetype as _,
-    archetypes::Tensor,
-    components::{TensorData, ValueRange},
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Tensor;
+use re_sdk_types::components::{TensorData, ValueRange};
 use re_view::{RangeResultsExt as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 #[derive(Clone)]
@@ -38,7 +36,7 @@ impl VisualizerSystem for TensorSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -97,7 +95,7 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

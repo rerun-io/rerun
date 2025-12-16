@@ -1,9 +1,6 @@
-use re_log_types::EntityPath;
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::external::arrow::util::display::{ArrayFormatter, FormatOptions};
 use re_test_context::TestContext;
-use re_types::{
-    ViewClassIdentifier,
-    external::arrow::util::display::{ArrayFormatter, FormatOptions},
-};
 use re_viewer_context::{BlueprintId, DataQueryResult, QueryContext, ViewContext};
 
 #[test]
@@ -12,10 +9,12 @@ fn test_all_component_fallbacks() {
 
     test_context.run(&egui::Context::default(), |viewer_context| {
         // Create a dummy view context
+        let space_origin = "/".into();
         let view_context = ViewContext {
             viewer_ctx: viewer_context,
             view_id: BlueprintId::invalid(),
             view_class_identifier: ViewClassIdentifier::invalid(),
+            space_origin: &space_origin,
             view_state: &(),
             query_result: &DataQueryResult::default(),
         };
@@ -24,7 +23,7 @@ fn test_all_component_fallbacks() {
         for (arch_name, arch) in &test_context.reflection.archetypes {
             let ctx = QueryContext {
                 view_ctx: &view_context,
-                target_entity_path: &EntityPath::root(),
+                target_entity_path: &"/stockholm/södermalm/slussen".into(),
                 archetype_name: Some(*arch_name),
                 query: &test_context.blueprint_query,
             };

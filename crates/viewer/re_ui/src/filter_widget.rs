@@ -212,7 +212,7 @@ impl FilterState {
         let visuals = response
             .as_ref()
             .map(|r| ui.style().interact(r))
-            .unwrap_or(&ui.visuals().widgets.inactive);
+            .unwrap_or_else(|| &ui.visuals().widgets.inactive);
 
         let selection_stroke = ui.visuals().selection.stroke;
         let stroke = if response.is_some_and(|r| r.has_focus()) {

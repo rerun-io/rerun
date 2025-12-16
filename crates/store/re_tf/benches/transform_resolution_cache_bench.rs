@@ -1,14 +1,13 @@
 #![expect(clippy::unwrap_used)] // acceptable in benchmarks
 
-use criterion::{Criterion, criterion_group, criterion_main};
-use itertools::Itertools as _;
 use std::sync::Arc;
 
+use criterion::{Criterion, criterion_group, criterion_main};
+use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreEvent};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
-use re_types::{RowId, archetypes};
-
+use re_sdk_types::{RowId, archetypes};
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
 
 #[global_allocator]

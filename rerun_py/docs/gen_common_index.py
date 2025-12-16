@@ -226,6 +226,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Mesh3D",
             "archetypes.Points2D",
             "archetypes.Points3D",
+            "archetypes.TransformAxes3D",
         ],
         gen_page=False,
     ),
@@ -421,16 +422,17 @@ SECTION_TABLE: Final[list[Section]] = [
         show_submodules=True,
         class_list=[
             "AlreadyExistsError",
-            "DataframeQueryView",
-            "DatasetEntry",
             "CatalogClient",
+            "DatasetEntry",
+            "DatasetView",
             "Entry",
             "EntryId",
             "EntryKind",
             "IndexValuesLike",
             "NotFoundError",
+            "RegistrationHandle",
+            "SegmentRegistrationResult",
             "TableEntry",
-            "Task",
             "VectorDistanceMetric",
             "VectorDistanceMetricLike",
         ],
@@ -522,7 +524,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
-| 0.27              | Nov. 2025 (est.) | 3.10+                        |
+| 0.27              | Nov. 10, 2025    | 3.10+                        |
 | 0.26              | Oct. 13, 2025    | 3.9+                         |
 | 0.25              | Sep. 16, 2025    | 3.9+                         |
 | 0.24              | Jul. 17, 2025    | 3.9+                         |

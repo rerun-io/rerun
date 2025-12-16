@@ -2,7 +2,7 @@
 
 use rerun::external::{
     arrow, eframe, egui, re_chunk_store, re_crash_handler, re_entity_db, re_grpc_server, re_log,
-    re_log_types, re_memory, re_types, re_viewer, tokio,
+    re_log_types, re_memory, re_sdk_types, re_viewer, tokio,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -24,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (rx, _) = re_grpc_server::spawn_with_recv(
+    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
+    let rx = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -154,7 +154,7 @@ fn component_ui(
     entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
-    component: re_types::ComponentIdentifier,
+    component: re_sdk_types::ComponentIdentifier,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:

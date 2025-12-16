@@ -8,19 +8,15 @@ use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind,
-        ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry},
-    },
-    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
-};
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
+use crate::OnError;
 use crate::entrypoint::NamedPath;
 use crate::store::table::TableType;
 use crate::store::{ChunkKey, Dataset, Error, Table};
@@ -60,17 +56,17 @@ impl InMemoryStore {
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, partition, layer
+        // sort keys per dataset, segment, layer
         let mut chunk_key_index: HashMap<
             &EntryId,
-            HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
+            HashMap<&SegmentId, HashMap<&str, Vec<&ChunkKey>>>,
         > = Default::default();
 
         for chunk_key in chunk_keys {
             chunk_key_index
                 .entry(&chunk_key.dataset_id)
                 .or_default()
-                .entry(&chunk_key.partition_id)
+                .entry(&chunk_key.segment_id)
                 .or_default()
                 .entry(&chunk_key.layer_name)
                 .or_default()
@@ -79,25 +75,25 @@ impl InMemoryStore {
 
         let mut result = Vec::with_capacity(chunk_keys.len());
 
-        for (dataset_id, partition_index) in chunk_key_index {
+        for (dataset_id, segment_index) in chunk_key_index {
             let dataset = self.dataset(*dataset_id)?;
 
-            for (partition_id, layer_index) in partition_index {
-                let partition = dataset.partition(partition_id)?;
+            for (segment_id, layer_index) in segment_index {
+                let segment = dataset.segment(segment_id)?;
 
                 let store_id = StoreId::new(
                     StoreKind::Recording,
                     dataset_id.to_string(),
-                    partition_id.id.as_str(),
+                    segment_id.id.as_str(),
                 );
 
                 for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = partition
+                    let store_handle = segment
                         .layer(layer_name)
                         .ok_or_else(|| {
                             Error::LayerNameNotFound(
                                 layer_name.to_owned(),
-                                partition_id.clone(),
+                                segment_id.clone(),
                                 *dataset_id,
                             )
                         })?
@@ -120,10 +116,11 @@ impl InMemoryStore {
 
     /// Load a directory of RRDs.
     //TODO(ab): maybe we could be smart with .rbl and auto-setup a blueprint dataset?
-    pub fn load_directory_as_dataset(
+    pub async fn load_directory_as_dataset(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
+        on_error: OnError,
     ) -> Result<(), Error> {
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
@@ -155,12 +152,30 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)?;
+                    if let Err(err) = dataset
+                        .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
+                        .await
+                    {
+                        match on_error {
+                            OnError::Continue => {
+                                re_log::warn!(
+                                    "Failed loading file in {}: {err}",
+                                    directory.display()
+                                );
+                            }
+                            OnError::Abort => {
+                                return Err(err);
+                            }
+                        }
+                    }
                 }
             }
         }
 
         self.update_entries_table()?;
+
+        re_log::info!("Finished loading {}", directory.display());
+
         Ok(())
     }
 
@@ -192,20 +207,24 @@ impl InMemoryStore {
         };
 
         // Verify it is a valid lance table
-        let path = directory.to_str().ok_or(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Expected a valid path, got: {}", directory.display()),
-        ))?;
+        let path = directory.to_str().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Expected a valid path, got: {}", directory.display()),
+            )
+        })?;
 
         let table = TableType::LanceDataset(Arc::new(
             lance::Dataset::open(path)
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
         ));
-        let table_url = url::Url::from_directory_path(&directory).or(Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Cannot turn directory into URL",
-        )))?;
+        let table_url = url::Url::from_directory_path(&directory).map_err(|_err| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Cannot turn directory into URL",
+            )
+        })?;
 
         let entry_id = EntryId::new();
         let provider_details = LanceTable { table_url };
@@ -287,39 +306,6 @@ impl InMemoryStore {
         self.update_entries_table()
     }
 
-    /// Update the table of entries. This method must be called after
-    /// any changes to either the registered datasets or tables. We
-    /// can remove this restriction if we change the store to be an
-    /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
-    /// TODO(#11369)
-    fn update_entries_table(&mut self) -> Result<(), Error> {
-        use std::sync::Arc;
-
-        use re_protos::cloud::v1alpha1::{SystemTableKind, ext::SystemTable};
-
-        let entries_table_id = *self
-            .id_by_name
-            .entry(ENTRIES_TABLE_NAME.to_owned())
-            .or_insert(EntryId::new());
-        let prior_entries_table = self.tables.remove(&entries_table_id);
-
-        let entries_table = Arc::new(self.entries_table()?);
-        self.tables.insert(
-            entries_table_id,
-            Table::new(
-                entries_table_id,
-                ENTRIES_TABLE_NAME.to_owned(),
-                TableType::DataFusionTable(entries_table),
-                prior_entries_table.map(|t| t.created_at()),
-                ProviderDetails::SystemTable(SystemTable {
-                    kind: SystemTableKind::Entries,
-                }),
-            ),
-        );
-
-        Ok(())
-    }
-
     pub fn create_dataset(
         &mut self,
         name: &str,
@@ -340,19 +326,71 @@ impl InMemoryStore {
 
         self.id_by_name.insert(name.clone(), entry_id);
 
-        Ok(self.datasets.entry(entry_id).or_insert_with(|| {
-            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default())
-        }))
+        self.datasets.insert(
+            entry_id,
+            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default()),
+        );
+
+        self.update_entries_table()?;
+        self.dataset_mut(entry_id)
     }
 
-    pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
-        re_log::debug!(?entry_id, "delete_dataset");
-        if let Some(dataset) = self.datasets.remove(&entry_id) {
-            self.id_by_name.remove(dataset.name());
+    /// Delete the provided entry.
+    ///
+    /// For dataset, the corresponding blueprint dataset will be deleted as well.
+    pub fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), Error> {
+        re_log::debug!(?entry_id, "delete_entry");
+
+        if let Some(table) = self.tables.remove(&entry_id) {
+            self.id_by_name.remove(table.name());
+            self.update_entries_table()?;
             Ok(())
+        } else if let Some(dataset) = self.datasets.remove(&entry_id) {
+            self.id_by_name.remove(dataset.name());
+            self.update_entries_table()?;
+
+            if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
+                self.delete_entry(blueprint_entry_id)
+            } else {
+                Ok(())
+            }
         } else {
             Err(Error::EntryIdNotFound(entry_id))
         }
+    }
+
+    /// Update the table of entries. This method must be called after
+    /// any changes to either the registered datasets or tables. We
+    /// can remove this restriction if we change the store to be an
+    /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
+    /// TODO(#11369)
+    fn update_entries_table(&mut self) -> Result<(), Error> {
+        use std::sync::Arc;
+
+        use re_protos::cloud::v1alpha1::SystemTableKind;
+        use re_protos::cloud::v1alpha1::ext::SystemTable;
+
+        let entries_table_id = *self
+            .id_by_name
+            .entry(ENTRIES_TABLE_NAME.to_owned())
+            .or_insert_with(EntryId::new);
+        let prior_entries_table = self.tables.remove(&entries_table_id);
+
+        let entries_table = Arc::new(self.entries_table()?);
+        self.tables.insert(
+            entries_table_id,
+            Table::new(
+                entries_table_id,
+                ENTRIES_TABLE_NAME.to_owned(),
+                TableType::DataFusionTable(entries_table),
+                prior_entries_table.map(|t| t.created_at()),
+                ProviderDetails::SystemTable(SystemTable {
+                    kind: SystemTableKind::Entries,
+                }),
+            ),
+        );
+
+        Ok(())
     }
 
     pub fn dataset(&self, entry_id: EntryId) -> Result<&Dataset, Error> {

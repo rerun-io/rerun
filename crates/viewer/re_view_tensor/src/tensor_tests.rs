@@ -1,7 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
-use re_types::datatypes::{TensorBuffer, TensorData};
-use re_types::tensor_data::TensorCastError;
+use re_sdk_types::datatypes::{TensorBuffer, TensorData};
+use re_sdk_types::tensor_data::TensorCastError;
 
 #[test]
 fn convert_tensor_to_ndarray_u8() {
