@@ -16,7 +16,6 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
-use crate::chunk_index::DatasetChunkIndexes;
 use crate::store::{Error, InMemoryStore, Layer, Segment, Tracked};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
@@ -24,7 +23,8 @@ pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
     segments: HashMap<SegmentId, Segment>,
-    indexes: DatasetChunkIndexes,
+    #[cfg(feature = "lance")]
+    indexes: crate::chunk_index::DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -48,7 +48,8 @@ impl Dataset {
                 name,
                 details,
                 segments: HashMap::default(),
-                indexes: DatasetChunkIndexes::new(id),
+                #[cfg(feature = "lance")]
+                indexes: crate::chunk_index::DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -88,7 +89,8 @@ impl Dataset {
         self.inner.updated_at()
     }
 
-    pub fn indexes(&self) -> &DatasetChunkIndexes {
+    #[cfg(feature = "lance")]
+    pub fn indexes(&self) -> &crate::chunk_index::DatasetChunkIndexes {
         &self.inner.indexes
     }
 
@@ -452,6 +454,9 @@ impl Dataset {
             .map(|layer| layer.store_handle())
     }
 
+    // we can't expect there are no async calls without the lance feature
+    #[allow(clippy::allow_attributes)]
+    #[allow(clippy::unused_async)]
     pub async fn add_layer(
         &mut self,
         segment_id: SegmentId,
@@ -473,9 +478,13 @@ impl Dataset {
                 on_duplicate,
             )?;
 
+        #[cfg(feature = "lance")]
         self.indexes()
             .on_layer_added(segment_id, store_handle, &layer_name, overwritten)
             .await?;
+
+        #[cfg(not(feature = "lance"))]
+        let _ = overwritten;
 
         Ok(())
     }
