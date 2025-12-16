@@ -17,19 +17,14 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
     """
 
     all_segments = (
-        readonly_test_dataset.dataframe_query_view(index=None, contents="/**")
-        .df()
-        .select("rerun_segment_id")
-        .sort(col("rerun_segment_id"))
-        .collect()
+        readonly_test_dataset.reader(index=None).select("rerun_segment_id").sort(col("rerun_segment_id")).collect()
     )
     all_segments = [v for rb in all_segments for v in rb[0]]
 
     def find_time_boundaries(time_index: str, segment: pa.Scalar) -> list[pa.Scalar]:
         """Find four times: start, middle third, upper third, stop."""
         rbs = (
-            readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
-            .df()
+            readonly_test_dataset.reader(index=time_index)
             .filter(col("rerun_segment_id") == segment)
             .select(time_index)
             .sort(col(time_index))
@@ -95,19 +90,13 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
         # Collect all data without any filtering and store in memory
         # so that we can have guarantees that our push-down filters
         # do not impact the results.
-        full_data = readonly_test_dataset.dataframe_query_view(index=time_idx, contents="/**").df().collect()
+        full_data = readonly_test_dataset.reader(index=time_idx).collect()
         catalog_client.ctx.register_record_batches(time_idx, [full_data])
         full_data = catalog_client.ctx.table(time_idx)
 
         for test_filter in all_tests:
             # We must sort to guarantee the output ordering
-            results = (
-                readonly_test_dataset.dataframe_query_view(index=time_idx, contents="/**")
-                .df()
-                .filter(test_filter)
-                .sort(col("log_time"))
-                .collect()
-            )
+            results = readonly_test_dataset.reader(index=time_idx).filter(test_filter).sort(col("log_time")).collect()
             expected = full_data.filter(test_filter).sort(col("log_time")).collect()
 
             assert results == expected
