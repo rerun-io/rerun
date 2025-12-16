@@ -18,8 +18,8 @@ class ViewerEventBase:
     recording_id: str
     segment_id: str | None
 
-    @deprecated("Use `segment_id` instead.")
     @property
+    @deprecated("Use `segment_id` instead.")
     def partition_id(self) -> str | None:
         return self.segment_id
 
