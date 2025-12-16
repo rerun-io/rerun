@@ -6,6 +6,8 @@ use re_sdk_types::components::{RotationQuat, Translation3D};
 use re_sdk_types::datatypes::Quaternion;
 
 use super::super::Ros2MessageParser;
+use crate::parsers::ros2msg::definitions::geometry_msgs::{Transform, TransformStamped};
+use crate::parsers::ros2msg::definitions::std_msgs::Header;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -51,27 +53,35 @@ impl MessageParser for TfMessageParser {
         let TFMessage { transforms } = cdr::try_decode_message::<TFMessage>(&msg.data)?;
 
         // Each transform in the message has its own timestamp.
-        for transform in transforms {
+        for TransformStamped {
+            header,
+            child_frame_id,
+            transform,
+        } in transforms
+        {
             // Add the header timestamp to the context.
             // `log_time` and `publish_time` are added via `log_and_publish_time_from_msg`.
-            ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
-                transform.header.stamp.as_nanos() as u64,
-            ));
+            let Header { stamp, frame_id } = header;
+            ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(stamp.as_nanos() as u64));
 
-            self.parent_frame_ids.push(transform.header.frame_id);
-            self.child_frame_ids.push(transform.child_frame_id);
+            self.parent_frame_ids.push(frame_id);
+            self.child_frame_ids.push(child_frame_id);
 
+            let Transform {
+                translation,
+                rotation,
+            } = transform;
             self.translations.push(Translation3D::new(
-                transform.transform.translation.x as f32,
-                transform.transform.translation.y as f32,
-                transform.transform.translation.z as f32,
+                translation.x as f32,
+                translation.y as f32,
+                translation.z as f32,
             ));
             self.quaternions.push(
                 Quaternion::from_xyzw([
-                    transform.transform.rotation.x as f32,
-                    transform.transform.rotation.y as f32,
-                    transform.transform.rotation.z as f32,
-                    transform.transform.rotation.w as f32,
+                    rotation.x as f32,
+                    rotation.y as f32,
+                    rotation.z as f32,
+                    rotation.w as f32,
                 ])
                 .into(),
             );
