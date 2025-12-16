@@ -1,5 +1,5 @@
 use super::MediaType;
-use re_rvl::RvlMetadata;
+use re_rvl::RosRvlMetadata;
 
 // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
 // constants directly in there.
@@ -50,10 +50,10 @@ impl MediaType {
     // -------------------------------------------------------
     // Compressed Depth Data:
 
-    /// [RVL compressed depth]
-    /// <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>: `application/rvl`.
+    /// RVL compressed depth: `application/rvl`.
     ///
     /// Range Image Visualization Library (RVL) compressed depth data format.
+    /// <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>: `application/rvl`.
     pub const RVL: &'static str = "application/rvl";
 
     // -------------------------------------------------------
@@ -196,7 +196,7 @@ impl MediaType {
         fn rvl_matcher(buf: &[u8]) -> bool {
             const MAX_REASONABLE_DIMENSION: u32 = 65_536;
 
-            let Ok(metadata) = RvlMetadata::parse(buf) else {
+            let Ok(metadata) = RosRvlMetadata::parse(buf) else {
                 return false;
             };
 

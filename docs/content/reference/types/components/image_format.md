@@ -29,7 +29,6 @@ Struct {
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
-* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

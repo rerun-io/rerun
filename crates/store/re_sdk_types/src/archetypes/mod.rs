@@ -24,7 +24,6 @@ mod depth_image_ext;
 mod ellipsoids3d;
 mod ellipsoids3d_ext;
 mod encoded_depth_image;
-mod encoded_depth_image_ext;
 mod encoded_image;
 mod encoded_image_ext;
 mod geo_line_strings;

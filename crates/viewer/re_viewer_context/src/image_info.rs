@@ -29,9 +29,6 @@ pub fn resolution_of_image_at(
         .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
         .or_else(|| {
             all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
-        })
-        .or_else(|| {
-            all_components.get(&archetypes::EncodedDepthImage::descriptor_format().component)
         });
 
     if let Some((_, image_format)) = image_format_descr.and_then(|component| {
@@ -73,10 +70,40 @@ pub fn resolution_of_image_at(
             });
 
         if let Ok(image) = image {
-            return Some(components::Resolution::from([
-                image.format.width as f32,
-                image.format.height as f32,
-            ]));
+            return Some(image.width_height_f32().into());
+        }
+    }
+
+    // Check for an encoded depth image.
+    if let Some(((_time, row_id), blob)) = entity_db
+        .latest_at_component::<re_sdk_types::components::Blob>(
+            entity_path,
+            query,
+            archetypes::EncodedDepthImage::descriptor_blob().component,
+        )
+    {
+        let media_type = entity_db
+            .latest_at_component::<components::MediaType>(
+                entity_path,
+                query,
+                archetypes::EncodedDepthImage::descriptor_media_type().component,
+            )
+            .map(|(_, c)| c);
+
+        let depth_image = ctx
+            .store_context
+            .caches
+            .entry(|c: &mut crate::ImageDecodeCache| {
+                c.entry_encoded_depth(
+                    row_id,
+                    archetypes::EncodedDepthImage::descriptor_blob().component,
+                    &blob,
+                    media_type.as_ref(),
+                )
+            });
+
+        if let Ok(depth_image) = depth_image {
+            return Some(depth_image.width_height_f32().into());
         }
     }
 
@@ -180,6 +207,10 @@ impl ImageInfo {
 
     pub fn width_height(&self) -> [u32; 2] {
         [self.format.width, self.format.height]
+    }
+
+    pub fn width_height_f32(&self) -> [f32; 2] {
+        [self.format.width as f32, self.format.height as f32]
     }
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.

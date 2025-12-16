@@ -69,6 +69,17 @@ class MediaTypeExt:
     """
 
     # --------------------------
+    # Compressed Depth Data:
+
+    RVL: MediaType = None  # type: ignore[assignment]
+    """
+    RVL compressed depth: `application/rvl`.
+
+    Range Image Visualization Library (RVL) compressed depth data format.
+    <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>
+    """
+
+    # --------------------------
     # Video:
 
     MP4: MediaType = None  # type: ignore[assignment]

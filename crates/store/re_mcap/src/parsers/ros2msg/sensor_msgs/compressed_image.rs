@@ -1,10 +1,8 @@
 use super::super::definitions::sensor_msgs;
-use anyhow::{Context as _, bail};
+use anyhow::bail;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_rvl::RvlMetadata;
 use re_sdk_types::archetypes::{EncodedDepthImage, EncodedImage, VideoStream};
-use re_sdk_types::components::{ImageFormat, MediaType, VideoCodec};
-use re_sdk_types::datatypes::ChannelDatatype;
+use re_sdk_types::components::{MediaType, VideoCodec};
 
 use super::super::Ros2MessageParser;
 use crate::parsers::cdr;
@@ -17,18 +15,14 @@ pub struct CompressedImageMessageParser {
     ///
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
-    image_formats: Vec<ImageFormat>,
     mode: ParsedPayloadKind,
-    is_h264: bool,
 }
 
 impl Ros2MessageParser for CompressedImageMessageParser {
     fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
-            image_formats: Vec::with_capacity(num_rows),
             mode: ParsedPayloadKind::Unknown,
-            is_h264: false,
         }
     }
 }
@@ -49,39 +43,22 @@ impl MessageParser for CompressedImageMessageParser {
 
         let data = data.into_owned();
 
-        if let Some(datatype) = depth_rvl_encoding(&format) {
+        if is_rvl(&format) {
             self.ensure_mode(ParsedPayloadKind::DepthRvl)?;
-
-            let metadata = RvlMetadata::parse(&data).with_context(|| {
-                format!("Failed to parse RVL header for compressed depth image '{format}'")
-            })?;
-
-            self.image_formats.push(ImageFormat::depth(
-                [metadata.width, metadata.height],
-                datatype,
-            ));
-            self.blobs.push(data);
+        } else if format.eq_ignore_ascii_case("h264") {
+            self.ensure_mode(ParsedPayloadKind::H264)?;
         } else {
             self.ensure_mode(ParsedPayloadKind::Encoded)?;
-            self.blobs.push(data);
-
-            if format.eq_ignore_ascii_case("h264") {
-                // If the format for this topic is h264 once, we assume it is h264 for all messages.
-                self.is_h264 = true;
-            }
         }
+
+        self.blobs.push(data);
 
         Ok(())
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
         re_tracing::profile_function!();
-        let Self {
-            blobs,
-            image_formats,
-            mode,
-            is_h264,
-        } = *self;
+        let Self { blobs, mode } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
@@ -91,23 +68,20 @@ impl MessageParser for CompressedImageMessageParser {
                 let media_types = std::iter::repeat_n(MediaType::rvl(), blobs.len());
                 EncodedDepthImage::update_fields()
                     .with_many_blob(blobs)
-                    .with_many_format(image_formats)
                     .with_many_media_type(media_types)
                     .columns_of_unit_batches()?
                     .collect()
             }
+            ParsedPayloadKind::H264 => VideoStream::update_fields()
+                .with_many_sample(blobs)
+                .columns_of_unit_batches()?
+                .collect(),
+
             ParsedPayloadKind::Unknown | ParsedPayloadKind::Encoded => {
-                if is_h264 {
-                    VideoStream::update_fields()
-                        .with_many_sample(blobs)
-                        .columns_of_unit_batches()?
-                        .collect()
-                } else {
-                    EncodedImage::update_fields()
-                        .with_many_blob(blobs)
-                        .columns_of_unit_batches()?
-                        .collect()
-                }
+                EncodedImage::update_fields()
+                    .with_many_blob(blobs)
+                    .columns_of_unit_batches()?
+                    .collect()
             }
         };
 
@@ -118,11 +92,7 @@ impl MessageParser for CompressedImageMessageParser {
             components,
         )?;
 
-        if matches!(
-            mode,
-            ParsedPayloadKind::Unknown | ParsedPayloadKind::Encoded
-        ) && is_h264
-        {
+        if mode == ParsedPayloadKind::H264 {
             // codec should be logged once per entity, as static data.
             let codec_chunk = Chunk::builder(entity_path.clone())
                 .with_archetype(
@@ -142,6 +112,7 @@ impl MessageParser for CompressedImageMessageParser {
 enum ParsedPayloadKind {
     Unknown,
     Encoded,
+    H264,
     DepthRvl,
 }
 
@@ -154,29 +125,23 @@ impl CompressedImageMessageParser {
             }
             (mode, new_mode) if mode == new_mode => Ok(()),
             _ => bail!(
-                "Encountered mixed compressed image payloads (RVL depth + encoded) on the same topic; this is not supported"
+                "Encountered mixed compressed image payloads on the same topic; this is not supported"
             ),
         }
     }
 }
 
-fn depth_rvl_encoding(format: &str) -> Option<ChannelDatatype> {
-    let (encoding, remainder) = format.split_once(';')?;
+fn is_rvl(format: &str) -> bool {
+    let Some((encoding, remainder)) = format.split_once(';') else {
+        return false;
+    };
     let encoding = encoding.trim();
     if encoding.is_empty() {
-        return None;
+        return false;
     }
 
     let remainder_lower = remainder.trim().to_ascii_lowercase();
-    if remainder_lower.contains("compresseddepth") && remainder_lower.contains("rvl") {
-        if encoding.eq_ignore_ascii_case("32FC1") {
-            Some(ChannelDatatype::F32)
-        } else {
-            Some(ChannelDatatype::U16)
-        }
-    } else {
-        None
-    }
+    remainder_lower.contains("compresseddepth") && remainder_lower.contains("rvl")
 }
 
 #[cfg(test)]
@@ -185,15 +150,9 @@ mod tests {
 
     #[test]
     fn detects_depth_rvl_format() {
-        assert_eq!(
-            depth_rvl_encoding("16UC1; compressedDepth RVL").unwrap(),
-            ChannelDatatype::U16
-        );
-        assert_eq!(
-            depth_rvl_encoding("32FC1; compressedDepth RVL").unwrap(),
-            ChannelDatatype::F32
-        );
-        assert!(depth_rvl_encoding("16UC1; compressedDepth png").is_none());
-        assert!(depth_rvl_encoding("jpeg").is_none());
+        assert!(is_rvl("16UC1; compressedDepth RVL"));
+        assert!(is_rvl("32FC1; compressedDepth RVL"));
+        assert!(!is_rvl("16UC1; compressedDepth png"));
+        assert!(!is_rvl("jpeg"));
     }
 }

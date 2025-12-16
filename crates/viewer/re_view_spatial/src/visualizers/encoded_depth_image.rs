@@ -4,7 +4,7 @@ use re_log_types::EntityPathHash;
 use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
-    components::{Colormap, ImageFormat, MediaType},
+    components::{Colormap, MediaType},
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
@@ -71,7 +71,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             &mut output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use super::entity_iterator::{iter_component, iter_slices};
+                use super::entity_iterator::iter_slices;
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_blob_chunks) =
@@ -79,16 +79,9 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 else {
                     return Ok(());
                 };
-                let Some(all_format_chunks) =
-                    results.get_required_chunks(EncodedDepthImage::descriptor_format().component)
-                else {
-                    return Ok(());
-                };
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_formats_indexed =
-                    iter_component::<ImageFormat>(&all_format_chunks, timeline);
                 let all_media_types = results.iter_as(
                     timeline,
                     EncodedDepthImage::descriptor_media_type().component,
@@ -111,15 +104,13 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 for (
                     (_time, row_id),
                     blobs,
-                    format,
                     media_type,
                     colormap,
                     value_range,
                     depth_meter,
                     fill_ratio,
-                ) in re_query::range_zip_1x6(
+                ) in re_query::range_zip_1x5(
                     all_blobs_indexed,
-                    all_formats_indexed,
                     all_media_types.slice::<String>(),
                     all_colormaps.slice::<u8>(),
                     all_value_ranges.slice::<[f64; 2]>(),
@@ -130,13 +121,6 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         spatial_ctx.output.report_error_for(
                             entity_path.clone(),
                             "EncodedDepthImage blob is empty.".to_owned(),
-                        );
-                        continue;
-                    };
-                    let Some(format) = first_copied(format.as_deref()) else {
-                        spatial_ctx.output.report_error_for(
-                            entity_path.clone(),
-                            "Depth image format is missing.".to_owned(),
                         );
                         continue;
                     };
@@ -151,7 +135,6 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                             EncodedDepthImage::descriptor_blob().component,
                             blob,
                             media_type.as_ref(),
-                            &format,
                         )
                     }) {
                         Ok(image) => image,

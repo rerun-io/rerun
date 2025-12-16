@@ -12,8 +12,11 @@ const CONFIG_HEADER_SIZE: usize = size_of::<i32>() + size_of::<[f32; 2]>();
 const RESOLUTION_HEADER_SIZE: usize = size_of::<[u32; 2]>();
 
 /// Metadata extracted from a ROS2 `compressedDepth` RVL payload.
+///
+/// We haven't found any other documentation on this other than the implementation itself.
+/// <https://github.com/ros-perception/image_transport_plugins/blob/jazzy/compressed_depth_image_transport/src/codec.cpp>
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RvlMetadata {
+pub struct RosRvlMetadata {
     pub width: u32,
     pub height: u32,
     pub depth_quant_a: f32,
@@ -22,7 +25,7 @@ pub struct RvlMetadata {
     num_pixels: usize,
 }
 
-impl RvlMetadata {
+impl RosRvlMetadata {
     #[inline]
     pub fn payload<'a>(&self, bytes: &'a [u8]) -> Result<&'a [u8], RvlDecodeError> {
         bytes
@@ -112,7 +115,10 @@ pub enum RvlDecodeError {
     ValueOverflow,
 }
 
-pub fn decode_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16>, RvlDecodeError> {
+fn decode_rvl_without_quantization(
+    data: &[u8],
+    metadata: &RosRvlMetadata,
+) -> Result<Vec<u16>, RvlDecodeError> {
     let payload = metadata.payload(data)?;
     let mut disparity = vec![0u16; metadata.num_pixels()];
     let mut decoder = RvlDecoder::new(payload);
@@ -120,8 +126,11 @@ pub fn decode_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16>, R
     Ok(disparity)
 }
 
-pub fn decode_rvl_f32(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<f32>, RvlDecodeError> {
-    let disparity = decode_rvl_u16(data, metadata)?;
+pub fn decode_rvl_with_quantization(
+    data: &[u8],
+    metadata: &RosRvlMetadata,
+) -> Result<Vec<f32>, RvlDecodeError> {
+    let disparity = decode_rvl_without_quantization(data, metadata)?;
     let mut depth = Vec::with_capacity(disparity.len());
     for value in disparity {
         if value == 0 {
@@ -238,7 +247,7 @@ mod tests {
     fn detects_metadata() {
         let disparity = [0u16, 1200, 1201, 0, 800];
         let data = build_depth_message([5, 1], &disparity, (0.0, 0.0));
-        let metadata = RvlMetadata::parse(&data).unwrap();
+        let metadata = RosRvlMetadata::parse(&data).unwrap();
         assert_eq!(metadata.width, 5);
         assert_eq!(metadata.height, 1);
     }
@@ -247,8 +256,8 @@ mod tests {
     fn decodes_rvl_u16_payload() {
         let disparity = [0u16, 1200, 1201, 0, 800];
         let data = build_depth_message([5, 1], &disparity, (0.0, 0.0));
-        let metadata = RvlMetadata::parse(&data).unwrap();
-        let decoded = decode_rvl_u16(&data, &metadata).unwrap();
+        let metadata = RosRvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_without_quantization(&data, &metadata).unwrap();
         assert_eq!(decoded, disparity);
     }
 
@@ -258,8 +267,8 @@ mod tests {
         let height = 48;
         let disparity = vec![0u16; (width * height) as usize];
         let data = build_depth_message([width, height], &disparity, (0.0, 0.0));
-        let metadata = RvlMetadata::parse(&data).unwrap();
-        let decoded = decode_rvl_u16(&data, &metadata).unwrap();
+        let metadata = RosRvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_without_quantization(&data, &metadata).unwrap();
         assert_eq!(decoded, disparity);
     }
 
@@ -268,8 +277,8 @@ mod tests {
         let disparity = [5u16, 0, 10];
         let depth_params = (10.0, 1.0);
         let data = build_depth_message([3, 1], &disparity, depth_params);
-        let metadata = RvlMetadata::parse(&data).unwrap();
-        let decoded = decode_rvl_f32(&data, &metadata).unwrap();
+        let metadata = RosRvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_with_quantization(&data, &metadata).unwrap();
         assert!((decoded[0] - 2.5).abs() < 1e-6);
         assert!(decoded[1].is_nan());
         assert!((decoded[2] - (10.0 / 9.0)).abs() < 1e-6);

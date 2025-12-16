@@ -11,7 +11,6 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
 ## Fields
 ### Required
 * `blob`: [`Blob`](../components/blob.md)
-* `format`: [`ImageFormat`](../components/image_format.md)
 
 ### Recommended
 * `media_type`: [`MediaType`](../components/media_type.md)

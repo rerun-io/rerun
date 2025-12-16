@@ -2058,14 +2058,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "blob",
                         display_name: "Blob",
                         component_type: "rerun.components.Blob".into(),
-                        docstring_md: "The encoded depth payload (e.g. RVL, depth-PNG).",
-                        is_required: true,
-                    },
-                    ArchetypeFieldReflection {
-                        name: "format",
-                        display_name: "Format",
-                        component_type: "rerun.components.ImageFormat".into(),
-                        docstring_md: "Image format (width, height, datatype).\n\nStandard image formats like PNG or JPEG include this metadata in their headers,\nallowing [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image) to be self-describing. Depth images, however,\ntypically use headerless codecs, so this information must be provided explicitly.",
+                        docstring_md: "The encoded depth payload.\n\nSupported are:\n* single channel PNG\n* RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)",
                         is_required: true,
                     },
                     ArchetypeFieldReflection {

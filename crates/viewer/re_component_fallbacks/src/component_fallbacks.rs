@@ -314,21 +314,6 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| ColormapWithRange::DEFAULT_DEPTH_COLORMAP,
     );
     registry.register_component_fallback_provider(
-        archetypes::EncodedDepthImage::descriptor_meter().component,
-        |ctx| {
-            let is_float_image = ctx
-                .recording()
-                .latest_at_component::<components::ImageFormat>(
-                    ctx.target_entity_path,
-                    ctx.query,
-                    archetypes::EncodedDepthImage::descriptor_format().component,
-                )
-                .is_some_and(|(_index, format)| format.is_float());
-
-            components::DepthMeter::from(if is_float_image { 1.0 } else { 1000.0 })
-        },
-    );
-    registry.register_component_fallback_provider(
         archetypes::EncodedDepthImage::descriptor_depth_range().component,
         |ctx| {
             let blob = ctx.recording().latest_at_component::<components::Blob>(
@@ -336,14 +321,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 ctx.query,
                 archetypes::EncodedDepthImage::descriptor_blob().component,
             );
-            let format = ctx
-                .recording()
-                .latest_at_component::<components::ImageFormat>(
-                    ctx.target_entity_path,
-                    ctx.query,
-                    archetypes::EncodedDepthImage::descriptor_format().component,
-                );
-            if let (Some(((_time, row_id), blob)), Some((_, format))) = (blob, format) {
+            if let Some(((_time, row_id), blob)) = blob {
                 let media_type = ctx
                     .recording()
                     .latest_at_component::<components::MediaType>(
@@ -361,7 +339,6 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         archetypes::EncodedDepthImage::descriptor_blob().component,
                         &blob_bytes,
                         media_type.as_ref(),
-                        &format,
                     )
                 }) {
                     let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));

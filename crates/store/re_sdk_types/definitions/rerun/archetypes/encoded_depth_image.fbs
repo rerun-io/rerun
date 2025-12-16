@@ -6,7 +6,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/encoded_depth_image
 table EncodedDepthImage(
-  "attr.cpp.no_field_ctors",
+  "attr.rerun.visualizer": "EncodedDepthImage",
   "attr.docs.category": "Image & tensor",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
   "attr.rerun.state": "unstable",
@@ -14,15 +14,12 @@ table EncodedDepthImage(
 ) {
   // --- Required ---
 
-  /// The encoded depth payload (e.g. RVL, depth-PNG).
-  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
-
-  /// Image format (width, height, datatype).
+  /// The encoded depth payload.
   ///
-  /// Standard image formats like PNG or JPEG include this metadata in their headers,
-  /// allowing [archetypes.EncodedImage] to be self-describing. Depth images, however,
-  /// typically use headerless codecs, so this information must be provided explicitly.
-  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
+  /// Supported are:
+  /// * single channel PNG
+  /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
