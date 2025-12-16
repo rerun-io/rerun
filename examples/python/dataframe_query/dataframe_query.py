@@ -25,13 +25,8 @@ def query(path_to_rrd: str, entity_path_filter: str) -> None:
     with rr.server.Server(datasets={"recording": [path_to_rrd]}) as server:
         dataset = server.client().get_dataset("recording")
 
-        # Apply entity path filter if specified
-        if entity_path_filter != "/**":
-            view = dataset.filter_contents([entity_path_filter])
-        else:
-            view = dataset
-
         # Query the data
+        view = dataset.filter_contents([entity_path_filter])
         df = view.reader(index="log_time")
 
         # Convert to pandas and show first 10 rows

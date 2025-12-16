@@ -252,7 +252,7 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 ## `RecordingView` and local dataframe API deprecated
 
 With the OSS server and the catalog APIs gaining maturity, we want to make this the primary way to query data out of Rerun, including when working locally.
-These APIs will receive ongoing improvements in the future, and offer a smoother migration path to cloud-based workflows. 
+These APIs will receive ongoing improvements in the future, and offer a smoother migration path to cloud-based workflows.
 As a result, we are deprecating `rerun.dataframe` in this release, and in particular the ability to run dataframe queries on a `Recording` object. See the following sections for more details.
 
 
