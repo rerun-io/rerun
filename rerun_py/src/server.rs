@@ -6,7 +6,7 @@ use pyo3::types::{
     PyStringMethods as _,
 };
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
-use re_server::{self, Args as ServerArgs};
+use re_server::{self, Args as ServerArgs, NamedPathCollection};
 
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
@@ -17,16 +17,18 @@ pub struct PyServerInternal {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (*, address="0.0.0.0", port=51234, datasets=None, tables=None))]
-    #[pyo3(text_signature = "(self, *, address='0.0.0.0', port=51234, datasets=None, tables=None)")]
+    #[pyo3(signature = (*, address, port, datasets, dataset_prefixes, tables))]
+    #[pyo3(text_signature = "(self, *, address, port, datasets, dataset_prefixes, tables)")]
     pub fn new(
         py: Python<'_>,
         address: &str,
         port: u16,
-        datasets: Option<&Bound<'_, PyDict>>,
-        tables: Option<&Bound<'_, PyDict>>,
+        datasets: &Bound<'_, PyDict>,
+        dataset_prefixes: &Bound<'_, PyDict>,
+        tables: &Bound<'_, PyDict>,
     ) -> PyResult<Self> {
-        let datasets = extract_named_paths(datasets);
+        let datasets = extract_named_collections(datasets);
+        let dataset_prefixes = extract_named_paths(dataset_prefixes);
         let tables = extract_named_paths(tables);
 
         // we can re-use the CLI argument to construct the server
@@ -34,6 +36,7 @@ impl PyServerInternal {
             addr: address.to_owned(),
             port,
             datasets,
+            dataset_prefixes,
             tables,
         };
 
@@ -78,21 +81,32 @@ impl PyServerInternal {
     }
 }
 
-fn extract_named_paths(dict: Option<&Bound<'_, PyDict>>) -> Vec<re_server::NamedPath> {
-    dict.map(|dict| {
-        dict.iter()
-            .filter_map(|(k, v)| {
-                let name = k.downcast::<PyString>().ok()?;
-                let path = v.extract::<&str>().ok()?;
+fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
+    dict.iter()
+        .filter_map(|(k, v)| {
+            let name = k.downcast::<PyString>().ok()?;
+            let path = v.extract::<&str>().ok()?;
 
-                Some(re_server::NamedPath {
-                    name: Some(name.to_string_lossy().to_string()),
-                    path: std::path::PathBuf::from(path),
-                })
+            Some(re_server::NamedPath {
+                name: Some(name.to_string_lossy().to_string()),
+                path: std::path::PathBuf::from(path),
             })
-            .collect::<Vec<_>>()
-    })
-    .unwrap_or_default()
+        })
+        .collect()
+}
+
+fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedPathCollection> {
+    dict.iter()
+        .filter_map(|(k, v)| {
+            let name = k.downcast::<PyString>().ok()?;
+            let paths: Vec<String> = v.extract().ok()?;
+
+            Some(NamedPathCollection {
+                name: name.to_string_lossy().to_string(),
+                paths: paths.into_iter().map(std::path::PathBuf::from).collect(),
+            })
+        })
+        .collect()
 }
 
 /// Register the `rerun.server` module.

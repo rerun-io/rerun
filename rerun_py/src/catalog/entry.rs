@@ -119,8 +119,8 @@ pub struct PyEntryDetails(pub EntryDetails);
 #[pymethods] // NOLINT: ignore[py-mthd-str] internal object, __str__ not needed
 impl PyEntryDetails {
     #[getter]
-    fn id(&self) -> String {
-        self.0.id.to_string()
+    fn id(&self) -> PyEntryId {
+        self.0.id.into()
     }
 
     #[getter]

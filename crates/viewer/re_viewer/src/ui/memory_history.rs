@@ -1,5 +1,3 @@
-#![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
-
 use emath::History;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_viewer_context::store_hub::{StoreHubStats, StoreStats};
@@ -12,34 +10,34 @@ pub struct MemoryHistory {
     ///
     /// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
     /// Working Set on Windows.
-    pub resident: History<i64>,
+    pub resident: History<u64>,
 
     /// Bytes used by the application according to our own memory allocator's accounting.
     ///
     /// This can be smaller than [`Self::resident`] because our memory allocator may not
     /// return all the memory we free to the OS.
-    pub counted_allocator: History<i64>,
+    pub counted_allocator: History<u64>,
 
     /// VRAM bytes used by the application according to its own accounting if a tracker was installed.
     ///
     /// Values are usually a rough estimate as the actual amount of VRAM used depends a lot
     /// on the specific GPU and driver. Accounted typically only raw buffer & texture sizes.
-    pub counted_vram: History<i64>,
+    pub counted_vram: History<u64>,
 
     /// Bytes used by all blueprints, (according to its own accounting).
-    pub counted_blueprints: History<i64>,
+    pub counted_blueprints: History<u64>,
 
     /// Bytes used by all recordings, (according to its own accounting).
-    pub counted_recordings: History<i64>,
+    pub counted_recordings: History<u64>,
 
     /// Bytes used by the primary caches (according to their own accounting).
-    pub counted_query_caches: History<i64>,
+    pub counted_query_caches: History<u64>,
 
     /// Bytes used by the viewer caches (according to their own accounting).
-    pub counted_viewer_caches: History<i64>,
+    pub counted_viewer_caches: History<u64>,
 
     /// Bytes used by table stores (according to their own accounting).
-    pub counted_table_stores: History<i64>,
+    pub counted_table_stores: History<u64>,
 }
 
 impl Default for MemoryHistory {
@@ -87,7 +85,7 @@ impl MemoryHistory {
             counted_allocator.add(now, updated_counted);
         }
         if let Some(gpu_resource_stats) = gpu_resource_stats {
-            counted_vram.add(now, gpu_resource_stats.total_bytes() as _);
+            counted_vram.add(now, gpu_resource_stats.total_bytes());
         }
 
         if let Some(store_stats) = store_stats {
@@ -124,11 +122,11 @@ impl MemoryHistory {
                 sum_viewer_caches += viewer_cache_size;
             }
 
-            counted_blueprints.add(now, sum_blueprints as _);
-            counted_recordings.add(now, sum_recordings as _);
-            counted_query_caches.add(now, sum_query_caches as _);
-            counted_viewer_caches.add(now, sum_viewer_caches as _);
-            counted_table_stores.add(now, sum_table_stores as _);
+            counted_blueprints.add(now, sum_blueprints);
+            counted_recordings.add(now, sum_recordings);
+            counted_query_caches.add(now, sum_query_caches);
+            counted_viewer_caches.add(now, sum_viewer_caches);
+            counted_table_stores.add(now, sum_table_stores);
         }
     }
 }
