@@ -135,6 +135,17 @@ pub struct RrdFooter {
 /// Note that `:start` & `:end` columns are always implicitly _inclusive_. The `_inclusive` suffix has been
 /// removed to reduce noise.
 ///
+/// ## Understand size/offset columns
+///
+/// * `chunk_byte_size` & `chunk_byte_offset` are always reported using the backend's native
+///   storage size. For a backend that makes use of compression, such as an RRD file with
+///   compression enabled, these sizes are therefore compressed. For a backend that doesn't do any
+///   kind of compression, such as the OSS server that stores everything already decoded in memory,
+///   these sizes will correspond to heap memory usage.
+/// * `chunk_byte_size_uncompressed` always corresponds to the size on the heap that the data would
+///   require once fully decoded, regardless of the backend.
+/// * `chunk_key`, if specified, should always be used to fetch the associated data.
+///
 /// ## A note on filtering
 ///
 /// Always be on your toes when filtering rows out of an RRD manifest. Due to how the Rerun data
@@ -1328,7 +1339,9 @@ impl RrdManifest {
         Ok(self.col_chunk_byte_offset_raw()?.iter().flatten())
     }
 
-    /// Returns the raw Arrow data for the byte-length column.
+    /// Returns the raw Arrow data for the byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE;
@@ -1347,14 +1360,18 @@ impl RrdManifest {
             })
     }
 
-    /// Returns an iterator over the decoded Arrow data for the byte-length column.
+    /// Returns an iterator over the decoded Arrow data for the byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
         Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
     }
 
-    /// Returns the raw Arrow data for the *uncompressed* byte-length column.
+    /// Returns the raw Arrow data for the *uncompressed* byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
@@ -1373,7 +1390,9 @@ impl RrdManifest {
             })
     }
 
-    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-length column.
+    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
