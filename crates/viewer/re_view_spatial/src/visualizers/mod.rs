@@ -296,3 +296,7 @@ pub fn load_keypoint_connections(
 
     Ok(())
 }
+
+pub fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+    slice.and_then(|element| element.first()).copied()
+}

@@ -11,12 +11,17 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{view_kind::SpatialViewKind, visualizers::depth_images::DepthImageProcessResult};
-
+use super::entity_iterator::process_archetype;
 use super::{
     SpatialViewVisualizerData,
-    depth_images::{
-        DepthImageComponentData, execute_depth_visualizer, first_copied, process_depth_image_data,
+    depth_images::{DepthImageComponentData, process_depth_image_data},
+};
+use crate::{
+    contexts::TransformTreeContext,
+    view_kind::SpatialViewKind,
+    visualizers::{
+        depth_images::{DepthImageProcessResult, populate_depth_visualizer_execution_result},
+        first_copied,
     },
 };
 
@@ -54,15 +59,18 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let preferred_view_kind = self.data.preferred_view_kind;
+        let mut output = VisualizerExecutionOutput::default();
+        let mut depth_clouds = Vec::new();
 
-        execute_depth_visualizer::<Self, EncodedDepthImage, _>(
+        let transforms = context_systems.get::<TransformTreeContext>()?;
+
+        process_archetype::<EncodedDepthImageVisualizer, EncodedDepthImage, _>(
             ctx,
             view_query,
-            &mut self.data,
-            &mut self.depth_cloud_entities,
             context_systems,
+            &mut output,
             preferred_view_kind,
-            |ctx, spatial_ctx, data, depth_cloud_entities, transforms, depth_clouds, results| {
+            |ctx, spatial_ctx, results| {
                 use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
@@ -100,7 +108,16 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let data_iter = re_query::range_zip_1x6(
+                for (
+                    (_time, row_id),
+                    blobs,
+                    format,
+                    media_type,
+                    colormap,
+                    value_range,
+                    depth_meter,
+                    fill_ratio,
+                ) in re_query::range_zip_1x6(
                     all_blobs_indexed,
                     all_formats_indexed,
                     all_media_types.slice::<String>(),
@@ -108,68 +125,72 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_depth_meters.slice::<f32>(),
                     all_fill_ratios.slice::<f32>(),
-                )
-                .filter_map(
-                    move |(
-                        (_time, row_id),
-                        blobs,
-                        format,
-                        media_type,
-                        colormap,
-                        value_range,
-                        depth_meter,
-                        fill_ratio,
-                    )| {
-                        let blob = blobs.first()?;
-                        let format = first_copied(format.as_deref())?;
-                        let media_type = media_type
-                            .and_then(|types| types.first().cloned())
-                            .map(|mt| MediaType(mt.into()));
+                ) {
+                    let Some(blob) = blobs.first() else {
+                        spatial_ctx.output.report_error_for(
+                            entity_path.clone(),
+                            format!("EncodedDepthImage blob is empty."),
+                        );
+                        continue;
+                    };
+                    let Some(format) = first_copied(format.as_deref()) else {
+                        spatial_ctx.output.report_error_for(
+                            entity_path.clone(),
+                            format!("Depth image format is missing."),
+                        );
+                        continue;
+                    };
 
-                        let image = match ctx.store_ctx().caches.entry(
-                            |c: &mut ImageDecodeCache| {
-                                c.entry_encoded_depth(
-                                    row_id,
-                                    EncodedDepthImage::descriptor_blob().component,
-                                    blob,
-                                    media_type.as_ref(),
-                                    &format,
-                                )
-                            },
-                        ) {
-                            Ok(image) => image,
-                            Err(err) => {
-                                re_log::warn_once!("Failed to decode EncodedDepthImage at path {entity_path}: {err}");
-                                return None;
-                            }
-                        };
+                    let media_type = media_type
+                        .and_then(|types| types.first().cloned())
+                        .map(|mt| MediaType(mt.into()));
 
-                        Some(DepthImageComponentData {
-                            image,
-                            depth_meter: first_copied(depth_meter).map(Into::into),
-                            fill_ratio: first_copied(fill_ratio).map(Into::into),
-                            colormap: first_copied(colormap).and_then(Colormap::from_u8),
-                            value_range: first_copied(value_range),
-                        })
-                    },
-                );
+                    let image = match ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+                        c.entry_encoded_depth(
+                            row_id,
+                            EncodedDepthImage::descriptor_blob().component,
+                            blob,
+                            media_type.as_ref(),
+                            &format,
+                        )
+                    }) {
+                        Ok(image) => image,
+                        Err(err) => {
+                            spatial_ctx.output.report_error_for(
+                                entity_path.clone(),
+                                format!("Failed to decode EncodedDepthImage blob: {err}"),
+                            );
+                            continue;
+                        }
+                    };
 
-                process_depth_image_data(
-                    data,
-                    depth_cloud_entities,
-                    ctx,
-                    depth_clouds,
-                    spatial_ctx,
-                    transforms,
-                    data_iter,
-                    EncodedDepthImage::name(),
-                    EncodedDepthImage::descriptor_meter().component,
-                    EncodedDepthImage::descriptor_colormap().component,
-                );
+                    let data = DepthImageComponentData {
+                        image,
+                        depth_meter: first_copied(depth_meter).map(Into::into),
+                        fill_ratio: first_copied(fill_ratio).map(Into::into),
+                        colormap: first_copied(colormap).and_then(Colormap::from_u8),
+                        value_range: first_copied(value_range),
+                    };
+
+                    process_depth_image_data(
+                        ctx,
+                        spatial_ctx,
+                        &mut self.data,
+                        &mut self.depth_cloud_entities,
+                        &mut depth_clouds,
+                        transforms,
+                        data,
+                        EncodedDepthImage::name(),
+                        EncodedDepthImage::descriptor_meter().component,
+                        EncodedDepthImage::descriptor_colormap().component,
+                    );
+                }
 
                 Ok(())
             },
-        )
+        )?;
+
+        populate_depth_visualizer_execution_result(ctx, &mut self.data, depth_clouds, output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
