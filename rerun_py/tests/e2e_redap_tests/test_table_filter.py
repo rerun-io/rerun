@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import datetime
 from typing import TYPE_CHECKING
 
-import pyarrow as pa
-from datafusion import col, functions as f, lit, Expr
+from datafusion import Expr, col, functions as f, lit
 
 if TYPE_CHECKING:
-    from rerun.catalog import DatasetEntry
+    import pyarrow as pa
+    from rerun.catalog import CatalogClient, DatasetEntry
 
 
 def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: DatasetEntry) -> None:
@@ -18,8 +17,7 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
     """
 
     all_segments = (
-        readonly_test_dataset
-        .dataframe_query_view(index=None, contents="/**")
+        readonly_test_dataset.dataframe_query_view(index=None, contents="/**")
         .df()
         .select("rerun_segment_id")
         .sort(col("rerun_segment_id"))
@@ -28,10 +26,9 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
     all_segments = [v for rb in all_segments for v in rb[0]]
 
     def find_time_boundaries(time_index: str, segment: pa.Scalar) -> list[pa.Scalar]:
-        """Find four times: start, middle third, upper third, stop"""
+        """Find four times: start, middle third, upper third, stop."""
         rbs = (
-            readonly_test_dataset
-            .dataframe_query_view(index=time_index, contents="/**")
+            readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
             .df()
             .filter(col("rerun_segment_id") == segment)
             .select(time_index)
@@ -40,15 +37,16 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
         )
         values = [v for rb in rbs for v in rb[0]]
         num_vals = len(values)
-        return [values[0], values[num_vals//3], values[2*num_vals//3], values[num_vals-1]]
+        return [values[0], values[num_vals // 3], values[2 * num_vals // 3], values[num_vals - 1]]
 
     def generate_tests(time_index: str, segments: list[pa.Scalar]) -> list[Expr]:
+        """Create a set of filters for testing."""
         seg1_times = find_time_boundaries(time_index, segments[0])
         seg2_times = find_time_boundaries(time_index, segments[1])
-        s1_min =  lit(seg1_times[0])
+        s1_min = lit(seg1_times[0])
         s1_lower = lit(seg1_times[1])
         s1_upper = lit(seg1_times[2])
-        s1_max =  lit(seg1_times[3])
+        s1_max = lit(seg1_times[3])
         s2_lower = lit(seg2_times[1])
 
         return [
@@ -82,9 +80,10 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
             (col("rerun_segment_id") == segments[0]) & (col(time_index) > s1_max),
             # OR combinations
             (col("rerun_segment_id") == segments[0]) | (col("rerun_segment_id") == segments[1]),
-            ((col("rerun_segment_id") == segments[0]) & (col(time_index) > s1_lower)) | ((col("rerun_segment_id") == segments[1]) & (col(time_index) < s2_lower)),
+            ((col("rerun_segment_id") == segments[0]) & (col(time_index) > s1_lower))
+            | ((col("rerun_segment_id") == segments[1]) & (col(time_index) < s2_lower)),
             # Edge cases
-            col(time_index) == s1_lower, # Exact match, multiple segments
+            col(time_index) == s1_lower,  # Exact match, multiple segments
         ]
 
     # Cannot run "time_1" due to https://github.com/apache/datafusion-python/pull/1319
@@ -100,7 +99,13 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
 
         for test_filter in all_tests:
             # We must sort to guarantee the output ordering
-            results = readonly_test_dataset.dataframe_query_view(index=time_idx, contents="/**").df().filter(test_filter).sort(col("log_time")).collect()
+            results = (
+                readonly_test_dataset.dataframe_query_view(index=time_idx, contents="/**")
+                .df()
+                .filter(test_filter)
+                .sort(col("log_time"))
+                .collect()
+            )
             expected = full_data.filter(test_filter).sort(col("log_time")).collect()
 
             assert results == expected
