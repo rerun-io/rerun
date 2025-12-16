@@ -179,10 +179,10 @@ impl Dataset {
         let updated_at = self.updated_at();
 
         // Check if we have a valid cached schema
-        if let Some((cached_at, schema)) = cache.as_ref() {
-            if *cached_at == updated_at {
-                return Ok(Schema::clone(schema));
-            }
+        if let Some((cached_at, schema)) = cache.as_ref()
+            && *cached_at == updated_at
+        {
+            return Ok(Schema::clone(schema));
         }
 
         // Recompute schema

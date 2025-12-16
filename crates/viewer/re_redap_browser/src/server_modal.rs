@@ -431,10 +431,11 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication
     ui.horizontal(|ui| {
         ui.set_min_width(300.0);
         ui.set_width(300.0);
-        if !auth.show_token_input && !ctx.logged_in() {
-            if let Some(error) = &auth.error {
-                ui.error_label(error.clone());
-            }
+        if !auth.show_token_input
+            && !ctx.logged_in()
+            && let Some(error) = &auth.error
+        {
+            ui.error_label(error.clone());
         }
     });
 }

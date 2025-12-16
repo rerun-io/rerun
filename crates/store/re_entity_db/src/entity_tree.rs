@@ -18,7 +18,7 @@ pub struct EntityTree {
     pub path: EntityPath,
 
     /// Direct descendants of this (sub)tree.
-    pub children: BTreeMap<EntityPathPart, EntityTree>,
+    pub children: BTreeMap<EntityPathPart, Self>,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`ChunkStoreSubscriber`], so they A) don't try
