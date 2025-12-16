@@ -237,7 +237,7 @@ impl TimeHistogramPerTimeline {
                             num_rows,
                         } = *entry;
 
-                        apply_fake(Application::Add, histogram, time_range, num_rows);
+                        apply_estimate(Application::Add, histogram, time_range, num_rows);
                     }
                 }
             }
@@ -275,12 +275,14 @@ impl TimeHistogramPerTimeline {
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
                                 && let Some(info) = &info.temporal
                             {
-                                // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                                // We added estimated value for this before, based on the rrd manifest.
+                                // Now that we have the whole chunk we need to subtract those fake values again,
+                                // before we add in the actual contents of the chunk:
                                 let histogram = self
                                     .times
                                     .entry(*timeline.name())
                                     .or_insert_with(|| TimeHistogram::new(*timeline));
-                                apply_fake(
+                                apply_estimate(
                                     Application::Remove,
                                     histogram,
                                     info.time_range,
@@ -301,18 +303,16 @@ impl TimeHistogramPerTimeline {
                                 event.num_components() as _,
                             );
 
-                            // We GCed the full chunk, so add back the fake:
-
                             if let Some(info) =
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
                                 && let Some(info) = &info.temporal
                             {
-                                // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                                // We GCed the full chunk, so add back the estimate:
                                 let histogram = self
                                     .times
                                     .entry(*timeline.name())
                                     .or_insert_with(|| TimeHistogram::new(*timeline));
-                                apply_fake(
+                                apply_estimate(
                                     Application::Add,
                                     histogram,
                                     info.time_range,
@@ -346,7 +346,7 @@ impl Application {
     }
 }
 
-fn apply_fake(
+fn apply_estimate(
     application: Application,
     histogram: &mut TimeHistogram,
     time_range: re_log_types::AbsoluteTimeRange,
