@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use arrow::array::{BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
+use arrow::array::{BinaryArray, BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
 use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
@@ -134,6 +134,17 @@ pub struct RrdFooter {
 ///
 /// Note that `:start` & `:end` columns are always implicitly _inclusive_. The `_inclusive` suffix has been
 /// removed to reduce noise.
+///
+/// ## Understand size/offset columns
+///
+/// * `chunk_byte_size` & `chunk_byte_offset` are always reported using the backend's native
+///   storage size. For a backend that makes use of compression, such as an RRD file with
+///   compression enabled, these sizes are therefore compressed. For a backend that doesn't do any
+///   kind of compression, such as the OSS server that stores everything already decoded in memory,
+///   these sizes will correspond to heap memory usage.
+/// * `chunk_byte_size_uncompressed` always corresponds to the size on the heap that the data would
+///   require once fully decoded, regardless of the backend.
+/// * `chunk_key`, if specified, should always be used to fetch the associated data.
 ///
 /// ## A note on filtering
 ///
@@ -641,9 +652,22 @@ impl RrdManifest {
         _ = self.col_chunk_is_static()?;
         _ = self.col_chunk_num_rows()?;
         _ = self.col_chunk_entity_path()?;
+        _ = self.col_chunk_byte_size_uncompressed()?;
+
+        // The basic size/offset columns are always there, even if they might be logically
+        // superseded by a `chunk_key` column (which is backend-specific, and therefore optional).
         _ = self.col_chunk_byte_offset()?;
         _ = self.col_chunk_byte_size()?;
-        _ = self.col_chunk_byte_size_uncompressed()?;
+
+        if self
+            .data
+            .schema_ref()
+            .column_with_name(Self::FIELD_CHUNK_KEY)
+            .is_some()
+        {
+            _ = self.col_chunk_key_raw()?;
+        }
+
         Ok(())
     }
 
@@ -702,6 +726,7 @@ impl RrdManifest {
                         | Self::FIELD_CHUNK_BYTE_SIZE
                         | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
+                        | Self::FIELD_CHUNK_KEY
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
 
                         name => {
@@ -1010,6 +1035,7 @@ impl RrdManifest {
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
     pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
+    pub const FIELD_CHUNK_KEY: &str = "chunk_key";
 
     pub fn field_chunk_id() -> Field {
         use re_log_types::external::re_types_core::Loggable as _;
@@ -1054,6 +1080,15 @@ impl RrdManifest {
 
     pub fn field_chunk_byte_size_uncompressed() -> Field {
         Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)
+    }
+
+    pub fn field_chunk_key() -> Field {
+        let nullable = false; // every chunk has a location key
+        Field::new(
+            Self::FIELD_CHUNK_KEY,
+            arrow::datatypes::DataType::Binary,
+            nullable,
+        )
     }
 
     pub fn field_index_start(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
@@ -1304,7 +1339,9 @@ impl RrdManifest {
         Ok(self.col_chunk_byte_offset_raw()?.iter().flatten())
     }
 
-    /// Returns the raw Arrow data for the byte-length column.
+    /// Returns the raw Arrow data for the byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE;
@@ -1323,14 +1360,18 @@ impl RrdManifest {
             })
     }
 
-    /// Returns an iterator over the decoded Arrow data for the byte-length column.
+    /// Returns an iterator over the decoded Arrow data for the byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
         Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
     }
 
-    /// Returns the raw Arrow data for the *uncompressed* byte-length column.
+    /// Returns the raw Arrow data for the *uncompressed* byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
@@ -1349,10 +1390,31 @@ impl RrdManifest {
             })
     }
 
-    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-length column.
+    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-size column.
+    ///
+    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
         Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+    }
+
+    /// Returns the raw Arrow data for chunk-key column, if present.
+    pub fn col_chunk_key_raw(&self) -> CodecResult<&BinaryArray> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::FIELD_CHUNK_KEY;
+        self.data
+            .column_by_name(name)
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
+            })?
+            .downcast_array_ref::<BinaryArray>()
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a BinaryArray"),
+                ))
+            })
     }
 }

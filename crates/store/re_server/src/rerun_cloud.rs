@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use ahash::HashMap;
@@ -14,9 +15,9 @@ use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{
     self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-    CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
-    QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+    CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
+    ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
+    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -35,6 +36,7 @@ use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use crate::OnError;
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
@@ -63,6 +65,34 @@ impl RerunCloudHandlerBuilder {
         self.store
             .load_directory_as_dataset(directory, on_duplicate, on_error)
             .await?;
+
+        Ok(self)
+    }
+
+    pub async fn with_rrds_as_dataset(
+        mut self,
+        dataset_name: String,
+        rrd_paths: Vec<PathBuf>,
+        on_duplicate: IfDuplicateBehavior,
+        on_error: crate::OnError,
+    ) -> Result<Self, crate::store::Error> {
+        let dataset = self.store.create_dataset(dataset_name, None)?;
+
+        for rrd_path in rrd_paths {
+            if let Err(err) = dataset
+                .load_rrd(&rrd_path, None, on_duplicate, StoreKind::Recording)
+                .await
+            {
+                match on_error {
+                    OnError::Continue => {
+                        re_log::warn!("Failed loading file {}: {err}", rrd_path.display());
+                    }
+                    OnError::Abort => {
+                        return Err(err);
+                    }
+                }
+            }
+        }
 
         Ok(self)
     }
@@ -445,35 +475,11 @@ impl RerunCloudService for RerunCloudHandler {
         } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-
-        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
-        let blueprint_dataset_id = EntryId::new();
-        let blueprint_dataset_name = format!("__bp_{dataset_id}");
-
-        store.create_dataset(
-            &blueprint_dataset_name,
-            Some(blueprint_dataset_id),
-            StoreKind::Blueprint,
-            None,
-        )?;
-
-        let dataset_details = DatasetDetails {
-            blueprint_dataset: Some(blueprint_dataset_id),
-            default_blueprint_segment: None,
-        };
-
-        let dataset = store.create_dataset(
-            &dataset_name,
-            Some(dataset_id),
-            StoreKind::Recording,
-            Some(dataset_details),
-        )?;
-
-        let dataset_entry = dataset.as_dataset_entry();
+        let dataset = store.create_dataset(dataset_name, dataset_id)?;
 
         Ok(tonic::Response::new(
             CreateDatasetEntryResponse {
-                dataset: dataset_entry,
+                dataset: dataset.as_dataset_entry(),
             }
             .into(),
         ))
@@ -938,10 +944,12 @@ impl RerunCloudService for RerunCloudHandler {
             .try_into()?;
 
         let dataset = store.dataset(entry_id)?;
-        let rrd_manifest_batch = dataset.rrd_manifest(&segment_id)?;
+        let rrd_manifest = dataset.rrd_manifest(&segment_id)?;
 
         Ok(tonic::Response::new(GetRrdManifestResponse {
-            data: Some(rrd_manifest_batch.into()),
+            rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
+                tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
+            })?),
         }))
     }
 
