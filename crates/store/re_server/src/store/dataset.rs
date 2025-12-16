@@ -361,13 +361,11 @@ impl Dataset {
         for (layer_name, layer) in partition.iter_layers() {
             let store = layer.store_handle();
 
+            let mut offset = 0;
             for chunk in store.read().iter_chunks() {
                 let chunk_batch = chunk
                     .to_chunk_batch()
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
-
-                // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
-                let dummy_byte_span = re_span::Span::default();
 
                 // Not a totally accurate value, but we're certainly not going to encode every chunk
                 // into IPC bytes just to figure out their uncompressed size either.
@@ -379,8 +377,19 @@ impl Dataset {
                 use re_byte_size::SizeBytes as _;
                 let byte_size_uncompressed = chunk.heap_size_bytes();
 
+                // There is no such thing as "compressed data on disk" in the case of the OSS server,
+                // since there's no disk to begin with. That's fine, we just re-use the
+                // uncompressed values: the chunk-key (generated below) is what will be used to
+                // accurately fetch the data in any case.
+                let uncompressed_byte_span = re_span::Span {
+                    start: offset,
+                    len: byte_size_uncompressed,
+                };
+
+                offset += byte_size_uncompressed;
+
                 rrd_manifest_builder
-                    .append(&chunk_batch, dummy_byte_span, byte_size_uncompressed)
+                    .append(&chunk_batch, uncompressed_byte_span, byte_size_uncompressed)
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
                 chunk_keys.push(
