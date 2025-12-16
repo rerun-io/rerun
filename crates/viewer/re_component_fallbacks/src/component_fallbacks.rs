@@ -61,6 +61,10 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TensorData(tensor_data)
         },
     );
+    registry.register_component_fallback_provider(
+        archetypes::BarChart::descriptor_widths().component,
+        |_| components::Length::from(1.0),
+    );
 
     // GraphNodes
     registry.register_component_fallback_provider(

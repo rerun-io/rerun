@@ -6,7 +6,7 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 
-use crate::util::TimestampCell;
+use crate::util::{TimestampCell, log_and_publish_timepoint_from_msg};
 
 /// Trait for parsing MCAP messages of a specific schema into Rerun chunks.
 ///
@@ -35,6 +35,19 @@ pub trait MessageParser {
     ///    Note: `log_time` and `publish_time` are added automatically.
     /// 3. Accumulate the decoded data for later conversion to Rerun [`Chunk`]s in [`finalize()`](`Self::finalize`).
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()>;
+
+    /// Returns the `TimePoint`s containing the log and publish times derived from the message.
+    ///
+    /// In most cases, this is a single time point and there is no need to override the default implementation.
+    ///
+    /// Exceptions are e.g. cases where the number of output rows differs from the number of input messages.
+    /// For example, aggregate messages like `tf2_msgs/TFMessage` that can contain multiple transforms.
+    fn get_log_and_publish_timepoints(
+        &self,
+        msg: &mcap::Message<'_>,
+    ) -> anyhow::Result<Vec<re_chunk::TimePoint>> {
+        Ok(vec![log_and_publish_timepoint_from_msg(msg)])
+    }
 
     /// Consume the parser and convert all accumulated data into Rerun chunks.
     ///

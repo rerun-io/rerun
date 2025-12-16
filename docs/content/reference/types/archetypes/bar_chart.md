@@ -14,6 +14,7 @@ The bar heights will be the provided values, and the x coordinates of the bars w
 ### Optional
 * `color`: [`Color`](../components/color.md)
 * `abscissa`: [`TensorData`](../components/tensor_data.md)
+* `widths`: [`Length`](../components/length.md)
 
 
 ## Can be shown in

@@ -475,7 +475,7 @@ impl MemoryPanel {
 
         use itertools::Itertools as _;
 
-        fn to_line<'a>(name: &str, history: &egui::util::History<i64>) -> egui_plot::Line<'a> {
+        fn to_line<'a>(name: &str, history: &egui::util::History<u64>) -> egui_plot::Line<'a> {
             egui_plot::Line::new(
                 name,
                 history

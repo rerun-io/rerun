@@ -41,6 +41,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
 ///             .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice()),
 ///     )?;
+///     rec.log(
+///         "bar_chart_custom_abscissa_and_widths",
+///         &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
+///             .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice())
+///             .with_widths([1_f32, 2.0, 1.0, 3.0, 4.0, 1.0]),
+///     )?;
 ///
 ///     Ok(())
 /// }
@@ -64,6 +70,9 @@ pub struct BarChart {
 
     /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     pub abscissa: Option<SerializedComponentBatch>,
+
+    /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    pub widths: Option<SerializedComponentBatch>,
 }
 
 impl BarChart {
@@ -102,6 +111,18 @@ impl BarChart {
             component_type: Some("rerun.components.TensorData".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
+    ///
+    /// The corresponding component is [`crate::components::Length`].
+    #[inline]
+    pub fn descriptor_widths() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.BarChart".into()),
+            component: "BarChart:widths".into(),
+            component_type: Some("rerun.components.Length".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -110,26 +131,28 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             BarChart::descriptor_color(),
             BarChart::descriptor_abscissa(),
+            BarChart::descriptor_widths(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             BarChart::descriptor_values(),
             BarChart::descriptor_color(),
             BarChart::descriptor_abscissa(),
+            BarChart::descriptor_widths(),
         ]
     });
 
 impl BarChart {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 impl ::re_types_core::Archetype for BarChart {
@@ -179,10 +202,14 @@ impl ::re_types_core::Archetype for BarChart {
         let abscissa = arrays_by_descr
             .get(&Self::descriptor_abscissa())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_abscissa()));
+        let widths = arrays_by_descr
+            .get(&Self::descriptor_widths())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_widths()));
         Ok(Self {
             values,
             color,
             abscissa,
+            widths,
         })
     }
 }
@@ -195,6 +222,7 @@ impl ::re_types_core::AsComponents for BarChart {
             self.values.clone(),
             self.color.clone(),
             self.abscissa.clone(),
+            self.widths.clone(),
         ]
         .into_iter()
         .flatten()
@@ -212,6 +240,7 @@ impl BarChart {
             values: try_serialize_field(Self::descriptor_values(), [values]),
             color: None,
             abscissa: None,
+            widths: None,
         }
     }
 
@@ -237,6 +266,10 @@ impl BarChart {
             abscissa: Some(SerializedComponentBatch::new(
                 crate::components::TensorData::arrow_empty(),
                 Self::descriptor_abscissa(),
+            )),
+            widths: Some(SerializedComponentBatch::new(
+                crate::components::Length::arrow_empty(),
+                Self::descriptor_widths(),
             )),
         }
     }
@@ -269,6 +302,9 @@ impl BarChart {
             self.abscissa
                 .map(|abscissa| abscissa.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.widths
+                .map(|widths| widths.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -284,10 +320,12 @@ impl BarChart {
         let len_values = self.values.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
         let len_abscissa = self.abscissa.as_ref().map(|b| b.array.len());
+        let len_widths = self.widths.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_values)
             .or(len_color)
             .or(len_abscissa)
+            .or(len_widths)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -351,6 +389,16 @@ impl BarChart {
         self.abscissa = try_serialize_field(Self::descriptor_abscissa(), abscissa);
         self
     }
+
+    /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    #[inline]
+    pub fn with_widths(
+        mut self,
+        widths: impl IntoIterator<Item = impl Into<crate::components::Length>>,
+    ) -> Self {
+        self.widths = try_serialize_field(Self::descriptor_widths(), widths);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for BarChart {
@@ -359,5 +407,6 @@ impl ::re_byte_size::SizeBytes for BarChart {
         self.values.heap_size_bytes()
             + self.color.heap_size_bytes()
             + self.abscissa.heap_size_bytes()
+            + self.widths.heap_size_bytes()
     }
 }
