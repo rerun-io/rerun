@@ -32,8 +32,8 @@ def main() -> int:
     if not ok_result.ok:
         print("  FAIL: Ok result should have ok=True")
         return 1
-    if ok_result.value != "success":
-        print(f"  FAIL: Ok result value mismatch: {ok_result.value}")
+    if ok_result.value() != "success":
+        print(f"  FAIL: Ok result value mismatch: {ok_result.value()}")
         return 1
 
     err_result = recompose.Err("error message")
@@ -52,8 +52,8 @@ def main() -> int:
     if not result.ok:
         print(f"  FAIL: Task returned error: {result}")
         return 1
-    if result.value != "Hello, World!":
-        print(f"  FAIL: Unexpected task result: {result.value}")
+    if result.value() != "Hello, World!":
+        print(f"  FAIL: Unexpected task result: {result.value()}")
         return 1
 
     # Test 4: Subprocess helper

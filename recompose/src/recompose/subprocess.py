@@ -8,8 +8,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .context import get_context, out
-
 
 @dataclass
 class RunResult:
@@ -116,36 +114,88 @@ def run(
     else:
         # Streaming mode - output goes to console in real-time
         # We use Popen to have more control over output handling
+        # Note: In tree mode, sys.stdout/stderr are already wrapped with TreePrefixWriter
+        # so we just need to add the nested indicators (│ for stdout, ! for stderr)
+        from .output import is_tree_mode
+
+        tree_mode = is_tree_mode()
+
         proc = subprocess.Popen(
             cmd,
             cwd=cwd_str,
             env=run_env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # Merge stderr into stdout for simpler streaming
+            stderr=subprocess.PIPE,  # Keep stderr separate for different formatting
             text=True,
             bufsize=1,  # Line buffered
         )
 
         stdout_lines: list[str] = []
-        ctx = get_context()
+        stderr_lines: list[str] = []
 
-        # Stream output line by line
-        if proc.stdout:
-            for line in proc.stdout:
-                line_stripped = line.rstrip("\n")
-                stdout_lines.append(line_stripped)
-                # Use recompose.out() if in task context, otherwise print directly
-                if ctx is not None:
-                    out(line_stripped)
+        # ANSI codes for dimmed text
+        DIM = "\033[2m"
+        RESET = "\033[0m"
+
+        def print_line(line: str, is_stderr: bool = False) -> None:
+            """Print a line with appropriate formatting."""
+            if tree_mode:
+                # In tree mode, add nested indicators (dimmed)
+                # The TreePrefixWriter on sys.stdout/stderr will add the tree prefix
+                if is_stderr:
+                    # Stderr gets ! indicator (dimmed)
+                    print(f"{DIM}!{RESET} {line}", file=sys.stderr, flush=True)
                 else:
-                    print(line_stripped, file=sys.stdout, flush=True)
+                    # Stdout gets nested │ indicator (dimmed)
+                    print(f"{DIM}│{RESET} {line}", flush=True)
+            else:
+                # Outside tree mode, just print normally
+                if is_stderr:
+                    print(line, file=sys.stderr, flush=True)
+                else:
+                    print(line, flush=True)
+
+        # Stream output from both stdout and stderr
+        # Use select on Unix, fallback to sequential reading on Windows
+        if sys.platform != "win32" and proc.stdout and proc.stderr:
+            # Unix: use select for interleaved output
+            import selectors
+
+            sel = selectors.DefaultSelector()
+            sel.register(proc.stdout, selectors.EVENT_READ, ("stdout", stdout_lines))
+            sel.register(proc.stderr, selectors.EVENT_READ, ("stderr", stderr_lines))
+
+            while sel.get_map():
+                for key, _ in sel.select():
+                    stream_type, lines_list = key.data
+                    line = key.fileobj.readline()  # type: ignore[union-attr]
+                    if line:
+                        line_stripped = line.rstrip("\n")
+                        lines_list.append(line_stripped)
+                        print_line(line_stripped, is_stderr=(stream_type == "stderr"))
+                    else:
+                        sel.unregister(key.fileobj)
+
+            sel.close()
+        else:
+            # Windows or missing streams: read sequentially (stdout then stderr)
+            if proc.stdout:
+                for line in proc.stdout:
+                    line_stripped = line.rstrip("\n")
+                    stdout_lines.append(line_stripped)
+                    print_line(line_stripped, is_stderr=False)
+            if proc.stderr:
+                for line in proc.stderr:
+                    line_stripped = line.rstrip("\n")
+                    stderr_lines.append(line_stripped)
+                    print_line(line_stripped, is_stderr=True)
 
         proc.wait()
 
         result = RunResult(
             returncode=proc.returncode,
             stdout="\n".join(stdout_lines),
-            stderr="",  # Merged into stdout in streaming mode
+            stderr="\n".join(stderr_lines),
             command=cmd,
         )
 

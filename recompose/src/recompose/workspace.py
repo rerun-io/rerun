@@ -10,14 +10,281 @@ and communicates through files.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
-from dataclasses import asdict, dataclass
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
+
+from pydantic import TypeAdapter
 
 from .result import Err, Ok, Result
+
+T = TypeVar("T")
+
+
+class Serializer(ABC):
+    """Base class for type serializers.
+
+    Implement this to add serialization support for custom types.
+    """
+
+    @staticmethod
+    @abstractmethod
+    def serialize(value: Any) -> Any:
+        """Convert value to JSON-serializable form."""
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def deserialize(data: Any) -> Any:
+        """Reconstruct value from serialized form."""
+        ...
+
+
+class PathSerializer(Serializer):
+    """Serializer for pathlib.Path objects."""
+
+    @staticmethod
+    def serialize(value: Path) -> str:
+        return str(value)
+
+    @staticmethod
+    def deserialize(data: str) -> Path:
+        return Path(data)
+
+
+class DatetimeSerializer(Serializer):
+    """Serializer for datetime objects."""
+
+    @staticmethod
+    def serialize(value: datetime) -> str:
+        return value.isoformat()
+
+    @staticmethod
+    def deserialize(data: str) -> datetime:
+        return datetime.fromisoformat(data)
+
+
+# Registry mapping types to their serializers
+_serializer_registry: dict[type, type[Serializer]] = {
+    Path: PathSerializer,
+    datetime: DatetimeSerializer,
+}
+
+# Type registry for resolving type keys back to classes
+_type_registry: dict[str, type] = {}
+
+# TypeAdapter cache to avoid repeated construction
+_adapter_cache: dict[type, TypeAdapter[Any]] = {}
+
+
+def register_serializer(typ: type, serializer: type[Serializer]) -> None:
+    """Register a custom serializer for a type.
+
+    Args:
+        typ: The type to register (e.g., PIL.Image.Image)
+        serializer: A Serializer subclass that handles serialization
+
+    Example:
+        class ImageSerializer(Serializer):
+            @staticmethod
+            def serialize(img) -> dict:
+                return {"mode": img.mode, "data": base64.b64encode(img.tobytes()).decode()}
+
+            @staticmethod
+            def deserialize(data: dict) -> Image:
+                return Image.frombytes(data["mode"], ...)
+
+        register_serializer(PIL.Image.Image, ImageSerializer)
+
+    """
+    _serializer_registry[typ] = serializer
+
+
+def _get_type_key(cls: type) -> str:
+    """Get the type key for a class (module.ClassName)."""
+    return f"{cls.__module__}.{cls.__qualname__}"
+
+
+def _resolve_type(type_key: str) -> type | None:
+    """Resolve a type key back to a class."""
+    # Check registry first
+    if type_key in _type_registry:
+        return _type_registry[type_key]
+
+    # Try to import dynamically
+    try:
+        module_name, class_name = type_key.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name, None)
+        if cls is not None:
+            _type_registry[type_key] = cls
+        return cls
+    except (ValueError, ImportError, AttributeError):
+        return None
+
+
+def _get_adapter(cls: type) -> TypeAdapter[Any]:
+    """Get a cached TypeAdapter for the given class."""
+    if cls not in _adapter_cache:
+        _adapter_cache[cls] = TypeAdapter(cls)
+    return _adapter_cache[cls]
+
+
+def _is_pydantic_serializable(value: Any) -> bool:
+    """Check if a value can be serialized via Pydantic."""
+    # Primitives
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return True
+    # Pydantic models
+    if hasattr(value, "model_dump"):
+        return True
+    # Dataclasses
+    if is_dataclass(value) and not isinstance(value, type):
+        return True
+    return False
+
+
+def _serialize_for_pydantic(value: Any) -> Any:
+    """Serialize a value to a form Pydantic can validate on deserialize.
+
+    This converts nested values to JSON-serializable form without type wrappers,
+    since Pydantic handles type coercion during validation.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+
+    # Check registry for nested types (including subclasses)
+    for registered_type, serializer in _serializer_registry.items():
+        if isinstance(value, registered_type):
+            return serializer.serialize(value)
+
+    if isinstance(value, (list, tuple)):
+        return [_serialize_for_pydantic(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _serialize_for_pydantic(v) for k, v in value.items()}
+    if is_dataclass(value) and not isinstance(value, type):
+        return {k: _serialize_for_pydantic(v) for k, v in asdict(value).items()}
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+
+    # Should not reach here for properly typed dataclasses/Pydantic models
+    raise TypeError(f"Cannot serialize nested value of type {type(value).__name__}")
+
+
+def serialize_value(value: Any) -> Any:
+    """Serialize a value to JSON-serializable form with type information.
+
+    Supported types:
+    - Primitives (str, int, float, bool, None)
+    - Types with registered serializers (Path, datetime, custom)
+    - Pydantic models
+    - Dataclasses
+    - Lists/dicts containing the above
+
+    Raises:
+        TypeError: If the value type is not supported
+
+    """
+    if value is None:
+        return None
+
+    # Primitives - no wrapper needed
+    if isinstance(value, (str, int, float, bool)):
+        return value
+
+    # Lists - serialize elements
+    if isinstance(value, (list, tuple)):
+        return [serialize_value(v) for v in value]
+
+    # Dicts - serialize values (but not if it's our type wrapper)
+    if isinstance(value, dict):
+        if "__type__" in value:
+            return value
+        return {k: serialize_value(v) for k, v in value.items()}
+
+    value_type = type(value)
+
+    # Check registry first (including base classes)
+    for registered_type, serializer in _serializer_registry.items():
+        if isinstance(value, registered_type):
+            return {
+                "__type__": _get_type_key(registered_type),
+                "__value__": serializer.serialize(value),
+            }
+
+    # Pydantic models
+    if hasattr(value, "model_dump"):
+        return {
+            "__type__": _get_type_key(value_type),
+            "__value__": value.model_dump(),
+        }
+
+    # Dataclasses - serialize for Pydantic reconstruction
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            "__type__": _get_type_key(value_type),
+            "__value__": _serialize_for_pydantic(value),
+        }
+
+    # Unsupported type - fail explicitly
+    raise TypeError(
+        f"Cannot serialize value of type {value_type.__name__}. "
+        f"Register a serializer with register_serializer() or use a dataclass/Pydantic model."
+    )
+
+
+def deserialize_value(value: Any) -> Any:
+    """Deserialize a JSON value back to Python, restoring types.
+
+    Uses registered serializers for custom types and Pydantic TypeAdapter
+    for dataclasses/Pydantic models.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [deserialize_value(v) for v in value]
+    if isinstance(value, dict):
+        # Check for typed wrapper
+        if "__type__" in value:
+            type_key = value["__type__"]
+            inner_value = value.get("__value__")
+
+            # Try to resolve the type
+            cls = _resolve_type(type_key)
+            if cls is None:
+                # Can't resolve type - return raw value with warning
+                return inner_value
+
+            # Check registry first
+            if cls in _serializer_registry:
+                serializer = _serializer_registry[cls]
+                return serializer.deserialize(inner_value)
+
+            # Use Pydantic TypeAdapter for dataclasses/Pydantic models
+            try:
+                adapter = _get_adapter(cls)
+                return adapter.validate_python(inner_value)
+            except Exception as e:
+                raise TypeError(f"Failed to deserialize {type_key}: {e}") from e
+
+        # Regular dict - deserialize values
+        return {k: deserialize_value(v) for k, v in value.items()}
+
+    return value
+
+
+# Keep old names for backwards compatibility
+_serialize_value = serialize_value
+_deserialize_value = deserialize_value
 
 
 @dataclass
@@ -90,35 +357,6 @@ def read_params(workspace: Path) -> FlowParams:
     return FlowParams.from_json(params_file.read_text())
 
 
-def _serialize_value(value: Any) -> Any:
-    """Convert a value to JSON-serializable form."""
-    if value is None:
-        return None
-    if isinstance(value, (str, int, float, bool)):
-        return value
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, (list, tuple)):
-        return [_serialize_value(v) for v in value]
-    if isinstance(value, dict):
-        return {k: _serialize_value(v) for k, v in value.items()}
-    # Try to get __dict__ for objects
-    if hasattr(value, "__dict__"):
-        return _serialize_value(value.__dict__)
-    # Fall back to string representation
-    return str(value)
-
-
-def _deserialize_value(value: Any, type_hint: type | None = None) -> Any:
-    """Convert a JSON value back to Python, with optional type hint."""
-    if value is None:
-        return None
-    if type_hint is Path or (isinstance(value, str) and type_hint is None):
-        # Keep strings as strings by default, caller can convert to Path if needed
-        return value
-    return value
-
-
 def write_step_result(workspace: Path, step_name: str, result: Result[Any]) -> None:
     """
     Write a step's result to {step_name}.json.
@@ -132,7 +370,7 @@ def write_step_result(workspace: Path, step_name: str, result: Result[Any]) -> N
     result_file = workspace / f"{step_name}.json"
     data = {
         "status": result.status,
-        "value": _serialize_value(result._value),
+        "value": serialize_value(result._value),
         "error": result.error,
         "traceback": result.traceback,
     }
@@ -158,7 +396,7 @@ def read_step_result(workspace: Path, step_name: str) -> Result[Any]:
     data = json.loads(result_file.read_text())
 
     if data["status"] == "success":
-        return Ok(_deserialize_value(data["value"]))
+        return Ok(deserialize_value(data["value"]))
     else:
         result: Result[Any] = Err(data.get("error", "Unknown error"), traceback=data.get("traceback"))
         return result

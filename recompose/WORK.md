@@ -1,6 +1,107 @@
 # NOW
 
-(Clean - pick up next item from UPCOMING)
+**P09_workflow_dispatch** - COMPLETE
+
+Implemented ergonomic CLI-to-GitHub integration for flows.
+
+**New CLI options for flows:**
+- `--remote` - Trigger workflow on GitHub instead of running locally
+- `--status` - Show recent GitHub Actions runs for the flow
+- `--force` - Skip workflow sync validation (with `--remote`)
+- `--ref` - Specify branch/tag to run against (default: current branch)
+
+**Example usage:**
+```bash
+# Show recent runs for the ci flow
+./run ci --status
+
+# Trigger ci flow on GitHub (validates workflow is in sync)
+./run ci --remote
+
+# Force trigger even if workflow differs
+./run ci --remote --force
+
+# Trigger on a specific branch
+./run ci --remote --ref main
+```
+
+**Implementation:**
+- `src/recompose/github.py` - GitHub CLI wrapper module
+  - `list_workflow_runs()` - List recent workflow runs
+  - `trigger_workflow()` - Dispatch workflow_dispatch event
+  - `validate_workflow_sync()` - Compare local vs remote workflow files
+  - `find_git_root()`, `get_current_branch()` - Git helpers
+- `src/recompose/cli.py` - Added `--remote`, `--status`, `--force`, `--ref` to flow commands
+- `tests/test_github.py` - 16 tests for GitHub CLI wrapper
+
+See: `proj/P09_workflow_dispatch_DONE.md` for original plan
+
+---
+
+**Tree-based output formatting** - COMPLETE
+
+Improved CLI output for flow execution with tree-based visual structure:
+
+```
+ci
+│
+├─▶ 1_gha.checkout
+│     ✓ succeeded in 0.09s
+│
+├─▶ 4_lint
+│     Running ruff check...
+│     │ All checks passed!
+│     Ruff check passed!
+│     ✓ succeeded in 0.52s
+│
+⏹ Completed in 2.01s
+```
+
+Key implementation:
+- **FlowRenderer** (`src/recompose/output.py`): Handles tree structure, headers, footers
+- **TreePrefixWriter**: Wraps `sys.stdout`/`sys.stderr` to add tree prefixes to all output
+- **TreeOutputContext**: Context manager that installs/restores wrapped streams
+- **Subprocess nested indicators**: Subprocess output prefixed with dimmed `│` (stdout) or `!` (stderr)
+- **Continuous vertical line**: Line extends from flow name to final `⏹` symbol
+- **Skipped steps shown**: After failure, remaining steps shown as "⏭ skipped: prior failure in X"
+- **Condition step formatting**: Special cyan color and expression display for eval_condition steps
+- **Logging integration**: Updates logging handlers to use wrapped streams
+
+Environment variables passed to subprocesses:
+- `RECOMPOSE_TREE_MODE=1` enables tree output
+- `RECOMPOSE_TREE_PREFIX` contains the prefix to use (e.g., `│    `)
+- `RECOMPOSE_STEP_INDEX` / `RECOMPOSE_TOTAL_STEPS` for step context
+
+---
+
+**run_if conditional execution** - COMPLETE
+
+Implemented `run_if()` context manager for conditional task execution within flows:
+
+```python
+@recompose.flow
+def conditional_pipeline(*, run_extra: bool = False) -> None:
+    setup.flow()
+
+    with recompose.run_if(run_extra):  # Only runs if run_extra is True
+        extra_validation.flow()
+
+    finalize.flow()
+```
+
+Key implementation:
+- **Expression algebra** (`src/recompose/expr.py`): Captures conditions without evaluating them
+  - `InputExpr` for flow parameters
+  - `BinaryExpr` for `==`, `!=`, `and`, `or` operators
+  - `UnaryExpr` for `not`
+- **Condition context** (`src/recompose/conditional.py`): `run_if()` context manager
+- **Condition check steps**: Pseudo-tasks injected into flow plans that evaluate conditions
+- **GHA integration**: Conditional steps get `if:` clause referencing condition-check output
+- **Local execution**: `run_isolated` checks workspace for condition results, skips steps when false
+
+Enforcement: `InputPlaceholder.__bool__()` raises `TypeError` to prevent direct use in Python `if` statements (flows must have static graphs).
+
+Added `conditional_pipeline` example to `examples/tutorial/intro_flows.py` demonstrating the feature.
 
 ---
 
@@ -100,13 +201,7 @@ identifying it as generated and instructions for modification.
 
 # UPCOMING
 
-**P09_workflow_dispatch** - Ergonomic CLI-to-GitHub integration
-- Use recompose's knowledge of flows to find corresponding workflow runs on GitHub
-- Add flag to kick off a flow on GitHub instead of running locally
-  - e.g., `./run ci --remote` triggers the workflow on GitHub
-- Before dispatch, validate that workflow file on GitHub matches local state
-- Produce warning/error if workflow is out of sync (prevents running stale workflows)
-- Bonus: show workflow run status, link to logs, etc.
+(P09 moved to NOW)
 
 # DEFERRED
 
@@ -128,20 +223,17 @@ identifying it as generated and instructions for modification.
 - Defer until we have more real usage to inform the design
 - Current `recompose.out` works fine for now
 
-**Result type serialization protocol** - Proper support for custom types in flows
-- Current: workspace.py has basic serialization, loses type info on deserialize
-- Problem: `Result[Path]` serializes to string, deserializes as string (not Path)
-- Solution: Protocol-based type handling with two approaches:
-  1. **Direct protocol**: Types implement `RecomposeSerializable` protocol
-     - `def __recompose_serialize__(self) -> dict`
-     - `@classmethod def __recompose_deserialize__(cls, data: dict) -> Self`
-  2. **Registered helpers**: External types register a helper class
-     - `recompose.register_type(Path, PathSerializer)`
-     - Helper handles ser/deser for types you don't control
-- Recompose registers built-in helpers for: `Path`, `datetime`, etc.
-- Recompose extension types (e.g., `Artifact`) implement protocol directly
-- Pydantic BaseModel subclasses work automatically via `.model_dump()` / `.model_validate()`
-- For now: use strings for paths in P07b, revisit when patterns are clearer
+**Result type serialization protocol** - COMPLETE (simpler approach via Pydantic)
+- Problem solved: Types are now properly preserved through serialization
+- Implementation uses Pydantic's `TypeAdapter` instead of custom protocol:
+  - Serialization: Wrap complex types with `__type__` key storing `module.ClassName`
+  - Deserialization: Resolve type, use `TypeAdapter.validate_python()` for reconstruction
+- Handles automatically:
+  - `Path` objects (serialized as strings, restored as Path)
+  - Pydantic models (via `model_dump()` / TypeAdapter)
+  - Dataclasses with nested structures (TypeAdapter handles all nesting)
+- No explicit protocol needed - Pydantic handles type coercion
+- ~60 lines simpler than manual `get_type_hints()` approach
 
 # COMPLETED
 

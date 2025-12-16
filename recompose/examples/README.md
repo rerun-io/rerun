@@ -44,7 +44,8 @@ recompose/
     │
     └── flows/              # Real flows for CI
         ├── __init__.py
-        └── ci.py               # CI pipeline flow
+        ├── ci.py               # CI pipeline flow
+        └── wheel_test.py       # Wheel build & test flows
 ```
 
 ## Tutorial: Learning Recompose
@@ -160,8 +161,96 @@ The `ci` flow runs the full CI pipeline:
 ./run ci
 
 # Inspect the CI flow
-./run inspect ci
+./run inspect --target=ci
 ```
+
+### Wheel Test Flows (`flows/wheel_test.py`)
+
+These flows validate the package can be built and installed:
+
+| Flow | Description |
+|------|-------------|
+| `wheel_smoke_test` | Build wheel, install in fresh venv, run smoke tests |
+| `wheel_full_test` | Build wheel, install in fresh venv, run full test suite |
+
+```bash
+# Quick validation
+./run wheel_smoke_test
+
+# Full validation
+./run wheel_full_test
+
+# Inspect the flows
+./run inspect --target=wheel_smoke_test
+```
+
+## Flow Design Constraints
+
+**Flows must have a STATIC task graph.** This is critical because flows can be
+rendered as GitHub Actions workflows, where each task becomes a workflow step.
+
+### What This Means
+
+The task graph is built when the flow function body executes. Flow parameters
+are NOT evaluated at this time - they're placeholders. This means:
+
+```python
+# WRONG - Conditional logic based on flow parameter
+@recompose.flow
+def my_flow(*, full_tests: bool = False) -> None:
+    build.flow()
+    if full_tests:  # ERROR! full_tests is a placeholder, not a bool
+        test_all.flow()
+    else:
+        test_smoke.flow()
+
+# RIGHT - Separate flows for different behaviors
+@recompose.flow
+def smoke_test_flow() -> None:
+    build.flow()
+    test_smoke.flow()
+
+@recompose.flow
+def full_test_flow() -> None:
+    build.flow()
+    test_all.flow()
+
+# ALSO RIGHT - Conditional logic inside a task
+@recompose.task
+def run_tests(*, full: bool = False) -> recompose.Result[None]:
+    if full:
+        # run full tests
+    else:
+        # run smoke tests
+
+@recompose.flow
+def test_flow(*, full: bool = False) -> None:
+    build.flow()
+    run_tests.flow(full=full)  # full is passed to task, evaluated at runtime
+```
+
+### Valid Uses of Flow Parameters
+
+Flow parameters CAN be passed to tasks - they're resolved at runtime:
+
+```python
+@recompose.flow
+def build_flow(*, repo: str, branch: str = "main") -> None:
+    # Parameters can be passed to tasks
+    clone.flow(repo=repo, branch=branch)
+    build.flow()
+```
+
+### Invalid Uses of Flow Parameters
+
+Flow parameters CANNOT be used in Python control flow:
+
+- `if param:` - boolean evaluation
+- `param == "value"` - comparison
+- `for x in param:` - iteration
+- `len(param)` - attribute/method access
+
+Attempting to do so will raise a `TypeError` with guidance on how to fix.
 
 ## Core Concepts Summary
 
@@ -169,7 +258,7 @@ The `ci` flow runs the full CI pipeline:
 |---------|-----------|---------|
 | Task | `@recompose.task` | Single unit of work |
 | Task Class | `@recompose.taskclass` | Group of related tasks |
-| Flow | `@recompose.flow` | Pipeline of tasks |
+| Flow | `@recompose.flow` | Pipeline of tasks (static graph) |
 
 | Helper | Purpose |
 |--------|---------|

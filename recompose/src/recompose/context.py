@@ -6,11 +6,6 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Literal
 
-from rich.console import Console
-
-# Global console for output
-_console = Console()
-
 # Debug mode flag
 _debug_mode: bool = False
 
@@ -154,12 +149,15 @@ def out(message: str) -> None:
     Output a message.
 
     When running inside a task context, the message is captured.
-    Always prints to console.
+    Always prints to console. In tree mode, stdout is wrapped to add prefixes
+    automatically, so we just print normally.
     """
     ctx = _current_context.get()
     if ctx is not None:
         ctx.capture_out(message)
-    _console.print(message)
+
+    # Just print - if in tree mode, the TreePrefixWriter wrapper handles prefixing
+    print(message, flush=True)
 
 
 def dbg(message: str) -> None:
@@ -168,9 +166,11 @@ def dbg(message: str) -> None:
 
     When running inside a task context, the message is captured.
     Only prints to console if debug mode is enabled.
+    In tree mode, stdout is wrapped to add prefixes automatically.
     """
     ctx = _current_context.get()
     if ctx is not None:
         ctx.capture_dbg(message)
     if _debug_mode:
-        _console.print(f"[dim]{message}[/dim]")
+        # Just print - if in tree mode, the TreePrefixWriter wrapper handles prefixing
+        print(f"[debug] {message}", flush=True)

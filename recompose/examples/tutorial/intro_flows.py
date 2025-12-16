@@ -6,6 +6,7 @@ This tutorial introduces flows for composing tasks:
 - The @flow decorator creates task pipelines
 - Tasks are wired together using the .flow() method
 - Use .value() to pass results from one task to another
+- Use run_if() for conditional task execution
 - Flows can be inspected before execution
 
 Type-safe pattern:
@@ -22,10 +23,12 @@ Run flows:
     uv run python -m examples.tutorial.intro_flows tool_check
     uv run python -m examples.tutorial.intro_flows greeting_pipeline --name="Alice"
     uv run python -m examples.tutorial.intro_flows math_pipeline --a=20 --b=4
+    uv run python -m examples.tutorial.intro_flows conditional_pipeline
+    uv run python -m examples.tutorial.intro_flows conditional_pipeline --run_extra
 
 Inspect flows without running:
-    uv run python -m examples.tutorial.intro_flows inspect tool_check
-    uv run python -m examples.tutorial.intro_flows inspect greeting_pipeline
+    uv run python -m examples.tutorial.intro_flows inspect --target=tool_check
+    uv run python -m examples.tutorial.intro_flows inspect --target=conditional_pipeline
 """
 
 import recompose
@@ -190,6 +193,86 @@ def risky_pipeline(*, a: int = 10, b: int = 0) -> None:
     quotient = divide.flow(a=a, b=b)
     product = multiply.flow(value=quotient.value(), factor=5)
     summarize.flow(result=product.value())
+
+
+# =============================================================================
+# CONDITIONAL EXECUTION WITH run_if
+# =============================================================================
+#
+# Use run_if() to conditionally execute tasks based on flow parameters.
+# This works both locally and in GitHub Actions workflows.
+
+
+@recompose.task
+def setup() -> recompose.Result[str]:
+    """
+    Initial setup step.
+
+    """
+    recompose.out("Running setup...")
+    return recompose.Ok("setup-complete")
+
+
+@recompose.task
+def extra_validation() -> recompose.Result[str]:
+    """
+    Optional extra validation step.
+
+    """
+    recompose.out("Running extra validation...")
+    return recompose.Ok("validation-passed")
+
+
+@recompose.task
+def finalize() -> recompose.Result[str]:
+    """
+    Final step.
+
+    """
+    recompose.out("Finalizing...")
+    return recompose.Ok("done")
+
+
+@recompose.flow
+def conditional_pipeline(*, run_extra: bool = False) -> None:
+    """
+    A pipeline with conditional task execution.
+
+    The run_if() context manager enables conditional execution:
+    - Tasks inside run_if() only execute if the condition is true
+    - Works identically in local execution and GitHub Actions
+    - The condition becomes a separate evaluation step
+
+    Try without extra validation:
+        conditional_pipeline
+
+    Try with extra validation:
+        conditional_pipeline --run_extra
+
+    Inspect to see the condition check step:
+        inspect --target=conditional_pipeline
+
+    IMPORTANT: Flows must have a STATIC task graph for GitHub Actions.
+    You cannot use flow parameters in Python if/else statements:
+
+        # WRONG - breaks GHA generation:
+        if run_extra:
+            extra_validation.flow()
+
+        # CORRECT - use run_if():
+        with recompose.run_if(run_extra):
+            extra_validation.flow()
+
+    """
+    # Always runs
+    setup.flow()
+
+    # Only runs if run_extra is True
+    with recompose.run_if(run_extra):
+        extra_validation.flow()
+
+    # Always runs
+    finalize.flow()
 
 
 # =============================================================================
