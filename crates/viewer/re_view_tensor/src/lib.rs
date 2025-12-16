@@ -29,12 +29,12 @@ impl TensorDimension {
             .collect()
     }
 
-    #[allow(clippy::allow_attributes, dead_code)] // Used for tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
     }
 
-    #[allow(clippy::allow_attributes, dead_code)] // Used for tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn named(size: u64, name: impl Into<re_sdk_types::ArrowString>) -> Self {
         Self {
             size,
