@@ -7,6 +7,7 @@ use egui::{
 };
 
 use crate::alert::Alert;
+use crate::button::ReButton;
 use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
 
@@ -22,7 +23,11 @@ pub trait UiExt {
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
     fn theme(&self) -> egui::Theme {
-        self.ui().ctx().theme()
+        if self.ui().visuals().dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        }
     }
 
     fn tokens(&self) -> &'static DesignTokens {
@@ -205,6 +210,14 @@ pub trait UiExt {
         ui.set_style(prev_style);
 
         response
+    }
+
+    fn primary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).primary())
+    }
+
+    fn secondary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).secondary())
     }
 
     fn re_checkbox<'a>(

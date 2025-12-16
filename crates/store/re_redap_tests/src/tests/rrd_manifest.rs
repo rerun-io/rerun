@@ -43,7 +43,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     use futures::StreamExt as _;
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![rrd_manifest_batch.into()],
+            chunk_infos: vec![rrd_manifest_batch.clone().into()],
         }))
         .await
         .unwrap()

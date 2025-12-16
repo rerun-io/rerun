@@ -97,20 +97,8 @@ pub fn redap_uri_button(
 
     ui.horizontal(|ui| {
         if let Some(loaded_recording_info) = loaded_recording_info {
-            if loaded_recording_info.is_partial {
-                let response = ui.add(Link::new("Open full")).on_hover_text(
-                    "Part of this recording is already loaded. Click to download the rest.",
-                );
-                handle_open_full_recording_link(ui, uri, &response);
-            }
-
-            let response = link_with_copy(ui, Link::new("Switch to")).on_hover_text(
-                if loaded_recording_info.is_partial {
-                    "Part of this recording is already loaded. Click to switch to it."
-                } else {
-                    "This recording is already loaded. Click to switch to it."
-                },
-            );
+            let response = link_with_copy(ui, Link::new("Switch to"))
+                .on_hover_text("This recording is already loaded. Click to switch to it.");
             if response.clicked() {
                 // Show it:
                 ctx.command_sender()

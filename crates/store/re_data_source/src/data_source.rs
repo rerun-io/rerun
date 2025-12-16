@@ -1,10 +1,16 @@
+use std::sync::Arc;
+
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::RecordingId;
-use re_redap_client::{ApiError, ConnectionRegistryHandle};
+use re_redap_client::ConnectionRegistryHandle;
 
 use crate::FileContents;
+use crate::stream_rrd_from_http::stream_from_http_to_channel;
+
+pub type AuthErrorHandler =
+    Arc<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
 
 /// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -139,20 +145,18 @@ impl LogDataSource {
     /// Will do minimal checks (e.g. that the file exists), for synchronous errors,
     /// but the loading is done in a background task.
     ///
-    /// `on_cmd` is used to respond to UI commands.
+    /// `on_redap_err` should handle authentication errors by showing a login prompt.
     pub fn stream(
         self,
+        on_auth_err: AuthErrorHandler,
         connection_registry: &ConnectionRegistryHandle,
     ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(
-                re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
-                    url.to_string(),
-                    follow,
-                ),
-            ),
+            Self::RrdHttpUrl { url, follow } => {
+                Ok(stream_from_http_to_channel(url.to_string(), follow))
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
@@ -220,17 +224,18 @@ impl LogDataSource {
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
                 let stream_segment = async move {
-                    let client = connection_registry
-                        .client(uri_clone.origin.clone())
-                        .await
-                        .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
+                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
                     re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
                         .await
                 };
 
                 spawn_future(async move {
                     if let Err(err) = stream_segment.await {
-                        re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
+                        if let Some(err) = err.as_client_credentials_error() {
+                            on_auth_err(uri, err);
+                        } else {
+                            re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
+                        }
                     }
                 });
                 Ok(rx)

@@ -4,8 +4,8 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 use re_chunk::ChunkId;
 use re_chunk_store::ChunkStoreEvent;
+use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::StoreKind;
-use re_types_core::ChunkIndexMessage;
 
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
@@ -16,13 +16,11 @@ pub struct ChunkInfo {
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
-/// This is currently used to show a progress bar.
-///
-/// This is constructed from one ore more [`ChunkIndexMessage`], which is what
+/// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
-pub struct ChunkIndex {
+pub struct RrdManifestIndex {
     /// Set if we have received an index.
     ///
     /// This only happens for some data sources.
@@ -44,13 +42,13 @@ pub struct ChunkIndex {
     has_deleted: bool,
 }
 
-impl ChunkIndex {
+impl RrdManifestIndex {
     #[expect(clippy::needless_pass_by_value)] // In the future we may want to store them as record batches
-    pub fn append(&mut self, msg: ChunkIndexMessage) {
+    pub fn append(&mut self, msg: RrdManifest) -> CodecResult<()> {
         re_tracing::profile_function!();
         self.has_index = true;
-        for chunk_id in msg.chunk_ids() {
-            match self.remote_chunks.entry(*chunk_id) {
+        for chunk_id in msg.col_chunk_id()? {
+            match self.remote_chunks.entry(chunk_id) {
                 Entry::Occupied(_occupied_entry) => {
                     // TODO(RR-2999): update time range index for the chunk
                 }
@@ -61,30 +59,7 @@ impl ChunkIndex {
                 }
             }
         }
-    }
-
-    /// [0, 1], how many chunks have been loaded?
-    ///
-    /// Returns `None` if we have already started garbage-collecting some chunks.
-    pub fn progress(&self) -> Option<f32> {
-        if !self.has_index {
-            return None;
-        }
-
-        let num_remote_chunks = self.remote_chunks.len();
-
-        if self.has_deleted {
-            None
-        } else if num_remote_chunks == 0 {
-            Some(1.0)
-        } else {
-            let num_loaded = self
-                .remote_chunks
-                .values()
-                .filter(|c| c.fully_loaded)
-                .count();
-            Some(num_loaded as f32 / num_remote_chunks as f32)
-        }
+        Ok(())
     }
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {

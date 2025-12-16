@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
-use re_data_source::{FileContents, LogDataSource};
+use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{
@@ -15,17 +15,17 @@ use re_log_channel::{
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sdk_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
-    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
-    TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel, sanitize_file_name,
+    CommandSender, ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand,
+    FallbackProviderRegistry, Item, NeedsRepaint, RecordingOrTable, StorageContext, StoreContext,
+    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
 
 use crate::AppState;
@@ -587,7 +587,7 @@ impl App {
                 // we want to diff state changes.
                 let should_diff_state = true;
                 let response = time_ctrl.update(
-                    recording.times_per_timeline(),
+                    recording.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -612,7 +612,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.times_per_timeline(),
+                    bp_ctx.current_blueprint.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -669,8 +669,8 @@ impl App {
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
-        while let Some(cmd) = self.command_receiver.recv_system() {
-            self.run_system_command(cmd, store_hub, egui_ctx);
+        while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
+            self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
     }
 
@@ -732,12 +732,6 @@ impl App {
 
         let Ok(url) =
             ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
-                .map(|mut url| {
-                    // We don't want the time range in the history url, as that actually leads
-                    // to a subset of the current data!
-                    url.clear_time_range();
-                    url
-                })
         else {
             return;
         };
@@ -762,18 +756,15 @@ impl App {
                     if let Some(fragment) = url.fragment_mut() {
                         fragment.when = time_ctrl.and_then(|time_ctrl| {
                             Some((
-                                *time_ctrl.timeline().name(),
+                                *time_ctrl.timeline_name(),
                                 re_log_types::TimeCell {
-                                    typ: time_ctrl.time_type(),
+                                    typ: time_ctrl.time_type()?,
                                     value: time_ctrl.last_paused_time()?.floor().into(),
                                 },
                             ))
                         });
                     }
-                    // We don't want the time range in the web url, as that actually leads
-                    // to a subset of the current data! And is not in the fragment so
-                    // would be added to history.
-                    url.clear_time_range();
+
                     url
                 })
                 // History entries expect the url parameter, not the full url, therefore don't pass a base url.
@@ -817,6 +808,7 @@ impl App {
 
     fn run_system_command(
         &mut self,
+        sent_from: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
         cmd: SystemCommand,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
@@ -826,44 +818,62 @@ impl App {
                 store_id,
                 time_commands,
             } => {
-                if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
-                    let (time_ctrl, blueprint_ctx) = if store_id.is_blueprint() {
-                        (&mut self.state.blueprint_time_control, None)
-                    } else if let Some(target_blueprint) =
-                        store_hub.active_blueprint_for_app(store_id.application_id())
-                    {
-                        let blueprint_query =
-                            self.state.blueprint_query_for_viewer(target_blueprint);
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        store_hub.set_active_recording_id(store_id.clone()); // Switch to this recording
+                        let (storage_ctx, store_ctx) = store_hub.read_context(); // Materialize the target blueprint on-demand
+                        if let Some(store_ctx) = store_ctx {
+                            let target_blueprint = store_ctx.blueprint;
+                            let blueprint_query =
+                                self.state.blueprint_query_for_viewer(target_blueprint);
 
-                        let ctx = AppBlueprintCtx {
-                            command_sender: &self.command_sender,
-                            current_blueprint: target_blueprint,
-                            default_blueprint: store_hub
-                                .default_blueprint_for_app(store_id.application_id()),
-                            blueprint_query,
-                        };
+                            let blueprint_ctx = AppBlueprintCtx {
+                                command_sender: &self.command_sender,
+                                current_blueprint: target_blueprint,
+                                default_blueprint: storage_ctx
+                                    .hub
+                                    .default_blueprint_for_app(store_id.application_id()),
+                                blueprint_query,
+                            };
 
-                        (self.state.time_control_mut(target_store, &ctx), Some(ctx))
-                    } else {
-                        return;
-                    };
+                            let time_ctrl = self
+                                .state
+                                .time_control_mut(store_ctx.recording, &blueprint_ctx);
 
-                    let response = time_ctrl.handle_time_commands(
-                        blueprint_ctx.as_ref(),
-                        target_store.times_per_timeline(),
-                        &time_commands,
-                    );
+                            let response = time_ctrl.handle_time_commands(
+                                Some(&blueprint_ctx),
+                                store_ctx.recording.timeline_histograms(),
+                                &time_commands,
+                            );
 
-                    if response.needs_repaint == NeedsRepaint::Yes {
-                        self.egui_ctx.request_repaint();
+                            if response.needs_repaint == NeedsRepaint::Yes {
+                                self.egui_ctx.request_repaint();
+                            }
+
+                            handle_time_ctrl_event(
+                                store_ctx.recording,
+                                self.event_dispatcher.as_ref(),
+                                &response,
+                            );
+                        } else {
+                            re_log::error!(
+                                "Skipping time control command because of missing blueprint"
+                            );
+                        }
                     }
+                    StoreKind::Blueprint => {
+                        if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
+                            let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
+                            let response = self.state.blueprint_time_control.handle_time_commands(
+                                blueprint_ctx,
+                                target_store.timeline_histograms(),
+                                &time_commands,
+                            );
 
-                    if !store_id.is_blueprint() {
-                        handle_time_ctrl_event(
-                            target_store,
-                            self.event_dispatcher.as_ref(),
-                            &response,
-                        );
+                            if response.needs_repaint == NeedsRepaint::Yes {
+                                self.egui_ctx.request_repaint();
+                            }
+                        }
                     }
                 }
             }
@@ -998,10 +1008,8 @@ impl App {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
-                    self.state.navigation.replace(display_mode);
-                } else {
-                    self.state.navigation.replace(display_mode);
                 }
+                self.state.navigation.replace(display_mode);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -1067,6 +1075,10 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::EditRedapServerModal(command) => {
+                self.state.redap_servers.open_edit_server_modal(command);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -1087,7 +1099,9 @@ impl App {
 
             SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
-                    "Update {} entities: {}",
+                    "{}:{} Update {} entities: {}",
+                    sent_from.file(),
+                    sent_from.line(),
                     store_id.kind(),
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
@@ -1252,7 +1266,25 @@ impl App {
                     re_log::error!("Failed to store credentials: {err}");
                 }
             }
+            SystemCommand::Logout => {
+                if let Err(err) = re_auth::oauth::clear_credentials() {
+                    re_log::error!("Failed to logout: {err}");
+                }
+                self.state.redap_servers.logout();
+            }
         }
+    }
+
+    pub fn auth_error_handler(sender: CommandSender) -> AuthErrorHandler {
+        Arc::new(move |url, _err| {
+            sender.send_system(SystemCommand::EditRedapServerModal(
+                EditRedapServerModalCommand {
+                    origin: url.origin.clone(),
+                    open_on_success: Some(url.to_string()),
+                    title: Some("Authenticate to see this recording".to_owned()),
+                },
+            ));
+        })
     }
 
     /// Loads a data source into the viewer.
@@ -1370,7 +1402,11 @@ impl App {
             }
         }
 
-        let stream = data_source.clone().stream(&self.connection_registry);
+        let sender = self.command_sender.clone();
+        let stream = data_source
+            .clone()
+            .stream(Self::auth_error_handler(sender), &self.connection_registry);
+
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
             let data_source_analytics = data_source.analytics();
@@ -1394,7 +1430,11 @@ impl App {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -1415,14 +1455,26 @@ impl App {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetPlayState(PlayState::Paused));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }
@@ -1957,21 +2009,22 @@ impl App {
                 }
             }
 
-            UICommand::CopyTimeRangeLink => {
+            UICommand::CopyTimeSelectionLink => {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(mut url) => {
-                        if let Some(time_range) = url.time_range_mut() {
+                        if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = storage_context
                                 .hub
                                 .active_store_id()
                                 .and_then(|id| self.state.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
-                                && let Some(loop_selection) = time_ctrl.loop_selection()
+                                && let Some(time_selection) = time_ctrl.time_selection()
+                                && let Some(timeline) = time_ctrl.timeline()
                             {
-                                *time_range = Some(re_uri::TimeSelection {
-                                    timeline: *time_ctrl.timeline(),
-                                    range: loop_selection.to_int(),
+                                fragment.time_selection = Some(re_uri::TimeSelection {
+                                    timeline: *timeline,
+                                    range: time_selection.to_int(),
                                 });
                             } else {
                                 re_log::warn!("No timeline selection to copy");
@@ -2247,9 +2300,11 @@ impl App {
                             );
                         }
 
+                        let mut startup_options = self.startup_options.clone();
+
                         self.state.show(
                             &self.app_env,
-                            &self.startup_options,
+                            &mut startup_options,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -2269,6 +2324,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                         );
+                        self.startup_options = startup_options;
                         render_ctx.before_submit();
                     }
 
@@ -2315,9 +2371,9 @@ impl App {
             };
 
             match msg {
-                DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
-                    entity_db.add_chunk_index_message(chunk_index);
+                    entity_db.add_rrd_manifest_message(*rrd_manifest);
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
@@ -2525,12 +2581,12 @@ impl App {
             ONCE.call_once(|| {
                 // Tell the user there is a faster native viewer they can use instead of the web viewer:
                 let notification = re_ui::notifications::Notification::new(
-                        re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
-                        re_ui::Link {
-                            text: "Install…".into(),
-                            url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
-                        }
-                    )
+                    re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                    re_ui::Link {
+                        text: "Install…".into(),
+                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                    }
+                )
                     .no_toast()
                     .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
                 self.command_sender
@@ -2559,21 +2615,6 @@ impl App {
         channel_source: &LogSource,
     ) {
         match ui_command {
-            DataSourceUiCommand::AddValidTimeRange {
-                store_id,
-                timeline,
-                time_range,
-            } => {
-                self.command_sender
-                    .send_system(SystemCommand::TimeControlCommands {
-                        store_id,
-                        time_commands: vec![TimeControlCommand::AddValidTimeRange {
-                            timeline,
-                            time_range,
-                        }],
-                    });
-            }
-
             DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {
@@ -2700,7 +2741,13 @@ impl App {
                     format_bytes(counted as f64 * fraction_to_purge as f64)
                 );
             }
-            store_hub.purge_fraction_of_ram(fraction_to_purge);
+
+            let time_cursor_for =
+                |store_id: &StoreId| -> Option<(re_log_types::Timeline, re_log_types::TimeInt)> {
+                    let time_ctrl = self.state.time_controls.get(store_id)?;
+                    Some((*time_ctrl.timeline()?, time_ctrl.time_int()?))
+                };
+            store_hub.purge_fraction_of_ram(fraction_to_purge, &time_cursor_for);
 
             let mem_use_after = MemoryUse::capture();
 
@@ -2708,6 +2755,7 @@ impl App {
 
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
+                && 0 < counted_diff
             {
                 re_log::debug!(
                     "Freed up {} ({:.1}%)",

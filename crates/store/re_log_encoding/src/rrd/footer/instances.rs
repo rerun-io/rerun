@@ -1,14 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use arrow::array::{BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
+use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
+use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{EntityPath, StoreId};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
 use re_types_core::ComponentDescriptor;
 
-use crate::CodecResult;
+use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
 // ---
 
@@ -59,35 +61,75 @@ pub struct RrdFooter {
 /// The best way to understand what an RRD manifest does or doesn't do is to look at snapshots for
 /// a simple recording:
 /// ```text,ignore
-/// ┌─────────────────────────────────────────┬──────────────────────────────────┬──────────────────────────────────┐
-/// │ chunk_entity_path                       ┆ /my_entity                       ┆ /my_entity                       │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ chunk_id                                ┆ 00000000000000010000000000000001 ┆ 00000000000000010000000000000002 │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ chunk_is_static                         ┆ false                            ┆ true                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ chunk_byte_offset                       ┆ 104                              ┆ 1552                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ chunk_byte_size                         ┆ 1432                             ┆ 947                              │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ example_MyPoints:colors:has_static_data ┆ false                            ┆ false                            │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ example_MyPoints:labels:has_static_data ┆ false                            ┆ true                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ example_MyPoints:points:has_static_data ┆ false                            ┆ false                            │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:start                          ┆ 10                               ┆ null                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:end                            ┆ 40                               ┆ null                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:example_MyPoints:colors:start  ┆ 20                               ┆ null                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:example_MyPoints:colors:end    ┆ 30                               ┆ null                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:example_MyPoints:points:start  ┆ 10                               ┆ null                             │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:example_MyPoints:points:end    ┆ 40                               ┆ null                             │
-/// └─────────────────────────────────────────┴──────────────────────────────────┴──────────────────────────────────┘
+/// ┌───────────────────────────────────────────────┬──────────────────────────────────┬──────────────────────────────────┐
+/// │ chunk_entity_path                             ┆ /my_entity1                      ┆ /my_entity1                      │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_id                                      ┆ 00000000000000010000000000000001 ┆ 00000000000000010000000000000002 │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_is_static                               ┆ false                            ┆ true                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_num_rows                                ┆ 4                                ┆ 1                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_byte_offset                             ┆ 0                                ┆ 962                              │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_byte_size                               ┆ 962                              ┆ 464                              │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_byte_size_uncompressed                  ┆ 3981                             ┆ 2509                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:colors:has_static_data       ┆ false                            ┆ true                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:labels:has_static_data       ┆ false                            ┆ true                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:points:has_static_data       ┆ false                            ┆ false                            │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:start                            ┆ PT10S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:end                              ┆ PT40S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:start                                ┆ 10                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:end                                  ┆ 40                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:start                                ┆ 1970-01-01T00:00:00.000000010    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:end                                  ┆ 1970-01-01T00:00:00.000000040    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:colors:start    ┆ PT20S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:colors:end      ┆ PT30S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:colors:num_rows ┆ 2                                ┆ 0                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:points:start    ┆ PT10S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:points:end      ┆ PT40S                            ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ elapsed_time:example_MyPoints:points:num_rows ┆ 3                                ┆ 0                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:colors:start        ┆ 20                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:colors:end          ┆ 30                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:colors:num_rows     ┆ 2                                ┆ 0                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:points:start        ┆ 10                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:points:end          ┆ 40                               ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:points:num_rows     ┆ 3                                ┆ 0                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:colors:start        ┆ 1970-01-01T00:00:00.000000020    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:colors:end          ┆ 1970-01-01T00:00:00.000000030    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:colors:num_rows     ┆ 2                                ┆ 0                                │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:points:start        ┆ 1970-01-01T00:00:00.000000010    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:points:end          ┆ 1970-01-01T00:00:00.000000040    ┆ null                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ log_time:example_MyPoints:points:num_rows     ┆ 3                                ┆ 0                                │
+/// └───────────────────────────────────────────────┴──────────────────────────────────┴──────────────────────────────────┘
 /// ```
 ///
 /// Note that `:start` & `:end` columns are always implicitly _inclusive_. The `_inclusive` suffix has been
@@ -132,6 +174,338 @@ pub struct RrdManifest {
     // TODO(cmc): should we slap a sorbet:version on this? that probably should be part of the sorbet ABI as
     // much as anything else?
     pub data: arrow::array::RecordBatch,
+}
+
+/// A map based representation of the static data within an [`RrdManifest`].
+pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
+
+/// The individual entries in an [`RrdManifestTemporalMap`].
+#[derive(Debug, Clone, Copy)]
+pub struct RrdManifestTemporalMapEntry {
+    /// The time range covered by this entry.
+    pub time_range: AbsoluteTimeRange,
+
+    /// The number of rows in the original chunk which are associated with this entry.
+    ///
+    /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
+    /// entry it might be less, since chunks allow sparse components.
+    pub num_rows: u64,
+}
+
+/// A map based representation of the temporal data within an [`RrdManifest`].
+pub type RrdManifestTemporalMap = IntMap<
+    EntityPath,
+    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, RrdManifestTemporalMapEntry>>>,
+>;
+
+impl RrdManifest {
+    /// High-level helper to parse [`RrdManifest`]s from raw RRD bytes.
+    ///
+    /// This does not decode all the data, but rather goes straight to the RRD footer (if any).
+    ///
+    /// * Returns `None` if no valid footer was found.
+    /// * Returns an error if either the footer or any of the manifests are corrupt.
+    ///
+    /// Usage:
+    /// ```text,ignore
+    /// let rrd_bytes = std::fs::read("/path/to/my/recording.rrd");
+    /// let rrd_manifests = RrdManifest::from_rrd_bytes(&rrd_bytes)?;
+    /// let rrd_manifest = rrd_manifests
+    ///     .into_iter()
+    ///     .find(|m| m.store_id.kind() == StoreKind::Recording)?;
+    /// ```
+    pub fn from_rrd_bytes(rrd_bytes: &[u8]) -> CodecResult<Vec<Self>> {
+        let stream_footer = match crate::StreamFooter::from_rrd_bytes(rrd_bytes) {
+            Ok(footer) => footer,
+
+            // That was in fact _not_ a footer.
+            Err(crate::CodecError::FrameDecoding(_)) => return Ok(vec![]),
+
+            err @ Err(_) => err?,
+        };
+
+        let mut manifests = Vec::new();
+
+        for entry in stream_footer.entries {
+            let StreamFooterEntry {
+                rrd_footer_byte_span_from_start_excluding_header,
+                crc_excluding_header,
+            } = entry;
+
+            let rrd_footer_byte_span = rrd_footer_byte_span_from_start_excluding_header;
+
+            let rrd_footer_byte_span = rrd_footer_byte_span
+                .try_cast::<usize>()
+                .ok_or_else(|| {
+                    crate::CodecError::FrameDecoding(
+                        "RRD footer too large for native bit width".to_owned(),
+                    )
+                })?
+                .range();
+
+            let rrd_footer_bytes = &rrd_bytes[rrd_footer_byte_span];
+
+            let crc = crate::StreamFooter::compute_crc(rrd_footer_bytes);
+            if crc != crc_excluding_header {
+                return Err(crate::CodecError::CrcMismatch {
+                    expected: crc_excluding_header,
+                    got: crc,
+                });
+            }
+
+            let rrd_footer =
+                re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes)?;
+            manifests.extend(
+                rrd_footer
+                    .manifests
+                    .iter()
+                    .map(|manifest| manifest.to_application(()))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+        }
+
+        Ok(manifests)
+    }
+
+    /// Computes a map-based representation of the static data in this RRD manifest.
+    pub fn get_static_data_as_a_map(&self) -> CodecResult<RrdManifestStaticMap> {
+        re_tracing::profile_function!();
+
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let mut per_entity: RrdManifestStaticMap = IntMap::default();
+
+        let chunk_ids = self.col_chunk_id()?;
+        let chunk_entity_paths = self.col_chunk_entity_path()?;
+        let chunk_is_static = self.col_chunk_is_static()?;
+
+        let has_static_component_data =
+            itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
+                .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
+                .map(|(f, c)| {
+                    c.downcast_array_ref::<arrow::array::BooleanArray>()
+                        .ok_or_else(|| {
+                            crate::CodecError::ArrowDeserialization(
+                                arrow::error::ArrowError::SchemaError(format!(
+                                    "'{}' should be a BooleanArray, but it's a {} instead",
+                                    f.name(),
+                                    c.data_type(),
+                                )),
+                            )
+                        })
+                        .map(|c| (f, c))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+        for (i, (chunk_id, is_static, entity_path)) in
+            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
+        {
+            if !is_static {
+                continue;
+            }
+
+            for (f, has_static_component_data) in &has_static_component_data {
+                let has_static_component_data = has_static_component_data.value(i);
+                if !has_static_component_data {
+                    continue;
+                }
+
+                let Some(component) = f.metadata().get("rerun:component") else {
+                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                        reason: format!(
+                            "column '{}' is missing rerun:component metadata",
+                            f.name()
+                        ),
+                    }));
+                };
+                let component = ComponentIdentifier::new(component);
+
+                let per_component = per_entity.entry(entity_path.clone()).or_default();
+
+                // TODO(cmc): technically we should follow the usual crazy semantics to decide which
+                // static chunk for which component in case of conflicts etc but, it's fine for now.
+                per_component
+                    .entry(component)
+                    .and_modify(|id| *id = chunk_id)
+                    .or_insert(chunk_id);
+            }
+        }
+
+        Ok(per_entity)
+    }
+
+    /// Computes a map-based representation of the temporal data in this RRD manifest.
+    pub fn get_temporal_data_as_a_map(&self) -> CodecResult<RrdManifestTemporalMap> {
+        re_tracing::profile_function!();
+
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let fields = self.data.schema_ref().fields();
+        let columns = self.data.columns();
+        let indexes = fields
+            .iter()
+            .filter_map(|f| {
+                f.metadata()
+                    .get("rerun:index")
+                    .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c, f)))
+            })
+            .filter(|(_index, _component, field)| field.name().ends_with(":start"))
+            .collect_vec();
+
+        let mut per_entity: RrdManifestTemporalMap = Default::default();
+
+        let chunk_ids = self.col_chunk_id()?;
+        let chunk_entity_paths = self.col_chunk_entity_path()?;
+        let chunk_is_static = self.col_chunk_is_static()?;
+
+        struct IndexColumns<'a> {
+            index: &'a str,
+            component: &'a String,
+            time_type: TimeType,
+
+            col_start_nulls: NullBuffer,
+            col_start_raw: &'a [i64],
+
+            col_end_nulls: NullBuffer,
+            col_end_raw: &'a [i64],
+
+            col_num_rows_raw: &'a [u64],
+        }
+
+        let mut columns_per_index = HashMap::<String, IndexColumns<'_>>::new();
+        for (index, component, field) in indexes {
+            let index = index.as_str();
+            if index == "rerun:static" {
+                continue;
+            }
+
+            pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
+                field.metadata().get("rerun:index").map(|s| s.as_str())
+            }
+
+            pub fn is_specific_index(field: &arrow::datatypes::Field, index_name: &str) -> bool {
+                get_index_name(field) == Some(index_name)
+            }
+
+            let Some((_, col_start)) = itertools::izip!(fields, columns).find(|(f, _col)| {
+                is_specific_index(f, index)
+                    && f.name().ends_with(":start")
+                    && f.metadata().get("rerun:component") == Some(component)
+            }) else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("start index is missing for {component}"),
+                }));
+            };
+            let Some((_, col_end)) = itertools::izip!(fields, columns).find(|(f, _col)| {
+                is_specific_index(f, index)
+                    && f.name().ends_with(":end")
+                    && f.metadata().get("rerun:component") == Some(component)
+            }) else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("end index is missing for {component}"),
+                }));
+            };
+            let Some((field_num_rows, col_num_rows)) =
+                itertools::izip!(fields, columns).find(|(f, _col)| {
+                    is_specific_index(f, index)
+                        && f.name().ends_with(":num_rows")
+                        && f.metadata().get("rerun:component") == Some(component)
+                })
+            else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("num_rows index is missing for {component}"),
+                }));
+            };
+
+            let (time_type, col_start_raw) = TimeType::from_arrow_array(col_start)
+                .map_err(crate::CodecError::ArrowDeserialization)?;
+            let (_, col_end_raw) = TimeType::from_arrow_array(col_end)
+                .map_err(crate::CodecError::ArrowDeserialization)?;
+            let col_num_rows_raw: &[u64] = col_num_rows
+                .downcast_array_ref::<UInt64Array>()
+                .ok_or_else(|| {
+                    crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                        format!(
+                            "'{}' should be a BooleanArray, but it's a {} instead",
+                            field_num_rows.name(),
+                            col_num_rows.data_type(),
+                        ),
+                    ))
+                })?
+                .values();
+
+            // So we don't have to pay the virtual call cost for every `is_valid()` call.
+            let col_start_nulls = col_start
+                .nulls()
+                .cloned()
+                .unwrap_or_else(|| NullBuffer::new_valid(col_start.len()));
+            let col_end_nulls = col_end
+                .nulls()
+                .cloned()
+                .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
+
+            columns_per_index.insert(
+                field.name().to_owned(),
+                IndexColumns {
+                    index,
+                    component,
+                    time_type,
+                    col_start_nulls,
+                    col_start_raw,
+                    col_end_nulls,
+                    col_end_raw,
+                    col_num_rows_raw,
+                },
+            );
+        }
+
+        for (i, (chunk_id, is_static, entity_path)) in
+            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
+        {
+            if is_static {
+                continue;
+            }
+
+            for columns in columns_per_index.values() {
+                let IndexColumns {
+                    index,
+                    component,
+                    time_type,
+                    col_start_nulls,
+                    col_start_raw,
+                    col_end_nulls,
+                    col_end_raw,
+                    col_num_rows_raw,
+                } = columns;
+
+                if !col_start_nulls.is_valid(i) || !col_end_nulls.is_valid(i) {
+                    continue;
+                }
+
+                let component = ComponentIdentifier::new(component);
+                let timeline = Timeline::new(*index, *time_type);
+
+                let per_timeline = per_entity.entry(entity_path.clone()).or_default();
+                let per_component = per_timeline.entry(timeline).or_default();
+                let per_chunk = per_component.entry(component).or_default();
+
+                let start = col_start_raw[i];
+                let end = col_end_raw[i];
+                let num_rows = col_num_rows_raw[i];
+                let entry = RrdManifestTemporalMapEntry {
+                    time_range: AbsoluteTimeRange::new(start, end),
+                    num_rows,
+                };
+
+                per_chunk
+                    .entry(chunk_id)
+                    .and_modify(|tr| *tr = entry)
+                    .or_insert(entry);
+            }
+        }
+
+        Ok(per_entity)
+    }
 }
 
 // Schema fields are stored as Vecs, but we don't want their order to matter when performing comparisons.
@@ -265,16 +639,18 @@ impl RrdManifest {
     fn check_global_columns_are_correct(&self) -> CodecResult<()> {
         _ = self.col_chunk_id()?;
         _ = self.col_chunk_is_static()?;
+        _ = self.col_chunk_num_rows()?;
         _ = self.col_chunk_entity_path()?;
         _ = self.col_chunk_byte_offset()?;
         _ = self.col_chunk_byte_size()?;
+        _ = self.col_chunk_byte_size_uncompressed()?;
         Ok(())
     }
 
     /// Cheap.
     fn check_index_columns_are_correct(&self) -> CodecResult<()> {
         {
-            // All columns either end in :has_static_data or :start or :end (or are global).
+            // All columns either end in :has_static_data or :num_rows or :start or :end (or are global).
             for field in self.data.schema().fields() {
                 if let Some((_, suffix)) = field.name().rsplit_once(':') {
                     match suffix {
@@ -295,6 +671,19 @@ impl RrdManifest {
                             }
                         }
 
+                        "num_rows" => {
+                            if field.data_type() != Self::field_chunk_num_rows().data_type() {
+                                return Err(crate::CodecError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' should be {} but is actually {}",
+                                        field.name(),
+                                        Self::field_chunk_num_rows().data_type(),
+                                        field.data_type(),
+                                    ),
+                                }));
+                            }
+                        }
+
                         suffix => {
                             return Err(crate::CodecError::from(ChunkError::Malformed {
                                 reason: format!(
@@ -309,7 +698,9 @@ impl RrdManifest {
                     match field.name().as_str() {
                         Self::FIELD_CHUNK_ID
                         | Self::FIELD_CHUNK_IS_STATIC
+                        | Self::FIELD_CHUNK_NUM_ROWS
                         | Self::FIELD_CHUNK_BYTE_SIZE
+                        | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
 
@@ -374,6 +765,38 @@ impl RrdManifest {
                                 field_counterpart.data_type()
                             ),
                         }));
+                    }
+                }
+            }
+        }
+
+        {
+            // All `:start` columns should have a matching `:num_rows`.
+            for field in self.data.schema().fields() {
+                if let Some((prefix, "num_rows")) = field.name().rsplit_once(':') {
+                    let field_num_rows = self
+                        .data
+                        .schema_ref()
+                        .field_with_name(&format!("{prefix}:num_rows"))
+                        .map_err(|_err| {
+                            crate::CodecError::from(ChunkError::Malformed {
+                                reason: format!(
+                                    "field '{}' does not have matching `:num_rows` field",
+                                    field.name()
+                                ),
+                            })
+                        })?;
+
+                    match field_num_rows.data_type() {
+                        arrow::datatypes::DataType::UInt64 => {}
+                        datatype => {
+                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                                reason: format!(
+                                    "field '{}' is {datatype} while it should be UInt64Array",
+                                    field_num_rows.name(),
+                                ),
+                            }));
+                        }
                     }
                 }
             }
@@ -582,9 +1005,11 @@ impl RrdManifest {
 impl RrdManifest {
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
+    pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
 
     pub fn field_chunk_id() -> Field {
         use re_log_types::external::re_types_core::Loggable as _;
@@ -597,6 +1022,15 @@ impl RrdManifest {
         Field::new(
             Self::FIELD_CHUNK_IS_STATIC,
             arrow::datatypes::DataType::Boolean,
+            nullable,
+        )
+    }
+
+    pub fn field_chunk_num_rows() -> Field {
+        let nullable = false; // every chunk has a number of rows
+        Field::new(
+            Self::FIELD_CHUNK_NUM_ROWS,
+            arrow::datatypes::DataType::UInt64,
             nullable,
         )
     }
@@ -618,12 +1052,25 @@ impl RrdManifest {
         Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE)
     }
 
+    pub fn field_chunk_byte_size_uncompressed() -> Field {
+        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)
+    }
+
     pub fn field_index_start(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::any_index_field(timeline, timeline.datatype(), desc, "start")
     }
 
     pub fn field_index_end(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::any_index_field(timeline, timeline.datatype(), desc, "end")
+    }
+
+    pub fn field_index_num_rows(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
+        Self::any_index_field(
+            timeline,
+            arrow::datatypes::DataType::UInt64,
+            desc,
+            "num_rows",
+        )
     }
 
     pub fn field_index_has_data(timeline: &Timeline, desc: &ComponentDescriptor) -> Field {
@@ -805,6 +1252,32 @@ impl RrdManifest {
         Ok(self.col_chunk_is_static_raw()?.iter().flatten())
     }
 
+    /// Returns the raw Arrow data for the num-rows column.
+    pub fn col_chunk_num_rows_raw(&self) -> CodecResult<&UInt64Array> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::FIELD_CHUNK_NUM_ROWS;
+        self.data
+            .column_by_name(name)
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
+            })?
+            .downcast_array_ref::<UInt64Array>()
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
+            })
+    }
+
+    /// Returns an iterator over the decoded Arrow data for the num-rows column.
+    ///
+    /// This is free.
+    pub fn col_chunk_num_rows(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_num_rows_raw()?.iter().flatten())
+    }
+
     /// Returns the raw Arrow data for the byte-offset column.
     pub fn col_chunk_byte_offset_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -854,6 +1327,32 @@ impl RrdManifest {
     ///
     /// This is free.
     pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+    }
+
+    /// Returns the raw Arrow data for the *uncompressed* byte-length column.
+    pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
+        self.data
+            .column_by_name(name)
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
+            })?
+            .downcast_array_ref::<UInt64Array>()
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
+            })
+    }
+
+    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-length column.
+    ///
+    /// This is free.
+    pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
         Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
     }
 }

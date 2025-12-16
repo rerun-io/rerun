@@ -13,6 +13,6 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("index", [None, "does_not_exist"])
 def test_dataframe_query_empty_dataset(index: str | None, entry_factory: EntryFactory) -> None:
     ds = entry_factory.create_dataset("empty_dataset")
-    df = ds.dataframe_query_view(index=index, contents="/**").df()
+    df = ds.reader(index=index)
 
     assert df.count() == 0

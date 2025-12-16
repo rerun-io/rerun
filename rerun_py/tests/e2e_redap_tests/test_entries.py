@@ -25,7 +25,7 @@ def test_entries_without_hidden(entry_factory: EntryFactory, tmp_path: Path, sna
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table_entry("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
 
     # Get entries after - should only show user-created entries (no hidden)
     datasets_after = {d.name for d in client.datasets()}
@@ -57,7 +57,7 @@ def test_entries_with_hidden(
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table_entry("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
 
     # Get entries after with hidden - should include blueprint datasets and system tables
     datasets_after = {d.name for d in client.datasets(include_hidden=True)}
@@ -87,7 +87,7 @@ def test_entry_names_without_hidden(entry_factory: EntryFactory, tmp_path: Path,
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table_entry("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
 
     # Get names after - should only show user-created entries (no hidden)
     dataset_names_after = set(client.dataset_names())
@@ -119,7 +119,7 @@ def test_entry_names_with_hidden(
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table_entry("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
 
     # Get names after with hidden - should include blueprint datasets and system tables
     dataset_names_after = set(client.dataset_names(include_hidden=True))
@@ -135,3 +135,23 @@ def test_entry_names_with_hidden(
     assert new_dataset_names == snapshot_redact_id
     assert new_table_names == snapshot_redact_id
     assert new_entry_names == snapshot_redact_id
+
+
+def test_entry_eq(entry_factory: EntryFactory) -> None:
+    """Test that entries support `in` via it's `__eq__` implementation."""
+
+    client = entry_factory.client
+
+    ds1 = entry_factory.create_dataset("ds1")
+    ds2 = entry_factory.create_dataset("ds2")
+
+    entries = client.entries()
+
+    assert ds1 in entries
+    assert ds2 in entries
+    assert ds1.id in entries
+    assert ds2.id in entries
+    assert ds1.name in entries
+    assert ds2.name in entries
+
+    assert "doesnt_exists" not in client.entries()

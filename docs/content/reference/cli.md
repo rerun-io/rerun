@@ -242,6 +242,7 @@ Authentication with the redap.
 
 * `login`: Log into Rerun.
 * `token`: Retrieve the stored access token.
+* `generate-token`: Generate a fresh access token.
 
 ## rerun auth login
 
@@ -266,6 +267,24 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 > Trigger the full login flow even if valid credentials already exist.
 >
 > [Default: `false`]
+
+## rerun auth generate-token
+
+Generate a fresh access token.
+
+You can use this token to authorize requests to the Rerun data platform.
+
+It's closer to an API key than an access token, as it can be revoked before it expires.
+
+**Usage**: `rerun auth generate-token --server <SERVER> --expiration <EXPIRATION>`
+
+**Options**
+
+* `--server <SERVER>`
+> Origin of the server to request the token from.
+
+* `--expiration <EXPIRATION>`
+> Duration of the token, either in: - "human time", e.g. `1 day`, or - ISO 8601 duration format, e.g. `P1D`.
 
 ## rerun mcap
 

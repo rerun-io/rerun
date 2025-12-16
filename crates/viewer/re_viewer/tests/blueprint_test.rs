@@ -78,7 +78,11 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
     test_context.setup_viewport_blueprint(|_ctx, _blueprint| {});
 }
 
-fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
+fn take_snapshot(
+    test_context: &TestContext,
+    snapshot_name: &str,
+    snapshot_results: &mut egui_kittest::SnapshotResults,
+) {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
@@ -95,6 +99,7 @@ fn take_snapshot(test_context: &TestContext, snapshot_name: &str) {
         });
     harness.run();
     harness.snapshot(snapshot_name);
+    snapshot_results.extend_harness(&mut harness);
 }
 
 #[test]
@@ -119,11 +124,17 @@ fn test_blueprint_change_and_restore() {
     });
 
     load_blueprint_from_file(&mut test_context, rbl_path);
-    take_snapshot(&test_context, "blueprint_change_and_restore");
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
+    take_snapshot(
+        &test_context,
+        "blueprint_change_and_restore",
+        &mut snapshot_results,
+    );
 }
 
 #[test]
 fn test_blueprint_load_into_new_context() {
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
     let mut test_context = TestContext::new();
     log_test_data_and_register_views(&mut test_context, 10);
 
@@ -132,11 +143,19 @@ fn test_blueprint_load_into_new_context() {
 
     setup_viewport(&mut test_context);
     save_blueprint_to_file(&test_context, rbl_path);
-    take_snapshot(&test_context, "blueprint_load_into_new_context_1");
+    take_snapshot(
+        &test_context,
+        "blueprint_load_into_new_context_1",
+        &mut snapshot_results,
+    );
 
     let mut test_context_2 = TestContext::new();
     log_test_data_and_register_views(&mut test_context_2, 20);
 
     load_blueprint_from_file(&mut test_context_2, rbl_path);
-    take_snapshot(&test_context_2, "blueprint_load_into_new_context_2");
+    take_snapshot(
+        &test_context_2,
+        "blueprint_load_into_new_context_2",
+        &mut snapshot_results,
+    );
 }

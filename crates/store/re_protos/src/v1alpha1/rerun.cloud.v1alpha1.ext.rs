@@ -1548,7 +1548,7 @@ impl RegisterWithDatasetResponse {
 }
 
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_id: SegmentId,
     pub segment_type: DataSourceKind,
@@ -2421,6 +2421,34 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
     ) -> Result<crate::cloud::v1alpha1::QueryTasksRequest, Self::Error> {
         Ok(Self {
             ids: value.task_ids,
+        })
+    }
+}
+
+// --
+
+pub struct QueryTasksOnCompletionResponse {
+    pub data: arrow::record_batch::RecordBatch,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::QueryTasksOnCompletionResponse>
+    for QueryTasksOnCompletionResponse
+{
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::QueryTasksOnCompletionResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            data: value
+                .data
+                .ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::QueryTasksOnCompletionResponse,
+                        "data"
+                    )
+                })?
+                .try_into()?,
         })
     }
 }

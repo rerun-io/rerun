@@ -189,15 +189,13 @@ impl EntityData {
                 .map(Iterator::collect)
                 .unwrap_or_default();
 
+            if !node_info.is_leaf && !entity_tree.path.is_root() {
+                // Indicate that we have children
+                label.push('/');
+            }
             Self {
                 entity_path: entity_tree.path.clone(),
-                label: if node_info.is_leaf || entity_tree.path.is_root() {
-                    label
-                } else {
-                    // Indicate that we have children
-                    label.push('/');
-                    label
-                },
+                label,
                 highlight_sections,
                 default_open: node_info.default_open,
                 children: node_info.children,

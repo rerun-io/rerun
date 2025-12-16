@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, overload
 
-import pyarrow as pa
-from pyarrow import RecordBatch, RecordBatchReader
 from typing_extensions import deprecated
 
 from rerun_bindings import (
@@ -15,7 +12,11 @@ from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingD
 from . import EntryId, TableInsertMode
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import datafusion
+    import pyarrow as pa
+    from pyarrow import RecordBatch, RecordBatchReader
 
     from . import DatasetEntry, TableEntry
 
@@ -86,7 +87,7 @@ class CatalogClient:
         self._internal = CatalogClientInternal(address, token)
 
     @classmethod
-    def _from_internal(cls, internal: CatalogClientInternal) -> Self:
+    def _from_internal(cls, internal: CatalogClientInternal) -> CatalogClient:
         """
         Wrap an existing internal client object.
 
@@ -202,32 +203,65 @@ class CatalogClient:
 
     # ---
 
-    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        """Returns a dataset by its ID or name."""
-        from . import DatasetEntry
+    @overload
+    def get_dataset(self, *, id: EntryId | str) -> DatasetEntry: ...
 
-        return DatasetEntry(self._internal.get_dataset_entry(self._resolve_name_or_id(id, name)))
+    @overload
+    def get_dataset(self, name: str) -> DatasetEntry: ...
 
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
-        """Returns a table by its ID or name."""
-        from . import TableEntry
-
-        return TableEntry(self._internal.get_table_entry(self._resolve_name_or_id(id, name)))
-
-    # ---
-
-    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
+    def get_dataset(self, name: str | None = None, *, id: EntryId | str | None = None) -> DatasetEntry:
         """
         Returns a dataset by its ID or name.
 
-        Note: This is currently an alias for `get_dataset_entry`. In the future, it will return a data-oriented dataset
-        object instead.
-        """
-        return self.get_dataset_entry(id=id, name=name)
+        Exactly one of `id` or `name` must be provided.
 
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
+        Parameters
+        ----------
+        name
+            The name of the dataset.
+        id
+            The unique identifier of the dataset. Can be an `EntryId` object or its string representation.
+
+        """
+        from . import DatasetEntry
+
+        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name)))
+
+    @overload
+    def get_table(self, *, id: EntryId | str) -> TableEntry: ...
+
+    @overload
+    def get_table(self, name: str) -> TableEntry: ...
+
+    def get_table(self, name: str | None = None, *, id: EntryId | str | None = None) -> TableEntry:
+        """
+        Returns a table by its ID or name.
+
+        Exactly one of `id` or `name` must be provided.
+
+        Parameters
+        ----------
+        name
+            The name of the table.
+        id
+            The unique identifier of the table. Can be an `EntryId` object or its string representation.
+
+        """
+        from . import TableEntry
+
+        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name)))
+
+    # ---
+
+    @deprecated("Use get_dataset() instead")
+    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
+        """Returns a dataset by its ID or name."""
+        return self.get_dataset(name=name, id=id)  # type: ignore[call-overload, no-any-return]
+
+    @deprecated("Use get_table() instead")
+    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
-        return self.get_table_entry(id=id, name=name).df()
+        return self.get_table(name=name, id=id)  # type: ignore[call-overload, no-any-return]
 
     # ---
 
@@ -256,7 +290,7 @@ class CatalogClient:
 
         return TableEntry(self._internal.register_table(name, url))
 
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
         """
         Create and register a new table.
 
@@ -275,8 +309,14 @@ class CatalogClient:
         """
         from . import TableEntry
 
-        return TableEntry(self._internal.create_table_entry(name, schema, url))
+        return TableEntry(self._internal.create_table(name, schema, url))
 
+    @deprecated("Use create_table() instead")
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create and register a new table."""
+        return self.create_table(name, schema, url)
+
+    @deprecated("Use TableEntry.append(), overwrite(), or upsert() instead")
     def write_table(
         self,
         name: str,
@@ -300,109 +340,71 @@ class CatalogClient:
             Determines how rows should be added to the existing table.
 
         """
-        if not isinstance(batches, RecordBatchReader):
+        table = self.get_table(name=name)
+        if insert_mode == TableInsertMode.APPEND:
+            table.append(batches)
+        elif insert_mode == TableInsertMode.OVERWRITE:
+            table.overwrite(batches)
+        elif insert_mode == TableInsertMode.REPLACE:
+            table.upsert(batches)
 
-            def flatten_batches(
-                batches: RecordBatch | Sequence[RecordBatch] | Sequence[Sequence[RecordBatch]],
-            ) -> list[RecordBatch]:
-                """Convenience function to convert inputs to a list of batches."""
-                if isinstance(batches, RecordBatch):
-                    return [batches]
-
-                if isinstance(batches, Sequence):
-                    result = []
-                    for item in batches:
-                        if isinstance(item, RecordBatch):
-                            result.append(item)
-                        elif isinstance(item, Sequence):
-                            result.extend(item)
-                        else:
-                            raise TypeError(f"Unexpected type: {type(item)}")
-                    return result
-
-                raise TypeError(f"Expected RecordBatch or Sequence, got {type(batches)}")
-
-            batches = flatten_batches(batches)
-            if len(batches) == 0:
-                return
-            schema = batches[0].schema
-            batches = RecordBatchReader.from_batches(schema, batches)
-
-        return self._internal.write_table(name, batches, insert_mode)
-
-    def append_to_table(self, table_name: str, **named_params: Any) -> None:
+    @deprecated("Use TableEntry.append() instead")
+    def append_to_table(
+        self,
+        table_name: str,
+        batches: RecordBatchReader
+        | RecordBatch
+        | Sequence[RecordBatch]
+        | Sequence[Sequence[RecordBatch]]
+        | None = None,
+        **named_params: Any,
+    ) -> None:
         """
-        Convert Python objects into columns of data and append them to a table.
-
-        This is a convenience method to quickly turn Python objects into rows
-        of data. You may pass in any parameter name which will be used for the
-        column name. If you need more control over the data written to the
-        server, you can also use [`CatalogClient.write_table`] to write record
-        batches to the server.
-
-        If you wish to send multiple rows at once, then all parameters should
-        be a list of the same length. This function will query the table to
-        determine the schema and attempt to coerce data types as appropriate.
-
+        Append record batches to an existing table.
 
         Parameters
         ----------
         table_name
             The name of the table entry to write to. This table must already exist.
 
-        named_params
-            Pairwise combinations of column names and the data to write.
-            For example if you pass `age=3` it will attempt to create a column
-            named `age` and cast the value `3` to the appropriate type.
+        batches
+            One or more record batches to write into the table.
+
+        **named_params
+            Named parameters to write to the table as columns.
 
         """
-        if not named_params:
-            return
-        self.write_python_objects_to_table(table_name, TableInsertMode.APPEND, **named_params)
+        table = self.get_table(name=table_name)
+        table.append(batches, **named_params)
 
-    def update_table(self, table_name: str, **named_params: Any) -> None:
-        if not named_params:
-            return
-        self.write_python_objects_to_table(table_name, TableInsertMode.REPLACE, **named_params)
+    @deprecated("Use TableEntry.upsert() instead")
+    def update_table(
+        self,
+        table_name: str,
+        batches: RecordBatchReader
+        | RecordBatch
+        | Sequence[RecordBatch]
+        | Sequence[Sequence[RecordBatch]]
+        | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Upsert record batches to an existing table.
 
-    def write_python_objects_to_table(self, table_name: str, insert_mode: TableInsertMode, **named_params: Any) -> None:
-        if not named_params:
-            return
-        params = named_params.items()
-        schema = self.get_table(name=table_name).df.schema()
+        Parameters
+        ----------
+        table_name
+            The name of the table entry to write to. This table must already exist.
 
-        cast_params = {}
-        expected_len = None
-        for name, value in params:
-            field = schema.field(name)
-            if field is None:
-                raise ValueError(f"Column {name} does not exist in table")
+        batches
+            One or more record batches to write into the table.
 
-            try:
-                cast_value = pa.array(value, type=field.type)
-            except TypeError:
-                cast_value = pa.array([value], type=field.type)
+        **named_params
+            Named parameters to write to the table as columns.
 
-            cast_params[name] = cast_value
-
-            if expected_len is None:
-                expected_len = len(cast_value)
-            else:
-                if len(cast_value) != expected_len:
-                    raise ValueError("Columns have mismatched number of rows")
-
-        if expected_len is None or expected_len == 0:
-            return
-
-        columns = []
-        for field in schema:
-            if field.name in cast_params:
-                columns.append(cast_params[field.name])
-            else:
-                columns.append(pa.array([None] * expected_len, type=field.type))
-
-        rb = pa.RecordBatch.from_arrays(columns, schema=schema)
-        self.write_table(table_name, rb, insert_mode)
+        """
+        table = self.get_table(name=table_name)
+        table.upsert(batches, **named_params)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

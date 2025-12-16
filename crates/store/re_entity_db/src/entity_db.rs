@@ -11,6 +11,7 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_channel::LogSource;
+use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -18,11 +19,10 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_types_core::ChunkIndexMessage;
 
-use crate::chunk_index::ChunkIndex;
 use crate::ingestion_statistics::IngestionStatistics;
-use crate::{Error, TimesPerTimeline};
+use crate::rrd_manifest_index::RrdManifestIndex;
+use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    chunk_index: ChunkIndex,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -88,16 +88,6 @@ pub struct EntityDb {
 
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
-
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    ///
-    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-    times_per_timeline: TimesPerTimeline,
 
     /// A time histogram of all entities, for every timeline.
     time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
@@ -145,12 +135,11 @@ impl EntityDb {
         Self {
             store_id,
             data_source: None,
-            chunk_index: Default::default(),
+            rrd_manifest_index: Default::default(),
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
@@ -245,8 +234,8 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn chunk_index(&self) -> &ChunkIndex {
-        &self.chunk_index
+    pub fn rrd_manifest_index(&self) -> &RrdManifestIndex {
+        &self.rrd_manifest_index
     }
 
     #[inline]
@@ -467,22 +456,14 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.times_per_timeline
-    }
-
-    pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
-        self.time_histogram_per_timeline
-            .get(timeline)
-            .is_some_and(|hist| !hist.is_empty())
+    /// When do we have data on each timeline?
+    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
+        &self.time_histogram_per_timeline
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        let hist = self.time_histogram_per_timeline.get(timeline)?;
-        let min = hist.min_key()?;
-        let max = hist.max_key()?;
-        Some(AbsoluteTimeRange::new(min, max))
+        self.storage_engine().store().time_range(timeline)
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -549,8 +530,10 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_chunk_index_message(&mut self, chunk_index: ChunkIndexMessage) {
-        self.chunk_index.append(chunk_index);
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+            re_log::error!("Failed to load RRD Manifest: {err}");
+        }
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
@@ -606,7 +589,7 @@ impl EntityDb {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        self.chunk_index.mark_as_loaded(chunk.id());
+        self.rrd_manifest_index.mark_as_loaded(chunk.id());
 
         self.on_store_events(&store_events);
 
@@ -629,10 +612,9 @@ impl EntityDb {
 
         let engine = engine.downgrade();
 
-        self.chunk_index.on_events(store_events);
+        self.rrd_manifest_index.on_events(store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.times_per_timeline.on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_additions(store_events);
 
@@ -656,7 +638,11 @@ impl EntityDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) -> Vec<ChunkStoreEvent> {
+    pub fn purge_fraction_of_ram(
+        &mut self,
+        fraction_to_purge: f32,
+        time_cursor: Option<(Timeline, TimeInt)>,
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
@@ -672,6 +658,8 @@ impl EntityDb {
             // exactly how far back the latest-at is of each component at the current time…
             // …but maybe it doesn't have to be perfect.
             protected_time_ranges: Default::default(),
+
+            furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),
         });
 
         if store_events.is_empty() {
