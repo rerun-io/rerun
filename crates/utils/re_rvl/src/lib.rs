@@ -1,4 +1,7 @@
-//! RVL (Range Image Visualization Library) codec helpers.
+//! RVL codec helpers (Run length encoding and Variable Length encoding schemes).
+//!
+//! For a complete reference of the format see:
+//! <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>
 
 use std::mem::size_of;
 
@@ -30,6 +33,46 @@ impl RvlMetadata {
     #[inline]
     pub fn num_pixels(&self) -> usize {
         self.num_pixels
+    }
+
+    /// Parses RVL metadata from the start of a RVL payload.
+    pub fn parse(data: &[u8]) -> Result<Self, RvlDecodeError> {
+        if data.len() <= CONFIG_HEADER_SIZE {
+            return Err(RvlDecodeError::MissingHeader);
+        }
+
+        let config = &data[..CONFIG_HEADER_SIZE];
+        let quant_offset = size_of::<i32>();
+        let depth_quant_a = LittleEndian::read_f32(&config[quant_offset..quant_offset + 4]);
+        let depth_quant_b = LittleEndian::read_f32(&config[quant_offset + 4..quant_offset + 8]);
+
+        if data.len() < CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE {
+            return Err(RvlDecodeError::MissingResolution);
+        }
+        let resolution_offset = CONFIG_HEADER_SIZE;
+        let width = LittleEndian::read_u32(&data[resolution_offset..resolution_offset + 4]);
+        let height = LittleEndian::read_u32(&data[resolution_offset + 4..resolution_offset + 8]);
+        if width == 0 || height == 0 {
+            return Err(RvlDecodeError::ZeroResolution);
+        }
+
+        let payload_offset = CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE;
+        let num_pixels = (width as u64)
+            .checked_mul(height as u64)
+            .ok_or(RvlDecodeError::ResolutionOverflow)? as usize;
+
+        if data.len() < payload_offset {
+            return Err(RvlDecodeError::PayloadLengthMismatch { width, height });
+        }
+
+        Ok(Self {
+            width,
+            height,
+            depth_quant_a,
+            depth_quant_b,
+            payload_offset,
+            num_pixels,
+        })
     }
 }
 
@@ -69,46 +112,7 @@ pub enum RvlDecodeError {
     ValueOverflow,
 }
 
-pub fn parse_ros_rvl_metadata(data: &[u8]) -> Result<RvlMetadata, RvlDecodeError> {
-    if data.len() <= CONFIG_HEADER_SIZE {
-        return Err(RvlDecodeError::MissingHeader);
-    }
-
-    let config = &data[..CONFIG_HEADER_SIZE];
-    let quant_offset = size_of::<i32>();
-    let depth_quant_a = LittleEndian::read_f32(&config[quant_offset..quant_offset + 4]);
-    let depth_quant_b = LittleEndian::read_f32(&config[quant_offset + 4..quant_offset + 8]);
-
-    if data.len() < CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE {
-        return Err(RvlDecodeError::MissingResolution);
-    }
-    let resolution_offset = CONFIG_HEADER_SIZE;
-    let width = LittleEndian::read_u32(&data[resolution_offset..resolution_offset + 4]);
-    let height = LittleEndian::read_u32(&data[resolution_offset + 4..resolution_offset + 8]);
-    if width == 0 || height == 0 {
-        return Err(RvlDecodeError::ZeroResolution);
-    }
-
-    let payload_offset = CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE;
-    let num_pixels = (width as u64)
-        .checked_mul(height as u64)
-        .ok_or(RvlDecodeError::ResolutionOverflow)? as usize;
-
-    if data.len() < payload_offset {
-        return Err(RvlDecodeError::PayloadLengthMismatch { width, height });
-    }
-
-    Ok(RvlMetadata {
-        width,
-        height,
-        depth_quant_a,
-        depth_quant_b,
-        payload_offset,
-        num_pixels,
-    })
-}
-
-pub fn decode_ros_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16>, RvlDecodeError> {
+pub fn decode_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16>, RvlDecodeError> {
     let payload = metadata.payload(data)?;
     let mut disparity = vec![0u16; metadata.num_pixels()];
     let mut decoder = RvlDecoder::new(payload);
@@ -116,8 +120,8 @@ pub fn decode_ros_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16
     Ok(disparity)
 }
 
-pub fn decode_ros_rvl_f32(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<f32>, RvlDecodeError> {
-    let disparity = decode_ros_rvl_u16(data, metadata)?;
+pub fn decode_rvl_f32(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<f32>, RvlDecodeError> {
+    let disparity = decode_rvl_u16(data, metadata)?;
     let mut depth = Vec::with_capacity(disparity.len());
     for value in disparity {
         if value == 0 {
@@ -234,7 +238,7 @@ mod tests {
     fn detects_metadata() {
         let disparity = [0u16, 1200, 1201, 0, 800];
         let data = build_depth_message([5, 1], &disparity, (0.0, 0.0));
-        let metadata = parse_ros_rvl_metadata(&data).unwrap();
+        let metadata = RvlMetadata::parse(&data).unwrap();
         assert_eq!(metadata.width, 5);
         assert_eq!(metadata.height, 1);
     }
@@ -243,8 +247,8 @@ mod tests {
     fn decodes_rvl_u16_payload() {
         let disparity = [0u16, 1200, 1201, 0, 800];
         let data = build_depth_message([5, 1], &disparity, (0.0, 0.0));
-        let metadata = parse_ros_rvl_metadata(&data).unwrap();
-        let decoded = decode_ros_rvl_u16(&data, &metadata).unwrap();
+        let metadata = RvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_u16(&data, &metadata).unwrap();
         assert_eq!(decoded, disparity);
     }
 
@@ -254,8 +258,8 @@ mod tests {
         let height = 48;
         let disparity = vec![0u16; (width * height) as usize];
         let data = build_depth_message([width, height], &disparity, (0.0, 0.0));
-        let metadata = parse_ros_rvl_metadata(&data).unwrap();
-        let decoded = decode_ros_rvl_u16(&data, &metadata).unwrap();
+        let metadata = RvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_u16(&data, &metadata).unwrap();
         assert_eq!(decoded, disparity);
     }
 
@@ -264,8 +268,8 @@ mod tests {
         let disparity = [5u16, 0, 10];
         let depth_params = (10.0, 1.0);
         let data = build_depth_message([3, 1], &disparity, depth_params);
-        let metadata = parse_ros_rvl_metadata(&data).unwrap();
-        let decoded = decode_ros_rvl_f32(&data, &metadata).unwrap();
+        let metadata = RvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_f32(&data, &metadata).unwrap();
         assert!((decoded[0] - 2.5).abs() < 1e-6);
         assert!(decoded[1].is_nan());
         assert!((decoded[2] - (10.0 / 9.0)).abs() < 1e-6);
@@ -294,6 +298,7 @@ mod tests {
     }
 
     fn encode_rvl(values: &[u16]) -> Vec<u8> {
+        // TODO(gijs, andreas): This would actually be a nice addition to the crate as well!
         struct Encoder {
             buffer: Vec<u8>,
             word: u32,

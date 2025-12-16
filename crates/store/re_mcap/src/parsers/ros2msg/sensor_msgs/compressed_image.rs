@@ -1,7 +1,7 @@
 use super::super::definitions::sensor_msgs;
 use anyhow::{Context as _, bail};
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_depth_compression::ros_rvl::parse_ros_rvl_metadata;
+use re_rvl::RvlMetadata;
 use re_sdk_types::archetypes::{EncodedDepthImage, EncodedImage, VideoStream};
 use re_sdk_types::components::{ImageFormat, MediaType, VideoCodec};
 use re_sdk_types::datatypes::ChannelDatatype;
@@ -52,7 +52,7 @@ impl MessageParser for CompressedImageMessageParser {
         if let Some(datatype) = depth_rvl_encoding(&format) {
             self.ensure_mode(ParsedPayloadKind::DepthRvl)?;
 
-            let metadata = parse_ros_rvl_metadata(&data).with_context(|| {
+            let metadata = RvlMetadata::parse(&data).with_context(|| {
                 format!("Failed to parse RVL header for compressed depth image '{format}'")
             })?;
 

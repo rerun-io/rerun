@@ -1,5 +1,5 @@
 use super::MediaType;
-use re_depth_compression::ros_rvl::parse_ros_rvl_metadata;
+use re_rvl::RvlMetadata;
 
 // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
 // constants directly in there.
@@ -196,7 +196,7 @@ impl MediaType {
         fn rvl_matcher(buf: &[u8]) -> bool {
             const MAX_REASONABLE_DIMENSION: u32 = 65_536;
 
-            let Ok(metadata) = parse_ros_rvl_metadata(buf) else {
+            let Ok(metadata) = RvlMetadata::parse(buf) else {
                 return false;
             };
 

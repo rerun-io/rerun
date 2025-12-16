@@ -21,7 +21,7 @@ re_log_types.workspace = true
 re_ros_msg.workspace = true
 re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
-re_depth_compression.workspace = true
+re_rvl.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true

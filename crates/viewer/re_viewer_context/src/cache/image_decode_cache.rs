@@ -3,11 +3,9 @@ use bytemuck::Pod;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
-use re_depth_compression::ros_rvl::{
-    decode_ros_rvl_f32, decode_ros_rvl_u16, parse_ros_rvl_metadata,
-};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
+use re_rvl::{RvlMetadata, decode_rvl_f32, decode_rvl_u16};
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType};
 use re_sdk_types::datatypes::{Blob, ChannelDatatype, ColorModel};
@@ -246,7 +244,7 @@ fn decode_rvl_depth(
     image_bytes: &[u8],
     format: &ImageFormatComponent,
 ) -> Result<ImageInfo, ImageLoadError> {
-    let metadata = parse_ros_rvl_metadata(image_bytes)
+    let metadata = RvlMetadata::parse(image_bytes)
         .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?;
 
     let expected_pixels = (format.width as usize) * (format.height as usize);
@@ -261,10 +259,10 @@ fn decode_rvl_depth(
     }
 
     let buffer: Vec<u8> = match format.datatype() {
-        ChannelDatatype::U16 => decode_ros_rvl_u16(image_bytes, &metadata)
+        ChannelDatatype::U16 => decode_rvl_u16(image_bytes, &metadata)
             .map(|x: Vec<u16>| vec_into_bytes(&x))
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
-        ChannelDatatype::F32 => decode_ros_rvl_f32(image_bytes, &metadata)
+        ChannelDatatype::F32 => decode_rvl_f32(image_bytes, &metadata)
             .map(|x: Vec<f32>| vec_into_bytes(&x))
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
         other => {

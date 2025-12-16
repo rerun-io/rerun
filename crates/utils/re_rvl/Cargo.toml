@@ -1,6 +1,6 @@
 [package]
-name = "re_depth_compression"
-description = "Codecs for depth compression formats such as RVL."
+name = "re_rvl"
+description = "Support for compressed depth data using the RVL format."
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

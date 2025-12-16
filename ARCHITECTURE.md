@@ -229,7 +229,7 @@ Update instructions:
 | re_case              | Case conversions, the way Rerun likes them                                           |
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error             | Helpers for handling errors.                                                         |
-| re_depth_compression | Codecs for depth compression including RVL and PNG.                                  |
+| re_rvl | Codecs for depth compression including RVL and PNG.                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |

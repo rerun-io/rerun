@@ -8839,14 +8839,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_depth_compression"
-version = "0.28.0-alpha.1+dev"
-dependencies = [
- "byteorder",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "re_dev_tools"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
@@ -9131,10 +9123,10 @@ dependencies = [
  "mcap",
  "prost-reflect",
  "re_chunk",
- "re_depth_compression",
  "re_log",
  "re_log_types",
  "re_ros_msg",
+ "re_rvl",
  "re_sdk_types",
  "re_tracing",
  "saturating_cast",
@@ -9496,6 +9488,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_rvl"
+version = "0.28.0-alpha.1+dev"
+dependencies = [
+ "byteorder",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "re_sdk"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
@@ -9562,11 +9562,11 @@ dependencies = [
  "ply-rs-bw",
  "rand 0.9.2",
  "re_byte_size",
- "re_depth_compression",
  "re_error",
  "re_format",
  "re_log",
  "re_log_types",
+ "re_rvl",
  "re_sorbet",
  "re_tracing",
  "re_types_core",
@@ -10370,7 +10370,6 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_data_source",
- "re_depth_compression",
  "re_entity_db",
  "re_error",
  "re_format",
@@ -10381,6 +10380,7 @@ dependencies = [
  "re_query",
  "re_redap_client",
  "re_renderer",
+ "re_rvl",
  "re_sdk_types",
  "re_string_interner",
  "re_tf",
