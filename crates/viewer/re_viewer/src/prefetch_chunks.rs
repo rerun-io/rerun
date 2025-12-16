@@ -34,14 +34,16 @@ pub fn prefetch_chunks(
 
     let current_time = time_ctrl.time_i64()?;
     let timeline = time_ctrl.timeline()?;
+
+    // Load some extra
     let buffer_time = match timeline.typ() {
-        re_log_types::TimeType::Sequence => 30,
-        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 5_000_000_000,
+        re_log_types::TimeType::Sequence => 10,
+        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
     let query_range = AbsoluteTimeRange::new(
         current_time.saturating_sub(buffer_time),
-        current_time.saturating_add(buffer_time),
-        // re_chunk::TimeInt::MAX,
+        current_time.saturating_add(10 * buffer_time),
+        // re_chunk::TimeInt::MAX, // TODO: Don't stop loading until we filled the RAM
     );
     let data_source = recording.data_source.as_ref()?;
     let rrd_manifest = &mut recording.rrd_manifest_index;
@@ -58,18 +60,14 @@ pub fn prefetch_chunks(
             found_source = true;
 
             if !rx.has_waiting_command_receivers() {
+                // TODO: should probably allow 1-2 things in the queue?
                 // Either there is noone on the other side,
                 // or they are busy processing previous requests.
                 // Let's not enqueu more work for them right now (debounce).
                 return;
             }
 
-            let rb = if false {
-                //TODO: use this code instead
-                rrd_manifest.prefetch_chunks(timeline, query_range, budget_bytes as _)
-            } else {
-                rrd_manifest.time_range_missing_chunks(timeline, query_range)
-            };
+            let rb = rrd_manifest.prefetch_chunks(timeline, query_range, budget_bytes as _);
 
             match rb {
                 Ok(rb) => {

@@ -1,15 +1,17 @@
 use std::collections::BTreeMap;
+use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
-use re_arrow_util::RecordBatchExt as _;
-use re_chunk::{ChunkId, Timeline, TimelineName};
+use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
-use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
+use re_log_types::{AbsoluteTimeRange, StoreKind};
+
+use crate::sorted_range_map::SortedRangeMap;
 
 /// Is the following chunk loaded?
 ///
@@ -89,8 +91,7 @@ pub struct RrdManifestIndex {
     native_static_map: re_log_encoding::RrdManifestStaticMap,
     native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
 
-    /// Maps to a row in the manifest.
-    chunk_intervals: BTreeMap<Timeline, Vec<(AbsoluteTimeRange, ChunkId)>>,
+    chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
     manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
 }
@@ -198,21 +199,24 @@ impl RrdManifestIndex {
     }
 
     fn update_chunk_intervals(&mut self) {
-        self.chunk_intervals.clear();
+        let mut per_timeline_chunks: BTreeMap<Timeline, Vec<(RangeInclusive<TimeInt>, ChunkId)>> =
+            BTreeMap::default();
 
         for timelines in self.native_temporal_map.values() {
             for (timeline, components) in timelines {
-                let timeline_chunks = self.chunk_intervals.entry(*timeline).or_default();
+                let timeline_chunks = per_timeline_chunks.entry(*timeline).or_default();
                 for chunks in components.values() {
                     for (chunk_id, entry) in chunks {
-                        timeline_chunks.push((entry.time_range, *chunk_id));
+                        timeline_chunks.push((entry.time_range.into(), *chunk_id));
                     }
                 }
             }
         }
 
-        for chunks in self.chunk_intervals.values_mut() {
-            chunks.sort_by_key(|(range, _id)| range.min);
+        self.chunk_intervals.clear();
+        for (timeline, chunks) in per_timeline_chunks {
+            self.chunk_intervals
+                .insert(timeline, SortedRangeMap::new(chunks.into_iter()));
         }
     }
 
@@ -320,55 +324,9 @@ impl RrdManifestIndex {
         self.timelines.get(timeline).copied()
     }
 
-    /// Returns the yet-to-be-loaded chunks
-    pub fn time_range_missing_chunks(
-        &mut self,
-        timeline: &Timeline,
-        query_range: AbsoluteTimeRange,
-    ) -> anyhow::Result<RecordBatch> {
-        re_tracing::profile_function!();
-        // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
-
-        let Some(manifest) = self.manifest.as_ref() else {
-            anyhow::bail!("No manifest");
-        };
-        let record_batch = &manifest.data;
-
-        let mut indices = vec![];
-
-        let chunk_id = manifest.col_chunk_id()?;
-        let chunk_is_static = manifest.col_chunk_is_static()?;
-        let (_, start_column) = TimeType::from_arrow_array(
-            record_batch.try_get_column(RrdManifest::field_index_start(timeline, None).name())?,
-        )?;
-        let (_, end_column) = TimeType::from_arrow_array(
-            record_batch.try_get_column(RrdManifest::field_index_end(timeline, None).name())?,
-        )?;
-
-        for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
-            itertools::izip!(chunk_id, chunk_is_static, start_column, end_column).enumerate()
-        {
-            let chunk_range = AbsoluteTimeRange::new(*start_time, *end_time);
-            let include = chunk_is_static || chunk_range.intersects(query_range);
-            if include
-                && let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id)
-                && chunk_info.state == LoadState::Unloaded
-            {
-                chunk_info.state = LoadState::InTransit;
-                if let Ok(row_idx) = i32::try_from(row_idx) {
-                    indices.push(row_idx);
-                }
-            }
-        }
-
-        Ok(take_record_batch(
-            &manifest.data,
-            &Int32Array::from(indices),
-        )?)
-    }
-
     /// Find the next candidates for prefetching,
-    /// searching chunks starting at the given time,
+    /// searching only chunks overlapping the given time interval,
+    /// picking chunks in order of time,
     /// until the given size budget is reached.
     pub fn prefetch_chunks(
         &mut self,
@@ -390,30 +348,24 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
-
-        let first_chunk = chunks.partition_point(|(r, _)| r.min < desired_range.min);
-
         let mut indices: Vec<i32> = vec![];
 
-        for (range, chunk_id) in &chunks[first_chunk..] {
-            if desired_range.max < range.min {
-                break;
-            }
-
+        for (_, chunk_id) in chunks.query(&desired_range.into()) {
             if let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id)
                 && remote_chunk.state == LoadState::Unloaded
             {
-                remote_chunk.state = LoadState::InTransit;
-
                 let row_idx = self.manifest_row_from_chunk_id[chunk_id];
-                indices.push(row_idx as _);
 
+                // Can we fit it?
                 let size_of_chunk_uncompressed = chunk_byte_size_uncompressed_raw[row_idx];
                 budget_bytes = budget_bytes.saturating_sub(size_of_chunk_uncompressed as _);
 
                 if budget_bytes == 0 {
                     break;
                 }
+
+                remote_chunk.state = LoadState::InTransit;
+                indices.push(row_idx as _);
             }
         }
 

@@ -12,6 +12,7 @@ pub mod entity_tree;
 mod ingestion_statistics;
 mod instance_path;
 mod rrd_manifest_index;
+mod sorted_range_map;
 mod store_bundle;
 mod time_histogram_per_timeline;
 mod versioned_instance_path;
