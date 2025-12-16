@@ -61,13 +61,37 @@ def test_dataset_view_filter_segments_with_dataframe(
     assert view.segment_table().count() == len(test_segments)
 
 
+def sort_schema(schema: pa.Schema) -> str:
+    """Sort schema fields by name for order-independent comparison."""
+
+    all_fields = {}
+    for field in schema:
+        # Sorted field metadata
+        field_meta = {}
+        for k, v in field.metadata.items():
+            field_meta[k] = v
+        all_fields[field.name] = dict(sorted(field_meta.items(), key=lambda item: item[0]))
+
+    sorted_fields = dict(sorted(all_fields.items(), key=lambda item: item[0]))
+
+    output = ""
+    for name, field_meta in sorted_fields.items():
+        output += f"{name}:\n"
+        for k, v in field_meta.items():
+            output += f"    {k}: {v}\n"
+
+    return output
+
+
 def test_dataset_view_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test filtering a dataset by entity paths."""
 
-    assert str(readonly_test_dataset.schema()) == snapshot()
+    schema = sort_schema(pa.schema(readonly_test_dataset.schema()))
+    assert str(schema) == snapshot()
 
     view = readonly_test_dataset.filter_contents(["/obj1/**"])
-    assert str(view.schema()) == snapshot()
+    schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
 
 
 def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:

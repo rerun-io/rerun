@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use ahash::{HashSet, HashSetExt as _};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 use saturating_cast::SaturatingCast as _;
@@ -44,71 +43,17 @@ impl ChunkStore {
             .collect()
     }
 
-    // TODO
-    // TODO: does this stuff somehow needs to be aware of protect_latest?
-
-    /// Returns the chunk furthest away from the given time cursor, if any.
-    pub fn find_temporal_chunk_furthest_away(
+    /// Returns a vector with all the chunks in this store, sorted in descending order relative to
+    /// their distance from the given `(timline, time)` cursor.
+    pub fn find_temporal_chunks_furthest_from(
         &self,
         timeline: &TimelineName,
         time: TimeInt,
-        ignoring: &HashSet<ChunkId>,
-    ) -> Option<(&Arc<Chunk>, u64)> {
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!();
+
         self.chunks_per_chunk_id
-            // TODO: we need to accelerate this part
             .values()
-            .filter(|chunk| !chunk.is_static() && !ignoring.contains(&chunk.id()))
-            .filter_map(|chunk| {
-                let times = chunk.timelines().get(timeline)?;
-
-                // TODO: what is the added value vs. just using the time range?
-                // -> large mostly empty chunk dont go insane is what: document that
-
-                // TODO: that seems very incorrect to me.
-                // let max_dist = if times.is_sorted() {
-                //     let max_dist_idx = times.times_raw().partition_point(|t| *t <= time.as_i64());
-                //     times
-                //         .times_raw()
-                //         .get(max_dist_idx.saturating_sub(1))
-                //         .map(|t| t.abs_diff(time.as_i64()))
-                // } else {
-                //     times
-                //         .times()
-                //         .map(|t| t.as_i64().abs_diff(time.as_i64()))
-                //         .max()
-                // };
-
-                // TODO: iterating the chunk themselves can be accelerated using the
-                // max-interval-size trick as usual, right?
-                // -> well, a range query will do that for us
-                // -> at least one with extended bounds
-
-                // TODO: we need to accelerate this part
-                //
-                // We want to find the time in this chunk that is the closest to the time cursor.
-                let min_dist = times
-                    .times()
-                    .map(|t| t.as_i64().abs_diff(time.as_i64()))
-                    .min();
-
-                min_dist.map(|max_dist| (chunk, max_dist))
-            })
-            .max_by_key(|(_chunk, dist)| *dist)
-        // .map(|(chunk, _)| chunk)
-    }
-
-    pub fn find_temporal_chunk_furthest_away_fast(
-        &self,
-        timeline: &TimelineName,
-        time: TimeInt,
-        ignoring: &HashSet<ChunkId>,
-    ) -> Option<(&Arc<Chunk>, u64)> {
-        self.chunks_per_chunk_id
-            // TODO: we need to accelerate this part
-            // TODO: we can do an extended bound range query, right? but it's very annoying because
-            // it needs to extend to the next *loaded* chunk 🫠
-            .values()
-            .filter(|chunk| !chunk.is_static() && !ignoring.contains(&chunk.id()))
             .filter_map(|chunk| {
                 let times = chunk.timelines().get(timeline)?;
 
@@ -123,8 +68,9 @@ impl ChunkStore {
                         .get(pivot)
                         .map(|t| t.abs_diff(time.as_i64()));
 
-                    // TODO: do *not* compare options, if any of then are none we're doomed
-                    // min_value1.min(min_value2).min(min_value3);
+                    // NOTE: Do *not* compare these options directly, if any of them turns out to
+                    // be None, it'll be a disaster.
+                    // min_value1.min(min_value2);
                     [min_value1, min_value2].into_iter().flatten().min()
                 } else {
                     times
@@ -135,40 +81,36 @@ impl ChunkStore {
 
                 min_dist.map(|max_dist| (chunk, max_dist))
             })
-            .max_by_key(|(_chunk, dist)| *dist)
-        // .map(|(chunk, _)| chunk)
+            .sorted_by(|(_chunk1, dist1), (_chunk2, dist2)| std::cmp::Ord::cmp(dist2, dist1)) // descending
+            .map(|(chunk, _dist)| chunk.clone())
+            .collect_vec()
     }
 
-    pub fn find_temporal_chunks_furthest_away(
+    /// An implementation of `find_temporal_chunk_furthest_from` that focuses solely on correctness.
+    ///
+    /// Used to compare with results obtained from the optimized implementation.
+    pub(crate) fn find_temporal_chunks_furthest_from_slow(
         &self,
         timeline: &TimelineName,
         time: TimeInt,
-    ) -> impl Iterator<Item = &Arc<Chunk>> {
-        let mut ignoring = HashSet::new();
-        std::iter::from_fn(move || {
-            // let (chunk, dist) =
-            //     self.find_temporal_chunk_furthest_away(timeline, time, &ignoring)?;
-            // let (chunk_fast, dist_fast) =
-            //     self.find_temporal_chunk_furthest_away_fast(timeline, time, &ignoring)?;
-            // assert_eq!((chunk.id(), dist), (chunk_fast.id(), dist_fast));
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!();
 
-            let (chunk, _dist) =
-                self.find_temporal_chunk_furthest_away_fast(timeline, time, &ignoring)?;
+        self.chunks_per_chunk_id
+            .values()
+            .filter_map(|chunk| {
+                let times = chunk.timelines().get(timeline)?;
 
-            if false {
-                eprintln!(
-                    "chunk: {} ({} rows) @ {} with {:?}",
-                    chunk.id(),
-                    chunk.num_rows(),
-                    chunk.entity_path(),
-                    chunk.time_range_per_component(),
-                );
-            }
+                let min_dist = times
+                    .times()
+                    .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                    .min();
 
-            ignoring.insert(chunk.id());
-
-            Some(chunk)
-        })
+                min_dist.map(|max_dist| (chunk, max_dist))
+            })
+            .sorted_by(|(_chunk1, dist1), (_chunk2, dist2)| std::cmp::Ord::cmp(dist2, dist1)) // descending
+            .map(|(chunk, _dist)| chunk.clone())
+            .collect_vec()
     }
 
     /// Retrieve all [`EntityPath`]s in the store.

@@ -60,6 +60,13 @@ re_sdk_types = { workspace = true, features = ["testing"] }
 re_query.workspace = true
 
 anyhow.workspace = true
+criterion.workspace = true
 insta = { workspace = true, features = ["filters"] }
+mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
+
+
+[[bench]]
+name = "gc"
+harness = false
