@@ -777,15 +777,19 @@ impl EntityDb {
                 .store()
                 .iter_chunks()
                 .filter(move |chunk| {
+                    if chunk.is_static() {
+                        return true; // always keep all static data
+                    }
+
                     let Some((timeline, time_range)) = time_filter else {
-                        return true;
+                        return true; // no filter -> keep all data
                     };
 
                     // TODO(cmc): chunk.slice_time_selection(time_selection)
-                    chunk.timelines().get(&timeline).is_some_and(|time_column| {
-                        time_range.contains(time_column.time_range().min())
-                            || time_range.contains(time_column.time_range().max())
-                    })
+                    chunk
+                        .timelines()
+                        .get(&timeline)
+                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
                 })
                 .cloned() // refcount
                 .collect();
