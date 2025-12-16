@@ -665,10 +665,10 @@ In-memory Rerun data server.
 >
 > [Default: `51234`]
 
-* `-d, --dataset <DATASETS>`
+* `-d, --dataset <[NAME=]DIR_PATH>`
 > Load a directory of RRD as dataset (can be specified multiple times). You can specify only a path or provide a name such as `-d my_dataset=./path/to/files`.
 
-* `-t, --table <TABLES>`
+* `-t, --table <[NAME=]TABLE_PATH>`
 > Load a lance file as a table (can be specified multiple times). You can specify only a path or provide a name such as `-t my_table=./path/to/table`.
 
 * `-V, --version `
