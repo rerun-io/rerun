@@ -18,6 +18,7 @@ on:
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   linux-arm64:
