@@ -470,7 +470,6 @@ impl MessageParser for PointCloud2MessageParser {
             num_rows: _,
 
             mut frame_id,
-
             mut width,
             mut height,
             mut fields,
