@@ -619,10 +619,10 @@ impl UICommand {
         });
 
         // Check if timeout expired - clear old state
-        if let Some(last_time) = chord_state.last_key_time {
-            if now.duration_since(last_time) >= CHORD_TIMEOUT {
-                chord_state = PlaybackChordState::default();
-            }
+        if let Some(last_time) = chord_state.last_key_time
+            && now.duration_since(last_time) >= CHORD_TIMEOUT
+        {
+            chord_state = PlaybackChordState::default();
         }
 
         let mut command = None;
@@ -645,12 +645,12 @@ impl UICommand {
 
             let factor = 10usize.pow(leading_zeros as u32);
 
-            if let Ok(speed) = chord_state.accumulated.parse::<f32>() {
-                if speed > 0.0 {
-                    command = Some(Self::PlaybackSpeed(SetPlaybackSpeed(
-                        egui::emath::OrderedFloat(speed / factor as f32),
-                    )));
-                }
+            if let Ok(speed) = chord_state.accumulated.parse::<f32>()
+                && speed > 0.0
+            {
+                command = Some(Self::PlaybackSpeed(SetPlaybackSpeed(
+                    egui::emath::OrderedFloat(speed / factor as f32),
+                )));
             }
         }
 

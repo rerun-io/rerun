@@ -251,10 +251,10 @@ impl InMemoryCredentials {
         // to run `rerun analytics disable` if they wish to opt out.
         //
         // By manually forcing the creation of the analytics config we bypass the first_run check.
-        if let Ok(config) = re_analytics::Config::load_or_default() {
-            if config.is_first_run() {
-                config.save().ok();
-            }
+        if let Ok(config) = re_analytics::Config::load_or_default()
+            && config.is_first_run()
+        {
+            config.save().ok();
         }
 
         // Link the analytics ID to the authenticated user

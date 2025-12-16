@@ -207,16 +207,16 @@ impl LeRobotDatasetV3 {
 
             if Some(ep_idx) != current_episode {
                 // Finalize previous episode
-                if let Some(prev_ep) = current_episode {
-                    if prev_ep >= 0 {
-                        ranges.insert(
-                            EpisodeIndex(prev_ep as usize),
-                            EpisodeRowRange {
-                                start_row: current_start,
-                                end_row: i,
-                            },
-                        );
-                    }
+                if let Some(prev_ep) = current_episode
+                    && prev_ep >= 0
+                {
+                    ranges.insert(
+                        EpisodeIndex(prev_ep as usize),
+                        EpisodeRowRange {
+                            start_row: current_start,
+                            end_row: i,
+                        },
+                    );
                 }
                 current_episode = Some(ep_idx);
                 current_start = i;
@@ -224,16 +224,16 @@ impl LeRobotDatasetV3 {
         }
 
         // Don't forget the last episode
-        if let Some(ep_idx) = current_episode {
-            if ep_idx >= 0 {
-                ranges.insert(
-                    EpisodeIndex(ep_idx as usize),
-                    EpisodeRowRange {
-                        start_row: current_start,
-                        end_row: episode_indices.len(),
-                    },
-                );
-            }
+        if let Some(ep_idx) = current_episode
+            && ep_idx >= 0
+        {
+            ranges.insert(
+                EpisodeIndex(ep_idx as usize),
+                EpisodeRowRange {
+                    start_row: current_start,
+                    end_row: episode_indices.len(),
+                },
+            );
         }
 
         ranges

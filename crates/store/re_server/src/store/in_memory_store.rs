@@ -151,21 +151,17 @@ impl InMemoryStore {
                     .to_str()
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
-                if is_rrd {
-                    if let Err(err) = dataset
+                if is_rrd
+                    && let Err(err) = dataset
                         .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
                         .await
-                    {
-                        match on_error {
-                            OnError::Continue => {
-                                re_log::warn!(
-                                    "Failed loading file in {}: {err}",
-                                    directory.display()
-                                );
-                            }
-                            OnError::Abort => {
-                                return Err(err);
-                            }
+                {
+                    match on_error {
+                        OnError::Continue => {
+                            re_log::warn!("Failed loading file in {}: {err}", directory.display());
+                        }
+                        OnError::Abort => {
+                            return Err(err);
                         }
                     }
                 }

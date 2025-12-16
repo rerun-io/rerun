@@ -231,7 +231,7 @@ pub enum BuiltInType {
 pub enum Type {
     BuiltIn(BuiltInType),
     Complex(ComplexType), // Possibly qualified with package path, e.g. `pkg/Type
-    Array { ty: Box<Type>, size: ArraySize },
+    Array { ty: Box<Self>, size: ArraySize },
 }
 
 impl Type {
@@ -385,7 +385,7 @@ pub enum Literal {
     UInt(u64),
     Float(f64),
     String(String),
-    Array(Vec<Literal>),
+    Array(Vec<Self>),
 }
 
 impl Literal {

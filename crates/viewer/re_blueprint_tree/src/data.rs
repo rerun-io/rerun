@@ -358,7 +358,7 @@ pub struct DataResultData {
     pub highlight_sections: SmallVec<[Range<usize>; 1]>,
 
     pub default_open: bool,
-    pub children: Vec<DataResultData>,
+    pub children: Vec<Self>,
 }
 
 impl DataResultData {

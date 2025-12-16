@@ -326,7 +326,7 @@ struct EntityPickerEntryData {
     pub entity_path: EntityPath,
     pub label: String,
     pub highlight_sections: SmallVec<[Range<usize>; 1]>,
-    pub children: Vec<EntityPickerEntryData>,
+    pub children: Vec<Self>,
 }
 
 impl EntityPickerEntryData {
