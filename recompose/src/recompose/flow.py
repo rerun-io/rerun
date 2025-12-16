@@ -223,8 +223,6 @@ def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
         return Ok(None)
 
 
-
-
 def _format_condition_expr(condition_data: dict[str, Any]) -> str:
     """Format a serialized condition expression for display."""
     expr_type = condition_data.get("type", "")
