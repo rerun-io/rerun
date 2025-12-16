@@ -27,6 +27,9 @@ pub enum PrefetchError {
 
     #[error("Arrow: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
+
+    #[error("Row index too large: {0}")]
+    BadIndex(usize),
 }
 
 /// Is the following chunk loaded?
@@ -67,8 +70,6 @@ pub struct ChunkInfo {
 
     /// None for static chunks
     pub temporal: Option<TemporalChunkInfo>,
-
-    pub size_bytes: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -89,7 +90,6 @@ pub struct TemporalChunkInfo {
 ///
 /// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
-/// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
 pub struct RrdManifestIndex {
     /// The raw manifest.
@@ -142,7 +142,6 @@ impl RrdManifestIndex {
 
         for chunk_id in manifest.col_chunk_id()? {
             self.remote_chunks.entry(chunk_id).or_default();
-            // TODO(RR-2999): update chunk info?
         }
 
         for timelines in self.native_temporal_map.values() {
@@ -397,7 +396,13 @@ impl RrdManifestIndex {
 
             if remote_chunk.state == LoadState::Unloaded {
                 remote_chunk.state = LoadState::InTransit;
-                indices.push(row_idx as _);
+
+                if let Ok(row_idx) = i32::try_from(row_idx) {
+                    indices.push(row_idx);
+                } else {
+                    // Improbable
+                    return Err(PrefetchError::BadIndex(row_idx));
+                }
 
                 delta_byte_budget = delta_byte_budget.saturating_sub(chunk_size);
                 if delta_byte_budget == 0 {
@@ -443,22 +448,6 @@ impl RrdManifestIndex {
         }
 
         time_ranges_all_chunks
-    }
-
-    pub fn full_range(&self, timeline: &TimelineName) -> AbsoluteTimeRange {
-        // TODO: This could be cached
-        self.remote_chunks
-            .values()
-            .filter_map(|c| {
-                let temporal = c.temporal.as_ref()?;
-                if temporal.timeline.name() == timeline {
-                    Some(temporal.time_range)
-                } else {
-                    None
-                }
-            })
-            .reduce(|a, b| a.union(b))
-            .unwrap_or(AbsoluteTimeRange::EMPTY)
     }
 
     pub fn loaded_ranges_on_timeline(

@@ -431,11 +431,13 @@ pub fn paint_loaded_indicator_bar(
     }
 
     re_tracing::profile_function!();
+
     let mut ranges = db.rrd_manifest_index().time_ranges_all_chunks(timeline);
 
     let full_range = db
         .rrd_manifest_index()
-        .full_range(time_ctrl.timeline_name());
+        .timeline_range(time_ctrl.timeline_name())
+        .unwrap_or(AbsoluteTimeRange::EMPTY);
 
     ranges.sort_by_key(|(_, r)| r.min);
 
