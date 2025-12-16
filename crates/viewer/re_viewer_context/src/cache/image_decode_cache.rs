@@ -1,5 +1,4 @@
 use ahash::HashMap;
-use bytemuck::Pod;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
@@ -265,10 +264,10 @@ fn decode_rvl_depth(
 
     let buffer: Vec<u8> = match format.datatype() {
         ChannelDatatype::U16 => decode_rvl_u16(image_bytes, &metadata)
-            .map(|x: Vec<u16>| vec_into_bytes(&x))
+            .map(bytemuck::cast_vec)
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
         ChannelDatatype::F32 => decode_rvl_f32(image_bytes, &metadata)
-            .map(|x: Vec<f32>| vec_into_bytes(&x))
+            .map(bytemuck::cast_vec)
             .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
         other => {
             return Err(ImageLoadError::DecodeError(format!(
@@ -293,10 +292,6 @@ fn decode_rvl_depth(
         format.0,
         ImageKind::Depth,
     ))
-}
-
-fn vec_into_bytes<T: Pod>(vec: &[T]) -> Vec<u8> {
-    bytemuck::cast_slice(vec).to_vec()
 }
 
 impl Cache for ImageDecodeCache {
