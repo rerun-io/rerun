@@ -1,6 +1,5 @@
 """Tests for flow composition."""
 
-import recompose
 from recompose import Err, Ok, Result, flow, get_flow_registry, task
 
 
@@ -13,7 +12,7 @@ def test_flow_registers():
 
     @flow
     def my_test_flow() -> None:
-        inner_task.flow()
+        inner_task()
 
     registry = get_flow_registry()
     assert any("my_test_flow" in key for key in registry)
@@ -28,7 +27,7 @@ def test_flow_returns_result():
 
     @flow
     def simple_flow() -> None:
-        simple_task.flow()
+        simple_task()
 
     result = simple_flow()
     assert result.ok
@@ -36,7 +35,7 @@ def test_flow_returns_result():
 
 
 def test_flow_can_call_tasks():
-    """Test that flows can call tasks via .flow()."""
+    """Test that flows can call tasks via ()."""
 
     @task
     def add_one(*, x: int) -> Result[int]:
@@ -44,7 +43,7 @@ def test_flow_can_call_tasks():
 
     @flow
     def incrementing_flow(*, start: int) -> None:
-        add_one.flow(x=start)
+        add_one(x=start)
 
     result = incrementing_flow(start=10)
     assert result.ok
@@ -63,8 +62,8 @@ def test_flow_tracks_task_executions():
 
     @flow
     def tracking_flow() -> None:
-        _a = tracked_task_a.flow()
-        tracked_task_b.flow()
+        _a = tracked_task_a()
+        tracked_task_b()
 
     result = tracking_flow()
     assert result.ok
@@ -91,8 +90,8 @@ def test_flow_passes_results_between_tasks():
 
     @flow
     def math_flow(*, a: int, b: int) -> None:
-        mul_result = multiply.flow(x=a, y=b)
-        add.flow(x=mul_result.value(), y=10)
+        mul_result = multiply(x=a, y=b)
+        add(x=mul_result.value(), y=10)
 
     result = math_flow(a=3, b=4)
     assert result.ok
@@ -111,9 +110,9 @@ def test_flow_handles_task_failure():
 
     @flow
     def flow_with_failure() -> None:
-        r = failing_task.flow()
+        r = failing_task()
         # This won't run because failing_task fails
-        succeeding_task.flow(dep=r.value())
+        succeeding_task(dep=r.value())
 
     result = flow_with_failure()
     assert result.failed
@@ -129,7 +128,7 @@ def test_flow_catches_exceptions():
 
     @flow
     def throwing_flow() -> None:
-        throwing_task.flow()
+        throwing_task()
 
     result = throwing_flow()
     assert result.failed
@@ -146,7 +145,7 @@ def test_flow_with_arguments():
 
     @flow
     def parameterized_flow(*, name: str, count: int = 1) -> None:
-        format_task.flow(name=name, count=count)
+        format_task(name=name, count=count)
 
     result = parameterized_flow(name="test")
     assert result.ok
@@ -165,7 +164,7 @@ def test_flow_preserves_docstring():
     @flow
     def documented_flow() -> None:
         """This is a documented flow."""
-        doc_task.flow()
+        doc_task()
 
     assert documented_flow.__doc__ == "This is a documented flow."
 
@@ -181,7 +180,7 @@ def test_flow_timing():
 
     @flow
     def timed_flow() -> None:
-        slow_task.flow()
+        slow_task()
 
     result = timed_flow()
     assert result.ok
@@ -214,9 +213,9 @@ def test_flow_auto_fails_on_task_failure():
 
     @flow
     def auto_fail_flow() -> None:
-        a = task_a.flow()
-        b = task_b_fails.flow(dep=a.value())  # This fails - should stop here
-        task_c.flow(dep=b.value())  # This won't run
+        a = task_a()
+        b = task_b_fails(dep=a.value())  # This fails - should stop here
+        task_c(dep=b.value())  # This won't run
 
     executed_tasks.clear()
     result = auto_fail_flow()
@@ -251,19 +250,3 @@ def test_flow_requires_tasks():
         empty_flow()
 
 
-def test_direct_task_call_in_flow_raises():
-    """Test that calling a task directly inside a flow raises."""
-
-    @task
-    def my_task() -> Result[str]:
-        return Ok("done")
-
-    @flow
-    def bad_direct_flow() -> None:
-        my_task()  # This should raise
-        my_task.flow()
-
-    import pytest
-
-    with pytest.raises(recompose.DirectTaskCallInFlowError):
-        bad_direct_flow()

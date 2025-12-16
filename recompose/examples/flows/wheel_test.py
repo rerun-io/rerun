@@ -34,17 +34,17 @@ def wheel_test(*, full_tests: bool = False) -> None:
 
     """
     # Build the wheel
-    wheel = build_wheel.flow()
+    wheel = build_wheel()
 
     # Create a fresh test environment
-    venv = create_test_venv.flow()
+    venv = create_test_venv()
 
     # Install the wheel
-    install_wheel.flow(wheel=wheel.value(), venv=venv.value())
+    install_wheel(wheel=wheel.value(), venv=venv.value())
 
     # Always run smoke tests
-    smoke_test.flow(venv=venv.value())
+    smoke_test(venv=venv.value())
 
     # Optionally run the full test suite
     with recompose.run_if(full_tests):
-        test_installed.flow(venv=venv.value())
+        test_installed(venv=venv.value())

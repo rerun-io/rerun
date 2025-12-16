@@ -223,14 +223,6 @@ def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
         return Ok(None)
 
 
-class DirectTaskCallInFlowError(Exception):
-    """Raised when a task is called directly (not via .flow()) inside a flow."""
-
-    def __init__(self, task_name: str):
-        super().__init__(
-            f"Task '{task_name}' was called directly inside a flow. "
-            f"Use '{task_name}.flow(...)' instead to build the task graph."
-        )
 
 
 def _format_condition_expr(condition_data: dict[str, Any]) -> str:
@@ -256,15 +248,17 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
     """
     Decorator to mark a function as a recompose flow.
 
-    A flow composes tasks into a dependency graph using task.flow() calls.
-    The last task.flow() call becomes the terminal node of the graph.
+    A flow composes tasks into a dependency graph using task calls.
+    Tasks automatically detect they're in a flow-building context and
+    return TaskNodes instead of executing. The last task call becomes
+    the terminal node of the graph.
 
     Example:
         @recompose.flow
         def build_pipeline(*, repo: str) -> None:
-            source = fetch_source.flow(repo=repo)
-            binary = compile.flow(source=source)
-            test.flow(binary=binary)  # Last call is the terminal
+            source = fetch_source(repo=repo)
+            binary = compile(source=source)
+            test(binary=binary)  # Last call is the terminal
 
         # Execute the flow
         result = build_pipeline(repo="main")
@@ -301,7 +295,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
             # Use the last added node as the terminal
             if not plan.nodes:
-                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task.flow() calls to add tasks.")
+                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task calls to add tasks.")
             plan.terminal = plan.nodes[-1]
             set_current_plan(None)  # Clear before execution
 
@@ -318,7 +312,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             return result
 
         except Exception as e:
-            if isinstance(e, (DirectTaskCallInFlowError, ValueError, TypeError)):
+            if isinstance(e, (ValueError, TypeError)):
                 raise  # Re-raise flow construction errors (programming mistakes)
             tb = traceback.format_exc()
             err_result: Result[None] = Err(f"{type(e).__name__}: {e}", traceback=tb)
@@ -349,7 +343,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             fn(**kwargs)
 
             if not plan.nodes:
-                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task.flow() calls to add tasks.")
+                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task calls to add tasks.")
             plan.terminal = plan.nodes[-1]
             return plan
         finally:

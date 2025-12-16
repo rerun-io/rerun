@@ -30,7 +30,7 @@ class InputPlaceholder(Generic[T]):
     for required flow parameters. InputPlaceholder stands in for these values,
     allowing the flow function body to execute and build the task graph.
 
-    When the placeholder is passed to a task's .flow() call, it's stored in
+    When the placeholder is passed to a task call, it's stored in
     the TaskNode kwargs. Later, when generating GHA YAML, we recognize these
     placeholders and emit references like `${{ inputs.name }}`.
 
@@ -41,7 +41,7 @@ class InputPlaceholder(Generic[T]):
         # The flow body receives this placeholder:
         @flow
         def build_flow(*, repo: str) -> None:
-            clone.flow(repo=repo)  # repo is actually an InputPlaceholder
+            clone(repo=repo)  # repo is actually an InputPlaceholder
 
         # The placeholder is stored in the TaskNode kwargs and later
         # serialized to "${{ inputs.repo }}" in the GHA workflow YAML.
@@ -67,7 +67,7 @@ class InputPlaceholder(Generic[T]):
             @flow
             def my_flow(*, name: str) -> None:
                 # name is InputPlaceholder[str] at runtime during GHA generation
-                greet.flow(name=name.value())
+                greet(name=name.value())
         """
         return self  # type: ignore[return-value]
 
@@ -148,7 +148,7 @@ class TaskNode(Generic[T]):
     """
     Represents a deferred task execution in a flow graph (a "step").
 
-    When you call `task.flow(arg=value)` inside a flow, it returns a TaskNode
+    When you call `task(arg=value)` inside a flow, it returns a TaskNode
     that mimics Result[T] for type-checking purposes. The TaskNode captures:
     - What task to run
     - What arguments to pass (which may include other TaskNodes as dependencies)
@@ -161,19 +161,19 @@ class TaskNode(Generic[T]):
     Usage pattern in flows:
         @flow
         def build_flow():
-            # .flow() returns Result[Path] to type checker, TaskNode[Path] at runtime
-            compiled = compile.flow(source=Path("src/"))
+            # direct call returns Result[Path] to type checker, TaskNode[Path] at runtime
+            compiled = compile(source=Path("src/"))
 
             # .value returns Path to type checker, but TaskNode[Path] at runtime
-            # This TaskNode is recognized as a dependency by the next .flow() call
-            tested = test.flow(binary=compiled.value)
+            # This TaskNode is recognized as a dependency by the next call
+            tested = test(binary=compiled.value)
 
             return tested
 
     The .value property enables type-safe flow composition:
-    - Type checker sees: compile.flow() -> Result[Path], .value -> Path
-    - Runtime behavior: compile.flow() -> TaskNode[Path], .value -> TaskNode[Path]
-    - The receiving .flow() validates that inputs are literals or TaskNode/InputPlaceholder
+    - Type checker sees: compile() -> Result[Path], .value -> Path
+    - Runtime behavior: compile() -> TaskNode[Path], .value -> TaskNode[Path]
+    - The receiving direct call validates that inputs are literals or TaskNode/InputPlaceholder
     """
 
     task_info: TaskInfo
@@ -190,10 +190,10 @@ class TaskNode(Generic[T]):
         Type signature says T, but at runtime returns self (the TaskNode).
         This enables type-safe flow composition:
 
-            result = greet.flow(name="World")  # Type: Result[str]
-            echo.flow(message=result.value())  # Type: str, Runtime: TaskNode[str]
+            result = greet(name="World")  # Type: Result[str]
+            echo(message=result.value())  # Type: str, Runtime: TaskNode[str]
 
-        The receiving .flow() call recognizes TaskNode as a valid Input type.
+        The receiving call recognizes TaskNode as a valid Input type.
         """
         return self  # type: ignore[return-value]
 
@@ -555,34 +555,34 @@ class FlowPlan:
 # Input[T] Type Alias
 # =============================================================================
 
-# Input[T] represents a value that can be passed to a task's .flow() method.
+# Input[T] represents a value that can be passed to a task call.
 # It accepts:
 #   - T: A literal value of the expected type
-#   - TaskNode[T]: Output from another task's .flow() call (dependency)
+#   - TaskNode[T]: Output from another task call (dependency)
 #   - InputPlaceholder[T]: A placeholder for flow parameters (used in GHA generation)
 #
 # Usage in flow function signatures:
 #
 #     @recompose.flow
 #     def build_pipeline(*, repo: Input[str], debug: Input[bool] = False) -> None:
-#         source = clone.flow(repo=repo)  # repo can be str, TaskNode[str], or InputPlaceholder[str]
-#         build.flow(source=source, debug=debug)
+#         source = clone(repo=repo)  # repo can be str, TaskNode[str], or InputPlaceholder[str]
+#         build(source=source, debug=debug)
 #
 # Note: Python's type system doesn't fully validate the transformation at static
 # analysis time (e.g., ensuring TaskNode[str] matches where str is expected).
-# Runtime validation is performed in .flow() methods.
+# Runtime validation is performed in calls.
 
 Input = T | TaskNode[T] | InputPlaceholder[T]  # type: ignore[misc]
 """
-Type alias for values accepted by task.flow() methods.
+Type alias for values accepted by task calls.
 
 Input[T] accepts:
 - T: A literal value of the expected type
-- TaskNode[T]: Output from another task's .flow() call
+- TaskNode[T]: Output from another task call
 - InputPlaceholder[T]: A placeholder for flow parameters
 
 Example:
     @recompose.flow
     def my_flow(*, name: Input[str]) -> None:
-        greet.flow(name=name)  # name can be str, TaskNode[str], or InputPlaceholder[str]
+        greet(name=name)  # name can be str, TaskNode[str], or InputPlaceholder[str]
 """

@@ -22,13 +22,13 @@ def build_task() -> recompose.Result[str]:
 @recompose.flow
 def build_flow(*, repo: str = "main") -> None:
     """A flow to build."""
-    build_task.flow()
+    build_task()
 
 
 @recompose.flow
 def run_tests_flow() -> None:
     """A flow to run tests."""
-    build_task.flow()
+    build_task()
 
 
 # Test automations

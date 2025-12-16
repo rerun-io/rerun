@@ -1,31 +1,6 @@
 """Tests for declarative flow execution (P05b)."""
 
-import pytest
-
-import recompose
 from recompose import Err, FlowPlan, Ok, Result, flow, task
-
-
-def test_task_has_flow_method():
-    """Test that @task decorated functions have a .flow() method."""
-
-    @task
-    def my_task() -> Result[str]:
-        return Ok("done")
-
-    assert hasattr(my_task, "flow")
-    assert callable(my_task.flow)
-
-
-def test_flow_method_raises_outside_flow():
-    """Test that .flow() raises RuntimeError when called outside a flow."""
-
-    @task
-    def standalone_task() -> Result[str]:
-        return Ok("done")
-
-    with pytest.raises(RuntimeError, match="can only be called inside"):
-        standalone_task.flow()
 
 
 def test_declarative_flow_basic():
@@ -41,8 +16,8 @@ def test_declarative_flow_basic():
 
     @flow
     def simple_declarative() -> None:
-        step_a.flow()
-        step_b.flow()
+        step_a()
+        step_b()
 
     result = simple_declarative()
     assert result.ok
@@ -62,8 +37,8 @@ def test_declarative_flow_with_dependencies():
 
     @flow
     def dependent_flow() -> None:
-        produced = produce.flow(value=5)
-        consume.flow(input_val=produced.value())  # Use .value() for type-safe passing
+        produced = produce(value=5)
+        consume(input_val=produced.value())  # Use .value() for type-safe passing
 
     result = dependent_flow()
     assert result.ok
@@ -90,9 +65,9 @@ def test_declarative_flow_execution_order():
 
     @flow
     def ordered_flow() -> None:
-        first = task_first.flow()
-        second = task_second.flow(from_first=first.value())
-        task_third.flow(from_second=second.value())
+        first = task_first()
+        second = task_second(from_first=first.value())
+        task_third(from_second=second.value())
 
     execution_order.clear()
     result = ordered_flow()
@@ -127,10 +102,10 @@ def test_declarative_flow_parallel_structure():
 
     @flow
     def diamond_flow() -> None:
-        src = source_task.flow()
-        a = branch_a.flow(val=src.value())
-        b = branch_b.flow(val=src.value())
-        merge_task.flow(a=a.value(), b=b.value())
+        src = source_task()
+        a = branch_a(val=src.value())
+        b = branch_b(val=src.value())
+        merge_task(a=a.value(), b=b.value())
 
     execution_order.clear()
     result = diamond_flow()
@@ -161,9 +136,9 @@ def test_declarative_flow_fail_fast():
 
     @flow
     def fail_fast_flow() -> None:
-        ok_task.flow()
-        failing_task.flow()
-        never_run.flow()
+        ok_task()
+        failing_task()
+        never_run()
 
     execution_order.clear()
     result = fail_fast_flow()
@@ -186,8 +161,8 @@ def test_flow_plan_method():
 
     @flow
     def plannable_flow() -> None:
-        a = plan_task_a.flow()
-        plan_task_b.flow(from_a=a.value())
+        a = plan_task_a()
+        plan_task_b(from_a=a.value())
 
     # Get the plan without executing
     plan = plannable_flow.plan()
@@ -211,8 +186,8 @@ def test_flow_plan_shows_dependencies():
 
     @flow
     def dep_flow() -> None:
-        root = dep_root.flow()
-        dep_child.flow(val=root.value())
+        root = dep_root()
+        dep_child(val=root.value())
 
     plan = dep_flow.plan()
 
@@ -239,9 +214,9 @@ def test_flow_plan_execution_order():
 
     @flow
     def ordered_plan_flow() -> None:
-        a = order_a.flow()
-        b = order_b.flow(a=a.value())
-        order_c.flow(b=b.value())
+        a = order_a()
+        b = order_b(a=a.value())
+        order_c(b=b.value())
 
     plan = ordered_plan_flow.plan()
     order = plan.get_execution_order()
@@ -269,9 +244,9 @@ def test_flow_plan_parallelizable_groups():
 
     @flow
     def parallel_flow() -> None:
-        root = parallel_root.flow()
-        parallel_a.flow(val=root.value())
-        parallel_b.flow(val=root.value())
+        root = parallel_root()
+        parallel_a(val=root.value())
+        parallel_b(val=root.value())
 
     plan = parallel_flow.plan()
     groups = plan.get_parallelizable_groups()
@@ -292,7 +267,7 @@ def test_flow_plan_visualize():
 
     @flow
     def viz_flow() -> None:
-        viz_task.flow()
+        viz_task()
 
     plan = viz_flow.plan()
     viz = plan.visualize()
@@ -310,7 +285,7 @@ def test_declarative_flow_with_arguments():
 
     @flow
     def arg_flow(*, initial: int) -> None:
-        double.flow(value=initial)
+        double(value=initial)
 
     result = arg_flow(initial=21)
     assert result.ok
@@ -329,8 +304,8 @@ def test_declarative_flow_tracks_executions():
 
     @flow
     def tracking_flow() -> None:
-        tracked_a.flow()
-        tracked_b.flow()
+        tracked_a()
+        tracked_b()
 
     result = tracking_flow()
     assert result.ok
@@ -350,7 +325,7 @@ def test_declarative_flow_attaches_plan():
 
     @flow
     def attached_flow() -> None:
-        attached_task.flow()
+        attached_task()
 
     result = attached_flow()
     assert result.ok
@@ -359,22 +334,6 @@ def test_declarative_flow_attaches_plan():
     plan = getattr(result, "_flow_plan", None)
     assert plan is not None
     assert isinstance(plan, FlowPlan)
-
-
-def test_direct_task_call_in_flow_raises():
-    """Test that calling a task directly inside a flow raises an error."""
-
-    @task
-    def direct_call_task() -> Result[str]:
-        return Ok("done")
-
-    @flow
-    def bad_flow() -> None:
-        direct_call_task()  # Direct call, should raise
-        direct_call_task.flow()
-
-    with pytest.raises(recompose.DirectTaskCallInFlowError):
-        bad_flow()
 
 
 def test_task_node_repr():
@@ -386,7 +345,7 @@ def test_task_node_repr():
 
     @flow
     def repr_flow() -> None:
-        repr_task.flow()
+        repr_task()
 
     plan = repr_flow.plan()
     node = plan.nodes[0]

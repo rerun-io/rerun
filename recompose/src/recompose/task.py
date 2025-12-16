@@ -23,30 +23,27 @@ class TaskWrapper(Protocol[P, T]):
     """
     Protocol describing a task-decorated function.
 
-    Task wrappers are callable (returning Result[T]) and have a .flow() method
-    for use in declarative flows.
+    Task wrappers are callable and automatically detect whether they're being
+    called inside a flow-building context or for direct execution.
 
-    Both __call__ and flow() have the same parameter signature (P), preserving
-    the original function's parameter names and types. Both return Result[T]
-    to the type checker, enabling type-safe flow composition:
+    The wrapper has the same parameter signature (P) in both modes and returns
+    Result[T] to the type checker, enabling type-safe flow composition:
 
         @flow
         def my_flow():
-            result = greet.flow(name="World")  # Type: Result[str]
-            echo.flow(message=result.value())  # Type: str (from Result.value())
+            result = greet(name="World")  # Type: Result[str]
+            echo(message=result.value())  # Type: str (from Result.value())
 
-    At runtime, flow() actually returns a TaskNode[T] that mimics Result[T].
-    The TaskNode.value() method returns itself, allowing it to be passed as
-    a dependency to other .flow() calls. The receiving .flow() validates
-    that inputs are either literal values or Input[T] types (TaskNode or
-    InputPlaceholder).
+    At runtime when inside a @flow, the call actually returns a TaskNode[T]
+    that mimics Result[T]. The TaskNode.value() method returns itself, allowing
+    it to be passed as a dependency to other task calls. The receiving task
+    validates that inputs are either literal values or Input[T] types (TaskNode
+    or InputPlaceholder).
     """
 
     _task_info: TaskInfo
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Result[T]: ...
-
-    def flow(self, *args: P.args, **kwargs: P.kwargs) -> Result[T]: ...
 
 
 @dataclass
@@ -120,8 +117,7 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     - Is registered in the global task registry
     - Gets automatic context management
     - Has exceptions caught and converted to Err results
-    - Can still be called as a normal Python function
-    - Has a .flow() method for declarative flow building
+    - Automatically detects if it's called inside a flow and behaves accordingly
 
     For methods (functions with 'self' as first parameter):
     - The method is marked but NOT registered immediately
@@ -135,15 +131,15 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
         # Direct execution:
         result = compile(source=Path("src/"))  # Returns Result[Path]
 
-        # Inside a declarative flow - type-safe composition:
+        # Inside a declarative flow - automatic graph building:
         @flow
         def build_flow():
-            compiled = compile.flow(source=Path("src/"))  # Type: Result[Path]
-            test.flow(binary=compiled.value)              # Type: Path
+            compiled = compile(source=Path("src/"))  # Type: Result[Path], runtime: TaskNode
+            test(binary=compiled.value())            # Type: Path
 
-    The .flow() method returns Result[T] to the type checker, enabling
-    type-safe composition via .value. At runtime, it returns a TaskNode
-    that mimics Result[T] and tracks dependencies.
+    When called inside a @flow, the task automatically returns a TaskNode (which
+    mimics Result[T]) instead of executing. This enables type-safe composition
+    via .value() while building the task graph.
     """
     # Check if this looks like a method
     if _is_method_signature(fn):
@@ -155,13 +151,42 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     # Regular function task - register immediately
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
-        from .flow import DirectTaskCallInFlowError, get_current_plan
+        from .flow import get_current_plan
 
         # Check if we're inside a flow that's building a plan
-        # If so, the user should use .flow() instead of direct call
-        if get_current_plan() is not None:
-            raise DirectTaskCallInFlowError(info.name)
+        plan = get_current_plan()
 
+        if plan is not None:
+            # FLOW-BUILDING MODE: Create TaskNode and add to plan
+            # Validate kwargs against the task signature
+            valid_params = set(info.signature.parameters.keys())
+            unexpected = set(kwargs.keys()) - valid_params
+            if unexpected:
+                raise TypeError(
+                    f"{info.name}() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
+                    f"Valid arguments are: {', '.join(sorted(valid_params))}"
+                )
+
+            # Check for missing required arguments
+            missing = []
+            for name, param in info.signature.parameters.items():
+                if param.default is inspect.Parameter.empty and name not in kwargs:
+                    missing.append(name)
+            if missing:
+                raise TypeError(f"{info.name}() missing required keyword argument(s): {', '.join(missing)}")
+
+            # Create the TaskNode, capturing current condition if in a run_if block
+            from .conditional import get_current_condition
+            from .flowgraph import TaskNode
+
+            current_cond = get_current_condition()
+            condition = current_cond.condition if current_cond else None
+
+            node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs, condition=condition)
+            plan.add_node(node)
+            return node  # type: ignore[return-value]
+
+        # NORMAL EXECUTION MODE: Execute the task
         # Check if we're already in a context
         existing_ctx = get_context()
 
@@ -193,85 +218,8 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     # Attach task info to wrapper for introspection
     wrapper._task_info = info  # type: ignore[attr-defined]
 
-    # Add .flow() method for declarative flow building
-    def flow_variant(**kwargs: Any) -> Any:
-        """
-        Build a task node for deferred execution in a flow.
-
-        This method can only be called inside a @flow-decorated function.
-        It returns a TaskNode that mimics Result[T] for type-safe composition.
-
-        Type-safe usage pattern:
-            result = my_task.flow(arg="value")   # Type: Result[T]
-            other_task.flow(input=result.value()) # Type: T (actually TaskNode at runtime)
-
-        Args:
-            **kwargs: The arguments to pass to the task when executed.
-                      Accepts literal values, TaskNode.value() from other .flow() calls,
-                      or InputPlaceholder for GHA workflow generation.
-
-        Returns:
-            Result[T] to type checker, TaskNode[T] at runtime.
-
-        Raises:
-            RuntimeError: If called outside a @flow context.
-            TypeError: If unexpected keyword arguments are passed.
-
-        """
-        from .flow import get_current_plan
-        from .flowgraph import TaskNode
-
-        plan = get_current_plan()
-        if plan is None:
-            raise RuntimeError(
-                f"{info.name}.flow() can only be called inside a @flow-decorated function. "
-                f"Use {info.name}() for direct execution."
-            )
-
-        # Validate kwargs against the task signature
-        valid_params = set(info.signature.parameters.keys())
-        unexpected = set(kwargs.keys()) - valid_params
-        if unexpected:
-            raise TypeError(
-                f"{info.name}.flow() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
-                f"Valid arguments are: {', '.join(sorted(valid_params))}"
-            )
-
-        # Check for missing required arguments
-        missing = []
-        for name, param in info.signature.parameters.items():
-            if param.default is inspect.Parameter.empty and name not in kwargs:
-                missing.append(name)
-        if missing:
-            raise TypeError(f"{info.name}.flow() missing required keyword argument(s): {', '.join(missing)}")
-
-        # Create the TaskNode, capturing current condition if in a run_if block
-        from .conditional import get_current_condition
-
-        current_cond = get_current_condition()
-        condition = current_cond.condition if current_cond else None
-
-        node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs, condition=condition)
-        plan.add_node(node)
-        return node
-
-    # Copy signature from original function for IDE autocomplete support
-    flow_variant.__signature__ = info.signature  # type: ignore[attr-defined]
-    flow_variant.__doc__ = f"""Build a task node for {info.name} in a declarative flow.
-
-Parameters match the task signature. Use .value() to pass outputs between tasks:
-
-    result = {info.name}.flow(...)       # Type: Result[T]
-    other.flow(input=result.value())     # Type: T (TaskNode at runtime)
-
-Returns:
-    Result[T] to type checker, TaskNode[T] at runtime.
-"""
-
-    wrapper.flow = flow_variant  # type: ignore[attr-defined]
-
     # Cast to TaskWrapper to satisfy type checker
-    # (we've added .flow and ._task_info attributes dynamically)
+    # (we've added ._task_info attribute dynamically)
     from typing import cast
 
     return cast(TaskWrapper[P, T], wrapper)
@@ -334,17 +282,50 @@ def taskclass(cls: type[T]) -> type[T]:
 
         # Create wrapper that constructs instance and calls method
         def make_wrapper(
-            cls: type, method_name: str, init_param_names: list[str], full_task_name: str
+            cls: type, method_name: str, init_param_names: list[str], full_task_name: str, task_sig: inspect.Signature
         ) -> Callable[..., Any]:
             """Create a wrapper for a specific method."""
 
             def wrapper(**kwargs: Any) -> Result[Any]:
-                from .flow import DirectTaskCallInFlowError, get_current_plan
+                from .flow import get_current_plan
 
                 # Check if we're inside a flow that's building a plan
-                if get_current_plan() is not None:
-                    raise DirectTaskCallInFlowError(full_task_name)
+                plan = get_current_plan()
 
+                if plan is not None:
+                    # FLOW-BUILDING MODE: Create TaskNode and add to plan
+                    # Validate kwargs against the task signature
+                    valid_params = set(task_sig.parameters.keys())
+                    unexpected = set(kwargs.keys()) - valid_params
+                    if unexpected:
+                        raise TypeError(
+                            f"{full_task_name}() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
+                            f"Valid arguments are: {', '.join(sorted(valid_params))}"
+                        )
+
+                    # Check for missing required arguments
+                    missing = []
+                    for name, param in task_sig.parameters.items():
+                        if param.default is inspect.Parameter.empty and name not in kwargs:
+                            missing.append(name)
+                    if missing:
+                        missing_args = ", ".join(missing)
+                        raise TypeError(f"{full_task_name}() missing required keyword argument(s): {missing_args}")
+
+                    # Create the TaskNode, capturing current condition if in a run_if block
+                    from .conditional import get_current_condition
+                    from .flowgraph import TaskNode
+
+                    current_cond = get_current_condition()
+                    condition = current_cond.condition if current_cond else None
+
+                    # Note: We'll need the TaskInfo reference, which will be set after this wrapper is created
+                    # For now, we'll need to pass it differently - let's store it on the wrapper
+                    node: Any = TaskNode(task_info=wrapper._task_info, kwargs=kwargs, condition=condition)  # type: ignore[attr-defined]
+                    plan.add_node(node)
+                    return node  # type: ignore[no-any-return]
+
+                # NORMAL EXECUTION MODE: Execute the task
                 # Split kwargs into init args and method args
                 init_kwargs = {k: v for k, v in kwargs.items() if k in init_param_names}
                 method_kwargs = {k: v for k, v in kwargs.items() if k not in init_param_names}
@@ -373,7 +354,7 @@ def taskclass(cls: type[T]) -> type[T]:
             return wrapper
 
         init_param_names = [p.name for p in init_params]
-        wrapper = make_wrapper(cls, attr_name, init_param_names, task_name)
+        wrapper = make_wrapper(cls, attr_name, init_param_names, task_name, combined_sig)
         wrapper.__doc__ = method_doc
 
         # Create TaskInfo for this method task
@@ -389,6 +370,9 @@ def taskclass(cls: type[T]) -> type[T]:
             method_name=attr_name,
             init_params=init_params,
         )
+
+        # Attach task info to wrapper for introspection (needed for flow building)
+        wrapper._task_info = info  # type: ignore[attr-defined]
 
         _task_registry[info.full_name] = info
 

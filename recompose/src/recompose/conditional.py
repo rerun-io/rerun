@@ -7,10 +7,10 @@ that works both locally and in GitHub Actions.
 Usage:
     @recompose.flow
     def my_flow(*, full_tests: bool = False) -> None:
-        build.flow()
+        build()
 
         with recompose.run_if(full_tests):
-            full_test.flow()  # Only runs if full_tests is true
+            full_test()  # Only runs if full_tests is true
 """
 
 from __future__ import annotations
@@ -78,12 +78,12 @@ def run_if(
     Example:
         @recompose.flow
         def my_flow(*, debug: bool = False) -> None:
-            build.flow()
+            build()
 
             with recompose.run_if(debug):
-                print_debug_info.flow()
+                print_debug_info()
 
-            deploy.flow()
+            deploy()
 
     For GHA:
         - A condition-check task is created that evaluates the condition
