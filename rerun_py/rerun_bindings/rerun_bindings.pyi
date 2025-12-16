@@ -857,7 +857,11 @@ def set_thread_local_blueprint_recording(
     """
 
 def check_for_rrd_footer(file_path: str | os.PathLike[str]) -> bool:
-    """Check if the given RRD file has a footer."""
+    """
+    Check if the RRD has a valid RRD footer.
+
+    This is useful for unit-tests to verify that data has been fully flushed to disk.
+    """
 
 def disconnect_orphaned_recordings() -> None:
     """
