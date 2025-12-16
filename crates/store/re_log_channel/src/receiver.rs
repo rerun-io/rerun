@@ -114,7 +114,17 @@ impl LogReceiver {
         self.rx.len()
     }
 
-    /// Send a command to the other end
+    /// Returns true if there is a [`crate::LogSender`] that is waiting
+    /// to receive commands to load chunks.
+    ///
+    /// Can be used to debounce load requests.
+    pub fn has_waiting_command_receivers(&self) -> bool {
+        0 < self.channel.num_waiting_receivers.load(Relaxed)
+    }
+
+    /// Send a command to the other end.
+    ///
+    /// You should probably check `has_waiting_command_receivers` before using this method (debounce).
     pub fn send_command(&self, rb: LoadCommand) {
         let tx = self.tx.clone();
         spawn_future(async move {

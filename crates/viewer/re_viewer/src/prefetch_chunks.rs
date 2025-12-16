@@ -1,3 +1,4 @@
+use egui::NumExt;
 use re_entity_db::EntityDb;
 use re_log_channel::LogReceiverSet;
 use re_log_types::AbsoluteTimeRange;
@@ -16,7 +17,16 @@ pub fn prefetch_chunks(
     let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
     let current = re_memory::MemoryUse::capture().used().unwrap_or(0);
 
-    let budget_bytes = memory_limit.saturating_sub(current);
+    // TODO: what is a reasonable cap here?
+    // We don't request more until this much has been received.
+    // Small number = low latency, low throughput.
+    // High number = high latency, high throughput.
+    // Ideally it should depend on the actual bandwidth and latency.
+    let request_window_size = 2_000_000;
+
+    let budget_bytes = memory_limit
+        .saturating_sub(current)
+        .at_most(request_window_size);
 
     if budget_bytes <= 0 {
         return None;
@@ -46,6 +56,13 @@ pub fn prefetch_chunks(
     rx_log.for_each(|rx| {
         if rx.source() == data_source {
             found_source = true;
+
+            if !rx.has_waiting_command_receivers() {
+                // Either there is noone on the other side,
+                // or they are busy processing previous requests.
+                // Let's not enqueu more work for them right now (debounce).
+                return;
+            }
 
             let rb = if false {
                 //TODO: use this code instead

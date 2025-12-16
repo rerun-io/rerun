@@ -1,6 +1,7 @@
 //! An in-memory channel of Rerun data messages
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
 use arrow::array::RecordBatch;
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
@@ -220,6 +221,12 @@ pub(crate) struct Channel {
     ///
     /// This can be used to wake up the receiver thread.
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
+
+    /// Counts how many [`LogSender`]s are currently waiting on
+    /// new [`LoadCommand`]s from the viewer to the gRPC client.
+    ///
+    /// Used for debouncing load requests.
+    pub num_waiting_receivers: AtomicUsize,
 }
 
 /// Create a new communication channel for [`DataSourceMessage`].

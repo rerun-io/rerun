@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use crate::{
     Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
@@ -125,6 +126,13 @@ impl LogSender {
     ///
     /// Return an error if there is no more [`LogSender`]s.
     pub async fn recv_cmd(&self) -> Result<LoadCommand, async_channel::RecvError> {
-        self.rx.recv().await
+        self.channel
+            .num_waiting_receivers
+            .fetch_add(1, Ordering::SeqCst);
+        let result = self.rx.recv().await;
+        self.channel
+            .num_waiting_receivers
+            .fetch_sub(1, Ordering::SeqCst);
+        result
     }
 }
