@@ -84,6 +84,8 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
             | ((col("rerun_segment_id") == segments[1]) & (col(time_index) < s2_lower)),
             # Edge cases
             col(time_index) == s1_lower,  # Exact match, multiple segments
+            # Non-parsable cases should have no impact
+            f.substring(col("rerun_segment_id"), lit(2), lit(3)) == "some_value",
         ]
 
     # Cannot run "time_1" due to https://github.com/apache/datafusion-python/pull/1319
