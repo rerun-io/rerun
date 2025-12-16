@@ -93,11 +93,11 @@ impl MessageParser for ImageMessageParser {
                 .collect()
         };
 
-        let frame_components: Vec<_> = CoordinateFrame::update_fields()
-            .with_many_frame(frame_ids)
-            .columns_of_unit_batches()?
-            .collect();
-        chunk_components.extend(frame_components);
+        chunk_components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()?,
+        );
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),

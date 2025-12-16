@@ -59,11 +59,11 @@ impl MessageParser for MagneticFieldMessageParser {
             .columns_of_unit_batches()?
             .collect();
 
-        let frame_components: Vec<_> = CoordinateFrame::update_fields()
-            .with_many_frame(frame_ids)
-            .columns_of_unit_batches()?
-            .collect();
-        components.extend(frame_components);
+        components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()?,
+        );
 
         let data_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),

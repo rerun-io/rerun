@@ -84,12 +84,12 @@ impl MessageParser for CameraInfoMessageParser {
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
             .collect();
 
-        let frame_components: Vec<_> = CoordinateFrame::update_fields()
-            .with_many_frame(frame_ids)
-            .columns_of_unit_batches()
-            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
-            .collect();
-        components.extend(frame_components);
+        components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()
+                .map_err(|err| Error::Other(anyhow::anyhow!(err)))?,
+        );
 
         let pinhole_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
