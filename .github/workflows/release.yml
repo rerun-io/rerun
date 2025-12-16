@@ -21,7 +21,10 @@ defaults:
     shell: bash --noprofile --norc -euo pipefail {0}
 
 # wants to push commits and create a PR
-permissions: write-all
+permissions:
+  contents: write # Allow pushing commits
+  pull-requests: write # Allow creating PRs
+  packages: read # Allow reading packages
 
 jobs:
   # Re-entrancy:
