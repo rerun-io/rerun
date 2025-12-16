@@ -3,13 +3,12 @@ title: Query data out of Rerun
 order: 100
 ---
 
-Rerun comes with a Server + Catalog API, which enables getting data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
-## The Server + Catalog API
 
-### Starting a server with recordings
+## Starting a server with recordings
 
-The easiest way to query data is to start a local server with your recordings:
+The first step to query data is to start a server and load it with a dataset containing your recording.
 
 ```python
 import rerun as rr
@@ -18,10 +17,6 @@ import rerun as rr
 with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     client = server.client()
     dataset = client.get_dataset("my_dataset")
-
-    # Query the data
-    df = dataset.reader(index="frame_nr")
-    print(df.to_pandas())
 ```
 
 The server can host multiple datasets. Each dataset maps to either a list of `.rrd` files or a directory (which will be scanned for `.rrd` files):
@@ -39,7 +34,9 @@ with rr.server.Server(datasets={
     ds2 = client.get_dataset("dataset2")
 ```
 
-### Inspecting the schema
+When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
+
+## Inspecting the schema
 
 The content of a dataset can be inspected using the `schema()` method:
 
@@ -49,42 +46,53 @@ schema.index_columns()        # list of all index columns (timelines)
 schema.component_columns()    # list of all component columns
 ```
 
-### Creating a filtered view
+## Querying a dataset using `reader`
 
-You can filter the dataset by entity paths and segments before querying:
+The primary means of querying data is the `reader()` method. In its simplest form, it is used as follows:
+
+```python
+df = dataset.reader(index="frame_nr")
+
+print(df)
+```
+
+The return object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
+
+When calling `reader()`, an index column must be specified. It can be any of the recording's timelines. Each row of the view will correspond to a unique value of the index column. It is also possible to query the dataset using `index=None`. In this case, only the `static=True` data will be returned.
+
+By default, when performing a query on a dataset, data for all its segments is returned. An additional `"rerun_segment_id"` column is added to the dataframe to indicate which segment each row belongs to.
+
+An often used paramater of the `reader()` method is `fill_latest_at=True`. When used, all `null` data will be filled with a latest-at value, similarly to how the viewer works. 
+
+
+## Querying a subset of a dataset
+
+In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetView` objects:
 
 ```python
 # Filter by entity paths
-view = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+dataset_view = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
 
 # Filter by segment IDs (recording IDs)
-view = dataset.filter_segments(["recording_001", "recording_002"])
+dataset_view = dataset.filter_segments(["recording_001", "recording_002"])
 
 # Chain filters
-view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
+dataset_view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
 ```
 
-### Reading data
-
-Once you have a dataset or filtered view, use `reader()` to create a query:
+`DatasetView` instances have the exact same `reader()` method as the original dataset:
 
 ```python
-# Basic query with an index
-df = dataset.reader(index="frame_nr")
+df = dataset_view.reader(index="frame_nr")
 
-# Query with latest-at fill (interpolation)
-df = dataset.reader(index="frame_nr", fill_latest_at=True)
-
-# Query from a filtered view
-view = dataset.filter_contents(["/world/robot/**"])
-df = view.reader(index="frame_nr")
+print(df)
 ```
 
-The `reader()` method returns a [DataFusion DataFrame](https://datafusion.apache.org/python/), which provides powerful query capabilities.
+## Filtering with DataFusion
 
-### Filtering with DataFusion
+DataFusion offers a rich set of filtering, projection, and joining capabilities. Check the [DataFusion Python documentation](https://datafusion.apache.org/python/) for details.
 
-You can use DataFusion's query capabilities to filter rows:
+For illustration, here are a few simple examples:
 
 ```python
 from datafusion import col
@@ -101,23 +109,11 @@ df = df.filter(col("/world/robot:Position3D:positions").is_not_null())
 df = df.select("frame_nr", "/world/robot:Position3D:positions")
 ```
 
-### Converting to other formats
+## Converting to other formats
 
-The DataFusion DataFrame can be converted to various formats:
+Likewise, DataFusion offers a rich set of tools to convert a dataframe to various formats.
 
-```python
-# To PyArrow Table
-table = df.to_arrow_table()
-
-# To Pandas DataFrame
-pandas_df = df.to_pandas()
-
-# To Polars DataFrame
-import polars as pl
-polars_df = pl.from_arrow(df.to_arrow_table())
-```
-
-## Load data to a PyArrow `Table`
+### Load data to a PyArrow `Table`
 
 ```python
 import rerun as rr
@@ -127,7 +123,7 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     table = dataset.reader(index="frame_nr").to_arrow_table()
 ```
 
-## Load data to a Pandas dataframe
+### Load data to a Pandas dataframe
 
 ```python
 import rerun as rr
@@ -137,7 +133,7 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     df = dataset.reader(index="frame_nr").to_pandas()
 ```
 
-## Load data to a Polars dataframe
+### Load data to a Polars dataframe
 
 ```python
 import rerun as rr
@@ -148,7 +144,7 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     df = pl.from_arrow(dataset.reader(index="frame_nr").to_arrow_table())
 ```
 
-## Load data to a DuckDB relation
+### Load data to a DuckDB relation
 
 ```python
 import rerun as rr
@@ -159,32 +155,3 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     table = dataset.reader(index="frame_nr").to_arrow_table()
     rel = duckdb.arrow(table)
 ```
-
-## Using `load_recording()` for simple cases
-
-For simple cases where you just need to load a single recording and access its metadata (without the full query API), you can use `rr.recording.load_recording()`:
-
-```python
-import rerun as rr
-
-recording = rr.recording.load_recording("/path/to/file.rrd")
-print(f"Application ID: {recording.application_id()}")
-print(f"Recording ID: {recording.recording_id()}")
-
-# Inspect schema
-schema = recording.schema()
-print(schema.index_columns())
-print(schema.component_columns())
-```
-
-For RRD files containing multiple recordings (e.g., with blueprints):
-
-```python
-archive = rr.recording.load_archive("/path/to/file.rrd")
-print(f"The archive contains {archive.num_recordings()} recordings.")
-
-for recording in archive.all_recordings():
-    print(f"Recording: {recording.recording_id()}")
-```
-
-Note: To query data from recordings loaded this way, use the Server + Catalog API as shown above.
