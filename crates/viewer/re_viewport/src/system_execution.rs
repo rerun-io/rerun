@@ -168,14 +168,9 @@ pub fn execute_systems_for_all_views<'a>(
                         return None;
                     };
 
-                    let result = execute_systems_for_view(
-                        ctx,
-                        view,
-                        view_state,
-                        &context_system_once_per_frame_results,
-                    );
+                    let result = execute_systems_for_view(ctx, view, view_state, &context_system_once_per_frame_results);
                     Some((*view_id, result))
-                }
+                },
                 egui_tiles::Tile::Container(_) => None,
             }
         })

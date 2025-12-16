@@ -1,7 +1,5 @@
 //! Various strongly typed sets of entities to express intent and avoid mistakes.
 
-use std::collections::BTreeMap;
-
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
@@ -70,10 +68,10 @@ impl std::ops::Deref for IndicatedEntities {
 /// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
 /// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view.
 #[derive(Debug)]
-pub struct PerVisualizer<T>(pub BTreeMap<ViewSystemIdentifier, T>);
+pub struct PerVisualizer<T>(pub IntMap<ViewSystemIdentifier, T>);
 
 impl<T> std::ops::Deref for PerVisualizer<T> {
-    type Target = BTreeMap<ViewSystemIdentifier, T>;
+    type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -90,7 +88,7 @@ impl<T: Clone> Clone for PerVisualizer<T> {
 // Manual default impl, otherwise T: Default would be required.
 impl<T> Default for PerVisualizer<T> {
     fn default() -> Self {
-        Self(BTreeMap::default())
+        Self(IntMap::default())
     }
 }
 
@@ -104,7 +102,7 @@ pub struct PerVisualizerInViewClass<T> {
     pub view_class_identifier: ViewClassIdentifier,
 
     /// Items per visualizer system.
-    pub per_visualizer: BTreeMap<ViewSystemIdentifier, T>,
+    pub per_visualizer: IntMap<ViewSystemIdentifier, T>,
 }
 
 impl<T> PerVisualizerInViewClass<T> {
@@ -117,7 +115,7 @@ impl<T> PerVisualizerInViewClass<T> {
 }
 
 impl<T> std::ops::Deref for PerVisualizerInViewClass<T> {
-    type Target = BTreeMap<ViewSystemIdentifier, T>;
+    type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
