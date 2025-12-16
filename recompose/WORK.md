@@ -1,5 +1,35 @@
 # NOW
 
+**P10_context_dispatch** - COMPLETE
+
+Simplified the API by removing the `.flow()` method - tasks now use context-based dispatch.
+
+Tasks automatically detect whether they're being called inside a flow-building
+context and behave accordingly. This eliminates API duplication and makes the
+code more intuitive.
+
+**Key changes:**
+- Removed `.flow()` method from tasks
+- Tasks check `get_current_plan()` and dispatch to either:
+  - Flow-building mode: Return TaskNode for graph construction
+  - Execution mode: Execute the task and return Result
+- Updated TaskWrapper protocol (no longer has `.flow()` method)
+- Removed `DirectTaskCallInFlowError` (no longer needed)
+- Updated all 256 `.flow()` calls across examples, tests, and source code
+- GHAAction uses same context-based dispatch pattern
+
+**Benefits:**
+- Simpler API - one less thing to remember
+- Same function signature everywhere
+- Cleaner code - no `.flow()` noise
+- Type-safe - same Result[T] signature in both modes
+
+All 181 tests passing, lint clean.
+
+See: `proj/P10_context_dispatch_DONE.md` for detailed plan
+
+---
+
 **P09_workflow_dispatch** - COMPLETE
 
 Implemented ergonomic CLI-to-GitHub integration for flows.
