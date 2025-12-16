@@ -4,9 +4,8 @@ use egui::Color32;
 use itertools::{Either, izip};
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
+use re_view::clamped_or;
 use re_viewer_context::ResolvedAnnotationInfos;
-
-use crate::visualizers::entity_iterator::clamped_or;
 
 #[derive(Clone)]
 pub enum UiLabelTarget {
