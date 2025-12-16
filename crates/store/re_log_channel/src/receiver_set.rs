@@ -44,6 +44,12 @@ impl LogReceiverSet {
         self.receivers.lock().retain(|r| f(r));
     }
 
+    pub fn for_each(&self, mut f: impl FnMut(&LogReceiver)) {
+        for r in self.receivers.lock().iter() {
+            f(r);
+        }
+    }
+
     /// Remove all receivers.
     pub fn clear(&self) {
         self.receivers.lock().clear();
