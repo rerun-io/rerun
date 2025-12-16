@@ -219,7 +219,7 @@ impl TimeHistogramPerTimeline {
     pub fn on_rrd_manifest(
         &mut self,
         rrd_manifest: &re_log_encoding::RrdManifest,
-    ) -> anyhow::Result<()> {
+    ) -> re_log_encoding::CodecResult<()> {
         re_tracing::profile_function!();
 
         let native_temporal_map = rrd_manifest.get_temporal_data_as_a_map()?;

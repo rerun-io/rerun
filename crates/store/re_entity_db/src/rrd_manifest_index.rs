@@ -13,6 +13,22 @@ use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 use crate::sorted_range_map::SortedRangeMap;
 
+/// Errors that can occur during prefetching.
+#[derive(thiserror::Error, Debug)]
+pub enum PrefetchError {
+    #[error("No manifest available")]
+    NoManifest,
+
+    #[error("Unknown timeline: {0:?}")]
+    UnknownTimeline(Timeline),
+
+    #[error("Codec: {0}")]
+    Codec(#[from] re_log_encoding::CodecError),
+
+    #[error("Arrow: {0}")]
+    Arrow(#[from] arrow::error::ArrowError),
+}
+
 /// Is the following chunk loaded?
 ///
 /// The order here is used for priority to show the state in the ui (lower is more prioritized)
@@ -343,7 +359,7 @@ impl RrdManifestIndex {
     pub fn prefetch_chunks(
         &mut self,
         options: &ChunkPrefetchOptions,
-    ) -> anyhow::Result<RecordBatch> {
+    ) -> Result<RecordBatch, PrefetchError> {
         re_tracing::profile_function!();
 
         let ChunkPrefetchOptions {
@@ -354,11 +370,11 @@ impl RrdManifestIndex {
         } = *options;
 
         let Some(manifest) = self.manifest.as_ref() else {
-            anyhow::bail!("No manifest");
+            return Err(PrefetchError::NoManifest);
         };
 
         let Some(chunks) = self.chunk_intervals.get(&timeline) else {
-            anyhow::bail!("Unknown timeline: {timeline:?}");
+            return Err(PrefetchError::UnknownTimeline(timeline));
         };
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
