@@ -495,7 +495,7 @@ type BatchingResult = (Vec<RecordBatch>, Vec<String>);
 /// for segments larger than the target size (which get split).
 ///
 /// Returns (batches, `segment_order`) where:
-/// - batches: Vec of merged RecordBatches, each representing a ~target_size request
+/// - batches: list of merged `RecordBatch`es, each representing a `target_size` request
 /// - `segment_order`: Original order of segments for preserving segment order
 fn create_request_batches(
     chunk_infos: Vec<RecordBatch>,
@@ -1009,7 +1009,7 @@ mod tests {
             create_request_batches(vec![chunk_info], target_size).unwrap();
 
         assert_eq!(batches.len(), 1, "Should create 1 batch");
-        assert_eq!(batches[0].len(), 1, "Batch should contain 1 segment");
+        assert_eq!(batches[0].num_rows(), 3, "Batch should contain 3 chunks from seg1");
         assert_eq!(segment_order, vec!["seg1"], "Should preserve segment order");
     }
 
@@ -1043,14 +1043,14 @@ mod tests {
 
         assert_eq!(batches.len(), 2, "Should create 2 batches");
         assert_eq!(
-            batches[0].len(),
-            2,
-            "First batch should have 2 segments (seg1+seg2=700 bytes)"
+            batches[0].num_rows(),
+            4,
+            "First batch should have 4 chunks (seg1: 2 chunks + seg2: 2 chunks)"
         );
         assert_eq!(
-            batches[1].len(),
+            batches[1].num_rows(),
             2,
-            "Second batch should have 2 segments (seg3+seg4=400 bytes)"
+            "Second batch should have 2 chunks (seg3: 1 chunk + seg4: 1 chunk)"
         );
         assert_eq!(
             segment_order,
@@ -1094,7 +1094,7 @@ mod tests {
         let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
 
         assert_eq!(batches.len(), 1, "Should create 1 batch with all segments");
-        assert_eq!(batches[0].len(), 3, "Batch should contain all 3 segments");
+        assert_eq!(batches[0].num_rows(), 3, "Batch should contain 3 chunks total (1 chunk each from segA, segB, segC)");
         assert_eq!(
             segment_order,
             vec!["segA", "segB", "segC"],
@@ -1103,9 +1103,16 @@ mod tests {
 
         // Verify that segments within the batch maintain input order
         // Extract segment IDs from the first batch
-        let batch_segment_ids: Result<Vec<_>, _> =
-            batches[0].iter().map(extract_segment_id).collect();
-        let batch_segment_ids = batch_segment_ids.unwrap();
+        let segment_id_column = batches[0]
+            .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        
+        let batch_segment_ids: Vec<String> = (0..segment_id_column.len())
+            .map(|i| segment_id_column.value(i).to_owned())
+            .collect();
 
         assert_eq!(
             batch_segment_ids,
