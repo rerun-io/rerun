@@ -206,7 +206,7 @@ The `recording_layer` parameter has been renamed to `layer_name`.
 
 ### Blueprints
 
-The updated APIs now abstracted from the underlying storage mechanism (blueprint datasets).
+The updated APIs are now abstracted from the underlying storage mechanism (blueprint datasets).
 
 **Deprecations:**
 
