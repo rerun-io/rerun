@@ -165,10 +165,10 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
 
     ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
-                PropertyContent::new("Number of GOPs")
-                    .value_uint(video_descr.gops.num_elements()),
+                PropertyContent::new("Number of keyframes")
+                    .value_uint(video_descr.keyframe_indices.len()),
             )
-            .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
+            .on_hover_text("The total number of keyframes in the video.");
 
             let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_descr.samples_statistics;
 
@@ -254,10 +254,10 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         ui.monospace(re_format::format_uint(frame_nr));
                     });
                     row.col(|ui| {
-                        if let Some(gop_index) = video_descr
-                            .gop_index_containing_presentation_timestamp(presentation_timestamp)
+                        if let Some(keyframe_index) =
+                            video_descr.presentation_time_keyframe_index(presentation_timestamp)
                         {
-                            ui.monospace(re_format::format_uint(gop_index));
+                            ui.monospace(re_format::format_uint(keyframe_index));
                         }
                     });
                     row.col(|ui| {
@@ -513,19 +513,21 @@ fn frame_info_ui(
 
     // Information about the current group of pictures this frame is part of.
     // Lookup via decode timestamp is faster, but it may not always be available.
-    if let Some(gop_index) =
-        video_descr.gop_index_containing_presentation_timestamp(presentation_timestamp)
+    if let Some(keyframe_idx) = video_descr.presentation_time_keyframe_index(presentation_timestamp)
     {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("GOP index").value_text(gop_index.to_string()),
+            PropertyContent::new("keyframe index").value_text(keyframe_idx.to_string()),
         )
-        .on_hover_text("The index of the group of picture (GOP) that this sample belongs to.");
+        .on_hover_text("The index of the keyframe that this sample belongs to.");
 
-        if let Some(gop) = video_descr.gops.get(gop_index) {
-            let first_sample = video_descr.samples.get(gop.sample_range.start);
-            let last_sample = video_descr
-                .samples
-                .get(gop.sample_range.end.saturating_sub(1));
+        if let Some(start_sample_idx) = video_descr.keyframe_indices.get(keyframe_idx) {
+            let end_sample_idx = video_descr
+                .keyframe_indices
+                .get(keyframe_idx + 1)
+                .copied()
+                .unwrap_or_else(|| video_descr.num_samples());
+            let first_sample = video_descr.samples.get(*start_sample_idx);
+            let last_sample = video_descr.samples.get(end_sample_idx.saturating_sub(1));
 
             if let Some((first_sample, last_sample)) = first_sample
                 .and_then(|s| s.sample())
