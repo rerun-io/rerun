@@ -71,7 +71,7 @@ impl GarbageCollectionOptions {
     }
 
     /// If true, we cannot remove this chunk.
-    pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
+    pub fn is_chunk_temporally_protected(&self, chunk: &Chunk) -> bool {
         for (timeline, protected_time_range) in &self.protected_time_ranges {
             if let Some(time_column) = chunk.timelines().get(timeline)
                 && time_column.time_range().intersects(*protected_time_range)
@@ -297,8 +297,7 @@ impl ChunkStore {
 
                 // This will only apply for tests run from this crate's src/ directory, which is good
                 // enough for our purposes.
-                if cfg!(test)
-                {
+                if cfg!(test) {
                     let chunks_slow = self.find_temporal_chunks_furthest_from_slow(timeline, *time);
                     assert_eq!(chunks_slow, chunks);
                 }
@@ -327,7 +326,7 @@ impl ChunkStore {
             for chunk in
                 chunks_in_priority_order.filter(|chunk| !protected_chunk_ids.contains(&chunk.id()))
             {
-                if options.is_chunk_protected(&chunk) {
+                if options.is_chunk_temporally_protected(&chunk) {
                     continue;
                 }
 
