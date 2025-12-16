@@ -40,7 +40,7 @@ impl ImageDecodeCache {
     /// The `RowId`, if available, may be used to generate the cache key.
     /// NOTE: images are never batched atm (they are mono-archetypes),
     /// so we don't need the instance id here.
-    pub fn entry(
+    pub fn entry_encoded_color(
         &mut self,
         blob_row_id: RowId,
         blob_component: ComponentIdentifier,
@@ -68,6 +68,11 @@ impl ImageDecodeCache {
         })
     }
 
+    /// Decode some depth image data and cache the result.
+    ///
+    /// The `RowId`, if available, may be used to generate the cache key.
+    /// NOTE: depth images are never batched atm (they are mono-archetypes),
+    /// so we don't need the instance id here.
     pub fn entry_encoded_depth(
         &mut self,
         blob_row_id: RowId,

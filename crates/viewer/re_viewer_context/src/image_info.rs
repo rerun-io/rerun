@@ -64,7 +64,7 @@ pub fn resolution_of_image_at(
             .store_context
             .caches
             .entry(|c: &mut crate::ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     row_id,
                     archetypes::EncodedImage::descriptor_blob().component,
                     &blob,
