@@ -723,7 +723,7 @@ impl RrdManifest {
                         Self::FIELD_CHUNK_ID
                         | Self::FIELD_CHUNK_IS_STATIC
                         | Self::FIELD_CHUNK_NUM_ROWS
-                        | Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED
+                        | Self::FIELD_CHUNK_BYTE_SIZE
                         | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_KEY
@@ -1033,7 +1033,7 @@ impl RrdManifest {
     pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
-    pub const FIELD_CHUNK_BYTE_SIZE_COMPRESSED: &str = "chunk_byte_size";
+    pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
     pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
 
@@ -1075,7 +1075,7 @@ impl RrdManifest {
     }
 
     pub fn field_chunk_byte_size() -> Field {
-        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED)
+        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE)
     }
 
     pub fn field_chunk_byte_size_uncompressed() -> Field {
@@ -1344,7 +1344,7 @@ impl RrdManifest {
     /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
     pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED;
+        let name = Self::FIELD_CHUNK_BYTE_SIZE;
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
