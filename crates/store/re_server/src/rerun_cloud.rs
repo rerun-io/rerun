@@ -2,6 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 use ahash::HashMap;
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
@@ -37,9 +39,6 @@ use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::OnError;
-use crate::chunk_index::DatasetChunkIndexes;
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -940,7 +939,12 @@ impl RerunCloudService for RerunCloudHandler {
         let request = request.into_inner();
         let segment_id = request
             .segment_id
-            .ok_or_else(|| tonic::Status::invalid_argument("Missing segment_id"))?
+            .ok_or_else(|| {
+                missing_field!(
+                    re_protos::cloud::v1alpha1::GetRrdManifestRequest,
+                    "segment_id"
+                )
+            })?
             .try_into()?;
 
         let dataset = store.dataset(entry_id)?;
@@ -967,6 +971,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 dataset.indexes().create_index(dataset, request.into_inner().try_into()?).await
             } else {
+                let _ = request;
                 Err(tonic::Status::unimplemented("create_index requires the `lance` feature"))
             }
         }
@@ -984,6 +989,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 dataset.indexes().list_indexes(request.into_inner()).await
             } else {
+                let _ = request;
                 Err(tonic::Status::unimplemented("list_indexes requires the `lance` feature"))
             }
         }
@@ -1006,6 +1012,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 dataset.indexes().delete_indexes(column.try_into()?).await
             } else {
+                let _ = request;
                 Err(tonic::Status::unimplemented("delete_indexes requires the `lance` feature"))
             }
         }
@@ -1025,8 +1032,9 @@ impl RerunCloudService for RerunCloudHandler {
                 let entry_id = get_entry_id_from_headers(&store, &request)?;
                 let dataset = store.dataset(entry_id)?;
 
-                Ok(DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
+                Ok(crate::chunk_index::DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
             } else {
+                let _ = request;
                 Err(tonic::Status::unimplemented("search_dataset requires the `lance` feature"))
             }
         }
