@@ -5,7 +5,7 @@ use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::metadata::RERUN_KIND;
-use std::ops::Not;
+use std::ops::Not as _;
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
     if let Expr::Column(_) = expr.left.as_ref() {
@@ -17,7 +17,7 @@ fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
         Operator::GtEq => Operator::Lt,
         Operator::Lt => Operator::GtEq,
         Operator::LtEq => Operator::Gt,
-        _ => expr.op.clone(),
+        _ => expr.op,
     };
 
     BinaryExpr {
@@ -46,7 +46,7 @@ pub(crate) fn filter_expr_is_supported(
 /// This function will return Ok(None) if we cannot push down this filter into our request.
 /// It will return an error if the expression pushes down to return no results. This can
 /// occur if you have two mutually exclusive expressions that cannot overlap, such as
-/// rerun_segment_id == "aaaa" AND rerun_segment_id == "BBBB".
+/// `rerun_segment_id == "aaaa" AND rerun_segment_id == "BBBB"`.
 pub(crate) fn apply_filter_expr_to_queries(
     queries: Vec<QueryDatasetRequest>,
     expr: &Expr,
@@ -79,12 +79,11 @@ pub(crate) fn apply_filter_expr_to_queries(
 
                     let final_exprs = left_queries
                         .iter()
-                        .map(|left| {
+                        .flat_map(|left| {
                             right_queries
                                 .iter()
                                 .map(|right| merge_queries_and(left, right))
                         })
-                        .flatten()
                         .collect::<Result<Vec<_>, _>>()?;
 
                     Some(final_exprs)
@@ -206,9 +205,9 @@ fn known_filter_column(
     {
         if col_expr.name == "rerun_segment_id" {
             let value = match value {
-                ScalarValue::Utf8(Some(v)) => v.as_str(),
-                ScalarValue::Utf8View(Some(v)) => v.as_str(),
-                ScalarValue::LargeUtf8(Some(v)) => v.as_str(),
+                ScalarValue::Utf8(Some(v))
+                | ScalarValue::Utf8View(Some(v))
+                | ScalarValue::LargeUtf8(Some(v)) => v.as_str(),
                 _ => return KnownFilterColumn::Unknown,
             };
             let segment_id: SegmentId = value.into();
@@ -218,19 +217,20 @@ fn known_filter_column(
                 ScalarValue::UInt8(Some(v)) => *v as i64,
                 ScalarValue::UInt16(Some(v)) => *v as i64,
                 ScalarValue::UInt32(Some(v)) => *v as i64,
-                ScalarValue::UInt64(Some(v)) => *v as i64,
+                ScalarValue::UInt64(Some(v)) => i64::try_from(*v).unwrap_or(i64::MAX),
                 ScalarValue::Int8(Some(v)) => *v as i64,
                 ScalarValue::Int16(Some(v)) => *v as i64,
                 ScalarValue::Int32(Some(v)) => *v as i64,
-                ScalarValue::Int64(Some(v)) => *v,
-                ScalarValue::TimestampSecond(Some(v), _) => *v * 1_000_000_000,
-                ScalarValue::TimestampMillisecond(Some(v), _) => *v * 1_000_000,
-                ScalarValue::TimestampMicrosecond(Some(v), _) => *v * 1_000,
-                ScalarValue::TimestampNanosecond(Some(v), _) => *v,
-                ScalarValue::DurationSecond(Some(v)) => *v * 1_000_000_000,
-                ScalarValue::DurationMillisecond(Some(v)) => *v * 1_000_000,
-                ScalarValue::DurationMicrosecond(Some(v)) => *v * 1_000,
-                ScalarValue::DurationNanosecond(Some(v)) => *v,
+                ScalarValue::Int64(Some(v))
+                | ScalarValue::TimestampNanosecond(Some(v), _)
+                | ScalarValue::DurationNanosecond(Some(v)) => *v,
+                ScalarValue::TimestampSecond(Some(v), _) | ScalarValue::DurationSecond(Some(v)) => {
+                    *v * 1_000_000_000
+                }
+                ScalarValue::TimestampMillisecond(Some(v), _)
+                | ScalarValue::DurationMillisecond(Some(v)) => *v * 1_000_000,
+                ScalarValue::TimestampMicrosecond(Some(v), _)
+                | ScalarValue::DurationMicrosecond(Some(v)) => *v * 1_000,
                 _ => return KnownFilterColumn::Unknown,
             };
             let time = TimeInt::new_temporal(value);
@@ -385,7 +385,7 @@ fn replace_time_in_query(
 fn latest_at_from_range(range: &QueryRange) -> QueryLatestAt {
     QueryLatestAt {
         index: Some(range.index.clone()),
-        at: range.index_range.min.clone(),
+        at: range.index_range.min,
     }
 }
 

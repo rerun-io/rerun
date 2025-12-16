@@ -1,7 +1,7 @@
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::HashSet;
 use arrow::array::{
-    Array, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
+    Array as _, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
     StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
     TimestampSecondArray, UInt32Array, new_null_array,
 };
@@ -15,7 +15,7 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-use futures::StreamExt;
+use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
@@ -257,8 +257,7 @@ impl TableProvider for DataframeQueryTableProvider {
                         .try_into()
                         .map_err(|err| exec_datafusion_err!("{err}"))
                 })
-                .collect::<Result<Vec<_>, _>>()?
-                .into();
+                .collect::<Result<Vec<_>, _>>()?;
 
             chunk_info_batches.push(batches);
         }
@@ -586,13 +585,13 @@ fn compute_unique_chunk_info_ids(
 
     let indices = UInt32Array::from(indices_to_keep);
 
-    let distinct_columns: Vec<Arc<dyn Array>> = combined
-        .columns()
-        .iter()
-        .map(|col| arrow::compute::take(col.as_ref(), &indices, None).unwrap())
-        .collect();
+    let distinct_columns = arrow::compute::take_arrays(combined.columns(), &indices, None)?;
 
-    Ok(vec![RecordBatch::try_new(schema, distinct_columns)?])
+    Ok(vec![RecordBatch::try_new_with_options(
+        schema,
+        distinct_columns,
+        &RecordBatchOptions::default(),
+    )?])
 }
 
 #[cfg(test)]
