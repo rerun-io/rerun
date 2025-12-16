@@ -84,7 +84,7 @@ pub enum ViewerOpenUrl {
         ///
         /// Several can be present by providing multiple `url` parameters,
         /// but it's guaranteed to at least one if we hit this enum variant.
-        url_parameters: vec1::Vec1<ViewerOpenUrl>,
+        url_parameters: vec1::Vec1<Self>,
     },
 
     /// The url to the settings screen.

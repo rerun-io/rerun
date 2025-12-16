@@ -55,22 +55,15 @@ impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     }
 
     #[inline]
-    #[allow(clippy::allow_attributes, dead_code)] // used for tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     #[inline]
-    #[allow(clippy::allow_attributes, dead_code)] // used for tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
-    }
-
-    /// Get all entries as a slice (sorted by start).
-    #[inline]
-    #[allow(clippy::allow_attributes, dead_code)] // used for tests
-    pub fn entries(&self) -> &[(RangeInclusive<K>, V)] {
-        &self.entries
     }
 }
 

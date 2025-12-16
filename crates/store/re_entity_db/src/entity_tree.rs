@@ -18,7 +18,7 @@ pub struct EntityTree {
     pub path: EntityPath,
 
     /// Direct descendants of this (sub)tree.
-    pub children: BTreeMap<EntityPathPart, EntityTree>,
+    pub children: BTreeMap<EntityPathPart, Self>,
 }
 
 impl Default for EntityTree {

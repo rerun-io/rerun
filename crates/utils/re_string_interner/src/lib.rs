@@ -156,7 +156,7 @@ struct StringInterner {
 }
 
 impl StringInterner {
-    #[allow(clippy::allow_attributes, dead_code)] // used in tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn len(&self) -> usize {
         self.map.len()
     }

@@ -176,8 +176,7 @@ impl Table {
                         if field
                             .metadata
                             .get(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)
-                            .map(|v| v.to_lowercase() == "true")
-                            == Some(true)
+                            .is_some_and(|v| v.to_lowercase() == "true")
                         {
                             Some(field.name.clone())
                         } else {

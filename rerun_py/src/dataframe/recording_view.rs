@@ -1,5 +1,3 @@
-#![expect(deprecated)] // False positive due to macro
-
 use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
@@ -385,12 +383,6 @@ impl PyRecordingView {
             recording: self.recording.clone(),
             query_expression,
         })
-    }
-
-    /// DEPRECATED: Renamed to `filter_range_secs`.
-    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        self.filter_range_secs(start, end)
     }
 
     #[expect(rustdoc::private_doc_tests)]
