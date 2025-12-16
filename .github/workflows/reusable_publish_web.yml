@@ -30,6 +30,7 @@ defaults:
 permissions:
   contents: "write"
   id-token: "write"
+  packages: "read"
 
 jobs:
   get-commit-sha:
