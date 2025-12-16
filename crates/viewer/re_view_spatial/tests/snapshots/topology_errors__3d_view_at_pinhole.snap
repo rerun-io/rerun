@@ -4,9 +4,9 @@ expression: visualizer_errors
 ---
 PerVisualizer(
     {
-        "Boxes3D": PerEntity(
+        "Points3D": PerEntity(
             {
-                /misplaced_boxes3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
+                /points3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
         "Ellipsoids3D": PerEntity(
@@ -14,14 +14,14 @@ PerVisualizer(
                 /disconnected_entity: "No transform path from \"disconnected\" to the view's origin frame (\"pinhole\").",
             },
         ),
+        "Boxes3D": PerEntity(
+            {
+                /misplaced_boxes3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
+            },
+        ),
         "Points2D": PerEntity(
             {
                 /points2d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
-            },
-        ),
-        "Points3D": PerEntity(
-            {
-                /points3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
     },
