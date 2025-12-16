@@ -135,3 +135,23 @@ def test_entry_names_with_hidden(
     assert new_dataset_names == snapshot_redact_id
     assert new_table_names == snapshot_redact_id
     assert new_entry_names == snapshot_redact_id
+
+
+def test_entry_eq(entry_factory: EntryFactory) -> None:
+    """Test that entries support `in` via it's `__eq__` implementation."""
+
+    client = entry_factory.client
+
+    ds1 = entry_factory.create_dataset("ds1")
+    ds2 = entry_factory.create_dataset("ds2")
+
+    entries = client.entries()
+
+    assert ds1 in entries
+    assert ds2 in entries
+    assert ds1.id in entries
+    assert ds2.id in entries
+    assert ds1.name in entries
+    assert ds2.name in entries
+
+    assert "doesnt_exists" not in client.entries()
