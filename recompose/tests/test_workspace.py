@@ -115,21 +115,24 @@ class TestWorkspaceIO:
         assert step_result_exists(ws, "1_fetch")
 
     def test_serialize_complex_value(self, tmp_path: Path) -> None:
-        """Complex values are serialized properly."""
+        """Complex values are serialized with type info and restored properly."""
         ws = tmp_path / "workspace"
         ws.mkdir()
 
-        # Path objects should be converted to strings
+        # Path objects should be serialized with type info
         result = Ok(Path("/some/path"))
         write_step_result(ws, "step", result)
 
-        # Check raw JSON
+        # Check raw JSON has type wrapper with Path-related type key
         data = json.loads((ws / "step.json").read_text())
-        assert data["value"] == "/some/path"
+        assert "__type__" in data["value"]
+        assert "Path" in data["value"]["__type__"]  # Could be pathlib.Path or pathlib._local.Path
+        assert data["value"]["__value__"] == "/some/path"
 
-        # Read back
+        # Read back should restore the Path type
         restored = read_step_result(ws, "step")
-        assert restored.value() == "/some/path"
+        assert restored.value() == Path("/some/path")
+        assert isinstance(restored.value(), Path)
 
 
 class TestFlowPlanSteps:

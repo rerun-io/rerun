@@ -233,6 +233,25 @@ class DirectTaskCallInFlowError(Exception):
         )
 
 
+def _format_condition_expr(condition_data: dict[str, Any]) -> str:
+    """Format a serialized condition expression for display."""
+    expr_type = condition_data.get("type", "")
+    if expr_type == "input":
+        return str(condition_data.get("name", "?"))
+    elif expr_type == "literal":
+        return str(condition_data.get("value", "?"))
+    elif expr_type == "binary":
+        left = _format_condition_expr(condition_data.get("left", {}))
+        op = condition_data.get("op", "?")
+        right = _format_condition_expr(condition_data.get("right", {}))
+        return f"{left} {op} {right}"
+    elif expr_type == "unary":
+        op = condition_data.get("op", "?")
+        operand = _format_condition_expr(condition_data.get("operand", {}))
+        return f"{op} {operand}"
+    return "?"
+
+
 def flow(fn: Callable[..., None]) -> FlowWrapper:
     """
     Decorator to mark a function as a recompose flow.
@@ -353,17 +372,29 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             Result[None] indicating success or failure of the flow.
 
         """
+        import os
         import subprocess
         import sys
 
+        from rich.console import Console
+
         from .context import dbg, get_entry_point, is_debug
+        from .output import FlowRenderer
         from .workspace import create_workspace, read_step_result, write_params
 
         flow_name = fn.__name__
+        console = Console()
 
         # Build the plan to get step names
         plan = plan_only(**kwargs)
-        plan.assign_step_names()
+
+        # Inject condition-check nodes if there are conditional tasks
+        from .gha import _create_eval_condition_task_info
+
+        condition_task_info = _create_eval_condition_task_info()
+        plan.inject_condition_checks(condition_task_info)
+
+        # Step names are now assigned by inject_condition_checks
         steps = plan.get_steps()
 
         # Create or use provided workspace
@@ -398,8 +429,37 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         )
         write_params(ws, flow_params)
 
+        # Create the tree renderer
+        renderer = FlowRenderer(console, flow_name, len(steps))
+        renderer.start()
+
+        flow_start_time = time.perf_counter()
+        failed_step: str | None = None
+        failed_error: str | None = None
+
         # Execute each step as a subprocess
-        for step_name, _node in steps:
+        for step_idx, (step_name, node) in enumerate(steps, start=1):
+            # If a previous step failed, skip remaining steps
+            if failed_step is not None:
+                renderer.step_skipped(step_name, step_idx, f"prior failure in {failed_step}")
+                continue
+
+            # Check if this step has a condition that needs to be evaluated
+            if node.condition_check_step:
+                # Read the condition result from workspace
+                cond_result = read_step_result(ws, node.condition_check_step)
+                if cond_result.ok and cond_result.value() is False:
+                    # Condition is false, skip this step
+                    renderer.step_skipped(step_name, step_idx, "condition false")
+                    continue
+
+            # Check if this is a condition evaluation step
+            is_condition_step = node.task_info.is_condition_check
+
+            # Print step header (condition steps handled differently after execution)
+            if not is_condition_step:
+                renderer.step_header(step_name, step_idx)
+
             # Build command based on entry point type
             if entry_type == "module":
                 cmd = [sys.executable, "-m", entry_value]
@@ -419,16 +479,42 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
             if is_debug():
                 dbg(f"Running: {' '.join(cmd)}")
 
-            result = subprocess.run(cmd, capture_output=False)
+            # Set up environment with tree rendering context
+            step_env = os.environ.copy()
+            step_env.update(renderer.get_step_env(step_idx))
+
+            # Run step as subprocess (output streams directly with tree prefix)
+            step_start = time.perf_counter()
+            result = subprocess.run(cmd, capture_output=False, env=step_env)
+            step_duration = time.perf_counter() - step_start
+
+            # Read the result from workspace
+            step_result = read_step_result(ws, step_name)
+            result_value = step_result.value() if step_result.ok else None
 
             if result.returncode != 0:
-                # Step failed - read its result if available
-                step_result = read_step_result(ws, step_name)
-                if step_result.failed:
-                    return Err(step_result.error or f"Step {step_name} failed")
-                return Err(f"Step {step_name} failed with exit code {result.returncode}")
+                # Step failed - record failure but continue to show remaining steps as skipped
+                error_msg = step_result.error if step_result.failed else f"exit code {result.returncode}"
+                renderer.step_failed(step_name, step_idx, step_duration, error_msg)
+                failed_step = step_name
+                failed_error = step_result.error or f"Step {step_name} failed"
+                continue
 
-        # All steps succeeded
+            # Step succeeded
+            if is_condition_step:
+                # Get the condition expression for display
+                condition_data = node.kwargs.get("condition_data", {})
+                condition_expr = _format_condition_expr(condition_data)
+                renderer.step_condition(step_name, step_idx, condition_expr, bool(result_value), step_duration)
+            else:
+                renderer.step_success(step_name, step_idx, step_duration, result_value)
+
+        # Finish with appropriate status
+        if failed_step is not None:
+            renderer.finish(success=False, duration=time.perf_counter() - flow_start_time)
+            return Err(failed_error or f"Step {failed_step} failed")
+
+        renderer.finish(success=True, duration=time.perf_counter() - flow_start_time)
         return Ok(None)
 
     # Create flow info

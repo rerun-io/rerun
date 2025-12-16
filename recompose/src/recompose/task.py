@@ -73,6 +73,9 @@ class TaskInfo:
     # Setup step field (for workspace initialization infrastructure)
     is_setup_step: bool = False  # True if this is the setup_workspace step
 
+    # Condition check step (for run_if evaluation)
+    is_condition_check: bool = False  # True if this evaluates a run_if condition
+
     @property
     def full_name(self) -> str:
         """Full qualified name of the task."""
@@ -242,8 +245,13 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
         if missing:
             raise TypeError(f"{info.name}.flow() missing required keyword argument(s): {', '.join(missing)}")
 
-        # Create the TaskNode
-        node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs)
+        # Create the TaskNode, capturing current condition if in a run_if block
+        from .conditional import get_current_condition
+
+        current_cond = get_current_condition()
+        condition = current_cond.condition if current_cond else None
+
+        node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs, condition=condition)
         plan.add_node(node)
         return node
 

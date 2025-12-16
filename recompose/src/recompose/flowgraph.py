@@ -13,6 +13,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
+from .expr import BinaryExpr, Expr, InputExpr, LiteralExpr, UnaryExpr
+
 if TYPE_CHECKING:
     from .task import TaskInfo
 
@@ -93,6 +95,53 @@ class InputPlaceholder(Generic[T]):
         # This is useful for debugging and makes errors more understandable
         return f"${{{{ inputs.{self.name} }}}}"
 
+    def __bool__(self) -> bool:
+        """Raise error when flow parameter is used in Python control flow."""
+        raise TypeError(
+            f"Flow parameter '{self.name}' cannot be used directly in Python control flow "
+            f"(e.g., 'if {self.name}:').\n\n"
+            f"For conditional execution, use 'with recompose.run_if({self.name}):' instead.\n"
+            f"This creates a conditional block that works both locally and in GitHub Actions."
+        )
+
+    def to_expr(self) -> InputExpr:
+        """Convert to an expression for use with run_if()."""
+        return InputExpr(self.name)
+
+    def __eq__(self, other: object) -> BinaryExpr:  # type: ignore[override]
+        """Create equality comparison expression for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(self.to_expr(), "==", other_expr)
+
+    def __ne__(self, other: object) -> BinaryExpr:  # type: ignore[override]
+        """Create inequality comparison expression for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(self.to_expr(), "!=", other_expr)
+
+    def __and__(self, other: Expr | bool) -> BinaryExpr:
+        """Create logical AND expression for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(self.to_expr(), "and", other_expr)
+
+    def __rand__(self, other: Expr | bool) -> BinaryExpr:
+        """Create logical AND expression (reversed) for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(other_expr, "and", self.to_expr())
+
+    def __or__(self, other: Expr | bool) -> BinaryExpr:
+        """Create logical OR expression for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(self.to_expr(), "or", other_expr)
+
+    def __ror__(self, other: Expr | bool) -> BinaryExpr:
+        """Create logical OR expression (reversed) for use with run_if()."""
+        other_expr = LiteralExpr(other) if not isinstance(other, Expr) else other
+        return BinaryExpr(other_expr, "or", self.to_expr())
+
+    def __invert__(self) -> UnaryExpr:
+        """Create logical NOT expression for use with run_if()."""
+        return UnaryExpr("not", self.to_expr())
+
 
 @dataclass
 class TaskNode(Generic[T]):
@@ -131,6 +180,8 @@ class TaskNode(Generic[T]):
     kwargs: dict[str, Any] = field(default_factory=dict)
     node_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     step_name: str | None = field(default=None)  # Assigned by FlowPlan.assign_step_names()
+    condition: Expr | None = field(default=None)  # Condition for conditional execution (run_if)
+    condition_check_step: str | None = field(default=None)  # Step name of the condition-check this depends on
 
     def value(self) -> T:
         """
@@ -245,6 +296,79 @@ class FlowPlan:
         self.nodes = new_nodes
 
         return setup_node
+
+    def inject_condition_checks(self, condition_task_info: TaskInfo) -> list[TaskNode[bool]]:
+        """
+        Inject condition-check nodes for conditional tasks.
+
+        For each unique condition expression, creates a condition-check node
+        that evaluates it. Conditional tasks are updated with a reference to
+        their condition-check step.
+
+        Args:
+            condition_task_info: TaskInfo for the eval_condition pseudo-task.
+
+        Returns:
+            List of injected condition-check TaskNodes.
+
+        """
+        # Find all unique conditions (by serialized form)
+        condition_map: dict[str, tuple[Expr, list[TaskNode[Any]]]] = {}
+        for node in self.nodes:
+            if node.condition is not None:
+                # Use serialized form as key for deduplication
+                key = str(node.condition.serialize())
+                if key not in condition_map:
+                    condition_map[key] = (node.condition, [])
+                condition_map[key][1].append(node)
+
+        if not condition_map:
+            return []
+
+        # Create condition-check nodes and inject them
+        check_nodes: list[TaskNode[bool]] = []
+        new_nodes: list[TaskNode[Any]] = []
+
+        # Process nodes in original order, injecting checks before first conditional
+        injected_conditions: set[str] = set()
+
+        for node in self.nodes:
+            if node.condition is not None:
+                key = str(node.condition.serialize())
+                if key not in injected_conditions:
+                    # Create and inject the condition-check node
+                    condition_expr, _ = condition_map[key]
+                    check_node: TaskNode[bool] = TaskNode(
+                        task_info=condition_task_info,
+                        kwargs={"condition_data": condition_expr.serialize()},
+                    )
+                    new_nodes.append(check_node)
+                    check_nodes.append(check_node)
+                    injected_conditions.add(key)
+
+            new_nodes.append(node)
+
+        self.nodes = new_nodes
+
+        # Now assign step names so we can set condition_check_step references
+        self.assign_step_names()
+
+        # Update conditional nodes with their condition-check step name
+        for key, (_, conditional_nodes) in condition_map.items():
+            # Find the check node for this condition
+            for check_node in check_nodes:
+                if str(check_node.kwargs.get("condition_data")) == key.replace("'", '"'):
+                    # This is a bit fragile - let's use a better approach
+                    pass
+
+        # Better: match by position - check nodes are in same order as condition_map
+        check_iter = iter(check_nodes)
+        for key, (_, conditional_nodes) in condition_map.items():
+            check_node = next(check_iter)
+            for node in conditional_nodes:
+                node.condition_check_step = check_node.step_name
+
+        return check_nodes
 
     def get_execution_order(self) -> list[TaskNode[Any]]:
         """

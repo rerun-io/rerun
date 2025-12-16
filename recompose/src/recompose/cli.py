@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 import time
 from enum import Enum
 from pathlib import Path
@@ -230,6 +231,40 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
         )
     )
 
+    # Add GitHub integration options
+    params.append(
+        click.Option(
+            ["--remote"],
+            is_flag=True,
+            default=False,
+            help="Trigger this flow on GitHub Actions instead of running locally",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--status"],
+            is_flag=True,
+            default=False,
+            help="Show recent GitHub Actions runs for this flow",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--force"],
+            is_flag=True,
+            default=False,
+            help="Skip workflow sync validation when using --remote",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--ref"],
+            type=str,
+            default=None,
+            help="Git ref (branch/tag) to run the workflow against (default: current branch)",
+        )
+    )
+
     # Add flow parameters
     for param_name, param in sig.parameters.items():
         if param_name == "self":
@@ -291,7 +326,16 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                 )
             )
 
-    def callback(setup: bool, step: str | None, workspace: Path | None, **kwargs: Any) -> None:
+    def callback(
+        setup: bool,
+        step: str | None,
+        workspace: Path | None,
+        remote: bool,
+        status: bool,
+        force: bool,
+        ref: str | None,
+        **kwargs: Any,
+    ) -> None:
         """Execute the flow, setup, or a specific step."""
         from datetime import datetime
 
@@ -305,6 +349,16 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     value = kwargs[param_name]
                     if value is not None:
                         kwargs[param_name] = annotation(value)
+
+        # Handle --status: show recent workflow runs
+        if status:
+            _handle_flow_status(flow_name)
+            return
+
+        # Handle --remote: trigger workflow on GitHub
+        if remote:
+            _handle_flow_remote(flow_name, kwargs, ref, force)
+            return
 
         # Determine workspace
         ws = workspace or get_workspace_from_env()
@@ -354,7 +408,14 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
             # Rebuild the plan using stored params
             plan = flow_info.fn.plan(**flow_params.params)  # type: ignore[attr-defined]
-            plan.assign_step_names()
+
+            # Inject condition-check nodes to match what the orchestrator built
+            from .gha import _create_eval_condition_task_info
+
+            condition_task_info = _create_eval_condition_task_info()
+            plan.inject_condition_checks(condition_task_info)
+
+            # Step names are now assigned by inject_condition_checks
 
             # Find the requested step
             target_node = plan.get_step(step)
@@ -367,8 +428,17 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
             step_name = target_node.step_name or target_node.name
 
-            console.print(f"\n[bold cyan]▶[/bold cyan] [bold]{step_name}[/bold]")
-            console.print()
+            # Check if we're in tree mode (subprocess of run_isolated)
+            from .output import install_tree_output, is_tree_mode, uninstall_tree_output
+
+            tree_mode = is_tree_mode()
+
+            if not tree_mode:
+                console.print(f"\n[bold cyan]▶[/bold cyan] [bold]{step_name}[/bold]")
+                console.print()
+
+            # Install tree output wrapper for print/logging
+            tree_ctx = install_tree_output()
 
             # Resolve dependencies from workspace
             resolved_kwargs: dict[str, Any] = {}
@@ -384,48 +454,78 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                 else:
                     resolved_kwargs[kwarg_name] = kwarg_value
 
-            # Execute the task
+            # Execute the task (or condition check)
             start_time = time.perf_counter()
-            result: Result[Any] = target_node.task_info.original_fn(**resolved_kwargs)
+
+            if target_node.task_info.is_condition_check:
+                # Special handling for condition evaluation
+                from .conditional import evaluate_condition
+
+                condition_data = target_node.kwargs.get("condition_data", {})
+
+                # Build evaluation context: inputs from flow params, outputs from workspace
+                eval_context_inputs = flow_params.params
+                eval_context_outputs: dict[str, Any] = {}
+
+                # Read outputs from previous steps that the condition might reference
+                for prev_step in flow_params.steps:
+                    if prev_step == step_name:
+                        break  # Stop at current step
+                    prev_result = read_step_result(ws, prev_step)
+                    if prev_result.ok:
+                        eval_context_outputs[prev_step] = prev_result.value()
+
+                result = evaluate_condition(condition_data, eval_context_inputs, eval_context_outputs)
+                condition_value = result.value() if result.ok else False
+
+                # Write to GITHUB_OUTPUT if available (for GHA)
+                github_output = os.environ.get("GITHUB_OUTPUT")
+                if github_output:
+                    with open(github_output, "a") as f:
+                        f.write(f"value={'true' if condition_value else 'false'}\n")
+
+            else:
+                result = target_node.task_info.original_fn(**resolved_kwargs)
+
             elapsed = time.perf_counter() - start_time
+
+            # Uninstall tree output wrapper
+            uninstall_tree_output(tree_ctx)
 
             # Write result to workspace
             write_step_result(ws, step_name, result)
 
-            # Print result
-            if result.ok:
-                console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
-                if result._value is not None:
-                    console.print(f"[dim]→[/dim] {result._value}")
-            else:
-                console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
-                if result.error:
-                    console.print(f"[red]Error:[/red] {result.error}")
-                sys.exit(1)
+            # Write value to GITHUB_OUTPUT if available (for non-condition steps too)
+            github_output = os.environ.get("GITHUB_OUTPUT")
+            if github_output and result.ok and result._value is not None:
+                with open(github_output, "a") as f:
+                    f.write(f"value={result._value}\n")
 
-            console.print()
+            # Print result (only in non-tree mode - orchestrator handles tree formatting)
+            if not tree_mode:
+                if result.ok:
+                    console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
+                    if result._value is not None:
+                        console.print(f"[dim]→[/dim] {result._value}")
+                else:
+                    console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
+                    if result.error:
+                        console.print(f"[red]Error:[/red] {result.error}")
+                console.print()
+
+            # Exit with error if failed
+            if result.failed:
+                sys.exit(1)
 
         else:
             # Normal mode: Execute the entire flow with subprocess isolation
             # This matches CI behavior where each step is a separate process
-            start_time = time.perf_counter()
-
-            console.print(f"\n[bold magenta]▶[/bold magenta] [bold]flow:{flow_name}[/bold]")
-            console.print()
-
+            # The FlowRenderer in run_isolated handles all output formatting
             result = flow_info.fn.run_isolated(workspace=ws, **kwargs)  # type: ignore[attr-defined]
 
-            elapsed = time.perf_counter() - start_time
-
-            console.print()
-            if result.ok:
-                console.print(f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s")
-            else:
-                console.print(f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s")
-                if result.error:
-                    console.print(f"[red]Error:[/red] {result.error}")
-
-            console.print()
+            # Exit with appropriate code (run_isolated already printed the summary)
+            if result.failed:
+                sys.exit(1)
 
     cmd = click.Command(
         name=flow_info.name,
@@ -435,6 +535,137 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     )
 
     return cmd
+
+
+def _handle_flow_status(flow_name: str) -> None:
+    """Show recent GitHub Actions runs for a flow."""
+    import sys
+
+    from . import github
+
+    workflow_name = github.flow_to_workflow_name(flow_name)
+
+    console.print(f"\n[bold]Recent runs for [cyan]{flow_name}[/cyan][/bold]")
+    console.print(f"[dim]Workflow: {workflow_name}[/dim]\n")
+
+    result = github.list_workflow_runs(workflow_name=workflow_name, limit=10)
+
+    if result.failed:
+        console.print(f"[red]Error:[/red] {result.error}")
+        sys.exit(1)
+
+    runs = result.value()
+    if not runs:
+        console.print("[dim]No workflow runs found[/dim]")
+        return
+
+    # Print runs in a table-like format
+    for run in runs:
+        # Status indicator
+        if run.status == "completed":
+            if run.conclusion == "success":
+                status_icon = "[green]✓[/green]"
+            elif run.conclusion == "failure":
+                status_icon = "[red]✗[/red]"
+            elif run.conclusion == "cancelled":
+                status_icon = "[yellow]⊘[/yellow]"
+            else:
+                status_icon = "[dim]?[/dim]"
+        elif run.status == "in_progress":
+            status_icon = "[blue]●[/blue]"
+        else:  # queued
+            status_icon = "[dim]○[/dim]"
+
+        # Format timestamp
+        from datetime import datetime
+
+        try:
+            created = datetime.fromisoformat(run.created_at.replace("Z", "+00:00"))
+            time_str = created.strftime("%Y-%m-%d %H:%M")
+        except (ValueError, AttributeError):
+            time_str = run.created_at[:16] if run.created_at else "?"
+
+        # Print run info
+        console.print(
+            f"  {status_icon} [bold]#{run.id}[/bold]  "
+            f"[dim]{time_str}[/dim]  "
+            f"[cyan]{run.head_branch}[/cyan]  "
+            f"{run.display_status}"
+        )
+        console.print(f"      [dim]{run.url}[/dim]")
+
+    console.print()
+
+
+def _handle_flow_remote(
+    flow_name: str,
+    flow_params: dict[str, Any],
+    ref: str | None,
+    force: bool,
+) -> None:
+    """Trigger a workflow on GitHub Actions."""
+    import sys
+
+    from . import github
+
+    workflow_name = github.flow_to_workflow_name(flow_name)
+    workflow_path = f".github/workflows/{workflow_name}"
+
+    console.print(f"\n[bold]Triggering [cyan]{flow_name}[/cyan] on GitHub Actions[/bold]")
+    console.print(f"[dim]Workflow: {workflow_name}[/dim]\n")
+
+    # Determine the ref to use
+    if ref is None:
+        branch_result = github.get_current_branch()
+        if branch_result.failed:
+            console.print(f"[red]Error:[/red] Could not determine current branch: {branch_result.error}")
+            sys.exit(1)
+        ref = branch_result.value()
+
+    console.print(f"[dim]Branch:[/dim] {ref}")
+
+    # Validate workflow sync (unless --force)
+    if not force:
+        console.print("[dim]Validating workflow sync...[/dim]")
+
+        git_root = github.find_git_root()
+        if git_root is None:
+            console.print("[red]Error:[/red] Not in a git repository")
+            sys.exit(1)
+
+        local_path = git_root / workflow_path
+
+        sync_result = github.validate_workflow_sync(local_path, workflow_path)
+        if sync_result.failed:
+            console.print(f"\n[red]Error:[/red] {sync_result.error}")
+            console.print("\n[dim]Use --force to skip validation, or commit and push your workflow changes.[/dim]")
+            sys.exit(1)
+
+        console.print("[green]✓[/green] Workflow in sync with remote")
+
+    # Convert flow params to workflow inputs (as strings)
+    inputs: dict[str, str] = {}
+    for key, value in flow_params.items():
+        if value is not None:
+            inputs[key] = str(value)
+
+    if inputs:
+        console.print(f"[dim]Inputs:[/dim] {inputs}")
+
+    # Trigger the workflow
+    console.print()
+    trigger_result = github.trigger_workflow(workflow_name, ref=ref, inputs=inputs)
+
+    if trigger_result.failed:
+        console.print(f"[red]Error:[/red] {trigger_result.error}")
+        sys.exit(1)
+
+    console.print(f"[green]✓[/green] {trigger_result.value()}")
+    console.print()
+
+    # Show how to check status
+    console.print(f"[dim]Check status with:[/dim] ./run {flow_name} --status")
+    console.print()
 
 
 def main(
