@@ -196,6 +196,7 @@ arrow = { version = "56.1", default-features = false, features = [
 async-channel = "2.5.0"
 async-stream = "0.3"
 async-trait = "0.1.89"
+atomic_enum = "0.3.0"
 axum = "0.8.6"
 backtrace = "0.3"
 base64 = "0.22"
