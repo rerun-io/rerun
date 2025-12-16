@@ -15,6 +15,7 @@ async fn version() {
         addr: "127.0.0.1".into(),
         port: 0,
         datasets: vec![],
+        dataset_prefixes: vec![],
         tables: vec![],
     }
     .create_server_handle()
