@@ -25,6 +25,7 @@ permissions:
   contents: write # Allow pushing commits
   pull-requests: write # Allow creating PRs
   packages: read # Allow reading packages
+  id-token: "write"
 
 jobs:
   # Re-entrancy:
