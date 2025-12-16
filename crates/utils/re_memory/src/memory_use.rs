@@ -55,7 +55,7 @@ impl std::ops::Sub for MemoryUse {
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         fn sub(a: Option<u64>, b: Option<u64>) -> Option<u64> {
-            Some(a? - b?)
+            Some(a?.saturating_sub(b?))
         }
 
         Self {
