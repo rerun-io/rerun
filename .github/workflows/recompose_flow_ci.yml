@@ -22,19 +22,13 @@ jobs:
     steps:
     - name: 1_gha.checkout
       uses: actions/checkout@v4
-    - name: 2_gha.setup_python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: 3_gha.setup_uv
-      uses: astral-sh/setup-uv@v4
-    - name: 4_setup_workspace
+    - name: 2_setup_workspace
       run: uv run python -m examples.app ci --setup
-    - name: 5_lint
-      run: uv run python -m examples.app ci --step 5_lint
-    - name: 6_format_check
-      run: uv run python -m examples.app ci --step 6_format_check
-    - name: 7_test
-      run: uv run python -m examples.app ci --step 7_test
-    - name: 8_generate_gha
-      run: uv run python -m examples.app ci --step 8_generate_gha
+    - name: 3_lint
+      run: uv run python -m examples.app ci --step 3_lint
+    - name: 4_format_check
+      run: uv run python -m examples.app ci --step 4_format_check
+    - name: 5_test
+      run: uv run python -m examples.app ci --step 5_test
+    - name: 6_generate_gha
+      run: uv run python -m examples.app ci --step 6_generate_gha

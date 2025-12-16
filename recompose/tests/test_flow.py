@@ -248,5 +248,3 @@ def test_flow_requires_tasks():
 
     with pytest.raises(ValueError, match="has no tasks"):
         empty_flow()
-
-
