@@ -89,7 +89,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "disconnect",
             "save",
             "send_blueprint",
-            "serve_web",  # Deprecated, but still around.
             "serve_grpc",
             "serve_web_viewer",
             "spawn",
@@ -111,9 +110,6 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Timeline functions",
         func_list=[
             "set_time",
-            "set_time_sequence",
-            "set_time_seconds",
-            "set_time_nanos",
             "disable_timeline",
             "reset_time",
         ],
@@ -125,9 +121,6 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         class_list=[
             "TimeColumn",
-            "TimeNanosColumn",
-            "TimeSecondsColumn",
-            "TimeSequenceColumn",
         ],
     ),
     ################################################################################

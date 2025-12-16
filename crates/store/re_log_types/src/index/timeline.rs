@@ -50,15 +50,6 @@ impl Timeline {
         }
     }
 
-    #[deprecated(
-        since = "0.23.0",
-        note = "Use `Timeline::new_duration` or `new_timestamp` instead"
-    )]
-    #[inline]
-    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
-        Self::new_duration(name)
-    }
-
     #[inline]
     pub fn name(&self) -> &TimelineName {
         &self.name
