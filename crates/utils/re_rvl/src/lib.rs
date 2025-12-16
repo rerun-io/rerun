@@ -132,12 +132,20 @@ pub fn decode_rvl_with_quantization(
 ) -> Result<Vec<f32>, RvlDecodeError> {
     let disparity = decode_rvl_without_quantization(data, metadata)?;
     let mut depth = Vec::with_capacity(disparity.len());
+
+    // ROS2's compressed_depth_image_transport sets inverse depth quantization parameters
+    // only for 32FC1 images. For 16UC1, depth_quant_a/b are zero.
+    // https://github.com/ros-perception/image_transport_plugins/blob/8aa39fe13a812273066bbef9b3c330508bd21618/compressed_depth_image_transport/src/codec.cpp#L263
+    let has_quantization = metadata.depth_quant_a != 0.0;
+
     for value in disparity {
         if value == 0 {
             depth.push(f32::NAN);
-        } else {
+        } else if has_quantization {
             let quantized = value as f32;
             depth.push(metadata.depth_quant_a / (quantized - metadata.depth_quant_b));
+        } else {
+            depth.push(value as f32);
         }
     }
     Ok(depth)

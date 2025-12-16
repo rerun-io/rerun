@@ -1,6 +1,5 @@
 //! Log an encoded depth image stored as a 16-bit PNG or RVL file
 
-use rerun::datatypes::ChannelDatatype;
 use rerun::external::anyhow;
 
 fn main() -> anyhow::Result<()> {
