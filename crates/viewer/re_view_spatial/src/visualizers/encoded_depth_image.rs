@@ -1,3 +1,6 @@
+use nohash_hasher::IntMap;
+
+use re_log_types::EntityPathHash;
 use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
@@ -8,19 +11,20 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::view_kind::SpatialViewKind;
+use crate::{view_kind::SpatialViewKind, visualizers::depth_images::DepthImageProcessResult};
 
 use super::{
     SpatialViewVisualizerData,
     depth_images::{
-        DepthCloudEntities, DepthImageComponentData, execute_depth_visualizer, first_copied,
-        process_depth_image_data,
+        DepthImageComponentData, execute_depth_visualizer, first_copied, process_depth_image_data,
     },
 };
 
 pub struct EncodedDepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub depth_cloud_entities: DepthCloudEntities,
+
+    /// Expose image infos for depth clouds - we need this for picking interaction.
+    pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
 }
 
 impl Default for EncodedDepthImageVisualizer {
@@ -52,13 +56,13 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         let preferred_view_kind = self.data.preferred_view_kind;
 
         execute_depth_visualizer::<Self, EncodedDepthImage, _>(
-            &mut self.data,
-            &mut self.depth_cloud_entities,
             ctx,
             view_query,
+            &mut self.data,
+            &mut self.depth_cloud_entities,
             context_systems,
             preferred_view_kind,
-            |data, depth_cloud_entities, ctx, spatial_ctx, transforms, depth_clouds, results| {
+            |ctx, spatial_ctx, data, depth_cloud_entities, transforms, depth_clouds, results| {
                 use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 

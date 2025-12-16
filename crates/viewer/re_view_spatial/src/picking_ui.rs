@@ -10,6 +10,7 @@ use re_viewer_context::{
     ViewerContext, VisualizerCollection,
 };
 
+use crate::visualizers::DepthImageProcessResult;
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
@@ -268,7 +269,11 @@ fn get_pixel_picking_info(
                     pixel_coordinates,
                 })
             })
-    } else if let Some((depth_image, depth_meter, texture)) = depth_visualizer_output
+    } else if let Some(DepthImageProcessResult {
+        image_info,
+        depth_meter,
+        colormap,
+    }) = depth_visualizer_output
         .and_then(|depth_images| {
             depth_images
                 .depth_cloud_entities
@@ -284,13 +289,13 @@ fn get_pixel_picking_info(
         let pixel_coordinates = hit
             .instance_path_hash
             .instance
-            .to_2d_image_coordinate(depth_image.width());
+            .to_2d_image_coordinate(image_info.width());
         Some(PickedPixelInfo {
             source_data: PickableRectSourceData::Image {
-                image: depth_image.clone(),
+                image: image_info.clone(),
                 depth_meter: Some(*depth_meter),
             },
-            texture: texture.clone(),
+            texture: colormap.clone(),
             pixel_coordinates,
         })
     } else {

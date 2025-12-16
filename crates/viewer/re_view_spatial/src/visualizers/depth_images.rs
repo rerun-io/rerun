@@ -18,13 +18,17 @@ use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
-pub type DepthCloudEntities = IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>;
+pub struct DepthImageProcessResult {
+    pub image_info: ImageInfo,
+    pub depth_meter: DepthMeter,
+    pub colormap: ColormappedTexture,
+}
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
 
     /// Expose image infos for depth clouds - we need this for picking interaction.
-    pub depth_cloud_entities: DepthCloudEntities,
+    pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
 }
 
 impl Default for DepthImageVisualizer {
@@ -47,7 +51,7 @@ pub struct DepthImageComponentData {
 #[expect(clippy::too_many_arguments)]
 pub fn process_depth_image_data(
     data_store: &mut SpatialViewVisualizerData,
-    depth_cloud_entities: &mut DepthCloudEntities,
+    depth_cloud_entities: &mut IntMap<EntityPathHash, DepthImageProcessResult>,
     ctx: &QueryContext<'_>,
     depth_clouds: &mut Vec<DepthCloud>,
     ent_context: &SpatialSceneEntityContext<'_>,
@@ -63,7 +67,7 @@ pub fn process_depth_image_data(
 
     for data in images {
         let DepthImageComponentData {
-            image,
+            image: image_info,
             depth_meter,
             fill_ratio,
             colormap,
@@ -82,7 +86,7 @@ pub fn process_depth_image_data(
                 let image_stats = ctx
                     .store_ctx()
                     .caches
-                    .entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    .entry(|c: &mut ImageStatsCache| c.entry(&image_info));
                 ColormapWithRange::default_range_for_depth_images(&image_stats)
             });
         let colormap_with_range = ColormapWithRange {
@@ -97,7 +101,7 @@ pub fn process_depth_image_data(
             ctx.viewer_ctx(),
             entity_path,
             ent_context,
-            &image,
+            &image_info,
             Some(&colormap_with_range),
             re_renderer::Rgba::WHITE,
             archetype_name,
@@ -130,7 +134,11 @@ pub fn process_depth_image_data(
             );
             depth_cloud_entities.insert(
                 entity_path.hash(),
-                (image, depth_meter, textured_rect.colormapped_texture),
+                DepthImageProcessResult {
+                    image_info,
+                    depth_meter,
+                    colormap: textured_rect.colormapped_texture,
+                },
             );
             depth_clouds.push(cloud);
 
@@ -143,7 +151,7 @@ pub fn process_depth_image_data(
                 ent_path: entity_path.clone(),
                 textured_rect,
                 source_data: PickableRectSourceData::Image {
-                    image,
+                    image: image_info,
                     depth_meter: Some(depth_meter),
                 },
             },
@@ -224,13 +232,13 @@ impl VisualizerSystem for DepthImageVisualizer {
         let preferred_view_kind = self.data.preferred_view_kind;
 
         execute_depth_visualizer::<Self, DepthImage, _>(
-            &mut self.data,
-            &mut self.depth_cloud_entities,
             ctx,
             view_query,
+            &mut self.data,
+            &mut self.depth_cloud_entities,
             context_systems,
             preferred_view_kind,
-            |data, depth_cloud_entities, ctx, spatial_ctx, transforms, depth_clouds, results| {
+            |ctx, spatial_ctx, data, depth_cloud_entities, transforms, depth_clouds, results| {
                 use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
@@ -324,10 +332,10 @@ impl VisualizerSystem for DepthImageVisualizer {
 }
 
 pub fn execute_depth_visualizer<V, A, F>(
-    data: &mut SpatialViewVisualizerData,
-    depth_cloud_entities: &mut DepthCloudEntities,
     ctx: &ViewContext<'_>,
     view_query: &ViewQuery<'_>,
+    data: &mut SpatialViewVisualizerData,
+    depth_cloud_entities: &mut IntMap<EntityPathHash, DepthImageProcessResult>,
     context_systems: &ViewContextCollection,
     preferred_view_kind: Option<SpatialViewKind>,
     mut process_fn: F,
@@ -336,10 +344,10 @@ where
     V: VisualizerSystem + IdentifiedViewSystem,
     A: re_sdk_types::Archetype,
     F: for<'a> FnMut(
-        &mut SpatialViewVisualizerData,
-        &mut DepthCloudEntities,
         &QueryContext<'a>,
         &SpatialSceneEntityContext<'a>,
+        &mut SpatialViewVisualizerData,
+        &mut IntMap<EntityPathHash, DepthImageProcessResult>,
         &TransformTreeContext,
         &mut Vec<DepthCloud>,
         &HybridResults<'a>,
@@ -359,10 +367,10 @@ where
         preferred_view_kind,
         |ctx, spatial_ctx, results| {
             process_fn(
-                data,
-                depth_cloud_entities,
                 ctx,
                 spatial_ctx,
+                data,
+                depth_cloud_entities,
                 transforms,
                 &mut depth_clouds,
                 results,

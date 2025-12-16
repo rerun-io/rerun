@@ -24,7 +24,7 @@ pub mod utilities;
 mod video;
 
 pub use cameras::CamerasVisualizer;
-pub use depth_images::DepthImageVisualizer;
+pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer};
 pub use encoded_depth_image::EncodedDepthImageVisualizer;
 use re_sdk_types::{ComponentDescriptor, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
