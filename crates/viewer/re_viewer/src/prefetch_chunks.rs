@@ -40,7 +40,7 @@ pub fn prefetch_chunks(
         // Small number = low latency, low throughput.
         // High number = high latency, high throughput.
         // Ideally it should depend on the actual bandwidth and latency.
-        delta_byte_budget: 2_000_000,
+        delta_byte_budget: 500_000,
     };
 
     let data_source = recording.data_source.as_ref()?;

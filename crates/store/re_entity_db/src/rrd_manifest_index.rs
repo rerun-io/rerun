@@ -380,14 +380,13 @@ impl RrdManifestIndex {
             }
 
             if remote_chunk.state == LoadState::Unloaded {
-                // Can we fit it?
-                delta_byte_budget = delta_byte_budget.saturating_sub(chunk_size);
-                if delta_byte_budget == 0 {
-                    break; // We can't prefetch more than this in one go.
-                }
-
                 remote_chunk.state = LoadState::InTransit;
                 indices.push(row_idx as _);
+
+                delta_byte_budget = delta_byte_budget.saturating_sub(chunk_size);
+                if delta_byte_budget == 0 {
+                    break; // We aren't allowed to prefetch more than this in one go.
+                }
             }
         }
 
