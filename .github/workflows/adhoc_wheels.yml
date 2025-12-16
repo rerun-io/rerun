@@ -20,6 +20,7 @@ permissions:
   contents: "write"
   id-token: "write"
   deployments: "write"
+  packages: "read"
 
 jobs:
   # -----------------------------------------------------------------------------------
