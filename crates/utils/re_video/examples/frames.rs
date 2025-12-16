@@ -30,7 +30,7 @@ fn main() {
 
     println!(
         "{} {}x{}",
-        video.gops.num_elements(),
+        video.keyframe_indices.len(),
         video
             .encoding_details
             .as_ref()
