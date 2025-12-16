@@ -1,11 +1,11 @@
 """Query and display the first 10 rows of a recording."""
 
-import pathlib
 import sys
+from pathlib import Path
 
 import rerun as rr
 
-path_to_rrd = pathlib.Path(sys.argv[1])
+path_to_rrd = Path(sys.argv[1])
 
 with rr.server.Server(datasets={"dataset": [path_to_rrd]}) as server:
     dataset = server.client().get_dataset("dataset")
