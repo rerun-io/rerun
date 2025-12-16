@@ -47,7 +47,6 @@ re_uri.workspace = true
 ahash.workspace = true
 anyhow.workspace = true # TODO: remove before merge
 arrow.workspace = true
-atomic_enum.workspace = true
 document-features.workspace = true
 emath.workspace = true
 indexmap.workspace = true

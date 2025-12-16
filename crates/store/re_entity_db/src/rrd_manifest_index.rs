@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::Ordering;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
@@ -15,10 +14,7 @@ use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 /// Is the following chunk loaded?
 ///
 /// The order here is used for priority to show the state in the ui (lower is more prioritized)
-///
-/// There is an atomic version of this called [`AtomicLoadState`].
-#[atomic_enum::atomic_enum]
-#[derive(Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LoadState {
     /// The chunk is not loaded, nor being loaded.
     #[default]
@@ -31,31 +27,10 @@ pub enum LoadState {
     Loaded,
 }
 
-impl Default for AtomicLoadState {
-    fn default() -> Self {
-        Self::new(LoadState::default())
-    }
-}
-
-impl Clone for AtomicLoadState {
-    fn clone(&self) -> Self {
-        Self::new(self.load(Ordering::AcqRel))
-    }
-}
-
-impl AtomicLoadState {
-    /// If [`self`] is equal to `current`, set it to `new` and return `true`.
-    /// Otherwise return `false`.
-    pub fn compare_swap(&self, current: LoadState, new: LoadState) -> bool {
-        self.compare_exchange(current, new, Ordering::Acquire, Ordering::Acquire)
-            .is_ok()
-    }
-}
-
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
 pub struct ChunkInfo {
-    pub state: AtomicLoadState,
+    pub state: LoadState,
 
     /// None for static chunks
     pub temporal: Option<TemporalChunkInfo>,
@@ -280,7 +255,7 @@ impl RrdManifestIndex {
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
         let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-        chunk_info.state.set(LoadState::Loaded);
+        chunk_info.state = LoadState::Loaded;
     }
 
     pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
@@ -296,7 +271,7 @@ impl RrdManifestIndex {
             match event.kind {
                 re_chunk_store::ChunkStoreDiffKind::Addition => {
                     if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                        chunk_info.state.set(LoadState::Loaded);
+                        chunk_info.state = LoadState::Loaded;
                     } else if let Some(source) = event.split_source {
                         // The added chunk was the result of splitting another chunk:
                         self.parents.entry(chunk_id).or_default().insert(source);
@@ -318,14 +293,14 @@ impl RrdManifestIndex {
         self.has_deleted = true;
 
         if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
-            chunk_info.state.set(LoadState::Unloaded);
+            chunk_info.state = LoadState::Unloaded;
         } else if let Some(parents) = self.parents.remove(chunk_id) {
             // Mark all ancestors as not being fully loaded:
 
             let mut ancestors = parents.into_iter().collect_vec();
             while let Some(chunk_id) = ancestors.pop() {
                 if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                    chunk_info.state.set(LoadState::Unloaded);
+                    chunk_info.state = LoadState::Unloaded;
                 } else if let Some(grandparents) = self.parents.get(&chunk_id) {
                     ancestors.extend(grandparents);
                 } else {
@@ -347,7 +322,7 @@ impl RrdManifestIndex {
 
     /// Returns the yet-to-be-loaded chunks
     pub fn time_range_missing_chunks(
-        &self,
+        &mut self,
         timeline: &Timeline,
         query_range: AbsoluteTimeRange,
     ) -> anyhow::Result<RecordBatch> {
@@ -375,16 +350,13 @@ impl RrdManifestIndex {
         {
             let chunk_range = AbsoluteTimeRange::new(*start_time, *end_time);
             let include = chunk_is_static || chunk_range.intersects(query_range);
-            if include {
-                if let Some(chunk_info) = self.remote_chunks.get(&chunk_id) {
-                    if chunk_info
-                        .state
-                        .compare_swap(LoadState::Unloaded, LoadState::InTransit)
-                    {
-                        if let Ok(row_idx) = i32::try_from(row_idx) {
-                            indices.push(row_idx);
-                        }
-                    }
+            if include
+                && let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id)
+                && chunk_info.state == LoadState::Unloaded
+            {
+                chunk_info.state = LoadState::InTransit;
+                if let Ok(row_idx) = i32::try_from(row_idx) {
+                    indices.push(row_idx);
                 }
             }
         }
@@ -399,7 +371,7 @@ impl RrdManifestIndex {
     /// searching chunks starting at the given time,
     /// until the given size budget is reached.
     pub fn prefetch_chunks(
-        &self,
+        &mut self,
         timeline: &Timeline,
         desired_range: AbsoluteTimeRange,
         mut budget_bytes: usize,
@@ -428,11 +400,11 @@ impl RrdManifestIndex {
                 break;
             }
 
-            let remote_chunk = &self.remote_chunks[chunk_id];
-            if remote_chunk
-                .state
-                .compare_swap(LoadState::Unloaded, LoadState::InTransit)
+            if let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id)
+                && remote_chunk.state == LoadState::Unloaded
             {
+                remote_chunk.state = LoadState::InTransit;
+
                 let row_idx = self.manifest_row_from_chunk_id[chunk_id];
                 indices.push(row_idx as _);
 
@@ -476,7 +448,7 @@ impl RrdManifestIndex {
                         time_range.min <= time_range.max,
                         "Unexpected negative time range in RRD manifest"
                     );
-                    time_ranges_all_chunks.push((info.state.load(Ordering::Relaxed), *time_range));
+                    time_ranges_all_chunks.push((info.state, *time_range));
                 }
             }
         }
@@ -601,7 +573,7 @@ impl RrdManifestIndex {
 
             for chunks in data.values() {
                 scratch.extend(chunks.iter().filter_map(|(c, range)| {
-                    let state = self.remote_chunk_info(c)?.state.load(Ordering::Relaxed);
+                    let state = self.remote_chunk_info(c)?.state;
                     let loaded = match state {
                         LoadState::Unloaded | LoadState::InTransit => false,
                         LoadState::Loaded => true,
@@ -646,11 +618,9 @@ impl RrdManifestIndex {
             component_ranges
                 .iter()
                 .filter(|(chunk, _)| {
-                    self.remote_chunks.get(chunk).is_none_or(|c| {
-                        match c.state.load(Ordering::Relaxed) {
-                            LoadState::InTransit | LoadState::Unloaded => true,
-                            LoadState::Loaded => false,
-                        }
+                    self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
+                        LoadState::InTransit | LoadState::Unloaded => true,
+                        LoadState::Loaded => false,
                     })
                 })
                 .map(|(_, entry)| (entry.time_range, entry.num_rows))
@@ -684,11 +654,9 @@ impl RrdManifestIndex {
             && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
         {
             for (_, entry) in entity_ranges.values().flatten().filter(|(chunk, _)| {
-                self.remote_chunks.get(chunk).is_none_or(|c| {
-                    match c.state.load(Ordering::Relaxed) {
-                        LoadState::InTransit | LoadState::Unloaded => true,
-                        LoadState::Loaded => false,
-                    }
+                self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
+                    LoadState::InTransit | LoadState::Unloaded => true,
+                    LoadState::Loaded => false,
                 })
             }) {
                 ranges.push((entry.time_range, entry.num_rows));
