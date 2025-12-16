@@ -14,9 +14,9 @@ use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{
     self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-    CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
-    QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+    CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
+    ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
+    UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -445,35 +445,11 @@ impl RerunCloudService for RerunCloudHandler {
         } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-
-        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
-        let blueprint_dataset_id = EntryId::new();
-        let blueprint_dataset_name = format!("__bp_{dataset_id}");
-
-        store.create_dataset(
-            &blueprint_dataset_name,
-            Some(blueprint_dataset_id),
-            StoreKind::Blueprint,
-            None,
-        )?;
-
-        let dataset_details = DatasetDetails {
-            blueprint_dataset: Some(blueprint_dataset_id),
-            default_blueprint_segment: None,
-        };
-
-        let dataset = store.create_dataset(
-            &dataset_name,
-            Some(dataset_id),
-            StoreKind::Recording,
-            Some(dataset_details),
-        )?;
-
-        let dataset_entry = dataset.as_dataset_entry();
+        let dataset = store.create_dataset(dataset_name, dataset_id)?;
 
         Ok(tonic::Response::new(
             CreateDatasetEntryResponse {
-                dataset: dataset_entry,
+                dataset: dataset.as_dataset_entry(),
             }
             .into(),
         ))
