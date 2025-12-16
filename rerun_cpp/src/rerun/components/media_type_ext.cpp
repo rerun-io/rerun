@@ -91,6 +91,17 @@ namespace rerun {
             }
 
             // -------------------------------------------------------
+            // Compressed Depth Data:
+
+            /// RVL compressed depth: `application/rvl`.
+            ///
+            /// Run length encoding and Variable Length encoding schemes (RVL) compressed depth data format.
+            /// <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>
+            static MediaType rvl() {
+                return "application/rvl";
+            }
+
+            // -------------------------------------------------------
             /// Videos:
 
             /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
@@ -138,4 +149,4 @@ namespace rerun {
             return std::nullopt;
         }
     }; // namespace components
-};     // namespace rerun
+}; // namespace rerun

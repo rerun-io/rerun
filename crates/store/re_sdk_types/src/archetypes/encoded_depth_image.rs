@@ -31,25 +31,23 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### `encoded_depth_image`:
 /// ```ignore
-/// use rerun::datatypes::ChannelDatatype;
 /// use rerun::external::anyhow;
 ///
 /// fn main() -> anyhow::Result<()> {
-///     let args = std::env::args().collect::<Vec<_>>();
+///     let args = _args;
 ///     let Some(path) = args.get(1) else {
-///         anyhow::bail!("Usage: {} <path_to_depth_image.png>", args[0]);
+///         anyhow::bail!("Usage: {} <path_to_depth_image.[png|rvl]>", args[0]);
 ///     };
 ///
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_depth_image").spawn()?;
 ///
-///     const WIDTH: u32 = 64;
-///     const HEIGHT: u32 = 48;
-///     let format = rerun::components::ImageFormat::depth([WIDTH, HEIGHT], ChannelDatatype::U16);
-///
-///     // Depth values are stored as millimeters in a 16-bit grayscale PNG.
-///     let depth_png = std::fs::read(path)?;
-///     let encoded_depth = rerun::EncodedDepthImage::new(depth_png, format)
-///         .with_media_type(rerun::components::MediaType::png())
+///     let depth_blob = std::fs::read(path)?;
+///     let encoded_depth = rerun::EncodedDepthImage::new(depth_blob)
+///         .with_media_type(if path.ends_with(".png") {
+///             rerun::components::MediaType::PNG
+///         } else {
+///             rerun::components::MediaType::RVL
+///         })
 ///         .with_meter(0.001_f32);
 ///
 ///     rec.log("depth/encoded", &encoded_depth)?;

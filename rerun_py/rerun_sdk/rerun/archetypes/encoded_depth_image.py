@@ -34,27 +34,30 @@ class EncodedDepthImage(Archetype):
     -------
     ### `encoded_depth_image`:
     ```python
+    import sys
     from pathlib import Path
 
     import rerun as rr
 
-    depth_path = Path(__file__).parent / "encoded_depth.png"
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <path_to_depth_image.[png|rvl]>", file=sys.stderr)
+        sys.exit(1)
+
+    depth_path = Path(sys.argv[1])
 
     rr.init("rerun_example_encoded_depth_image", spawn=True)
 
     depth_png = depth_path.read_bytes()
-    depth_format = rr.components.ImageFormat(
-        width=64,
-        height=48,
-        channel_datatype=rr.datatypes.ChannelDatatype.U16,
-    )
+    if depth_path.suffix.lower() == ".png":
+        media_type = rr.components.MediaType.PNG
+    else:
+        media_type = rr.components.MediaType.RVL
 
     rr.log(
         "depth/encoded",
         rr.EncodedDepthImage(
             blob=depth_png,
-            format=depth_format,
-            media_type=rr.components.MediaType.PNG,
+            media_type=media_type,
             meter=0.001,
         ),
     )
