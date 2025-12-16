@@ -355,6 +355,7 @@ impl MessageParser for PointCloud2MessageParser {
         } = self;
 
         frame_id.values().append_value(point_cloud.header.frame_id);
+        frame_id.append(true);
 
         height.values().append_slice(&[point_cloud.height]);
         width.values().append_slice(&[point_cloud.width]);
@@ -457,7 +458,6 @@ impl MessageParser for PointCloud2MessageParser {
 
         data.values().append(true);
         data.append(true);
-        frame_id.append(true);
 
         Ok(())
     }
