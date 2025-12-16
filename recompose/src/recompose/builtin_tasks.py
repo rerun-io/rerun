@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
-from .gha import WorkflowSpec, validate_workflow
+from .gha import validate_workflow
 from .result import Err, Ok, Result
 from .task import task
 
@@ -53,7 +53,7 @@ def generate_gha(
     script: str | None = None,
     runs_on: str = "ubuntu-latest",
     check_only: bool = False,
-) -> Result[list[WorkflowSpec]]:
+) -> Result[list[Path]]:
     """
     Generate GitHub Actions workflow YAML for flows and automations.
 
@@ -73,7 +73,8 @@ def generate_gha(
                    Returns Err if any files would change.
 
     Returns:
-        List of WorkflowSpec objects that were generated.
+        List of Path objects for files that were updated/created.
+        Empty list means no files were changed.
 
     Examples:
         # Generate all workflows
@@ -176,8 +177,7 @@ def generate_gha(
         return Err("No flows or automations registered.")
 
     # Generate workflows
-    results: list[WorkflowSpec] = []
-    changes: list[str] = []
+    changed_paths: list[Path] = []
     errors: list[str] = []
 
     mode = "Checking" if check_only else "Generating"
@@ -209,12 +209,12 @@ def generate_gha(
                 existing = output_file.read_text()
                 if existing != yaml_content:
                     status = "updated" if not check_only else "would change"
-                    changes.append(filename)
+                    changed_paths.append(output_file)
                 else:
                     status = "unchanged"
             else:
                 status = "created" if not check_only else "would create"
-                changes.append(filename)
+                changed_paths.append(output_file)
 
             # Write file if not check_only and there are changes
             if not check_only and status in ("created", "updated"):
@@ -231,8 +231,6 @@ def generate_gha(
                 dbg(f"actionlint: {filename} FAILED validation")
                 errors.append(f"{short_name}: actionlint: {validation_msg}")
 
-            results.append(spec)
-
             # Print status
             status_icon = {"created": "+", "updated": "~", "unchanged": "=", "would change": "~", "would create": "+"}
             icon = status_icon.get(status, "?")
@@ -246,15 +244,17 @@ def generate_gha(
     if errors:
         return Err("Errors generating workflows:\n" + "\n".join(errors))
 
-    if check_only and changes:
-        return Err(f"Workflows out of sync ({len(changes)} file(s) would change).\nRun without --check_only to update.")
+    if check_only and changed_paths:
+        return Err(
+            f"Workflows out of sync ({len(changed_paths)} file(s) would change).\nRun without --check_only to update."
+        )
 
     if check_only:
         out("All workflows up-to-date!")
     else:
-        out(f"Generated {len(results)} workflow(s)")
+        out(f"Generated {len(targets)} workflow(s)")
 
-    return Ok(results)
+    return Ok(changed_paths)
 
 
 @task
