@@ -18,8 +18,7 @@ use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
-pub(super) type DepthCloudEntities =
-    IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>;
+pub type DepthCloudEntities = IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>;
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -37,16 +36,16 @@ impl Default for DepthImageVisualizer {
     }
 }
 
-pub(super) struct DepthImageComponentData {
-    pub(super) image: ImageInfo,
-    pub(super) depth_meter: Option<DepthMeter>,
-    pub(super) fill_ratio: Option<FillRatio>,
-    pub(super) colormap: Option<Colormap>,
-    pub(super) value_range: Option<[f64; 2]>,
+pub struct DepthImageComponentData {
+    pub image: ImageInfo,
+    pub depth_meter: Option<DepthMeter>,
+    pub fill_ratio: Option<FillRatio>,
+    pub colormap: Option<Colormap>,
+    pub value_range: Option<[f64; 2]>,
 }
 
 #[expect(clippy::too_many_arguments)]
-pub(super) fn process_depth_image_data(
+pub fn process_depth_image_data(
     data_store: &mut SpatialViewVisualizerData,
     depth_cloud_entities: &mut DepthCloudEntities,
     ctx: &QueryContext<'_>,
@@ -324,7 +323,7 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 }
 
-pub(super) fn execute_depth_visualizer<V, A, F>(
+pub fn execute_depth_visualizer<V, A, F>(
     data: &mut SpatialViewVisualizerData,
     depth_cloud_entities: &mut DepthCloudEntities,
     ctx: &ViewContext<'_>,
@@ -390,6 +389,6 @@ where
     Ok(output)
 }
 
-pub(super) fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+pub fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
     slice.and_then(|element| element.first()).copied()
 }
