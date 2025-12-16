@@ -205,15 +205,14 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
         });
     }
 
-    if !app_env.is_test() {
-        if let Some(wgpu) = frame.wgpu_render_state()
-            && let info = wgpu.adapter.get_info()
-            && info.device_type == wgpu::DeviceType::Cpu
-        {
-            show_warning(ui, &mut has_shown_warning, |ui| {
-                software_rasterizer_warning_ui(ui, &info);
-            });
-        }
+    if !app_env.is_test()
+        && let Some(wgpu) = frame.wgpu_render_state()
+        && let info = wgpu.adapter.get_info()
+        && info.device_type == wgpu::DeviceType::Cpu
+    {
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            software_rasterizer_warning_ui(ui, &info);
+        });
     }
 
     if crate::docker_detection::is_docker() {
