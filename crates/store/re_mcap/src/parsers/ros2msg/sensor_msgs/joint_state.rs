@@ -48,6 +48,7 @@ impl MessageParser for JointStateMessageParser {
         ));
 
         self.frame_ids.values().append_value(header.frame_id);
+        self.frame_ids.append(true);
 
         for name in &name {
             self.joint_names.values().append_value(name);
