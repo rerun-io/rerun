@@ -71,6 +71,7 @@ impl MessageParser for ImuMessageParser {
         ));
 
         self.frame_ids.values().append_value(imu.header.frame_id);
+        self.frame_ids.append(true);
 
         self.orientation.values().append_slice(&[
             imu.orientation.x,
