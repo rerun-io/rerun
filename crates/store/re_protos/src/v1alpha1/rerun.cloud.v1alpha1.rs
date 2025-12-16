@@ -318,9 +318,8 @@ impl ::prost::Name for GetRrdManifestRequest {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRrdManifestResponse {
-    /// The contents of the RRD manifest as an Arrow RecordBatch.
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub rrd_manifest: ::core::option::Option<super::super::log_msg::v1alpha1::RrdManifest>,
 }
 impl ::prost::Name for GetRrdManifestResponse {
     const NAME: &'static str = "GetRrdManifestResponse";
