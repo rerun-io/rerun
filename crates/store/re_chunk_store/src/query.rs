@@ -70,7 +70,7 @@ impl ChunkStore {
 
                     // NOTE: Do *not* compare these options directly, if any of them turns out to
                     // be None, it'll be a disaster.
-                    // min_value1.min(min_value2).min(min_value3);
+                    // min_value1.min(min_value2);
                     [min_value1, min_value2].into_iter().flatten().min()
                 } else {
                     times

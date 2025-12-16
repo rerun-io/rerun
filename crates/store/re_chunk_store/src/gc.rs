@@ -288,7 +288,7 @@ impl ChunkStore {
             //
             // TODO(cmc): we would very much like that to be iterative or at least paginated in
             // some way, so that it doesn't eat away all of the mark phase's time budget for no
-            // reason, but that requires making things much more complicated, so let's see how fair
+            // reason, but that requires making things much more complicated, so let's see how far
             // we get with a simple "sort and collect everything" approach first.
             let chunks_furthest_away = if let Some((timeline, time)) =
                 options.furthest_from.as_ref()
@@ -297,7 +297,7 @@ impl ChunkStore {
 
                 // This will only apply for tests run from this crate's src/ directory, which is good
                 // enough for our purposes.
-                #[cfg(test)]
+                if cfg!(test)
                 {
                     let chunks_slow = self.find_temporal_chunks_furthest_from_slow(timeline, *time);
                     assert_eq!(chunks_slow, chunks);
