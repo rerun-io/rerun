@@ -637,18 +637,6 @@ impl RrdManifestIndex {
         }
     }
 
-    pub fn full_compressed_size(&self) -> Option<u64> {
-        re_tracing::profile_function!();
-        Some(
-            self.manifest()?
-                .col_chunk_byte_size_compressed_raw()
-                .ok()?
-                .values()
-                .iter()
-                .sum(),
-        )
-    }
-
     pub fn full_uncompressed_size(&self) -> Option<u64> {
         re_tracing::profile_function!();
         Some(

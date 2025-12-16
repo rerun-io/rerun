@@ -117,24 +117,7 @@ impl crate::DataUi for EntityDb {
 
             {
                 ui.grid_left_hand_label("RAM use");
-                ui.label(re_format::format_bytes(self.total_size_bytes() as _))
-                    .on_hover_text(
-                        "Approximate RAM usage of this recording.\n\
-                         If you hover an entity in the streams view (bottom panel) you can see the \
-                         size of individual entities.",
-                    );
-                ui.end_row();
-            }
-
-            if let Some(full_uncompressed_size) = self.rrd_manifest_index().full_uncompressed_size() {
-                ui.grid_left_hand_label("Full uncompressed size");
-                ui.label(re_format::format_bytes(full_uncompressed_size as _));
-                ui.end_row();
-            }
-
-            if let Some(full_compressed_size) = self.rrd_manifest_index().full_compressed_size() {
-                ui.grid_left_hand_label("Full compressed size");
-                ui.label(re_format::format_bytes(full_compressed_size as _));
+                memory_use_label_ui(ui, self);
                 ui.end_row();
             }
 
@@ -252,5 +235,28 @@ impl crate::DataUi for EntityDb {
                 }
             }
         }
+    }
+}
+
+fn memory_use_label_ui(ui: &mut egui::Ui, db: &EntityDb) {
+    let used = db.total_size_bytes();
+
+    if let Some(full_uncompressed_size) = db.rrd_manifest_index().full_uncompressed_size() {
+        ui.label(format!(
+            "{} / {}",
+            re_format::format_bytes(used as _),
+            re_format::format_bytes(full_uncompressed_size as _)
+        ))
+        .on_hover_text(
+            "Approximate RAM usage of this recording out of the total max (if fully loaded).\n\
+            If you hover an entity in the streams view (bottom panel) you can see the \
+            size of individual entities.",
+        );
+    } else {
+        ui.label(re_format::format_bytes(used as _)).on_hover_text(
+            "Approximate RAM usage of this recording.\n\
+            If you hover an entity in the streams view (bottom panel) you can see the \
+            size of individual entities.",
+        );
     }
 }
