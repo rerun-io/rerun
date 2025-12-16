@@ -477,7 +477,7 @@ fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionErro
 }
 
 /// Extract chunk sizes from a `chunk_info` `RecordBatch`.
-/// Returns a reference to the UInt64Array containing chunk_byte_len values.
+/// Returns a reference to the arrow array containing `chunk_byte_len` values.
 fn extract_chunk_sizes(chunk_info: &RecordBatch) -> Result<&UInt64Array, DataFusionError> {
     let chunk_sizes = chunk_info
         .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
@@ -1009,7 +1009,11 @@ mod tests {
             create_request_batches(vec![chunk_info], target_size).unwrap();
 
         assert_eq!(batches.len(), 1, "Should create 1 batch");
-        assert_eq!(batches[0].num_rows(), 3, "Batch should contain 3 chunks from seg1");
+        assert_eq!(
+            batches[0].num_rows(),
+            3,
+            "Batch should contain 3 chunks from seg1"
+        );
         assert_eq!(segment_order, vec!["seg1"], "Should preserve segment order");
     }
 
@@ -1094,7 +1098,11 @@ mod tests {
         let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
 
         assert_eq!(batches.len(), 1, "Should create 1 batch with all segments");
-        assert_eq!(batches[0].num_rows(), 3, "Batch should contain 3 chunks total (1 chunk each from segA, segB, segC)");
+        assert_eq!(
+            batches[0].num_rows(),
+            3,
+            "Batch should contain 3 chunks total (1 chunk each from segA, segB, segC)"
+        );
         assert_eq!(
             segment_order,
             vec!["segA", "segB", "segC"],
@@ -1104,12 +1112,14 @@ mod tests {
         // Verify that segments within the batch maintain input order
         // Extract segment IDs from the first batch
         let segment_id_column = batches[0]
-            .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+            .column_by_name(
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
+            )
             .unwrap()
             .as_any()
             .downcast_ref::<StringArray>()
             .unwrap();
-        
+
         let batch_segment_ids: Vec<String> = (0..segment_id_column.len())
             .map(|i| segment_id_column.value(i).to_owned())
             .collect();
