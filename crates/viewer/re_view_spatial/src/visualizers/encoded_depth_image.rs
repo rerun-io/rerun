@@ -64,7 +64,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
-        process_archetype::<EncodedDepthImageVisualizer, EncodedDepthImage, _>(
+        process_archetype::<Self, EncodedDepthImage, _>(
             ctx,
             view_query,
             context_systems,
@@ -129,14 +129,14 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     let Some(blob) = blobs.first() else {
                         spatial_ctx.output.report_error_for(
                             entity_path.clone(),
-                            format!("EncodedDepthImage blob is empty."),
+                            "EncodedDepthImage blob is empty.".to_owned(),
                         );
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
                         spatial_ctx.output.report_error_for(
                             entity_path.clone(),
-                            format!("Depth image format is missing."),
+                            "Depth image format is missing.".to_owned(),
                         );
                         continue;
                     };
@@ -190,7 +190,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &mut self.data, depth_clouds, output)
+        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

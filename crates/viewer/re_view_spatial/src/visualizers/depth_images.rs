@@ -234,7 +234,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
-        process_archetype::<DepthImageVisualizer, DepthImage, _>(
+        process_archetype::<Self, DepthImage, _>(
             ctx,
             view_query,
             context_systems,
@@ -289,14 +289,14 @@ impl VisualizerSystem for DepthImageVisualizer {
                     let Some(buffer) = buffers.first() else {
                         spatial_ctx.output.report_error_for(
                             ctx.target_entity_path.clone(),
-                            format!("Depth image buffer is empty."),
+                            "Depth image buffer is empty.".to_owned(),
                         );
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
                         spatial_ctx.output.report_error_for(
                             ctx.target_entity_path.clone(),
-                            format!("Depth image format is missing."),
+                            "Depth image format is missing.".to_owned(),
                         );
                         continue;
                     };
@@ -333,7 +333,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &mut self.data, depth_clouds, output)
+        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -347,7 +347,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
 pub fn populate_depth_visualizer_execution_result(
     ctx: &ViewContext<'_>,
-    data: &mut SpatialViewVisualizerData,
+    data: &SpatialViewVisualizerData,
     depth_clouds: Vec<DepthCloud>,
     mut output: VisualizerExecutionOutput,
 ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
