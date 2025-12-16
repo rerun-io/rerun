@@ -8,8 +8,6 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
-from typing_extensions import deprecated
-
 import rerun as rr
 from rerun import bindings
 from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
@@ -30,111 +28,6 @@ if TYPE_CHECKING:
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
-
-
-@deprecated(
-    """Please migrate to `rr.RecordingStream(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-def new_recording(
-    application_id: str,
-    *,
-    recording_id: str | uuid.UUID | None = None,
-    make_default: bool = False,
-    make_thread_default: bool = False,
-    spawn: bool = False,
-    default_enabled: bool = True,
-    batcher_config: ChunkBatcherConfig | None = None,
-) -> RecordingStream:
-    """
-    Creates a new recording with a user-chosen application id (name) that can be used to log data.
-
-    If you only need a single global recording, [`rerun.init`][] might be simpler.
-
-    Note that unless setting `spawn=True` new recording streams always begin connected to a buffered sink.
-    To send the data to a viewer or file you will likely want to call [`rerun.connect_grpc`][] or [`rerun.save`][]
-    explicitly.
-
-    !!! Warning
-        If you don't specify a `recording_id`, it will default to a random value that is generated once
-        at the start of the process.
-        That value will be kept around for the whole lifetime of the process, and even inherited by all
-        its subprocesses, if any.
-
-        This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
-        that the following code will _not_ create two distinct recordings:
-        ```
-        rr.init("my_app")
-        rr.init("my_app")
-        ```
-
-        To create distinct recordings from the same process, specify distinct recording IDs:
-        ```
-        from uuid import uuid4
-        rec = rr.new_recording(application_id="test", recording_id=uuid4())
-        rec = rr.new_recording(application_id="test", recording_id=uuid4())
-        ```
-
-    Parameters
-    ----------
-    application_id : str
-        Your Rerun recordings will be categorized by this application id, so
-        try to pick a unique one for each application that uses the Rerun SDK.
-
-        For example, if you have one application doing object detection
-        and another doing camera calibration, you could have
-        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-    recording_id : Optional[str]
-        Set the recording ID that this process is logging to, as a UUIDv4.
-
-        The default recording_id is based on `multiprocessing.current_process().authkey`
-        which means that all processes spawned with `multiprocessing`
-        will have the same default recording_id.
-
-        If you are not using `multiprocessing` and still want several different Python
-        processes to log to the same Rerun instance (and be part of the same recording),
-        you will need to manually assign them all the same recording_id.
-        Any random UUIDv4 will work, or copy the recording id for the parent process.
-    make_default : bool
-        If true (_not_ the default), the newly initialized recording will replace the current
-        active one (if any) in the global scope.
-    make_thread_default : bool
-        If true (_not_ the default), the newly initialized recording will replace the current
-        active one (if any) in the thread-local scope.
-    spawn : bool
-        Spawn a Rerun Viewer and stream logging data to it.
-        Short for calling `spawn` separately.
-        If you don't call this, log events will be buffered indefinitely until
-        you call either `connect_grpc`, `show`, or `save`
-    default_enabled
-        Should Rerun logging be on by default?
-        Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
-    batcher_config
-        Optional configuration for the chunk batcher.
-
-    Returns
-    -------
-    RecordingStream
-        A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
-
-    """
-
-    recording_stream = RecordingStream(
-        application_id,
-        recording_id=recording_id,
-        make_default=make_default,
-        make_thread_default=make_thread_default,
-        default_enabled=default_enabled,
-        batcher_config=batcher_config,
-    )
-
-    if spawn:
-        from rerun.sinks import spawn as _spawn
-
-        _spawn(recording=recording_stream)  # NOLINT
-
-    return recording_stream
-
 
 active_recording_stream: contextvars.ContextVar[RecordingStream] = contextvars.ContextVar("active_recording_stream")
 """
@@ -671,8 +564,7 @@ class RecordingStream:
 
         Closes all gRPC connections, servers, and files that have been opened with
         [`rerun.RecordingStream.connect_grpc`][], [`rerun.RecordingStream.serve_grpc`][],
-        [`rerun.RecordingStream.serve_web`][] , [`rerun.RecordingStream.save`][] or
-        [`rerun.RecordingStream.spawn`][].
+        [`rerun.RecordingStream.save`][] or [`rerun.RecordingStream.spawn`][].
         """
 
         from .sinks import disconnect
@@ -730,66 +622,6 @@ class RecordingStream:
             server_memory_limit=server_memory_limit,
             recording=self,
             newest_first=newest_first,
-        )
-
-    @deprecated(
-        """Use a combination of `serve_grpc` and `rr.serve_web_viewer` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
-    )
-    def serve_web(
-        self,
-        *,
-        open_browser: bool = True,
-        web_port: int | None = None,
-        grpc_port: int | None = None,
-        default_blueprint: BlueprintLike | None = None,
-        server_memory_limit: str = "25%",
-    ) -> None:
-        """
-        Serve log-data over gRPC and serve a Rerun web viewer over HTTP.
-
-        You can also connect to this server with the native viewer using `rerun localhost:9090`.
-
-        The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-        You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
-        Once reached, the earliest logged data will be dropped. Static data is never dropped.
-
-        This function returns immediately.
-
-        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][]:
-        ```
-        server_uri = rec.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
-        rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
-        ```
-
-        Parameters
-        ----------
-        open_browser:
-            Open the default browser to the viewer.
-        web_port:
-            The port to serve the web viewer on (defaults to 9090).
-        grpc_port:
-            The port to serve the gRPC server on (defaults to 9876)
-        default_blueprint:
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
-        server_memory_limit:
-            Maximum amount of memory to use for buffering log data for clients that connect late.
-            This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
-
-        """
-
-        from .sinks import serve_web
-
-        serve_web(
-            open_browser=open_browser,
-            web_port=web_port,
-            grpc_port=grpc_port,
-            default_blueprint=default_blueprint,
-            server_memory_limit=server_memory_limit,
-            recording=self,
         )
 
     def send_blueprint(
@@ -1055,122 +887,6 @@ class RecordingStream:
             recording=self,
         )
 
-    @deprecated(
-        """Use `RecordingStream.set_time(sequence=…)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-    )
-    def set_time_sequence(self, timeline: str, sequence: int) -> None:
-        """
-        Set the current time for this thread as an integer sequence.
-
-        Used for all subsequent logging on the same thread,
-        until the next call to `set_time_sequence`.
-
-        For example: `set_time_sequence("frame_nr", frame_nr)`.
-
-        You can remove a timeline again using `disable_timeline("frame_nr")`.
-
-        There is no requirement of monotonicity. You can move the time backwards if you like.
-
-        This function marks the timeline as being of a _sequential_ type.
-        You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
-        on the same timeline, as that will produce undefined behavior.
-
-        Parameters
-        ----------
-        timeline : str
-            The name of the timeline to set the time for.
-        sequence : int
-            The current time on the timeline in integer units.
-
-        """
-
-        from .time import set_time_sequence
-
-        set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
-
-    @deprecated(
-        """Use `RecordingStream.set_time(timestamp=seconds)` or `RecordingStream.set_time(duration=seconds)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-    )
-    def set_time_seconds(self, timeline: str, seconds: float) -> None:
-        """
-        Set the current time for this thread in seconds.
-
-        Used for all subsequent logging on the same thread,
-        until the next call to [`rerun.set_time_seconds`][] or [`rerun.set_time_nanos`][].
-
-        For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
-
-        You can remove a timeline again using `disable_timeline("capture_time")`.
-
-        Very large values will automatically be interpreted as seconds since unix epoch (1970-01-01).
-        Small values (less than a few years) will be interpreted as relative
-        some unknown point in time, and will be shown as e.g. `+3.132s`.
-
-        The bindings has a built-in time which is `log_time`, and is logged as seconds
-        since unix epoch.
-
-        There is no requirement of monotonicity. You can move the time backwards if you like.
-
-        This function marks the timeline as being of a _temporal_ type.
-        You should not use the sequential function [`rerun.set_time_sequence`][]
-        on the same timeline, as that will produce undefined behavior.
-
-        Parameters
-        ----------
-        timeline : str
-            The name of the timeline to set the time for.
-        seconds : float
-            The current time on the timeline in seconds.
-
-        """
-
-        from .time import set_time_seconds
-
-        set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
-
-    @deprecated(
-        """Use `RecordingStream.set_time(timestamp=1e-9 * nanos)` or `RecordingStream.set_time(duration=1e-9 * nanos)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-    )
-    def set_time_nanos(self, timeline: str, nanos: int) -> None:
-        """
-        Set the current time for this thread.
-
-        Used for all subsequent logging on the same thread,
-        until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
-
-        For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
-
-        You can remove a timeline again using `disable_timeline("capture_time")`.
-
-        Very large values will automatically be interpreted as nanoseconds since unix epoch (1970-01-01).
-        Small values (less than a few years) will be interpreted as relative
-        some unknown point in time, and will be shown as e.g. `+3.132s`.
-
-        The bindings has a built-in time which is `log_time`, and is logged as nanos since
-        unix epoch.
-
-        There is no requirement of monotonicity. You can move the time backwards if you like.
-
-        This function marks the timeline as being of a _temporal_ type.
-        You should not use the sequential function [`rerun.set_time_sequence`][]
-        on the same timeline, as that will produce undefined behavior.
-
-        Parameters
-        ----------
-        timeline : str
-            The name of the timeline to set the time for.
-        nanos : int
-            The current time on the timeline in nanoseconds.
-
-        """
-
-        from .time import set_time_nanos
-
-        set_time_nanos(timeline=timeline, nanos=nanos, recording=self)
-
     def disable_timeline(self, timeline: str) -> None:
         """
         Clear time information for the specified timeline on this thread.
@@ -1402,8 +1118,7 @@ class RecordingStream:
             See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
         indexes:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-            of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
-            [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
+            of timestamps. Generally, you should use one of the provided class [`TimeColumn`][rerun.TimeColumn].
         columns:
             The columns of components to log. Each object represents a single column of data.
 

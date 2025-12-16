@@ -70,45 +70,6 @@ impl Pinhole {
         self
     }
 
-    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
-    ///
-    /// Only returns a result if both projection & resolution are set.
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::image_from_camera_from_arrow` & `Pinhole::resolution_from_arrow` to deserialize the components back,
-                or better use the components prior to passing it to the archetype, and then call `PinholeProjection::fov_y`",
-        since = "0.22.0"
-    )]
-    pub fn fov_y(&self) -> Option<f32> {
-        let projection = self.image_from_camera_from_arrow().ok()?;
-        self.resolution_from_arrow()
-            .ok()
-            .map(|r| projection.fov_y(r))
-    }
-
-    /// The resolution of the camera sensor in pixels.
-    #[inline]
-    #[cfg(feature = "glam")]
-    #[deprecated(
-        note = "Use `Pinhole::resolution_from_arrow` to deserialize back to a `Resolution` component,
-                or better use the `Resolution` prior to passing it to the archetype, and then use `Resolution::into` for the conversion",
-        since = "0.22.0"
-    )]
-    pub fn resolution(&self) -> Option<glam::Vec2> {
-        self.resolution_from_arrow().ok().map(|r| r.into())
-    }
-
-    /// Width/height ratio of the camera sensor.
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::resolution_from_arrow` to deserialize back to a `Resolution` component,
-                or better use the `Resolution` prior to passing it to the archetype, and then use `Resolution::aspect_ratio`",
-        since = "0.22.0"
-    )]
-    pub fn aspect_ratio(&self) -> Option<f32> {
-        self.resolution_from_arrow().ok().map(|r| r.aspect_ratio())
-    }
-
     /// Deserializes the pinhole projection from the `image_from_camera` field.
     ///
     /// Returns [`re_types_core::DeserializationError::MissingData`] if the component is not present.
@@ -146,68 +107,4 @@ impl Pinhole {
     // therefore it's recommended to instead use the `PinholeProjection` component before passing it to the archetype.
     // Using `Pinhole::image_from_camera_from_arrow()` it is possible to deserialize the `PinholeProjection` component
     // if it has been already serialized/stored in the archetype struct.
-
-    /// X & Y focal length in pixels.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::image_from_camera_from_arrow` instead to deserialize back to a `PinholeProjection` component,
-                or better use the `PinholeProjection` component prior to passing it to the archetype, and then call PinholeProjection::focal_length_in_pixels",
-        since = "0.22.0"
-    )]
-    pub fn focal_length_in_pixels(&self) -> Vec2D {
-        self.image_from_camera_from_arrow()
-            .unwrap_or_default()
-            .focal_length_in_pixels()
-    }
-
-    /// Principal point of the pinhole camera,
-    /// i.e. the intersection of the optical axis and the image plane.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[cfg(feature = "glam")]
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::image_from_camera_from_arrow` instead to deserialize back to a `PinholeProjection` component,
-                or better use the `PinholeProjection` component prior to passing it to the archetype, and then call PinholeProjection::principal_point",
-        since = "0.22.0"
-    )]
-    pub fn principal_point(&self) -> glam::Vec2 {
-        self.image_from_camera_from_arrow()
-            .unwrap_or_default()
-            .principal_point()
-    }
-
-    /// Project camera-space coordinates into pixel coordinates,
-    /// returning the same z/depth.
-    #[cfg(feature = "glam")]
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::image_from_camera_from_arrow` instead to deserialize back to a `PinholeProjection` component,
-                or better use the `PinholeProjection` component prior to passing it to the archetype, and then call PinholeProjection::project",
-        since = "0.22.0"
-    )]
-    pub fn project(&self, pixel: glam::Vec3) -> glam::Vec3 {
-        self.image_from_camera_from_arrow()
-            .unwrap_or_default()
-            .project(pixel)
-    }
-
-    /// Given pixel coordinates and a world-space depth,
-    /// return a position in the camera space.
-    ///
-    /// The returned z is the same as the input z (depth).
-    #[cfg(feature = "glam")]
-    #[inline]
-    #[deprecated(
-        note = "Use `Pinhole::image_from_camera_from_arrow` instead to deserialize back to a `PinholeProjection` component,
-                or better use the `PinholeProjection` component prior to passing it to the archetype, and then call PinholeProjection::unproject",
-        since = "0.22.0"
-    )]
-    pub fn unproject(&self, pixel: glam::Vec3) -> glam::Vec3 {
-        self.image_from_camera_from_arrow()
-            .unwrap_or_default()
-            .unproject(pixel)
-    }
 }
