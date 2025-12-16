@@ -89,7 +89,6 @@ impl ChunkStore {
     /// An implementation of `find_temporal_chunk_furthest_from` that focuses solely on correctness.
     ///
     /// Used to compare with results obtained from the optimized implementation.
-    #[cfg(test)]
     pub(crate) fn find_temporal_chunks_furthest_from_slow(
         &self,
         timeline: &TimelineName,
