@@ -382,13 +382,22 @@ class RecordingStream:
     # TODO(RR-3065): SDK should flush both IO and app-level logic when a recording gets GC'd
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = self.to_native()
-        # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
-        # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still
+        # It's definitely a problem if we are in a forked child process. The rerun SDK will still
         # detect this case and prevent a hang internally, but will do so with a warning that we should avoid.
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if not recording.is_forked_child():
+            # Flush any pending data (non-blocking)
             bindings.flush(timeout_sec=0.0, recording=recording)  # NOLINT
+
+            # Drop our references to the native recording to make sure things will clean up
+            # properly.
+            del self.inner
+            del recording
+
+            # At this point if there aren't other references to this recording, it's considered
+            # orphaned. Do a sweep to clean up any orphaned recordings.
+            bindings.disconnect_orphaned_recordings()  # NOLINT
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
