@@ -56,7 +56,7 @@ df = dataset.reader(index="frame_nr")
 print(df)
 ```
 
-The return object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
+The returned object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
 
 When calling `reader()`, an index column must be specified. It can be any of the recording's timelines. Each row of the view will correspond to a unique value of the index column. It is also possible to query the dataset using `index=None`. In this case, only the `static=True` data will be returned.
 
