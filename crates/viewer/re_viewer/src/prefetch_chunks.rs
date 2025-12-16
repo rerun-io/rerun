@@ -14,42 +14,40 @@ pub fn prefetch_chunks(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
-    let current = re_memory::MemoryUse::capture().used().unwrap_or(0);
-
-    // TODO: what is a reasonable cap here?
-    // We don't request more until this much has been received.
-    // Small number = low latency, low throughput.
-    // High number = high latency, high throughput.
-    // Ideally it should depend on the actual bandwidth and latency.
-    let request_window_size = 2_000_000;
-
-    let budget_bytes = memory_limit
-        .saturating_sub(current)
-        .at_most(request_window_size);
-
-    if budget_bytes <= 0 {
-        return None;
-    }
+    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX) as u64;
+    let total_byte_budget = (0.8 * (memory_limit as f64)) as u64; // Don't completely fill it - we want some headroom for caches etc.
 
     let current_time = time_ctrl.time_i64()?;
-    let timeline = time_ctrl.timeline()?;
+    let timeline = *time_ctrl.timeline()?;
 
-    // Load some extra
-    let buffer_time = match timeline.typ() {
-        re_log_types::TimeType::Sequence => 10,
+    // Some reasonable margin on each side of the current time:
+    let time_margin = match timeline.typ() {
+        re_log_types::TimeType::Sequence => 30,
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
-    let query_range = AbsoluteTimeRange::new(
-        current_time.saturating_sub(buffer_time),
-        current_time.saturating_add(10 * buffer_time),
-        // re_chunk::TimeInt::MAX, // TODO: Don't stop loading until we filled the RAM
+
+    let desired_range = AbsoluteTimeRange::new(
+        current_time.saturating_sub(time_margin),
+        re_chunk::TimeInt::MAX, // Keep loading until the end (if we have the space for it).
     );
+
+    let options = re_entity_db::ChunkPrefetchOptions {
+        timeline,
+        desired_range,
+        total_byte_budget,
+
+        // TODO: what is a reasonable cap here?
+        // We don't request more until this much has been received.
+        // Small number = low latency, low throughput.
+        // High number = high latency, high throughput.
+        // Ideally it should depend on the actual bandwidth and latency.
+        delta_byte_budget: 2_000_000,
+    };
+
     let data_source = recording.data_source.as_ref()?;
     let rrd_manifest = &mut recording.rrd_manifest_index;
 
-    #[expect(clippy::question_mark)]
-    if rrd_manifest.manifest().is_none() {
+    if !rrd_manifest.has_manifest() {
         return None;
     }
 
@@ -67,7 +65,7 @@ pub fn prefetch_chunks(
                 return;
             }
 
-            let rb = rrd_manifest.prefetch_chunks(timeline, query_range, budget_bytes as _);
+            let rb = rrd_manifest.prefetch_chunks(&options);
 
             match rb {
                 Ok(rb) => {

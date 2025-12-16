@@ -29,6 +29,21 @@ pub enum LoadState {
     Loaded,
 }
 
+/// How to calculate which chunks to prefetch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChunkPrefetchOptions {
+    pub timeline: Timeline,
+
+    /// Only consider chunks overlapping this range on [`Self::timeline`].
+    pub desired_range: AbsoluteTimeRange,
+
+    /// Total budget for all loaded chunks.
+    pub total_byte_budget: u64,
+
+    /// Budget for this specific prefetch request.
+    pub delta_byte_budget: u64,
+}
+
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
 pub struct ChunkInfo {
@@ -324,25 +339,25 @@ impl RrdManifestIndex {
         self.timelines.get(timeline).copied()
     }
 
-    /// Find the next candidates for prefetching,
-    /// searching only chunks overlapping the given time interval,
-    /// picking chunks in order of time,
-    /// until the given size budget is reached.
+    /// Find the next candidates for prefetching.
     pub fn prefetch_chunks(
         &mut self,
-        timeline: &Timeline,
-        desired_range: AbsoluteTimeRange,
-        mut budget_bytes: usize,
+        options: &ChunkPrefetchOptions,
     ) -> anyhow::Result<RecordBatch> {
-        // TODO: fix bug in this code.
         re_tracing::profile_function!();
-        // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
+
+        let ChunkPrefetchOptions {
+            timeline,
+            desired_range,
+            mut total_byte_budget,
+            mut delta_byte_budget,
+        } = *options;
 
         let Some(manifest) = self.manifest.as_ref() else {
             anyhow::bail!("No manifest");
         };
 
-        let Some(chunks) = self.chunk_intervals.get(timeline) else {
+        let Some(chunks) = self.chunk_intervals.get(&timeline) else {
             anyhow::bail!("Unknown timeline: {timeline:?}");
         };
 
@@ -351,17 +366,24 @@ impl RrdManifestIndex {
         let mut indices: Vec<i32> = vec![];
 
         for (_, chunk_id) in chunks.query(&desired_range.into()) {
-            if let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id)
-                && remote_chunk.state == LoadState::Unloaded
-            {
-                let row_idx = self.manifest_row_from_chunk_id[chunk_id];
+            let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
+                re_log::warn_once!("Chunk {chunk_id:?} not found in RRD manifest index");
+                continue;
+            };
 
+            let row_idx = self.manifest_row_from_chunk_id[chunk_id];
+
+            let chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
+            total_byte_budget = total_byte_budget.saturating_sub(chunk_size);
+            if total_byte_budget == 0 {
+                break; // We've already loaded too much.
+            }
+
+            if remote_chunk.state == LoadState::Unloaded {
                 // Can we fit it?
-                let size_of_chunk_uncompressed = chunk_byte_size_uncompressed_raw[row_idx];
-                budget_bytes = budget_bytes.saturating_sub(size_of_chunk_uncompressed as _);
-
-                if budget_bytes == 0 {
-                    break;
+                delta_byte_budget = delta_byte_budget.saturating_sub(chunk_size);
+                if delta_byte_budget == 0 {
+                    break; // We can't prefetch more than this in one go.
                 }
 
                 remote_chunk.state = LoadState::InTransit;
