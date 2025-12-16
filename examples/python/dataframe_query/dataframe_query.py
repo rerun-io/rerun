@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 
-import pyarrow as pa
 import rerun as rr
 
 DESCRIPTION = """
@@ -23,13 +22,21 @@ The results can be filtered further by specifying an entity filter expression:
 
 
 def query(path_to_rrd: str, entity_path_filter: str) -> None:
-    recording = rr.dataframe.load_recording(path_to_rrd)
-    view = recording.view(index="log_time", contents=entity_path_filter)
-    batches = view.select()
+    with rr.server.Server(datasets={"recording": [path_to_rrd]}) as server:
+        dataset = server.client().get_dataset("recording")
 
-    table = pa.Table.from_batches(batches, batches.schema)
-    table = table.slice(0, 10)
-    print(table.to_pandas())
+        # Apply entity path filter if specified
+        if entity_path_filter != "/**":
+            view = dataset.filter_contents([entity_path_filter])
+        else:
+            view = dataset
+
+        # Query the data
+        df = view.reader(index="log_time")
+
+        # Convert to pandas and show first 10 rows
+        table = df.to_pandas()
+        print(table.head(10))
 
 
 def main() -> None:

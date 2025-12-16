@@ -247,3 +247,84 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 ### Other deprecations
 
 `DatasetEntry.download_segments()` is deprecated and will be removed in a future release.
+
+
+## `RecordingView` and local dataframe API deprecated
+
+The `rerun.dataframe` is being deprecated, with its contents either moved or deprecated.
+
+Overview:
+- The `RecordingView` class, along with `Recording.view()` and the ability to run dataframe queries is deprecated. Use the OSS server instead.
+- The `Recording` class and recording loading funcstions are moved to `rerun.recording` (with deprecation).
+- The `send_dataframe()` and `send_record_batch()` functions are moved to `rerun` (with deprecation), and exposed as methods of `RecordingStream`.
+
+### Moved to `rerun.recording`
+
+These functions and classes have been moved and will continue to work, but should be imported from their new location:
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.load_recording()`         | `rr.recording.load_recording()`         |
+| `rr.dataframe.load_archive()`           | `rr.recording.load_archive()`           |
+| `rr.dataframe.Recording`                | `rr.recording.Recording`                |
+| `rr.dataframe.RRDArchive`               | `rr.recording.RRDArchive`               |
+
+### Moved to top-level `rerun`
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
+| `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
+
+### Deprecated (use catalog API)
+
+The following are deprecated with no direct replacement. Use the Server + Catalog API instead:
+
+- `Recording.view()` method
+- `RecordingView` class
+- `AnyColumn`, `AnyComponentColumn`, `ViewContentsLike` types
+
+### Migration example
+
+**Before (legacy dataframe API):**
+
+```python
+import rerun as rr
+
+# Load a recording file
+recording = rr.dataframe.load_recording("recording.rrd")
+
+# Create a view and query
+view = recording.view(index="frame_nr", contents="/world/**")
+view = view.filter_range_sequence(0, 100)
+view = view.fill_latest_at()
+
+# Select columns and read data
+batches = view.select()
+table = batches.read_all()
+df = table.to_pandas()
+```
+
+**After (Server + Catalog API):**
+
+```python
+import rerun as rr
+from datafusion import col
+
+# Start a local server with the recording
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    client = server.client()
+    dataset = client.get_dataset("my_dataset")
+
+    # Create a filtered view and query
+    view = dataset.filter_contents(["/world/**"])
+    df = view.reader(index="frame_nr", fill_latest_at=True)
+
+    # Apply additional filters with DataFusion
+    df = df.filter(col("frame_nr") <= 100)
+
+    # Convert to pandas
+    pandas_df = df.to_pandas()
+```
+
+For more details on the new API, see the [Query data out of Rerun](../../howto/get-data-out.md) guide.
