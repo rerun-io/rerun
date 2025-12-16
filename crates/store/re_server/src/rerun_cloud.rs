@@ -944,10 +944,12 @@ impl RerunCloudService for RerunCloudHandler {
             .try_into()?;
 
         let dataset = store.dataset(entry_id)?;
-        let rrd_manifest_batch = dataset.rrd_manifest(&segment_id)?;
+        let rrd_manifest = dataset.rrd_manifest(&segment_id)?;
 
         Ok(tonic::Response::new(GetRrdManifestResponse {
-            data: Some(rrd_manifest_batch.into()),
+            rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
+                tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
+            })?),
         }))
     }
 

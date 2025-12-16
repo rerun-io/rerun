@@ -2,6 +2,7 @@ use std::io::{Read, Seek};
 
 use mcap::Summary;
 use mcap::sans_io::{SummaryReadEvent, SummaryReader};
+use re_chunk::TimePoint;
 use re_log_types::TimeCell;
 use saturating_cast::SaturatingCast as _;
 
@@ -21,6 +22,16 @@ pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summ
     }
 
     Ok(summary_reader.finish())
+}
+
+/// Extracts log and publish time from an MCAP message as a `TimePoint`.
+pub fn log_and_publish_timepoint_from_msg(msg: &mcap::Message<'_>) -> TimePoint {
+    let log_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.log_time);
+    let publish_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.publish_time);
+    re_chunk::TimePoint::from([
+        ("message_log_time", log_time_cell.into_time_cell()),
+        ("message_publish_time", publish_time_cell.into_time_cell()),
+    ])
 }
 
 /// Timestamp + epoch interpretation.

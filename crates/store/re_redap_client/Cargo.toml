@@ -47,7 +47,6 @@ itertools.workspace = true
 jiff.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-tap.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true

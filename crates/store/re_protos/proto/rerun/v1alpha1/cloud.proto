@@ -336,8 +336,7 @@ message GetRrdManifestRequest {
 }
 
 message GetRrdManifestResponse {
-  // The contents of the RRD manifest as an Arrow RecordBatch.
-  rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
 }
 
 /* Indexing */
