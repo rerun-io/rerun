@@ -307,6 +307,9 @@ impl InMemoryStore {
     }
 
     /// Create a (regular) dataset with a matching blueprint dataset.
+    ///
+    /// The server is typically responsible for setting the dataset id, so use `Some` at your own
+    /// risk for `dataset_id`.
     pub fn create_dataset(
         &mut self,
         dataset_name: String,
@@ -318,7 +321,7 @@ impl InMemoryStore {
 
         self.create_dataset_impl(
             blueprint_dataset_name,
-            Some(blueprint_dataset_id),
+            blueprint_dataset_id,
             StoreKind::Blueprint,
             None,
         )?;
@@ -330,7 +333,7 @@ impl InMemoryStore {
 
         self.create_dataset_impl(
             dataset_name,
-            Some(dataset_id),
+            dataset_id,
             StoreKind::Recording,
             Some(dataset_details),
         )
@@ -340,7 +343,7 @@ impl InMemoryStore {
     fn create_dataset_impl(
         &mut self,
         name: String,
-        id: Option<EntryId>,
+        entry_id: EntryId,
         store_kind: StoreKind,
         details: Option<DatasetDetails>,
     ) -> Result<&mut Dataset, Error> {
@@ -349,7 +352,6 @@ impl InMemoryStore {
             return Err(Error::DuplicateEntryNameError(name));
         }
 
-        let entry_id = id.unwrap_or_else(EntryId::new);
         if self.id_exists(&entry_id) {
             return Err(Error::DuplicateEntryIdError(entry_id));
         }

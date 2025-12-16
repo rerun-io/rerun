@@ -6,7 +6,7 @@ mod rerun_cloud;
 mod server;
 mod store;
 
-pub use self::entrypoint::{Args, NamedCollection, NamedPath};
+pub use self::entrypoint::{Args, NamedPath, NamedPathCollection};
 pub use self::rerun_cloud::{
     RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings,
 };

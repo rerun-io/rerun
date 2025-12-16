@@ -23,10 +23,13 @@ pub struct Args {
     #[clap(long, short = 'p', default_value_t = 51234)]
     pub port: u16,
 
-    // TODO(ab): expose this in the CLI
+    // TODO(ab): expose this to the CLI
     /// Load a set of RRDs as a dataset (can be specified multiple times).
+    ///
+    /// All the paths in the path collections must point at RRD files. Directories are not
+    /// supported.
     #[clap(skip)]
-    pub datasets: Vec<NamedCollection>,
+    pub datasets: Vec<NamedPathCollection>,
 
     /// Load a directory of RRD as dataset (can be specified multiple times).
     /// You can specify only a path or provide a name such as
@@ -49,7 +52,7 @@ pub struct NamedPath {
 
 /// A named collection of paths.
 #[derive(Debug, Clone)]
-pub struct NamedCollection {
+pub struct NamedPathCollection {
     pub name: String,
     pub paths: Vec<PathBuf>,
 }
@@ -88,7 +91,7 @@ impl Args {
 
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
-            for NamedCollection { name, paths } in datasets {
+            for NamedPathCollection { name, paths } in datasets {
                 builder = builder
                     .with_rrds_as_dataset(
                         name,

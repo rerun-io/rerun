@@ -6,7 +6,7 @@ use pyo3::types::{
     PyStringMethods as _,
 };
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
-use re_server::{self, Args as ServerArgs, NamedCollection};
+use re_server::{self, Args as ServerArgs, NamedPathCollection};
 
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
@@ -97,13 +97,13 @@ fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
         .collect()
 }
 
-fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedCollection> {
+fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedPathCollection> {
     dict.iter()
         .filter_map(|(k, v)| {
             let name = k.downcast::<PyString>().ok()?;
             let paths: Vec<String> = v.extract().ok()?;
 
-            Some(NamedCollection {
+            Some(NamedPathCollection {
                 name: name.to_string_lossy().to_string(),
                 paths: paths.into_iter().map(std::path::PathBuf::from).collect(),
             })
