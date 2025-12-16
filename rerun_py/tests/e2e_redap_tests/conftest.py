@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pytest
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, DatasetEntry, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from pytest_benchmark.fixture import BenchmarkFixture
-    from rerun.catalog import DatasetEntry, TableEntry
     from syrupy import SnapshotAssertion
 
 
@@ -270,6 +269,14 @@ class EntryFactory:
         self._created_entries.append(entry)
         return entry
 
+    def num_tables(self) -> int:
+        """Return the number of created tables."""
+        return sum(1 for entry in self._created_entries if isinstance(entry, TableEntry))
+
+    def num_datasets(self) -> int:
+        """Return the number of created datasets."""
+        return sum(1 for entry in self._created_entries if isinstance(entry, DatasetEntry))
+
     def cleanup(self) -> None:
         """Delete all created entries in reverse order."""
         for entry in reversed(self._created_entries):
@@ -341,6 +348,14 @@ class PrefilledCatalog:
     def client(self) -> CatalogClient:
         """Convenience property to access the underlying CatalogClient."""
         return self.factory.client
+
+    def num_tables(self) -> int:
+        """Return the number of tables registered in the prefilled catalog."""
+        return self.factory.num_tables()
+
+    def num_datasets(self) -> int:
+        """Return the number of datasets registered in the prefilled catalog."""
+        return self.factory.num_datasets()
 
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures

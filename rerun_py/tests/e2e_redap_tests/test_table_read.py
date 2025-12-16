@@ -20,7 +20,9 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
 
     # Check that we have at least the expected tables (may have more on external servers)
     entries = client.tables()
-    assert len(entries) >= 4
+    assert len(entries) >= prefilled_catalog.num_tables(), (
+        f"Expected more tables in the prefilled catalog. Got: {entries}"
+    )
     entry_names = [e.name for e in entries]
     assert expected_table_name in entry_names
     assert prefilled_catalog.factory.apply_prefix("second_schema.second_table") in entry_names
