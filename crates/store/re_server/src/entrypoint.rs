@@ -23,11 +23,16 @@ pub struct Args {
     #[clap(long, short = 'p', default_value_t = 51234)]
     pub port: u16,
 
+    // TODO(ab): expose this in the CLI
+    /// Load a set of RRDs as a dataset (can be specified multiple times).
+    #[clap(skip)]
+    pub datasets: Vec<NamedCollection>,
+
     /// Load a directory of RRD as dataset (can be specified multiple times).
     /// You can specify only a path or provide a name such as
     /// `-d my_dataset=./path/to/files`
     #[clap(long = "dataset", short = 'd')]
-    pub datasets: Vec<NamedPath>,
+    pub dataset_prefixes: Vec<NamedPath>,
 
     /// Load a lance file as a table (can be specified multiple times).
     /// You can specify only a path or provide a name such as
@@ -40,6 +45,13 @@ pub struct Args {
 pub struct NamedPath {
     pub name: Option<String>,
     pub path: PathBuf,
+}
+
+/// A named collection of paths.
+#[derive(Debug, Clone)]
+pub struct NamedCollection {
+    pub name: String,
+    pub paths: Vec<PathBuf>,
 }
 
 impl FromStr for NamedPath {
@@ -63,15 +75,34 @@ impl FromStr for NamedPath {
 impl Args {
     /// Waits for the server to start, and return a handle to it together with its address.
     pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
+        let Self {
+            addr,
+            port,
+            datasets,
+            dataset_prefixes,
+            tables,
+        } = self;
+
         let rerun_cloud_server = {
             use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
-            for dataset in &self.datasets {
+            for NamedCollection { name, paths } in datasets {
+                builder = builder
+                    .with_rrds_as_dataset(
+                        name,
+                        paths,
+                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                        crate::OnError::Continue,
+                    )
+                    .await?;
+            }
+
+            for dataset_prefix in &dataset_prefixes {
                 builder = builder
                     .with_directory_as_dataset(
-                        dataset,
+                        dataset_prefix,
                         re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
                         crate::OnError::Continue,
                     )
@@ -79,7 +110,7 @@ impl Args {
             }
 
             #[cfg_attr(not(feature = "lance"), expect(clippy::never_loop))]
-            for table in &self.tables {
+            for table in &tables {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "lance")] {
                         builder = builder
@@ -100,7 +131,7 @@ impl Args {
                 .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
         };
 
-        let addr = SocketAddr::new(self.addr.parse()?, self.port);
+        let addr = SocketAddr::new(addr.parse()?, port);
 
         let server_builder = ServerBuilder::default()
             .with_address(addr)

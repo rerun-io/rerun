@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use ahash::HashMap;
@@ -35,6 +36,7 @@ use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use crate::OnError;
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
@@ -63,6 +65,34 @@ impl RerunCloudHandlerBuilder {
         self.store
             .load_directory_as_dataset(directory, on_duplicate, on_error)
             .await?;
+
+        Ok(self)
+    }
+
+    pub async fn with_rrds_as_dataset(
+        mut self,
+        dataset_name: String,
+        rrd_paths: Vec<PathBuf>,
+        on_duplicate: IfDuplicateBehavior,
+        on_error: crate::OnError,
+    ) -> Result<Self, crate::store::Error> {
+        let dataset = self.store.create_dataset(dataset_name, None)?;
+
+        for rrd_path in rrd_paths {
+            if let Err(err) = dataset
+                .load_rrd(&rrd_path, None, on_duplicate, StoreKind::Recording)
+                .await
+            {
+                match on_error {
+                    OnError::Continue => {
+                        re_log::warn!("Failed loading file {}: {err}", rrd_path.display());
+                    }
+                    OnError::Abort => {
+                        return Err(err);
+                    }
+                }
+            }
+        }
 
         Ok(self)
     }
