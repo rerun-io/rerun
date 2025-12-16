@@ -349,7 +349,7 @@ class RecordingView:
         If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with `.fill_latest_at()`.
+        those rows are empty. Use with `.fill_latest_at()`
         to populate these rows with the most recent data.
 
         Parameters
