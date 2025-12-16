@@ -16,6 +16,8 @@ from rerun_bindings import (
     TableInsertMode,
 )
 
+from . import EntryId
+
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
     RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
@@ -30,7 +32,6 @@ if TYPE_CHECKING:
         CatalogClient,
         ComponentColumnDescriptor,
         ComponentColumnSelector,
-        EntryId,
         EntryKind,
         IndexColumnSelector,
         IndexConfig,
@@ -109,6 +110,32 @@ class Entry(ABC, Generic[InternalEntryT]):
         """
 
         self._internal.update(name=name)
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Compare this entry to another object.
+
+        Supports comparison with `str` and `EntryId` to enable the following patterns:
+        ```py
+        "entry_name" in client.entries()
+        entry_id in client.entries()
+        ```
+        """
+        match other:
+            case Entry():
+                return self.id == other.id
+
+            case str():
+                return self.name == other
+
+            case EntryId():
+                return self.id == other
+
+            case _:
+                return NotImplemented
+
+    # Make it explicit that `Entries` are view objects for which hashing cannot sensibly be implemented
+    __hash__ = None  # type: ignore[assignment]
 
 
 class DatasetEntry(Entry[DatasetEntryInternal]):

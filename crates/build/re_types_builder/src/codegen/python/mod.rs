@@ -1,6 +1,7 @@
 //! Implements the Python codegen pass.
 
 mod views;
+mod visualizers;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::iter;
@@ -140,6 +141,16 @@ impl CodeGenerator for PythonCodeGenerator {
             );
             */
         }
+
+        // Generate visualizers.py
+        let visualizers_code = visualizers::generate_visualizers_file(reporter, objects);
+        files_to_write.insert(
+            self.pkg_path
+                .join("blueprint")
+                .join("visualizers")
+                .join("mapping.py"),
+            visualizers_code,
+        );
 
         files_to_write
     }

@@ -14,7 +14,7 @@ use re_types_core::{
     SerializationError,
     reflection::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
-        ComponentReflectionMap, Reflection,
+        ComponentReflectionMap, Reflection, generate_component_identifier_reflection,
     },
 };
 
@@ -24,9 +24,11 @@ use re_types_core::{
 
 pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     re_tracing::profile_function!();
+    let archetypes = generate_archetype_reflection();
     Ok(Reflection {
         components: generate_component_reflection()?,
-        archetypes: generate_archetype_reflection(),
+        component_identifiers: generate_component_identifier_reflection(&archetypes),
+        archetypes,
     })
 }
 
@@ -1535,6 +1537,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Abscissa",
                         component_type: "rerun.components.TensorData".into(),
                         docstring_md: "The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "widths",
+                        display_name: "Widths",
+                        component_type: "rerun.components.Length".into(),
+                        docstring_md: "The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
                         is_required: false,
                     },
                 ],
