@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use re_span::Span;
 use saturating_cast::SaturatingCast as _;
 
-use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
+use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
 use crate::demux::{
     ChromaSubsamplingModes, SampleMetadataState, SamplesStatistics, VideoDeliveryMethod,
     VideoEncodingDetails,
@@ -39,17 +39,14 @@ impl VideoDataDescription {
         let timescale = Timescale::new(track.timescale);
         let mut samples =
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
-        let mut gops = StableIndexDeque::<GroupOfPictures>::new();
-        let mut gop_sample_start_index = 0;
+        let mut keyframe_indices = Vec::new();
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
             for sample in &track.samples {
-                if sample.is_sync && !samples.is_empty() {
-                    let sample_range = gop_sample_start_index..samples.next_index();
-                    gops.push_back(GroupOfPictures { sample_range });
-                    gop_sample_start_index = samples.next_index();
+                if sample.is_sync {
+                    keyframe_indices.push(samples.next_index());
                 }
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
@@ -92,12 +89,6 @@ impl VideoDataDescription {
                     .filter_map(|s| Some(s.sample()?.decode_timestamp.0))
                     .collect::<Vec<_>>()
             );
-        }
-
-        // Append the last GOP if there are any samples left:
-        if !samples.is_empty() {
-            let sample_range = gop_sample_start_index..samples.next_index();
-            gops.push_back(GroupOfPictures { sample_range });
         }
 
         {
@@ -154,7 +145,7 @@ impl VideoDataDescription {
                 duration: Time::new(track.duration.saturating_cast()),
             },
             samples_statistics,
-            gops,
+            keyframe_indices,
             samples,
             mp4_tracks,
         };

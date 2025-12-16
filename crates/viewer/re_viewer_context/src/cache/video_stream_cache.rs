@@ -255,7 +255,7 @@ fn load_video_data_from_chunks(
         encoding_details: None, // Unknown so far, we'll find out later.
         timescale: timescale_for_timeline(store, timeline),
         delivery_method: re_video::VideoDeliveryMethod::new_stream(),
-        gops: StableIndexDeque::new(),
+        keyframe_indices: Vec::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
         samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
         mp4_tracks: Default::default(),
@@ -346,7 +346,7 @@ fn read_samples_from_known_chunk(
     let re_video::VideoDataDescription {
         codec,
         samples,
-        gops,
+        keyframe_indices,
         encoding_details,
         ..
     } = video_descr;
@@ -387,12 +387,16 @@ fn read_samples_from_known_chunk(
 
     let buffer_index = known_offset.buffer;
 
+    let split_idx = keyframe_indices.binary_search(&(known_offset.sample as usize)).unwrap_or_else(|e| e);
+
+    let end_keyframes = keyframe_indices.drain(split_idx..).filter(|idx| *idx >= known_offset.sample as usize + chunk.num_rows()).collect::<Vec<_>>();
+
     let mut new_samples = 
         chunk
             .iter_component_offsets(sample_component)
             .zip(chunk.iter_component_indices(timeline, sample_component))
             .enumerate()
-            .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
+            .filter_map(|(idx, (component_offset, (time, _row_id)))| {
                 if component_offset.len == 0 {
                     // Ignore empty samples.
                     return None;
@@ -452,15 +456,7 @@ fn read_samples_from_known_chunk(
                 };
 
                 if is_sync {
-                    // New gop starts at this frame.
-                    gops.push_back(re_video::GroupOfPictures {
-                        sample_range: sample_idx..(sample_idx + 1),
-                    });
-                } else {
-                    // Last GOP extends until here now, including the current sample.
-                    if let Some(last_gop) = gops.back_mut() {
-                        last_gop.sample_range.end = sample_idx + 1;
-                    }
+                    keyframe_indices.push(sample_idx);
                 }
 
                 let Some(byte_span) = byte_span.try_cast::<u32>() else {
@@ -496,6 +492,8 @@ fn read_samples_from_known_chunk(
         }
     }
 
+    keyframe_indices.extend(end_keyframes);
+
     // Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
     // (We set the duration for the last sample to `None` since we don't know how long it will last.)
     // (Note that we can't use tuple_windows here because it can't handle mutable references)
@@ -521,14 +519,10 @@ fn read_samples_from_known_chunk(
 
     if let Some(buffer) = chunk_buffers.get_mut(known_offset.buffer as usize) {
         buffer.buffer = values.clone();
-        dbg!(known_offset);
-        dbg!(&buffer.sample_index_range);
-        dbg!(&buffer.source_chunk_id);
     } else {
         // TODO: document
         debug_assert!(false);
     }
-
 
     if cfg!(debug_assertions)
         && let Err(err) = video_descr.sanity_check()
@@ -561,7 +555,7 @@ fn read_samples_from_new_chunk(
     let re_video::VideoDataDescription {
         codec,
         samples,
-        gops,
+        keyframe_indices,
         encoding_details,
         ..
     } = video_descr;
@@ -692,15 +686,7 @@ fn read_samples_from_new_chunk(
                 };
 
                 if is_sync {
-                    // New gop starts at this frame.
-                    gops.push_back(re_video::GroupOfPictures {
-                        sample_range: sample_idx..(sample_idx + 1),
-                    });
-                } else {
-                    // Last GOP extends until here now, including the current sample.
-                    if let Some(last_gop) = gops.back_mut() {
-                        last_gop.sample_range.end = sample_idx + 1;
-                    }
+                    keyframe_indices.push(sample_idx);
                 }
 
                 let Some(byte_span) = byte_span.try_cast::<u32>() else {
@@ -925,7 +911,7 @@ impl Cache for VideoStreamCache {
                                 }
                             }
 
-                            adjust_gops_for_removed_samples_back(video_data);
+                            adjust_keyframes_for_removed_samples_back(video_data);
 
                             // `event.chunk` is added data PRIOR to compaction.
                             &compaction.new_chunk
@@ -985,7 +971,7 @@ impl Cache for VideoStreamCache {
                                 .remove_all_with_index_smaller_equal(last_invalid_sample_idx);
                             video_sample_buffers
                                 .remove_all_with_index_smaller_equal(last_invalid_buffer_idx);
-                            adjust_gops_for_removed_samples_front(video_data);
+                            adjust_keyframes_for_removed_samples_front(video_data);
 
                             re_log::trace!(
                                 "GC'ed video sample buffer from video streaming cache. Now referencing {:?} video sample chunks with total size of {:?} bytes",
@@ -1038,32 +1024,26 @@ fn load_known_chunk_offsets(
 }
 
 /// Adjust GOPs for removed samples at the back of the sample list.
-fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDescription) {
+fn adjust_keyframes_for_removed_samples_back(video_data: &mut re_video::VideoDataDescription) {
     let end_sample_index = video_data.samples.next_index();
-    while let Some(gop) = video_data.gops.back_mut() {
-        if gop.sample_range.start >= end_sample_index {
-            video_data.gops.pop_back();
-        } else {
-            gop.sample_range.end = end_sample_index;
-            break;
-        }
+    match video_data.keyframe_indices.iter().enumerate().rev().find(|(_, idx)| **idx < end_sample_index) {
+        Some((idx, _)) => {
+            if idx + 1 < video_data.keyframe_indices.len() {
+                video_data.keyframe_indices.drain(idx + 1..);
+            }
+        },
+        None => video_data.keyframe_indices.clear(),
     }
 }
 
 /// Adjust GOPs for removed samples at the front of the sample list.
-fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
+fn adjust_keyframes_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
     let start_sample_index = video_data.samples.min_index();
-    while let Some(gop) = video_data.gops.front_mut() {
-        if gop.sample_range.end <= start_sample_index {
-            video_data.gops.pop_front();
-        } else {
-            // Do *NOT* forshorten the GOP. The start sample has to be always a keyframe (is_sync==true) sample.
-            // So instead, we may have to remove this GOP entirely if it straddles removed samples.
-            if gop.sample_range.start < start_sample_index {
-                video_data.gops.pop_front();
-            }
-            break;
-        }
+    match video_data.keyframe_indices.iter().enumerate().find(|(_, idx)| **idx >= start_sample_index) {
+        Some((idx, _)) => {
+            video_data.keyframe_indices.drain(..idx);
+        },
+        None => video_data.keyframe_indices.clear(),
     }
 }
 
@@ -1132,7 +1112,7 @@ mod tests {
             encoding_details,
             timescale,
             delivery_method,
-            gops,
+            keyframe_indices,
             samples,
             samples_statistics,
             mp4_tracks,
@@ -1175,18 +1155,18 @@ mod tests {
         )));
 
         // The GOPs in the sample data have a fixed size of 10.
-        assert_eq!(gops[0].sample_range, 0..10.min(num_frames_submitted));
+        assert_eq!(keyframe_indices[0], 0);
         if num_frames_submitted > 10 {
-            assert_eq!(gops[1].sample_range, 10..20.min(num_frames_submitted));
+            assert_eq!(keyframe_indices[1], 10);
         }
         if num_frames_submitted > 20 {
-            assert_eq!(gops[2].sample_range, 20..30.min(num_frames_submitted));
+            assert_eq!(keyframe_indices[2], 20);
         }
         if num_frames_submitted > 30 {
-            assert_eq!(gops[3].sample_range, 30..40.min(num_frames_submitted));
+            assert_eq!(keyframe_indices[3], 30);
         }
         if num_frames_submitted > 40 {
-            assert_eq!(gops[4].sample_range, 40..44.min(num_frames_submitted));
+            assert_eq!(keyframe_indices[4], 40);
         }
     }
 
@@ -1423,12 +1403,6 @@ mod tests {
 
         // Only one frame got removed, BUT the entire first GOP since the first frame was a keyframe!
         assert_eq!(data_descr.samples.num_elements(), NUM_FRAMES - 1);
-        assert_eq!(data_descr.gops.get(0), None);
-        assert_eq!(
-            data_descr.gops.get(1),
-            Some(&re_video::GroupOfPictures {
-                sample_range: 10..20
-            })
-        );
+        assert_eq!(data_descr.keyframe_indices.first(), Some(&10));
     }
 }
