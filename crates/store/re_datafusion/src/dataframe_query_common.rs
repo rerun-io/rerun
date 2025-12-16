@@ -262,9 +262,6 @@ impl TableProvider for DataframeQueryTableProvider {
 
             chunk_info_batches.push(batches);
         }
-        // TODO(tsaucer) the multiple requests can produce identical chunks
-        // so we need to limit these down to distinct values
-
         let chunk_info_batches = Arc::new(compute_unique_chunk_info_ids(chunk_info_batches)?);
 
         // Find the first column selection that is a component
