@@ -17,10 +17,8 @@ pub struct PyServerInternal {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (*, address="0.0.0.0", port=51234, datasets, dataset_prefixes, tables))]
-    #[pyo3(
-        text_signature = "(self, *, address='0.0.0.0', port=51234, datasets, dataset_prefixes, tables)"
-    )]
+    #[pyo3(signature = (*, address, port, datasets, dataset_prefixes, tables))]
+    #[pyo3(text_signature = "(self, *, address, port, datasets, dataset_prefixes, tables)")]
     pub fn new(
         py: Python<'_>,
         address: &str,
