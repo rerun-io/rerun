@@ -421,7 +421,7 @@ impl DrawData for RectangleDrawData {
         view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(#1025, #4787, #11156): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
         // For 2D draw order based sorting, we should never enable depth write and always perform back to front sorting.
 
         for (index, instance) in self.instances.iter().enumerate() {
@@ -535,7 +535,7 @@ impl RectangleDrawData {
                     },
                 ),
                 draw_outline_mask: rectangle.options.outline_mask.is_some(),
-                has_transparency: rectangle.options.multiplicative_tint.a() < 1.0, // TODO(andreas): what about textures with alpha?
+                has_transparency: rectangle.options.multiplicative_tint.a() < 1.0, // TODO(#12223): what about textures with alpha?
             });
         }
 

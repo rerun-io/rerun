@@ -385,7 +385,7 @@ impl GpuMesh {
                     },
                 );
 
-                // TODO(andreas): handle texture transparency
+                // TODO(#12223): handle texture transparency
                 let is_transparent = material.albedo_factor.a() < 1.0;
 
                 materials.push(GpuMaterial {
