@@ -251,42 +251,17 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 
 ## `RecordingView` and local dataframe API deprecated
 
-The `rerun.dataframe` is being deprecated, with its contents either moved or deprecated.
+With the OSS server and the catalog APIs gaining maturity, we want to make this the primary way to query data out of Rerun, including when working locally.
+These APIs will receive ongoing improvements in the future, and offer a smoother migration path to cloud-based workflows. 
+As a result, we are deprecating `rerun.dataframe` in this release, and in particular the ability to run dataframe queries on a `Recording` object. See the following sections for more details.
 
-Overview:
-- The `RecordingView` class, along with `Recording.view()` and the ability to run dataframe queries is deprecated. Use the OSS server instead.
-- The `Recording` class and recording loading funcstions are moved to `rerun.recording` (with deprecation).
-- The `send_dataframe()` and `send_record_batch()` functions are moved to `rerun` (with deprecation), and exposed as methods of `RecordingStream`.
 
-### Moved to `rerun.recording`
+### `RecordingView` deprecated
 
-These functions and classes have been moved and will continue to work, but should be imported from their new location:
 
-| Old import                              | New import                              |
-|-----------------------------------------|-----------------------------------------|
-| `rr.dataframe.load_recording()`         | `rr.recording.load_recording()`         |
-| `rr.dataframe.load_archive()`           | `rr.recording.load_archive()`           |
-| `rr.dataframe.Recording`                | `rr.recording.Recording`                |
-| `rr.dataframe.RRDArchive`               | `rr.recording.RRDArchive`               |
+The `RecordingView` class, along with `Recording.view()` and the ability to run dataframe queries locally, is deprecated. Use `Server` and the `rerun.catalog` API instead for local dataframe queries. In addition, the `AnyColumn`, `AnyComponentColumn`, and `ViewContentsLike` helper types are deprecated.
 
-### Moved to top-level `rerun`
-
-| Old import                              | New import                              |
-|-----------------------------------------|-----------------------------------------|
-| `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
-| `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
-
-### Deprecated (use catalog API)
-
-The following are deprecated with no direct replacement. Use the Server + Catalog API instead:
-
-- `Recording.view()` method
-- `RecordingView` class
-- `AnyColumn`, `AnyComponentColumn`, `ViewContentsLike` types
-
-### Migration example
-
-**Before (legacy dataframe API):**
+**Before:**
 
 ```python
 import rerun as rr
@@ -305,7 +280,7 @@ table = batches.read_all()
 df = table.to_pandas()
 ```
 
-**After (Server + Catalog API):**
+**After:**
 
 ```python
 import rerun as rr
@@ -328,3 +303,23 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
 ```
 
 For more details on the new API, see the [Query data out of Rerun](../../howto/get-data-out.md) guide.
+
+### `Recording` moved to `rerun.recording`
+
+The `Recording` class and recording loading functions have been moved to a new `rerun.recording`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.load_recording()`         | `rr.recording.load_recording()`         |
+| `rr.dataframe.load_archive()`           | `rr.recording.load_archive()`           |
+| `rr.dataframe.Recording`                | `rr.recording.Recording`                |
+| `rr.dataframe.RRDArchive`               | `rr.recording.RRDArchive`               |
+
+### `send_dataframe()` moved to top-level `rerun`
+
+The `send_dataframe()` and `send_record_batch()` functions have been moved to the top-level `rerun` module and are also exposed as methods of `RecordingStream`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
+| `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
