@@ -772,7 +772,7 @@ impl EventLoop {
             return;
         };
 
-        self.messages.gc(max_bytes as _);
+        self.messages.gc(max_bytes);
     }
 }
 

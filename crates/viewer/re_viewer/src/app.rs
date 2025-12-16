@@ -2703,7 +2703,7 @@ impl App {
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
-        fn format_limit(limit: Option<i64>) -> String {
+        fn format_limit(limit: Option<u64>) -> String {
             if let Some(bytes) = limit {
                 format_bytes(bytes as _)
             } else {

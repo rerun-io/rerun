@@ -446,6 +446,10 @@ fn dataset_entry_ui(
         list_item.show_hierarchical(ui, list_item_content)
     };
 
+    let item_response = item_response.on_hover_ui(|ui| {
+        ui.label(format!("Dataset: {name:?}"));
+    });
+
     let new_display_mode =
         DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
 

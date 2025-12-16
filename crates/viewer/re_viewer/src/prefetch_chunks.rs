@@ -1,4 +1,3 @@
-use egui::NumExt;
 use re_entity_db::EntityDb;
 use re_log_channel::LogReceiverSet;
 use re_log_types::AbsoluteTimeRange;
@@ -14,7 +13,7 @@ pub fn prefetch_chunks(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX) as u64;
+    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
     let total_byte_budget = (0.8 * (memory_limit as f64)) as u64; // Don't completely fill it - we want some headroom for caches etc.
 
     let current_time = time_ctrl.time_i64()?;

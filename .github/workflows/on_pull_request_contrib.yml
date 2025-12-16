@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: "read"
+  packages: "read"
 
 jobs:
   checks:

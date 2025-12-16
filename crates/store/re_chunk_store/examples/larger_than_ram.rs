@@ -1,5 +1,6 @@
-#![expect(clippy::unwrap_used)] // TODO
+#![expect(clippy::dbg_macro)] // TODO
 #![expect(clippy::disallowed_macros)] // TODO
+#![expect(clippy::unwrap_used)] // TODO
 
 use itertools::Itertools as _;
 

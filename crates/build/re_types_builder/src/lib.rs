@@ -181,6 +181,8 @@ pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
 pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
+pub const ATTR_RERUN_VISUALIZER: &str = "attr.rerun.visualizer";
+pub const ATTR_RERUN_VISUALIZER_NONE: &str = "attr.rerun.visualizer_none";
 pub const ATTR_RERUN_STATE: &str = "attr.rerun.state";
 pub const ATTR_RERUN_DEPRECATED_SINCE: &str = "attr.rerun.deprecated_since";
 pub const ATTR_RERUN_DEPRECATED_NOTICE: &str = "attr.rerun.deprecated_notice";
@@ -536,13 +538,21 @@ pub fn generate_python_code(
     let mut formatter =
         PythonCodeFormatter::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
 
+    // NOTE: In rerun_py we have a directory where we share generated code with handwritten code.
+    // Make sure to filter out that directory, or else we will end up removing those handwritten
+    // files.
+    let orphan_path_opt_out = output_pkg_path
+        .as_ref()
+        .join("blueprint")
+        .join("visualizers");
+
     generate_code(
         reporter,
         objects,
         type_registry,
         &mut generator,
         &mut formatter,
-        &Default::default(),
+        &std::iter::once(orphan_path_opt_out).collect(),
         check,
     );
 }

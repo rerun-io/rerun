@@ -2,7 +2,7 @@
 source: crates/store/re_redap_tests/src/tests/register_segment.rs
 expression: batch.format_schema_snapshot()
 ---
-property:text_log:TextLog:text: List[nullable Utf8] [
+property:text_log:TextLog:text: nullable List[nullable Utf8] [
     rerun:archetype: "rerun.archetypes.TextLog"
     rerun:component: "TextLog:text"
     rerun:component_type: "rerun.components.Text"
