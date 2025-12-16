@@ -8871,6 +8871,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "document-features",
  "emath",
  "indexmap 2.11.4",
