@@ -381,6 +381,11 @@ impl Dataset {
                 // since there's no disk to begin with. That's fine, we just re-use the
                 // uncompressed values: the chunk-key (generated below) is what will be used to
                 // accurately fetch the data in any case.
+                //
+                // TODO(cmc): we could also keep track of the compressed values originally fetched
+                // from disk and/or network all the way into the OSS server's datastructures and
+                // resurface them here but that doesn't seem to have any practical use, so not
+                // worth the added complexity?
                 let uncompressed_byte_span = re_span::Span {
                     start: offset,
                     len: byte_size_uncompressed,
