@@ -118,11 +118,8 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 };
             }
 
-            if !transforms_to_draw.is_empty() {
-                // TODO: For now this is just a crude approximation on when to report errors.
-                // If we have frames to draw we don't want to render errors. We should make this more
-                // fine granular.
-                output = Default::default();
+            if transforms_to_draw.is_empty() {
+                return Ok(output);
             }
 
             let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;

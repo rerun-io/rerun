@@ -40,8 +40,8 @@ impl SizeBytes for FrameIdRegistry {
             frame_ids_per_entity,
         } = self;
 
-        // TODO:
-        frame_id_lookup_table.total_size_bytes() + 0
+        frame_id_lookup_table.total_size_bytes()
+            + frame_ids_per_entity.total_size_bytes()
     }
 }
 

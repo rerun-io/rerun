@@ -1,6 +1,6 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use crate::SizeBytes;
@@ -64,6 +64,19 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
         };
 
         keys_size_bytes + values_size_bytes
+    }
+}
+
+impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // NOTE: It's all on the heap at this point.
+
+        if K::is_pod() {
+            (self.len() * std::mem::size_of::<K>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
     }
 }
 
