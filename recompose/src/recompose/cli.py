@@ -572,10 +572,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
         else:
             # Normal mode: Execute the entire flow with subprocess isolation
             # This matches CI behavior where each step is a separate process
-            # The FlowRenderer in run_isolated handles all output formatting
-            result = flow_info.fn.run_isolated(workspace=ws, **kwargs)  # type: ignore[attr-defined]
+            from .local_executor import execute_flow_isolated
 
-            # Exit with appropriate code (run_isolated already printed the summary)
+            result = execute_flow_isolated(flow_info.fn, workspace=ws, **kwargs)
+
+            # Exit with appropriate code (execute_flow_isolated already printed the summary)
             if result.failed:
                 sys.exit(1)
 

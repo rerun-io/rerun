@@ -67,6 +67,54 @@ def set_current_automation_plan(plan: AutomationPlan | None) -> None:
     _current_automation_plan.set(plan)
 
 
+def create_dispatch_method(flow_info: Any) -> Callable[..., FlowDispatch]:
+    """
+    Create a dispatch method for a flow.
+
+    This is called by the @flow decorator to attach a .dispatch() method
+    to the flow wrapper. The method records dispatches in the current
+    automation plan.
+
+    Args:
+        flow_info: The FlowInfo for the flow
+
+    Returns:
+        A dispatch method bound to this flow
+
+    """
+
+    def dispatch(runs_on: str | None = None, **kwargs: Any) -> FlowDispatch:
+        """
+        Dispatch this flow from within an automation.
+
+        This method can only be called inside an @automation-decorated function.
+        It records the dispatch in the automation plan.
+
+        Args:
+            runs_on: Optional runner override for this specific dispatch
+            **kwargs: Flow parameters to pass when dispatching
+
+        Returns:
+            FlowDispatch handle representing the dispatched workflow
+
+        """
+        plan = get_current_automation_plan()
+        if plan is None:
+            raise RuntimeError(
+                f"{flow_info.name}.dispatch() can only be called inside an @automation-decorated function."
+            )
+
+        flow_dispatch = FlowDispatch(
+            flow_name=flow_info.name,
+            params=kwargs,
+            runs_on=runs_on,
+        )
+        plan.add_dispatch(flow_dispatch)
+        return flow_dispatch
+
+    return dispatch
+
+
 @dataclass
 class AutomationInfo:
     """Metadata about a registered automation."""

@@ -203,10 +203,10 @@ class TestFlowPlanSteps:
 
 
 class TestRunIsolated:
-    """Tests for run_isolated subprocess execution."""
+    """Tests for subprocess execution of flows."""
 
-    def test_run_isolated_basic(self) -> None:
-        """run_isolated executes all steps as subprocesses."""
+    def test_flow_executes_with_subprocess_isolation(self) -> None:
+        """Direct flow call executes all steps as subprocesses."""
 
         @recompose.task
         def step_one() -> recompose.Result[str]:
@@ -226,11 +226,12 @@ class TestRunIsolated:
             b = step_two(prev=a.value())
             step_three(prev=b.value())
 
-        result = simple_pipeline.run_isolated()
-        assert result.ok, f"run_isolated failed: {result.error}"
+        # Direct flow call uses subprocess isolation
+        result = simple_pipeline()
+        assert result.ok, f"Flow execution failed: {result.error}"
 
-    def test_run_isolated_with_params(self) -> None:
-        """run_isolated passes parameters correctly."""
+    def test_flow_with_params(self) -> None:
+        """Flow parameters are passed correctly to steps."""
 
         @recompose.task
         def echo_param(*, value: str) -> recompose.Result[str]:
@@ -245,5 +246,5 @@ class TestRunIsolated:
             v = echo_param(value=name)
             process(input=v.value())
 
-        result = param_flow.run_isolated(name="test-value")
-        assert result.ok, f"run_isolated failed: {result.error}"
+        result = param_flow(name="test-value")
+        assert result.ok, f"Flow execution failed: {result.error}"
