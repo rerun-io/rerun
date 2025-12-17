@@ -219,10 +219,10 @@ def test_flow_plan_execution_order():
         order_c(b=b.value())
 
     plan = ordered_plan_flow.plan()
-    order = plan.get_execution_order()
 
     # Verify order: a before b before c
-    names = [n.name for n in order]
+    # Nodes are in valid execution order by construction
+    names = [n.name for n in plan.nodes]
     assert names.index("order_a") < names.index("order_b")
     assert names.index("order_b") < names.index("order_c")
 

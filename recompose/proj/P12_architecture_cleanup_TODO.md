@@ -161,11 +161,11 @@ independent tasks), but adds complexity without benefit.
 - `builtin_tasks.py:357` - `inspect` task - could use `self.nodes`
 
 **Tasks**:
-- [ ] Replace `get_execution_order()` calls with `self.nodes`
-- [ ] Remove `get_execution_order()` method
-- [ ] Remove `get_parallelizable_groups()` if unused (was for future parallel execution)
-- [ ] Update ARCHITECTURE.md to not mention topological sort
-- [ ] Verify tests pass
+- [x] Replace `get_execution_order()` calls with `plan.nodes`
+- [x] Remove `get_execution_order()` method
+- [ ] ~~Remove `get_parallelizable_groups()` if unused~~ - Kept, used for `visualize()`
+- [x] Update ARCHITECTURE.md (already didn't mention topological sort, just explains natural ordering)
+- [x] Verify tests pass
 
 **Effort**: Small
 
@@ -181,8 +181,8 @@ _deserialize_value = deserialize_value
 ```
 
 **Tasks**:
-- [ ] Check if these aliases are used anywhere
-- [ ] Remove if unused
+- [x] Check if these aliases are used anywhere
+- [x] Remove if unused
 
 **Effort**: Trivial
 
@@ -197,9 +197,9 @@ _deserialize_value = deserialize_value
 **Recommendation**: Consolidate into `github.py` and import where needed.
 
 **Tasks**:
-- [ ] Remove duplicate from `builtin_tasks.py`
-- [ ] Import from `github.py`
-- [ ] Update any direct subprocess calls to use shared function
+- [x] Remove duplicate from `builtin_tasks.py`
+- [x] Import from `github.py`
+- [x] Update any direct subprocess calls to use shared function
 
 **Effort**: Trivial
 
@@ -260,8 +260,8 @@ recompose.gha.setup_python("3.11")  # Relies on GHAAction.__call__
 callable objects. Just needs documentation.
 
 **Tasks**:
-- [ ] Add docstring explaining the factory pattern
-- [ ] Consider adding `@overload` for better type hints
+- [x] Add docstring explaining the factory pattern
+- [ ] Consider adding `@overload` for better type hints (deferred)
 
 **Effort**: Trivial
 
@@ -281,8 +281,8 @@ The pattern follows: exceptions for programming errors, `Result` for recoverable
 This is internal framework code, not user-facing task code.
 
 **Tasks**:
-- [ ] Document this convention in ARCHITECTURE.md
-- [ ] Audit other internal functions to ensure they follow the same pattern
+- [x] Document this convention in ARCHITECTURE.md (already done)
+- [ ] Audit other internal functions to ensure they follow the same pattern (deferred)
 
 **Effort**: Trivial (just documentation)
 
@@ -313,12 +313,12 @@ This is internal framework code, not user-facing task code.
 
 ## Priority Order
 
-### Phase 1: Quick Wins (Low effort, high clarity)
-1. **#6**: Remove unnecessary topological sort - Small, simplifies code
-2. **#7**: Unused backwards compatibility aliases - Trivial cleanup
-3. **#8**: Duplicate git root finding - Trivial, removes duplication
-4. **#10**: GHAAction documentation - Trivial, improves clarity
-5. **#11**: Document error handling convention - Trivial (already done in ARCHITECTURE.md)
+### Phase 1: Quick Wins (Low effort, high clarity) ✅ DONE
+1. **#6**: Remove unnecessary topological sort - ✅ Done
+2. **#7**: Unused backwards compatibility aliases - ✅ Done
+3. **#8**: Duplicate git root finding - ✅ Done
+4. **#10**: GHAAction documentation - ✅ Done
+5. **#11**: Document error handling convention - ✅ Already in ARCHITECTURE.md
 
 ### Phase 2: Naming Clarity (Medium effort, high impact)
 6. **#1**: gha.py vs github.py naming - Clear up confusion

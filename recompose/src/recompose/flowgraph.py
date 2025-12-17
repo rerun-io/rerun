@@ -242,10 +242,14 @@ class FlowPlan:
     """
     The execution graph for a flow.
 
-    Tracks all TaskNodes created during flow construction and provides
-    utilities for:
-    - Topological sorting (valid execution order)
-    - Finding parallelizable groups
+    Tracks all TaskNodes created during flow construction. Nodes are added
+    to the plan in the order they're called during flow function execution.
+    Since Python executes sequentially and a TaskNode can only be used
+    *after* it's created, `self.nodes` is already in valid execution order
+    by construction.
+
+    Provides utilities for:
+    - Finding parallelizable groups (for visualization)
     - Visualizing the graph
     """
 
@@ -368,47 +372,6 @@ class FlowPlan:
                 node.condition_check_step = check_node.step_name
 
         return check_nodes
-
-    def get_execution_order(self) -> list[TaskNode[Any]]:
-        """
-        Return nodes in topological order (dependencies before dependents).
-
-        Uses Kahn's algorithm for topological sorting.
-        """
-        if not self.nodes:
-            return []
-
-        # Build adjacency list and in-degree count
-        in_degree: dict[str, int] = {n.node_id: 0 for n in self.nodes}
-        dependents: dict[str, list[TaskNode[Any]]] = {n.node_id: [] for n in self.nodes}
-        node_by_id: dict[str, TaskNode[Any]] = {n.node_id: n for n in self.nodes}
-
-        for node in self.nodes:
-            for dep in node.dependencies:
-                if dep.node_id in dependents:
-                    dependents[dep.node_id].append(node)
-                    in_degree[node.node_id] += 1
-
-        # Start with nodes that have no dependencies
-        queue = [node_by_id[nid] for nid, deg in in_degree.items() if deg == 0]
-        result: list[TaskNode[Any]] = []
-
-        while queue:
-            # Take first node (FIFO for deterministic order)
-            node = queue.pop(0)
-            result.append(node)
-
-            # Reduce in-degree for dependents
-            for dependent in dependents[node.node_id]:
-                in_degree[dependent.node_id] -= 1
-                if in_degree[dependent.node_id] == 0:
-                    queue.append(dependent)
-
-        # Check for cycles
-        if len(result) != len(self.nodes):
-            raise ValueError("Cycle detected in flow graph")
-
-        return result
 
     def get_parallelizable_groups(self) -> list[list[TaskNode[Any]]]:
         """

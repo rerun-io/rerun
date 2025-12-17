@@ -153,12 +153,12 @@ def _resolve_kwargs(kwargs: dict[str, Any], results: dict[str, Result[Any]]) -> 
 
 
 def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
-    """Execute a declarative flow plan in topological order."""
+    """Execute a declarative flow plan in order."""
     import time
 
     results: dict[str, Result[Any]] = {}
 
-    for node in plan.get_execution_order():
+    for node in plan.nodes:
         # Resolve any TaskNode dependencies in kwargs
         try:
             resolved_kwargs = _resolve_kwargs(node.kwargs, results)

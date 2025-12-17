@@ -397,7 +397,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             plan = flow_info.fn.plan(**kwargs)  # type: ignore[attr-defined]
             plan.assign_step_names()
 
-            step_names = [n.step_name for n in plan.get_execution_order() if n.step_name]
+            step_names = [n.step_name for n in plan.nodes if n.step_name]
 
             flow_params = FlowParams(
                 flow_name=flow_name,

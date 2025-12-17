@@ -7,12 +7,12 @@ just like any user-defined task.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
 from .gha import validate_workflow
+from .github import find_git_root
 from .result import Err, Ok, Result
 from .task import task
 
@@ -20,23 +20,9 @@ if TYPE_CHECKING:
     from .command_group import CommandGroup
 
 
-def _find_git_root() -> Path | None:
-    """Find the root of the git repository."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return Path(result.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
 def _get_default_workflows_dir() -> Path | None:
     """Get the default .github/workflows directory."""
-    git_root = _find_git_root()
+    git_root = find_git_root()
     if git_root:
         return git_root / ".github" / "workflows"
     return None
@@ -111,7 +97,7 @@ def generate_gha(
 
     # Determine script path (relative to git root or working_directory)
     # Use entry_point info to construct the correct invocation
-    git_root = _find_git_root()
+    git_root = find_git_root()
     working_dir = get_working_directory()
     entry_point = get_entry_point()
 
@@ -354,7 +340,7 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
             result["task_count"] = len(plan.nodes)
 
             execution_order = []
-            for node in plan.get_execution_order():
+            for node in plan.nodes:
                 deps = [d.name for d in node.dependencies]
                 execution_order.append({"name": node.name, "dependencies": deps})
             result["execution_order"] = execution_order

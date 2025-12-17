@@ -282,11 +282,6 @@ def deserialize_value(value: Any) -> Any:
     return value
 
 
-# Keep old names for backwards compatibility
-_serialize_value = serialize_value
-_deserialize_value = deserialize_value
-
-
 @dataclass
 class FlowParams:
     """Flow parameters and metadata stored in _params.json."""
