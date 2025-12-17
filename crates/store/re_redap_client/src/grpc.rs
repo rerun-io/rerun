@@ -462,7 +462,15 @@ async fn stream_segment_from_server(
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: None,
+            query: fragment.time_selection.map(|time_range| {
+                // Only load the chunks the user linked to.
+                // TODO(RR-3110): start loading this sections, but allow loading everything else too
+                re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
+                    time_range.timeline.name(),
+                    time_range.range,
+                )
+                .into()
+            }),
         })
         .await?;
 
