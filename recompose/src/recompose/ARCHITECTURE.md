@@ -23,7 +23,7 @@ src/recompose/
 ├── result.py             # Result[T], Ok(), Err() - task return types
 │
 ├── # Flow Graph Machinery
-├── flowgraph.py          # FlowPlan, TaskNode, Input, InputPlaceholder
+├── plan.py               # FlowPlan, TaskNode, Input, InputPlaceholder
 ├── expr.py               # Expression AST for conditional logic (Expr, BinaryExpr, etc.)
 ├── conditional.py        # run_if() context manager for conditional execution
 │
@@ -42,7 +42,7 @@ src/recompose/
 │
 ├── # GitHub Actions
 ├── gha.py                # Workflow YAML generation (WorkflowSpec, StepSpec, etc.)
-├── github.py             # gh CLI wrapper (trigger workflows, check status)
+├── gh_cli.py             # gh CLI wrapper (trigger workflows, check status)
 ```
 
 ## Core Concepts
@@ -59,7 +59,7 @@ Key types:
 - `TaskInfo`: Metadata about a task (name, signature, docstring, etc.)
 - `TaskWrapper[P, T]`: Protocol for decorated task functions
 
-### 2. Flows (`flow.py`, `flowgraph.py`)
+### 2. Flows (`flow.py`, `plan.py`)
 
 A **flow** is a composition of tasks decorated with `@flow`. Flows:
 - Build a task dependency graph at definition time
@@ -149,7 +149,7 @@ Generates GitHub Actions workflow YAML:
 - `render_flow_workflow()`: Convert flow to workflow spec
 - `render_automation_workflow()`: Convert automation to workflow spec
 
-### 10. GitHub CLI (`github.py`)
+### 10. GitHub CLI (`gh_cli.py`)
 
 Wrapper around `gh` CLI for:
 - Triggering `workflow_dispatch` events

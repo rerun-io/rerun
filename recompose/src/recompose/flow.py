@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
 from .context import Context, get_context, set_context
-from .flowgraph import FlowPlan, TaskNode
+from .plan import FlowPlan, TaskNode
 from .result import Err, Ok, Result
 
 P = ParamSpec("P")
@@ -346,7 +346,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         console = Console()
 
         # Build the plan with InputPlaceholders to preserve condition expressions
-        from .flowgraph import InputPlaceholder
+        from .plan import InputPlaceholder
 
         flow_sig = inspect.signature(fn)
         plan_kwargs: dict[str, Any] = {}

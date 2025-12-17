@@ -19,7 +19,7 @@ Basic usage:
     recompose.main()
 """
 
-from . import gha, github
+from . import gh_cli, gha
 from .automation import (
     AutomationInfo,
     AutomationPlan,
@@ -55,7 +55,7 @@ from .flow import (
     get_current_plan,
     get_flow_context,
 )
-from .flowgraph import FlowPlan, Input, InputPlaceholder, TaskNode
+from .plan import FlowPlan, Input, InputPlaceholder, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, TaskWrapper, task, taskclass
@@ -128,7 +128,7 @@ __all__ = [
     # GHA generation
     "gha",
     # GitHub CLI integration
-    "github",
+    "gh_cli",
     # Automations
     "automation",
     "AutomationInfo",

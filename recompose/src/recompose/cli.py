@@ -561,19 +561,19 @@ def _handle_flow_status(flow_name: str) -> None:
     """Show recent GitHub Actions runs for a flow."""
     import sys
 
-    from . import github
+    from . import gh_cli
 
     # Check gh CLI availability upfront
-    if not github.is_gh_installed():
-        console.print(f"\n[red]Error:[/red] {github.GH_NOT_FOUND_ERROR}")
+    if not gh_cli.is_gh_installed():
+        console.print(f"\n[red]Error:[/red] {gh_cli.GH_NOT_FOUND_ERROR}")
         sys.exit(1)
 
-    workflow_name = github.flow_to_workflow_name(flow_name)
+    workflow_name = gh_cli.flow_to_workflow_name(flow_name)
 
     console.print(f"\n[bold]Recent runs for [cyan]{flow_name}[/cyan][/bold]")
     console.print(f"[dim]Workflow: {workflow_name}[/dim]\n")
 
-    result = github.list_workflow_runs(workflow_name=workflow_name, limit=10)
+    result = gh_cli.list_workflow_runs(workflow_name=workflow_name, limit=10)
 
     if result.failed:
         console.print(f"[red]Error:[/red] {result.error}")
@@ -631,14 +631,14 @@ def _handle_flow_remote(
     """Trigger a workflow on GitHub Actions."""
     import sys
 
-    from . import github
+    from . import gh_cli
 
     # Check gh CLI availability upfront
-    if not github.is_gh_installed():
-        console.print(f"\n[red]Error:[/red] {github.GH_NOT_FOUND_ERROR}")
+    if not gh_cli.is_gh_installed():
+        console.print(f"\n[red]Error:[/red] {gh_cli.GH_NOT_FOUND_ERROR}")
         sys.exit(1)
 
-    workflow_name = github.flow_to_workflow_name(flow_name)
+    workflow_name = gh_cli.flow_to_workflow_name(flow_name)
     workflow_path = f".github/workflows/{workflow_name}"
 
     console.print(f"\n[bold]Triggering [cyan]{flow_name}[/cyan] on GitHub Actions[/bold]")
@@ -646,7 +646,7 @@ def _handle_flow_remote(
 
     # Determine the ref to use
     if ref is None:
-        branch_result = github.get_current_branch()
+        branch_result = gh_cli.get_current_branch()
         if branch_result.failed:
             console.print(f"[red]Error:[/red] Could not determine current branch: {branch_result.error}")
             sys.exit(1)
@@ -658,14 +658,14 @@ def _handle_flow_remote(
     if not force:
         console.print("[dim]Validating workflow sync...[/dim]")
 
-        git_root = github.find_git_root()
+        git_root = gh_cli.find_git_root()
         if git_root is None:
             console.print("[red]Error:[/red] Not in a git repository")
             sys.exit(1)
 
         local_path = git_root / workflow_path
 
-        sync_result = github.validate_workflow_sync(local_path, workflow_path)
+        sync_result = gh_cli.validate_workflow_sync(local_path, workflow_path)
         if sync_result.failed:
             console.print(f"\n[red]Error:[/red] {sync_result.error}")
             console.print("\n[dim]Use --force to skip validation, or commit and push your workflow changes.[/dim]")
@@ -684,7 +684,7 @@ def _handle_flow_remote(
 
     # Trigger the workflow
     console.print()
-    trigger_result = github.trigger_workflow(workflow_name, ref=ref, inputs=inputs)
+    trigger_result = gh_cli.trigger_workflow(workflow_name, ref=ref, inputs=inputs)
 
     if trigger_result.failed:
         console.print(f"[red]Error:[/red] {trigger_result.error}")

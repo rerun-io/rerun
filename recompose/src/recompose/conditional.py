@@ -25,7 +25,7 @@ from .expr import Expr, LiteralExpr, deserialize_expr
 from .result import Ok, Result
 
 if TYPE_CHECKING:
-    from .flowgraph import InputPlaceholder
+    from .plan import InputPlaceholder
 
 
 @dataclass

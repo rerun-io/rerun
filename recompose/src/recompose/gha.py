@@ -25,7 +25,7 @@ from .result import Ok, Result
 from .task import TaskInfo
 
 if TYPE_CHECKING:
-    from .flowgraph import TaskNode
+    from .plan import TaskNode
 
 
 # =============================================================================
@@ -116,7 +116,7 @@ class GHAAction:
 
         """
         from .flow import get_current_plan
-        from .flowgraph import TaskNode
+        from .plan import TaskNode
 
         plan = get_current_plan()
 
@@ -602,7 +602,7 @@ def render_flow_workflow(
     # Build the plan to get step names
     # For parameters without defaults, we create InputPlaceholders that allow
     # the flow function body to execute and build the task graph
-    from .flowgraph import InputPlaceholder
+    from .plan import InputPlaceholder
 
     plan_kwargs: dict[str, Any] = {}
     for param_name, param in flow_info.signature.parameters.items():

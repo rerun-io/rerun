@@ -320,9 +320,9 @@ This is internal framework code, not user-facing task code.
 4. **#10**: GHAAction documentation - ✅ Done
 5. **#11**: Document error handling convention - ✅ Already in ARCHITECTURE.md
 
-### Phase 2: Naming Clarity (Medium effort, high impact)
-6. **#1**: gha.py vs github.py naming - Clear up confusion
-7. **#2**: flow.py vs flowgraph.py naming - Clear up confusion
+### Phase 2: Naming Clarity (Medium effort, high impact) ✅ DONE
+6. **#1**: gha.py vs github.py naming - ✅ Done: kept gha.py, renamed github.py → gh_cli.py
+7. **#2**: flow.py vs flowgraph.py naming - ✅ Done: renamed flowgraph.py → plan.py
 
 ### Phase 3: Code Organization (Medium-Large effort)
 8. **#3**: Consolidate duplicate wrapper code - Reduces duplication
