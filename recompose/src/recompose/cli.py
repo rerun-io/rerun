@@ -563,6 +563,11 @@ def _handle_flow_status(flow_name: str) -> None:
 
     from . import github
 
+    # Check gh CLI availability upfront
+    if not github.is_gh_installed():
+        console.print(f"\n[red]Error:[/red] {github.GH_NOT_FOUND_ERROR}")
+        sys.exit(1)
+
     workflow_name = github.flow_to_workflow_name(flow_name)
 
     console.print(f"\n[bold]Recent runs for [cyan]{flow_name}[/cyan][/bold]")
@@ -627,6 +632,11 @@ def _handle_flow_remote(
     import sys
 
     from . import github
+
+    # Check gh CLI availability upfront
+    if not github.is_gh_installed():
+        console.print(f"\n[red]Error:[/red] {github.GH_NOT_FOUND_ERROR}")
+        sys.exit(1)
 
     workflow_name = github.flow_to_workflow_name(flow_name)
     workflow_path = f".github/workflows/{workflow_name}"
