@@ -27,8 +27,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<uint8_t> bytes{
         std::istreambuf_iterator<char>(file),
-        std::istreambuf_iterator<char>()
-    };
+        std::istreambuf_iterator<char>()};
     // Determine media type based on file extension
     rerun::components::MediaType media_type;
     if (depth_path.extension() == ".png") {
@@ -40,11 +39,9 @@ int main(int argc, char* argv[]) {
     rec.log(
         "depth/encoded",
         rerun::archetypes::EncodedDepthImage()
-            .with_blob(
-                rerun::components::Blob(
-                    rerun::Collection<uint8_t>::take_ownership(std::move(bytes))
-                )
-            )
+            .with_blob(rerun::components::Blob(
+                rerun::Collection<uint8_t>::take_ownership(std::move(bytes))
+            ))
             .with_media_type(media_type)
             .with_meter(0.001f)
     );
