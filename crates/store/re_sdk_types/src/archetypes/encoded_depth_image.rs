@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### `encoded_depth_image`:
+/// ### Encoded Depth Image
 /// ```ignore
 /// use rerun::external::anyhow;
 ///
@@ -55,6 +55,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png">
+///   <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct EncodedDepthImage {
     /// The encoded depth payload.
