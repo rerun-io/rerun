@@ -63,7 +63,7 @@ Key types:
 
 A **flow** is a composition of tasks decorated with `@flow`. Flows:
 - Build a task dependency graph at definition time
-- Execute tasks in topological order
+- Execute tasks in linear order (valid by construction)
 - Support subprocess isolation (each task runs as separate process)
 - Generate GitHub Actions workflows
 
@@ -166,11 +166,14 @@ User calls task() → task wrapper executes function → returns Result[T]
 ### Local Execution (Flow)
 ```
 User calls flow() →
-  1. Build FlowPlan (task calls return TaskNode)
-  2. Topological sort
-  3. Execute each task, resolve dependencies
+  1. Build FlowPlan (task calls return TaskNode, added in execution order)
+  2. Execute each task in order, resolve dependencies from previous results
   → returns Result[None]
 ```
+
+Note: Nodes are added to the plan in valid execution order by construction - a task
+can only use another task's result after that task has been called, so no explicit
+topological sort is needed.
 
 ### Subprocess Isolation (run_isolated)
 ```
