@@ -133,9 +133,12 @@ fn settings_screen_ui_impl(
     ui.strong("Video");
     video_section_ui(ui, video);
 
-    separator_with_some_space(ui);
-    ui.strong("Experimental");
-    experimental_section_ui(ui, experimental);
+    // Currently larger-than-RAM is so broken that we don't want to even allow users to try it out
+    if cfg!(debug_assertions) {
+        separator_with_some_space(ui);
+        ui.strong("Experimental");
+        experimental_section_ui(ui, experimental);
+    }
 }
 
 fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOptions) {

@@ -122,6 +122,7 @@ impl AppOptions {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct VideoOptions {
     /// Preferred method for video decoding on web.
     pub hw_acceleration: DecodeHardwareAcceleration,
@@ -144,6 +145,7 @@ pub struct VideoOptions {
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct ExperimentalAppOptions {
     /// Larger-than-RAM streaming using RRD manifest.
     ///
