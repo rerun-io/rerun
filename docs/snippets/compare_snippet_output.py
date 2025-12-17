@@ -314,7 +314,7 @@ def build_python_sdk(build_env: dict[str, str]) -> None:
     print("----------------------------------------------------------")
     print("Building rerun-sdk for Python…")
     start_time = time.time()
-    run(["pixi", "run", "py-build"], env=build_env, timeout=12000)
+    run(["pixi", "run", "py-build-common"], env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
     print()
