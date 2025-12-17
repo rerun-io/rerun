@@ -957,7 +957,7 @@ fn start_native_viewer(
                 app.set_examples_manifest_url(url);
             }
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         renderer,
     )
