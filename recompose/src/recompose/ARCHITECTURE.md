@@ -92,6 +92,13 @@ All tasks return `Result[T]`:
 - `Err(message)`: Failure with error message
 - Pydantic-based for serialization in workspace files
 
+**Value access patterns:**
+- `result.value()` - User-facing API for use inside tasks/flows. Raises `RuntimeError`
+  if the result is a failure. This is the "fail fast" behavior users expect.
+- `result._value` - Internal/framework access for inspection without triggering failure
+  semantics (e.g., displaying output, serialization, conditional "is there a value?" checks).
+  Framework code uses this when it needs to handle both success and failure cases gracefully.
+
 ### 5. Context (`context.py`)
 
 The ambient context provides:

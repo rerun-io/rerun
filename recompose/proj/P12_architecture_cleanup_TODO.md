@@ -143,34 +143,7 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 
 ---
 
-## 6. Inconsistent Result Type Access
-
-**Problem**: Throughout the codebase, `result._value` is accessed directly instead of `result.value()`.
-
-**Examples**:
-- `cli.py:183`: `if result._value is not None:`
-- `cli.py:184`: `console.print(f"[dim]→[/dim] {result._value}")`
-- `cli.py:520-522`: Same pattern
-- `workspace.py:372`: `serialize_value(result._value)`
-
-**Recommendation**: Always use `result.value()` for successful results, or add a
-`result.value_or_none()` method if the current pattern is intentional.
-
-**Analysis**: Looking at the usage, the pattern is checking if there's a displayable value
-even when None is a valid success value. This suggests we need:
-- `result.has_value` property (True if `_value` is not None)
-- Or continue using `_value` but document it as acceptable for display code
-
-**Tasks**:
-- [ ] Decide on pattern (add helper method or document current approach)
-- [ ] Implement if adding helper
-- [ ] Update code if standardizing
-
-**Effort**: Small
-
----
-
-## 7. Unused/Vestigial Code in `workspace.py`
+## 6. Unused/Vestigial Code in `workspace.py`
 
 **Problem**: Backwards compatibility aliases that may no longer be needed:
 ```python
@@ -187,7 +160,7 @@ _deserialize_value = deserialize_value
 
 ---
 
-## 8. Duplicate Git Root Finding
+## 7. Duplicate Git Root Finding
 
 **Problem**: `_find_git_root()` is implemented in multiple places:
 - `builtin_tasks.py:23-32`
@@ -204,7 +177,7 @@ _deserialize_value = deserialize_value
 
 ---
 
-## 9. Context Module Has Too Many Globals
+## 8. Context Module Has Too Many Globals
 
 **Problem**: `context.py` has multiple module-level globals:
 ```python
@@ -237,7 +210,7 @@ _config: RecomposeConfig | None = None
 
 ---
 
-## 10. `gha.py` Virtual Task Factories
+## 9. `gha.py` Virtual Task Factories
 
 **Problem**: `setup_python()`, `setup_uv()`, etc. return `GHAAction` objects but are called
 like they're tasks. The return type is inconsistent with their usage.
@@ -266,7 +239,7 @@ callable objects. Just needs documentation.
 
 ---
 
-## 11. Inconsistent Error Handling Patterns
+## 10. Inconsistent Error Handling Patterns
 
 **Problem**: Some functions return `Result[T]` while others raise exceptions:
 - `workspace.py:read_params()` raises `FileNotFoundError`
@@ -284,7 +257,7 @@ programming errors. Document the convention.
 
 ---
 
-## 12. Test Coverage Gaps
+## 11. Test Coverage Gaps
 
 **Current test files**:
 - `test_task.py`, `test_flow.py`, `test_automation.py` - Core functionality
@@ -310,24 +283,23 @@ programming errors. Document the convention.
 ## Priority Order
 
 ### Phase 1: Quick Wins (Low effort, high clarity)
-1. **#8**: Duplicate git root finding - Trivial, removes duplication
-2. **#7**: Unused backwards compatibility aliases - Trivial cleanup
-3. **#6**: Result type access - Small, improves consistency
-4. **#10**: GHAAction documentation - Trivial, improves clarity
+1. **#6**: Unused backwards compatibility aliases - Trivial cleanup
+2. **#7**: Duplicate git root finding - Trivial, removes duplication
+3. **#9**: GHAAction documentation - Trivial, improves clarity
 
 ### Phase 2: Naming Clarity (Medium effort, high impact)
-5. **#1**: gha.py vs github.py naming - Clear up confusion
-6. **#2**: flow.py vs flowgraph.py naming - Clear up confusion
+4. **#1**: gha.py vs github.py naming - Clear up confusion
+5. **#2**: flow.py vs flowgraph.py naming - Clear up confusion
 
 ### Phase 3: Code Organization (Medium-Large effort)
-7. **#3**: Consolidate duplicate wrapper code - Reduces duplication
-8. **#4**: Split flow.py - Clearer responsibilities
-9. **#5**: Split cli.py - Clearer responsibilities
+6. **#3**: Consolidate duplicate wrapper code - Reduces duplication
+7. **#4**: Split flow.py - Clearer responsibilities
+8. **#5**: Split cli.py - Clearer responsibilities
 
 ### Phase 4: Polish
-10. **#9**: Context globals consolidation - Nice to have
-11. **#11**: Error handling standardization - Nice to have
-12. **#12**: Test coverage - Ongoing
+9. **#8**: Context globals consolidation - Nice to have
+10. **#10**: Error handling standardization - Nice to have
+11. **#11**: Test coverage - Ongoing
 
 ---
 
