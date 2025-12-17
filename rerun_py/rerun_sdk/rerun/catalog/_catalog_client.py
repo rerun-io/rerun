@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from typing_extensions import deprecated
 
@@ -87,7 +87,7 @@ class CatalogClient:
         self._internal = CatalogClientInternal(address, token)
 
     @classmethod
-    def _from_internal(cls, internal: CatalogClientInternal) -> Self:
+    def _from_internal(cls, internal: CatalogClientInternal) -> CatalogClient:
         """
         Wrap an existing internal client object.
 

@@ -215,8 +215,13 @@ impl ViewClass for SpatialView2D {
                     recommended_views.push(RecommendedView::new_subtree(recommended_root));
                 }
 
-                for recommended_view in &mut recommended_views {
-                    recommended_view.exclude_entities(&excluded_entities);
+                // Since we don't track the transform frames created by explicit
+                // coordinate frames, we can't make assumptions about the tree if
+                // there are any explicit coordinate frames.
+                if !topo.has_explicit_coordinate_frame() {
+                    for recommended_view in &mut recommended_views {
+                        recommended_view.exclude_entities(&excluded_entities);
+                    }
                 }
 
                 recommended_views
@@ -293,7 +298,8 @@ impl NonNestedImageCounts {
             + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
             + dims.image_types.contains(ImageTypes::VIDEO_ASSET) as usize
             + dims.image_types.contains(ImageTypes::VIDEO_STREAM) as usize;
-        self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+        self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize
+            + dims.image_types.contains(ImageTypes::ENCODED_DEPTH_IMAGE) as usize;
         self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
     }
 }

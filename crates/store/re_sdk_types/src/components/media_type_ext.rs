@@ -1,4 +1,5 @@
 use super::MediaType;
+use re_rvl::RosRvlMetadata;
 
 // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
 // constants directly in there.
@@ -45,6 +46,15 @@ impl MediaType {
     /// Either binary or ASCII.
     /// <https://www.iana.org/assignments/media-types/model/stl>
     pub const STL: &'static str = "model/stl";
+
+    // -------------------------------------------------------
+    // Compressed Depth Data:
+
+    /// RVL compressed depth: `application/rvl`.
+    ///
+    /// Run length encoding and Variable Length encoding schemes (RVL) compressed depth data format.
+    /// <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>: `application/rvl`.
+    pub const RVL: &'static str = "application/rvl";
 
     // -------------------------------------------------------
     // Videos:
@@ -111,6 +121,15 @@ impl MediaType {
     }
 
     // -------------------------------------------------------
+    // Compressed Depth Data:
+
+    /// `application/rvl`
+    #[inline]
+    pub fn rvl() -> Self {
+        Self(Self::RVL.into())
+    }
+
+    // -------------------------------------------------------
     // Video:
 
     /// `video/mp4`
@@ -169,9 +188,32 @@ impl MediaType {
                 && buf[1] == b'o'
                 && buf[2] == b'l'
                 && buf[3] == b'i'
-                && buf[3] == b'd'
+                && buf[4] == b'd'
             // Binary STL is hard to infer since it starts with an 80 byte header that is commonly ignored, see
             // https://en.wikipedia.org/wiki/STL_(file_format)#Binary
+        }
+
+        fn rvl_matcher(buf: &[u8]) -> bool {
+            const MAX_REASONABLE_DIMENSION: u32 = 65_536;
+
+            let Ok(metadata) = RosRvlMetadata::parse(buf) else {
+                return false;
+            };
+
+            let quant_a = metadata.depth_quant_a;
+            let quant_b = metadata.depth_quant_b;
+
+            if !quant_a.is_finite() || !quant_b.is_finite() {
+                return false;
+            }
+
+            // Reject unreasonable values to reduce false positives.
+            if !(0.0..=1e4).contains(&quant_a) || quant_b.abs() > 1e4 {
+                return false;
+            }
+
+            metadata.width <= MAX_REASONABLE_DIMENSION
+                && metadata.height <= MAX_REASONABLE_DIMENSION
         }
 
         // NOTE:
@@ -183,6 +225,7 @@ impl MediaType {
         let mut inferer = infer::Infer::new();
         inferer.add(Self::GLB, "glb", glb_matcher);
         inferer.add(Self::STL, "stl", stl_matcher);
+        inferer.add(Self::RVL, "rvl", rvl_matcher);
 
         inferer
             .get(data)
@@ -212,6 +255,7 @@ impl MediaType {
             // Special-case some where there are multiple extensions:
             Self::JPEG => Some("jpg"),
             Self::MARKDOWN => Some("md"),
+            Self::RVL => Some("rvl"),
             Self::STL => Some("stl"),
             Self::TEXT => Some("txt"),
 
@@ -260,5 +304,46 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::markdown().file_extension(), Some("md"));
     assert_eq!(MediaType::plain_text().file_extension(), Some("txt"));
     assert_eq!(MediaType::png().file_extension(), Some("png"));
+    assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
+}
+
+#[test]
+fn test_guess_from_data_rvl() {
+    assert_eq!(MediaType::guess_from_data(&[]), None);
+
+    let valid_rvl = build_rvl_header(640, 480, 1.0, 0.0);
+    assert_eq!(
+        MediaType::guess_from_data(&valid_rvl),
+        Some(MediaType::rvl())
+    );
+
+    let mut invalid_quant = valid_rvl.clone();
+    invalid_quant[4..8].copy_from_slice(&f32::NAN.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&invalid_quant), None);
+
+    let mut invalid_quant_magnitude = valid_rvl.clone();
+    invalid_quant_magnitude[8..12].copy_from_slice(&(20_000.0f32).to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&invalid_quant_magnitude), None);
+
+    let mut zero_width = valid_rvl.clone();
+    zero_width[12..16].copy_from_slice(&0u32.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&zero_width), None);
+
+    let mut huge_height = valid_rvl.clone();
+    huge_height[16..20].copy_from_slice(&(100_000u32).to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&huge_height), None);
+
+    assert_eq!(MediaType::guess_from_data(b"Hello, World!"), None);
+}
+
+#[cfg(test)]
+fn build_rvl_header(width: u32, height: u32, depth_quant_a: f32, depth_quant_b: f32) -> Vec<u8> {
+    // 12 bytes config header + 8 bytes resolution + a few payload bytes.
+    let mut data = vec![0u8; 24];
+    data[4..8].copy_from_slice(&depth_quant_a.to_le_bytes());
+    data[8..12].copy_from_slice(&depth_quant_b.to_le_bytes());
+    data[12..16].copy_from_slice(&width.to_le_bytes());
+    data[16..20].copy_from_slice(&height.to_le_bytes());
+    data
 }

@@ -125,8 +125,9 @@ struct ManifestState {
 impl FooterState {
     fn append(
         &mut self,
-        byte_span_excluding_header: re_span::Span<u64>,
         msg: &re_log_types::LogMsg,
+        byte_span_excluding_header: re_span::Span<u64>,
+        byte_size_uncompressed: u64,
     ) -> Result<(), EncodeError> {
         match msg {
             LogMsg::SetStoreInfo(msg) => {
@@ -162,7 +163,11 @@ impl FooterState {
                 } = self.manifests.entry(recording_id.clone()).or_default();
 
                 recording_ids.push(recording_id);
-                manifest.append(&chunk_batch, byte_span_excluding_header)?;
+                manifest.append(
+                    &chunk_batch,
+                    byte_span_excluding_header,
+                    byte_size_uncompressed,
+                )?;
             }
 
             LogMsg::BlueprintActivationCommand(_) => {}
@@ -289,7 +294,11 @@ impl<W: std::io::Write> Encoder<W> {
         };
 
         if let Some(footer_state) = self.footer_state.as_mut() {
-            footer_state.append(byte_span_excluding_header, message)?;
+            footer_state.append(
+                message,
+                byte_span_excluding_header,
+                transport.byte_size_uncompressed(),
+            )?;
         }
 
         Ok(n)

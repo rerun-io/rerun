@@ -140,7 +140,7 @@ impl InMemoryStore {
         };
 
         let dataset = self
-            .create_dataset(&entry_name, None, StoreKind::Recording, None)
+            .create_dataset(entry_name.into(), None)
             .expect("Name cannot yet exist");
 
         for entry in std::fs::read_dir(&directory)? {
@@ -151,21 +151,17 @@ impl InMemoryStore {
                     .to_str()
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
-                if is_rrd {
-                    if let Err(err) = dataset
+                if is_rrd
+                    && let Err(err) = dataset
                         .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
                         .await
-                    {
-                        match on_error {
-                            OnError::Continue => {
-                                re_log::warn!(
-                                    "Failed loading file in {}: {err}",
-                                    directory.display()
-                                );
-                            }
-                            OnError::Abort => {
-                                return Err(err);
-                            }
+                {
+                    match on_error {
+                        OnError::Continue => {
+                            re_log::warn!("Failed loading file in {}: {err}", directory.display());
+                        }
+                        OnError::Abort => {
+                            return Err(err);
                         }
                     }
                 }
@@ -173,6 +169,9 @@ impl InMemoryStore {
         }
 
         self.update_entries_table()?;
+
+        re_log::info!("Finished loading {}", directory.display());
+
         Ok(())
     }
 
@@ -303,20 +302,52 @@ impl InMemoryStore {
         self.update_entries_table()
     }
 
+    /// Create a (regular) dataset with a matching blueprint dataset.
+    ///
+    /// The server is typically responsible for setting the dataset id, so use `Some` at your own
+    /// risk for `dataset_id`.
     pub fn create_dataset(
         &mut self,
-        name: &str,
-        id: Option<EntryId>,
+        dataset_name: String,
+        dataset_id: Option<EntryId>,
+    ) -> Result<&mut Dataset, Error> {
+        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+        let blueprint_dataset_id = EntryId::new();
+        let blueprint_dataset_name = format!("__bp_{dataset_id}");
+
+        self.create_dataset_impl(
+            blueprint_dataset_name,
+            blueprint_dataset_id,
+            StoreKind::Blueprint,
+            None,
+        )?;
+
+        let dataset_details = DatasetDetails {
+            blueprint_dataset: Some(blueprint_dataset_id),
+            default_blueprint_segment: None,
+        };
+
+        self.create_dataset_impl(
+            dataset_name,
+            dataset_id,
+            StoreKind::Recording,
+            Some(dataset_details),
+        )
+    }
+
+    /// Create a dataset of the given kind with the given details.
+    fn create_dataset_impl(
+        &mut self,
+        name: String,
+        entry_id: EntryId,
         store_kind: StoreKind,
         details: Option<DatasetDetails>,
     ) -> Result<&mut Dataset, Error> {
         re_log::debug!(name, "create_dataset");
-        let name = name.to_owned();
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
         }
 
-        let entry_id = id.unwrap_or_else(EntryId::new);
         if self.id_exists(&entry_id) {
             return Err(Error::DuplicateEntryIdError(entry_id));
         }

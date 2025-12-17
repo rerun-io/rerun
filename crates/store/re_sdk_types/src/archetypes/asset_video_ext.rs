@@ -73,11 +73,4 @@ impl AssetVideo {
         .ok_or(re_video::VideoLoadError::NoTimescale)?
         .collect())
     }
-
-    /// DEPRECATED: renamed to `read_frame_timestamps_nanos`
-    #[deprecated(since = "0.23.0", note = "Renamed to `read_frame_timestamps_nanos`")]
-    #[cfg(feature = "video")]
-    pub fn read_frame_timestamps_ns(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
-        self.read_frame_timestamps_nanos()
-    }
 }

@@ -96,7 +96,7 @@ pub struct EntityData {
 
     pub default_open: bool,
 
-    pub children: Vec<EntityData>,
+    pub children: Vec<Self>,
 }
 
 impl EntityData {

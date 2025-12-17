@@ -2,18 +2,21 @@ use std::collections::BTreeMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_sdk_types::archetypes::BarChart;
-use re_sdk_types::components;
-use re_sdk_types::datatypes;
-use re_view::DataResultQuery as _;
+use re_sdk_types::{
+    archetypes::BarChart,
+    components::{self, Length},
+    datatypes,
+};
+use re_view::{DataResultQuery as _, RangeResultsExt as _, clamped_vec_or_else};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 #[derive(Default)]
 pub struct BarChartData {
     pub abscissa: datatypes::TensorData,
+    pub widths: Vec<f32>,
     pub values: datatypes::TensorData,
     pub color: components::Color,
 }
@@ -54,15 +57,33 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             };
 
             if tensor.is_vector() {
+                let length: u64 = tensor.shape().iter().product();
+
                 let abscissa: components::TensorData =
                     results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
                 let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
+                let widths =
+                    results.iter_as(view_query.timeline, BarChart::descriptor_widths().component);
+                let widths: &[f32] = widths
+                    .slice::<f32>()
+                    .next()
+                    .map_or(&[], |((_time, _row), slice)| slice);
+
+                let widths = clamped_vec_or_else(widths, length as usize, || {
+                    typed_fallback_for::<Length>(
+                        &ctx.query_context(data_result, &view_query.latest_at_query()),
+                        BarChart::descriptor_widths().component,
+                    )
+                    .0
+                    .into()
+                });
                 self.charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
                         abscissa: abscissa.0.clone(),
                         values: tensor.0.clone(),
                         color,
+                        widths: widths.into(),
                     },
                 );
             }

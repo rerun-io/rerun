@@ -425,7 +425,7 @@ impl WebHandle {
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = state.time_control(&store_id)?;
-        Some(time_ctrl.timeline().name().as_str().to_owned())
+        Some(time_ctrl.timeline_name().as_str().to_owned())
     }
 
     /// Set the active timeline.

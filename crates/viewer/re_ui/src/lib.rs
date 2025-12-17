@@ -28,11 +28,13 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+mod button;
 #[cfg(feature = "testing")]
 pub mod testing;
 
 use egui::NumExt as _;
 
+pub use self::button::*;
 pub use self::command::{UICommand, UICommandSender};
 pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
 pub use self::context_ext::ContextExt;

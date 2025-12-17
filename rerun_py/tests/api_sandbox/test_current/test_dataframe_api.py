@@ -16,13 +16,11 @@ def test_dataframe_api_filter_segment_id(simple_dataset_prefix: Path) -> None:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
-        # Create a view with all segments
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
-            "simple_recording_0", "simple_recording_2"
-        )
+        # Create a view filtered to specific segments
+        view = ds.filter_segments(["simple_recording_0", "simple_recording_2"])
 
-        # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple segments
-        df = view.df().sort("rerun_segment_id")
+        # Get dataframe from the filtered view
+        df = view.reader(index="timeline").sort("rerun_segment_id")
 
         assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -70,23 +68,24 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
-        # Create a view with all segments
-        view = (
-            ds.dataframe_query_view(index="timeline", contents="/**")
-            .using_index_values(
-                np.array(
-                    [
-                        datetime.datetime(1999, 12, 31, 23, 59, 59),
-                        datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
-                        datetime.datetime(2000, 1, 1, 0, 0, 6),
-                    ],
-                    dtype=np.datetime64,
-                )
-            )
-            .fill_latest_at()
+        # Define the index values to query at (applied to ALL segments)
+        index_values = np.array(
+            [
+                datetime.datetime(1999, 12, 31, 23, 59, 59),
+                datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
+                datetime.datetime(2000, 1, 1, 0, 0, 6),
+            ],
+            dtype=np.datetime64,
         )
 
-        df = view.df().sort("rerun_segment_id", "timeline")
+        # Create a view with all segments and query using global index values
+        view = ds.filter_contents(["/**"])
+
+        df = view.reader(
+            index="timeline",
+            using_index_values=index_values,
+            fill_latest_at=True,
+        ).sort("rerun_segment_id", "timeline")
 
         assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

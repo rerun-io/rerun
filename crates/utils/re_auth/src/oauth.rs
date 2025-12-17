@@ -49,6 +49,18 @@ pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[error("failed to load credentials: {0}")]
+pub struct CredentialsClearError(#[from] storage::ClearError);
+
+pub fn clear_credentials() -> Result<(), CredentialsClearError> {
+    storage::clear()?;
+
+    crate::credentials::oauth::auth_update(None);
+
+    Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum CredentialsRefreshError {
     #[error("failed to refresh credentials: {0}")]
     Api(#[from] api::Error),
@@ -239,10 +251,10 @@ impl InMemoryCredentials {
         // to run `rerun analytics disable` if they wish to opt out.
         //
         // By manually forcing the creation of the analytics config we bypass the first_run check.
-        if let Ok(config) = re_analytics::Config::load_or_default() {
-            if config.is_first_run() {
-                config.save().ok();
-            }
+        if let Ok(config) = re_analytics::Config::load_or_default()
+            && config.is_first_run()
+        {
+            config.save().ok();
         }
 
         // Link the analytics ID to the authenticated user

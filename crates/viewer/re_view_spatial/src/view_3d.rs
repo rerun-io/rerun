@@ -327,13 +327,7 @@ impl ViewClass for SpatialView3D {
 
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
             .iter()
-            .filter_map(|(visualizer, ents)| {
-                if ents.contains(entity_path) {
-                    Some(visualizer)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(visualizer, ents)| ents.contains_key(entity_path).then_some(visualizer))
             .collect();
 
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
@@ -466,7 +460,12 @@ impl ViewClass for SpatialView3D {
 
                         Some(origins.into_iter().map(RecommendedView::new_subtree).map(
                             |mut subtree| {
-                                subtree.exclude_entities(&excluded_entities);
+                                // Since we don't track the transform frames created by explicit
+                                // coordinate frames, we can't make assumptions about the tree if
+                                // there are any explicit coordinate frames.
+                                if !topo.has_explicit_coordinate_frame() {
+                                    subtree.exclude_entities(&excluded_entities);
+                                }
 
                                 subtree
                             },

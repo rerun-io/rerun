@@ -52,6 +52,7 @@ pub fn generate_reflection(
             Loggable as _,
             ComponentBatch as _,
             reflection::{
+                generate_component_identifier_reflection,
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
@@ -68,9 +69,12 @@ pub fn generate_reflection(
         pub fn generate_reflection() -> Result<Reflection, SerializationError> {
             re_tracing::profile_function!();
 
+            let archetypes = generate_archetype_reflection();
+
             Ok(Reflection {
                 components: generate_component_reflection()?,
-                archetypes: generate_archetype_reflection(),
+                component_identifiers: generate_component_identifier_reflection(&archetypes),
+                archetypes
             })
         }
 

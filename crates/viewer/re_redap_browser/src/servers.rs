@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
-use datafusion::prelude::{SessionContext, col, lit};
+use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
@@ -12,7 +12,9 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
+use re_viewer_context::{
+    AsyncRuntimeHandle, EditRedapServerModalCommand, GlobalContext, ViewerContext,
+};
 
 use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
@@ -36,7 +38,7 @@ impl Server {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let tables_session_ctx = Arc::new(SessionContext::new());
+        let tables_session_ctx = Self::session_context();
 
         let entries = Entries::new(
             connection_registry.clone(),
@@ -55,9 +57,20 @@ impl Server {
         }
     }
 
+    fn session_context() -> Arc<SessionContext> {
+        let session_ctx = SessionContext::new_with_config(
+            SessionConfig::new()
+                // In order to quickly show results when filtering a table, we disable batch coalescing.
+                // This may be slightly inefficient, but is worth it if the user sees immediate
+                // results.
+                .with_coalesce_batches(false),
+        );
+        Arc::new(session_ctx)
+    }
+
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = Arc::new(SessionContext::new());
+        self.tables_session_ctx = Self::session_context();
 
         self.entries = Entries::new(
             self.connection_registry.clone(),
@@ -135,7 +148,13 @@ impl Server {
                                 .clicked()
                             {
                                 ctx.command_sender
-                                    .send(Command::OpenEditServerModal(self.origin.clone()))
+                                    .send(Command::OpenEditServerModal(
+                                        EditRedapServerModalCommand {
+                                            origin: self.origin.clone(),
+                                            open_on_success: None,
+                                            title: None,
+                                        },
+                                    ))
                                     .ok();
                             }
                         });
@@ -317,14 +336,23 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
+    /// Open a modal to add a new server.
     OpenAddServerModal,
 
-    OpenEditServerModal(re_uri::Origin),
+    /// Open a modal to edit an existing server.
+    OpenEditServerModal(EditRedapServerModalCommand),
 
     /// Add a server with an optional JWT token.
     ///
     /// If the token is None, this does *not* remove an existing token.
-    AddServer(re_uri::Origin, Option<re_redap_client::Credentials>),
+    ///
+    /// The closure can be used to run something after adding the server (useful since [`Command`]s
+    /// are not ran in order with [`re_viewer_context::SystemCommand`]s).
+    AddServer {
+        origin: re_uri::Origin,
+        credentials: Option<re_redap_client::Credentials>,
+        on_add: Option<Box<dyn FnOnce() + Send>>,
+    },
 
     /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
@@ -345,12 +373,27 @@ impl RedapServers {
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender
-            .send(Command::AddServer(origin, None))
+            .send(Command::AddServer {
+                origin,
+                credentials: None,
+                on_add: None,
+            })
             .ok();
     }
 
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
         self.servers.values()
+    }
+
+    pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
+        self.servers
+            .get(origin)
+            .and_then(|server| server.connection_registry.credentials(origin))
+            .is_some()
+    }
+
+    pub fn logout(&mut self) {
+        self.server_modal_ui.logout();
     }
 
     /// Per-frame housekeeping.
@@ -365,7 +408,11 @@ impl RedapServers {
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             self.command_sender
-                .send(Command::AddServer(origin, None))
+                .send(Command::AddServer {
+                    origin,
+                    credentials: None,
+                    on_add: None,
+                })
                 .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
@@ -395,7 +442,11 @@ impl RedapServers {
                     .open(ServerModalMode::Edit(origin), connection_registry);
             }
 
-            Command::AddServer(origin, credentials) => {
+            Command::AddServer {
+                origin,
+                credentials,
+                on_add,
+            } => {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
@@ -416,6 +467,9 @@ impl RedapServers {
                         "Tried to add pre-existing server at {:?}",
                         origin.to_string()
                     );
+                }
+                if let Some(on_add) = on_add {
+                    on_add();
                 }
             }
 
@@ -449,6 +503,12 @@ impl RedapServers {
 
     pub fn open_add_server_modal(&self) {
         self.command_sender.send(Command::OpenAddServerModal).ok();
+    }
+
+    pub fn open_edit_server_modal(&self, command: EditRedapServerModalCommand) {
+        self.command_sender
+            .send(Command::OpenEditServerModal(command))
+            .ok();
     }
 
     pub fn entry_ui(

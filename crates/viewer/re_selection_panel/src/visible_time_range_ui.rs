@@ -71,7 +71,7 @@ fn visible_time_range_ui(
         )
         .unwrap_or_default();
 
-    let timeline_name = *ctx.time_ctrl.timeline().name();
+    let timeline_name = *ctx.time_ctrl.timeline_name();
     let mut has_individual_range = visible_time_ranges
         .iter()
         .any(|range| range.timeline.as_str() == timeline_name.as_str());
@@ -159,7 +159,10 @@ fn query_range_ui(
     is_view: bool,
 ) {
     let time_ctrl = &ctx.time_ctrl;
-    let timeline = *time_ctrl.timeline();
+    let Some(&timeline) = time_ctrl.timeline() else {
+        ui.weak("No active timeline");
+        return;
+    };
     let time_type = timeline.typ();
 
     let markdown = "# Visible time range\n
@@ -190,8 +193,8 @@ Notes:
                     });
             });
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline().name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(time_ctrl.timeline_name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     TimeDragValue::from_time_range(0..=0)
                 };

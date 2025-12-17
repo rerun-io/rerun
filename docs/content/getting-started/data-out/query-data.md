@@ -79,7 +79,7 @@ A dataset is a collection of recordings that can be queried against.
 If we have already created a dataset, we can retrieve it via:
 
 ```python
-dataset = client.get_dataset_entry(name="oss_demo")
+dataset = client.get_dataset(name="oss_demo")
 ```
 
 Otherwise we can create a new dataset:
@@ -93,7 +93,7 @@ dataset = client.create_dataset(
 We can list all of the existing datasets with:
 
 ```python
-client.all_entries()
+client.datasets()
 ```
 
 In order to add additional recordings to a dataset we use the `register` API.
@@ -101,38 +101,33 @@ In order to add additional recordings to a dataset we use the `register` API.
 ```python
 # For OSS server you must register files local to your machine
 # To synchronously register a single recording
-dataset.register(Path("oss_demo.rrd").resolve().as_uri())
+dataset.register(Path("oss_demo.rrd").resolve().as_uri()).wait()
 # To asynchronously register many recordings
-timeout_seconds = 100
-tasks = dataset.register_batch([Path("oss_demo.rrd").resolve().as_uri()])
-tasks.wait(100)
+handle = dataset.register([Path("oss_demo.rrd").resolve().as_uri()])
+handle.wait(timeout_secs=100)
 ```
 
 ### Inspecting datasets
 
 Ultimately, we will end up rendering the data as a [DataFusion DataFrame](https://datafusion.apache.org/python/user-guide/dataframe/index.html).
-However, there is an intermediate step that allows for some optimization.
-This generates a `DataFrameQueryView`. <!-- TODO(nick) add link to doc -->
-The `DataFrameQueryView` allows selection of the subset of interest for the dataset (index column, and content columns), filtering to specific time ranges, and managing the sparsity of the data (`fill_latest_at`).
-All of these operations occur on the server prior to evaluating future queries, so avoid unnecessary computation.
+You can use `filter_segments()` and `filter_contents()` to create a `DatasetView` that selects a subset of the dataset, then call `reader(index=...)` to get a DataFrame. <!-- NOLINT -->
+These filtering operations occur on the server prior to evaluating future queries, avoiding unnecessary computation.
 
 ```python
+from datafusion import col
+
+# Create a view filtering to specific segments and content
 view = (
     dataset
-        .dataframe_query_view(index="log_time", contents="/**")
-        # Select only a single or subset of recordings
-        .filter_partition_id(record_of_interest)
-        # Select subset of time range
-        .filter_range_nanos(start=start_of_interest, end=end_of_interest)
-        # Forward fill for time alignment
-        .fill_latest_at()
+        .filter_segments(segments_of_interest)
+        .filter_contents(["/camera/**", "/lidar/**"])
 )
-```
 
-After we have identified what data we want, we can get a DataFrame.
+# Get a DataFrame with an index and optional latest-at fill
+df = view.reader(index="log_time", fill_latest_at=True)
 
-```python
-df = view.df()
+# Row-level filtering is done on the DataFrame using DataFusion
+df = df.filter(col("log_time") >= start_of_interest)
 ```
 
 [DataFusion](https://datafusion.apache.org/python/) provides a pythonic dataframe interface to your data as well as [SQL](https://datafusion.apache.org/python/user-guide/sql.html).

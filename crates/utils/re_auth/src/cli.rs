@@ -3,6 +3,7 @@ use std::time::Duration;
 use indicatif::ProgressBar;
 
 pub use crate::callback_server::Error;
+use crate::oauth::api::{GenerateToken, send_async};
 use crate::oauth::login_flow::OauthLoginFlowState;
 use crate::{OauthLoginFlow, oauth};
 
@@ -88,6 +89,36 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
         credentials.user().email
     );
     println!("Rerun will automatically use the credentials stored on your machine.");
+
+    Ok(())
+}
+
+pub struct GenerateTokenOptions {
+    pub server: url::Origin,
+    pub expiration: jiff::Span,
+}
+
+pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> {
+    let credentials = match oauth::load_and_refresh_credentials().await {
+        Ok(Some(credentials)) => credentials,
+
+        Ok(None) => return Err(Error::Generic(NoCredentialsError.into())),
+
+        Err(err) => {
+            re_log::debug!("invalid credentials: {err}");
+            return Err(Error::Generic(Box::new(ExpiredCredentialsError)));
+        }
+    };
+
+    let res = send_async(GenerateToken {
+        server: options.server,
+        token: credentials.access_token().as_str(),
+        expiration: options.expiration,
+    })
+    .await
+    .map_err(|err| Error::Generic(err.into()))?;
+
+    println!("{}", res.token);
 
     Ok(())
 }

@@ -347,8 +347,10 @@ impl ViewContents {
         re_tracing::profile_function!();
 
         let mut visualizers_per_entity = IntMap::default();
-        for (visualizer, entities) in visualizable_entities_for_visualizer_systems.iter() {
-            for entity_path in entities.iter() {
+        for (visualizer, visualizable_entities) in
+            visualizable_entities_for_visualizer_systems.iter()
+        {
+            for entity_path in visualizable_entities.keys() {
                 visualizers_per_entity
                     .entry(entity_path.hash())
                     .or_insert_with(SmallVec::new)
@@ -477,7 +479,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         query_result: &mut DataQueryResult,
         handle: DataResultHandle,
         default_query_range: &QueryRange,
@@ -554,8 +556,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             == blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()
                                 .component
                         {
-                            if let Ok(visible_time_ranges) =
-                                blueprint_components::VisibleTimeRange::from_arrow(&component_data)
+                            if let Some(active_timeline) = active_timeline
+                                && let Ok(visible_time_ranges) =
+                                    blueprint_components::VisibleTimeRange::from_arrow(
+                                        &component_data,
+                                    )
                                 && let Some(time_range) = visible_time_ranges.iter().find(|range| {
                                     range.timeline.as_str() == active_timeline.name().as_str()
                                 })
@@ -616,7 +621,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
         view_state: &dyn ViewState,
@@ -656,7 +661,7 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
-    use re_viewer_context::{Caches, StoreContext, blueprint_timeline};
+    use re_viewer_context::{Caches, StoreContext, VisualizableReason, blueprint_timeline};
 
     use super::*;
 
@@ -703,8 +708,11 @@ mod tests {
             .or_insert_with(|| {
                 VisualizableEntities(
                     [
-                        EntityPath::from("parent"),
-                        EntityPath::from("parent/skipped/child1"),
+                        (EntityPath::from("parent"), VisualizableReason::Always),
+                        (
+                            EntityPath::from("parent/skipped/child1"),
+                            VisualizableReason::Always,
+                        ),
                     ]
                     .into_iter()
                     .collect(),

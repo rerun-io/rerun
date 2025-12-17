@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def test_urls(prefilled_catalog: PrefilledCatalog) -> None:
     """Tests the url property on the catalog and dataset."""
 
-    catalog = prefilled_catalog.dataset.catalog
+    catalog = prefilled_catalog.prefilled_dataset.catalog
     url = urllib.parse.urlparse(catalog.url)
     assert url.scheme in ("rerun", "rerun+http", "rerun+https")
 

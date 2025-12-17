@@ -360,14 +360,16 @@ impl SchemaTestExt for arrow::datatypes::Schema {
         let fields = fields.into_iter().map(|field| {
             if field.metadata().is_empty() {
                 format!(
-                    "{}: {}",
+                    "{}: {}{}",
                     field.name(),
+                    if field.is_nullable() { "nullable " } else { "" },
                     crate::format_data_type(field.data_type())
                 )
             } else {
                 format!(
-                    "{}: {} [\n    {}\n]",
+                    "{}: {}{} [\n    {}\n]",
                     field.name(),
+                    if field.is_nullable() { "nullable " } else { "" },
                     crate::format_data_type(field.data_type()),
                     field
                         .metadata()

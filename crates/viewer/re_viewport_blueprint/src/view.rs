@@ -384,7 +384,7 @@ impl ViewBlueprint {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
@@ -403,12 +403,14 @@ impl ViewBlueprint {
             blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         );
 
-        let time_range = ranges.ok().flatten().and_then(|ranges| {
+        let time_range = active_timeline.and_then(|active_timeline| {
             ranges
+                .ok()??
                 .iter()
                 .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
                 .map(|range| range.range.clone())
         });
+
         time_range.map_or_else(
             || {
                 let view_class = view_class_registry.get_class_or_log_error(self.class_identifier);
@@ -459,7 +461,7 @@ mod tests {
     use re_test_context::TestContext;
     use re_viewer_context::{
         IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
-        ViewClassPlaceholder, VisualizableEntities,
+        ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -494,21 +496,19 @@ mod tests {
             visualizable_entities
                 .0
                 .entry("Points3D".into())
-                .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
+                .or_insert_with(|| {
+                    VisualizableEntities(
+                        entity_paths
+                            .into_iter()
+                            .map(|ent| (ent, VisualizableReason::Always))
+                            .collect(),
+                    )
+                });
         }
 
         let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
             view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities
-                .0
-                .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        VisualizableEntities(entities.iter().cloned().collect()),
-                    )
-                })
-                .collect(),
+            per_visualizer: visualizable_entities.0.clone(),
         };
 
         // Basic blueprint - a single view that queries everything.

@@ -22,6 +22,16 @@ pub const MINUS: char = '−';
 /// <https://en.wikipedia.org/wiki/Thin_space>
 pub const THIN_SPACE: char = '\u{2009}';
 
+/// Prepare a string containing a number for parsing
+pub fn strip_whitespace_and_normalize(text: &str) -> String {
+    text.chars()
+        // Ignore whitespace (trailing, leading, and thousands separators):
+        .filter(|c| !c.is_whitespace())
+        // Replace special minus character with normal minus (hyphen):
+        .map(|c| if c == MINUS { '-' } else { c })
+        .collect()
+}
+
 // TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
 pub trait UnsignedAbs {
     /// An unsigned type which is large enough to hold the absolute value of `Self`.
@@ -462,28 +472,14 @@ fn test_format_f64_custom() {
 /// Parses a number, ignoring whitespace (e.g. thousand separators),
 /// and treating the special minus character `MINUS` (−) as a minus sign.
 pub fn parse_f64(text: &str) -> Option<f64> {
-    let text: String = text
-        .chars()
-        // Ignore whitespace (trailing, leading, and thousands separators):
-        .filter(|c| !c.is_whitespace())
-        // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == MINUS { '-' } else { c })
-        .collect();
-
+    let text = strip_whitespace_and_normalize(text);
     text.parse().ok()
 }
 
 /// Parses a number, ignoring whitespace (e.g. thousand separators),
 /// and treating the special minus character `MINUS` (−) as a minus sign.
 pub fn parse_i64(text: &str) -> Option<i64> {
-    let text: String = text
-        .chars()
-        // Ignore whitespace (trailing, leading, and thousands separators):
-        .filter(|c| !c.is_whitespace())
-        // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == MINUS { '-' } else { c })
-        .collect();
-
+    let text = strip_whitespace_and_normalize(text);
     text.parse().ok()
 }
 
@@ -619,17 +615,19 @@ fn test_format_bytes() {
 }
 
 pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
+    let bytes = strip_whitespace_and_normalize(bytes);
+
     // Note: intentionally case sensitive so that we don't parse `Mb` (Megabit) as `MB` (Megabyte).
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base10(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("kB") {
-        Some(kb.parse::<i64>().ok()? * 1_000)
+        Some((kb.parse::<f64>().ok()? * 1e3) as _)
     } else if let Some(mb) = bytes.strip_suffix("MB") {
-        Some(mb.parse::<i64>().ok()? * 1_000_000)
+        Some((mb.parse::<f64>().ok()? * 1e6) as _)
     } else if let Some(gb) = bytes.strip_suffix("GB") {
-        Some(gb.parse::<i64>().ok()? * 1_000_000_000)
+        Some((gb.parse::<f64>().ok()? * 1e9) as _)
     } else if let Some(tb) = bytes.strip_suffix("TB") {
-        Some(tb.parse::<i64>().ok()? * 1_000_000_000_000)
+        Some((tb.parse::<f64>().ok()? * 1e12) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {
@@ -662,17 +660,19 @@ fn test_parse_bytes_base10() {
 }
 
 pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
+    let bytes = strip_whitespace_and_normalize(bytes);
+
     // Note: intentionally case sensitive so that we don't parse `Mib` (Mebibit) as `MiB` (Mebibyte).
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base2(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("KiB") {
-        Some(kb.parse::<i64>().ok()? * 1024)
+        Some((kb.parse::<f64>().ok()? * 1024.0) as _)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
-        Some(mb.parse::<i64>().ok()? * 1024 * 1024)
+        Some((mb.parse::<f64>().ok()? * 1024.0 * 1024.0) as _)
     } else if let Some(gb) = bytes.strip_suffix("GiB") {
-        Some(gb.parse::<i64>().ok()? * 1024 * 1024 * 1024)
+        Some((gb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(tb) = bytes.strip_suffix("TiB") {
-        Some(tb.parse::<i64>().ok()? * 1024 * 1024 * 1024 * 1024)
+        Some((tb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {

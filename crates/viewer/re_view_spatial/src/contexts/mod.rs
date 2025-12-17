@@ -17,6 +17,8 @@ pub struct SpatialSceneEntityContext<'a> {
 
     pub highlight: &'a re_viewer_context::ViewOutlineMasks, // Not part of the context, but convenient to have here.
     pub view_class_identifier: ViewClassIdentifier,
+
+    pub output: &'a mut re_viewer_context::VisualizerExecutionOutput,
 }
 
 pub fn register_spatial_contexts(

@@ -1,9 +1,8 @@
 // TODO(andreas): Conceptually these should go to `re_data_source`.
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
-use re_types_core::ChunkIndexMessage;
-
-use re_log_types::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
+use re_log_encoding::RrdManifest;
+use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 
 /// Message from a data source.
 ///
@@ -13,7 +12,7 @@ pub enum DataSourceMessage {
     /// The index of all the chunks in a recording.
     ///
     /// Some sources may send this, others may not.
-    ChunkIndexMessage(StoreId, ChunkIndexMessage),
+    RrdManifest(StoreId, Box<RrdManifest>),
 
     /// See [`LogMsg`].
     LogMsg(LogMsg),
@@ -35,7 +34,7 @@ impl DataSourceMessage {
     /// The name of the variant, useful for error message etc
     pub fn variant_name(&self) -> &'static str {
         match self {
-            Self::ChunkIndexMessage { .. } => "ChunkIndexMessage",
+            Self::RrdManifest { .. } => "RrdManifest",
             Self::LogMsg(_) => "LogMsg",
             Self::TableMsg(_) => "TableMsg",
             Self::UiCommand(_) => "UiCommand",
@@ -47,7 +46,7 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::ChunkIndexMessage { .. } | Self::UiCommand(_) => {
+            Self::RrdManifest { .. } | Self::UiCommand(_) => {
                 // Not everything needs latency tracking
             }
         }
@@ -59,20 +58,6 @@ impl DataSourceMessage {
 /// If you're not in a ui context you can safely ignore these.
 #[derive(Clone, Debug)]
 pub enum DataSourceUiCommand {
-    /// Mark a time range as valid.
-    ///
-    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
-    /// Visually, it is outside of the normal time range and shown greyed out.
-    ///
-    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
-    AddValidTimeRange {
-        store_id: StoreId,
-
-        /// If `None`, signals that all timelines are entirely valid.
-        timeline: Option<TimelineName>,
-        time_range: AbsoluteTimeRange,
-    },
-
     /// Navigate to time/entities/anchors/etc. that are set in a `re_uri::Fragment`.
     SetUrlFragment {
         store_id: StoreId,

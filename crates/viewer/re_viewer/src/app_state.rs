@@ -32,6 +32,7 @@ use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
+use crate::ui::{CloudState, LoginState};
 use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -185,15 +186,15 @@ impl AppState {
 
         // is there an active loop selection?
         time_ctrl
-            .loop_selection()
-            .map(|q| (*time_ctrl.timeline().name(), q))
+            .time_selection()
+            .map(|q| (*time_ctrl.timeline_name(), q))
     }
 
     #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
-        startup_options: &StartupOptions,
+        startup_options: &mut StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -218,7 +219,12 @@ impl AppState {
         match self.navigation.current() {
             DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
-                settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
+                settings_screen_ui(
+                    ui,
+                    &mut self.app_options,
+                    startup_options,
+                    &mut show_settings_ui,
+                );
                 if !show_settings_ui {
                     self.navigation.replace((**prior_mode).clone());
                 }
@@ -670,7 +676,35 @@ impl AppState {
 
                             DisplayMode::RedapServer(origin) => {
                                 if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
-                                    welcome_screen.ui(ui, welcome_screen_state, &rx_log.sources());
+                                    let origin = redap_servers
+                                        .iter_servers()
+                                        .find(|s| !s.origin().is_localhost())
+                                        .map(|s| s.origin())
+                                        .cloned();
+
+                                    let email = auth_state.as_ref().map(|auth| auth.email.clone());
+                                    let origin_token = origin
+                                        .as_ref()
+                                        .map(|o| redap_servers.is_authenticated(o))
+                                        .unwrap_or(false);
+
+                                    let login_state = if origin_token || email.is_some() {
+                                        LoginState::Auth { email }
+                                    } else {
+                                        LoginState::NoAuth
+                                    };
+
+                                    let login_state = CloudState {
+                                        login: login_state,
+                                        has_server: origin,
+                                    };
+                                    welcome_screen.ui(
+                                        ui,
+                                        &ctx.global_context,
+                                        welcome_screen_state,
+                                        &rx_log.sources(),
+                                        &login_state,
+                                    );
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
@@ -933,7 +967,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            Some(entity_db.times_per_timeline()),
+            Some(entity_db.timeline_histograms()),
             play_state,
             Some(blueprint_ctx),
         );

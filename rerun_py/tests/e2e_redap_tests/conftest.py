@@ -15,14 +15,14 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import DatasetEntry, TableEntry
+    from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
 
 
@@ -264,10 +264,10 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
 
     # Create the dataset directly (not using entry_factory since it's function-scoped)
     ds = catalog_client.create_dataset(dataset_name)
-    tasks = ds.register_prefix(resource_prefix + "dataset")
+    handle = ds.register_prefix(resource_prefix + "dataset")
 
     try:
-        tasks.wait(timeout_secs=50)
+        handle.wait(timeout_secs=50)
     except Exception as exc:
         # Attempt a cleanup just in case
         ds.delete()
@@ -285,12 +285,16 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
 @dataclasses.dataclass
 class PrefilledCatalog:
     factory: EntryFactory
-    dataset: DatasetEntry
+    prefilled_dataset: DatasetEntry
 
     @property
     def client(self) -> CatalogClient:
         """Convenience property to access the underlying CatalogClient."""
         return self.factory.client
+
+    def prefilled_tables(self) -> list[TableEntry]:
+        """Returns a list of table entries that are prefilled in the catalog."""
+        return [entry for entry in self.factory._created_entries if isinstance(entry, TableEntry)]
 
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
@@ -299,8 +303,8 @@ def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> G
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
     dataset = entry_factory.create_dataset(DATASET_NAME)
-    tasks = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
-    tasks.wait(timeout_secs=50)
+    handle = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
+    handle.wait(timeout_secs=50)
 
     # Register the read-only table with different catalog/schema qualifications
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:

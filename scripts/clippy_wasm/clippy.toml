@@ -115,6 +115,7 @@ doc-valid-idents = [
   # You must also update the same list in the root `clippy.toml`!
   "..",
   "AOMedia",
+  "DataFusion",
   "GiB",
   "GitHub",
   "GLB",

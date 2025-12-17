@@ -97,7 +97,7 @@ fn top_bar_ui(
         app.navigation_buttons(ui);
     }
 
-    if !app.is_screenshotting() {
+    if !app.is_screenshotting() && !app.app_env().is_test() {
         show_warnings(frame, ui, app.app_env()); // Fixed width: put first
 
         let latency_snapshot = store_context
@@ -205,9 +205,13 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
         });
     }
 
-    if !app_env.is_test() {
+    if !app_env.is_test()
+        && let Some(wgpu) = frame.wgpu_render_state()
+        && let info = wgpu.adapter.get_info()
+        && info.device_type == wgpu::DeviceType::Cpu
+    {
         show_warning(ui, &mut has_shown_warning, |ui| {
-            show_software_rasterizer_warning(frame, ui);
+            software_rasterizer_warning_ui(ui, &info);
         });
     }
 
@@ -225,30 +229,23 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
     }
 }
 
-fn show_software_rasterizer_warning(frame: &eframe::Frame, ui: &mut egui::Ui) {
-    if let Some(wgpu) = frame.wgpu_render_state() {
-        let info = wgpu.adapter.get_info();
-        if info.device_type == wgpu::DeviceType::Cpu {
-            ui.hyperlink_to(
-                egui::RichText::new("⚠ Software rasterizer")
-                    .small()
-                    .color(ui.visuals().warn_fg_color),
-                "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
-            )
-            .on_hover_ui(|ui| {
-                ui.label("Software rasterizer detected - expect poor performance.");
-                ui.label(
-                    "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
-                );
-                ui.label("Click for troubleshooting.");
-                ui.add_space(8.0);
-                ui.label(format!(
-                    "wgpu adapter {}",
-                    re_renderer::adapter_info_summary(&info)
-                ));
-            });
-        }
-    }
+fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
+    ui.hyperlink_to(
+        egui::RichText::new("⚠ Software rasterizer")
+            .small()
+            .color(ui.visuals().warn_fg_color),
+        "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+    )
+    .on_hover_ui(|ui| {
+        ui.label("Software rasterizer detected - expect poor performance.");
+        ui.label("Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.");
+        ui.label("Click for troubleshooting.");
+        ui.add_space(8.0);
+        ui.label(format!(
+            "wgpu adapter {}",
+            re_renderer::adapter_info_summary(info)
+        ));
+    });
 }
 
 /// Show an orange dot to warn about multi-pass layout in egui.

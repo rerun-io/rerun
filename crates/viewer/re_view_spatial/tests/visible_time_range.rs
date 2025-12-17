@@ -8,6 +8,7 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::datatypes::VisibleTimeRange;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -114,6 +115,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
 
 #[test]
 fn intra_timestamp_test() {
+    let mut snapshot_results = SnapshotResults::new();
     let range_absolute = |start: i64, end: i64| VisibleTimeRange {
         timeline: "frame".into(),
         range: re_sdk_types::datatypes::TimeRange {
@@ -131,6 +133,7 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(range_absolute(42, 42)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -138,6 +141,7 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(range_absolute(43, 44)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -145,6 +149,7 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(range_absolute(42, 44)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -152,6 +157,7 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(range_absolute(43, 45)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -159,6 +165,7 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(range_absolute(46, 46)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -172,6 +179,7 @@ fn intra_timestamp_test() {
             },
         }),
         None,
+        &mut snapshot_results,
     );
 }
 
@@ -238,6 +246,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
 
 #[test]
 fn test_visible_time_range_latest_at() {
+    let mut snapshot_results = SnapshotResults::new();
     let range_absolute = |timeline: &str, start: i64, end: i64| VisibleTimeRange {
         timeline: timeline.into(),
         range: re_sdk_types::datatypes::TimeRange {
@@ -255,6 +264,7 @@ fn test_visible_time_range_latest_at() {
         visible_timerange_data,
         None,
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -268,6 +278,7 @@ fn test_visible_time_range_latest_at() {
             },
         }),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -285,6 +296,7 @@ fn test_visible_time_range_latest_at() {
             },
         }),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -292,6 +304,7 @@ fn test_visible_time_range_latest_at() {
         visible_timerange_data,
         Some(range_absolute("timestamp", 1500, 3500)),
         None,
+        &mut snapshot_results,
     );
 
     run_visible_time_range_test(
@@ -299,6 +312,7 @@ fn test_visible_time_range_latest_at() {
         visible_timerange_data,
         Some(range_absolute("timestamp", 1500, 3500)),
         Some(range_absolute("timestamp", 4500, 6500)),
+        &mut snapshot_results,
     );
 }
 
@@ -307,12 +321,18 @@ fn run_visible_time_range_test(
     add_data: impl FnOnce(&mut TestContext),
     view_time_range: Option<VisibleTimeRange>,
     green_time_range: Option<VisibleTimeRange>,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0), None);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        name,
+        egui::vec2(200.0, 200.0),
+        None,
+    ));
 }
 
 fn setup_blueprint(

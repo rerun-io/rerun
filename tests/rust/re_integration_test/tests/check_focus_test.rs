@@ -95,6 +95,7 @@ pub async fn test_check_focus() {
 
     // Hover over the box.
     harness.hover_at(pixel_of_a_box);
+    harness.run_ok();
 
     // Let the app render. This will run the picking logic which needs the GPU
     // and lets the app find the hovered box.

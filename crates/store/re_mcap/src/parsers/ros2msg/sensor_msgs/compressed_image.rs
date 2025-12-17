@@ -1,9 +1,10 @@
+use super::super::definitions::sensor_msgs;
+use anyhow::bail;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_sdk_types::archetypes::{EncodedImage, VideoStream};
-use re_sdk_types::components::VideoCodec;
+use re_sdk_types::archetypes::{EncodedDepthImage, EncodedImage, VideoStream};
+use re_sdk_types::components::{MediaType, VideoCodec};
 
 use super::super::Ros2MessageParser;
-use super::super::definitions::sensor_msgs;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
@@ -14,14 +15,14 @@ pub struct CompressedImageMessageParser {
     ///
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
-    is_h264: bool,
+    mode: ParsedPayloadKind,
 }
 
 impl Ros2MessageParser for CompressedImageMessageParser {
     fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
-            is_h264: false,
+            mode: ParsedPayloadKind::Unknown,
         }
     }
 }
@@ -40,33 +41,48 @@ impl MessageParser for CompressedImageMessageParser {
             header.stamp.as_nanos() as u64,
         ));
 
-        self.blobs.push(data.into_owned());
+        let data = data.into_owned();
 
-        if format.eq_ignore_ascii_case("h264") {
-            // If the format for this topic is h264 once, we assume it is h264 for all messages.
-            self.is_h264 = true;
+        if is_rvl(&format) {
+            self.ensure_mode(ParsedPayloadKind::DepthRvl)?;
+        } else if format.eq_ignore_ascii_case("h264") {
+            self.ensure_mode(ParsedPayloadKind::H264)?;
+        } else {
+            self.ensure_mode(ParsedPayloadKind::Encoded)?;
         }
+
+        self.blobs.push(data);
 
         Ok(())
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
         re_tracing::profile_function!();
-        let Self { blobs, is_h264 } = *self;
+        let Self { blobs, mode } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let components = if is_h264 {
-            VideoStream::update_fields()
+        let components = match mode {
+            ParsedPayloadKind::DepthRvl => {
+                let media_types = std::iter::repeat_n(MediaType::rvl(), blobs.len());
+                EncodedDepthImage::update_fields()
+                    .with_many_blob(blobs)
+                    .with_many_media_type(media_types)
+                    .columns_of_unit_batches()?
+                    .collect()
+            }
+            ParsedPayloadKind::H264 => VideoStream::update_fields()
                 .with_many_sample(blobs)
                 .columns_of_unit_batches()?
-                .collect()
-        } else {
-            EncodedImage::update_fields()
-                .with_many_blob(blobs)
-                .columns_of_unit_batches()?
-                .collect()
+                .collect(),
+
+            ParsedPayloadKind::Unknown | ParsedPayloadKind::Encoded => {
+                EncodedImage::update_fields()
+                    .with_many_blob(blobs)
+                    .columns_of_unit_batches()?
+                    .collect()
+            }
         };
 
         let chunk = Chunk::from_auto_row_ids(
@@ -76,7 +92,7 @@ impl MessageParser for CompressedImageMessageParser {
             components,
         )?;
 
-        if is_h264 {
+        if mode == ParsedPayloadKind::H264 {
             // codec should be logged once per entity, as static data.
             let codec_chunk = Chunk::builder(entity_path.clone())
                 .with_archetype(
@@ -89,5 +105,54 @@ impl MessageParser for CompressedImageMessageParser {
         } else {
             Ok(vec![chunk])
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParsedPayloadKind {
+    Unknown,
+    Encoded,
+    H264,
+    DepthRvl,
+}
+
+impl CompressedImageMessageParser {
+    fn ensure_mode(&mut self, new_mode: ParsedPayloadKind) -> anyhow::Result<()> {
+        match (self.mode, new_mode) {
+            (ParsedPayloadKind::Unknown, mode) => {
+                self.mode = mode;
+                Ok(())
+            }
+            (mode, new_mode) if mode == new_mode => Ok(()),
+            _ => bail!(
+                "Encountered mixed compressed image payloads on the same topic; this is not supported"
+            ),
+        }
+    }
+}
+
+fn is_rvl(format: &str) -> bool {
+    let Some((encoding, remainder)) = format.split_once(';') else {
+        return false;
+    };
+    let encoding = encoding.trim();
+    if encoding.is_empty() {
+        return false;
+    }
+
+    let remainder_lower = remainder.trim().to_ascii_lowercase();
+    remainder_lower.contains("compresseddepth") && remainder_lower.contains("rvl")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_depth_rvl_format() {
+        assert!(is_rvl("16UC1; compressedDepth RVL"));
+        assert!(is_rvl("32FC1; compressedDepth RVL"));
+        assert!(!is_rvl("16UC1; compressedDepth png"));
+        assert!(!is_rvl("jpeg"));
     }
 }

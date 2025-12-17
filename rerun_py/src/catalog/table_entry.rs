@@ -73,8 +73,7 @@ impl PyTableEntryInternal {
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
-    // add `ctx=None, name=None`
-    pub fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+    pub fn reader(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let client = self_.client.borrow(py);
@@ -96,7 +95,7 @@ impl PyTableEntryInternal {
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyAny>> {
-        let df = Self::df(self_)?;
+        let df = Self::reader(self_)?;
 
         py.import("pyarrow")?
             .getattr("RecordBatchReader")?

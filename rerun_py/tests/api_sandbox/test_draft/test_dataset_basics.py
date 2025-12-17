@@ -27,7 +27,7 @@ def test_dataset_basics(complex_dataset_prefix: Path) -> None:
 
         ds = client.create_dataset("basic_dataset")
 
-        ds.register_prefix(complex_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
 
         segment_df = ds.segment_table()
 
