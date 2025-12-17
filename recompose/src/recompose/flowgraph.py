@@ -373,44 +373,6 @@ class FlowPlan:
 
         return check_nodes
 
-    def get_parallelizable_groups(self) -> list[list[TaskNode[Any]]]:
-        """
-        Group nodes by levels - nodes in the same level can run in parallel.
-
-        Returns a list of groups, where each group contains nodes that have
-        no dependencies on each other and can be executed concurrently.
-        """
-        if not self.nodes:
-            return []
-
-        # Build dependency info
-        node_by_id: dict[str, TaskNode[Any]] = {n.node_id: n for n in self.nodes}
-        level: dict[str, int] = {}
-
-        def get_level(node: TaskNode[Any]) -> int:
-            if node.node_id in level:
-                return level[node.node_id]
-
-            if not node.dependencies:
-                level[node.node_id] = 0
-            else:
-                dep_levels = [get_level(d) for d in node.dependencies if d.node_id in node_by_id]
-                level[node.node_id] = (max(dep_levels) + 1) if dep_levels else 0
-
-            return level[node.node_id]
-
-        # Compute levels for all nodes
-        for node in self.nodes:
-            get_level(node)
-
-        # Group by level
-        max_level = max(level.values()) if level else 0
-        groups: list[list[TaskNode[Any]]] = [[] for _ in range(max_level + 1)]
-        for node in self.nodes:
-            groups[level[node.node_id]].append(node)
-
-        return groups
-
     def assign_step_names(self) -> None:
         """
         Assign sequential step names to all nodes based on linear order.
@@ -495,36 +457,6 @@ class FlowPlan:
             self.assign_step_names()
 
         return [(n.step_name or n.name, n) for n in self.nodes]
-
-    def visualize(self) -> str:
-        """Return an ASCII representation of the flow graph."""
-        if not self.nodes:
-            return "(empty flow)"
-
-        # Ensure step names are assigned
-        if self.nodes[0].step_name is None:
-            self.assign_step_names()
-
-        lines: list[str] = []
-        groups = self.get_parallelizable_groups()
-
-        for i, group in enumerate(groups):
-            level_str = f"Level {i}: "
-            node_strs = []
-            for node in group:
-                display_name = node.step_name or node.name
-                deps = [d.step_name or d.name for d in node.dependencies]
-                if deps:
-                    node_strs.append(f"{display_name} <- [{', '.join(deps)}]")
-                else:
-                    node_strs.append(display_name)
-            lines.append(level_str + " | ".join(node_strs))
-
-        if self.terminal:
-            terminal_name = self.terminal.step_name or self.terminal.name
-            lines.append(f"Terminal: {terminal_name}")
-
-        return "\n".join(lines)
 
 
 # =============================================================================
