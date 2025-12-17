@@ -134,7 +134,7 @@ fn generate_component_identifier_reflection(reporter: &Reporter, objects: &Objec
         #[doc = "Call only once and reuse the results."]
         fn generate_component_identifier_reflection() -> ComponentIdentifierReflectionMap {
             re_tracing::profile_function!();
-            let array = [
+            let array = vec![
                 #(#quoted_pairs,)*
             ];
             ComponentIdentifierReflectionMap::from_iter(array)
