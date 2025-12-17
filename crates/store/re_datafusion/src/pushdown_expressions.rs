@@ -298,13 +298,13 @@ fn merge_queries_and(
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut merged = left.clone();
     if !right.segment_ids.is_empty() {
-        if left.segment_ids.is_empty() {
+        if merged.segment_ids.is_empty() {
             merged.segment_ids = right.segment_ids.clone();
         } else {
             merged
                 .segment_ids
                 .retain(|id| right.segment_ids.contains(id));
-            if left.segment_ids.is_empty() {
+            if merged.segment_ids.is_empty() {
                 return exec_err!(
                     "Attempting to perform AND statement that would return no results due to segment ID mismatch"
                 );
@@ -858,10 +858,10 @@ mod tests {
             list: vec![],
             negated: false,
         });
-        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema);
 
-        // Empty list cannot be pushed down
-        assert!(result.is_none());
+        // Empty list produces zero results
+        assert!(result.is_err());
     }
 
     #[test]
