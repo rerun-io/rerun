@@ -261,7 +261,6 @@ impl VideoPlayer {
                     last_decoded_pts,
                 )
             } else {
-                dbg!("first");
                 DecoderDelayState::Behind
             };
         }
@@ -328,17 +327,16 @@ impl VideoPlayer {
         // We must enqueue samples in decode order, but show them in composition order.
         // In the presence of b-frames this order may be different!
 
-        let Some(sample) = video_description.samples[requested_sample_idx].sample() else {
-            // TODO: Better error.
+        // Find the keyframe that contains the sample.
+        let Some(requested_keyframe_idx) = video_description
+            .keyframe_indices
+            .partition_point(|sample_idx| *sample_idx <= requested_sample_idx)
+            .checked_sub(1)
+        else {
             return Err(VideoPlayerError::InsufficientSampleData(
                 InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp,
             ));
         };
-
-        // Find the keyframe that contains the sample.
-        let mut keyframe_idx = video_description
-            .decode_time_keyframe_index(sample.decode_timestamp)
-            .ok_or(InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp)?;
 
         self.handle_errors_and_reset_decoder_if_needed(video_description, requested_sample_idx)?;
 
@@ -350,24 +348,37 @@ impl VideoPlayer {
         // Furthermore, we have to take into account whether the current keyframe got expanded since we last enqueued samples.
         // This happens regularly in live video streams.
         //
-        // (potentially related to:) TODO(#7595): We don't necessarily have to enqueue full GOPs always.
-        // In particularly beyond `requested_gop_idx` this can be overkill.
+        // (potentially related to:) TODO(#7595): We don't necessarily have to enqueue full keyframe ranges always.
+
+        if self
+            .last_enqueued
+            .is_some_and(|idx| idx < video_description.keyframe_indices[requested_keyframe_idx])
+        {
+            dbg!("reset");
+            self.reset(video_description)?;
+        }
 
         if self.last_enqueued.is_none() {
             // We haven't enqueued anything so far. Enqueue the requested keyframe range.
-            self.enqueue_keyframe_range(video_description, keyframe_idx, video_buffers)?;
+            self.enqueue_keyframe_range(video_description, requested_keyframe_idx, video_buffers)?;
         }
 
+        let mut keyframe_idx = requested_keyframe_idx;
         let min_last_sample_idx =
             requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
 
+        // dbg!(video_description.keyframe_indices[keyframe_idx]);
+        // dbg!(requested_sample_idx);
+        // dbg!(self.last_enqueued);
+        // dbg!(min_last_sample_idx);
         loop {
             let last_enqueued: SampleIndex = self
                 .last_enqueued
-                .expect("We ensured that at least one GOP was enqueued.");
-
+                .expect("We ensured that at least one keyframe was enqueued.");
             // Enqueued enough samples as described above?
-            if last_enqueued >= min_last_sample_idx {
+            if requested_keyframe_idx < keyframe_idx // Stay one keyframe ahead of the current one.
+                && last_enqueued >= min_last_sample_idx
+            {
                 break;
             }
 
@@ -376,19 +387,21 @@ impl VideoPlayer {
                 break;
             }
 
+            let next_keyframe_idx = keyframe_idx + 1;
             let next_keyframe = video_description
                 .keyframe_indices
-                .get(keyframe_idx + 1)
+                .get(next_keyframe_idx)
                 .copied();
 
-            // Check if the last enqueued keyframe range is actually fully enqueued. If not, enqueue its remaining samples.
-            // This happens regularly in live video streams.
+            // Check if the last enqueued keyframe range is actually fully enqueued.
             if let Some(next_keyframe) = next_keyframe
                 && last_enqueued + 1 >= next_keyframe
             {
-                keyframe_idx += 1;
-                self.enqueue_keyframe_range(video_description, keyframe_idx, video_buffers)?;
-            } else {
+                self.enqueue_keyframe_range(video_description, next_keyframe_idx, video_buffers)?;
+                keyframe_idx = next_keyframe_idx;
+            }
+            // If not, enqueue its remaining samples. This happens regularly in live video streams.
+            else {
                 let range = (last_enqueued + 1)
                     ..next_keyframe.unwrap_or_else(|| video_description.samples.next_index());
                 self.enqueue_sample_range(video_description, &range, video_buffers)?;
@@ -555,6 +568,7 @@ impl VideoPlayer {
             let chunk = sample
                 .get(video_buffers, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
+            dbg!(sample_idx);
             self.sample_decoder.decode(chunk)?;
 
             // Update continuously, since we want to keep track of our last state in case of errors.
@@ -588,7 +602,6 @@ impl VideoPlayer {
         let Some(requested_sample) = requested_sample else {
             // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
             // We're technically not catching up, but we may as well behave as if we are.
-            dbg!("second");
             return DecoderDelayState::Behind;
         };
 
@@ -630,7 +643,7 @@ impl VideoPlayer {
                     last_decoded_frame_pts,
                     self.config.tolerated_output_delay_in_num_frames,
                 ) {
-                    dbg!("signifcantly behind");
+                    dbg!("significantly behind");
                     DecoderDelayState::Behind
                 } else {
                     DecoderDelayState::UpToDateWithinTolerance
@@ -671,10 +684,6 @@ fn is_significantly_behind(
     decoded_frame_pts: Time,
     tolerated_output_delay_in_num_frames: usize,
 ) -> bool {
-    dbg!(requested_sample.presentation_timestamp);
-    dbg!(decoded_frame_pts);
-    dbg!(video_description.samples.min_index());
-    dbg!(video_description.samples.next_index());
     let requested_pts = requested_sample.presentation_timestamp;
 
     if decoded_frame_pts == requested_pts {
@@ -683,7 +692,6 @@ fn is_significantly_behind(
     }
 
     if decoded_frame_pts > requested_pts {
-        dbg!("backwards seek");
         // We did a backwards seek and haven't decoded a single frame since then.
         return true;
     }
@@ -704,10 +712,9 @@ fn is_significantly_behind(
         let Some(current_sample) = sample else {
             // Sample doesn't exist anymore. This should only happen if the video is being GC'ed from the back.
             // We're technically not catching up, but we may as well behave as if we are.
-            dbg!("sample doesn't exist");
             return true;
         };
-        if dbg!(current_sample.presentation_timestamp) <= dbg!(decoded_frame_pts) {
+        if current_sample.presentation_timestamp <= decoded_frame_pts {
             // Decoded PTS is _supposed_ to show be exactly matched with one of the sample PTS.
             // Checking for smaller equal here, hedges against bugs in decoders that may emit PTS values
             // that don't show up in the input data.
@@ -726,8 +733,6 @@ fn is_significantly_behind(
 
         num_frames_behind += 1;
         if num_frames_behind > tolerated_output_delay_in_num_frames {
-            dbg!(tolerated_output_delay_in_num_frames);
-            dbg!("behind tolerated");
             return true;
         }
 

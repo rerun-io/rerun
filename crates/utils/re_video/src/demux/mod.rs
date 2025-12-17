@@ -820,30 +820,29 @@ impl VideoDataDescription {
 
     fn find_keyframe_index(
         &self,
-        cmp_time: impl Fn(&SampleMetadata) -> std::cmp::Ordering,
+        cmp_time: impl Fn(&SampleMetadata) -> bool,
     ) -> Option<KeyframeIndex> {
-        match self.keyframe_indices.binary_search_by(|sample_idx| {
-            if let Some(sample) = self.samples[*sample_idx].sample() {
-                cmp_time(sample)
-            } else {
-                debug_assert!(false, "[DEBUG]: keyframe indices should always be valid");
+        self.keyframe_indices
+            .partition_point(|sample_idx| {
+                if let Some(sample) = self.samples[*sample_idx].sample() {
+                    cmp_time(sample)
+                } else {
+                    debug_assert!(false, "[DEBUG]: keyframe indices should always be valid");
 
-                std::cmp::Ordering::Equal
-            }
-        }) {
-            Ok(idx) => Some(idx),
-            Err(next_idx) => next_idx.checked_sub(1),
-        }
+                    false
+                }
+            })
+            .checked_sub(1)
     }
 
-    /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
+    /// For a given decode (!) timestamp, return the index of the keyframe index containing the given timestamp.
     pub fn decode_time_keyframe_index(&self, decode_time: Time) -> Option<KeyframeIndex> {
-        self.find_keyframe_index(|t| t.decode_timestamp.cmp(&decode_time))
+        self.find_keyframe_index(|t| t.decode_timestamp <= decode_time)
     }
 
-    /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
-    pub fn presentation_time_keyframe_index(&self, decode_time: Time) -> Option<KeyframeIndex> {
-        self.find_keyframe_index(|t| t.presentation_timestamp.cmp(&decode_time))
+    /// For a given presentation timestamp, return the index of the keyframe index containing the given timestamp.
+    pub fn presentation_time_keyframe_index(&self, pts: Time) -> Option<KeyframeIndex> {
+        self.find_keyframe_index(|t| t.presentation_timestamp <= pts)
     }
 }
 

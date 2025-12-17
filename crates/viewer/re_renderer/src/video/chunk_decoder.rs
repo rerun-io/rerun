@@ -184,6 +184,8 @@ impl VideoSampleDecoder {
 
         // Keep everything at or after the given PTS.
         *frames_by_pts = frames_by_pts.split_off(&latest_at_pts);
+        dbg!(pts);
+        dbg!(frames_by_pts.keys().collect::<Vec<_>>());
     }
 
     /// Returns the latest decoded frame.
