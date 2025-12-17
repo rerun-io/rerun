@@ -89,8 +89,9 @@ def test_flow_fail_fast():
 
 def test_flow_cli_invocation():
     """Test that flows can be invoked via CLI."""
+    # Use kebab-case command name
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "simple_flow"],
+        [sys.executable, str(TEST_APP), "simple-flow"],
         capture_output=True,
         text=True,
     )
@@ -99,8 +100,9 @@ def test_flow_cli_invocation():
 
 def test_flow_cli_with_args():
     """Test CLI invocation with arguments."""
+    # Use kebab-case command name
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "arg_flow", "--initial", "42"],
+        [sys.executable, str(TEST_APP), "arg-flow", "--initial", "42"],
         capture_output=True,
         text=True,
     )
@@ -109,8 +111,9 @@ def test_flow_cli_with_args():
 
 def test_flow_cli_failure():
     """Test that CLI exits with error on flow failure."""
+    # Use kebab-case command name
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "fail_fast_flow"],
+        [sys.executable, str(TEST_APP), "fail-fast-flow"],
         capture_output=True,
         text=True,
     )

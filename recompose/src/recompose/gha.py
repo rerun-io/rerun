@@ -469,19 +469,19 @@ def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, pyt
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
 
-    # Build the run command with all input parameters
+    # Build the run command using _setup internal command
     # Note: workspace is set via RECOMPOSE_WORKSPACE env var at job level
     cmd_parts = [
         python_cmd,
         script_path,
+        "_setup",
+        "--flow",
         flow_info.name,
-        "--setup",
     ]
 
-    # Add each parameter from workflow_dispatch inputs
+    # Add each parameter as key=value pairs
     for inp in inputs:
-        cmd_parts.append(f"--{inp.name}")
-        cmd_parts.append(f"${{{{ inputs.{inp.name} }}}}")
+        cmd_parts.append(f"{inp.name}=${{{{ inputs.{inp.name} }}}}")
 
     return StepSpec(
         name=step_name,
@@ -505,7 +505,7 @@ def _build_task_step(
 
     return StepSpec(
         name=step_name,
-        run=f"{python_cmd} {script_path} {flow_name} --step {step_name}",
+        run=f"{python_cmd} {script_path} _run-step --flow {flow_name} --step {step_name}",
         if_condition=if_condition,
     )
 
@@ -536,7 +536,7 @@ def _build_condition_check_step(
     return StepSpec(
         name=step_name,
         id=step_name,  # Need ID for referencing in if: conditions
-        run=f"{python_cmd} {script_path} {flow_name} --step {step_name}",
+        run=f"{python_cmd} {script_path} _run-step --flow {flow_name} --step {step_name}",
         comment=f"[if: {condition_expr_str}]",
     )
 

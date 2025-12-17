@@ -16,7 +16,8 @@ def test_build_command_basic():
     info = simple_task._task_info
     cmd = _build_command(info)
 
-    assert cmd.name == "simple_task"
+    # Command name should be kebab-case
+    assert cmd.name == "simple-task"
     assert "A simple task." in cmd.help
 
 
@@ -50,7 +51,8 @@ def test_cli_help():
 
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "help_test_task" in result.output
+    # Command name should be kebab-case in help
+    assert "help-test-task" in result.output
 
 
 def test_cli_task_help():
@@ -67,7 +69,8 @@ def test_cli_task_help():
 
     cli.add_command(_build_command(task_help_test._task_info))
 
-    result = runner.invoke(cli, ["task_help_test", "--help"])
+    # Use kebab-case command name
+    result = runner.invoke(cli, ["task-help-test", "--help"])
     assert result.exit_code == 0
     assert "--name" in result.output
     assert "--value" in result.output
@@ -88,7 +91,8 @@ def test_cli_runs_task():
 
     cli.add_command(_build_command(runnable_task._task_info))
 
-    result = runner.invoke(cli, ["runnable_task", "--x=5", "--y=3"])
+    # Use kebab-case command name
+    result = runner.invoke(cli, ["runnable-task", "--x=5", "--y=3"])
     assert result.exit_code == 0
     assert "succeeded" in result.output
     assert "8" in result.output
@@ -108,7 +112,8 @@ def test_cli_handles_failure():
 
     cli.add_command(_build_command(failing_cli_task._task_info))
 
-    result = runner.invoke(cli, ["failing_cli_task"])
+    # Use kebab-case command name
+    result = runner.invoke(cli, ["failing-cli-task"])
     assert "failed" in result.output
     assert "ValueError: intentional error" in result.output
 
@@ -127,8 +132,8 @@ def test_cli_required_argument():
 
     cli.add_command(_build_command(required_arg_task._task_info))
 
-    # Should fail without required argument
-    result = runner.invoke(cli, ["required_arg_task"])
+    # Should fail without required argument (use kebab-case command name)
+    result = runner.invoke(cli, ["required-arg-task"])
     assert result.exit_code != 0
     assert "required" in result.output.lower()
 
@@ -147,8 +152,8 @@ def test_cli_optional_argument():
 
     cli.add_command(_build_command(optional_arg_task._task_info))
 
-    # Should work without the optional argument
-    result = runner.invoke(cli, ["optional_arg_task"])
+    # Should work without the optional argument (use kebab-case command name)
+    result = runner.invoke(cli, ["optional-arg-task"])
     assert result.exit_code == 0
     assert "default" in result.output
 
@@ -167,13 +172,13 @@ def test_cli_bool_argument():
 
     cli.add_command(_build_command(bool_task._task_info))
 
-    # Test with --flag
-    result = runner.invoke(cli, ["bool_task", "--flag"])
+    # Test with --flag (use kebab-case command name)
+    result = runner.invoke(cli, ["bool-task", "--flag"])
     assert result.exit_code == 0
     assert "flag=True" in result.output
 
     # Test with --no-flag
-    result = runner.invoke(cli, ["bool_task", "--no-flag"])
+    result = runner.invoke(cli, ["bool-task", "--no-flag"])
     assert result.exit_code == 0
     assert "flag=False" in result.output
 
@@ -192,6 +197,101 @@ def test_cli_float_argument():
 
     cli.add_command(_build_command(float_task._task_info))
 
-    result = runner.invoke(cli, ["float_task", "--value=3.14"])
+    # Use kebab-case command name
+    result = runner.invoke(cli, ["float-task", "--value=3.14"])
     assert result.exit_code == 0
     assert "6.28" in result.output
+
+
+def test_cli_kebab_case_arguments():
+    """Test that parameter names with underscores become kebab-case CLI options."""
+
+    @recompose.task
+    def kebab_task(*, my_long_param: str, another_value: int = 42) -> recompose.Result[str]:
+        """Task with underscore params."""
+        return recompose.Ok(f"{my_long_param}={another_value}")
+
+    runner = CliRunner()
+
+    @click.group()
+    def cli():
+        pass
+
+    cli.add_command(_build_command(kebab_task._task_info))
+
+    # Help should show kebab-case options (use kebab-case command name)
+    result = runner.invoke(cli, ["kebab-task", "--help"])
+    assert result.exit_code == 0
+    assert "--my-long-param" in result.output
+    assert "--another-value" in result.output
+    # Should NOT have underscore versions
+    assert "--my_long_param" not in result.output
+    assert "--another_value" not in result.output
+
+    # Should work with kebab-case arguments
+    result = runner.invoke(cli, ["kebab-task", "--my-long-param=hello", "--another-value=99"])
+    assert result.exit_code == 0
+    assert "hello=99" in result.output
+
+
+def test_cli_kebab_case_bool_flags():
+    """Test that bool flags with underscores become kebab-case CLI options."""
+
+    @recompose.task
+    def kebab_bool_task(*, full_tests: bool = False) -> recompose.Result[str]:
+        """Task with underscore bool param."""
+        return recompose.Ok(f"full_tests={full_tests}")
+
+    runner = CliRunner()
+
+    @click.group()
+    def cli():
+        pass
+
+    cli.add_command(_build_command(kebab_bool_task._task_info))
+
+    # Help should show kebab-case options (use kebab-case command name)
+    result = runner.invoke(cli, ["kebab-bool-task", "--help"])
+    assert result.exit_code == 0
+    assert "--full-tests" in result.output
+    assert "--no-full-tests" in result.output
+    # Should NOT have underscore versions
+    assert "--full_tests" not in result.output
+    assert "--no-full_tests" not in result.output
+
+    # Should work with kebab-case flags
+    result = runner.invoke(cli, ["kebab-bool-task", "--full-tests"])
+    assert result.exit_code == 0
+    assert "full_tests=True" in result.output
+
+    result = runner.invoke(cli, ["kebab-bool-task", "--no-full-tests"])
+    assert result.exit_code == 0
+    assert "full_tests=False" in result.output
+
+
+def test_cli_kebab_case_command_names():
+    """Test that command names with underscores become kebab-case."""
+
+    @recompose.task
+    def my_long_task_name() -> recompose.Result[str]:
+        """Task with underscore name."""
+        return recompose.Ok("done")
+
+    runner = CliRunner()
+
+    @click.group()
+    def cli():
+        pass
+
+    cli.add_command(_build_command(my_long_task_name._task_info))
+
+    # Help should show kebab-case command name
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "my-long-task-name" in result.output
+    assert "my_long_task_name" not in result.output
+
+    # Command should work with kebab-case name
+    result = runner.invoke(cli, ["my-long-task-name"])
+    assert result.exit_code == 0
+    assert "succeeded" in result.output
