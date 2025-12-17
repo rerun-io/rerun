@@ -250,12 +250,14 @@ fn merge_queries_and(
     left: &QueryDatasetRequest,
     right: &QueryDatasetRequest,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
-    let mut left = left.clone();
+    let mut merged = left.clone();
     if !right.segment_ids.is_empty() {
         if left.segment_ids.is_empty() {
-            left.segment_ids = right.segment_ids.clone();
+            merged.segment_ids = right.segment_ids.clone();
         } else {
-            left.segment_ids.retain(|id| right.segment_ids.contains(id));
+            merged
+                .segment_ids
+                .retain(|id| right.segment_ids.contains(id));
             if left.segment_ids.is_empty() {
                 return exec_err!(
                     "Attempting to perform AND statement that would return no results due to segment ID mismatch"
@@ -265,7 +267,7 @@ fn merge_queries_and(
     }
 
     if let Some(right_query) = &right.query {
-        if let Some(left_query) = &mut left.query {
+        if let Some(left_query) = &mut merged.query {
             match (
                 &left_query.latest_at,
                 &left_query.range,
@@ -318,11 +320,11 @@ fn merge_queries_and(
                 }
             }
         } else {
-            left.query = right.query.clone();
+            merged.query = right.query.clone();
         }
     }
 
-    Ok(left)
+    Ok(merged)
 }
 
 fn replace_time_in_query(
