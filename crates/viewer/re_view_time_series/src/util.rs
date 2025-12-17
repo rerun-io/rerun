@@ -43,7 +43,7 @@ pub fn determine_time_range(
     let visible_time_range = match query_range {
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
-            re_log::error_once!(
+            re_log::error!(
                 "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
