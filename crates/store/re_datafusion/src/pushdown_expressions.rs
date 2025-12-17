@@ -394,7 +394,8 @@ fn replace_time_in_query(
                     max: time,
                 },
             };
-            (latest_at, Some(range)) }
+            (latest_at, Some(range))
+        }
         Operator::Gt | Operator::GtEq => {
             let range = QueryRange {
                 index: index.to_owned(),
