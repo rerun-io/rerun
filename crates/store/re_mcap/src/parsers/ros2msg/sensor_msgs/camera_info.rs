@@ -3,6 +3,7 @@ use re_sdk_types::archetypes::{CoordinateFrame, Pinhole};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::Error;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
@@ -77,9 +78,15 @@ impl MessageParser for CameraInfoMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (and in the image parsers).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids.clone());
+
         let mut components: Vec<_> = Pinhole::update_fields()
             .with_many_image_from_camera(image_from_cameras)
             .with_many_resolution(resolutions)
+            .with_many_parent_frame(frame_ids.clone())
+            .with_many_child_frame(image_plane_frame_ids)
             .columns_of_unit_batches()
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
             .collect();

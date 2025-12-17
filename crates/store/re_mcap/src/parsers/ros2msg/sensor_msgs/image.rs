@@ -4,6 +4,7 @@ use re_sdk_types::archetypes::{CoordinateFrame, DepthImage, Image};
 use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
@@ -93,9 +94,12 @@ impl MessageParser for ImageMessageParser {
                 .collect()
         };
 
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (see also camera info parser).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
         chunk_components.extend(
             CoordinateFrame::update_fields()
-                .with_many_frame(frame_ids)
+                .with_many_frame(image_plane_frame_ids)
                 .columns_of_unit_batches()?,
         );
 

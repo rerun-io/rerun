@@ -1,10 +1,11 @@
-use super::super::definitions::sensor_msgs;
 use anyhow::bail;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_sdk_types::archetypes::{CoordinateFrame, EncodedDepthImage, EncodedImage, VideoStream};
 use re_sdk_types::components::{MediaType, VideoCodec};
 
 use super::super::Ros2MessageParser;
+use super::super::definitions::sensor_msgs;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
@@ -92,9 +93,12 @@ impl MessageParser for CompressedImageMessageParser {
             }
         };
 
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (see also camera info parser).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
         components.extend(
             CoordinateFrame::update_fields()
-                .with_many_frame(frame_ids)
+                .with_many_frame(image_plane_frame_ids)
                 .columns_of_unit_batches()?,
         );
 
