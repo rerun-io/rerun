@@ -246,7 +246,7 @@ impl App {
         }
 
         if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
-            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+            state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
         if app_env.is_test() {

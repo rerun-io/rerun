@@ -34,24 +34,8 @@ pub struct AppOptions {
     #[serde(rename = "timestamp_format")]
     pub timestamp_format: TimestampFormat,
 
-    /// Preferred method for video decoding on web.
-    pub video_decoder_hw_acceleration: DecodeHardwareAcceleration,
-
-    /// Override the path to the FFmpeg binary.
-    ///
-    /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
-    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
-    ///
-    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid losing the user-defined
-    /// path when disabling the override.
-    #[expect(clippy::doc_markdown)]
-    pub video_decoder_override_ffmpeg_path: bool,
-
-    /// Custom path to the FFmpeg binary.
-    ///
-    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
-    #[expect(clippy::doc_markdown)]
-    pub video_decoder_ffmpeg_path: String,
+    /// Video decoding options.
+    pub video: VideoOptions,
 
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
@@ -88,9 +72,7 @@ impl Default for AppOptions {
 
             timestamp_format: TimestampFormat::default(),
 
-            video_decoder_hw_acceleration: DecodeHardwareAcceleration::default(),
-            video_decoder_override_ffmpeg_path: false,
-            video_decoder_ffmpeg_path: String::new(),
+            video: Default::default(),
 
             mapbox_access_token: String::new(),
 
@@ -128,14 +110,37 @@ impl AppOptions {
     /// Get the video decoder settings.
     pub fn video_decoder_settings(&self) -> DecodeSettings {
         DecodeSettings {
-            hw_acceleration: self.video_decoder_hw_acceleration,
+            hw_acceleration: self.video.hw_acceleration,
 
             #[cfg(not(target_arch = "wasm32"))]
             ffmpeg_path: self
-                .video_decoder_override_ffmpeg_path
-                .then(|| std::path::PathBuf::from(&self.video_decoder_ffmpeg_path)),
+                .video
+                .override_ffmpeg_path
+                .then(|| std::path::PathBuf::from(&self.video.ffmpeg_path)),
         }
     }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub struct VideoOptions {
+    /// Preferred method for video decoding on web.
+    pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Override the path to the FFmpeg binary.
+    ///
+    /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
+    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
+    ///
+    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid losing the user-defined
+    /// path when disabling the override.
+    #[expect(clippy::doc_markdown)]
+    pub override_ffmpeg_path: bool,
+
+    /// Custom path to the FFmpeg binary.
+    ///
+    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
+    #[expect(clippy::doc_markdown)]
+    pub ffmpeg_path: String,
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]

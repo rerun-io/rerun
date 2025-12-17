@@ -4,7 +4,7 @@ use egui::{NumExt as _, Ui};
 use re_log_types::{Timestamp, TimestampFormat};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::AppOptions;
+use re_viewer_context::{AppOptions, VideoOptions};
 
 use crate::StartupOptions;
 
@@ -45,6 +45,8 @@ fn settings_screen_ui_impl(
     startup_options: &mut StartupOptions,
     keep_open: &mut bool,
 ) {
+    // TODO(emilk): use destruction to make sure we remember to show options for everything.
+
     //
     // Title
     //
@@ -108,15 +110,15 @@ fn settings_screen_ui_impl(
 
     separator_with_some_space(ui);
     ui.strong("Timestamp format");
-    time_format_section_ui(ui, app_options);
+    time_format_section_ui(ui, &mut app_options.timestamp_format);
 
     separator_with_some_space(ui);
     ui.strong("Map view");
-    map_view_section_ui(ui, app_options);
+    map_view_section_ui(ui, &mut app_options.mapbox_access_token);
 
     separator_with_some_space(ui);
     ui.strong("Video");
-    video_section_ui(ui, app_options);
+    video_section_ui(ui, &mut app_options.video);
 }
 
 fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
@@ -157,7 +159,7 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     }
 }
 
-fn time_format_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
+fn time_format_section_ui(ui: &mut Ui, timestamp_format: &mut TimestampFormat) {
     fn timestamp_example_ui(
         ui: &mut egui::Ui,
         timestamp: Timestamp,
@@ -182,20 +184,16 @@ fn time_format_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
         jiff::Timestamp::from_str("2023-02-14 21:47:18Z").expect("the timestamp is valid"),
     );
 
-    ui.re_radio_value(
-        &mut app_options.timestamp_format,
-        TimestampFormat::utc(),
-        "UTC",
-    );
+    ui.re_radio_value(timestamp_format, TimestampFormat::utc(), "UTC");
     timestamp_example_ui(ui, timestamp, TimestampFormat::utc());
     ui.re_radio_value(
-        &mut app_options.timestamp_format,
+        timestamp_format,
         TimestampFormat::local_timezone(),
         "Local (show time zone)",
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone());
     ui.re_radio_value(
-        &mut app_options.timestamp_format,
+        timestamp_format,
         TimestampFormat::local_timezone_implicit(),
         "Local (hide time zone)",
     );
@@ -206,14 +204,14 @@ fn time_format_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     });
 
     ui.re_radio_value(
-        &mut app_options.timestamp_format,
+        timestamp_format,
         TimestampFormat::unix_epoch(),
         "Seconds since Unix epoch",
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::unix_epoch());
 }
 
-fn map_view_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
+fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
     ui.horizontal(|ui| {
         // TODO(ab): needed for alignment, we should use egui flex instead
         ui.set_height(19.0);
@@ -227,15 +225,15 @@ fn map_view_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
             );
         });
 
-        ui.add(egui::TextEdit::singleline(&mut app_options.mapbox_access_token).password(true));
+        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true));
     });
 }
 
-fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
+fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         ui.re_checkbox(
-            &mut app_options.video_decoder_override_ffmpeg_path,
+            &mut options.override_ffmpeg_path,
             "Override the FFmpeg binary path",
         )
         .on_hover_ui(|ui| {
@@ -246,20 +244,18 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
             );
         });
 
-        ui.add_enabled_ui(app_options.video_decoder_override_ffmpeg_path, |ui| {
+        ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
             ui.horizontal(|ui| {
                 // TODO(ab): needed for alignment, we should use egui flex instead
                 ui.set_height(19.0);
 
                 ui.label("Path:");
 
-                ui.add(egui::TextEdit::singleline(
-                    &mut app_options.video_decoder_ffmpeg_path,
-                ));
+                ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
             });
         });
 
-        ffmpeg_path_status_ui(ui, app_options);
+        ffmpeg_path_status_ui(ui, options);
     }
 
     // This affects only the web target, so we don't need to show it on native.
@@ -267,7 +263,7 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     {
         use re_video::DecodeHardwareAcceleration;
 
-        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
+        let hardware_acceleration = &mut options.hw_acceleration;
         ui.horizontal(|ui| {
             ui.label("Decoder:");
             egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
@@ -296,14 +292,14 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
+fn ffmpeg_path_status_ui(ui: &mut Ui, options: &VideoOptions) {
     use std::task::Poll;
 
     use re_video::{FFmpegVersion, FFmpegVersionParseError};
 
-    let path = app_options
-        .video_decoder_override_ffmpeg_path
-        .then(|| std::path::Path::new(&app_options.video_decoder_ffmpeg_path));
+    let path = options
+        .override_ffmpeg_path
+        .then(|| std::path::Path::new(&options.ffmpeg_path));
 
     match FFmpegVersion::for_executable_poll(path) {
         Poll::Pending => {
