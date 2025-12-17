@@ -177,7 +177,7 @@ pub struct SpatialTopology {
     /// This is purely an optimization to speed up searching for `subspaces`.
     subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
 
-    /// When there is an explicit coordinate frame there are effectivly more entity
+    /// When there is an explicit coordinate frame there are effectively more entity
     /// trees than are known about here. And heuristic can't make the same assumptions.
     has_explicit_coordinate_frame: bool,
 }
