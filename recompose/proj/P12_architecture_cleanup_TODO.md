@@ -163,7 +163,7 @@ independent tasks), but adds complexity without benefit.
 **Tasks**:
 - [x] Replace `get_execution_order()` calls with `plan.nodes`
 - [x] Remove `get_execution_order()` method
-- [ ] ~~Remove `get_parallelizable_groups()` if unused~~ - Kept, used for `visualize()`
+- [x] Remove `get_parallelizable_groups()` - removed along with `visualize()`
 - [x] Update ARCHITECTURE.md (already didn't mention topological sort, just explains natural ordering)
 - [x] Verify tests pass
 

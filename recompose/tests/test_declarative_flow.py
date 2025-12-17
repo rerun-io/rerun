@@ -227,55 +227,6 @@ def test_flow_plan_execution_order():
     assert names.index("order_b") < names.index("order_c")
 
 
-def test_flow_plan_parallelizable_groups():
-    """Test that flow plan identifies parallelizable groups."""
-
-    @task
-    def parallel_root() -> Result[int]:
-        return Ok(1)
-
-    @task
-    def parallel_a(*, val: int) -> Result[int]:
-        return Ok(val + 1)
-
-    @task
-    def parallel_b(*, val: int) -> Result[int]:
-        return Ok(val + 2)
-
-    @flow
-    def parallel_flow() -> None:
-        root = parallel_root()
-        parallel_a(val=root.value())
-        parallel_b(val=root.value())
-
-    plan = parallel_flow.plan()
-    groups = plan.get_parallelizable_groups()
-
-    # Level 0: root
-    # Level 1: a, b (can run in parallel)
-    assert len(groups) == 2
-    assert len(groups[0]) == 1  # Just root
-    assert len(groups[1]) == 2  # a and b
-
-
-def test_flow_plan_visualize():
-    """Test that flow plan can be visualized."""
-
-    @task
-    def viz_task() -> Result[str]:
-        return Ok("done")
-
-    @flow
-    def viz_flow() -> None:
-        viz_task()
-
-    plan = viz_flow.plan()
-    viz = plan.visualize()
-
-    assert isinstance(viz, str)
-    assert "viz_task" in viz
-
-
 def test_declarative_flow_with_arguments():
     """Test declarative flow with external arguments."""
 
