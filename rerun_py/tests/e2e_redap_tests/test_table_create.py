@@ -56,9 +56,12 @@ def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: 
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
 
-    df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
+    try:
+        df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
 
-    returned_schema = df.schema.remove_metadata()
-    assert returned_schema == original_schema
+        returned_schema = df.schema.remove_metadata()
+        assert returned_schema == original_schema
+    finally:
+        table_entry.delete()
