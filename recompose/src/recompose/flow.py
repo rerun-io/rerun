@@ -7,7 +7,6 @@ import inspect
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
 from .plan import FlowPlan, InputPlaceholder
@@ -22,8 +21,8 @@ class FlowWrapper(Protocol):
     Protocol describing a flow-decorated function.
 
     Flow wrappers are callable (returning Result[None]) and have:
+    - ._flow_info: Metadata about the flow
     - .plan: The pre-built FlowPlan (computed at decoration time)
-    - .run_isolated(): Execute each step as a separate subprocess
     - .dispatch(): Trigger this flow from within an automation
     """
 
@@ -33,8 +32,6 @@ class FlowWrapper(Protocol):
 
     @property
     def plan(self) -> FlowPlan: ...
-
-    def run_isolated(self, **kwargs: Any) -> Result[None]: ...
 
     def dispatch(self, **kwargs: Any) -> Any: ...
 
@@ -137,27 +134,19 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
     The flow wrapper provides:
     - Direct call: Executes the flow with subprocess isolation
     - .plan: The pre-built FlowPlan (read-only property)
-    - .run_isolated(): Execute with explicit workspace
+    - .dispatch(): Trigger from within an automation
 
     """
     # Build the plan eagerly at decoration time
     # This catches errors like using parameters in control flow immediately
     built_plan = _build_plan(fn)
 
-    def run_isolated_impl(workspace: Path | None = None, **kwargs: Any) -> Result[None]:
-        """
-        Execute the flow with each step running as a separate subprocess.
-
-        This delegates to local_executor.execute_flow_isolated().
-        """
-        from .local_executor import execute_flow_isolated
-
-        return execute_flow_isolated(wrapper, workspace=workspace, **kwargs)
-
     @functools.wraps(fn)
     def wrapper(**kwargs: Any) -> Result[None]:
         # Direct flow execution uses subprocess isolation (matches GHA behavior)
-        return run_isolated_impl(**kwargs)
+        from .local_executor import execute_flow_isolated
+
+        return execute_flow_isolated(wrapper, **kwargs)  # type: ignore[arg-type]
 
     # Create flow info with the pre-built plan
     info = FlowInfo(
@@ -170,40 +159,15 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         plan=built_plan,
     )
 
-    def dispatch_impl(runs_on: str | None = None, **kwargs: Any) -> Any:
-        """
-        Dispatch this flow from within an automation.
-
-        This method can only be called inside an @automation-decorated function.
-        It records the dispatch in the automation plan.
-
-        Args:
-            runs_on: Optional runner override for this specific dispatch
-            **kwargs: Flow parameters to pass when dispatching
-
-        Returns:
-            FlowDispatch handle representing the dispatched workflow
-
-        """
-        from .automation import FlowDispatch, get_current_automation_plan
-
-        plan = get_current_automation_plan()
-        if plan is None:
-            raise RuntimeError(f"{info.name}.dispatch() can only be called inside an @automation-decorated function.")
-
-        dispatch = FlowDispatch(
-            flow_name=info.name,
-            params=kwargs,
-            runs_on=runs_on,
-        )
-        plan.add_dispatch(dispatch)
-        return dispatch
-
-    # Attach flow info, plan property, run_isolated, and dispatch to wrapper
+    # Attach flow info and plan to wrapper
     wrapper._flow_info = info  # type: ignore[attr-defined]
     wrapper.plan = built_plan  # type: ignore[attr-defined]
-    wrapper.run_isolated = run_isolated_impl  # type: ignore[attr-defined]
-    wrapper.dispatch = dispatch_impl  # type: ignore[attr-defined]
+
+    # dispatch() is implemented in automation.py to avoid circular dependency
+    # It's attached here as a bound method
+    from .automation import create_dispatch_method
+
+    wrapper.dispatch = create_dispatch_method(info)  # type: ignore[attr-defined]
 
     # Cast to FlowWrapper to satisfy type checker
     return cast(FlowWrapper, wrapper)
