@@ -293,7 +293,7 @@ class WorkflowDispatchInput:
     name: str
     description: str
     required: bool = False
-    default: str | None = None
+    default: str | bool | int | float | None = None
     type: str = "string"  # string, boolean, choice, number
 
     def to_dict(self) -> dict[str, Any]:
@@ -405,12 +405,15 @@ def _python_type_to_gha_input_type(annotation: Any) -> str:
     return "string"
 
 
-def _default_to_string(value: Any) -> str | None:
-    """Convert a Python default value to string for GHA input."""
+def _default_to_gha_value(value: Any) -> str | bool | int | float | None:
+    """Convert a Python default value to appropriate type for GHA input."""
     if value is None or value is inspect.Parameter.empty:
         return None
     if isinstance(value, bool):
-        return str(value).lower()
+        # GHA boolean inputs need actual boolean defaults, not strings
+        return value
+    if isinstance(value, (int, float)):
+        return value
     if isinstance(value, Path):
         return str(value)
     return str(value)
@@ -426,7 +429,7 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
             annotation = str
 
         has_default = param.default is not inspect.Parameter.empty
-        default_value = _default_to_string(param.default) if has_default else None
+        default_value = _default_to_gha_value(param.default) if has_default else None
 
         inputs.append(
             WorkflowDispatchInput(

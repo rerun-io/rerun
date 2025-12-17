@@ -305,6 +305,9 @@ class FlowPlan:
         that evaluates it. Conditional tasks are updated with a reference to
         their condition-check step.
 
+        Condition check nodes are named based on the condition expression
+        (e.g., "eval_full_tests" for a condition on the full_tests parameter).
+
         Args:
             condition_task_info: TaskInfo for the eval_condition pseudo-task.
 
@@ -342,6 +345,8 @@ class FlowPlan:
                         task_info=condition_task_info,
                         kwargs={"condition_data": condition_expr.serialize()},
                     )
+                    # Give it a meaningful name based on the condition expression
+                    check_node.step_name = self._condition_step_name(condition_expr)
                     new_nodes.append(check_node)
                     check_nodes.append(check_node)
                     injected_conditions.add(key)
@@ -350,18 +355,11 @@ class FlowPlan:
 
         self.nodes = new_nodes
 
-        # Now assign step names so we can set condition_check_step references
+        # Assign step names to non-condition nodes (condition nodes already have names)
         self.assign_step_names()
 
         # Update conditional nodes with their condition-check step name
-        for key, (_, conditional_nodes) in condition_map.items():
-            # Find the check node for this condition
-            for check_node in check_nodes:
-                if str(check_node.kwargs.get("condition_data")) == key.replace("'", '"'):
-                    # This is a bit fragile - let's use a better approach
-                    pass
-
-        # Better: match by position - check nodes are in same order as condition_map
+        # Match by position - check nodes are in same order as condition_map
         check_iter = iter(check_nodes)
         for key, (_, conditional_nodes) in condition_map.items():
             check_node = next(check_iter)
@@ -369,6 +367,35 @@ class FlowPlan:
                 node.condition_check_step = check_node.step_name
 
         return check_nodes
+
+    def _condition_step_name(self, condition: Expr) -> str:
+        """Generate a step name for a condition check based on the expression."""
+        data = condition.serialize()
+        expr_type = data.get("type", "")
+
+        if expr_type == "input":
+            # Simple input reference: eval_<param_name>
+            name = data.get("name", "condition")
+            return f"eval_{name}"
+        elif expr_type == "binary":
+            # Binary expression: use the input name if one side is an input
+            left = data.get("left", {})
+            right = data.get("right", {})
+            if left.get("type") == "input":
+                name = left.get("name", "condition")
+                return f"eval_{name}"
+            elif right.get("type") == "input":
+                name = right.get("name", "condition")
+                return f"eval_{name}"
+        elif expr_type == "unary":
+            # Unary expression: use the operand's input name
+            operand = data.get("operand", {})
+            if operand.get("type") == "input":
+                name = operand.get("name", "condition")
+                return f"eval_{name}"
+
+        # Fallback: generic name
+        return "eval_condition"
 
     def get_execution_order(self) -> list[TaskNode[Any]]:
         """
@@ -451,19 +478,26 @@ class FlowPlan:
 
     def assign_step_names(self) -> None:
         """
-        Assign sequential step names to all nodes based on execution order.
+        Assign sequential step names to all nodes based on linear order.
 
-        Step names have the format "NN_task_name" where NN is a zero-padded
-        sequence number (e.g., "01_fetch_source", "02_compile_source").
+        Step names have the format "step_NN_task_name" where NN is a zero-padded
+        sequence number (e.g., "step_01_fetch_source", "step_02_compile_source").
+
+        The "step_" prefix ensures GHA step IDs are valid (must start with
+        a letter or underscore, not a digit).
+
+        Nodes that already have step names (e.g., condition check nodes) are
+        skipped but still counted in the sequence.
 
         This makes execution order explicit and ensures unique names even
         when the same task is used multiple times in a flow.
         """
-        execution_order = self.get_execution_order()
-        num_digits = len(str(len(execution_order)))  # Enough digits to fit all steps
+        # Use linear order (self.nodes), not topological sort
+        num_digits = len(str(len(self.nodes)))  # Enough digits to fit all steps
 
-        for i, node in enumerate(execution_order, start=1):
-            node.step_name = f"{i:0{num_digits}d}_{node.task_info.name}"
+        for i, node in enumerate(self.nodes, start=1):
+            if node.step_name is None:
+                node.step_name = f"step_{i:0{num_digits}d}_{node.task_info.name}"
 
     def get_step(self, step_ref: str) -> TaskNode[Any] | None:
         """
@@ -471,7 +505,7 @@ class FlowPlan:
 
         Args:
             step_ref: Can be:
-                - Full step name: "03_run_unit_tests"
+                - Full step name: "step_03_run_unit_tests"
                 - Just the number: "03" or "3"
                 - Task name (if unambiguous): "run_unit_tests"
 
@@ -493,10 +527,14 @@ class FlowPlan:
             step_num = int(step_ref)
             for node in self.nodes:
                 if node.step_name:
-                    # Extract number from "NN_task_name"
-                    num_part = node.step_name.split("_")[0]
-                    if int(num_part) == step_num:
-                        return node
+                    # Extract number from "step_NN_task_name"
+                    parts = node.step_name.split("_")
+                    if len(parts) >= 2 and parts[0] == "step":
+                        try:
+                            if int(parts[1]) == step_num:
+                                return node
+                        except ValueError:
+                            pass
         except ValueError:
             pass
 
@@ -509,7 +547,10 @@ class FlowPlan:
 
     def get_steps(self) -> list[tuple[str, TaskNode[Any]]]:
         """
-        Return all steps in execution order with their step names.
+        Return all steps in linear order with their step names.
+
+        Uses the order from the flow definition (self.nodes), not topological sort.
+        For flows, linear order is already valid by construction.
 
         Returns:
             List of (step_name, node) tuples.
@@ -518,7 +559,7 @@ class FlowPlan:
         if self.nodes and self.nodes[0].step_name is None:
             self.assign_step_names()
 
-        return [(n.step_name or n.name, n) for n in self.get_execution_order()]
+        return [(n.step_name or n.name, n) for n in self.nodes]
 
     def visualize(self) -> str:
         """Return an ASCII representation of the flow graph."""

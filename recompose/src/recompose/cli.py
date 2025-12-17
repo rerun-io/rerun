@@ -76,12 +76,20 @@ def _build_command(task_info: TaskInfo) -> click.Command:
     sig = task_info.signature
     params: list[click.Parameter] = []
 
+    # Use get_type_hints to resolve string annotations from `from __future__ import annotations`
+    import typing
+
+    try:
+        type_hints = typing.get_type_hints(task_info.original_fn)
+    except Exception:
+        type_hints = {}
+
     for param_name, param in sig.parameters.items():
         if param_name == "self":
             continue
 
-        # Get type annotation
-        annotation = param.annotation
+        # Get type annotation - prefer resolved type hints
+        annotation = type_hints.get(param_name, param.annotation)
         if annotation is inspect.Parameter.empty:
             annotation = str  # Default to string if no annotation
 
@@ -274,13 +282,21 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
         )
     )
 
+    # Use get_type_hints to resolve string annotations from `from __future__ import annotations`
+    import typing
+
+    try:
+        type_hints = typing.get_type_hints(flow_info.original_fn)
+    except Exception:
+        type_hints = {}
+
     # Add flow parameters
     for param_name, param in sig.parameters.items():
         if param_name == "self":
             continue
 
-        # Get type annotation
-        annotation = param.annotation
+        # Get type annotation - prefer resolved type hints
+        annotation = type_hints.get(param_name, param.annotation)
         if annotation is inspect.Parameter.empty:
             annotation = str
 
@@ -418,13 +434,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             # Rebuild the plan using stored params
             plan = flow_info.fn.plan(**flow_params.params)  # type: ignore[attr-defined]
 
-            # Inject condition-check nodes to match what the orchestrator built
-            from .gha import _create_eval_condition_task_info
-
-            condition_task_info = _create_eval_condition_task_info()
-            plan.inject_condition_checks(condition_task_info)
-
-            # Step names are now assigned by inject_condition_checks
+            # Use linear order - assign step names directly (no condition injection for local)
+            plan.assign_step_names()
 
             # Find the requested step
             target_node = plan.get_step(step)

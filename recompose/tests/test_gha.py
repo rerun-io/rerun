@@ -238,7 +238,7 @@ class TestRenderFlowWorkflow:
 
         assert "debug" in inputs
         assert inputs["debug"]["type"] == "boolean"
-        assert inputs["debug"]["default"] == "false"
+        assert inputs["debug"]["default"] is False  # GHA boolean inputs need actual booleans
 
         # Check setup step includes parameters
         job = spec.jobs["param_flow"]
