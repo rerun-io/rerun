@@ -2,10 +2,9 @@ from pathlib import Path
 
 import rerun as rr
 from rerun import RecordingStream
-import time
 
-with RecordingStream("rerun_example_load_urdf", spawn=True) as rec:
-    rr.init("rerun_example_load_urdf", spawn=True)
+with RecordingStream("rerun_example_load_urdf") as rec:
+    rec.spawn()
 
     # `log_file_from_path` automatically uses the built-in URDF data-loader.
     urdf_path = Path(__file__).parent / "minimal.urdf"
