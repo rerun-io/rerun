@@ -371,10 +371,10 @@ class TestParameterizedFlowYamlOutput:
         setup_step = next((s for s in steps if "setup_workspace" in s["name"]), None)
         assert setup_step is not None
 
-        # The run command should include both inputs
+        # The run command should include both inputs as key=value pairs
         run_cmd = setup_step["run"]
-        assert "--name ${{ inputs.name }}" in run_cmd
-        assert "--count_to ${{ inputs.count_to }}" in run_cmd
+        assert "name=${{ inputs.name }}" in run_cmd
+        assert "count_to=${{ inputs.count_to }}" in run_cmd
 
 
 if __name__ == "__main__":

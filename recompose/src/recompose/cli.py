@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import os
 import time
 from collections.abc import Sequence
 from enum import Enum
@@ -27,6 +26,11 @@ from .result import Result
 from .task import TaskInfo, TaskWrapper
 
 console = Console()
+
+
+def _to_kebab_case(name: str) -> str:
+    """Convert a snake_case name to kebab-case for CLI."""
+    return name.replace("_", "-")
 
 
 def _get_click_type(annotation: Any) -> tuple[type | click.ParamType, bool]:
@@ -103,11 +107,13 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         required = not has_default and type_required
 
         # Handle bool specially (use flag style)
+        # Convert underscores to hyphens for CLI option names (kebab-case)
+        cli_name = _to_kebab_case(param_name)
         if annotation is bool:
             if has_default and default_value is True:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=True,
                         help="(default: True)",
                     )
@@ -115,7 +121,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
             elif has_default and default_value is False:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=False,
                         help="(default: False)",
                     )
@@ -123,7 +129,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
             else:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=False,
                         required=required,
                     )
@@ -144,7 +150,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
             params.append(
                 click.Option(
-                    [f"--{param_name}"],
+                    [f"--{cli_name}"],
                     **option_kwargs,
                 )
             )
@@ -194,9 +200,9 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
         console.print()
 
-    # Build the command
+    # Build the command with kebab-case name
     cmd = click.Command(
-        name=task_info.name,
+        name=_to_kebab_case(task_info.name),
         callback=callback,
         params=params,
         help=task_info.doc,
@@ -209,36 +215,12 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     """Build a Click command from a flow."""
     import sys
 
-    from .workspace import (
-        FlowParams,
-        create_workspace,
-        get_workspace_from_env,
-        read_params,
-        read_step_result,
-        write_params,
-        write_step_result,
-    )
+    from .workspace import get_workspace_from_env
 
     sig = flow_info.signature
     params: list[click.Parameter] = []
 
-    # Add flow-specific options for subprocess isolation
-    params.append(
-        click.Option(
-            ["--setup"],
-            is_flag=True,
-            default=False,
-            help="Initialize workspace only, don't run (for CI orchestration)",
-        )
-    )
-    params.append(
-        click.Option(
-            ["--step"],
-            type=str,
-            default=None,
-            help="Execute a single step only (for CI orchestration)",
-        )
-    )
+    # Add workspace option (for advanced use)
     params.append(
         click.Option(
             ["--workspace"],
@@ -304,15 +286,15 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
         has_default = param.default is not inspect.Parameter.empty
         default_value = param.default if has_default else None
-        # Flow parameters are never required at CLI level because --step mode
-        # reads them from workspace. We validate manually in the callback.
-        required = False
+        required = not has_default
 
+        # Convert underscores to hyphens for CLI option names (kebab-case)
+        cli_name = _to_kebab_case(param_name)
         if annotation is bool:
             if has_default and default_value is True:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=True,
                         help="(default: True)",
                     )
@@ -320,7 +302,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             elif has_default and default_value is False:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=False,
                         help="(default: False)",
                     )
@@ -328,7 +310,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             else:
                 params.append(
                     click.Option(
-                        [f"--{param_name}/--no-{param_name}"],
+                        [f"--{cli_name}/--no-{cli_name}"],
                         default=False,
                         required=required,
                     )
@@ -348,14 +330,12 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
             params.append(
                 click.Option(
-                    [f"--{param_name}"],
+                    [f"--{cli_name}"],
                     **option_kwargs,
                 )
             )
 
     def callback(
-        setup: bool,
-        step: str | None,
         workspace: Path | None,
         remote: bool,
         status: bool,
@@ -363,9 +343,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
         ref: str | None,
         **kwargs: Any,
     ) -> None:
-        """Execute the flow, setup, or a specific step."""
-        from datetime import datetime
-
+        """Execute the flow."""
         flow_name = flow_info.name
 
         # Convert enum values back to enum if needed
@@ -384,19 +362,6 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             gh_cli.display_flow_status(flow_name)
             return
 
-        # Validate required parameters for non-step modes
-        if not step:
-            missing = []
-            for param_name, param in sig.parameters.items():
-                if param_name == "self":
-                    continue
-                has_default = param.default is not inspect.Parameter.empty
-                if not has_default and kwargs.get(param_name) is None:
-                    missing.append(param_name)
-            if missing:
-                console.print(f"[red]Error:[/red] Missing required option(s): {', '.join(f'--{m}' for m in missing)}")
-                sys.exit(1)
-
         # Handle --remote: trigger workflow on GitHub
         if remote:
             from . import gh_cli
@@ -404,193 +369,125 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             gh_cli.trigger_flow_remote(flow_name, kwargs, ref, force)
             return
 
-        # Determine workspace
+        # Normal mode: Execute the entire flow with subprocess isolation
+        from .local_executor import execute_flow_isolated
+
         ws = workspace or get_workspace_from_env()
+        flow_wrapper = cast(FlowWrapper, flow_info.fn)
+        flow_result = execute_flow_isolated(flow_wrapper, workspace=ws, **kwargs)
 
-        if setup:
-            # --setup mode: Create workspace and write params
-            if ws is None:
-                ws = create_workspace(flow_name)
+        if flow_result.failed:
+            sys.exit(1)
 
-            # Use the pre-built plan (step names already assigned at decoration time)
-            plan = flow_info.plan
-
-            step_names = [n.step_name for n in plan.nodes if n.step_name]
-
-            flow_params = FlowParams(
-                flow_name=flow_name,
-                params=kwargs,
-                steps=step_names,
-                created_at=datetime.now().isoformat(),
-                script_path=sys.argv[0],
-            )
-            write_params(ws, flow_params)
-
-            console.print(f"\n[bold green]✓[/bold green] Setup complete for [bold]{flow_name}[/bold]")
-            console.print(f"[dim]Workspace:[/dim] {ws}")
-            console.print("[dim]Steps:[/dim]")
-            for s in step_names:
-                console.print(f"    {s}")
-            console.print()
-
-        elif step:
-            # --step mode: Execute a specific step
-            if ws is None:
-                ws = get_workspace_from_env()
-                if ws is None:
-                    console.print("[red]Error:[/red] --workspace required or set $RECOMPOSE_WORKSPACE")
-                    sys.exit(1)
-
-            # Read params from workspace
-            try:
-                flow_params = read_params(ws)
-            except FileNotFoundError:
-                console.print(f"[red]Error:[/red] No _params.json in {ws}")
-                console.print("[dim]Run --setup first to initialize the workspace[/dim]")
-                sys.exit(1)
-
-            # Use the pre-built plan (step names already assigned at decoration time)
-            plan = flow_info.plan
-
-            # Find the requested step
-            target_node = plan.get_step(step)
-            if target_node is None:
-                console.print(f"[red]Error:[/red] Step '{step}' not found")
-                console.print("[dim]Available steps:[/dim]")
-                for s in flow_params.steps:
-                    console.print(f"    {s}")
-                sys.exit(1)
-
-            step_name = target_node.step_name or target_node.name
-
-            # Check if we're in tree mode (subprocess of run_isolated)
-            from .output import install_tree_output, is_tree_mode, uninstall_tree_output
-
-            tree_mode = is_tree_mode()
-
-            if not tree_mode:
-                console.print(f"\n[bold cyan]▶[/bold cyan] [bold]{step_name}[/bold]")
-                console.print()
-
-            # Install tree output wrapper for print/logging
-            tree_ctx = install_tree_output()
-
-            # Resolve dependencies from workspace
-            from .plan import InputPlaceholder
-            from .plan import TaskNode as TaskNodeType
-
-            resolved_kwargs: dict[str, Any] = {}
-            for kwarg_name, kwarg_value in target_node.kwargs.items():
-                if isinstance(kwarg_value, TaskNodeType):  # TaskNode dependency
-                    dep_node = kwarg_value
-                    dep_step_name = dep_node.step_name or dep_node.name
-                    dep_result = read_step_result(ws, dep_step_name)
-                    if dep_result.failed:
-                        console.print(f"[red]Error:[/red] Dependency '{dep_step_name}' failed or not found")
-                        sys.exit(1)
-                    resolved_kwargs[kwarg_name] = dep_result.value()
-                elif isinstance(kwarg_value, InputPlaceholder):
-                    # Resolve InputPlaceholder from flow params
-                    param_name = kwarg_value.name
-                    if param_name in flow_params.params:
-                        resolved_kwargs[kwarg_name] = flow_params.params[param_name]
-                    elif kwarg_value.default is not None:
-                        resolved_kwargs[kwarg_name] = kwarg_value.default
-                    else:
-                        console.print(f"[red]Error:[/red] Required parameter '{param_name}' not found in workspace")
-                        sys.exit(1)
-                else:
-                    resolved_kwargs[kwarg_name] = kwarg_value
-
-            # Execute the task (or condition check)
-            start_time = time.perf_counter()
-
-            if target_node.task_info.is_condition_check:
-                # Special handling for condition evaluation
-                from .conditional import evaluate_condition
-                from .result import Ok
-
-                condition_data = target_node.kwargs.get("condition_data", {})
-
-                # Build evaluation context: inputs from flow params, outputs from workspace
-                eval_context_inputs = flow_params.params
-                eval_context_outputs: dict[str, Any] = {}
-
-                # Read outputs from previous steps that the condition might reference
-                for prev_step in flow_params.steps:
-                    if prev_step == step_name:
-                        break  # Stop at current step
-                    prev_result = read_step_result(ws, prev_step)
-                    if prev_result.ok:
-                        eval_context_outputs[prev_step] = prev_result.value()
-
-                eval_result = evaluate_condition(condition_data, eval_context_inputs, eval_context_outputs)
-                condition_value = eval_result.value() if eval_result.ok else False
-
-                # Create a proper Result for workspace storage
-                result = Ok(condition_value)
-
-                # Write to GITHUB_OUTPUT if available (for GHA)
-                github_output = os.environ.get("GITHUB_OUTPUT")
-                if github_output:
-                    with open(github_output, "a") as f:
-                        f.write(f"value={'true' if condition_value else 'false'}\n")
-
-            else:
-                # Use the wrapped function (fn) which catches exceptions
-                result = target_node.task_info.fn(**resolved_kwargs)
-
-            elapsed = time.perf_counter() - start_time
-
-            # Uninstall tree output wrapper
-            uninstall_tree_output(tree_ctx)
-
-            # Write result to workspace
-            write_step_result(ws, step_name, result)
-
-            # Write value to GITHUB_OUTPUT if available (for non-condition steps too)
-            github_output = os.environ.get("GITHUB_OUTPUT")
-            if github_output and result.ok and result._value is not None:
-                with open(github_output, "a") as f:
-                    f.write(f"value={result._value}\n")
-
-            # Print result (only in non-tree mode - orchestrator handles tree formatting)
-            if not tree_mode:
-                if result.ok:
-                    console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
-                    if result._value is not None:
-                        console.print(f"[dim]→[/dim] {result._value}")
-                else:
-                    console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
-                    if result.error:
-                        console.print(f"[red]Error:[/red] {result.error}")
-                console.print()
-
-            # Exit with error if failed
-            if result.failed:
-                sys.exit(1)
-
-        else:
-            # Normal mode: Execute the entire flow with subprocess isolation
-            # This matches CI behavior where each step is a separate process
-            from .local_executor import execute_flow_isolated
-
-            # flow_info.fn is the wrapper which satisfies FlowWrapper protocol
-            flow_wrapper = cast(FlowWrapper, flow_info.fn)
-            flow_result = execute_flow_isolated(flow_wrapper, workspace=ws, **kwargs)
-
-            # Exit with appropriate code (execute_flow_isolated already printed the summary)
-            if flow_result.failed:
-                sys.exit(1)
-
+    # Build the command with kebab-case name
     cmd = click.Command(
-        name=flow_info.name,
+        name=_to_kebab_case(flow_info.name),
         callback=callback,
         params=params,
         help=f"[flow] {flow_info.doc}" if flow_info.doc else "[flow]",
     )
 
     return cmd
+
+
+def _build_internal_commands() -> list[click.Command]:
+    """
+    Build hidden internal commands for flow execution.
+
+    These commands are used by both local_executor and GHA workflows:
+    - _setup: Initialize a workspace for a flow
+    - _run-step: Execute a single step of a flow
+    """
+    import sys
+
+    from .context import get_recompose_context
+    from .local_executor import run_step, setup_workspace
+    from .workspace import get_workspace_from_env
+
+    def _find_flow(flow_name: str) -> FlowInfo | None:
+        """Look up a flow by name from the registry."""
+        ctx = get_recompose_context()
+        if ctx is None:
+            return None
+        for name, info in ctx.flows.items():
+            if info.name == flow_name or name == flow_name:
+                return info
+        return None
+
+    # _setup command
+    setup_params: list[click.Parameter] = [
+        click.Option(["--flow"], type=str, required=True, help="Flow name"),
+        click.Option(["--workspace"], type=click.Path(path_type=Path), default=None, help="Workspace directory"),
+        click.Argument(["params"], nargs=-1),  # Capture remaining args as key=value pairs
+    ]
+
+    def setup_callback(flow: str, workspace: Path | None, params: tuple[str, ...]) -> None:
+        """Initialize workspace for a flow."""
+        flow_info = _find_flow(flow)
+        if flow_info is None:
+            console.print(f"[red]Error:[/red] Flow '{flow}' not found")
+            sys.exit(1)
+
+        # Parse key=value params
+        kwargs: dict[str, Any] = {}
+        for p in params:
+            if "=" in p:
+                key, value = p.split("=", 1)
+                # Try to parse as bool/int/float
+                if value.lower() in ("true", "false"):
+                    kwargs[key] = value.lower() == "true"
+                else:
+                    try:
+                        kwargs[key] = int(value)
+                    except ValueError:
+                        try:
+                            kwargs[key] = float(value)
+                        except ValueError:
+                            kwargs[key] = value
+
+        ws = setup_workspace(flow_info, workspace=workspace, **kwargs)
+        console.print(f"[green]✓[/green] Setup complete: {ws}")
+
+    setup_cmd = click.Command(
+        name="_setup",
+        callback=setup_callback,
+        params=setup_params,
+        help="[internal] Initialize workspace for a flow",
+        hidden=True,
+    )
+
+    # _run-step command
+    run_step_params: list[click.Parameter] = [
+        click.Option(["--flow"], type=str, required=True, help="Flow name"),
+        click.Option(["--step"], type=str, required=True, help="Step name to execute"),
+        click.Option(["--workspace"], type=click.Path(path_type=Path), default=None, help="Workspace directory"),
+    ]
+
+    def run_step_callback(flow: str, step: str, workspace: Path | None) -> None:
+        """Execute a single step of a flow."""
+        ws = workspace or get_workspace_from_env()
+        if ws is None:
+            console.print("[red]Error:[/red] --workspace required or set $RECOMPOSE_WORKSPACE")
+            sys.exit(1)
+
+        flow_info = _find_flow(flow)
+        if flow_info is None:
+            console.print(f"[red]Error:[/red] Flow '{flow}' not found")
+            sys.exit(1)
+
+        result = run_step(flow_info, step, ws)
+        if result.failed:
+            sys.exit(1)
+
+    run_step_cmd = click.Command(
+        name="_run-step",
+        callback=run_step_callback,
+        params=run_step_params,
+        help="[internal] Execute a single flow step",
+        hidden=True,
+    )
+
+    return [setup_cmd, run_step_cmd]
 
 
 class GroupedClickGroup(click.Group):
@@ -609,6 +506,10 @@ class GroupedClickGroup(click.Group):
         for name in self.list_commands(ctx):
             cmd = self.get_command(ctx, name)
             if cmd is None:
+                continue
+
+            # Skip hidden commands unless --show-hidden
+            if cmd.hidden and not self.show_hidden:
                 continue
 
             group_name = self.command_groups.get(name, "Other")
@@ -661,6 +562,10 @@ def _build_grouped_cli(
             # Bare task or flow (not in a group)
             _add_command_to_cli(cli, item, "Other", seen_names)
 
+    # Add hidden internal commands
+    for cmd in _build_internal_commands():
+        cli.add_command(cmd)
+
     return cli
 
 
@@ -676,17 +581,18 @@ def _add_command_to_cli(
     info: TaskInfo | FlowInfo
     is_flow: bool
     if hasattr(cmd_wrapper, "_flow_info"):
-        info = cmd_wrapper._flow_info
+        info = cast(FlowWrapper, cmd_wrapper)._flow_info
         is_flow = True
     elif hasattr(cmd_wrapper, "_task_info"):
-        info = cmd_wrapper._task_info
+        info = cast(TaskWrapper[Any, Any], cmd_wrapper)._task_info
         is_flow = False
     else:
         raise TypeError(
             f"Expected a task or flow, got {type(cmd_wrapper).__name__}. Make sure to use @task or @flow decorators."
         )
 
-    cmd_name = info.name
+    # Use kebab-case for CLI command names
+    cmd_name = _to_kebab_case(info.name)
 
     # Check for duplicate names
     if cmd_name in seen_names:
@@ -805,8 +711,8 @@ def _register_command(
 ) -> None:
     """Register a task or flow in the appropriate registry."""
     if hasattr(cmd_wrapper, "_flow_info"):
-        info = cmd_wrapper._flow_info
-        flows[info.full_name] = info
+        flow_info = cast(FlowWrapper, cmd_wrapper)._flow_info
+        flows[flow_info.full_name] = flow_info
     elif hasattr(cmd_wrapper, "_task_info"):
-        info = cmd_wrapper._task_info
-        tasks[info.full_name] = info
+        task_info = cast(TaskWrapper[Any, Any], cmd_wrapper)._task_info
+        tasks[task_info.full_name] = task_info

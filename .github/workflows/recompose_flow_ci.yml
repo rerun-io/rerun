@@ -23,12 +23,14 @@ jobs:
     - name: step_1_gha.checkout
       uses: actions/checkout@v4
     - name: setup_workspace
-      run: uv run python -m examples.app ci --setup
+      run: uv run python -m examples.app _setup --flow ci
     - name: step_2_lint
-      run: uv run python -m examples.app ci --step step_2_lint
+      run: uv run python -m examples.app _run-step --flow ci --step step_2_lint
     - name: step_3_format_check
-      run: uv run python -m examples.app ci --step step_3_format_check
+      run: uv run python -m examples.app _run-step --flow ci --step 
+        step_3_format_check
     - name: step_4_test
-      run: uv run python -m examples.app ci --step step_4_test
+      run: uv run python -m examples.app _run-step --flow ci --step step_4_test
     - name: step_5_generate_gha
-      run: uv run python -m examples.app ci --step step_5_generate_gha
+      run: uv run python -m examples.app _run-step --flow ci --step 
+        step_5_generate_gha

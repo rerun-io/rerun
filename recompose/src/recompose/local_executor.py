@@ -4,11 +4,10 @@ This module provides the local execution engine for flows, running each step
 as a separate subprocess. This matches the behavior of GitHub Actions workflows
 where each step is isolated.
 
-The main entry point is `execute_flow_isolated()` which:
-1. Uses the pre-built FlowPlan from the flow
-2. Creates a workspace directory for inter-step communication
-3. Runs each step as a subprocess via the CLI's --step mode
-4. Renders progress with a tree-based display
+The main entry points are:
+- `execute_flow_isolated()`: Runs a complete flow locally with subprocess isolation
+- `setup_workspace()`: Initializes a workspace for a flow (used by GHA setup step)
+- `run_step()`: Executes a single step (used by both local executor and GHA)
 """
 
 from __future__ import annotations
@@ -27,8 +26,16 @@ from rich.console import Console
 from .conditional import evaluate_condition
 from .context import dbg, get_entry_point, is_debug
 from .expr import format_expr
+from .flow import FlowInfo
 from .result import Err, Ok, Result
-from .workspace import FlowParams, create_workspace, read_step_result, write_params
+from .workspace import (
+    FlowParams,
+    create_workspace,
+    read_params,
+    read_step_result,
+    write_params,
+    write_step_result,
+)
 
 if TYPE_CHECKING:
     from .flow import FlowWrapper
@@ -37,6 +44,208 @@ if TYPE_CHECKING:
 def _format_condition_expr(condition_data: dict[str, Any]) -> str:
     """Format a serialized condition expression for display."""
     return format_expr(condition_data)
+
+
+# =============================================================================
+# Setup Workspace
+# =============================================================================
+
+
+def setup_workspace(
+    flow_info: FlowInfo,
+    workspace: Path | None = None,
+    **kwargs: Any,
+) -> Path:
+    """
+    Initialize a workspace for a flow.
+
+    This creates the workspace directory and writes the flow parameters.
+    Used by GHA workflows in the setup step before running individual steps.
+
+    Args:
+        flow_info: The flow's FlowInfo metadata
+        workspace: Optional workspace directory. If not provided, one is auto-generated.
+        **kwargs: Flow parameters to store in the workspace.
+
+    Returns:
+        Path to the workspace directory.
+
+    """
+    flow_name = flow_info.name
+
+    # Create or use provided workspace
+    ws = create_workspace(flow_name, workspace=workspace)
+
+    # Use the pre-built plan (step names already assigned at decoration time)
+    plan = flow_info.plan
+    step_names = [n.step_name for n in plan.nodes if n.step_name]
+
+    # Get entry point info
+    entry_point = get_entry_point()
+    script_path = entry_point[1] if entry_point else sys.argv[0]
+
+    flow_params = FlowParams(
+        flow_name=flow_name,
+        params=kwargs,
+        steps=step_names,
+        created_at=datetime.now().isoformat(),
+        script_path=script_path,
+    )
+    write_params(ws, flow_params)
+
+    return ws
+
+
+# =============================================================================
+# Run Step
+# =============================================================================
+
+
+def run_step(
+    flow_info: FlowInfo,
+    step: str,
+    workspace: Path,
+) -> Result[Any]:
+    """
+    Execute a single step of a flow.
+
+    This resolves dependencies from the workspace, executes the task, and
+    writes the result back to the workspace. Used by both local executor
+    (via subprocess) and GHA workflows.
+
+    Args:
+        flow_info: The flow's FlowInfo metadata
+        step: The step name to execute
+        workspace: The workspace directory containing flow params and step results
+
+    Returns:
+        Result containing the step's return value or error.
+
+    """
+    console = Console()
+
+    # Read params from workspace
+    try:
+        flow_params = read_params(workspace)
+    except FileNotFoundError:
+        return Err(f"No _params.json in {workspace}. Run setup first.")
+
+    # Use the pre-built plan
+    plan = flow_info.plan
+
+    # Find the requested step
+    target_node = plan.get_step(step)
+    if target_node is None:
+        return Err(f"Step '{step}' not found. Available: {flow_params.steps}")
+
+    step_name = target_node.step_name or target_node.name
+
+    # Check if we're in tree mode (subprocess of run_isolated)
+    from .output import install_tree_output, is_tree_mode, uninstall_tree_output
+
+    tree_mode = is_tree_mode()
+
+    if not tree_mode:
+        console.print(f"\n[bold cyan]▶[/bold cyan] [bold]{step_name}[/bold]")
+        console.print()
+
+    # Install tree output wrapper for print/logging
+    tree_ctx = install_tree_output()
+
+    # Resolve dependencies from workspace
+    from .plan import InputPlaceholder
+    from .plan import TaskNode as TaskNodeType
+
+    resolved_kwargs: dict[str, Any] = {}
+    for kwarg_name, kwarg_value in target_node.kwargs.items():
+        if isinstance(kwarg_value, TaskNodeType):  # TaskNode dependency
+            dep_node = kwarg_value
+            dep_step_name = dep_node.step_name or dep_node.name
+            dep_result = read_step_result(workspace, dep_step_name)
+            if dep_result.failed:
+                uninstall_tree_output(tree_ctx)
+                return Err(f"Dependency '{dep_step_name}' failed or not found")
+            resolved_kwargs[kwarg_name] = dep_result.value()
+        elif isinstance(kwarg_value, InputPlaceholder):
+            # Resolve InputPlaceholder from flow params
+            param_name = kwarg_value.name
+            if param_name in flow_params.params:
+                resolved_kwargs[kwarg_name] = flow_params.params[param_name]
+            elif kwarg_value.default is not None:
+                resolved_kwargs[kwarg_name] = kwarg_value.default
+            else:
+                uninstall_tree_output(tree_ctx)
+                return Err(f"Required parameter '{param_name}' not found in workspace")
+        else:
+            resolved_kwargs[kwarg_name] = kwarg_value
+
+    # Execute the task (or condition check)
+    start_time = time.perf_counter()
+
+    if target_node.task_info.is_condition_check:
+        # Special handling for condition evaluation
+        condition_data = target_node.kwargs.get("condition_data", {})
+
+        # Build evaluation context: inputs from flow params, outputs from workspace
+        eval_context_inputs = flow_params.params
+        eval_context_outputs: dict[str, Any] = {}
+
+        # Read outputs from previous steps that the condition might reference
+        for prev_step in flow_params.steps:
+            if prev_step == step_name:
+                break  # Stop at current step
+            prev_result = read_step_result(workspace, prev_step)
+            if prev_result.ok:
+                eval_context_outputs[prev_step] = prev_result.value()
+
+        eval_result = evaluate_condition(condition_data, eval_context_inputs, eval_context_outputs)
+        condition_value = eval_result.value() if eval_result.ok else False
+
+        # Create a proper Result for workspace storage
+        result = Ok(condition_value)
+
+        # Write to GITHUB_OUTPUT if available (for GHA)
+        github_output = os.environ.get("GITHUB_OUTPUT")
+        if github_output:
+            with open(github_output, "a") as f:
+                f.write(f"value={'true' if condition_value else 'false'}\n")
+
+    else:
+        # Use the wrapped function (fn) which catches exceptions
+        result = target_node.task_info.fn(**resolved_kwargs)
+
+    elapsed = time.perf_counter() - start_time
+
+    # Uninstall tree output wrapper
+    uninstall_tree_output(tree_ctx)
+
+    # Write result to workspace
+    write_step_result(workspace, step_name, result)
+
+    # Write value to GITHUB_OUTPUT if available (for non-condition steps too)
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output and result.ok and result._value is not None:
+        with open(github_output, "a") as f:
+            f.write(f"value={result._value}\n")
+
+    # Print result (only in non-tree mode - orchestrator handles tree formatting)
+    if not tree_mode:
+        if result.ok:
+            console.print(f"[bold green]✓[/bold green] [bold]{step_name}[/bold] succeeded in {elapsed:.2f}s")
+            if result._value is not None:
+                console.print(f"[dim]→[/dim] {result._value}")
+        else:
+            console.print(f"[bold red]✗[/bold red] [bold]{step_name}[/bold] failed in {elapsed:.2f}s")
+            if result.error:
+                console.print(f"[red]Error:[/red] {result.error}")
+        console.print()
+
+    return result
+
+
+# =============================================================================
+# Execute Flow (Orchestrator)
+# =============================================================================
 
 
 def execute_flow_isolated(
@@ -138,7 +347,7 @@ def execute_flow_isolated(
         # Print step header (with condition if present)
         renderer.step_header(step_name, step_idx, condition_expr=condition_expr_str)
 
-        # Build command based on entry point type
+        # Build command using _run-step internal command
         if entry_type == "module":
             cmd = [sys.executable, "-m", entry_value]
         else:
@@ -146,6 +355,8 @@ def execute_flow_isolated(
 
         cmd.extend(
             [
+                "_run-step",
+                "--flow",
                 flow_name,
                 "--step",
                 step_name,

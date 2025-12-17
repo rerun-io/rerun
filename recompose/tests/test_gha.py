@@ -221,8 +221,8 @@ class TestRenderFlowWorkflow:
         job = spec.jobs["simple_flow"]
         assert len(job.steps) == 3
         assert job.steps[0].uses == "actions/checkout@v4"
-        assert "--setup" in (job.steps[1].run or "")
-        assert "--step" in (job.steps[2].run or "")
+        assert "_setup --flow" in (job.steps[1].run or "")
+        assert "_run-step --flow" in (job.steps[2].run or "")
 
     def test_flow_with_parameters(self) -> None:
         """Test rendering a flow with parameters."""
