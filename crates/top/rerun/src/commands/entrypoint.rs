@@ -883,29 +883,6 @@ fn start_native_viewer(
 
     let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
-    #[allow(clippy::allow_attributes, unused_mut)]
-    let ReceiversFromUrlParams {
-        mut log_receivers,
-        urls_to_pass_on_to_viewer,
-    } = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::native_viewer(),
-        &connection_registry,
-        Some(auth_error_handler),
-    )?;
-
-    // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
-    #[cfg(feature = "server")]
-    if !connect {
-        let log_receiver = re_grpc_server::spawn_with_recv(
-            server_addr,
-            server_options,
-            re_grpc_server::shutdown::never(),
-        );
-
-        log_receivers.push(log_receiver);
-    }
-
     let tokio_runtime_handle = tokio_runtime_handle.clone();
 
     // Start catching `re_log::info/warn/error` messages
@@ -941,11 +918,35 @@ fn start_native_viewer(
                 call_source.app_env(),
                 startup_options,
                 cc,
-                Some(connection_registry),
+                Some(connection_registry.clone()),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
                 (command_tx, command_rx),
             );
+
+            #[allow(clippy::allow_attributes, unused_mut)]
+            let ReceiversFromUrlParams {
+                mut log_receivers,
+                urls_to_pass_on_to_viewer,
+            } = ReceiversFromUrlParams::new(
+                url_or_paths,
+                &UrlParamProcessingConfig::native_viewer(),
+                &connection_registry,
+                Some(auth_error_handler),
+            )?;
+
+            // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
+            #[cfg(feature = "server")]
+            if !connect {
+                let log_receiver = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_options,
+                    re_grpc_server::shutdown::never(),
+                );
+
+                log_receivers.push(log_receiver);
+            }
+
             app.set_profiler(profiler);
             for rx in log_receivers {
                 app.add_log_receiver(rx);
