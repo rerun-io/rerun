@@ -28,22 +28,22 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: step_1_setup_workspace
+    - name: setup_workspace
       run: uv run python -m examples.app wheel_test --setup --full_tests ${{ 
         inputs.full_tests }}
-    - name: step_2_build_wheel
-      run: uv run python -m examples.app wheel_test --step step_2_build_wheel
-    - name: step_3_create_test_venv
+    - name: step_1_build_wheel
+      run: uv run python -m examples.app wheel_test --step step_1_build_wheel
+    - name: step_2_create_test_venv
       run: uv run python -m examples.app wheel_test --step 
-        step_3_create_test_venv
-    - name: step_4_install_wheel
-      run: uv run python -m examples.app wheel_test --step step_4_install_wheel
-    - name: step_5_smoke_test
-      run: uv run python -m examples.app wheel_test --step step_5_smoke_test
+        step_2_create_test_venv
+    - name: step_3_install_wheel
+      run: uv run python -m examples.app wheel_test --step step_3_install_wheel
+    - name: step_4_smoke_test
+      run: uv run python -m examples.app wheel_test --step step_4_smoke_test
     - name: run_if_1
       id: run_if_1
       # [if: full_tests]
       run: uv run python -m examples.app wheel_test --step run_if_1
-    - name: step_7_test_installed
+    - name: step_6_test_installed
       if: ${{ steps.run_if_1.outputs.value == 'true' }}
-      run: uv run python -m examples.app wheel_test --step step_7_test_installed
+      run: uv run python -m examples.app wheel_test --step step_6_test_installed

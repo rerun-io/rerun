@@ -139,7 +139,7 @@ def fail_fast_flow() -> None:
 def failure_flow() -> None:
     """Flow with a failing task that has a dependent."""
     r = failing_task()
-    consume(input_val=r.value())  # Won't run - dep failed
+    echo(message=r.value())  # Won't run - dep failed
 
 
 @recompose.flow

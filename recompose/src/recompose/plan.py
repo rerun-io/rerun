@@ -288,8 +288,8 @@ class FlowPlan:
 
     def _create_condition_check_node(self, condition: Expr) -> TaskNode[bool]:
         """Create a condition-check node for the given condition expression."""
-        from .task import TaskInfo
         from .result import Ok
+        from .task import TaskInfo
 
         self._condition_counter += 1
         step_name = f"run_if_{self._condition_counter}"
@@ -317,7 +317,6 @@ class FlowPlan:
         check_node.step_name = step_name  # Pre-assign the step name
 
         return check_node
-
 
     def assign_step_names(self) -> None:
         """

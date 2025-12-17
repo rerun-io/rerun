@@ -465,8 +465,6 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
     return inputs
 
 
-
-
 def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
