@@ -818,6 +818,12 @@ impl VideoDataDescription {
         }
     }
 
+    pub fn sample_keyframe_idx(&self, sample_idx: SampleIndex) -> Option<KeyframeIndex> {
+        self.keyframe_indices
+            .partition_point(|idx| *idx <= sample_idx)
+            .checked_sub(1)
+    }
+
     fn find_keyframe_index(
         &self,
         cmp_time: impl Fn(&SampleMetadata) -> bool,
