@@ -1,13 +1,17 @@
 use futures::StreamExt as _;
+use itertools::merge;
+use re_log_types::TimeInt;
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::ext::{
+    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };
-use crate::{FieldsTestExt as _, RecordBatchTestExt as _};
+use crate::{FieldsTestExt as _, RecordBatchTestExt as _, TempPath};
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
@@ -153,6 +157,151 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     }
 }
 
+fn create_recording_with_temporal_and_static_data() -> anyhow::Result<TempPath> {
+    use re_chunk::{Chunk, TimePoint};
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_sdk::RecordingStreamBuilder;
+
+    use crate::utils::rerun::{next_chunk_id_generator, next_row_id_generator};
+
+    let segment_id = "static_test_segment";
+    let tuid_prefix: u64 = 100;
+
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_path = tmp_dir.path().join(format!("{segment_id}.rrd"));
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())
+        .unwrap();
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let frame0 = TimeInt::new_temporal(0);
+    let points = MyPoint::from_iter(0..1);
+
+    // /static_only: single MyPoint logged as static
+    let static_only_chunk =
+        Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/static_only"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                TimePoint::default(),
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap();
+    rec.send_chunk(static_only_chunk);
+
+    // /both: MyPoint logged as static and another logged at frame = 0
+    let both_static_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
+        .with_sparse_component_batches(
+            next_row_id(),
+            TimePoint::default(),
+            [(MyPoints::descriptor_points(), Some(&points as _))],
+        )
+        .build()
+        .unwrap();
+    rec.send_chunk(both_static_chunk);
+
+    let both_temporal_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(frame0)],
+            [(MyPoints::descriptor_points(), Some(&points as _))],
+        )
+        .build()
+        .unwrap();
+    rec.send_chunk(both_temporal_chunk);
+
+    // /temporal_only: MyPoint logged at frame = 0
+    let temporal_only_chunk =
+        Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/temporal_only"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame0)],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()
+            .unwrap();
+    rec.send_chunk(temporal_only_chunk);
+
+    rec.flush_blocking().unwrap();
+
+    Ok(crate::TempPath::new(tmp_dir, tmp_path))
+}
+
+pub async fn query_dataset_with_static(service: impl RerunCloudService) {
+    let recording_path = create_recording_with_temporal_and_static_data().unwrap();
+
+    let dataset_name = "dataset_with_layers";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name(
+            dataset_name,
+            vec![
+                DataSource {
+                    storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
+                    is_prefix: false,
+                    layer: "base".to_string(),
+                    kind: DataSourceKind::Rrd,
+                }
+                .into(),
+            ],
+        )
+        .await;
+
+    let requests = [
+        (
+            QueryDatasetRequest {
+                segment_ids: vec![],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                fuzzy_descriptors: vec![],
+                exclude_static_data: false,
+                exclude_temporal_data: false,
+                scan_parameters: None,
+                query: None,
+            },
+            "base",
+        ),
+        (
+            QueryDatasetRequest {
+                segment_ids: vec![],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                fuzzy_descriptors: vec![],
+                exclude_static_data: false,
+                exclude_temporal_data: false,
+                scan_parameters: None,
+                query: Some(Query {
+                    latest_at: Some(QueryLatestAt {
+                        index: Some("frame_nr".to_owned()),
+                        at: TimeInt::new_temporal(5),
+                    }),
+                    range: None,
+                    ..Default::default()
+                }),
+            },
+            "latest_at",
+        ),
+    ];
+
+    for (request, snapshot_name) in requests {
+        query_dataset_snapshot(
+            &service,
+            request,
+            dataset_name,
+            &format!("with_static_data_{snapshot_name}"),
+        )
+        .await
+    }
+}
+
 // ---
 
 async fn query_dataset_snapshot(
@@ -176,6 +325,10 @@ async fn query_dataset_snapshot(
         .await;
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
+
+    //TODO: cleanup
+    println!("\n{snapshot_name}:");
+    println!("{}\n=====\n\n", merged_chunk_info.format_snapshot(true));
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
