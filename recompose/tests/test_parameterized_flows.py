@@ -8,7 +8,7 @@ import pytest
 from ruamel.yaml import YAML
 
 import recompose
-from recompose.flowgraph import InputPlaceholder
+from recompose.plan import InputPlaceholder
 from recompose.gha import render_flow_workflow
 
 
@@ -252,7 +252,7 @@ class TestValueBasedComposition:
         """Test that TaskNode has a .value() method that returns itself."""
         import inspect
 
-        from recompose.flowgraph import TaskNode
+        from recompose.plan import TaskNode
         from recompose.task import TaskInfo
 
         # Create a mock TaskInfo
@@ -277,7 +277,7 @@ class TestValueBasedComposition:
         """Test that TaskNode has ok, failed, error properties like Result."""
         import inspect
 
-        from recompose.flowgraph import TaskNode
+        from recompose.plan import TaskNode
         from recompose.task import TaskInfo
 
         def dummy_fn() -> recompose.Result[str]:

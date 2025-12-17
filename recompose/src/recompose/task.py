@@ -13,7 +13,7 @@ from .context import Context, get_context, set_context
 from .result import Err, Result
 
 if TYPE_CHECKING:
-    from .flowgraph import TaskNode
+    from .plan import TaskNode
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -156,7 +156,7 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
 
             # Create the TaskNode, capturing current condition if in a run_if block
             from .conditional import get_current_condition
-            from .flowgraph import TaskNode
+            from .plan import TaskNode
 
             current_cond = get_current_condition()
             condition = current_cond.condition if current_cond else None
@@ -300,7 +300,7 @@ def taskclass(cls: type[T]) -> type[T]:
 
                     # Create the TaskNode, capturing current condition if in a run_if block
                     from .conditional import get_current_condition
-                    from .flowgraph import TaskNode
+                    from .plan import TaskNode
 
                     current_cond = get_current_condition()
                     condition = current_cond.condition if current_cond else None

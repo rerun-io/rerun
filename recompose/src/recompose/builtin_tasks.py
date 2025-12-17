@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
+from .gh_cli import find_git_root
 from .gha import validate_workflow
-from .github import find_git_root
 from .result import Err, Ok, Result
 from .task import task
 
