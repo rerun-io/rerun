@@ -447,39 +447,34 @@ async fn stream_segment_from_server(
 
             const DOWNLOAD_CHUNKS_ON_DEMAND: bool = true; // TODO
             if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
-                if true {
-                    let mut rrd_manifest = rrd_manifest;
-                    // Prioritize the chunks:
-                    rrd_manifest.data = sort_batch(&rrd_manifest.data).map_err(|err| {
-                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
-                    })?;
-
-                    // Pick everything static and a couple more things:
-                    let mut idx = 0;
-                    let mut num_temporal_to_load = 32;
+                {
+                    // Pre-fetch everything static:
                     let col_chunk_is_static =
                         rrd_manifest.col_chunk_is_static().map_err(|err| {
                             ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
                         })?;
-                    for chunk_is_static in col_chunk_is_static {
-                        idx += 1;
-                        if !chunk_is_static {
-                            num_temporal_to_load -= 1;
-                            if num_temporal_to_load == 0 {
-                                break;
-                            }
+
+                    let mut indices = vec![];
+                    for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
+                        if chunk_is_static {
+                            indices.push(row_idx as u32);
                         }
                     }
+                    let static_chunks = arrow::compute::take_record_batch(
+                        &rrd_manifest.data,
+                        &arrow::array::UInt32Array::from(indices),
+                    )
+                    .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
 
-                    let batch_trimmed = rrd_manifest.data.slice(0, idx);
                     re_log::debug!(
-                        "Pre-fetching the first {} chunks…",
-                        batch_trimmed.num_rows()
+                        "Pre-fetching {} static chunks…",
+                        re_format::format_uint(static_chunks.num_rows())
                     );
-                    load_chunks(client, tx, &store_id, batch_trimmed).await?;
+                    load_chunks(client, tx, &store_id, static_chunks).await?;
                 }
 
                 re_log::debug!("Waiting for viewer to tell me what to load…");
+
                 loop {
                     if let Ok(cmd) = tx.recv_cmd().await {
                         match cmd {

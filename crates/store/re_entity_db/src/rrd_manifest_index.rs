@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
-use arrow::array::{Int32Array, RecordBatch};
+use arrow::array::RecordBatch;
 use arrow::compute::take_record_batch;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
@@ -378,7 +378,7 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
-        let mut indices: Vec<i32> = vec![];
+        let mut indices: Vec<u32> = vec![];
 
         for (_, chunk_id) in chunks.query(desired_range.into()) {
             let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
@@ -397,7 +397,7 @@ impl RrdManifestIndex {
             if remote_chunk.state == LoadState::Unloaded {
                 remote_chunk.state = LoadState::InTransit;
 
-                if let Ok(row_idx) = i32::try_from(row_idx) {
+                if let Ok(row_idx) = u32::try_from(row_idx) {
                     indices.push(row_idx);
                 } else {
                     // Improbable
@@ -413,7 +413,7 @@ impl RrdManifestIndex {
 
         Ok(take_record_batch(
             &manifest.data,
-            &Int32Array::from(indices),
+            &arrow::array::UInt32Array::from(indices),
         )?)
     }
 
