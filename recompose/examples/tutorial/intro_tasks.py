@@ -13,8 +13,8 @@ Run this file to see all tasks:
     uv run python examples/tutorial/intro_tasks.py --help
 
 Try individual tasks:
-    uv run python examples/tutorial/intro_tasks.py hello
-    uv run python examples/tutorial/intro_tasks.py greet --name="Alice"
+    uv run python examples/tutorial/intro_tasks.py hello --name="Alice"
+    uv run python examples/tutorial/intro_tasks.py goodbye --greeting=Hello --name="Alice"
     uv run python examples/tutorial/intro_tasks.py check_tool --tool=git
     uv run python examples/tutorial/intro_tasks.py divide --a=10 --b=2
     uv run python examples/tutorial/intro_tasks.py divide --a=10 --b=0
@@ -31,32 +31,46 @@ import recompose
 
 
 @recompose.task
-def hello() -> recompose.Result[str]:
+def hello(*, name: str = "World") -> recompose.Result[str]:
     """
-    The simplest possible task.
-
-    Returns a greeting message. This demonstrates:
-    - The @task decorator
-    - Returning Ok(value) for success
-    """
-    return recompose.Ok("Hello from recompose!")
-
-
-@recompose.task
-def greet(*, name: str = "World") -> recompose.Result[str]:
-    """
-    A task with CLI arguments.
+    Generate a random greeting.
 
     Function parameters become CLI options automatically:
     - Keyword-only args (after *) become --name=value options
     - Default values make arguments optional
     - Type hints determine argument types
 
-    Try: greet --name="Alice"
+    Try: hello --name="Alice"
     """
-    message = f"Hello, {name}!"
-    recompose.out(message)  # Output to console (captured by recompose)
-    return recompose.Ok(message)
+    import random
+
+    greetings = ["Hello", "Hi", "Hey"]
+    greeting = random.choice(greetings)
+    recompose.out(f"{greeting}, {name}!")
+    return recompose.Ok(greeting)
+
+
+@recompose.task
+def goodbye(*, greeting: str, name: str) -> recompose.Result[str]:
+    """
+    Generate a farewell based on the greeting style.
+
+    Demonstrates error handling - returns Err for unknown greetings.
+
+    Try: goodbye --greeting=Hello --name="Alice"
+    Try: goodbye --greeting=Hey --name="Alice"  (will fail)
+    """
+    farewells = {
+        "Hello": "Goodbye",
+        "Hi": "See you later",
+    }
+
+    if greeting not in farewells:
+        return recompose.Err(f"Unknown greeting: {greeting}")
+
+    farewell = farewells[greeting]
+    recompose.out(f"{farewell}, {name}!")
+    return recompose.Ok(farewell)
 
 
 # =============================================================================
@@ -198,7 +212,7 @@ if __name__ == "__main__":
             "Examples",
             [
                 hello,
-                greet,
+                goodbye,
                 verbose_task,
                 check_tool,
                 list_files,
