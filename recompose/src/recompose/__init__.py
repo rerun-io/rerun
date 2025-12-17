@@ -28,8 +28,9 @@ from .automation import (
     get_automation,
     get_automation_registry,
 )
-from .builtin_tasks import generate_gha, inspect
+from .builtin_tasks import builtin_commands, generate_gha, inspect
 from .cli import main
+from .command_group import CommandGroup, Config
 from .conditional import run_if
 from .context import (
     dbg,
@@ -110,6 +111,8 @@ __all__ = [
     "run_if",
     # CLI
     "main",
+    "Config",
+    "CommandGroup",
     # Workspace (for subprocess isolation)
     "FlowParams",
     "create_workspace",
@@ -132,6 +135,7 @@ __all__ = [
     "get_automation",
     "get_automation_registry",
     # Built-in tasks
+    "builtin_commands",
     "generate_gha",
     "inspect",
 ]
