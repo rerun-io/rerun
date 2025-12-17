@@ -386,7 +386,15 @@ fn replace_time_in_query(
     });
 
     let (latest_at, range) = match op {
-        Operator::Eq => (latest_at, None),
+        Operator::Eq => {
+            let range = QueryRange {
+                index: index.to_owned(),
+                index_range: AbsoluteTimeRange {
+                    min: time,
+                    max: time,
+                },
+            };
+            (latest_at, Some(range)) }
         Operator::Gt | Operator::GtEq => {
             let range = QueryRange {
                 index: index.to_owned(),
