@@ -1,119 +1,130 @@
+"""
+Deprecated dataframe module.
+
+.. deprecated::
+    This module is deprecated. Use ``rerun.recording`` for loading recordings,
+    ``rerun.catalog`` for schema types, and the catalog API for querying data.
+    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link
+"""
+
 from __future__ import annotations
 
-from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+import warnings
+from typing import Any
 
-import pyarrow as pa
+# TODO(RR-3130): this entire submodule is deprecated and will be removed in a future release
 
-from rerun.catalog import Schema as Schema  # for backward compatibility
-from rerun_bindings import (
-    ComponentColumnDescriptor as ComponentColumnDescriptor,  # for backward compatibility
-    ComponentColumnSelector as ComponentColumnSelector,  # for backward compatibility
-    IndexColumnDescriptor as IndexColumnDescriptor,  # for backward compatibility
-    IndexColumnSelector as IndexColumnSelector,  # for backward compatibility
-    Recording as Recording,
-    RecordingView as RecordingView,
-    RRDArchive as RRDArchive,
-    load_archive as load_archive,
-    load_recording as load_recording,
-)
-from rerun_bindings.types import (
-    AnyColumn as AnyColumn,
-    AnyComponentColumn as AnyComponentColumn,
-    ViewContentsLike as ViewContentsLike,
-)
+_MIGRATION_GUIDE = "https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link"
 
-from ._baseclasses import ComponentColumn, ComponentDescriptor
-from ._send_columns import TimeColumnLike, send_columns
-
-if TYPE_CHECKING:
-    from .recording_stream import RecordingStream
-
-SORBET_INDEX_NAME = b"rerun:index_name"
-SORBET_ENTITY_PATH = b"rerun:entity_path"
-SORBET_ARCHETYPE_NAME = b"rerun:archetype"
-SORBET_COMPONENT = b"rerun:component"
-SORBET_COMPONENT_TYPE = b"rerun:component_type"
-SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
-RERUN_KIND = b"rerun:kind"
-RERUN_KIND_CONTROL = b"control"
-RERUN_KIND_INDEX = b"index"
+_MOVED_TO_RECORDING = {"Recording", "RRDArchive", "load_archive", "load_recording"}
+_MOVED_TO_CATALOG = {
+    "Schema",
+    "ComponentColumnDescriptor",
+    "ComponentColumnSelector",
+    "IndexColumnDescriptor",
+    "IndexColumnSelector",
+}
+_MOVED_TO_TOP_LEVEL = {"send_dataframe", "send_record_batch"}
+_DEPRECATED_QUERY_API = {"RecordingView", "AnyColumn", "AnyComponentColumn", "ViewContentsLike"}
 
 
-class RawIndexColumn(TimeColumnLike):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
-        self.metadata = metadata
-        self.col = col
+def _get_deprecated_attr(name: str) -> Any:
+    """Lazily import and return the deprecated attribute."""
+    if name == "Recording":
+        from .recording import Recording
 
-    def timeline_name(self) -> str:
-        name = self.metadata.get(SORBET_INDEX_NAME, "unknown")
-        if isinstance(name, bytes):
-            name = name.decode("utf-8")
-        return name
+        return Recording
+    if name == "RRDArchive":
+        from .recording import RRDArchive
 
-    def as_arrow_array(self) -> pa.Array:
-        return self.col
+        return RRDArchive
+    if name == "load_archive":
+        from .recording import load_archive
+
+        return load_archive
+    if name == "load_recording":
+        from .recording import load_recording
+
+        return load_recording
+    if name == "Schema":
+        from .catalog import Schema
+
+        return Schema
+    if name == "ComponentColumnDescriptor":
+        from rerun_bindings import ComponentColumnDescriptor
+
+        return ComponentColumnDescriptor
+    if name == "ComponentColumnSelector":
+        from rerun_bindings import ComponentColumnSelector
+
+        return ComponentColumnSelector
+    if name == "IndexColumnDescriptor":
+        from rerun_bindings import IndexColumnDescriptor
+
+        return IndexColumnDescriptor
+    if name == "IndexColumnSelector":
+        from rerun_bindings import IndexColumnSelector
+
+        return IndexColumnSelector
+    if name == "send_dataframe":
+        from ._send_dataframe import send_dataframe
+
+        return send_dataframe
+    if name == "send_record_batch":
+        from ._send_dataframe import send_record_batch
+
+        return send_record_batch
+    if name == "RecordingView":
+        from rerun_bindings import RecordingView
+
+        return RecordingView
+    if name == "AnyColumn":
+        from rerun_bindings.types import AnyColumn
+
+        return AnyColumn
+    if name == "AnyComponentColumn":
+        from rerun_bindings.types import AnyComponentColumn
+
+        return AnyComponentColumn
+    if name == "ViewContentsLike":
+        from rerun_bindings.types import ViewContentsLike
+
+        return ViewContentsLike
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-class RawComponentBatchLike(ComponentColumn):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
-        self.metadata = metadata
-        self.col = col
-
-    def component_descriptor(self) -> ComponentDescriptor:
-        kwargs = {}
-        if SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
-        if SORBET_COMPONENT_TYPE in self.metadata:
-            kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
-        if SORBET_COMPONENT in self.metadata:
-            kwargs["component"] = self.metadata[SORBET_COMPONENT].decode("utf-8")
-
-        if "component_type" not in kwargs:
-            kwargs["component_type"] = "Unknown"
-
-        return ComponentDescriptor(**kwargs)
-
-    def as_arrow_array(self) -> pa.Array:
-        return self.col
-
-
-def send_record_batch(batch: pa.RecordBatch, rec: RecordingStream | None = None) -> None:
-    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
-
-    indexes = []
-    data: defaultdict[str, list[Any]] = defaultdict(list)
-    archetypes: defaultdict[str, set[Any]] = defaultdict(set)
-    for col in batch.schema:
-        metadata = col.metadata or {}
-        if metadata.get(RERUN_KIND) == RERUN_KIND_CONTROL:
-            continue
-        if SORBET_INDEX_NAME in metadata or metadata.get(RERUN_KIND) == RERUN_KIND_INDEX:
-            if SORBET_INDEX_NAME not in metadata:
-                metadata[SORBET_INDEX_NAME] = col.name
-            indexes.append(RawIndexColumn(metadata, batch.column(col.name)))
-        else:
-            entity_path = metadata.get(SORBET_ENTITY_PATH, col.name.split(":")[0])
-            if isinstance(entity_path, bytes):
-                entity_path = entity_path.decode("utf-8")
-            data[entity_path].append(RawComponentBatchLike(metadata, batch.column(col.name)))
-            if SORBET_ARCHETYPE_NAME in metadata:
-                archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
-
-    for entity_path, columns in data.items():
-        send_columns(
-            entity_path,
-            indexes,
-            columns,
-            # This is fine, send_columns will handle the conversion
-            recording=rec,  # NOLINT
+def __getattr__(name: str) -> Any:
+    if name in _MOVED_TO_RECORDING:
+        warnings.warn(
+            f"`rerun.dataframe.{name}` is deprecated. Use `rerun.recording.{name}` instead. See: {_MIGRATION_GUIDE}",
+            DeprecationWarning,
+            stacklevel=2,
         )
+        return _get_deprecated_attr(name)
+    if name in _MOVED_TO_CATALOG:
+        warnings.warn(
+            f"`rerun.dataframe.{name}` is deprecated. Use `rerun.catalog.{name}` instead. See: {_MIGRATION_GUIDE}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _get_deprecated_attr(name)
+    if name in _MOVED_TO_TOP_LEVEL:
+        warnings.warn(
+            f"`rerun.dataframe.{name}` is deprecated. Use `rerun.{name}` instead. See: {_MIGRATION_GUIDE}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _get_deprecated_attr(name)
+    if name in _DEPRECATED_QUERY_API:
+        warnings.warn(
+            f"`rerun.dataframe.{name}` is deprecated. Use the catalog API instead. See: {_MIGRATION_GUIDE}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _get_deprecated_attr(name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: RecordingStream | None = None) -> None:
-    """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
-    if isinstance(df, pa.Table):
-        df = df.to_reader()
-
-    for batch in df:
-        send_record_batch(batch, rec)
+def __dir__() -> list[str]:
+    # Include deprecated names in dir() for discoverability
+    return list(_MOVED_TO_RECORDING | _MOVED_TO_CATALOG | _MOVED_TO_TOP_LEVEL | _DEPRECATED_QUERY_API)

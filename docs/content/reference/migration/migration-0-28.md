@@ -5,6 +5,38 @@ order: 982
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## Deprecated components and APIs have been removed
+
+This release includes a major cleanup where many components, methods, and APIs that were marked as deprecated before version 0.27 have been removed. If you have been using any deprecated APIs, you will need to update your code to use the recommended replacements.
+
+### Removed deprecated components and methods
+
+The following previously deprecated items have been removed:
+
+#### Rust SDK
+- `TimeColumn::new_seconds()` and `TimeColumn::new_nanos()` methods
+- `Timeline::new_temporal()` method
+- `Asset3D::from_file()` method (use `Asset3D::from_file_path()` instead)
+- `AssetVideo::read_frame_timestamps_ns()` method (was renamed to `read_frame_timestamps_nanos()`)
+- `Image::from_file_path()` and `Image::from_file_contents()` methods (use `EncodedImage` equivalents instead)
+- Various deprecated methods on `Pinhole` archetype (use component-specific methods instead)
+- `Scale3D::Uniform()` and `Scale3D::ThreeD()` methods (use `Scale3D::uniform()` and `Scale3D::from()` instead)
+- `VideoTimestamp::from_seconds()`, `from_milliseconds()`, and `from_nanoseconds()` methods (use `from_secs()`, `from_millis()`, and `from_nanos()` instead)
+- `Angle::Degrees()` and `Angle::Radians()` methods (use `Angle::from_degrees()` and `Angle::from_radians()` instead)
+- `RecordingStream::serve_web()` method (use combination of `serve_grpc()` and `serve_web_viewer()`)
+- `RecordingStream::set_time_secs()` and `set_time_nanos()` methods (use `set_time()` with appropriate time types)
+
+#### Python SDK
+- `ImageEncoded` and `ImageFormat` classes (use `EncodedImage` instead)
+- `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn` classes (use `TimeColumn` instead)
+- `new_recording()` function (use `RecordingStream()` constructor instead)
+- `set_time_sequence()`, `set_time_seconds()`, and `set_time_nanos()` functions (use `set_time()` instead)
+- `serve_web()` function (use combination of `serve_grpc()` and `serve_web_viewer()`)
+- `AnyValues.with_field()` and `AnyValues.with_component()` methods (use `with_component_from_data()` and `with_component_override()` instead)
+- Various deprecated methods on video and time-related components
+
+If you encounter any errors related to missing methods or components, check if they were previously deprecated and update your code to use the recommended alternatives. The deprecation warnings from previous versions should have indicated the correct replacements to use.
+
 ## `Pose*` component types have been removed
 
 The following component types have been removed in favor of their more general counterparts:
@@ -247,3 +279,79 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 ### Other deprecations
 
 `DatasetEntry.download_segments()` is deprecated and will be removed in a future release.
+
+
+## `RecordingView` and local dataframe API deprecated
+
+With the OSS server and the catalog APIs gaining maturity, we want to make this the primary way to query data out of Rerun, including when working locally.
+These APIs will receive ongoing improvements in the future, and offer a smoother migration path to cloud-based workflows.
+As a result, we are deprecating `rerun.dataframe` in this release, and in particular the ability to run dataframe queries on a `Recording` object. See the following sections for more details.
+
+
+### `RecordingView` deprecated
+
+
+The `RecordingView` class, along with `Recording.view()` and the ability to run dataframe queries locally, is deprecated. Use `Server` and the `rerun.catalog` API instead for local dataframe queries. In addition, the `AnyColumn`, `AnyComponentColumn`, and `ViewContentsLike` helper types are deprecated.
+
+**Before:**
+
+```python
+import rerun as rr
+
+# Load a recording file
+recording = rr.dataframe.load_recording("recording.rrd")
+
+# Create a view and query
+view = recording.view(index="frame_nr", contents="/world/**")
+view = view.filter_range_sequence(0, 100)
+view = view.fill_latest_at()
+
+# Select columns and read data
+batches = view.select()
+table = batches.read_all()
+df = table.to_pandas()
+```
+
+**After:**
+
+```python
+import rerun as rr
+from datafusion import col
+
+# Start a local server with the recording
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    client = server.client()
+    dataset = client.get_dataset("my_dataset")
+
+    # Create a filtered view and query
+    view = dataset.filter_contents(["/world/**"])
+    df = view.reader(index="frame_nr", fill_latest_at=True)
+
+    # Apply additional filters with DataFusion
+    df = df.filter(col("frame_nr") <= 100)
+
+    # Convert to pandas
+    pandas_df = df.to_pandas()
+```
+
+For more details on the new API, see the [Query data out of Rerun](../../howto/get-data-out.md) guide.
+
+### `Recording` moved to `rerun.recording`
+
+The `Recording` class and recording loading functions have been moved to a new `rerun.recording`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.load_recording()`         | `rr.recording.load_recording()`         |
+| `rr.dataframe.load_archive()`           | `rr.recording.load_archive()`           |
+| `rr.dataframe.Recording`                | `rr.recording.Recording`                |
+| `rr.dataframe.RRDArchive`               | `rr.recording.RRDArchive`               |
+
+### `send_dataframe()` moved to top-level `rerun`
+
+The `send_dataframe()` and `send_record_batch()` functions have been moved to the top-level `rerun` module and are also exposed as methods of `RecordingStream`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
+| `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |

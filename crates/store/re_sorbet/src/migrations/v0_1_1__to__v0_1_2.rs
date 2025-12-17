@@ -20,7 +20,7 @@ impl super::Migration for Migration {
 /// Migrate deprecated Pose* components to their regular equivalents.
 ///
 /// The `InstancePoses3D` archetype now uses the regular transformation components
-/// (Translation3D, RotationAxisAngle, etc.) instead of the redundant Pose* variants.
+/// (`Translation3D`, `RotationAxisAngle`, etc.) instead of the redundant Pose* variants.
 #[tracing::instrument(level = "trace", skip_all)]
 fn migrate_pose_components(batch: RecordBatch) -> RecordBatch {
     let schema = batch.schema();

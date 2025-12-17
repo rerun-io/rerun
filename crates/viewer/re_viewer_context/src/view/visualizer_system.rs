@@ -39,9 +39,10 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
 pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
 
 /// Specifies how component requirements should be evaluated for visualizer entity matching.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RequiredComponents {
     /// No component requirements - all entities are candidates.
+    #[default]
     None,
 
     /// Entity must have _all_ of these components.
@@ -52,12 +53,6 @@ pub enum RequiredComponents {
 
     /// Entity must have _any one_ of these physical Arrow data types.
     AnyPhysicalDatatype(DatatypeSet),
-}
-
-impl Default for RequiredComponents {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.

@@ -76,7 +76,7 @@ def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
 
 def test_query_view_from_schema(readonly_test_dataset: DatasetEntry) -> None:
     """Verify Our Schema is sufficiently descriptive to extract all contents from dataset."""
-    from rerun.dataframe import IndexColumnDescriptor
+    from rerun.catalog import IndexColumnDescriptor
 
     # TODO(nick): This only works for a single shared index column
     # We should consider if our schema is sufficiently descriptive for

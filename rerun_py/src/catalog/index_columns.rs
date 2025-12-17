@@ -7,8 +7,8 @@ use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 /// generally correspond to Rerun timelines.
 ///
 /// Column descriptors are used to describe the columns in a
-/// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
-/// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
+/// [`Schema`][rerun.catalog.Schema]. They are read-only. To select an index
+/// column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
 #[pyclass(
     frozen,
     eq,

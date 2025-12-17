@@ -195,6 +195,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_global_blueprint_recording, m)?)?;
     m.add_function(wrap_pyfunction!(get_thread_local_blueprint_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_thread_local_blueprint_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(disconnect_orphaned_recordings, m)?)?;
+    m.add_function(wrap_pyfunction!(check_for_rrd_footer, m)?)?;
 
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
@@ -284,6 +286,33 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
         // Finally remove any recordings that have a refcount of 1, which means they are ONLY
         // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
+
+        Ok(())
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Disconnect any orphaned recordings.
+///
+/// This can be used to make sure that recordings get closed/finalized
+/// properly when all references have been dropped.
+#[pyfunction]
+fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
+    py.allow_threads(|| -> Result<(), SinkFlushError> {
+        // Disconnect any recordings that have a refcount of 1. This means they are the
+        // only referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
+        for recording in all_recordings().iter() {
+            if recording.ref_count() <= 1 {
+                re_log::debug!(
+                    "Disconnecting orphaned recording: {}",
+                    recording
+                        .store_info()
+                        .map(|info| info.recording_id().to_string())
+                        .unwrap_or_else(|| "<unknown>".to_owned())
+                );
+                recording.disconnect();
+            }
+        }
 
         Ok(())
     })
@@ -639,6 +668,10 @@ impl PyRecordingStream {
     /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
+    }
+
+    pub fn ref_count(&self) -> usize {
+        self.0.ref_count()
     }
 
     pub fn __str__(&self) -> String {
@@ -2353,4 +2386,17 @@ fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
     })
     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     Ok(Some(PyCredentials(credentials)))
+}
+
+#[pyfunction]
+/// Check if the RRD has a valid RRD footer.
+///
+/// This is useful for unit-tests to verify that data has been fully flushed to disk.
+fn check_for_rrd_footer(file_path: std::path::PathBuf) -> PyResult<bool> {
+    let rrd_bytes =
+        std::fs::read(file_path).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let rrd_manifests = re_log_encoding::RrdManifest::from_rrd_bytes(&rrd_bytes)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    Ok(!rrd_manifests.is_empty())
 }

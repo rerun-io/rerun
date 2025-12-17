@@ -10,6 +10,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import datafusion
     from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
 
@@ -106,4 +107,11 @@ def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: Snap
     view = readonly_test_dataset.filter_segments([first_segment]).filter_contents(["/obj1/**"])
     df = view.reader(index="time_1")
 
+    df = sorted_df(df)
+
     assert str(df) == snapshot()
+
+
+def sorted_df(df: datafusion.DataFrame) -> datafusion.DataFrame:
+    sorted_fields = sorted([field.name for field in df.schema()])
+    return df.select(*sorted_fields)
