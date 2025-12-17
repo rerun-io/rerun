@@ -132,56 +132,17 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
         from .flow import get_current_plan
 
-        # Check if we're inside a flow that's building a plan
         plan = get_current_plan()
 
         if plan is not None:
             # FLOW-BUILDING MODE: Create TaskNode and add to plan
-            # Validate kwargs against the task signature
-            valid_params = set(info.signature.parameters.keys())
-            unexpected = set(kwargs.keys()) - valid_params
-            if unexpected:
-                raise TypeError(
-                    f"{info.name}() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
-                    f"Valid arguments are: {', '.join(sorted(valid_params))}"
-                )
-
-            # Check for missing required arguments
-            missing = []
-            for name, param in info.signature.parameters.items():
-                if param.default is inspect.Parameter.empty and name not in kwargs:
-                    missing.append(name)
-            if missing:
-                raise TypeError(f"{info.name}() missing required keyword argument(s): {', '.join(missing)}")
-
-            # Create the TaskNode, capturing current condition if in a run_if block
-            from .conditional import get_current_condition
-            from .plan import TaskNode
-
-            current_cond = get_current_condition()
-            condition = current_cond.condition if current_cond else None
-
-            node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs, condition=condition)
+            _validate_task_kwargs(info.name, info.signature, kwargs)
+            node = _create_task_node(info, kwargs)
             plan.add_node(node)
             return node  # type: ignore[return-value]
 
-        # NORMAL EXECUTION MODE: Execute the task
-        # Check if we're already in a context
-        existing_ctx = get_context()
-
-        if existing_ctx is None:
-            # Create a new context for this task
-            ctx = Context(task_name=info.name)
-            set_context(ctx)
-            try:
-                result = _execute_task(fn, args, kwargs)
-            finally:
-                set_context(None)
-        else:
-            # Already in a context, just execute
-            result = _execute_task(fn, args, kwargs)
-
-        return result
+        # NORMAL EXECUTION MODE
+        return _run_with_context(info.name, fn, args, kwargs)
 
     # Create task info with the wrapper
     info = TaskInfo(
@@ -275,67 +236,25 @@ def taskclass(cls: type[T]) -> type[T]:
             def wrapper(**kwargs: Any) -> Result[Any]:
                 from .flow import get_current_plan
 
-                # Check if we're inside a flow that's building a plan
                 plan = get_current_plan()
 
                 if plan is not None:
                     # FLOW-BUILDING MODE: Create TaskNode and add to plan
-                    # Validate kwargs against the task signature
-                    valid_params = set(task_sig.parameters.keys())
-                    unexpected = set(kwargs.keys()) - valid_params
-                    if unexpected:
-                        raise TypeError(
-                            f"{full_task_name}() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
-                            f"Valid arguments are: {', '.join(sorted(valid_params))}"
-                        )
-
-                    # Check for missing required arguments
-                    missing = []
-                    for name, param in task_sig.parameters.items():
-                        if param.default is inspect.Parameter.empty and name not in kwargs:
-                            missing.append(name)
-                    if missing:
-                        missing_args = ", ".join(missing)
-                        raise TypeError(f"{full_task_name}() missing required keyword argument(s): {missing_args}")
-
-                    # Create the TaskNode, capturing current condition if in a run_if block
-                    from .conditional import get_current_condition
-                    from .plan import TaskNode
-
-                    current_cond = get_current_condition()
-                    condition = current_cond.condition if current_cond else None
-
-                    # Note: We'll need the TaskInfo reference, which will be set after this wrapper is created
-                    # For now, we'll need to pass it differently - let's store it on the wrapper
-                    node: Any = TaskNode(task_info=wrapper._task_info, kwargs=kwargs, condition=condition)  # type: ignore[attr-defined]
+                    _validate_task_kwargs(full_task_name, task_sig, kwargs)
+                    node = _create_task_node(wrapper._task_info, kwargs)  # type: ignore[attr-defined]
                     plan.add_node(node)
-                    return node  # type: ignore[no-any-return]
+                    return node  # type: ignore[return-value]
 
-                # NORMAL EXECUTION MODE: Execute the task
+                # NORMAL EXECUTION MODE
                 # Split kwargs into init args and method args
                 init_kwargs = {k: v for k, v in kwargs.items() if k in init_param_names}
                 method_kwargs = {k: v for k, v in kwargs.items() if k not in init_param_names}
 
-                # Construct instance
+                # Construct instance and get bound method
                 instance = cls(**init_kwargs)
-
-                # Get the actual method from the instance
                 bound_method = getattr(instance, method_name)
 
-                # Check if we're already in a context
-                existing_ctx = get_context()
-
-                if existing_ctx is None:
-                    ctx = Context(task_name=f"{cls.__name__.lower()}.{method_name}")
-                    set_context(ctx)
-                    try:
-                        result = _execute_task(bound_method, (), method_kwargs)
-                    finally:
-                        set_context(None)
-                else:
-                    result = _execute_task(bound_method, (), method_kwargs)
-
-                return result
+                return _run_with_context(f"{cls.__name__.lower()}.{method_name}", bound_method, (), method_kwargs)
 
             return wrapper
 
@@ -387,3 +306,48 @@ def _execute_task(fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[st
         # Catch any exception and convert to Err
         tb = traceback.format_exc()
         return Err(f"{type(e).__name__}: {e}", traceback=tb)
+
+
+def _validate_task_kwargs(task_name: str, sig: inspect.Signature, kwargs: dict[str, Any]) -> None:
+    """Validate kwargs against task signature. Raises TypeError if invalid."""
+    valid_params = set(sig.parameters.keys())
+    unexpected = set(kwargs.keys()) - valid_params
+    if unexpected:
+        raise TypeError(
+            f"{task_name}() got unexpected keyword argument(s): {', '.join(sorted(unexpected))}. "
+            f"Valid arguments are: {', '.join(sorted(valid_params))}"
+        )
+
+    missing = []
+    for name, param in sig.parameters.items():
+        if param.default is inspect.Parameter.empty and name not in kwargs:
+            missing.append(name)
+    if missing:
+        raise TypeError(f"{task_name}() missing required keyword argument(s): {', '.join(missing)}")
+
+
+def _create_task_node(info: TaskInfo, kwargs: dict[str, Any]) -> TaskNode[Any]:
+    """Create a TaskNode for flow-building mode."""
+    from .conditional import get_current_condition
+    from .plan import TaskNode
+
+    current_cond = get_current_condition()
+    condition = current_cond.condition if current_cond else None
+    return TaskNode(task_info=info, kwargs=kwargs, condition=condition)
+
+
+def _run_with_context(
+    task_name: str, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> Result[Any]:
+    """Execute task with context management."""
+    existing_ctx = get_context()
+
+    if existing_ctx is None:
+        ctx = Context(task_name=task_name)
+        set_context(ctx)
+        try:
+            return _execute_task(fn, args, kwargs)
+        finally:
+            set_context(None)
+    else:
+        return _execute_task(fn, args, kwargs)

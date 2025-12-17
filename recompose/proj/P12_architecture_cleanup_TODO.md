@@ -84,10 +84,10 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 ```
 
 **Tasks**:
-- [ ] Extract common wrapper creation logic
-- [ ] Refactor `task()` to use shared code
-- [ ] Refactor `taskclass` to use shared code
-- [ ] Ensure tests still pass
+- [x] Extract common wrapper creation logic (`_validate_task_kwargs`, `_create_task_node`, `_run_with_context`)
+- [x] Refactor `task()` to use shared code
+- [x] Refactor `taskclass` to use shared code
+- [x] Ensure tests still pass
 
 **Effort**: Medium
 
