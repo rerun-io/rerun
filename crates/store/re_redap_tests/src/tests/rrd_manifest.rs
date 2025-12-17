@@ -29,16 +29,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let rrd_manifest_batch_result =
         dataset_rrd_manifest_snapshot(&service, segment_id, dataset_name).await;
 
-    let rrd_manifest = match rrd_manifest_batch_result {
-        Ok(rrd_manifest) => rrd_manifest,
-        Err(status) => {
-            if status.code() == tonic::Code::Unimplemented {
-                return; // TODO(RR-3110): implemented this endpoint on Rerun Cloud
-            } else {
-                panic!("tonic error: {status}");
-            }
-        }
-    };
+    let rrd_manifest = rrd_manifest_batch_result.unwrap();
 
     use futures::StreamExt as _;
     let mut chunks = service

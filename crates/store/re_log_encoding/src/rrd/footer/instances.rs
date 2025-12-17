@@ -727,7 +727,13 @@ impl RrdManifest {
                         | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_KEY
-                        | Self::FIELD_CHUNK_ENTITY_PATH => {}
+                        | Self::FIELD_CHUNK_ENTITY_PATH 
+                        // TODO: decide the fate of those
+                        | "chunk_partition_id"
+                        | "chunk_partition_layer"
+                        | "rerun_partition_id"
+                        | "rerun_partition_layer"
+                        => {}
 
                         name => {
                             return Err(crate::CodecError::from(ChunkError::Malformed {
