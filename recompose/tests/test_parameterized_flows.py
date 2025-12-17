@@ -8,8 +8,8 @@ import pytest
 from ruamel.yaml import YAML
 
 import recompose
-from recompose.plan import InputPlaceholder
 from recompose.gha import render_flow_workflow
+from recompose.plan import InputPlaceholder
 
 
 # Test tasks
