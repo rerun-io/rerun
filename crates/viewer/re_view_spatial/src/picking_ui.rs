@@ -10,12 +10,18 @@ use re_viewer_context::{
     ViewerContext, VisualizerCollection,
 };
 
-use crate::picking::{PickableUiRect, PickingContext, PickingHitType};
-use crate::picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui};
-use crate::ui::SpatialViewState;
-use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData};
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::visualizers::DepthImageProcessResult;
+use crate::{
+    PickableRectSourceData, PickableTexturedRect,
+    picking::{PickableUiRect, PickingContext, PickingHitType},
+    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
+    ui::SpatialViewState,
+    view_kind::SpatialViewKind,
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, EncodedDepthImageVisualizer,
+        SpatialViewVisualizerData,
+    },
+};
 
 #[expect(clippy::too_many_arguments)]
 pub fn picking(
@@ -239,6 +245,10 @@ fn get_pixel_picking_info(
         .view_systems
         .get::<DepthImageVisualizer>()
         .ok();
+    let encoded_depth_visualizer_output = system_output
+        .view_systems
+        .get::<EncodedDepthImageVisualizer>()
+        .ok();
 
     if hit.hit_type == PickingHitType::TexturedRect {
         iter_pickable_rects(&system_output.view_systems)
@@ -259,8 +269,18 @@ fn get_pixel_picking_info(
                     pixel_coordinates,
                 })
             })
-    } else if let Some((depth_image, depth_meter, texture)) =
-        depth_visualizer_output.and_then(|depth_images| {
+    } else if let Some(DepthImageProcessResult {
+        image_info,
+        depth_meter,
+        colormap,
+    }) = depth_visualizer_output
+        .and_then(|depth_images| {
+            depth_images
+                .depth_cloud_entities
+                .get(&hit.instance_path_hash.entity_path_hash)
+        })
+        .or_else(|| {
+            let depth_images = encoded_depth_visualizer_output?;
             depth_images
                 .depth_cloud_entities
                 .get(&hit.instance_path_hash.entity_path_hash)
@@ -269,13 +289,13 @@ fn get_pixel_picking_info(
         let pixel_coordinates = hit
             .instance_path_hash
             .instance
-            .to_2d_image_coordinate(depth_image.width());
+            .to_2d_image_coordinate(image_info.width());
         Some(PickedPixelInfo {
             source_data: PickableRectSourceData::Image {
-                image: depth_image.clone(),
+                image: image_info.clone(),
                 depth_meter: Some(*depth_meter),
             },
-            texture: texture.clone(),
+            texture: colormap.clone(),
             pixel_coordinates,
         })
     } else {

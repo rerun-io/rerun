@@ -212,6 +212,13 @@ impl RerunCloudHandler {
                     }
                 }
 
+                if files.is_empty() {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "no rrd files found in {:?}",
+                        source.storage_url
+                    )));
+                }
+
                 for file_path in files {
                     let mut file_url = source.storage_url.clone();
                     file_url.set_path(&file_path.to_string_lossy());
