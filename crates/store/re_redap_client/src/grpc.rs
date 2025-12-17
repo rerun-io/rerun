@@ -1,10 +1,10 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
 use re_auth::client::AuthDecorator;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, ChunkId};
 use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
@@ -466,23 +466,69 @@ async fn stream_segment_from_server(
         }
     }
 
-    // Retrieve the chunk IDs we're interested in:
-    // TODO(RR-3110): use the rrd manifest instead
+    let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
+
+    if let Some(time_selection) = fragment.time_selection {
+        // Start be loading only the chunks required for the time selection:
+        let time_selection_batches = client
+            .query_dataset_chunk_index(SegmentQueryParams {
+                dataset_id,
+                segment_id: segment_id.clone(),
+                include_static_data: true,
+                include_temporal_data: true,
+                query: Some(
+                    re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
+                        time_selection.timeline.name(),
+                        time_selection.range,
+                    )
+                    .into(),
+                ),
+            })
+            .await?;
+
+        if time_selection_batches.is_empty() {
+            re_log::debug!(
+                "No chunks found for time selection {:?} in recording {:?}",
+                time_selection,
+                store_id
+            );
+        } else {
+            let batch = arrow::compute::concat_batches(
+                &time_selection_batches[0].schema(),
+                &time_selection_batches,
+            )
+            .map_err(|err| {
+                ApiError::invalid_arguments(err, "Failed to concat chunk index batches")
+            })?;
+
+            // Prioritize the chunks:
+            let batch = sort_batch(&batch)
+                .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
+
+            if let Some(chunk_ids) = chunk_id_column(&batch) {
+                already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
+            } else {
+                re_log::warn_once!(
+                    "Failed to find 'chunk_id' column in chunk index response. Schema: {}",
+                    batch.schema()
+                );
+            }
+
+            if load_chunks(client, tx, &store_id, batch).await?.is_break() {
+                return Ok(ControlFlow::Break(()));
+            }
+        }
+
+        // Now load the rest (chunks outside the time range):
+    }
+
     let batches = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: fragment.time_selection.map(|time_range| {
-                // Only load the chunks the user linked to.
-                // TODO(RR-3110): start loading this sections, but allow loading everything else too
-                re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
-                    time_range.timeline.name(),
-                    time_range.range,
-                )
-                .into()
-            }),
+            query: None, // everything
         })
         .await?;
 
@@ -498,7 +544,44 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    load_chunks(client, tx, &store_id, batch).await
+    if let Some(chunk_ids) = chunk_id_column(&batch)
+        && !already_loaded_chunk_ids.is_empty()
+    {
+        // Filter out already loaded chunk IDs:
+        let filtered_indices: Vec<usize> = chunk_ids
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, chunk_id)| {
+                if already_loaded_chunk_ids.contains(chunk_id) {
+                    None
+                } else {
+                    Some(idx)
+                }
+            })
+            .collect();
+
+        let filtered_batch = arrow::compute::take_record_batch(
+            &batch,
+            &arrow::array::UInt32Array::from(
+                filtered_indices
+                    .iter()
+                    .map(|&i| i as u32)
+                    .collect::<Vec<u32>>(),
+            ),
+        )
+        .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
+
+        load_chunks(client, tx, &store_id, filtered_batch).await
+    } else {
+        load_chunks(client, tx, &store_id, batch).await
+    }
+}
+
+fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
+    batch
+        .column_by_name("chunk_id")
+        .and_then(|array| array.as_fixed_size_binary_opt())
+        .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
