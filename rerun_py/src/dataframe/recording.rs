@@ -18,14 +18,13 @@ use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///
-/// This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+/// This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
 ///
 /// A recording is a collection of data that was logged to Rerun. This data is organized
 /// as a column for each index (timeline) and each entity/component pair that was logged.
 ///
-/// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
-/// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
-/// to retrieve the data.
+/// You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+/// what data is available.
 #[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyRecording {
     pub(crate) store: ChunkStoreHandle,
@@ -147,7 +146,7 @@ impl PyRecording {
         rustdoc::invalid_rust_codeblocks,
         rustdoc::private_doc_tests
     )]
-    /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+    /// Create a `RecordingView` of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below
     /// for details).

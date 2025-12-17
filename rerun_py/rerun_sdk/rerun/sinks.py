@@ -16,7 +16,7 @@ from ._spawn import _spawn_viewer
 if TYPE_CHECKING:
     import pathlib
 
-    from rerun.dataframe import Recording
+    from rerun.recording import Recording
     from rerun.recording_stream import RecordingStream
 
 

@@ -3,216 +3,155 @@ title: Query data out of Rerun
 order: 100
 ---
 
-Rerun comes with a Dataframe API, which enables getting data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
-## The dataframe API
 
-### Loading a recording
+## Starting a server with recordings
 
-A recording can be loaded from a RRD using the `load_recording()` function:
-
-```python
-import rerun as rr
-
-recording = rr.dataframe.load_recording("/path/to/file.rrd")
-```
-
-Although RRD files generally contain a single recording, they may occasionally contain 2 or more. This can happen, for example, if the RRD includes a blueprint, which is stored as a recording that is separate from the data.
-
-For such RRD, the `load_archive()` function can be used:
-
-<!-- NOLINT_START -->
+The first step to query data is to start a server and load it with a dataset containing your recording.
 
 ```python
 import rerun as rr
 
-archive = rr.dataframe.load_archive("/pat/to/file.rrd")
-
-print(f"The archive contains {archive.num_recordings()} recordings.")
-
-for recording in archive.all_recordings():
-    ...
+# Start a server with one or more .rrd files
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    client = server.client()
+    dataset = client.get_dataset("my_dataset")
 ```
 
-<!-- NOLINT_END -->
-
-The overall content of the recording can be inspected using the `schema()` method:
+The server can host multiple datasets. Each dataset maps to either a list of `.rrd` files or a directory (which will be scanned for `.rrd` files):
 
 ```python
-schema = recording.schema()
+with rr.server.Server(datasets={
+    # Explicit list of RRD files
+    "dataset1": ["recording1.rrd", "recording2.rrd"],
+    # Directory containing RRD files
+    "dataset2": "/path/to/recordings_dir",
+}) as server:
+    client = server.client()
+    # Access each dataset by name
+    ds1 = client.get_dataset("dataset1")
+    ds2 = client.get_dataset("dataset2")
+```
+
+When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
+
+## Inspecting the schema
+
+The content of a dataset can be inspected using the `schema()` method:
+
+```python
+schema = dataset.schema()
 schema.index_columns()        # list of all index columns (timelines)
 schema.component_columns()    # list of all component columns
 ```
 
-### Creating a view
+## Querying a dataset using `reader`
 
-The first step for getting data out of a recording is to create a view, which requires specifying an index column and what content to include.
-
-As of Rerun 0.19, views must have exactly one index column, which can be any of the recording timelines.
-Each row of the view will correspond to a unique value of the index column.
-If a row has a `null` in the returned index (time) column, it means that data was static.
-In the future, it will be possible to have other kinds of column as index, and more than a single index column.
-
-The `contents` define which columns are included in the view and can be flexibly specified as entity expression,
-optionally providing a corresponding list of components.
-
-These are all valid ways to specify view content:
+The primary means of querying data is the `reader()` method. In its simplest form, it is used as follows:
 
 ```python
-# everything in the recording
-view = recording.view(index="frame_nr", contents="/**")
+df = dataset.reader(index="frame_nr")
 
-# everything in the recording, except the /world/robot subtree
-view = recording.view(index="frame_nr", contents="/**\n- /world/robot/**")
-
-# all `Scalar` components in the recording
-view = recording.view(index="frame_nr", contents={"/**": ["Scalar"]})
-
-# some components in an entity subtree and a specific component
-# of a specific entity
-view = recording.view(index="frame_nr", contents={
-    "/world/robot/**": ["Position3D", "Color"],
-    "/world/scene": ["Text"],
-})
+print(df)
 ```
 
-### Filtering rows in a view
+The returned object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
 
-A view has several APIs to further filter the rows it will return.
+When calling `reader()`, an index column must be specified. It can be any of the recording's timelines. Each row of the view will correspond to a unique value of the index column. It is also possible to query the dataset using `index=None`. In this case, only the `static=True` data will be returned.
 
-#### Filtering by time range
+By default, when performing a query on a dataset, data for all its segments is returned. An additional `"rerun_segment_id"` column is added to the dataframe to indicate which segment each row belongs to.
 
-Rows may be filtered to keep only a given range of values from its index column:
+An often used parameter of the `reader()` method is `fill_latest_at=True`. When used, all `null` data will be filled with a latest-at value, similarly to how the viewer works.
+
+
+## Querying a subset of a dataset
+
+In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetView` objects:
 
 ```python
-# only keep rows for frames 0 to 10
-view = view.filter_range_sequence(0, 10)
+# Filter by entity paths
+dataset_view = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+
+# Filter by segment IDs (recording IDs)
+dataset_view = dataset.filter_segments(["recording_001", "recording_002"])
+
+# Chain filters
+dataset_view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
 ```
 
-This API exists for both temporal and sequence timeline, and for various units:
-
-- `view.filter_range_sequence(start_frame, end_frame)` (takes `int` arguments)
-- `view.filter_range_secs(stat_second, end_second)` (takes `float` arguments)
-- `view.filter_range_nanos(start_nano, end_nano)` (takes `int` arguments)
-
-(all ranges are including both start and end values)
-
-#### Filtering by index value
-
-Rows may be filtered to keep only those whose index corresponds to a specific set of value:
+`DatasetView` instances have the exact same `reader()` method as the original dataset:
 
 ```python
-view = view.filter_index_values([0, 5, 10])
+df = dataset_view.reader(index="frame_nr")
+
+print(df)
 ```
 
-Note that a precise match is required.
-Since Rerun internally stores times as `int64`, this method is only available for integer arguments (nanos or sequence number).
-Floating point seconds would risk false mismatch due to numerical conversion.
+## Filtering with DataFusion
 
-##### Filtering by column not null
+DataFusion offers a rich set of filtering, projection, and joining capabilities. Check the [DataFusion Python documentation](https://datafusion.apache.org/python/) for details.
 
-Rows where a specific column has null values may be filtered out using the `filter_is_not_null()` method. When using this method, only rows for which a logging event exist for the provided column are returned.
+For illustration, here are a few simple examples:
 
 ```python
-# only keep rows where a position is available for the robot
-view = view.filter_is_not_null("/world/robot:Position3D")
+from datafusion import col
+
+df = dataset.reader(index="frame_nr")
+
+# Filter by index range
+df = df.filter(col("frame_nr") >= 0).filter(col("frame_nr") <= 100)
+
+# Filter by column not null
+df = df.filter(col("/world/robot:Position3D:positions").is_not_null())
+
+# Select specific columns
+df = df.select("frame_nr", "/world/robot:Position3D:positions")
 ```
 
-### Specifying rows
+## Converting to other formats
 
-Instead of filtering rows based on the existing data, it is possible to specify exactly which rows must be returned by the view using the `using_index_values()` method:
+Likewise, DataFusion offers a rich set of tools to convert a dataframe to various formats.
 
-```python
-# resample the first second of data at every millisecond
-view = view.using_index_values(range(0, 1_000_000, 1_000_0000_000))
-```
-
-In this case, the view will return rows in multiples of 1e6 nanoseconds (i.e. for each millisecond) over a period of one second.
-A precise match on the index value is required for data to be produced on the row.
-For this reason, a floating point version of this method is not provided for this feature.
-
-Note that this feature is typically used in conjunction with `fill_latest_at()` (see next paragraph) to enable arbitrary resampling of the original data.
-
-### Filling empty values with latest-at data
-
-By default, the rows returned by the view may be sparse and contain values only for the columns where a logging event actually occurred at the corresponding index value.
-The view can optionally replace these empty cells using a latest-at query. This means that, for each such empty cell, the view traces back to find the last logged value and uses it instead. This is enabled by calling the `fill_latest_at()` method:
-
-```python
-view = view.fill_latest_at()
-```
-
-### Reading the data
-
-Once the view is fully set up (possibly using the filtering features previously described), its content can be read using the `select()` method. This method optionally allows specifying which subset of columns should be produced:
-
-```python
-# select all columns
-record_batches = view.select()
-
-# select only the specified columns
-record_batches = view.select(
-    [
-        "frame_nr",
-        "/world/robot:Position3D",
-    ],
-)
-```
-
-The `select()` method returns a [`pyarrow.RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), which is essentially an iterator over a stream of [`pyarrow.RecordBatch`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow-recordbatch)es containing the actual data. See the [PyArrow documentation](https://arrow.apache.org/docs/python/index.html) for more information.
-
-For the rest of this page, we explore how these `RecordBatch`es can be ingested in some of the popular data science packages.
-
-## Load data to a PyArrow `Table`
-
-The `RecordBatchReader` provides a [`read_all()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_all) method which directly produces a [`pyarrow.Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table):
+### Load data to a PyArrow `Table`
 
 ```python
 import rerun as rr
 
-recording = rr.dataframe.load_recording("/path/to/file.rrd")
-view = recording.view(index="frame_nr", contents="/**")
-
-table = view.select().read_all()
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    dataset = server.client().get_dataset("my_dataset")
+    table = dataset.reader(index="frame_nr").to_arrow_table()
 ```
 
-## Load data to a Pandas dataframe
-
-The `RecordBatchReader` provides a [`read_pandas()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_pandas) method which returns a [Pandas dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html):
+### Load data to a Pandas dataframe
 
 ```python
 import rerun as rr
 
-recording = rr.dataframe.load_recording("/path/to/file.rrd")
-view = recording.view(index="frame_nr", contents="/**")
-
-df = view.select().read_pandas()
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    dataset = server.client().get_dataset("my_dataset")
+    df = dataset.reader(index="frame_nr").to_pandas()
 ```
 
-## Load data to a Polars dataframe
-
-A [Polars dataframe](https://docs.pola.rs/api/python/stable/reference/dataframe/index.html) can be created from a PyArrow table:
+### Load data to a Polars dataframe
 
 ```python
 import rerun as rr
 import polars as pl
 
-recording = rr.dataframe.load_recording("/path/to/file.rrd")
-view = recording.view(index="frame_nr", contents="/**")
-
-df = pl.from_arrow(view.select().read_all())
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    dataset = server.client().get_dataset("my_dataset")
+    df = pl.from_arrow(dataset.reader(index="frame_nr").to_arrow_table())
 ```
 
-## Load data to a DuckDB relation
-
-A [DuckDB](https://duckdb.org) relation can be created directly using the `pyarrow.RecordBatchReader` returned by `select()`:
+### Load data to a DuckDB relation
 
 ```python
 import rerun as rr
 import duckdb
 
-recording = rr.dataframe.load_recording("/path/to/file.rrd")
-view = recording.view(index="frame_nr", contents="/**")
-
-rel = duckdb.arrow(view.select())
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    dataset = server.client().get_dataset("my_dataset")
+    table = dataset.reader(index="frame_nr").to_arrow_table()
+    rel = duckdb.arrow(table)
 ```

@@ -46,7 +46,7 @@ class Server:
         *,
         address: str = "0.0.0.0",
         port: int | None = None,
-        datasets: dict[str, PathLike[str] | Sequence[PathLike[str]]] | None = None,
+        datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
         """
@@ -87,16 +87,19 @@ class Server:
         if datasets is not None:
             for name, path in datasets.items():
                 if isinstance(path, str | PathLike):
-                    if not Path(path).is_dir():
+                    path = Path(path)
+
+                    if not path.is_dir():
                         raise ValueError(f"Prefix path '{path}' for dataset '{name}' must be a directory.")
 
-                    all_dataset_prefixes[name] = str(path)
+                    all_dataset_prefixes[name] = str(path.absolute())
                 else:
-                    for p in path:
-                        if not Path(p).is_file():
+                    paths = [Path(p) for p in path]
+                    for p in paths:
+                        if not p.is_file():
                             raise ValueError(f"Path '{p}' for dataset '{name}' must be a RRD file.")
 
-                    all_datasets[name] = [str(p) for p in path]
+                    all_datasets[name] = [str(p.absolute()) for p in paths]
 
         self._internal = _ServerInternal(
             address=address,

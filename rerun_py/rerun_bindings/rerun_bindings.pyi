@@ -35,8 +35,8 @@ class IndexColumnDescriptor:
     generally correspond to Rerun timelines.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
-    column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select an index
+    column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
     """
 
     @property
@@ -85,8 +85,8 @@ class ComponentColumnDescriptor:
     Component columns contain the data for a specific component of an entity.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
-    column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select a component
+    column, use [`ComponentColumnSelector`][rerun.catalog.ComponentColumnSelector].
     """
 
     @property
@@ -189,9 +189,17 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
+# TODO(RR-3130): remove RecordingView when rerun.dataframe is removed
+@deprecated(
+    """RecordingView is deprecated. Use the catalog API instead.
+    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
+)
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
+
+    .. deprecated::
+        RecordingView is deprecated. Use the catalog API instead.
 
     See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
 
@@ -341,7 +349,7 @@ class RecordingView:
         If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
+        those rows are empty. Use with `.fill_latest_at()`
         to populate these rows with the most recent data.
 
         Parameters
@@ -381,7 +389,7 @@ class RecordingView:
         The selected columns do not change the rows that are included in the
         view. The rows are determined by the index values and the components
         that were included in the view contents, or can be overridden with
-        [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
+        `.using_index_values()`.
 
         If a column was not provided with data for a given row, it will be
         `null` in the output.
@@ -439,19 +447,23 @@ class Recording:
     """
     A single Rerun recording.
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
 
     A recording is a collection of data that was logged to Rerun. This data is organized
     as a column for each index (timeline) and each entity/component pair that was logged.
 
-    You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
-    what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
-    to retrieve the data.
+    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+    what data is available.
     """
 
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
 
+    # TODO(RR-3130): remove Recording.view() when rerun.dataframe is removed
+    @deprecated(
+        """Recording.view() is deprecated. Use the catalog API instead.
+        See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
+    )
     def view(
         self,
         *,
@@ -461,7 +473,7 @@ class Recording:
         include_tombstone_columns: bool = False,
     ) -> RecordingView:
         """
-        Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+        Create a `RecordingView` of the recording according to a particular index and content specification.
 
         The only type of index currently supported is the name of a timeline, or `None` (see below
         for details).

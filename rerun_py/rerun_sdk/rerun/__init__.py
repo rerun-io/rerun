@@ -26,8 +26,9 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
-    dataframe as dataframe,
+    dataframe as dataframe,  # TODO(RR-3130): deprecated
     experimental as experimental,
+    recording as recording,
     server as server,
 )
 from ._baseclasses import (
@@ -57,6 +58,19 @@ from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeColumnLike as TimeColumnLike,
     send_columns as send_columns,
+)
+from ._send_dataframe import (
+    RERUN_KIND as RERUN_KIND,
+    RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,
+    RERUN_KIND_INDEX as RERUN_KIND_INDEX,
+    SORBET_ARCHETYPE_NAME as SORBET_ARCHETYPE_NAME,
+    SORBET_COMPONENT as SORBET_COMPONENT,
+    SORBET_COMPONENT_TYPE as SORBET_COMPONENT_TYPE,
+    SORBET_ENTITY_PATH as SORBET_ENTITY_PATH,
+    SORBET_INDEX_NAME as SORBET_INDEX_NAME,
+    SORBET_IS_TABLE_INDEX as SORBET_IS_TABLE_INDEX,
+    send_dataframe as send_dataframe,
+    send_record_batch as send_record_batch,
 )
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
@@ -449,7 +463,7 @@ def notebook_show(
     width: int | None = None,
     height: int | None = None,
     blueprint: BlueprintLike | None = None,  # noqa: F811
-    recording: RecordingStream | None = None,
+    recording: RecordingStream | None = None,  # noqa: F811
 ) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
