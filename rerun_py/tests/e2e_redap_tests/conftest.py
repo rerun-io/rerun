@@ -11,41 +11,67 @@ import logging
 import pathlib
 import platform
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pytest
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, DatasetEntry, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import DatasetEntry, TableEntry
+    from pytest_benchmark.fixture import BenchmarkFixture
     from syrupy import SnapshotAssertion
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom command-line options for configuring the test server."""
-    parser.addoption(
-        "--redap-url",
-        action="store",
-        default=None,
-        help="URL of an external redap server to connect to. If not provided, a local OSS server will be started.",
-    )
-    parser.addoption(
-        "--redap-token",
-        action="store",
-        default=None,
-        help="Authentication token for the redap server (optional).",
-    )
+
     parser.addoption(
         "--resource-prefix",
         action="store",
         default=None,
         help="URI prefix for test resources (e.g., 's3://bucket/path/' for remote resources). "
         "If not provided, local file:// URIs to the resources directory will be used.",
+    )
+    parser.addoption(
+        "--region",
+        action="store",
+        default="None",
+        help="region to use when using region-specific resources (e.g., s3 buckets).",
+    )
+
+    serveropts_group = parser.getgroup("redap server options")
+    serveropts_group.addoption(
+        "--redap-url",
+        action="store",
+        default=None,
+        help="URL of an external redap server to connect to. If not provided, a local OSS server will be started.",
+    )
+    serveropts_group.addoption(
+        "--redap-token",
+        action="store",
+        default=None,
+        help="Authentication token for the redap server (optional).",
+    )
+
+    # Create a specific group in the help menu so they aren't mixed with generic flags
+    droid_group = parser.getgroup("droid dataset options")
+
+    droid_group.addoption(
+        "--droid-dataset",
+        action="store",
+        default="droid:sample50",
+        help="Dataset for Droid benchmarks (options: droid:raw, droid:sample50, etc.)",
+    )
+
+    droid_group.addoption(
+        "--droid-preregister-dataset",
+        action="store_true",
+        default=False,
+        help="should the test runner register the droid dataset before running tests",
     )
 
 
@@ -62,6 +88,16 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "creates_table: mark test as creating a table (which requires providing a server-accessible path)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "cloud_only: mark tests that can only run on cloud stacks (e.g., because of missing features in the OSS server)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "slow: mark tests that are slow to run and you may want to skip in a tight dev loop",
     )
 
 
@@ -86,6 +122,13 @@ DATASET_NAME = "dataset"
 # Test resources are stored locally in the e2e_redap_tests/resources directory
 RESOURCES_DIR = pathlib.Path(__file__).parent / "resources"
 TABLE_FILEPATH = RESOURCES_DIR / "simple_datatypes"
+
+
+@pytest.fixture(scope="session")
+def region(request: pytest.FixtureRequest) -> str | None:
+    """Get the region for region-specific resources."""
+    region: str | None = request.config.getoption("--region")
+    return region
 
 
 @pytest.fixture(scope="session")
@@ -134,7 +177,14 @@ def readonly_table_uri(resource_prefix: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, None, None]:
+def redap_url(request: pytest.FixtureRequest) -> str | None:
+    """Get the redap server URL from command-line options."""
+    url: str | None = request.config.getoption("--redap-url")
+    return url
+
+
+@pytest.fixture(scope="session")
+def catalog_client(request: pytest.FixtureRequest, redap_url: str | None) -> Generator[CatalogClient, None, None]:
     """
     Return a `CatalogClient` instance connected to a test server.
 
@@ -148,7 +198,6 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
     performance. Test isolation is maintained via the `entry_factory` fixture which uses test-specific prefixes and
     automatic cleanup.
     """
-    redap_url = request.config.getoption("--redap-url")
     redap_token = request.config.getoption("--redap-token")
 
     if redap_url:
@@ -219,6 +268,14 @@ class EntryFactory:
         entry = self._client.register_table(prefixed_name, url)
         self._created_entries.append(entry)
         return entry
+
+    def num_tables(self) -> int:
+        """Return the number of created tables."""
+        return sum(1 for entry in self._created_entries if isinstance(entry, TableEntry))
+
+    def num_datasets(self) -> int:
+        """Return the number of created datasets."""
+        return sum(1 for entry in self._created_entries if isinstance(entry, DatasetEntry))
 
     def cleanup(self) -> None:
         """Delete all created entries in reverse order."""
@@ -292,6 +349,14 @@ class PrefilledCatalog:
         """Convenience property to access the underlying CatalogClient."""
         return self.factory.client
 
+    def num_tables(self) -> int:
+        """Return the number of tables registered in the prefilled catalog."""
+        return self.factory.num_tables()
+
+    def num_datasets(self) -> int:
+        """Return the number of datasets registered in the prefilled catalog."""
+        return self.factory.num_datasets()
+
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
 @pytest.fixture(scope="function")
@@ -343,3 +408,42 @@ def snapshot_redact_id(snapshot: SnapshotAssertion) -> SnapshotAssertion:
 
     """
     return snapshot.use_extension(RedactedIdSnapshotExtension)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_benchmark_update_json(
+    config: pytest.Config,  # noqa: ARG001
+    benchmarks: list[BenchmarkFixture],
+    output_json: dict[str, Any],  # noqa: ARG001
+) -> None:
+    """Hook to flush telemetry data at the end of the benchmark session."""
+
+    from .telemetry import Telemetry
+
+    telemetry = Telemetry()
+    if telemetry.meter is None:
+        return
+
+    duration_gauge = telemetry.meter.create_gauge(
+        "test_duration_mean", unit="s", description="mean duration of test execution in seconds"
+    )
+
+    success_counter = telemetry.meter.create_counter(
+        "test_success", unit="{count}", description="number of successful test rounds"
+    )
+    counter_gauge = telemetry.meter.create_gauge(
+        "test_count", unit="{count}", description="number of successful test rounds"
+    )
+
+    for bench in benchmarks:
+        if bench.stats is None:
+            continue
+
+        attributes: dict[str, str] = {
+            "test_name": bench.name,
+            "test_group": bench.group or "default",
+        }
+
+        duration_gauge.set(bench.stats.mean, attributes)
+        counter_gauge.set(bench.stats.rounds, attributes)
+        success_counter.add(bench.stats.rounds, attributes)

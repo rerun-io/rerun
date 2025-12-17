@@ -35,7 +35,15 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.2", "syrupy==5.0.0"]
+tests = [
+  "pytest==8.4.2",
+  "syrupy==5.0.0",
+  "boto3==1.42.5",
+  "pytest_benchmark==5.2.3",
+  "opentelemetry-api==1.39.0",
+  "opentelemetry-sdk==1.39.0",
+  "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+]
 notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
@@ -262,6 +270,7 @@ filterwarnings = """
 error
 """
 norecursedirs = ".* venv* target* build"
+addopts = "-m 'not (slow or cloud_only)'"
 
 ######################
 # mypy configuration #
@@ -303,6 +312,10 @@ module = [
   "torchaudio.*",
   "cv2.*",
   "rerun.*",
+  # in e2e_redap_tests
+  "boto3.*",
+  "opentelemetry.*",
+  "pytest_benchmark.*",
 ]
 ignore_missing_imports = true
 
