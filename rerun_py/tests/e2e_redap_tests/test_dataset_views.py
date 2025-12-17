@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import datafusion
 import pyarrow as pa
 import pytest
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import datafusion
     from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
 
@@ -110,6 +110,7 @@ def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: Snap
     df = sorted_df(df)
 
     assert str(df) == snapshot()
+
 
 def sorted_df(df: datafusion.DataFrame) -> datafusion.DataFrame:
     sorted_fields = sorted([field.name for field in df.schema()])
