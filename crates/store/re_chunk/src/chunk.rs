@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
@@ -12,7 +13,8 @@ use nohash_hasher::IntMap;
 use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
+    AbsoluteTimeRange, EntityPath, NonMinI64, TimeCell, TimeInt, TimePoint, TimeType, Timeline,
+    TimelineName,
 };
 use re_types_core::{
     ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError, Loggable as _,
@@ -1235,6 +1237,25 @@ impl Chunk {
     #[inline]
     pub fn timelines(&self) -> &IntMap<TimelineName, TimeColumn> {
         &self.timelines
+    }
+
+    /// The minimum time point across all timelines in this chunk.
+    ///
+    /// If this is a static chunk, the returned [`TimePoint`] will be [`TimePoint::STATIC`].
+    ///
+    /// This can be useful to sort chunks in some temporal order.
+    pub fn min_time_point(&self) -> TimePoint {
+        TimePoint::from(
+            self.timelines
+                .iter()
+                .map(|(timeline_name, time_column)| {
+                    (
+                        *timeline_name,
+                        TimeCell::new(time_column.timeline().typ(), time_column.time_range().min()),
+                    )
+                })
+                .collect::<BTreeMap<_, _>>(),
+        )
     }
 
     #[inline]
