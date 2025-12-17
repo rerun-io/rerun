@@ -111,7 +111,7 @@ impl EncodedImageVisualizer {
                 .map(|media_type| MediaType(media_type.into()));
 
             let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     tensor_data_row_id,
                     EncodedImage::descriptor_blob().component,
                     blob,

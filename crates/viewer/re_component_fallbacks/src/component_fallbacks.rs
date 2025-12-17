@@ -1,7 +1,7 @@
 use re_sdk_types::{archetypes, components, datatypes};
 use re_viewer_context::{
-    ColormapWithRange, FallbackProviderRegistry, ImageInfo, ImageStatsCache, QueryContext,
-    TensorStats, TensorStatsCache, auto_color_for_entity_path,
+    ColormapWithRange, FallbackProviderRegistry, ImageDecodeCache, ImageInfo, ImageStatsCache,
+    QueryContext, TensorStats, TensorStatsCache, auto_color_for_entity_path,
 };
 
 pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
@@ -293,6 +293,54 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         re_sdk_types::image::ImageKind::Depth,
                     );
                     let cache = ctx.store_ctx().caches;
+                    let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    let default_range =
+                        ColormapWithRange::default_range_for_depth_images(&image_stats);
+                    return [default_range[0] as f64, default_range[1] as f64].into();
+                }
+            }
+
+            components::ValueRange::from([0.0, f64::MAX])
+        },
+    );
+
+    // EncodedDepthImage
+    registry.register_component_fallback_provider(
+        archetypes::EncodedDepthImage::descriptor_draw_order().component,
+        |_| components::DrawOrder::DEFAULT_DEPTH_IMAGE,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::EncodedDepthImage::descriptor_colormap().component,
+        |_| ColormapWithRange::DEFAULT_DEPTH_COLORMAP,
+    );
+    registry.register_component_fallback_provider(
+        archetypes::EncodedDepthImage::descriptor_depth_range().component,
+        |ctx| {
+            let blob = ctx.recording().latest_at_component::<components::Blob>(
+                ctx.target_entity_path,
+                ctx.query,
+                archetypes::EncodedDepthImage::descriptor_blob().component,
+            );
+            if let Some(((_time, row_id), blob)) = blob {
+                let media_type = ctx
+                    .recording()
+                    .latest_at_component::<components::MediaType>(
+                        ctx.target_entity_path,
+                        ctx.query,
+                        archetypes::EncodedDepthImage::descriptor_media_type().component,
+                    )
+                    .map(|(_, media_type)| media_type);
+
+                let cache = ctx.store_ctx().caches;
+                let blob_bytes = blob.0.to_vec();
+                if let Ok(image) = cache.entry(|c: &mut ImageDecodeCache| {
+                    c.entry_encoded_depth(
+                        row_id,
+                        archetypes::EncodedDepthImage::descriptor_blob().component,
+                        &blob_bytes,
+                        media_type.as_ref(),
+                    )
+                }) {
                     let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                     let default_range =
                         ColormapWithRange::default_range_for_depth_images(&image_stats);
