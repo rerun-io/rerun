@@ -304,7 +304,9 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
         has_default = param.default is not inspect.Parameter.empty
         default_value = param.default if has_default else None
-        required = not has_default and type_required
+        # Flow parameters are never required at CLI level because --step mode
+        # reads them from workspace. We validate manually in the callback.
+        required = False
 
         if annotation is bool:
             if has_default and default_value is True:
@@ -379,6 +381,19 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
         if status:
             _handle_flow_status(flow_name)
             return
+
+        # Validate required parameters for non-step modes
+        if not step:
+            missing = []
+            for param_name, param in sig.parameters.items():
+                if param_name == "self":
+                    continue
+                has_default = param.default is not inspect.Parameter.empty
+                if not has_default and kwargs.get(param_name) is None:
+                    missing.append(param_name)
+            if missing:
+                console.print(f"[red]Error:[/red] Missing required option(s): {', '.join(f'--{m}' for m in missing)}")
+                sys.exit(1)
 
         # Handle --remote: trigger workflow on GitHub
         if remote:
@@ -505,7 +520,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                         f.write(f"value={'true' if condition_value else 'false'}\n")
 
             else:
-                result = target_node.task_info.original_fn(**resolved_kwargs)
+                # Use the wrapped function (fn) which catches exceptions
+                result = target_node.task_info.fn(**resolved_kwargs)
 
             elapsed = time.perf_counter() - start_time
 

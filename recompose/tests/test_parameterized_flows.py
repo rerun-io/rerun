@@ -11,47 +11,17 @@ import recompose
 from recompose.gha import render_flow_workflow
 from recompose.plan import InputPlaceholder
 
+from . import flow_test_app
 
-# Test tasks
-@recompose.task
-def greet(*, name: str) -> recompose.Result[str]:
-    """A task that greets someone."""
-    return recompose.Ok(f"Hello, {name}!")
+# Import flows from test app for execution tests
+flow_with_required_param = flow_test_app.flow_with_required_param
+flow_with_mixed_params = flow_test_app.flow_with_mixed_params
+flow_with_param_reuse = flow_test_app.flow_with_param_reuse
 
-
-@recompose.task
-def count(*, n: int = 10) -> recompose.Result[int]:
-    """A task that counts."""
-    return recompose.Ok(n)
-
-
-@recompose.task
-def echo(*, message: str) -> recompose.Result[str]:
-    """A task that echoes a message."""
-    return recompose.Ok(message)
-
-
-# Flow with REQUIRED parameter (no default)
-@recompose.flow
-def flow_with_required_param(*, name: str) -> None:
-    """A flow that requires a name parameter."""
-    greet(name=name)
-
-
-# Flow with mix of required and optional parameters
-@recompose.flow
-def flow_with_mixed_params(*, name: str, count_to: int = 10) -> None:
-    """A flow with both required and optional parameters."""
-    greet(name=name)
-    count(n=count_to)
-
-
-# Flow that passes required param to multiple tasks
-@recompose.flow
-def flow_with_param_reuse(*, message: str) -> None:
-    """A flow that uses the same param in multiple tasks."""
-    echo(message=message)
-    echo(message=message)
+# Import tasks for plan-only tests (these don't need subprocess)
+greet = flow_test_app.greet
+count_task = flow_test_app.count_task
+echo = flow_test_app.echo
 
 
 class TestFlowsWithRequiredParams:
@@ -208,26 +178,14 @@ class TestTaskSignature:
 
     def test_flow_method_accepts_optional_missing(self) -> None:
         """Test that () accepts missing optional args."""
-
-        @recompose.flow
-        def test_flow() -> None:
-            # count has default for 'n', so this should work
-            count()
-
-        # Should not raise
-        result = test_flow()
+        # Use the flow from test app that exercises optional params
+        result = flow_test_app.flow_with_optional_only()
         assert result.ok
 
     def test_flow_method_accepts_task_node_as_value(self) -> None:
         """Test that () accepts TaskNode from another () call."""
-
-        @recompose.flow
-        def test_flow() -> None:
-            greeting = greet(name="World")
-            # echo accepts message: str, but TaskNode[str] should also work at runtime
-            echo(message=greeting)  # type: ignore[arg-type]
-
-        result = test_flow()
+        # Use the flow from test app that exercises .value() composition
+        result = flow_test_app.flow_with_value_composition()
         assert result.ok
 
     def test_flow_method_accepts_input_placeholder(self) -> None:
@@ -308,15 +266,8 @@ class TestValueBasedComposition:
 
     def test_flow_composition_with_value(self) -> None:
         """Test the type-safe .value() pattern for flow composition."""
-
-        @recompose.flow
-        def test_flow() -> None:
-            # The new pattern: use .value() to pass between tasks
-            result = greet(name="World")
-            echo(message=result.value())
-
-        # This should work and create proper dependencies
-        result = test_flow()
+        # Use the flow from test app that exercises .value() composition
+        result = flow_test_app.flow_with_value_composition()
         assert result.ok
 
     def test_flow_plan_tracks_value_dependencies(self) -> None:

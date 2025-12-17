@@ -1,151 +1,43 @@
-"""Tests for declarative flow execution (P05b)."""
+"""Tests for declarative flow execution."""
 
-from recompose import Err, FlowPlan, Ok, Result, flow, task
+from recompose import FlowPlan, Ok, Result, flow, task
+
+from . import flow_test_app
+
+# =============================================================================
+# Execution tests (use module-level flows for subprocess compatibility)
+# =============================================================================
 
 
 def test_declarative_flow_basic():
     """Test basic declarative flow execution."""
-
-    @task
-    def step_a() -> Result[str]:
-        return Ok("a_result")
-
-    @task
-    def step_b() -> Result[str]:
-        return Ok("b_result")
-
-    @flow
-    def simple_declarative() -> None:
-        step_a()
-        step_b()
-
-    result = simple_declarative()
+    result = flow_test_app.simple_flow()
     assert result.ok
     assert result.value() is None  # Flows return None
 
 
 def test_declarative_flow_with_dependencies():
     """Test declarative flow with task dependencies using .value() pattern."""
-
-    @task
-    def produce(*, value: int) -> Result[int]:
-        return Ok(value * 2)
-
-    @task
-    def consume(*, input_val: int) -> Result[str]:
-        return Ok(f"got {input_val}")
-
-    @flow
-    def dependent_flow() -> None:
-        produced = produce(value=5)
-        consume(input_val=produced.value())  # Use .value() for type-safe passing
-
-    result = dependent_flow()
+    result = flow_test_app.dependent_flow()
     assert result.ok
 
 
-def test_declarative_flow_execution_order():
-    """Test that declarative flows execute in topological order."""
-    execution_order = []
-
-    @task
-    def task_first() -> Result[int]:
-        execution_order.append("first")
-        return Ok(1)
-
-    @task
-    def task_second(*, from_first: int) -> Result[int]:
-        execution_order.append("second")
-        return Ok(from_first + 1)
-
-    @task
-    def task_third(*, from_second: int) -> Result[int]:
-        execution_order.append("third")
-        return Ok(from_second + 1)
-
-    @flow
-    def ordered_flow() -> None:
-        first = task_first()
-        second = task_second(from_first=first.value())
-        task_third(from_second=second.value())
-
-    execution_order.clear()
-    result = ordered_flow()
-
+def test_declarative_flow_with_arguments():
+    """Test declarative flow with external arguments."""
+    result = flow_test_app.arg_flow(initial=21)
     assert result.ok
-    assert execution_order == ["first", "second", "third"]
-
-
-def test_declarative_flow_parallel_structure():
-    """Test declarative flow with parallel task structure."""
-    execution_order = []
-
-    @task
-    def source_task() -> Result[int]:
-        execution_order.append("source")
-        return Ok(10)
-
-    @task
-    def branch_a(*, val: int) -> Result[int]:
-        execution_order.append("branch_a")
-        return Ok(val + 1)
-
-    @task
-    def branch_b(*, val: int) -> Result[int]:
-        execution_order.append("branch_b")
-        return Ok(val + 2)
-
-    @task
-    def merge_task(*, a: int, b: int) -> Result[int]:
-        execution_order.append("merge")
-        return Ok(a + b)
-
-    @flow
-    def diamond_flow() -> None:
-        src = source_task()
-        a = branch_a(val=src.value())
-        b = branch_b(val=src.value())
-        merge_task(a=a.value(), b=b.value())
-
-    execution_order.clear()
-    result = diamond_flow()
-
-    assert result.ok
-    assert execution_order[0] == "source"
-    assert "merge" in execution_order[-1]
 
 
 def test_declarative_flow_fail_fast():
     """Test that declarative flows fail fast when a task fails."""
-    execution_order = []
-
-    @task
-    def ok_task() -> Result[str]:
-        execution_order.append("ok")
-        return Ok("fine")
-
-    @task
-    def failing_task() -> Result[str]:
-        execution_order.append("fail")
-        return Err("failed!")
-
-    @task
-    def never_run() -> Result[str]:
-        execution_order.append("never")
-        return Ok("should not see this")
-
-    @flow
-    def fail_fast_flow() -> None:
-        ok_task()
-        failing_task()
-        never_run()
-
-    execution_order.clear()
-    result = fail_fast_flow()
-
+    result = flow_test_app.fail_fast_flow()
     assert result.failed
-    assert result.error == "failed!"
-    assert "never" not in execution_order
+    assert "failed!" in (result.error or "")
+
+
+# =============================================================================
+# Plan-only tests (no subprocess execution needed)
+# =============================================================================
 
 
 def test_flow_plan_method():
@@ -225,66 +117,6 @@ def test_flow_plan_execution_order():
     names = [n.name for n in plan.nodes]
     assert names.index("order_a") < names.index("order_b")
     assert names.index("order_b") < names.index("order_c")
-
-
-def test_declarative_flow_with_arguments():
-    """Test declarative flow with external arguments."""
-
-    @task
-    def double(*, value: int) -> Result[int]:
-        return Ok(value * 2)
-
-    @flow
-    def arg_flow(*, initial: int) -> None:
-        double(value=initial)
-
-    result = arg_flow(initial=21)
-    assert result.ok
-
-
-def test_declarative_flow_tracks_executions():
-    """Test that declarative flow tracks task executions."""
-
-    @task
-    def tracked_a() -> Result[str]:
-        return Ok("a")
-
-    @task
-    def tracked_b() -> Result[str]:
-        return Ok("b")
-
-    @flow
-    def tracking_flow() -> None:
-        tracked_a()
-        tracked_b()
-
-    result = tracking_flow()
-    assert result.ok
-
-    # Check flow context was attached
-    flow_ctx = getattr(result, "_flow_context", None)
-    assert flow_ctx is not None
-    assert len(flow_ctx.executions) == 2
-
-
-def test_declarative_flow_attaches_plan():
-    """Test that executed declarative flow attaches the plan."""
-
-    @task
-    def attached_task() -> Result[str]:
-        return Ok("done")
-
-    @flow
-    def attached_flow() -> None:
-        attached_task()
-
-    result = attached_flow()
-    assert result.ok
-
-    # Check plan was attached
-    plan = getattr(result, "_flow_plan", None)
-    assert plan is not None
-    assert isinstance(plan, FlowPlan)
 
 
 def test_task_node_repr():

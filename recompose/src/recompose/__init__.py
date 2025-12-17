@@ -48,12 +48,10 @@ from .context import (
     set_working_directory,
 )
 from .flow import (
-    FlowContext,
     FlowInfo,
     FlowWrapper,
     flow,
     get_current_plan,
-    get_flow_context,
 )
 from .plan import FlowPlan, Input, InputPlaceholder, TaskNode
 from .result import Err, Ok, Result
@@ -100,14 +98,12 @@ __all__ = [
     "flow",
     "FlowInfo",
     "FlowWrapper",
-    "FlowContext",
     "FlowPlan",
     "TaskNode",
     "Input",
     "InputPlaceholder",
     "get_flow",
     "get_flow_registry",
-    "get_flow_context",
     "get_current_plan",
     # Conditional execution
     "run_if",
