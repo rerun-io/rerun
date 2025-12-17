@@ -379,7 +379,9 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
         # Handle --status: show recent workflow runs
         if status:
-            _handle_flow_status(flow_name)
+            from . import gh_cli
+
+            gh_cli.display_flow_status(flow_name)
             return
 
         # Validate required parameters for non-step modes
@@ -397,7 +399,9 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
 
         # Handle --remote: trigger workflow on GitHub
         if remote:
-            _handle_flow_remote(flow_name, kwargs, ref, force)
+            from . import gh_cli
+
+            gh_cli.trigger_flow_remote(flow_name, kwargs, ref, force)
             return
 
         # Determine workspace
@@ -571,147 +575,6 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     )
 
     return cmd
-
-
-def _handle_flow_status(flow_name: str) -> None:
-    """Show recent GitHub Actions runs for a flow."""
-    import sys
-
-    from . import gh_cli
-
-    # Check gh CLI availability upfront
-    if not gh_cli.is_gh_installed():
-        console.print(f"\n[red]Error:[/red] {gh_cli.GH_NOT_FOUND_ERROR}")
-        sys.exit(1)
-
-    workflow_name = gh_cli.flow_to_workflow_name(flow_name)
-
-    console.print(f"\n[bold]Recent runs for [cyan]{flow_name}[/cyan][/bold]")
-    console.print(f"[dim]Workflow: {workflow_name}[/dim]\n")
-
-    result = gh_cli.list_workflow_runs(workflow_name=workflow_name, limit=10)
-
-    if result.failed:
-        console.print(f"[red]Error:[/red] {result.error}")
-        sys.exit(1)
-
-    runs = result.value()
-    if not runs:
-        console.print("[dim]No workflow runs found[/dim]")
-        return
-
-    # Print runs in a table-like format
-    for run in runs:
-        # Status indicator
-        if run.status == "completed":
-            if run.conclusion == "success":
-                status_icon = "[green]✓[/green]"
-            elif run.conclusion == "failure":
-                status_icon = "[red]✗[/red]"
-            elif run.conclusion == "cancelled":
-                status_icon = "[yellow]⊘[/yellow]"
-            else:
-                status_icon = "[dim]?[/dim]"
-        elif run.status == "in_progress":
-            status_icon = "[blue]●[/blue]"
-        else:  # queued
-            status_icon = "[dim]○[/dim]"
-
-        # Format timestamp
-        from datetime import datetime
-
-        try:
-            created = datetime.fromisoformat(run.created_at.replace("Z", "+00:00"))
-            time_str = created.strftime("%Y-%m-%d %H:%M")
-        except (ValueError, AttributeError):
-            time_str = run.created_at[:16] if run.created_at else "?"
-
-        # Print run info
-        console.print(
-            f"  {status_icon} [bold]#{run.id}[/bold]  "
-            f"[dim]{time_str}[/dim]  "
-            f"[cyan]{run.head_branch}[/cyan]  "
-            f"{run.display_status}"
-        )
-        console.print(f"      [dim]{run.url}[/dim]")
-
-    console.print()
-
-
-def _handle_flow_remote(
-    flow_name: str,
-    flow_params: dict[str, Any],
-    ref: str | None,
-    force: bool,
-) -> None:
-    """Trigger a workflow on GitHub Actions."""
-    import sys
-
-    from . import gh_cli
-
-    # Check gh CLI availability upfront
-    if not gh_cli.is_gh_installed():
-        console.print(f"\n[red]Error:[/red] {gh_cli.GH_NOT_FOUND_ERROR}")
-        sys.exit(1)
-
-    workflow_name = gh_cli.flow_to_workflow_name(flow_name)
-    workflow_path = f".github/workflows/{workflow_name}"
-
-    console.print(f"\n[bold]Triggering [cyan]{flow_name}[/cyan] on GitHub Actions[/bold]")
-    console.print(f"[dim]Workflow: {workflow_name}[/dim]\n")
-
-    # Determine the ref to use
-    if ref is None:
-        branch_result = gh_cli.get_current_branch()
-        if branch_result.failed:
-            console.print(f"[red]Error:[/red] Could not determine current branch: {branch_result.error}")
-            sys.exit(1)
-        ref = branch_result.value()
-
-    console.print(f"[dim]Branch:[/dim] {ref}")
-
-    # Validate workflow sync (unless --force)
-    if not force:
-        console.print("[dim]Validating workflow sync...[/dim]")
-
-        git_root = gh_cli.find_git_root()
-        if git_root is None:
-            console.print("[red]Error:[/red] Not in a git repository")
-            sys.exit(1)
-
-        local_path = git_root / workflow_path
-
-        sync_result = gh_cli.validate_workflow_sync(local_path, workflow_path)
-        if sync_result.failed:
-            console.print(f"\n[red]Error:[/red] {sync_result.error}")
-            console.print("\n[dim]Use --force to skip validation, or commit and push your workflow changes.[/dim]")
-            sys.exit(1)
-
-        console.print("[green]✓[/green] Workflow in sync with remote")
-
-    # Convert flow params to workflow inputs (as strings)
-    inputs: dict[str, str] = {}
-    for key, value in flow_params.items():
-        if value is not None:
-            inputs[key] = str(value)
-
-    if inputs:
-        console.print(f"[dim]Inputs:[/dim] {inputs}")
-
-    # Trigger the workflow
-    console.print()
-    trigger_result = gh_cli.trigger_workflow(workflow_name, ref=ref, inputs=inputs)
-
-    if trigger_result.failed:
-        console.print(f"[red]Error:[/red] {trigger_result.error}")
-        sys.exit(1)
-
-    console.print(f"[green]✓[/green] {trigger_result.value()}")
-    console.print()
-
-    # Show how to check status
-    console.print(f"[dim]Check status with:[/dim] ./run {flow_name} --status")
-    console.print()
 
 
 class GroupedClickGroup(click.Group):
