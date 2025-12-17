@@ -5,15 +5,13 @@ from __future__ import annotations
 import functools
 import inspect
 import time
-import traceback
 from collections.abc import Callable
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
-from .context import Context, get_context, set_context
-from .plan import FlowPlan, TaskNode
+from .plan import FlowPlan
 from .result import Err, Ok, Result
 
 P = ParamSpec("P")
@@ -55,69 +53,6 @@ def set_current_plan(plan: FlowPlan | None) -> None:
     _current_plan.set(plan)
 
 
-class TaskFailed(Exception):
-    """
-    Raised when a task fails inside a flow.
-
-    This is used internally to short-circuit flow execution.
-    The flow decorator catches this and returns the failed Result.
-    """
-
-    def __init__(self, result: Result[Any]):
-        self.result = result
-        super().__init__(result.error or "Task failed")
-
-
-@dataclass
-class TaskExecution:
-    """Record of a task execution within a flow."""
-
-    task_name: str
-    result: Result[Any]
-    duration: float  # seconds
-
-
-@dataclass
-class FlowContext:
-    """
-    Context for tracking flow execution.
-
-    Tracks which tasks have run and their results.
-    """
-
-    flow_name: str
-    executions: list[TaskExecution] = field(default_factory=list)
-    start_time: float = field(default_factory=time.perf_counter)
-
-    def record_task(self, task_name: str, result: Result[Any], duration: float) -> None:
-        """Record a task execution."""
-        self.executions.append(TaskExecution(task_name=task_name, result=result, duration=duration))
-
-    @property
-    def total_duration(self) -> float:
-        """Total elapsed time since flow started."""
-        return time.perf_counter() - self.start_time
-
-    @property
-    def all_succeeded(self) -> bool:
-        """True if all executed tasks succeeded."""
-        return all(ex.result.ok for ex in self.executions)
-
-
-# Context variable for the current flow
-_current_flow_context: ContextVar[FlowContext | None] = ContextVar("recompose_flow_context", default=None)
-
-
-def get_flow_context() -> FlowContext | None:
-    """Get the current flow context, or None if not in a flow."""
-    return _current_flow_context.get()
-
-
-def set_flow_context(ctx: FlowContext | None) -> None:
-    """Set the current flow context."""
-    _current_flow_context.set(ctx)
-
-
 @dataclass
 class FlowInfo:
     """Metadata about a registered flow."""
@@ -133,73 +68,6 @@ class FlowInfo:
     def full_name(self) -> str:
         """Full qualified name of the flow."""
         return f"{self.module}:{self.name}"
-
-
-def _resolve_kwargs(kwargs: dict[str, Any], results: dict[str, Result[Any]]) -> dict[str, Any]:
-    """Replace TaskNode values in kwargs with their actual results."""
-    resolved = {}
-    for k, v in kwargs.items():
-        if isinstance(v, TaskNode):
-            # Get the result for this node and unwrap it
-            node_result = results.get(v.node_id)
-            if node_result is None:
-                raise RuntimeError(f"Dependency {v.name} ({v.node_id}) has not been executed yet")
-            if node_result.failed:
-                raise RuntimeError(f"Dependency {v.name} failed: {node_result.error}")
-            resolved[k] = node_result.value()
-        else:
-            resolved[k] = v
-    return resolved
-
-
-def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
-    """Execute a declarative flow plan in order."""
-    import time
-
-    results: dict[str, Result[Any]] = {}
-
-    for node in plan.nodes:
-        # Resolve any TaskNode dependencies in kwargs
-        try:
-            resolved_kwargs = _resolve_kwargs(node.kwargs, results)
-        except RuntimeError as e:
-            return Err(str(e))
-
-        # Execute the task's original function (not the wrapper)
-        # This avoids double-recording in flow context
-        start_time = time.perf_counter()
-        result: Result[Any]
-        try:
-            task_return = node.task_info.original_fn(**resolved_kwargs)
-            # Ensure result is a Result type
-            if isinstance(task_return, Result):
-                result = task_return
-            else:
-                result = Ok(task_return)
-        except Exception as e:
-            tb = traceback.format_exc()
-            result = Err(f"{type(e).__name__}: {e}", traceback=tb)
-
-        duration = time.perf_counter() - start_time
-
-        # Record in flow context
-        flow_ctx.record_task(node.task_info.name, result, duration)
-
-        # Store result by node_id
-        results[node.node_id] = result
-
-        # Fail-fast if task failed
-        if result.failed:
-            return result
-
-    # Return the terminal node's result
-    if plan.terminal and plan.terminal.node_id in results:
-        return results[plan.terminal.node_id]
-    elif plan.nodes:
-        # No explicit terminal - return last node's result
-        return results[plan.nodes[-1].node_id]
-    else:
-        return Ok(None)
 
 
 def _format_condition_expr(condition_data: dict[str, Any]) -> str:
@@ -239,56 +107,8 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
     @functools.wraps(fn)
     def wrapper(**kwargs: Any) -> Result[None]:
-        # Create flow context for tracking executions
-        flow_ctx = FlowContext(flow_name=fn.__name__)
-        set_flow_context(flow_ctx)
-
-        # Create a plan context - .flow() calls will register nodes here
-        plan = FlowPlan()
-        set_current_plan(plan)
-
-        # Create a task context for output capture during execution
-        task_ctx = Context(task_name=f"flow:{fn.__name__}")
-        existing_task_ctx = get_context()
-
-        if existing_task_ctx is None:
-            set_context(task_ctx)
-
-        try:
-            # Run the flow function body to build the task graph
-            fn(**kwargs)
-
-            # Use the last added node as the terminal
-            if not plan.nodes:
-                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task calls to add tasks.")
-            plan.terminal = plan.nodes[-1]
-            set_current_plan(None)  # Clear before execution
-
-            exec_result = _execute_plan(plan, flow_ctx)
-
-            # If a task failed, propagate that failure
-            if exec_result.failed:
-                result: Result[None] = Err(exec_result.error or "Task failed", traceback=exec_result.traceback)
-            else:
-                result = Ok(None)
-
-            result._flow_context = flow_ctx  # type: ignore[attr-defined]
-            result._flow_plan = plan  # type: ignore[attr-defined]
-            return result
-
-        except Exception as e:
-            if isinstance(e, (ValueError, TypeError)):
-                raise  # Re-raise flow construction errors (programming mistakes)
-            tb = traceback.format_exc()
-            err_result: Result[None] = Err(f"{type(e).__name__}: {e}", traceback=tb)
-            err_result._flow_context = flow_ctx  # type: ignore[attr-defined]
-            return err_result
-
-        finally:
-            set_flow_context(None)
-            set_current_plan(None)
-            if existing_task_ctx is None:
-                set_context(None)
+        # Direct flow execution uses subprocess isolation (matches GHA behavior)
+        return run_isolated_impl(**kwargs)
 
     def plan_only(**kwargs: Any) -> FlowPlan:
         """
