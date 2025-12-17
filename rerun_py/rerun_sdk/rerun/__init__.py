@@ -93,6 +93,7 @@ from .archetypes import (
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
+    EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,

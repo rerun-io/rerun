@@ -13,7 +13,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneEntityContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::textured_rect_from_image;
+use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
@@ -159,8 +159,4 @@ impl ImageVisualizer {
             }
         }
     }
-}
-
-fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
-    slice.and_then(|element| element.first()).copied()
 }

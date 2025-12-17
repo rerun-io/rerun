@@ -31,7 +31,7 @@ where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &SpatialSceneEntityContext<'_>,
+        &mut SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
@@ -58,7 +58,7 @@ where
         };
 
         let depth_offset_key = (system_identifier, entity_path.hash());
-        let entity_context = SpatialSceneEntityContext {
+        let mut entity_context = SpatialSceneEntityContext {
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer
@@ -68,6 +68,7 @@ where
             annotations: annotations.0.find(entity_path),
             highlight: query.highlights.entity_outline_mask(entity_path.hash()),
             view_class_identifier: context_systems.view_class_identifier(),
+            output,
         };
 
         let results = data_result.query_archetype_with_history::<A>(ctx, query);
@@ -77,7 +78,7 @@ where
 
         {
             re_tracing::profile_scope!(format!("{entity_path}"));
-            fun(&query_ctx, &entity_context, &results)?;
+            fun(&query_ctx, &mut entity_context, &results)?;
         }
     }
 

@@ -182,6 +182,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.DepthImage",
             "archetypes.Image",
             "archetypes.EncodedImage",
+            "archetypes.EncodedDepthImage",
             "archetypes.SegmentationImage",
         ],
         gen_page=False,
