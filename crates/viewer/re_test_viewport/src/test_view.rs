@@ -51,7 +51,7 @@ impl IdentifiedViewSystem for TestSystem {
 }
 
 impl ViewClass for TestView {
-    fn identifier() -> re_types::ViewClassIdentifier
+    fn identifier() -> re_sdk_types::ViewClassIdentifier
     where
         Self: Sized,
     {

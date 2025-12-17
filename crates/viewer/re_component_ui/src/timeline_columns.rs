@@ -1,6 +1,6 @@
 use re_data_ui::item_ui::timeline_button;
 use re_log_types::TimelineName;
-use re_types::blueprint::components::TimelineColumn;
+use re_sdk_types::blueprint::components::TimelineColumn;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::visible_dnd::visible_dnd;
@@ -37,15 +37,15 @@ pub fn edit_or_view_columns_multiline(
             // these will be written to the component.
             let extra_columns = ctx
                 .recording()
-                .times_per_timeline()
                 .timelines()
+                .values()
                 .filter(|timeline| {
                     columns
                         .iter()
                         .all(|col| col.timeline.as_str() != timeline.name().as_str())
                 })
                 .map(|timeline| {
-                    TimelineColumn(re_types::blueprint::datatypes::TimelineColumn {
+                    TimelineColumn(re_sdk_types::blueprint::datatypes::TimelineColumn {
                         visible: false.into(),
                         timeline: timeline.name().as_str().into(),
                     })

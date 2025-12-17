@@ -1,7 +1,7 @@
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_types;
+use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
@@ -13,7 +13,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)],
                 [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
             )
@@ -24,7 +24,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::Boxes2D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes2D::from_centers_and_half_sizes(
                 [(-1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
                 [(0.2, 0.4), (0.2, 0.2), (0.4, 0.2)],
             )
@@ -37,8 +37,8 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             [(timeline, 1)],
-            &re_types::archetypes::TextLog::new("Hello World!")
-                .with_level(re_types::components::TextLogLevel::INFO),
+            &re_sdk_types::archetypes::TextLog::new("Hello World!")
+                .with_level(re_sdk_types::components::TextLogLevel::INFO),
         )
     });
 
@@ -46,7 +46,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Points2D::new([(1.0, 1.0), (1.2, -0.3), (0.0, -0.3)])
+            &re_sdk_types::archetypes::Points2D::new([(1.0, 1.0), (1.2, -0.3), (0.0, -0.3)])
                 .with_radii([0.1, 0.1, 0.1])
                 .with_colors([0xFF9001FF, 0x9001FFFF, 0x90FF01FF])
                 .with_labels(["a", "b", "c"]),
@@ -57,7 +57,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::TextDocument::new("Hello World!"),
+            &re_sdk_types::archetypes::TextDocument::new("Hello World!"),
         )
     });
 

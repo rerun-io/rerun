@@ -165,10 +165,24 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/file_sink" = [ # these will create a file on disk and are only meant to illustrate usage
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/grpc_sink" = [ # these will fail to run without a server to connect to
+  "py",
+  "cpp",
+  "rust",
+]
 "howto/check_connection_status" = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
+]
+"howto/load_urdf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
@@ -375,6 +389,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]

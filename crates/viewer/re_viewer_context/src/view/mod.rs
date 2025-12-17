@@ -59,7 +59,7 @@ pub enum ViewSystemExecutionError {
     QueryError(Box<re_query::QueryError>),
 
     #[error(transparent)]
-    DeserializationError(Box<re_types::DeserializationError>),
+    DeserializationError(Box<re_sdk_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
     DrawDataCreationError(Box<dyn std::error::Error + Send + Sync>),
@@ -99,8 +99,8 @@ impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutio
     }
 }
 
-impl From<re_types::DeserializationError> for ViewSystemExecutionError {
-    fn from(val: re_types::DeserializationError) -> Self {
+impl From<re_sdk_types::DeserializationError> for ViewSystemExecutionError {
+    fn from(val: re_sdk_types::DeserializationError) -> Self {
         Self::DeserializationError(Box::new(val))
     }
 }

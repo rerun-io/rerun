@@ -1,5 +1,5 @@
 use re_log_types::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput};
 
 use crate::contexts::{TransformInfo, TransformTreeContext};

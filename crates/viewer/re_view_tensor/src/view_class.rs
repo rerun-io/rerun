@@ -4,13 +4,13 @@ use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_log_types::hash::Hash64;
-use re_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
-use re_types::blueprint::components::ViewFit;
-use re_types::components::{
+use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
+use re_sdk_types::blueprint::components::ViewFit;
+use re_sdk_types::components::{
     Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
-use re_types::datatypes::TensorData;
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -30,7 +30,7 @@ use crate::visualizer_system::{TensorSystem, TensorVisualization};
 #[derive(Default)]
 pub struct TensorView;
 
-type ViewType = re_types::blueprint::views::TensorView;
+type ViewType = re_sdk_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
@@ -109,7 +109,7 @@ Set the displayed dimensions in a selection panel.",
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             std::iter::once(TensorSystem::identifier()).collect()
         } else {
@@ -152,7 +152,7 @@ Set the displayed dimensions in a selection panel.",
         // TODO(#6075): Listitemify
         if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<
-                re_types::blueprint::archetypes::TensorSliceSelection,
+                re_sdk_types::blueprint::archetypes::TensorSliceSelection,
             >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
             let slice_selection = TensorSliceSelection::load_and_make_valid(
                 &slice_property,
@@ -279,7 +279,7 @@ impl TensorView {
         re_tracing::profile_function!();
 
         let slice_property = ViewProperty::from_archetype::<
-            re_types::blueprint::archetypes::TensorSliceSelection,
+            re_sdk_types::blueprint::archetypes::TensorSliceSelection,
         >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
         let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,

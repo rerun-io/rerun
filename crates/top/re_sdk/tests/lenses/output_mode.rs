@@ -3,7 +3,7 @@
 use arrow::array::{ListBuilder, StringBuilder};
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
 use re_sdk::lenses::{Lens, Lenses, OutputMode};
-use re_types::ComponentDescriptor;
+use re_sdk_types::ComponentDescriptor;
 
 /// Helper to create a simple chunk with string data for testing
 fn create_test_chunk(entity_path: &str, component_name: &str) -> Chunk {

@@ -3,8 +3,8 @@ use std::collections::hash_map::Entry;
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
 use re_log_types::EntityPath;
-use re_types::components::TransformFrameId;
-use re_types::{TransformFrameIdHash, archetypes};
+use re_sdk_types::components::TransformFrameId;
+use re_sdk_types::{TransformFrameIdHash, archetypes};
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {
@@ -139,8 +139,8 @@ impl FrameIdRegistry {
 mod tests {
     use re_chunk_store::Chunk;
     use re_log_types::{EntityPath, TimePoint};
-    use re_types::components::TransformFrameId;
-    use re_types::{TransformFrameIdHash, archetypes};
+    use re_sdk_types::components::TransformFrameId;
+    use re_sdk_types::{TransformFrameIdHash, archetypes};
 
     use crate::frame_id_registry::FrameIdRegistry;
 

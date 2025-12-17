@@ -3,9 +3,9 @@
 use egui::Vec2;
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_sdk_types::archetypes;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
 use re_view_graph::GraphView;
 use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -20,7 +20,12 @@ pub fn coincident_nodes() {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<re_view_graph::GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
@@ -49,7 +54,12 @@ pub fn self_and_multi_edges() {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
@@ -94,7 +104,12 @@ pub fn multi_graphs() {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("Should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity("graph1", |builder| {
         builder
             .with_archetype(

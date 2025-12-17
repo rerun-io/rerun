@@ -8,11 +8,11 @@ use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;
-use re_viewer::external::{re_types, re_view_spatial};
+use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
-fn make_test_image() -> re_types::archetypes::Image {
+fn make_test_image() -> re_sdk_types::archetypes::Image {
     let image = ndarray::Array3::from_shape_fn((256, 256, 3), |(y, x, c)| match c {
         0 => x as u8,
         1 => y as u8,
@@ -20,8 +20,8 @@ fn make_test_image() -> re_types::archetypes::Image {
         _ => unreachable!(),
     });
 
-    re_types::archetypes::Image::from_color_model_and_tensor(
-        re_types::datatypes::ColorModel::RGB,
+    re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+        re_sdk_types::datatypes::ColorModel::RGB,
         image,
     )
     .expect("Failed to create image")
@@ -40,7 +40,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(0.0, 0.0, 0.0)],
                 [(0.3, 0.3, 0.3)],
             )
@@ -52,7 +52,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+            &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
         )
     });
 
@@ -60,8 +60,8 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Transform3D::from_rotation(
-                re_types::components::RotationAxisAngle::new(
+            &re_sdk_types::archetypes::Transform3D::from_rotation(
+                re_sdk_types::components::RotationAxisAngle::new(
                     [-1.0, 0.9, 0.0],
                     std::f32::consts::PI / 2.0,
                 ),
@@ -73,7 +73,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Pinhole::from_focal_length_and_resolution(
+            &re_sdk_types::archetypes::Pinhole::from_focal_length_and_resolution(
                 [128.0, 128.0],
                 [256.0, 256.0],
             )
@@ -90,7 +90,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Points2D::new([(10.0, 10.0), (128.0, -0.0), (50.0, -50.0)])
+            &re_sdk_types::archetypes::Points2D::new([(10.0, 10.0), (128.0, -0.0), (50.0, -50.0)])
                 .with_radii([-10.0, -10.0, -10.0])
                 .with_colors([0xFF9001FF, 0x9001FFFF, 0x90FF01FF]),
         )

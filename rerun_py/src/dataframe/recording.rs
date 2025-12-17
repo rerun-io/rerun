@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyDict;
-use pyo3::{Bound, Py, PyAny, PyResult, pyclass, pymethods};
+use pyo3::types::{PyDict, PyModule};
+use pyo3::{Bound, Py, PyAny, PyObject, PyResult, Python, pyclass, pymethods};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
     ChunkStoreHandle, QueryExpression, SparseFillStrategy, StaticColumnSelection,
@@ -13,18 +13,18 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchema};
+use super::PyRecordingView;
+use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///
-/// This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+/// This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
 ///
 /// A recording is a collection of data that was logged to Rerun. This data is organized
 /// as a column for each index (timeline) and each entity/component pair that was logged.
 ///
-/// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
-/// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
-/// to retrieve the data.
+/// You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+/// what data is available.
 #[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyRecording {
     pub(crate) store: ChunkStoreHandle,
@@ -129,10 +129,16 @@ impl PyRecording {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self) -> PySchema {
-        PySchema {
-            schema: self.store.read().schema().into(),
-        }
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = PySchemaInternal {
+            columns: self.store.read().schema().into(),
+            metadata: Default::default(),
+        };
+
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     #[allow(
@@ -140,7 +146,7 @@ impl PyRecording {
         rustdoc::invalid_rust_codeblocks,
         rustdoc::private_doc_tests
     )]
-    /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+    /// Create a `RecordingView` of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or `None` (see below
     /// for details).

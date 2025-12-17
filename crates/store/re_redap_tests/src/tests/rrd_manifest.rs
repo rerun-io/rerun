@@ -1,12 +1,12 @@
-use arrow::array::RecordBatch;
 use itertools::Itertools as _;
 
-use re_arrow_util::RecordBatchTestExt as _;
+use re_arrow_util::{RecordBatchTestExt as _, SchemaTestExt as _};
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::GetRrdManifestRequest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_sdk::external::re_log_encoding::RrdManifest;
 use re_sdk::external::re_log_encoding::ToApplication as _;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
@@ -29,8 +29,8 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let rrd_manifest_batch_result =
         dataset_rrd_manifest_snapshot(&service, segment_id, dataset_name).await;
 
-    let rrd_manifest_batch = match rrd_manifest_batch_result {
-        Ok(rrd_manifest_batch) => rrd_manifest_batch,
+    let rrd_manifest = match rrd_manifest_batch_result {
+        Ok(rrd_manifest) => rrd_manifest,
         Err(status) => {
             if status.code() == tonic::Code::Unimplemented {
                 return; // TODO(RR-3110): implemented this endpoint on Rerun Cloud
@@ -43,7 +43,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     use futures::StreamExt as _;
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![rrd_manifest_batch.into()],
+            chunk_infos: vec![rrd_manifest.data.clone().into()],
         }))
         .await
         .unwrap()
@@ -70,8 +70,8 @@ async fn dataset_rrd_manifest_snapshot(
     service: &impl RerunCloudService,
     segment_id: SegmentId,
     dataset_name: &str,
-) -> tonic::Result<RecordBatch> {
-    let rrd_manifest_batch: RecordBatch = service
+) -> tonic::Result<RrdManifest> {
+    let rrd_manifest = service
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
@@ -81,12 +81,24 @@ async fn dataset_rrd_manifest_snapshot(
         )
         .await?
         .into_inner()
-        .data
+        .rrd_manifest
         .unwrap()
-        .try_into()
+        .to_application(())
         .unwrap();
 
-    insta::assert_snapshot!("rrd_manifest", rrd_manifest_batch.format_snapshot(true));
+    insta::assert_snapshot!("rrd_manifest", rrd_manifest.data.format_snapshot(true));
+    insta::assert_snapshot!(
+        "rrd_manifest_sorbet_schema",
+        rrd_manifest.sorbet_schema.format_snapshot(),
+    );
+    insta::assert_snapshot!(
+        "rrd_manifest_sorbet_schema_sha256",
+        rrd_manifest
+            .sorbet_schema_sha256
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>(),
+    );
 
-    Ok(rrd_manifest_batch)
+    Ok(rrd_manifest)
 }

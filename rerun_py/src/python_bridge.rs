@@ -9,12 +9,11 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use re_auth::OauthLoginFlow;
 use re_auth::oauth::Credentials;
-use re_auth::oauth::login_flow::OauthLoginFlowState;
+use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -162,7 +161,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
-    m.add_class::<PyOauthLoginFlow>()?;
+    m.add_class::<PyDeviceCodeFlow>()?;
     m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
@@ -196,6 +195,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_global_blueprint_recording, m)?)?;
     m.add_function(wrap_pyfunction!(get_thread_local_blueprint_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_thread_local_blueprint_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(disconnect_orphaned_recordings, m)?)?;
+    m.add_function(wrap_pyfunction!(check_for_rrd_footer, m)?)?;
 
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
@@ -285,6 +286,33 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
         // Finally remove any recordings that have a refcount of 1, which means they are ONLY
         // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
+
+        Ok(())
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Disconnect any orphaned recordings.
+///
+/// This can be used to make sure that recordings get closed/finalized
+/// properly when all references have been dropped.
+#[pyfunction]
+fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
+    py.allow_threads(|| -> Result<(), SinkFlushError> {
+        // Disconnect any recordings that have a refcount of 1. This means they are the
+        // only referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
+        for recording in all_recordings().iter() {
+            if recording.ref_count() <= 1 {
+                re_log::debug!(
+                    "Disconnecting orphaned recording: {}",
+                    recording
+                        .store_info()
+                        .map(|info| info.recording_id().to_string())
+                        .unwrap_or_else(|| "<unknown>".to_owned())
+                );
+                recording.disconnect();
+            }
+        }
 
         Ok(())
     })
@@ -640,6 +668,10 @@ impl PyRecordingStream {
     /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
+    }
+
+    pub fn ref_count(&self) -> usize {
+        self.0.ref_count()
     }
 
     pub fn __str__(&self) -> String {
@@ -2244,16 +2276,21 @@ authkey = multiprocessing.current_process().authkey
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
 }
 
-#[pyclass(name = "OauthLoginFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-struct PyOauthLoginFlow {
-    login_flow: OauthLoginFlow,
+#[pyclass(name = "DeviceCodeFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+struct PyDeviceCodeFlow {
+    login_flow: DeviceCodeFlow,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyOauthLoginFlow {
+impl PyDeviceCodeFlow {
     /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {
-        self.login_flow.server.get_login_url().to_owned()
+        self.login_flow.get_login_url().to_owned()
+    }
+
+    /// Get the user code.
+    fn user_code(&self) -> String {
+        self.login_flow.get_user_code().to_owned()
     }
 
     /// Finish the OAuth login flow.
@@ -2263,20 +2300,18 @@ impl PyOauthLoginFlow {
     /// Credentials
     ///     The credentials of the logged in user.
     fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
-        let result: Result<Credentials, re_auth::callback_server::Error> =
-            crate::utils::wait_for_future(py, async {
-                loop {
-                    let result = self.login_flow.poll().await?;
-                    match result {
-                        Some(credentials) => break Ok(credentials),
-                        None => tokio::time::sleep(Duration::from_millis(10)).await,
-                    }
+        crate::utils::wait_for_future(py, async move {
+            tokio::select! {
+                result = self.login_flow.wait_for_user_confirmation() => {
+                    result
+                        .map(PyCredentials)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 }
-            });
-
-        result
-            .map(PyCredentials)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+                _ = tokio::signal::ctrl_c() => {
+                    Err(PyKeyboardInterrupt::new_err(None::<()>))
+                }
+            }
+        })
     }
 }
 
@@ -2285,19 +2320,19 @@ impl PyOauthLoginFlow {
 ///
 /// Returns
 /// -------
-/// OauthLoginFlow | None
+/// DeviceCodeFlow | None
 ///     The login flow, or `None` if the user is already logged in.
-fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyOauthLoginFlow>> {
-    let login_flow = crate::utils::wait_for_future(py, async { OauthLoginFlow::init(false).await })
+fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyDeviceCodeFlow>> {
+    let login_flow = crate::utils::wait_for_future(py, async { DeviceCodeFlow::init(false).await })
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     match login_flow {
-        OauthLoginFlowState::AlreadyLoggedIn(_) => {
+        DeviceCodeFlowState::AlreadyLoggedIn(_) => {
             // Already logged in, no need to start a login flow.
             Ok(None)
         }
-        OauthLoginFlowState::LoginFlowStarted(login_flow) => {
-            Ok(Some(PyOauthLoginFlow { login_flow }))
+        DeviceCodeFlowState::LoginFlowStarted(login_flow) => {
+            Ok(Some(PyDeviceCodeFlow { login_flow }))
         }
     }
 }
@@ -2351,4 +2386,17 @@ fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
     })
     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     Ok(Some(PyCredentials(credentials)))
+}
+
+#[pyfunction]
+/// Check if the RRD has a valid RRD footer.
+///
+/// This is useful for unit-tests to verify that data has been fully flushed to disk.
+fn check_for_rrd_footer(file_path: std::path::PathBuf) -> PyResult<bool> {
+    let rrd_bytes =
+        std::fs::read(file_path).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let rrd_manifests = re_log_encoding::RrdManifest::from_rrd_bytes(&rrd_bytes)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    Ok(!rrd_manifests.is_empty())
 }

@@ -1,8 +1,8 @@
 use re_chunk::external::arrow::array::{FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
-use re_types::ComponentDescriptor;
-use re_types::archetypes::{Scalars, SeriesLines};
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::archetypes::{Scalars, SeriesLines};
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;

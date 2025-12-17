@@ -44,6 +44,12 @@ impl LogReceiverSet {
         self.receivers.lock().retain(|r| f(r));
     }
 
+    pub fn for_each(&self, mut f: impl FnMut(&LogReceiver)) {
+        for r in self.receivers.lock().iter() {
+            f(r);
+        }
+    }
+
     /// Remove all receivers.
     pub fn clear(&self) {
         self.receivers.lock().clear();
@@ -232,8 +238,8 @@ fn test_receive_set() {
     );
 
     tx_sdk
-        .send(re_log_types::DataSourceMessage::UiCommand(
-            re_log_types::DataSourceUiCommand::SetUrlFragment {
+        .send(crate::DataSourceMessage::UiCommand(
+            crate::DataSourceUiCommand::SetUrlFragment {
                 store_id: StoreId::empty_recording(),
                 fragment: "#foo".into(),
             },

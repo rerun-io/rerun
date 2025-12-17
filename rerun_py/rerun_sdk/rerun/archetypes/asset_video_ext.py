@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import deprecated
 
 import rerun_bindings as bindings
 
@@ -79,12 +78,8 @@ class AssetVideoExt:
         else:
             raise RuntimeError("Asset video has no video buffer")
 
+        media_type = None
         if self.media_type is not None:
             media_type = self.media_type.as_arrow_array()[0].as_py()
 
         return np.array(bindings.asset_video_read_frame_timestamps_nanos(video_buffer, media_type), dtype=np.int64)
-
-    @deprecated("Renamed to `read_frame_timestamps_nanos`")
-    def read_frame_timestamps_ns(self: Any) -> npt.NDArray[np.int64]:
-        """DEPRECATED: renamed to read_frame_timestamps_nanos."""
-        return self.read_frame_timestamps_nanos()  # type: ignore[no-any-return]

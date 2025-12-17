@@ -182,22 +182,22 @@ Update instructions:
 | re_query        | Querying data in the re_chunk_store                             |
 | re_server       | In-memory data server                                           |
 | re_tf           | Dealing with spatial transforms & transform frames              |
-| re_types        | The built-in Rerun data types, component types, and archetypes. |
+| re_sdk_types    | The built-in Rerun data types, component types, and archetypes. |
 
 ### Low-level store
 
-| Crate           | Description                                                                                   |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
-| re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
-| re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
-| re_sorbet       | Rerun arrow metadata and record batch definitions.                                            |
-| re_types_core   | The core traits and types that power Rerun's data model.                                      |
+| Crate          | Description                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| re_chunk       | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
+| re_chunk_store | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
+| re_log_types   | The basic building blocks of the Rerun data types and tables.                                 |
+| re_sorbet      | Rerun arrow metadata and record batch definitions.                                            |
+| re_types_core  | The core traits and types that power Rerun's data model.                                      |
 
 ### Data flow
 
 | Crate                | Description                                                       |
-|--------------------- |-------------------------------------------------------------------|
+| -------------------- | ----------------------------------------------------------------- |
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
@@ -229,6 +229,7 @@ Update instructions:
 | re_case              | Case conversions, the way Rerun likes them                                           |
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error             | Helpers for handling errors.                                                         |
+| re_rvl               | Codecs for depth compression including RVL and PNG.                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
@@ -250,6 +251,12 @@ Update instructions:
 | ---------------- | ------------------------------------------------------------- |
 | re_test_context  | Provides a test context that builds on `re_viewer_context.    |
 | re_test_viewport | Extends the `re_test_context` with viewport-related features. |
+
+### Deprecated crates
+
+| Crate    | Description                |
+| -------- | -------------------------- |
+| re_types | Old name of `re_sdk_types` |
 
 ### Dependencies and docs
 

@@ -11,6 +11,7 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_channel::LogSource;
+use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -18,11 +19,10 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_types_core::ChunkIndexMessage;
 
-use crate::chunk_index::ChunkIndex;
 use crate::ingestion_statistics::IngestionStatistics;
-use crate::{Error, TimesPerTimeline};
+use crate::rrd_manifest_index::RrdManifestIndex;
+use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    chunk_index: ChunkIndex,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -89,21 +89,8 @@ pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    ///
-    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-    times_per_timeline: TimesPerTimeline,
-
     /// A time histogram of all entities, for every timeline.
     time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
-
-    /// A tree-view (split on path components) of the entities.
-    tree: crate::EntityTree,
 
     /// The [`StorageEngine`] that backs this [`EntityDb`].
     ///
@@ -145,13 +132,11 @@ impl EntityDb {
         Self {
             store_id,
             data_source: None,
-            chunk_index: Default::default(),
+            rrd_manifest_index: Default::default(),
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
-            tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
             stats: IngestionStatistics::default(),
@@ -160,7 +145,7 @@ impl EntityDb {
 
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
-        &self.tree
+        &self.rrd_manifest_index.entity_tree
     }
 
     /// Formats the entity tree into a human-readable text representation with component schema information.
@@ -170,7 +155,7 @@ impl EntityDb {
         let storage_engine = self.storage_engine();
         let store = storage_engine.store();
 
-        self.tree.visit_children_recursively(|entity_path| {
+        self.tree().visit_children_recursively(|entity_path| {
             if entity_path.is_root() {
                 return;
             }
@@ -245,8 +230,8 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn chunk_index(&self) -> &ChunkIndex {
-        &self.chunk_index
+    pub fn rrd_manifest_index(&self) -> &RrdManifestIndex {
+        &self.rrd_manifest_index
     }
 
     #[inline]
@@ -467,22 +452,14 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.times_per_timeline
-    }
-
-    pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
-        self.time_histogram_per_timeline
-            .get(timeline)
-            .is_some_and(|hist| !hist.is_empty())
+    /// When do we have data on each timeline?
+    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
+        &self.time_histogram_per_timeline
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        let hist = self.time_histogram_per_timeline.get(timeline)?;
-        let min = hist.min_key()?;
-        let max = hist.max_key()?;
-        Some(AbsoluteTimeRange::new(min, max))
+        self.storage_engine().store().time_range(timeline)
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -539,7 +516,7 @@ impl EntityDb {
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree.subtree(entity_path).is_some()
+        self.tree().subtree(entity_path).is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
@@ -549,8 +526,20 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_chunk_index_message(&mut self, chunk_index: ChunkIndexMessage) {
-        self.chunk_index.append(chunk_index);
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+        re_tracing::profile_function!();
+        re_log::debug!("Received RrdManifest for {:?}", self.store_id());
+
+        if let Err(err) = self
+            .time_histogram_per_timeline
+            .on_rrd_manifest(&rrd_manifest)
+        {
+            re_log::error!("Failed to ingest RRD Manifest: {err}");
+        }
+
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+            re_log::error!("Failed to load RRD Manifest: {err}");
+        }
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
@@ -606,7 +595,7 @@ impl EntityDb {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        self.chunk_index.mark_as_loaded(chunk.id());
+        self.rrd_manifest_index.mark_as_loaded(chunk.id());
 
         self.on_store_events(&store_events);
 
@@ -629,12 +618,14 @@ impl EntityDb {
 
         let engine = engine.downgrade();
 
-        self.chunk_index.on_events(store_events);
+        self.rrd_manifest_index.on_events(store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.times_per_timeline.on_events(store_events);
-        self.time_histogram_per_timeline.on_events(store_events);
-        self.tree.on_store_additions(store_events);
+        self.time_histogram_per_timeline
+            .on_events(&self.rrd_manifest_index, store_events);
+        self.rrd_manifest_index
+            .entity_tree
+            .on_store_additions(store_events);
 
         // It is possible for writes to trigger deletions: specifically in the case of
         // overwritten static data leading to dangling chunks.
@@ -646,8 +637,11 @@ impl EntityDb {
 
         {
             re_tracing::profile_scope!("on_store_deletions");
-            self.tree
-                .on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
+            self.rrd_manifest_index.entity_tree.on_store_deletions(
+                &engine,
+                &entity_paths_with_deletions,
+                store_events,
+            );
         }
     }
 
@@ -656,7 +650,11 @@ impl EntityDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) -> Vec<ChunkStoreEvent> {
+    pub fn purge_fraction_of_ram(
+        &mut self,
+        fraction_to_purge: f32,
+        time_cursor: Option<(Timeline, TimeInt)>,
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
@@ -672,6 +670,8 @@ impl EntityDb {
             // exactly how far back the latest-at is of each component at the current time…
             // …but maybe it doesn't have to be perfect.
             protected_time_ranges: Default::default(),
+
+            furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),
         });
 
         if store_events.is_empty() {
@@ -789,15 +789,19 @@ impl EntityDb {
                 .store()
                 .iter_chunks()
                 .filter(move |chunk| {
+                    if chunk.is_static() {
+                        return true; // always keep all static data
+                    }
+
                     let Some((timeline, time_range)) = time_filter else {
-                        return true;
+                        return true; // no filter -> keep all data
                     };
 
                     // TODO(cmc): chunk.slice_time_selection(time_selection)
-                    chunk.timelines().get(&timeline).is_some_and(|time_column| {
-                        time_range.contains(time_column.time_range().min())
-                            || time_range.contains(time_column.time_range().max())
-                    })
+                    chunk
+                        .timelines()
+                        .get(&timeline)
+                        .is_some_and(|time_column| time_range.intersects(time_column.time_range()))
                 })
                 .cloned() // refcount
                 .collect();
@@ -884,7 +888,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -907,7 +911,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -930,13 +934,15 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 
         subtree
             .find_first_child_recursive(|path| {
-                engine.store().entity_has_data_on_timeline(timeline, path)
+                self.rrd_manifest_index
+                    .entity_has_data_on_timeline(path, timeline)
+                    || engine.store().entity_has_data_on_timeline(timeline, path)
             })
             .is_some()
     }
@@ -952,17 +958,37 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 
         subtree
             .find_first_child_recursive(|path| {
-                engine
-                    .store()
-                    .entity_has_temporal_data_on_timeline(timeline, path)
+                self.rrd_manifest_index
+                    .entity_has_temporal_data_on_timeline(path, timeline)
+                    || engine
+                        .store()
+                        .entity_has_temporal_data_on_timeline(timeline, path)
             })
             .is_some()
+    }
+
+    /// Returns true if an entity has any temporal data on the given timeline.
+    ///
+    /// This ignores static data.
+    pub fn entity_has_temporal_data_on_timeline(
+        &self,
+        engine: &StorageEngineReadGuard<'_>,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.rrd_manifest_index
+            .entity_has_temporal_data_on_timeline(entity_path, timeline)
+            || engine
+                .store()
+                .entity_has_temporal_data_on_timeline(timeline, entity_path)
     }
 }
 

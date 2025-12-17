@@ -3,11 +3,11 @@ use std::ops::RangeInclusive;
 
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
-use re_types::components::{self, Colormap};
-use re_types::datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat};
-use re_types::image::{ImageKind, rgb_from_yuv};
-use re_types::tensor_data::TensorElement;
-use re_types::{ComponentIdentifier, archetypes};
+use re_sdk_types::components::{self, Colormap};
+use re_sdk_types::datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat};
+use re_sdk_types::image::{ImageKind, rgb_from_yuv};
+use re_sdk_types::tensor_data::TensorElement;
+use re_sdk_types::{ComponentIdentifier, archetypes};
 
 /// Get a fallback resolution for an image on a specific entity.
 pub fn resolution_of_image_at(
@@ -43,7 +43,7 @@ pub fn resolution_of_image_at(
 
     // Check for an encoded image.
     if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_types::components::Blob>(
+        .latest_at_component::<re_sdk_types::components::Blob>(
             entity_path,
             query,
             archetypes::EncodedImage::descriptor_blob().component,
@@ -61,7 +61,7 @@ pub fn resolution_of_image_at(
             .store_context
             .caches
             .entry(|c: &mut crate::ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     row_id,
                     archetypes::EncodedImage::descriptor_blob().component,
                     &blob,
@@ -70,10 +70,40 @@ pub fn resolution_of_image_at(
             });
 
         if let Ok(image) = image {
-            return Some(components::Resolution::from([
-                image.format.width as f32,
-                image.format.height as f32,
-            ]));
+            return Some(image.width_height_f32().into());
+        }
+    }
+
+    // Check for an encoded depth image.
+    if let Some(((_time, row_id), blob)) = entity_db
+        .latest_at_component::<re_sdk_types::components::Blob>(
+            entity_path,
+            query,
+            archetypes::EncodedDepthImage::descriptor_blob().component,
+        )
+    {
+        let media_type = entity_db
+            .latest_at_component::<components::MediaType>(
+                entity_path,
+                query,
+                archetypes::EncodedDepthImage::descriptor_media_type().component,
+            )
+            .map(|(_, c)| c);
+
+        let depth_image = ctx
+            .store_context
+            .caches
+            .entry(|c: &mut crate::ImageDecodeCache| {
+                c.entry_encoded_depth(
+                    row_id,
+                    archetypes::EncodedDepthImage::descriptor_blob().component,
+                    &blob,
+                    media_type.as_ref(),
+                )
+            });
+
+        if let Ok(depth_image) = depth_image {
+            return Some(depth_image.width_height_f32().into());
         }
     }
 
@@ -177,6 +207,10 @@ impl ImageInfo {
 
     pub fn width_height(&self) -> [u32; 2] {
         [self.format.width, self.format.height]
+    }
+
+    pub fn width_height_f32(&self) -> [f32; 2] {
+        [self.format.width as f32, self.format.height as f32]
     }
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.
@@ -501,8 +535,8 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
 #[cfg(test)]
 mod tests {
     use re_log_types::hash::Hash64;
-    use re_types::datatypes::ColorModel;
-    use re_types::image::ImageChannelType;
+    use re_sdk_types::datatypes::ColorModel;
+    use re_sdk_types::image::ImageChannelType;
 
     use super::ImageInfo;
     use crate::image_info::StoredBlobCacheKey;
@@ -514,13 +548,13 @@ mod tests {
         assert_eq!(elements.len(), 2 * 2);
         ImageInfo {
             buffer_content_hash: StoredBlobCacheKey(Hash64::ZERO), // unused
-            buffer: re_types::datatypes::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
-            format: re_types::datatypes::ImageFormat::from_color_model(
+            buffer: re_sdk_types::datatypes::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
+            format: re_sdk_types::datatypes::ImageFormat::from_color_model(
                 [2, 2],
                 color_model,
                 T::CHANNEL_TYPE,
             ),
-            kind: re_types::image::ImageKind::Color,
+            kind: re_sdk_types::image::ImageKind::Color,
         }
     }
 

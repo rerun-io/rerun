@@ -1,7 +1,7 @@
-use re_types::Archetype as _;
-use re_types::archetypes::Image;
-use re_types::components::{ImageFormat, Opacity};
-use re_types::image::ImageKind;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Image;
+use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::image::ImageKind;
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -13,7 +13,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneEntityContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::textured_rect_from_image;
+use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
@@ -63,20 +63,6 @@ impl VisualizerSystem for ImageVisualizer {
                 Ok(())
             },
         )?;
-
-        // TODO(#1025, #11156): draw order is translated to depth offset, which works fine for opaque images,
-        // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the images within each other.
-        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
-        // visualizers are executed in the order of their identifiers.
-        // -> The draw order is always DepthImage then Image then SegmentationImage,
-        //    which happens to be exactly what we want 🙈
-        self.data.pickable_rects.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
-            )
-        });
 
         Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
@@ -173,8 +159,4 @@ impl ImageVisualizer {
             }
         }
     }
-}
-
-fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
-    slice.and_then(|element| element.first()).copied()
 }

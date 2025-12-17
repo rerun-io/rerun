@@ -3,8 +3,8 @@
 
 use ndarray::{Array, ShapeBuilder as _};
 use re_log_types::{EntityPath, Timeline};
+use re_sdk_types::{AsComponents, archetypes};
 use re_test_context::TestContext;
-use re_types::{AsComponents, archetypes};
 use re_viewer_context::{ViewClass as _, ViewSpawnHeuristics};
 
 enum ImageSize {
@@ -34,6 +34,7 @@ enum EntityKind {
     BBox2D,
     BBox3D,
     ViewCoords,
+    CoordinateFrame(&'static str),
     Pinhole(ImageSize),
     Image(ImageType, ImageSize),
 }
@@ -48,7 +49,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 
     for (entity_path, entity_kind) in entities {
         let entity_path = EntityPath::from(*entity_path);
-        let row_id = re_types::RowId::new();
+        let row_id = re_sdk_types::RowId::new();
 
         test_context.log_entity(entity_path, |builder| {
             let component = match entity_kind {
@@ -67,6 +68,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
                 ),
 
                 EntityKind::ViewCoords => &archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+                EntityKind::CoordinateFrame(frame) => &archetypes::CoordinateFrame::new(*frame),
 
                 EntityKind::Pinhole(image_size) => {
                     let [w, h] = image_size.wh();
@@ -78,7 +80,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 
                     match image_type {
                         ImageType::Color => &archetypes::Image::from_color_model_and_tensor(
-                            re_types::datatypes::ColorModel::RGB,
+                            re_sdk_types::datatypes::ColorModel::RGB,
                             Array::<u8, _>::zeros((h, w, 3).f()),
                         )
                         .unwrap() as &dyn AsComponents,
@@ -239,6 +241,22 @@ fn test_mixed_2d_and_3d_at_root() {
 
     run_heuristics_snapshot_test("three_2d_views_and_one_3d_excluding_images", &test_context);
 }
+
+#[test]
+fn test_mixed_2d_and_3d_with_coordinate_frame() {
+    use ImageSize::*;
+    use ImageType::*;
+
+    let test_context = build_test_scene(&[
+        ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
+        ("camera", EntityKind::Pinhole(Small)),
+        // Nothing should be excluded because we have a frame.
+        ("frame", EntityKind::CoordinateFrame("test_frame")),
+    ]);
+
+    run_heuristics_snapshot_test("2d_and_3d_view_nothing_excluded", &test_context);
+}
+
 #[test]
 fn test_pinhole_with_2d() {
     use ImageSize::*;

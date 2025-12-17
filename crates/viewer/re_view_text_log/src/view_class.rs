@@ -2,11 +2,11 @@ use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
 use re_log_types::{EntityPath, TimelineName};
-use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
-use re_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
-use re_types::blueprint::datatypes as bp_datatypes;
-use re_types::components::TextLogLevel;
-use re_types::{View as _, ViewClassIdentifier, datatypes};
+use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
+use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
+use re_sdk_types::blueprint::datatypes as bp_datatypes;
+use re_sdk_types::components::TextLogLevel;
+use re_sdk_types::{View as _, ViewClassIdentifier, datatypes};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
 use re_viewer_context::{
@@ -45,7 +45,7 @@ impl ViewState for TextViewState {
 #[derive(Default)]
 pub struct TextView;
 
-type ViewType = re_types::blueprint::views::TextLogView;
+type ViewType = re_sdk_types::blueprint::views::TextLogView;
 
 impl ViewClass for TextView {
     fn identifier() -> ViewClassIdentifier {
@@ -308,7 +308,7 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline(), ctx.time_ctrl.time_int());
+    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline_name(), ctx.time_ctrl.time_int());
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
@@ -413,7 +413,7 @@ fn table_ui(
                         item_ui::time_button(ctx, ui, &timeline, row_time);
 
                         if let Some(global_time) = global_time
-                            && timeline == *global_timeline.name()
+                            && timeline == global_timeline
                         {
                             #[expect(clippy::comparison_chain)]
                             if global_time < row_time {

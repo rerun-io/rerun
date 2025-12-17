@@ -1,12 +1,15 @@
 use std::str::FromStr as _;
 
-use egui::RichText;
+use egui::{OpenUrl, RichText};
 use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    DisplayMode, EditRedapServerModalCommand, GlobalContext, SystemCommand,
+    SystemCommandSender as _,
+};
 
 use crate::context::Context;
 use crate::servers::Command;
@@ -23,7 +26,14 @@ pub enum ServerModalMode {
     ///
     /// You should ensure that the [`re_uri::Origin`] exists. (Otherwise, this leads to bad UX,
     /// since the modal will be titled "Edit server" but for the user it's a new server.)
-    Edit(re_uri::Origin),
+    Edit(EditRedapServerModalCommand),
+}
+
+impl ServerModalMode {
+    /// Should we show a warning about dataplatform being experimental?
+    pub fn should_show_experimental_warning(&self) -> bool {
+        matches!(self, Self::Add)
+    }
 }
 
 /// Authentication state for the server modal.
@@ -111,10 +121,10 @@ impl ServerModal {
                     ..Default::default()
                 }
             }
-            ServerModalMode::Edit(origin) => {
-                let re_uri::Origin { scheme, host, port } = origin.clone();
+            ServerModalMode::Edit(edit) => {
+                let re_uri::Origin { scheme, host, port } = edit.origin.clone();
 
-                let credentials = connection_registry.credentials(&origin);
+                let credentials = connection_registry.credentials(&edit.origin);
                 let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
                         Authentication::new(Some(token.to_string()))
@@ -124,7 +134,7 @@ impl ServerModal {
 
                 Self {
                     modal: Default::default(),
-                    mode: ServerModalMode::Edit(origin),
+                    mode: ServerModalMode::Edit(edit),
                     scheme,
                     host: host.to_string(),
                     auth,
@@ -136,6 +146,10 @@ impl ServerModal {
         self.modal.open();
     }
 
+    pub fn logout(&mut self) {
+        self.auth.reset_login_flow();
+    }
+
     pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
         let was_open = self.modal.is_open();
 
@@ -144,8 +158,12 @@ impl ServerModal {
             || {
                 let title = match &self.mode {
                     ServerModalMode::Add => "Add server".to_owned(),
-                    ServerModalMode::Edit(origin) => {
-                        format!("Edit server: {}", origin.host)
+                    ServerModalMode::Edit(edit) => {
+                        if let Some(title) = &edit.title {
+                            title.clone()
+                        } else {
+                            format!("Edit server: {}", edit.origin.host)
+                        }
                     }
                 };
                 ModalWrapper::new(&title)
@@ -153,10 +171,12 @@ impl ServerModal {
                     .min_height(300.0)
             },
             |ui| {
-                ui.warning_label(
-                    "The dataplatform is very experimental and not generally \
+                if self.mode.should_show_experimental_warning() {
+                    ui.warning_label(
+                        "The dataplatform is very experimental and not generally \
                 available yet. Proceed with caution!",
-                );
+                    );
+                }
 
                 let label = ui.label("URL:");
 
@@ -263,17 +283,42 @@ impl ServerModal {
                             self.auth.reset_login_flow();
                             ui.close();
 
-                            if let ServerModalMode::Edit(old_origin) = &self.mode {
+                            if let ServerModalMode::Edit(edit) = &self.mode {
                                 ctx.command_sender
-                                    .send(Command::RemoveServer(old_origin.clone()))
+                                    .send(Command::RemoveServer(edit.origin.clone()))
                                     .ok();
                             }
+
+                            let on_add: Box<dyn FnOnce() + Send> =
+                                if let ServerModalMode::Edit(EditRedapServerModalCommand {
+                                    open_on_success: Some(url),
+                                    ..
+                                }) = &self.mode
+                                {
+                                    let egui_ctx = ui.ctx().clone();
+                                    let url = url.clone();
+                                    Box::new(move || {
+                                        egui_ctx.open_url(OpenUrl::same_tab(url));
+                                    })
+                                } else {
+                                    let command_sender = global_ctx.command_sender.clone();
+                                    let origin = origin.clone();
+                                    Box::new(move || {
+                                        command_sender.send_system(
+                                            SystemCommand::ChangeDisplayMode(
+                                                DisplayMode::RedapServer(origin),
+                                            ),
+                                        );
+                                    })
+                                };
+
                             ctx.command_sender
-                                .send(Command::AddServer(origin.clone(), credentials))
+                                .send(Command::AddServer {
+                                    origin: origin.clone(),
+                                    credentials,
+                                    on_add: Some(on_add),
+                                })
                                 .ok();
-                            global_ctx.command_sender.send_system(
-                                SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),
-                            );
                         }
                     } else {
                         ui.add_enabled(false, egui::Button::new(save_text));
@@ -386,10 +431,11 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication
     ui.horizontal(|ui| {
         ui.set_min_width(300.0);
         ui.set_width(300.0);
-        if !auth.show_token_input && !ctx.logged_in() {
-            if let Some(error) = &auth.error {
-                ui.error_label(error.clone());
-            }
+        if !auth.show_token_input
+            && !ctx.logged_in()
+            && let Some(error) = &auth.error
+        {
+            ui.error_label(error.clone());
         }
     });
 }

@@ -3,8 +3,8 @@ use itertools::Either;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_types::image::ImageKind;
-use re_types::{Component as _, components};
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::{Component as _, components};
 
 use crate::image_info::StoredBlobCacheKey;
 use crate::{Cache, CacheMemoryReport, ImageInfo, ImageStats};

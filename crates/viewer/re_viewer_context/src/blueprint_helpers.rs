@@ -3,7 +3,7 @@ use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
+use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -17,8 +17,8 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     let timeline = Timeline::new_sequence(blueprint_timeline());
 
     let max_time = blueprint
-        .time_histogram(timeline.name())
-        .and_then(|times| times.max_key())
+        .time_range_for(timeline.name())
+        .map(|range| range.max.as_i64())
         .unwrap_or(0)
         .saturating_add(1);
 

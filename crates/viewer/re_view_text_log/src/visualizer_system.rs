@@ -3,9 +3,9 @@ use re_chunk_store::AbsoluteTimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
-use re_types::Archetype as _;
-use re_types::archetypes::TextLog;
-use re_types::components::{Color, Text, TextLogLevel};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::components::{Color, Text, TextLogLevel};
 use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,

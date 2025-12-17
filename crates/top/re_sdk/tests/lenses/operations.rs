@@ -7,8 +7,8 @@ use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBui
 use arrow::datatypes::{DataType, Field};
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
 use re_sdk::lenses::{Lens, Lenses, Op, OutputMode};
-use re_types::ComponentDescriptor;
-use re_types::archetypes::Scalars;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::archetypes::Scalars;
 
 /// Helper to convert serializable data to a `ListArray` using Arrow's JSON decoder
 fn to_list_array<T: serde::Serialize>(data: &[T], inner_field: Arc<Field>) -> ListArray {

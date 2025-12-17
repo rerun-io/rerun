@@ -27,6 +27,7 @@ defaults:
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   get-commit-sha:

@@ -24,9 +24,9 @@ pub fn test_arrow_ui() {
 fn arrow_list_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
-    use re_types::ComponentBatch as _;
-    use re_types::components::Blob;
-    use re_types::datatypes::{Utf8, Vec3D};
+    use re_sdk_types::ComponentBatch as _;
+    use re_sdk_types::components::Blob;
+    use re_sdk_types::datatypes::{Utf8, Vec3D};
 
     let tests = [
         ("Empty string", Utf8::from("").to_arrow()),

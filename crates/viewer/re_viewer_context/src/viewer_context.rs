@@ -4,7 +4,7 @@ use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
 

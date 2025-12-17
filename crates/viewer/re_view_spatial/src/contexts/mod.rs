@@ -4,7 +4,7 @@ mod transform_tree_context;
 pub use depth_offsets::EntityDepthOffsets;
 // -----------------------------------------------------------------------------
 use re_renderer::DepthOffset;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ViewClassRegistryError};
 pub use transform_tree_context::{TransformInfo, TransformTreeContext};
@@ -17,6 +17,8 @@ pub struct SpatialSceneEntityContext<'a> {
 
     pub highlight: &'a re_viewer_context::ViewOutlineMasks, // Not part of the context, but convenient to have here.
     pub view_class_identifier: ViewClassIdentifier,
+
+    pub output: &'a mut re_viewer_context::VisualizerExecutionOutput,
 }
 
 pub fn register_spatial_contexts(

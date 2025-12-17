@@ -2,8 +2,8 @@ use itertools::Itertools as _;
 use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
-use re_types::blueprint::archetypes::VisualizerOverrides;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::blueprint::archetypes::VisualizerOverrides;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
@@ -612,8 +612,9 @@ fn available_inactive_visualizers(
 
     ctx.viewer_ctx
         .iter_visualizable_entities_for_view_class(view_class.identifier)
-        .filter(|(vis, ents)| {
-            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
+        .filter(|(vis, visualizable_ents)| {
+            visualizable_ents.contains_key(&data_result.entity_path)
+                && !active_visualizers.contains(vis)
         })
         .map(|(vis, _)| vis)
         .sorted()

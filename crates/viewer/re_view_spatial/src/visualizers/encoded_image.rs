@@ -1,6 +1,6 @@
-use re_types::Archetype as _;
-use re_types::archetypes::EncodedImage;
-use re_types::components::{MediaType, Opacity};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::EncodedImage;
+use re_sdk_types::components::{MediaType, Opacity};
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
@@ -58,20 +58,6 @@ impl VisualizerSystem for EncodedImageVisualizer {
             },
         )?;
 
-        // TODO(#1025): draw order is translated to depth offset, which works fine for opaque images,
-        // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the images within each other.
-        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
-        // visualizers are executed in the order of their identifiers.
-        // -> The draw order is always DepthImage then Image then SegmentationImage,
-        //    which happens to be exactly what we want 🙈
-        self.data.pickable_rects.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
-            )
-        });
-
         Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
@@ -125,7 +111,7 @@ impl EncodedImageVisualizer {
                 .map(|media_type| MediaType(media_type.into()));
 
             let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     tensor_data_row_id,
                     EncodedImage::descriptor_blob().component,
                     blob,

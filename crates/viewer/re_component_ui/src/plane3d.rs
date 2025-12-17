@@ -1,5 +1,5 @@
-use re_types::components;
-use re_types::external::glam;
+use re_sdk_types::components;
+use re_sdk_types::external::glam;
 use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 

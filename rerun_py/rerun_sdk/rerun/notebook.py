@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Literal
 import pyarrow
 from pyarrow import RecordBatch, ipc
 
-from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
@@ -124,7 +123,9 @@ class Viewer:
         self._error_widget = _ErrorWidget()
 
         # Get access token from env variable
+        credentials = None
         fallback_token = os.environ.get("REDAP_TOKEN", None)
+        credentials = None
         if fallback_token is None:
             # Get credentials from the SDK and pass the access token to wasm viewer
             credentials = bindings.get_credentials()
@@ -422,8 +423,6 @@ class Viewer:
 
         self._viewer.close_url(url)
 
-    @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
-    @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(
         self,
         *,
@@ -432,9 +431,6 @@ class Viewer:
         timestamp: int | float | datetime | np.datetime64 | None = None,
         timeline: str | None = None,
         play: bool = False,
-        # Deprecated parameters:
-        nanoseconds: int | None = None,
-        seconds: float | None = None,
     ) -> None:
         """
         Set the time control for the viewer.
@@ -464,13 +460,6 @@ class Viewer:
             DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
-
-        # Handle deprecated parameters:
-        if nanoseconds is not None:
-            duration = 1e-9 * nanoseconds
-        if seconds is not None:
-            duration = seconds
-
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
             raise ValueError(
                 f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",

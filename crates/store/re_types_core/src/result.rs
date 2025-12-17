@@ -11,10 +11,7 @@ pub type _Backtrace = std::backtrace::Backtrace;
 #[derive(thiserror::Error)]
 pub enum SerializationError {
     #[error("Failed to serialize {location:?}")]
-    Context {
-        location: String,
-        source: Box<SerializationError>,
-    },
+    Context { location: String, source: Box<Self> },
 
     #[error("Trying to serialize a field lacking extension metadata: {fqname:?}")]
     MissingExtensionMetadata {
@@ -132,7 +129,7 @@ pub enum DeserializationError {
     Context {
         location: String,
         #[source]
-        source: Box<DeserializationError>,
+        source: Box<Self>,
     },
 
     #[error("{fqname} doesn't support deserialization")]

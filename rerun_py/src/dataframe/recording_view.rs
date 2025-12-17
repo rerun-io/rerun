@@ -1,18 +1,15 @@
-#![expect(deprecated)] // False positive due to macro
-
 use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::{PyAnyMethods as _, PyTupleMethods as _};
-use pyo3::types::PyTuple;
-use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::types::{PyModule, PyTuple};
+use pyo3::{Bound, PyObject, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
-use super::{
-    AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle, PySchema,
-};
+use super::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle};
+use crate::catalog::PySchemaInternal;
 use crate::utils::py_rerun_warn_cstr;
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -65,6 +62,24 @@ impl PyRecordingView {
             })
             .transpose()
     }
+
+    /// Internal method to get the schema without wrapping in Python Schema class.
+    fn schema_internal(&self, py: Python<'_>) -> PySchemaInternal {
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
+                let engine = borrowed.engine();
+
+                let mut query_expression = self.query_expression.clone();
+                query_expression.selection = None;
+
+                PySchemaInternal {
+                    columns: engine.schema_for_query(&query_expression).into(),
+                    metadata: Default::default(),
+                }
+            }
+        }
+    }
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -83,20 +98,13 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchema {
-        match &self.recording {
-            PyRecordingHandle::Local(recording) => {
-                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
-                let engine = borrowed.engine();
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = self.schema_internal(py);
 
-                let mut query_expression = self.query_expression.clone();
-                query_expression.selection = None;
-
-                PySchema {
-                    schema: engine.schema_for_query(&query_expression).into(),
-                }
-            }
-        }
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     /// Select the columns from the view.
@@ -107,7 +115,7 @@ impl PyRecordingView {
     /// The selected columns do not change the rows that are included in the
     /// view. The rows are determined by the index values and the components
     /// that were included in the view contents, or can be overridden with
-    /// [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
+    /// `.using_index_values()`.
     ///
     /// If a column was not provided with data for a given row, it will be
     /// `null` in the output.
@@ -227,8 +235,8 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)
-                    .schema
+                    .schema_internal(py)
+                    .columns
                     .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())
@@ -377,12 +385,6 @@ impl PyRecordingView {
         })
     }
 
-    /// DEPRECATED: Renamed to `filter_range_secs`.
-    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        self.filter_range_secs(start, end)
-    }
-
     #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
@@ -497,8 +499,7 @@ impl PyRecordingView {
     /// If they exist in the original data they are selected, otherwise empty rows are added to the view.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
-    /// those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
-    /// to populate these rows with the most recent data.
+    /// those rows are empty. Use with `.fill_latest_at()` to populate these rows with the most recent data.
     ///
     /// Parameters
     /// ----------

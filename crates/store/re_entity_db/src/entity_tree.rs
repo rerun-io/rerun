@@ -18,7 +18,13 @@ pub struct EntityTree {
     pub path: EntityPath,
 
     /// Direct descendants of this (sub)tree.
-    pub children: BTreeMap<EntityPathPart, EntityTree>,
+    pub children: BTreeMap<EntityPathPart, Self>,
+}
+
+impl Default for EntityTree {
+    fn default() -> Self {
+        Self::root()
+    }
 }
 
 // NOTE: This is only to let people know that this is in fact a [`ChunkStoreSubscriber`], so they A) don't try
@@ -146,9 +152,11 @@ impl EntityTree {
     }
 
     fn on_store_addition(&mut self, event: &ChunkStoreEvent) {
-        re_tracing::profile_function!();
+        self.on_new_entity(event.chunk.entity_path());
+    }
 
-        let entity_path = event.chunk.entity_path();
+    pub fn on_new_entity(&mut self, entity_path: &EntityPath) {
+        re_tracing::profile_function!();
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
@@ -215,7 +223,7 @@ impl EntityTree {
         subtree_recursive(self, path.as_slice())
     }
 
-    // Invokes visitor for `self` and all children recursively.
+    /// Invokes visitor for `self` and all children recursively.
     pub fn visit_children_recursively(&self, mut visitor: impl FnMut(&EntityPath)) {
         fn visit(this: &EntityTree, visitor: &mut impl FnMut(&EntityPath)) {
             visitor(&this.path);

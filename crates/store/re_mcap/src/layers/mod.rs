@@ -121,17 +121,13 @@ impl McapChunkDecoder {
 
         let channel = msg.channel.as_ref();
         let channel_id = ChannelId(channel.id);
-        let log_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.log_time);
-        let publish_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.publish_time);
-        let timepoint = re_chunk::TimePoint::from([
-            ("log_time", log_time_cell.into_time_cell()),
-            ("publish_time", publish_time_cell.into_time_cell()),
-        ]);
 
         if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {
             // If the parser fails, we should _not_ append the timepoint
             parser.append(ctx, msg)?;
-            ctx.add_timepoint(timepoint.clone());
+            for timepoint in parser.get_log_and_publish_timepoints(msg)? {
+                ctx.add_timepoint(timepoint);
+            }
         } else {
             // TODO(#10862): If we encounter a message that we can't parse at all we should emit a warning.
             // Note that this quite easy to achieve when using layers and only selecting a subset.

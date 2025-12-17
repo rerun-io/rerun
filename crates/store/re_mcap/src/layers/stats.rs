@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_types::archetypes::McapStatistics;
-use re_types::{components, datatypes};
+use re_sdk_types::archetypes::McapStatistics;
+use re_sdk_types::{components, datatypes};
 use saturating_cast::SaturatingCast as _;
 
 use super::{Layer, LayerIdentifier};

@@ -4,9 +4,9 @@ use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::view_builder::ViewBuilderError;
 use re_renderer::{RenderContext, ViewBuilder, ViewPickingConfiguration};
-use re_types::blueprint::archetypes::{MapBackground, MapZoom};
-use re_types::blueprint::components::{MapProvider, ZoomLevel};
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
+use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
@@ -82,7 +82,7 @@ impl ViewState for MapViewState {
 #[derive(Default)]
 pub struct MapView;
 
-type ViewType = re_types::blueprint::views::MapView;
+type ViewType = re_sdk_types::blueprint::views::MapView;
 
 impl ViewClass for MapView {
     fn identifier() -> ViewClassIdentifier {
@@ -295,7 +295,7 @@ impl ViewClass for MapView {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
-                &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
+                &ZoomLevel(re_sdk_types::datatypes::Float64(map_memory.zoom())),
             );
         }
 

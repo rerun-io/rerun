@@ -2,7 +2,7 @@
 
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
-use re_types::ComponentDescriptor;
+use re_sdk_types::ComponentDescriptor;
 
 use super::ast::{OneToMany, OneToOne, Static};
 use super::{LensError, Op, ast};

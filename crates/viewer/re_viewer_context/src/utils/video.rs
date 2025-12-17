@@ -3,7 +3,7 @@ use crate::ViewerContext;
 /// Convert a video timestamp from component to a video time.
 pub fn video_timestamp_component_to_video_time(
     ctx: &ViewerContext<'_>,
-    video_timestamp: re_types::components::VideoTimestamp,
+    video_timestamp: re_sdk_types::components::VideoTimestamp,
     timescale: Option<re_video::Timescale>,
 ) -> re_video::Time {
     if let Some(timescale) = timescale {

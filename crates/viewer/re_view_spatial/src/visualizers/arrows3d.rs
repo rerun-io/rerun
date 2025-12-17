@@ -1,17 +1,16 @@
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
-use re_types::archetypes::Arrows3D;
-use re_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D};
-use re_types::{Archetype as _, ArrowString};
-use re_view::{process_annotation_slices, process_color_slice};
+use re_sdk_types::archetypes::Arrows3D;
+use re_sdk_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D};
+use re_sdk_types::{Archetype as _, ArrowString};
+use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
-use super::entity_iterator::clamped_or;
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
 use crate::contexts::SpatialSceneEntityContext;

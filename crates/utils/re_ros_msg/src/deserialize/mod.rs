@@ -27,10 +27,10 @@ pub enum Value {
     String(String),
 
     /// Fixed-size array of values.
-    Array(Vec<Value>),
+    Array(Vec<Self>),
 
     /// Variable-size or bounded array of values.
-    Sequence(Vec<Value>),
+    Sequence(Vec<Self>),
 
     /// Fixed-size array of primitive values.
     PrimitiveArray(primitive_array::PrimitiveArray),
@@ -39,7 +39,7 @@ pub enum Value {
     PrimitiveSeq(primitive_array::PrimitiveArray),
 
     /// Nested message.
-    Message(BTreeMap<String, Value>),
+    Message(BTreeMap<String, Self>),
 }
 
 impl std::fmt::Debug for Value {
@@ -357,7 +357,6 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
                     .ok_or_else(|| serde::de::Error::custom("short sequence"))?;
                 out.push(v);
             }
-            Ok(out)
         } else {
             // Fallback for truly unbounded streams
             while let Some(v) =
@@ -365,7 +364,7 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
             {
                 out.push(v);
             }
-            Ok(out)
         }
+        Ok(out)
     }
 }

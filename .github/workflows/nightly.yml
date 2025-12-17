@@ -18,6 +18,7 @@ permissions:
   # This is needed since the web viewer build has this permission in order to write comments in PRs
   # (not needed for nightly, but the permission is still active).
   pull-requests: "write"
+  packages: "read"
 
 jobs:
   checks:
@@ -66,7 +67,7 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - run: cargo build -p rerun # Intentionally NOT using pixi, becasue we wanna check that we can build outside of pixi
+      - run: cargo build -p rerun # Intentionally NOT using pixi, because we wanna check that we can build outside of pixi
 
   build-web:
     name: "Build web viewer"

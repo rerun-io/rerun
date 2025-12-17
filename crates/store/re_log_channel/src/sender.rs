@@ -1,12 +1,15 @@
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
-use re_log_types::DataSourceMessage;
-
-use crate::{Channel, LogSource, SendError, SmartMessage, SmartMessagePayload};
+use crate::{
+    Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
+    SmartMessagePayload,
+};
 
 #[derive(Clone)]
 pub struct LogSender {
     tx: crossbeam::channel::Sender<SmartMessage>,
+    rx: async_channel::Receiver<LoadCommand>,
     source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
@@ -14,11 +17,13 @@ pub struct LogSender {
 impl LogSender {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage>,
+        rx: async_channel::Receiver<LoadCommand>,
         source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {
         Self {
             tx,
+            rx,
             source,
             channel,
         }
@@ -115,5 +120,19 @@ impl LogSender {
     #[inline]
     pub fn len(&self) -> usize {
         self.tx.len()
+    }
+
+    /// Block until we receive a command from a [`LogSender`].
+    ///
+    /// Return an error if there is no more [`LogSender`]s.
+    pub async fn recv_cmd(&self) -> Result<LoadCommand, async_channel::RecvError> {
+        self.channel
+            .num_waiting_receivers
+            .fetch_add(1, Ordering::SeqCst);
+        let result = self.rx.recv().await;
+        self.channel
+            .num_waiting_receivers
+            .fetch_sub(1, Ordering::SeqCst);
+        result
     }
 }

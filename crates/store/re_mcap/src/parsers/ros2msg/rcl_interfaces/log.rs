@@ -1,10 +1,10 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
-use re_types::archetypes::TextLog;
-use re_types::components::{Color, Text, TextLogLevel};
-use re_types::datatypes::Rgba32;
-use re_types::{ComponentDescriptor, SerializedComponentColumn};
+use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::components::{Color, Text, TextLogLevel};
+use re_sdk_types::datatypes::Rgba32;
+use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};

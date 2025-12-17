@@ -8,12 +8,12 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs, StoreId, TimePoint, Timeline};
-use re_types::archetypes::Points2D;
-use re_types::components::Position2D;
+use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
     Caches, PerVisualizerInViewClass, StoreContext, ViewClassRegistry, VisualizableEntities,
-    blueprint_timeline,
+    VisualizableReason, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
 
@@ -184,6 +184,7 @@ fn build_entity_tree(
         .iter()
         .filter(|_| rng.random_bool(0.7)) // 70% of entities are visualizable
         .cloned()
+        .map(|e| (e, VisualizableReason::Always))
         .collect();
 
     visualizable_entities

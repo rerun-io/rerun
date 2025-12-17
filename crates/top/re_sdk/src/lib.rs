@@ -40,18 +40,12 @@ pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 pub const DEFAULT_CONNECT_URL: &str =
     const_format::concatcp!("rerun+http://127.0.0.1:", DEFAULT_SERVER_PORT, "/proxy");
 
-/// The default address of a Rerun gRPC server which an SDK connects to.
-#[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
-pub fn default_server_addr() -> std::net::SocketAddr {
-    std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
-}
-
 pub use global::cleanup_if_forked_child;
 pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathFilter, EntityPathPart, Instance, StoreId, StoreKind,
     entity_path,
 };
-pub use re_types::archetypes::RecordingInfo;
+pub use re_sdk_types::archetypes::RecordingInfo;
 
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
@@ -105,7 +99,7 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
-pub use re_types::{
+pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     Loggable, SerializationError, SerializationResult, SerializedComponentBatch,

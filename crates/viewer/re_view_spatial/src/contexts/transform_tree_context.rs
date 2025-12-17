@@ -3,9 +3,9 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::components::ImagePlaneDistance;
+use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
-use re_types::components::ImagePlaneDistance;
-use re_types::{ArchetypeName, archetypes, blueprint};
 use re_view::{
     DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
 };
@@ -154,12 +154,17 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
-        });
+        let (transform_forest, transform_cache) =
+            caches.entry(|c: &mut TransformDatabaseStoreCache| {
+                c.update_transform_forest(ctx.recording(), &ctx.current_query());
+                (
+                    c.get_transform_forest(),
+                    c.read_lock_transform_cache(ctx.recording()),
+                )
+            });
 
-        let transform_forest =
-            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
+        // We update this here so it should exist.
+        let transform_forest = transform_forest.unwrap_or_default();
 
         let frame_ids = transform_cache
             .frame_id_registry()
@@ -167,7 +172,7 @@ impl ViewContextSystem for TransformTreeContext {
             .map(|(k, v)| (*k, v.clone()));
 
         Box::new(TransformTreeContextOncePerFrameResult {
-            transform_forest: Arc::new(transform_forest),
+            transform_forest,
             frame_id_mapping: Arc::new(frame_ids.collect()),
         })
     }
@@ -536,10 +541,10 @@ impl EntityTransformIdMapping {
 #[cfg(test)]
 mod tests {
     use re_log_types::{EntityPath, TimePoint};
+    use re_sdk_types::archetypes::CoordinateFrame;
     use re_test_context::TestContext;
     use re_test_viewport::TestContextExt as _;
     use re_tf::{TransformFrameId, TransformFrameIdHash};
-    use re_types::archetypes::CoordinateFrame;
     use re_viewer_context::{
         BlueprintContext as _, RecommendedView, ViewClass as _, ViewClassExt as _,
         ViewContextSystem as _,
@@ -559,8 +564,14 @@ mod tests {
         });
 
         // Different views with different expected targets.
-        let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        let view_id_root_subtree = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()))
+        });
+        let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                class_id,
+                RecommendedView::new_single_entity(EntityPath::root()),
+            ))
         });
         let view_id_some_path = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(
@@ -603,11 +614,11 @@ mod tests {
                 blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
 
             let property = ViewProperty::from_archetype::<
-                re_types::blueprint::archetypes::SpatialInformation,
+                re_sdk_types::blueprint::archetypes::SpatialInformation,
             >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
             property.save_blueprint_component(
                 ctx,
-                &re_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
                 &TransformFrameId::from("directly_set_frame"),
             );
 
@@ -616,6 +627,7 @@ mod tests {
 
         test_context.run_in_egui_central_panel(|ctx, _ui| {
             for (view_id, expected_target) in [
+                (view_id_root_subtree, TransformFrameId::from("store_frame")),
                 (
                     view_id_root,
                     TransformFrameId::from_entity_path(&EntityPath::root()),

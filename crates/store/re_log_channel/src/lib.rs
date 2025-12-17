@@ -1,19 +1,28 @@
 //! An in-memory channel of Rerun data messages
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
+use arrow::array::RecordBatch;
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
-use re_log_types::DataSourceMessage;
 use re_uri::RedapUri;
 
+mod data_source_message;
 mod receiver;
 mod receiver_set;
 mod sender;
 
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;
+
+/// An instruction sent from the viewer to the remote (gRPC only).
+pub enum LoadCommand {
+    /// Needs `chunk_key` column
+    LoadChunks(RecordBatch),
+}
 
 // --- Source ---
 
@@ -212,17 +221,24 @@ pub(crate) struct Channel {
     ///
     /// This can be used to wake up the receiver thread.
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
+
+    /// Counts how many [`LogSender`]s are currently waiting on
+    /// new [`LoadCommand`]s from the viewer to the gRPC client.
+    ///
+    /// Used for debouncing load requests.
+    pub num_waiting_receivers: AtomicUsize,
 }
 
-/// Create a new communication channel for [`re_log_types::DataSourceMessage`].
+/// Create a new communication channel for [`DataSourceMessage`].
 pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
     // TODO(emilk): add a back-channel to be used for controlling what data we load.
 
     let source = Arc::new(source);
     let channel = Arc::new(Channel::default());
     let (tx, rx) = crossbeam::channel::unbounded();
-    let sender = LogSender::new(tx, source.clone(), channel.clone());
-    let receiver = LogReceiver::new(rx, channel, source);
+    let (cmd_tx, cmd_rx) = async_channel::unbounded();
+    let sender = LogSender::new(tx, cmd_rx, source.clone(), channel.clone());
+    let receiver = LogReceiver::new(rx, cmd_tx, channel, source);
     (sender, receiver)
 }
 

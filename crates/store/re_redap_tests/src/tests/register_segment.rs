@@ -113,7 +113,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
                 "my_segment_id1",
                 [prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm segment 1"),
+                    re_sdk_types::archetypes::TextLog::new("i'm segment 1"),
                 )],
             )
             .layer_name("props"),
@@ -122,9 +122,12 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
                 [
                     prop(
                         "text_log",
-                        re_types::archetypes::TextLog::new("i'm segment 2"),
+                        re_sdk_types::archetypes::TextLog::new("i'm segment 2"),
                     ),
-                    prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
+                    prop(
+                        "points",
+                        re_sdk_types::archetypes::Points2D::new([(0.0, 1.0)]),
+                    ),
                 ],
             )
             .layer_name("props"),
@@ -156,7 +159,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
             "my_segment_id1",
             [prop(
                 "text_log",
-                re_types::archetypes::TextLog::new(
+                re_sdk_types::archetypes::TextLog::new(
                     "I was logged first, registered last, so I should win",
                 ),
             )],
@@ -171,7 +174,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
             "my_segment_id1",
             [prop(
                 "text_log",
-                re_types::archetypes::TextLog::new("I was logged last, registered first"),
+                re_sdk_types::archetypes::TextLog::new("I was logged last, registered first"),
             )],
         )
         .layer_name("prop2")],

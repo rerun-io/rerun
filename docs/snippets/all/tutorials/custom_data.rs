@@ -3,7 +3,7 @@
 use rerun::{
     ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch,
     demo_util::grid,
-    external::{arrow, glam, re_types},
+    external::{arrow, glam, re_sdk_types},
 };
 
 // ---
@@ -64,7 +64,7 @@ impl rerun::Loggable for Confidence {
     #[inline]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<arrow::array::ArrayRef>
+    ) -> re_sdk_types::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {

@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_types::archetypes::RecordingInfo;
+use re_sdk_types::archetypes::RecordingInfo;
 use saturating_cast::SaturatingCast as _;
 
 use super::Layer;

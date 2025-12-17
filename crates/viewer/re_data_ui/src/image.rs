@@ -2,10 +2,10 @@ use egui::{NumExt as _, Rangef, Vec2};
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components;
-use re_types::components::MediaType;
-use re_types::datatypes::{ChannelDatatype, ColorModel};
-use re_types::image::ImageKind;
+use re_sdk_types::components;
+use re_sdk_types::components::MediaType;
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
+use re_sdk_types::image::ImageKind;
 use re_types_core::{Component as _, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
@@ -275,13 +275,13 @@ impl ImageUi {
         ctx: &ViewerContext<'_>,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_types::datatypes::Blob,
+        blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
         ctx.store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     blob_row_id,
                     blob_component_descriptor.component,
                     blob,

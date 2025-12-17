@@ -1,5 +1,5 @@
 use re_log_types::{TimeInt, TimelineName};
-use re_types::Archetype;
+use re_sdk_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -9,78 +9,6 @@ use re_viewer_context::{
 use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
-
-// ---
-
-/// Iterate over all the values in the slice, then repeat the last value forever.
-///
-/// If the input slice is empty, the second argument is returned forever.
-#[inline]
-pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
-    let repeated = values.last().unwrap_or(if_empty);
-    values.iter().chain(std::iter::repeat(repeated))
-}
-
-/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
-///
-/// Returns an empty vector if values is empty.
-#[inline]
-pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
-    if values.len() == clamped_len {
-        // Happy path
-        values.to_vec() // TODO(emilk): return a slice reference instead, in a `Cow` or similar
-    } else if let Some(last) = values.last() {
-        if values.len() == 1 {
-            // Commo happy path
-            vec![last.clone(); clamped_len]
-        } else if values.len() < clamped_len {
-            // Clamp
-            let mut vec = Vec::with_capacity(clamped_len);
-            vec.extend(values.iter().cloned());
-            vec.extend(std::iter::repeat_n(
-                last.clone(),
-                clamped_len - values.len(),
-            ));
-            vec
-        } else {
-            // Trim
-            values.iter().take(clamped_len).cloned().collect()
-        }
-    } else {
-        // Empty input
-        Vec::new()
-    }
-}
-
-/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
-///
-/// If the input slice is empty, the second argument is repeated `clamped_len` times.
-#[inline]
-pub fn clamped_vec_or<T: Clone>(values: &[T], clamped_len: usize, if_empty: &T) -> Vec<T> {
-    let clamped = clamped_vec_or_empty(values, clamped_len);
-    if clamped.is_empty() {
-        vec![if_empty.clone(); clamped_len]
-    } else {
-        clamped
-    }
-}
-
-#[test]
-fn test_clamped_vec() {
-    assert_eq!(clamped_vec_or_empty::<i32>(&[], 0), Vec::<i32>::default());
-    assert_eq!(clamped_vec_or_empty::<i32>(&[], 3), Vec::<i32>::default());
-    assert_eq!(
-        clamped_vec_or_empty::<i32>(&[1, 2, 3], 0),
-        Vec::<i32>::default()
-    );
-    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 1), vec![1]);
-    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 2), vec![1, 2]);
-    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
-    assert_eq!(
-        clamped_vec_or_empty::<i32>(&[1, 2, 3], 5),
-        vec![1, 2, 3, 3, 3]
-    );
-}
 
 // --- Chunk-based APIs ---
 
@@ -103,7 +31,7 @@ where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &SpatialSceneEntityContext<'_>,
+        &mut SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
@@ -130,7 +58,7 @@ where
         };
 
         let depth_offset_key = (system_identifier, entity_path.hash());
-        let entity_context = SpatialSceneEntityContext {
+        let mut entity_context = SpatialSceneEntityContext {
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer
@@ -140,6 +68,7 @@ where
             annotations: annotations.0.find(entity_path),
             highlight: query.highlights.entity_outline_mask(entity_path.hash()),
             view_class_identifier: context_systems.view_class_identifier(),
+            output,
         };
 
         let results = data_result.query_archetype_with_history::<A>(ctx, query);
@@ -149,7 +78,7 @@ where
 
         {
             re_tracing::profile_scope!(format!("{entity_path}"));
-            fun(&query_ctx, &entity_context, &results)?;
+            fun(&query_ctx, &mut entity_context, &results)?;
         }
     }
 
@@ -167,7 +96,7 @@ use re_chunk_store::external::re_chunk;
 /// faster.
 ///
 /// See [`re_chunk::Chunk::iter_component`] for more information.
-pub fn iter_component<'a, C: re_types::Component>(
+pub fn iter_component<'a, C: re_sdk_types::Component>(
     chunks: &'a ChunksWithComponent<'a>,
     timeline: TimelineName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
