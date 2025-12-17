@@ -248,7 +248,7 @@ def generate_gha(
 
 
 @task
-def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]:
+def inspect(*, target: str) -> Result[None]:
     """
     Inspect a task, flow, or automation without executing it.
 
@@ -256,119 +256,33 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
 
     Args:
         target: Name of the task, flow, or automation to inspect.
-        params: Optional parameters for flow inspection as "key=value,key2=value2".
-
-    Returns:
-        Dict with inspection information.
 
     Examples:
         ./run inspect --target=lint
         ./run inspect --target=ci
-        ./run inspect --target=ci --params="verbose=true"
 
     """
     import inspect as py_inspect
 
     from .context import get_automation, get_flow, get_task
 
-    # Parse params
-    kwargs: dict[str, Any] = {}
-    if params:
-        for pair in params.split(","):
-            if "=" in pair:
-                key, value = pair.split("=", 1)
-                # Try to parse as bool/int/float
-                if value.lower() == "true":
-                    kwargs[key.strip()] = True
-                elif value.lower() == "false":
-                    kwargs[key.strip()] = False
-                else:
-                    try:
-                        kwargs[key.strip()] = int(value)
-                    except ValueError:
-                        try:
-                            kwargs[key.strip()] = float(value)
-                        except ValueError:
-                            kwargs[key.strip()] = value
-
-    result: dict[str, Any] = {"target": target}
-
     # Try task first
     task_info = get_task(target)
     if task_info is not None:
-        result["type"] = "task"
-        result["module"] = task_info.module
-        result["doc"] = task_info.doc
-
-        # Build signature info
-        sig_params = []
-        for param_name, param in task_info.signature.parameters.items():
-            if param_name == "self":
-                continue
-            annotation = param.annotation
-            type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
-            if param.default is not py_inspect.Parameter.empty:
-                sig_params.append({"name": param_name, "type": type_str, "default": repr(param.default)})
-            else:
-                sig_params.append({"name": param_name, "type": type_str, "required": True})
-        result["parameters"] = sig_params
-
-        _print_task_info(result)
-        return Ok(result)
+        _print_task_info(task_info, py_inspect)
+        return Ok(None)
 
     # Try flow
     flow_info = get_flow(target)
     if flow_info is not None:
-        result["type"] = "flow"
-        result["module"] = flow_info.module
-        result["doc"] = flow_info.doc
-
-        # Build signature info
-        sig_params = []
-        for param_name, param in flow_info.signature.parameters.items():
-            annotation = param.annotation
-            type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
-            if param.default is not py_inspect.Parameter.empty:
-                sig_params.append({"name": param_name, "type": type_str, "default": repr(param.default)})
-            else:
-                sig_params.append({"name": param_name, "type": type_str, "required": True})
-        result["parameters"] = sig_params
-
-        # Try to get task graph
-        try:
-            plan = flow_info.fn.plan(**kwargs)  # type: ignore[attr-defined]
-            result["task_count"] = len(plan.nodes)
-
-            execution_order = []
-            for node in plan.nodes:
-                deps = [d.name for d in node.dependencies]
-                execution_order.append({"name": node.name, "dependencies": deps})
-            result["execution_order"] = execution_order
-
-            if plan.terminal:
-                result["terminal"] = plan.terminal.name
-        except Exception as e:
-            result["plan_error"] = str(e)
-
-        _print_flow_info(result)
-        return Ok(result)
+        _print_flow_info(flow_info, py_inspect)
+        return Ok(None)
 
     # Try automation
     automation_info = get_automation(target)
     if automation_info is not None:
-        result["type"] = "automation"
-        result["module"] = automation_info.module
-        result["doc"] = automation_info.doc
-
-        # Get plan
-        try:
-            plan = automation_info.fn.plan()  # type: ignore[attr-defined]
-            result["dispatches"] = [{"flow": d.flow_name, "params": d.params} for d in plan.dispatches]
-        except Exception as e:
-            result["plan_error"] = str(e)
-
-        _print_automation_info(result)
-        return Ok(result)
+        _print_automation_info(automation_info, py_inspect)
+        return Ok(None)
 
     # Not found
     from .context import get_automation_registry, get_flow_registry, get_task_registry
@@ -387,74 +301,131 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
     return Err(msg)
 
 
-def _print_task_info(info: dict[str, Any]) -> None:
+def _print_task_info(task_info: Any, py_inspect: Any) -> None:
     """Print task inspection info."""
-    out(f"\nTask: {info['target']}")
-    out(f"Module: {info['module']}")
+    out(f"\nTask: {task_info.name}")
+    out(f"Module: {task_info.module}")
 
-    if info.get("doc"):
-        out(f"\nDescription: {info['doc'].strip().split(chr(10))[0]}")
+    if task_info.doc:
+        out(f"\nDescription: {task_info.doc.strip().split(chr(10))[0]}")
 
     out("\nParameters:")
-    for p in info.get("parameters", []):
-        if p.get("required"):
-            out(f"  --{p['name']}: {p['type']} [required]")
+    has_params = False
+    for param_name, param in task_info.signature.parameters.items():
+        if param_name == "self":
+            continue
+        has_params = True
+        annotation = param.annotation
+        type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
+        if param.default is not py_inspect.Parameter.empty:
+            out(f"  --{param_name}: {type_str} = {param.default!r}")
         else:
-            out(f"  --{p['name']}: {p['type']} = {p['default']}")
-
-
-def _print_flow_info(info: dict[str, Any]) -> None:
-    """Print flow inspection info."""
-    out(f"\nFlow: {info['target']}")
-    out(f"Module: {info['module']}")
-
-    if info.get("doc"):
-        out(f"\nDescription: {info['doc'].strip().split(chr(10))[0]}")
-
-    out("\nParameters:")
-    params = info.get("parameters", [])
-    if params:
-        for p in params:
-            if p.get("required"):
-                out(f"  --{p['name']}: {p['type']} [required]")
-            else:
-                out(f"  --{p['name']}: {p['type']} = {p['default']}")
-    else:
+            out(f"  --{param_name}: {type_str} [required]")
+    if not has_params:
         out("  (none)")
 
-    if info.get("plan_error"):
-        out(f"\nCould not build plan: {info['plan_error']}")
-    else:
-        out(f"\nTask Graph ({info.get('task_count', 0)} tasks):")
-        out("  Execution order:")
-        for i, step in enumerate(info.get("execution_order", []), 1):
-            deps = step.get("dependencies", [])
-            if deps:
-                out(f"    {i}. {step['name']} <- {deps}")
-            else:
-                out(f"    {i}. {step['name']}")
 
-        if info.get("terminal"):
-            out(f"\n  Terminal: {info['terminal']}")
+def _print_flow_info(flow_info: Any, py_inspect: Any) -> None:
+    """Print flow inspection info."""
+    from .plan import FlowPlan
+
+    out(f"\nFlow: {flow_info.name}")
+    out(f"Module: {flow_info.module}")
+
+    if flow_info.doc:
+        out(f"\nDescription: {flow_info.doc.strip().split(chr(10))[0]}")
+
+    out("\nParameters:")
+    has_params = False
+    for param_name, param in flow_info.signature.parameters.items():
+        has_params = True
+        annotation = param.annotation
+        type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
+        if param.default is not py_inspect.Parameter.empty:
+            out(f"  --{param_name}: {type_str} = {param.default!r}")
+        else:
+            out(f"  --{param_name}: {type_str} [required]")
+    if not has_params:
+        out("  (none)")
+
+    # Get the plan
+    plan: FlowPlan = flow_info.plan
+    out(f"\nTask Graph ({len(plan.nodes)} steps):")
+    _print_task_tree(plan)
 
 
-def _print_automation_info(info: dict[str, Any]) -> None:
+def _print_task_tree(plan: Any) -> None:
+    """Print a tree visualization of the flow's task graph."""
+    if not plan.nodes:
+        out("  (empty)")
+        return
+
+    # Check if there are any data dependencies
+    has_dependencies = any(node.dependencies for node in plan.nodes)
+
+    if not has_dependencies:
+        # Linear flow - show simple sequential list
+        for i, node in enumerate(plan.nodes):
+            is_last = i == len(plan.nodes) - 1
+            connector = "└─" if is_last else "├─"
+            out(f"  {connector} {node.name}")
+        return
+
+    # Has dependencies - show tree with dependency info
+    # Build adjacency for children (who depends on me?)
+    children: dict[str, list[str]] = {node.name: [] for node in plan.nodes}
+    for node in plan.nodes:
+        for dep in node.dependencies:
+            children[dep.name].append(node.name)
+
+    # Find root nodes (no dependencies)
+    roots = [node for node in plan.nodes if not node.dependencies]
+
+    # Track visited to avoid printing twice
+    visited: set[str] = set()
+
+    def print_node(name: str, prefix: str = "", is_last: bool = True) -> None:
+        if name in visited:
+            # Show reference to already-printed node
+            connector = "└─" if is_last else "├─"
+            out(f"{prefix}{connector} {name} (see above)")
+            return
+
+        visited.add(name)
+        connector = "└─" if is_last else "├─"
+        out(f"{prefix}{connector} {name}")
+
+        # Print children
+        child_names = children.get(name, [])
+        child_prefix = prefix + ("   " if is_last else "│  ")
+        for i, child in enumerate(child_names):
+            print_node(child, child_prefix, i == len(child_names) - 1)
+
+    # Print each root
+    for i, root in enumerate(roots):
+        print_node(root.name, "  ", i == len(roots) - 1)
+
+
+def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
     """Print automation inspection info."""
-    out(f"\nAutomation: {info['target']}")
-    out(f"Module: {info['module']}")
+    out(f"\nAutomation: {automation_info.name}")
+    out(f"Module: {automation_info.module}")
 
-    if info.get("doc"):
-        out(f"\nDescription: {info['doc'].strip().split(chr(10))[0]}")
+    if automation_info.doc:
+        out(f"\nDescription: {automation_info.doc.strip().split(chr(10))[0]}")
 
-    if info.get("plan_error"):
-        out(f"\nCould not build plan: {info['plan_error']}")
-    else:
+    # Get plan
+    try:
+        plan = automation_info.fn.plan()
         out("\nDispatches:")
-        for d in info.get("dispatches", []):
-            if d.get("params"):
-                out(f"  {d['flow']}({d['params']})")
+        for d in plan.dispatches:
+            if d.params:
+                params_str = ", ".join(f"{k}={v!r}" for k, v in d.params.items())
+                out(f"  {d.flow_name}({params_str})")
             else:
-                out(f"  {d['flow']}")
+                out(f"  {d.flow_name}()")
+    except Exception as e:
+        out(f"\nCould not build plan: {e}")
 
 
 def builtin_commands() -> CommandGroup:
