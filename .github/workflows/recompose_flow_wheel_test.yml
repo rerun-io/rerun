@@ -42,7 +42,8 @@ jobs:
       run: uv run python -m examples.app wheel_test --step step_5_smoke_test
     - name: run_if_1
       id: run_if_1
-      run: "# [if: full_tests]\nuv run python -m examples.app wheel_test --step run_if_1"
+      # [if: full_tests]
+      run: uv run python -m examples.app wheel_test --step run_if_1
     - name: step_7_test_installed
       if: ${{ steps.run_if_1.outputs.value == 'true' }}
       run: uv run python -m examples.app wheel_test --step step_7_test_installed

@@ -243,10 +243,14 @@ class StepSpec:
     env: dict[str, str] | None = None
     id: str | None = None
     if_condition: str | None = None  # GHA `if:` expression
+    comment: str | None = None  # Comment to add above the step (for run_if conditions)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict for YAML serialization."""
-        d: dict[str, Any] = {"name": self.name}
+        from ruamel.yaml.comments import CommentedMap
+
+        d: CommentedMap = CommentedMap()
+        d["name"] = self.name
         if self.id:
             d["id"] = self.id
         if self.if_condition:
@@ -259,6 +263,12 @@ class StepSpec:
             d["run"] = self.run
         if self.env:
             d["env"] = self.env
+
+        # Add comment before the 'run' key if specified
+        if self.comment and self.run:
+            # indent=6 aligns with step keys when nested under jobs.<name>.steps list
+            d.yaml_set_comment_before_after_key("run", before=self.comment, indent=6)
+
         return d
 
 
@@ -637,12 +647,12 @@ def render_flow_workflow(
 
             condition_data = node.kwargs.get("condition_data", {})
             condition_expr = format_expr(condition_data)
-            run_cmd = f"# [if: {condition_expr}]\n{python_cmd} {script_path} {flow_info.name} --step {step_name}"
             job_steps.append(
                 StepSpec(
                     name=step_name,
                     id=step_name,  # Need ID for referencing in if: conditions
-                    run=run_cmd,
+                    run=f"{python_cmd} {script_path} {flow_info.name} --step {step_name}",
+                    comment=f"[if: {condition_expr}]",
                 )
             )
         else:
