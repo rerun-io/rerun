@@ -239,21 +239,24 @@ callable objects. Just needs documentation.
 
 ---
 
-## 10. Inconsistent Error Handling Patterns
+## 10. Document Error Handling Convention
 
-**Problem**: Some functions return `Result[T]` while others raise exceptions:
+**Observation**: Some internal functions return `Result[T]` while others raise exceptions:
 - `workspace.py:read_params()` raises `FileNotFoundError`
 - `workspace.py:read_step_result()` returns `Err()`
 
-**Recommendation**: Standardize on `Result` for recoverable errors, exceptions for
-programming errors. Document the convention.
+**Analysis**: This is actually **intentional and correct**:
+- `read_params()` missing = **programming error** (workspace not set up) → exception
+- `read_step_result()` missing = **expected condition** (step not run yet) → `Err`
+
+The pattern follows: exceptions for programming errors, `Result` for recoverable/expected errors.
+This is internal framework code, not user-facing task code.
 
 **Tasks**:
-- [ ] Audit error handling patterns
-- [ ] Document convention
-- [ ] Consider if `read_params` should return `Result`
+- [ ] Document this convention in ARCHITECTURE.md
+- [ ] Audit other internal functions to ensure they follow the same pattern
 
-**Effort**: Small
+**Effort**: Trivial (just documentation)
 
 ---
 
