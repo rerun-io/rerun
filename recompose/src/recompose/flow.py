@@ -349,6 +349,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
 
         from rich.console import Console
 
+        from .conditional import evaluate_condition
         from .context import dbg, get_entry_point, is_debug
         from .output import FlowRenderer
         from .workspace import create_workspace, read_step_result, write_params
@@ -356,17 +357,24 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         flow_name = fn.__name__
         console = Console()
 
-        # Build the plan to get step names
-        plan = plan_only(**kwargs)
+        # Build the plan with InputPlaceholders to preserve condition expressions
+        from .flowgraph import InputPlaceholder
 
-        # Inject condition-check nodes if there are conditional tasks
-        from .gha import _create_eval_condition_task_info
+        flow_sig = inspect.signature(fn)
+        plan_kwargs: dict[str, Any] = {}
+        for param_name, param in flow_sig.parameters.items():
+            annotation = param.annotation if param.annotation is not inspect.Parameter.empty else None
+            default = param.default if param.default is not inspect.Parameter.empty else None
+            plan_kwargs[param_name] = InputPlaceholder(name=param_name, annotation=annotation, default=default)
 
-        condition_task_info = _create_eval_condition_task_info()
-        plan.inject_condition_checks(condition_task_info)
+        plan = plan_only(**plan_kwargs)
 
-        # Step names are now assigned by inject_condition_checks
-        steps = plan.get_steps()
+        # Use linear order from flow definition - no topological sort needed
+        # Assign step names based on linear order
+        plan.assign_step_names()
+
+        # Get steps in linear order (skip GHA actions for local execution)
+        steps = [(n.step_name or n.name, n) for n in plan.nodes if not n.task_info.is_gha_action]
 
         # Create or use provided workspace
         ws = create_workspace(flow_name, workspace=workspace)
@@ -415,21 +423,24 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
                 renderer.step_skipped(step_name, step_idx, f"prior failure in {failed_step}")
                 continue
 
-            # Check if this step has a condition that needs to be evaluated
-            if node.condition_check_step:
-                # Read the condition result from workspace
-                cond_result = read_step_result(ws, node.condition_check_step)
-                if cond_result.ok and cond_result.value() is False:
+            # Check if this step has a condition - evaluate inline
+            condition_expr_str: str | None = None
+            condition_value: bool | None = None
+            if node.condition is not None:
+                # Format the condition expression for display
+                condition_expr_str = _format_condition_expr(node.condition.serialize())
+
+                # Evaluate the condition with actual parameter values
+                cond_result = evaluate_condition(node.condition.serialize(), kwargs, {})
+                condition_value = cond_result.value() if cond_result.ok else False
+
+                if not condition_value:
                     # Condition is false, skip this step
-                    renderer.step_skipped(step_name, step_idx, "condition false")
+                    renderer.step_skipped_conditional(step_name, step_idx, condition_expr_str, condition_value)
                     continue
 
-            # Check if this is a condition evaluation step
-            is_condition_step = node.task_info.is_condition_check
-
-            # Print step header (condition steps handled differently after execution)
-            if not is_condition_step:
-                renderer.step_header(step_name, step_idx)
+            # Print step header (with condition if present)
+            renderer.step_header(step_name, step_idx, condition_expr=condition_expr_str)
 
             # Build command based on entry point type
             if entry_type == "module":
@@ -472,13 +483,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
                 continue
 
             # Step succeeded
-            if is_condition_step:
-                # Get the condition expression for display
-                condition_data = node.kwargs.get("condition_data", {})
-                condition_expr = _format_condition_expr(condition_data)
-                renderer.step_condition(step_name, step_idx, condition_expr, bool(result_value), step_duration)
-            else:
-                renderer.step_success(step_name, step_idx, step_duration, result_value)
+            renderer.step_success(step_name, step_idx, step_duration, result_value)
 
         # Finish with appropriate status
         if failed_step is not None:

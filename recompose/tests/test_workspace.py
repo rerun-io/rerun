@@ -159,8 +159,9 @@ class TestFlowPlanSteps:
 
         steps = plan.get_steps()
         assert len(steps) == 2
-        assert steps[0][0] == "1_step_a"
-        assert steps[1][0] == "2_step_b"
+        # Step names have "step_" prefix for valid GHA step IDs
+        assert steps[0][0] == "step_1_step_a"
+        assert steps[1][0] == "step_2_step_b"
 
     def test_get_step_by_number(self) -> None:
         """Steps can be retrieved by number."""
@@ -176,6 +177,7 @@ class TestFlowPlanSteps:
         plan = simple_flow.plan()
         plan.assign_step_names()
 
+        # Can still retrieve by number
         node = plan.get_step("1")
         assert node is not None
         assert node.task_info.name == "task_x"
@@ -194,9 +196,10 @@ class TestFlowPlanSteps:
         plan = flow_for_lookup.plan()
         plan.assign_step_names()
 
-        node = plan.get_step("1_my_task")
+        # Full name now includes "step_" prefix
+        node = plan.get_step("step_1_my_task")
         assert node is not None
-        assert node.step_name == "1_my_task"
+        assert node.step_name == "step_1_my_task"
 
 
 class TestRunIsolated:

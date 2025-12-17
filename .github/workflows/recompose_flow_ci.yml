@@ -20,15 +20,15 @@ jobs:
     env:
       RECOMPOSE_WORKSPACE: .recompose
     steps:
-    - name: 1_gha.checkout
+    - name: step_1_gha.checkout
       uses: actions/checkout@v4
-    - name: 2_setup_workspace
+    - name: step_2_setup_workspace
       run: uv run python -m examples.app ci --setup
-    - name: 3_lint
-      run: uv run python -m examples.app ci --step 3_lint
-    - name: 4_format_check
-      run: uv run python -m examples.app ci --step 4_format_check
-    - name: 5_test
-      run: uv run python -m examples.app ci --step 5_test
-    - name: 6_generate_gha
-      run: uv run python -m examples.app ci --step 6_generate_gha
+    - name: step_3_lint
+      run: uv run python -m examples.app ci --step step_3_lint
+    - name: step_4_format_check
+      run: uv run python -m examples.app ci --step step_4_format_check
+    - name: step_5_test
+      run: uv run python -m examples.app ci --step step_5_test
+    - name: step_6_generate_gha
+      run: uv run python -m examples.app ci --step step_6_generate_gha

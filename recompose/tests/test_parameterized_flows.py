@@ -103,7 +103,7 @@ class TestFlowsWithRequiredParams:
         # Optional param
         assert "count_to" in inputs
         assert inputs["count_to"]["required"] is False
-        assert inputs["count_to"]["default"] == "10"
+        assert inputs["count_to"]["default"] == 10  # GHA number inputs preserve actual int type
 
 
 class TestInputPlaceholder:

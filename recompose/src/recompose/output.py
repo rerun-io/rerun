@@ -264,17 +264,22 @@ class FlowRenderer:
             ENV_FLOW_NAME: self.flow_name,
         }
 
-    def step_header(self, step_name: str, step_index: int) -> None:
+    def step_header(self, step_name: str, step_index: int, condition_expr: str | None = None) -> None:
         """
         Print the step header line.
 
         Args:
             step_name: Name of the step
             step_index: 1-based index of the step
+            condition_expr: Optional condition expression that gates this step
 
         """
         # Always use branch (not last branch) - line continues to final ⏹
-        self.console.print(f"{TREE_BRANCH} [bold]{step_name}[/bold]")
+        if condition_expr:
+            # Use \[if: to escape the bracket from Rich markup interpretation
+            self.console.print(f"{TREE_BRANCH} [bold]{step_name}[/bold]  [dim]\\[if: {condition_expr}][/dim]")
+        else:
+            self.console.print(f"{TREE_BRANCH} [bold]{step_name}[/bold]")
 
     def step_success(self, step_name: str, step_index: int, duration: float, value: object = None) -> None:
         """
@@ -323,6 +328,28 @@ class FlowRenderer:
         # Always use branch/continuation - line continues to final ⏹
         self.console.print(f"{TREE_BRANCH} [dim]{step_name}[/dim]")
         self.console.print(f"{TREE_CONT} [dim]⏭ skipped: {reason}[/dim]")
+        self.console.print("│")
+
+    def step_skipped_conditional(
+        self, step_name: str, step_index: int, condition_expr: str, condition_value: bool
+    ) -> None:
+        """
+        Print a skipped step due to a condition being false.
+
+        Shows the condition evaluation nested under the step header.
+
+        Args:
+            step_name: Name of the step
+            step_index: 1-based index of the step
+            condition_expr: The condition expression that was evaluated
+            condition_value: The result of the condition (False)
+
+        """
+        # Always use branch/continuation - line continues to final ⏹
+        # Use \[if: to escape the bracket from Rich markup interpretation
+        self.console.print(f"{TREE_BRANCH} [dim]{step_name}[/dim]  [dim]\\[if: {condition_expr}][/dim]")
+        self.console.print(f"{TREE_CONT}   [dim]{condition_expr} → {condition_value}[/dim]")
+        self.console.print(f"{TREE_CONT}   [dim]⏭ skipped[/dim]")
         self.console.print("│")
 
     def step_condition(
