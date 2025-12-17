@@ -71,7 +71,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut transforms_to_draw: SmallVec<[(_, _); 1]> = transforms
-                .all_reachable_frames()
+                .child_frames_for_entity(data_result.entity_path.hash())
                 .map(|(frame_id_hash, transform)| {
                     (*frame_id_hash, transform.target_from_source.as_affine3a())
                 })

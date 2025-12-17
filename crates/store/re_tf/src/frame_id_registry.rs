@@ -68,31 +68,39 @@ impl FrameIdRegistry {
     pub fn register_all_frames_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         self.register_frame_id_from_entity_path(chunk.entity_path());
 
+        let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
+
         let frame_components = [
-            archetypes::Transform3D::descriptor_child_frame().component,
+            identifier_child_frame,
             archetypes::Transform3D::descriptor_parent_frame().component,
             archetypes::Pinhole::descriptor_child_frame().component,
             archetypes::Pinhole::descriptor_parent_frame().component,
             archetypes::CoordinateFrame::descriptor_frame().component,
         ];
 
-        for frame_id_strings in frame_components
-            .iter()
-            .flat_map(|component| chunk.iter_slices::<String>(*component))
-        {
-            for frame_id_string in frame_id_strings {
-                let (frame_id_hash, entity_path) =
-                    TransformFrameIdHash::from_str_with_optional_derived_path(
-                        frame_id_string.as_str(),
-                    );
+        for component in frame_components {
+            for frame_id_strings in chunk.iter_slices::<String>(component) {
+                for frame_id_string in frame_id_strings {
+                    let (frame_id_hash, entity_path) =
+                        TransformFrameIdHash::from_str_with_optional_derived_path(
+                            frame_id_string.as_str(),
+                        );
 
-                if let Entry::Vacant(e) = self.frame_id_lookup_table.entry(frame_id_hash) {
-                    e.insert(TransformFrameId::new(frame_id_string.as_str()));
+                    if component == identifier_child_frame {
+                        self.frame_ids_per_entity
+                            .entry(chunk.entity_path().hash())
+                            .or_default()
+                            .insert(frame_id_hash);
+                    }
 
-                    // If this was an entity path, we didn't know about this one before.
-                    // Make sure we also add all parents!
-                    if let Some(entity_path) = entity_path.and_then(|path| path.parent()) {
-                        self.register_frame_id_from_entity_path(&entity_path);
+                    if let Entry::Vacant(e) = self.frame_id_lookup_table.entry(frame_id_hash) {
+                        e.insert(TransformFrameId::new(frame_id_string.as_str()));
+
+                        // If this was an entity path, we didn't know about this one before.
+                        // Make sure we also add all parents!
+                        if let Some(entity_path) = entity_path.and_then(|path| path.parent()) {
+                            self.register_frame_id_from_entity_path(&entity_path);
+                        }
                     }
                 }
             }
@@ -128,13 +136,18 @@ impl FrameIdRegistry {
     }
 
     /// Iterates over all known frame ids.
-    ///
-    /// Mostly useful for testing.
     #[inline]
     pub fn iter_frame_ids(
         &self,
     ) -> impl Iterator<Item = (&TransformFrameIdHash, &TransformFrameId)> {
         self.frame_id_lookup_table.iter()
+    }
+
+    /// Iterates over all known entities with child frame components.
+    pub fn iter_entities_with_child_frames(
+        &self,
+    ) -> impl Iterator<Item = (&EntityPathHash, &IntSet<TransformFrameIdHash>)> {
+        self.frame_ids_per_entity.iter()
     }
 
     /// Hashes of all frame ids ever encountered.

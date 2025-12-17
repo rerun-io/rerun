@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use nohash_hasher::IntMap;
+use itertools::Either;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
@@ -16,7 +17,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;
 
-type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+type FrameIdHashMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+type ExplicitFrameMapping = IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>;
 
 /// Details on how to transform an entity (!) to the origin of the view's space.
 #[derive(Clone, Debug, PartialEq)]
@@ -107,19 +109,21 @@ pub struct TransformTreeContext {
     transform_infos: IntMap<EntityPathHash, Result<TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
     target_frame_pinhole_root: Option<TransformFrameIdHash>,
+    entity_frame_id_mapping: IntMap<EntityPathHash, IntMap<TransformFrameIdHash, TreeTransform>>,
     entity_transform_id_mapping: EntityTransformIdMapping,
-    frame_id_mapping: Arc<FrameIdMapping>,
+    frame_id_hash_mapping: Arc<FrameIdHashMapping>,
 }
 
 impl Default for TransformTreeContext {
     fn default() -> Self {
         Self {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
+            entity_frame_id_mapping: Default::default(),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
             target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
-            frame_id_mapping: Arc::new(FrameIdMapping::default()),
+            frame_id_hash_mapping: Arc::new(FrameIdHashMapping::default()),
         }
     }
 }
@@ -146,7 +150,8 @@ impl IdentifiedViewSystem for TransformTreeContext {
 
 struct TransformTreeContextOncePerFrameResult {
     transform_forest: Arc<re_tf::TransformForest>,
-    frame_id_mapping: Arc<FrameIdMapping>,
+    frame_id_hash_mapping: Arc<FrameIdHashMapping>,
+    entity_id_hash_mapping: Arc<ExplicitFrameMapping>,
 }
 
 impl ViewContextSystem for TransformTreeContext {
@@ -154,26 +159,27 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let (transform_forest, transform_cache) =
-            caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.update_transform_forest(ctx.recording(), &ctx.current_query());
-                (
-                    c.get_transform_forest(),
-                    c.read_lock_transform_cache(ctx.recording()),
-                )
-            });
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
 
-        // We update this here so it should exist.
-        let transform_forest = transform_forest.unwrap_or_default();
+        let transform_forest =
+            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
 
         let frame_ids = transform_cache
             .frame_id_registry()
             .iter_frame_ids()
             .map(|(k, v)| (*k, v.clone()));
 
+        let entities = transform_cache
+            .frame_id_registry()
+            .iter_entities_with_child_frames()
+            .map(|(k, v)| (*k, v.clone()));
+
         Box::new(TransformTreeContextOncePerFrameResult {
-            transform_forest,
-            frame_id_mapping: Arc::new(frame_ids.collect()),
+            transform_forest: Arc::new(transform_forest),
+            frame_id_hash_mapping: Arc::new(frame_ids.collect()),
+            entity_id_hash_mapping: Arc::new(entities.collect()),
         })
     }
 
@@ -188,7 +194,7 @@ impl ViewContextSystem for TransformTreeContext {
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
-        self.frame_id_mapping = static_execution_result.frame_id_mapping.clone();
+        self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
         let results = query
             .iter_all_data_results()
@@ -249,9 +255,9 @@ impl ViewContextSystem for TransformTreeContext {
             };
 
             let frame_hash = TransformFrameIdHash::new(&frame);
-            if !self.frame_id_mapping.contains_key(&frame_hash) {
+            if !self.frame_id_hash_mapping.contains_key(&frame_hash) {
                 // As overrides are local to this view we need to clone the whole map to add new hashes.
-                Arc::make_mut(&mut self.frame_id_mapping).insert(frame_hash, frame);
+                Arc::make_mut(&mut self.frame_id_hash_mapping).insert(frame_hash, frame);
             }
         }
 
@@ -278,6 +284,31 @@ impl ViewContextSystem for TransformTreeContext {
                 // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
             )
             .collect::<Vec<_>>();
+
+        // for (entity_path, child_frame_ids) in static_execution_result.entity_id_hash_mapping.iter()
+        // {
+        //     let tree_transforms = self
+        //         .transform_forest
+        //         .transform_from_to(self.target_frame, child_frame_ids.iter().copied(), &|_| 1.0)
+        //         .filter_map(|(id, transform)| Some((id, transform.ok()?)))
+        //         .collect();
+
+        //     self.entity_frame_id_mapping
+        //         .insert(*entity_path, tree_transforms);
+        // }
+
+        self.entity_frame_id_mapping = static_execution_result
+            .entity_id_hash_mapping
+            .iter()
+            .map(|(entity_path, child_frame_ids)| {
+                let tree_transforms = self
+                    .transform_forest
+                    .transform_from_to(self.target_frame, child_frame_ids.iter().copied(), &|_| 1.0)
+                    .filter_map(|(id, transform)| Some((id, transform.ok()?)))
+                    .collect();
+                (*entity_path, tree_transforms)
+            })
+            .collect();
 
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
@@ -392,6 +423,18 @@ impl TransformTreeContext {
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
     }
 
+    /// Returns all reachable frame for the current root.
+    #[inline]
+    pub fn child_frames_for_entity(
+        &self,
+        entity_path: EntityPathHash,
+    ) -> impl Iterator<Item = (&TransformFrameIdHash, &TreeTransform)> {
+        match self.entity_frame_id_mapping.get(&entity_path) {
+            Some(frames) => Either::Right(frames.iter()),
+            None => Either::Left(std::iter::empty()),
+        }
+    }
+
     /// Looks up a frame ID by its hash.
     ///
     /// Returns `None` if the frame id hash was never encountered.
@@ -400,7 +443,7 @@ impl TransformTreeContext {
         &self,
         frame_id_hash: TransformFrameIdHash,
     ) -> Option<&TransformFrameId> {
-        self.frame_id_mapping.get(&frame_id_hash)
+        self.frame_id_hash_mapping.get(&frame_id_hash)
     }
 
     /// Formats a frame ID hash as a human-readable string.
@@ -564,14 +607,8 @@ mod tests {
         });
 
         // Different views with different expected targets.
-        let view_id_root_subtree = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()))
-        });
         let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            blueprint.add_view_at_root(ViewBlueprint::new(
-                class_id,
-                RecommendedView::new_single_entity(EntityPath::root()),
-            ))
+            blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()))
         });
         let view_id_some_path = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(
@@ -627,7 +664,6 @@ mod tests {
 
         test_context.run_in_egui_central_panel(|ctx, _ui| {
             for (view_id, expected_target) in [
-                (view_id_root_subtree, TransformFrameId::from("store_frame")),
                 (
                     view_id_root,
                     TransformFrameId::from_entity_path(&EntityPath::root()),
