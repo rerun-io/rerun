@@ -2,18 +2,18 @@
 
 **P12_architecture_cleanup** - Codebase organization and cleanup pass
 
-**Status**: Phase 1-3 complete, Phase 4 (polish) remaining
+**Status**: Phase 1-3 COMPLETE! Phase 4 (polish) remaining.
 
 **Completed:**
 - Phase 1 (Quick Wins): topological sort removal, unused aliases, duplicate git root, GHA docs
 - Phase 2 (Naming): renamed `github.py` → `gh_cli.py`, `flowgraph.py` → `plan.py`
 - Phase 3 (Code Organization):
   - #3: Consolidated duplicate wrapper code in task.py (extracted shared helpers)
-  - #4: Simplified flow.py by removing in-process execution - flows always use subprocess isolation now (matches GHA behavior)
+  - #4: Simplified flow.py by removing in-process execution - flows always use subprocess isolation (matches GHA)
+  - #5: Moved GitHub handlers from cli.py to gh_cli.py (933→796 lines)
   - Created `tests/flow_test_app.py` as module-level test app for subprocess compatibility
 
-**Remaining:**
-- #5: Split cli.py (~900 lines) - extract command builders
+**Remaining (Phase 4 - Polish):**
 - #9: Context globals consolidation (nice to have)
 - #12: Test coverage improvements (ongoing)
 
@@ -21,9 +21,8 @@ See `proj/P12_architecture_cleanup_TODO.md` for full details.
 
 # UPCOMING
 
-1. **P12 #5**: Split cli.py for clearer responsibilities
-2. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
-3. **Documentation** - User guide and API reference
+1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
+2. **Documentation** - User guide and API reference
 
 # DEFERRED
 

@@ -120,7 +120,7 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 
 ## 5. `cli.py` is Too Large (900+ lines)
 
-**Problem**: `cli.py` has 900+ lines handling:
+**Problem**: `cli.py` had 933 lines handling:
 - Click command building (`_build_command`, `_build_flow_command`)
 - Type conversion (`_get_click_type`)
 - Flow execution modes (setup, step, remote, status)
@@ -128,18 +128,19 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 - Registry building
 - Grouped CLI generation
 
-**Recommendation**: Split into focused modules:
-- `cli.py`: Core CLI building (`_build_grouped_cli`, `main`)
-- `cli_commands.py`: Individual command builders (`_build_command`, `_build_flow_command`)
-- Move GitHub handling to `github.py` (or new `dispatch.py`)
+**Resolution**: Moved GitHub display functions to `gh_cli.py`:
+- `_handle_flow_status` → `gh_cli.display_flow_status`
+- `_handle_flow_remote` → `gh_cli.trigger_flow_remote`
+- `cli.py` reduced from 933 to 796 lines
+- GitHub-related display logic now lives with other GitHub CLI functionality
 
 **Tasks**:
-- [ ] Identify clean boundaries
-- [ ] Extract command builders
-- [ ] Move GitHub handlers
-- [ ] Update imports
+- [x] Move `_handle_flow_status` to `gh_cli.py` as `display_flow_status`
+- [x] Move `_handle_flow_remote` to `gh_cli.py` as `trigger_flow_remote`
+- [x] Update cli.py to call the new functions
+- [x] Verify tests pass
 
-**Effort**: Medium-Large
+**Effort**: Small (cleaner split than originally planned)
 
 ---
 
@@ -324,10 +325,10 @@ This is internal framework code, not user-facing task code.
 6. **#1**: gha.py vs github.py naming - ✅ Done: kept gha.py, renamed github.py → gh_cli.py
 7. **#2**: flow.py vs flowgraph.py naming - ✅ Done: renamed flowgraph.py → plan.py
 
-### Phase 3: Code Organization (Medium-Large effort)
+### Phase 3: Code Organization (Medium-Large effort) ✅ DONE
 8. **#3**: Consolidate duplicate wrapper code - ✅ Done: extracted _validate_task_kwargs, _create_task_node, _run_with_context
 9. **#4**: Split flow.py - ✅ Done: removed _execute_plan, flows now always use subprocess isolation
-10. **#5**: Split cli.py - Clearer responsibilities
+10. **#5**: Split cli.py - ✅ Done: moved GitHub handlers to gh_cli.py (cli.py 933→796 lines)
 
 ### Phase 4: Polish
 11. **#9**: Context globals consolidation - Nice to have
