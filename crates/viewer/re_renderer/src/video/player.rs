@@ -328,15 +328,11 @@ impl VideoPlayer {
         // In the presence of b-frames this order may be different!
 
         // Find the keyframe that contains the sample.
-        let Some(requested_keyframe_idx) = video_description
-            .keyframe_indices
-            .partition_point(|sample_idx| *sample_idx <= requested_sample_idx)
-            .checked_sub(1)
-        else {
-            return Err(VideoPlayerError::InsufficientSampleData(
+        let requested_keyframe_idx = video_description
+            .sample_keyframe_idx(requested_sample_idx)
+            .ok_or(VideoPlayerError::InsufficientSampleData(
                 InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp,
-            ));
-        };
+            ))?;
 
         self.handle_errors_and_reset_decoder_if_needed(video_description, requested_sample_idx)?;
 
@@ -350,27 +346,22 @@ impl VideoPlayer {
         //
         // (potentially related to:) TODO(#7595): We don't necessarily have to enqueue full keyframe ranges always.
 
-        if self
-            .last_enqueued
-            .is_some_and(|idx| idx < video_description.keyframe_indices[requested_keyframe_idx])
+        // Find the keyframe of the last enqueued sample.
+        let mut keyframe_idx = if let Some(last_enqueued) = self.last_enqueued
+            && let Some(keyframe_idx) = video_description.sample_keyframe_idx(last_enqueued)
         {
-            dbg!("reset");
+            keyframe_idx
+        } else {
             self.reset(video_description)?;
-        }
-
-        if self.last_enqueued.is_none() {
             // We haven't enqueued anything so far. Enqueue the requested keyframe range.
             self.enqueue_keyframe_range(video_description, requested_keyframe_idx, video_buffers)?;
-        }
 
-        let mut keyframe_idx = requested_keyframe_idx;
+            requested_keyframe_idx
+        };
+
         let min_last_sample_idx =
             requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
 
-        // dbg!(video_description.keyframe_indices[keyframe_idx]);
-        // dbg!(requested_sample_idx);
-        // dbg!(self.last_enqueued);
-        // dbg!(min_last_sample_idx);
         loop {
             let last_enqueued: SampleIndex = self
                 .last_enqueued
@@ -459,17 +450,11 @@ impl VideoPlayer {
         }
         // Seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
-        else if video_description
-            .keyframe_indices
-            .get(
-                video_description
-                    .keyframe_indices
-                    .binary_search(&requested)
-                    .unwrap_or_else(|e| e)
-                    .saturating_add(2),
-            )
-            .is_some_and(|keyframe| *keyframe <= requested)
-        {
+        else if self.last_enqueued.is_some_and(|e| {
+            video_description
+                .sample_keyframe_idx(requested)
+                .is_some_and(|k| e < video_description.keyframe_indices[k])
+        }) {
             self.reset(video_description)?;
         }
         // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
@@ -568,7 +553,6 @@ impl VideoPlayer {
             let chunk = sample
                 .get(video_buffers, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
-            dbg!(sample_idx);
             self.sample_decoder.decode(chunk)?;
 
             // Update continuously, since we want to keep track of our last state in case of errors.
@@ -643,7 +627,6 @@ impl VideoPlayer {
                     last_decoded_frame_pts,
                     self.config.tolerated_output_delay_in_num_frames,
                 ) {
-                    dbg!("significantly behind");
                     DecoderDelayState::Behind
                 } else {
                     DecoderDelayState::UpToDateWithinTolerance
