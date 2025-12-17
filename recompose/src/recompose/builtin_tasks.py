@@ -97,8 +97,7 @@ def generate_gha(
     """
     import sys
 
-    from .automation import get_automation, get_automation_registry
-    from .flow import get_flow, get_flow_registry
+    from .context import get_automation, get_automation_registry, get_flow, get_flow_registry
     from .gha import render_automation_workflow, render_flow_workflow
 
     # Determine output directory
@@ -284,9 +283,7 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
     """
     import inspect as py_inspect
 
-    from .automation import get_automation
-    from .flow import get_flow
-    from .task import get_task
+    from .context import get_automation, get_flow, get_task
 
     # Parse params
     kwargs: dict[str, Any] = {}
@@ -388,11 +385,9 @@ def inspect(*, target: str, params: str | None = None) -> Result[dict[str, Any]]
         return Ok(result)
 
     # Not found
-    from .automation import get_automation_registry
-    from .flow import get_flow_registry
-    from .task import get_registry
+    from .context import get_automation_registry, get_flow_registry, get_task_registry
 
-    task_names = list(get_registry().keys())
+    task_names = list(get_task_registry().keys())
     flow_names = list(get_flow_registry().keys())
     auto_names = list(get_automation_registry().keys())
 

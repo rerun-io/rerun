@@ -39,25 +39,37 @@ if __name__ == "__main__":
     )
 
     commands = [
-        recompose.CommandGroup("Quality", [
-            lint,
-            format_check,
-            format_code,
-        ]),
-        recompose.CommandGroup("Testing", [
-            test,
-        ]),
-        recompose.CommandGroup("Build", [
-            build_wheel,
-            create_test_venv,
-            install_wheel,
-            smoke_test,
-            test_installed,
-        ]),
-        recompose.CommandGroup("Flows", [
-            ci,
-            wheel_test,
-        ]),
+        recompose.CommandGroup(
+            "Quality",
+            [
+                lint,
+                format_check,
+                format_code,
+            ],
+        ),
+        recompose.CommandGroup(
+            "Testing",
+            [
+                test,
+            ],
+        ),
+        recompose.CommandGroup(
+            "Build",
+            [
+                build_wheel,
+                create_test_venv,
+                install_wheel,
+                smoke_test,
+                test_installed,
+            ],
+        ),
+        recompose.CommandGroup(
+            "Flows",
+            [
+                ci,
+                wheel_test,
+            ],
+        ),
         recompose.builtin_commands(),
     ]
 

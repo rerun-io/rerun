@@ -1,6 +1,37 @@
 # P11: Explicit Command Registration
 
+**Status: DONE**
+
 **Goal:** Move from auto-registration to explicit, organized command registration with command groups and centralized configuration.
+
+## Summary of Implementation
+
+All phases completed successfully:
+- **P11a**: Created `Config` dataclass and restructured `main()`
+- **P11b**: Created `CommandGroup`, `builtin_commands()`, and grouped CLI help
+- **P11c**: Migration complete, old auto-registration removed
+
+Key changes:
+1. **No global auto-registration** - `@task`, `@flow`, `@automation` decorators do NOT auto-register
+2. **Explicit command list** - `main(commands=[...])` builds registry from explicit list
+3. **CommandGroup** - Organizes commands with visual grouping in help output
+4. **Config** - Centralized config for `python_cmd`, `working_directory`
+5. **builtin_commands()** - Opt-in for inspect/generate-gha builtins
+6. **Context-based registry** - `get_task_registry()`, `get_flow_registry()` read from context
+7. **_recompose_tasks** - Dict on @taskclass classes for explicit registration
+
+Files changed:
+- `src/recompose/command_group.py` - NEW: Config and CommandGroup dataclasses
+- `src/recompose/cli.py` - Updated main(), added GroupedClickGroup, _build_grouped_cli()
+- `src/recompose/context.py` - Added RecomposeContext, registry getters
+- `src/recompose/task.py` - Removed global registry, added _recompose_tasks to @taskclass
+- `src/recompose/flow.py` - Removed global registry
+- `src/recompose/automation.py` - Removed global registry
+- `src/recompose/builtin_tasks.py` - Updated imports
+- `examples/app.py` - Updated to new API
+- All test files - Updated to use `._task_info`, `._flow_info` directly
+
+All 180 tests pass.
 
 ## Target API
 

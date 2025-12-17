@@ -25,8 +25,6 @@ from .automation import (
     AutomationPlan,
     FlowDispatch,
     automation,
-    get_automation,
-    get_automation_registry,
 )
 from .builtin_tasks import builtin_commands, generate_gha, inspect
 from .cli import main
@@ -34,8 +32,14 @@ from .command_group import CommandGroup, Config
 from .conditional import run_if
 from .context import (
     dbg,
+    get_automation,
+    get_automation_registry,
     get_context,
+    get_flow,
+    get_flow_registry,
     get_python_cmd,
+    get_task,
+    get_task_registry,
     get_working_directory,
     is_debug,
     out,
@@ -49,14 +53,12 @@ from .flow import (
     FlowWrapper,
     flow,
     get_current_plan,
-    get_flow,
     get_flow_context,
-    get_flow_registry,
 )
 from .flowgraph import FlowPlan, Input, InputPlaceholder, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
-from .task import TaskInfo, TaskWrapper, get_registry, get_task, task, taskclass
+from .task import TaskInfo, TaskWrapper, task, taskclass
 from .workspace import (
     FlowParams,
     Serializer,
@@ -78,7 +80,7 @@ __all__ = [
     "taskclass",
     "TaskInfo",
     "TaskWrapper",
-    "get_registry",
+    "get_task_registry",
     "get_task",
     # Context helpers
     "out",

@@ -1,40 +1,9 @@
 # NOW
 
-**P11_explicit_registration** - IN PROGRESS
-
-Moving from auto-registration to explicit, organized command registration.
-
-**Target API:**
-```python
-config = recompose.Config(python_cmd="uv run python", working_directory="recompose")
-
-commands = [
-    recompose.CommandGroup("Python", [lint, format, test]),
-    recompose.CommandGroup("Rust", [...]),
-    recompose.builtin_commands(),
-    recompose.CommandGroup("Helpers", [...], hidden=True),
-]
-
-recompose.main(config=config, commands=commands, automations=[...])
-```
-
-**Why explicit:**
-- Better organization for large projects (rerun is huge)
-- Control over CLI visibility (some tasks internal-only)
-- Command groups for organized help output
-- Flat namespace but visual grouping
-- Clear what's exposed vs internal
-
-**Implementation phases:**
-- P11a: Config class + restructured main()
-- P11b: CommandGroup + builtin_commands()
-- P11c: Migration + validation
-
-See: `proj/P11_explicit_registration_TODO.md`
+Ready for next task - P11 complete!
 
 # UPCOMING
 
-After P11 completes, next priorities:
 1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
 2. **Documentation** - User guide and API reference
 3. **Performance optimization** - Profile task execution if needed
@@ -55,6 +24,14 @@ After P11 completes, next priorities:
 For detailed plans, see `proj/P*_DONE.md` files.
 
 **Recent milestones:**
+- **P11_explicit_registration** - DONE. Moved from auto-discovery to explicit registration:
+  - Tasks/flows/automations are NOT auto-registered by decorators
+  - `main(commands=[...])` builds registry from explicit command list
+  - `CommandGroup` for organized CLI help output
+  - `Config` dataclass for python_cmd, working_directory
+  - `builtin_commands()` returns inspect/generate-gha tasks
+  - `_recompose_tasks` dict on @taskclass for explicit registration
+  - Registry accessible via context: `get_task_registry()`, `get_flow_registry()`, etc.
 - **P10_context_dispatch** - Simplified API: removed `.flow()` method, context-based dispatch
 - **P09_workflow_dispatch** - CLI-to-GitHub integration (`--remote`, `--status` flags)
 - **Tree-based output** - Visual flow execution with nested subprocess indicators
@@ -82,6 +59,7 @@ For detailed plans, see `proj/P*_DONE.md` files.
 2. **CLI is opt-in** - `recompose.main()` builds CLI, but tasks work without it
 3. **Result is explicit** - Tasks return `Result[T]` with value + status + output
 4. **Context is ambient** - Helpers detect if running inside recompose engine
+5. **Explicit registration** - Only commands passed to `main()` are CLI-accessible
 
 ## Hierarchy
 
