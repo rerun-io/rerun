@@ -113,6 +113,7 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 - [x] Remove `FlowContext`, `TaskExecution`, `TaskFailed` - no longer needed
 - [x] Update tests to use module-level test app (subprocess compatible)
 - [x] Ensure tests pass
+- [x] Extract `run_isolated_impl` to `local_executor.py` (flow.py 350→185 lines)
 
 **Effort**: Medium (but simplified significantly)
 

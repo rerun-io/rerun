@@ -9,7 +9,7 @@
 - Phase 2 (Naming): renamed `github.py` → `gh_cli.py`, `flowgraph.py` → `plan.py`
 - Phase 3 (Code Organization):
   - #3: Consolidated duplicate wrapper code in task.py (extracted shared helpers)
-  - #4: Simplified flow.py by removing in-process execution - flows always use subprocess isolation (matches GHA)
+  - #4: Simplified flow.py by removing in-process execution, then extracted `run_isolated_impl` to `local_executor.py` (flow.py 530→185 lines)
   - #5: Moved GitHub handlers from cli.py to gh_cli.py (933→796 lines)
   - Created `tests/flow_test_app.py` as module-level test app for subprocess compatibility
 
