@@ -143,7 +143,35 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 
 ---
 
-## 6. Unused/Vestigial Code in `workspace.py`
+## 6. Remove Unnecessary Topological Sort
+
+**Problem**: `FlowPlan.get_execution_order()` implements Kahn's algorithm for topological
+sorting (~40 lines), but it's unnecessary.
+
+**Analysis**: Nodes are added to `plan.nodes` in the order they're called during flow
+function execution. Since Python executes sequentially and a TaskNode can only be used
+*after* it's created, `self.nodes` is already in valid execution order by construction.
+
+The topological sort produces the same result (or a different but still valid order for
+independent tasks), but adds complexity without benefit.
+
+**Current usage of `get_execution_order()`:**
+- `flow.py:161` - `_execute_plan()` - could use `self.nodes` directly
+- `cli.py:400` - `--setup` display - could use `self.nodes`
+- `builtin_tasks.py:357` - `inspect` task - could use `self.nodes`
+
+**Tasks**:
+- [ ] Replace `get_execution_order()` calls with `self.nodes`
+- [ ] Remove `get_execution_order()` method
+- [ ] Remove `get_parallelizable_groups()` if unused (was for future parallel execution)
+- [ ] Update ARCHITECTURE.md to not mention topological sort
+- [ ] Verify tests pass
+
+**Effort**: Small
+
+---
+
+## 7. Unused/Vestigial Code in `workspace.py`
 
 **Problem**: Backwards compatibility aliases that may no longer be needed:
 ```python
@@ -160,7 +188,7 @@ _deserialize_value = deserialize_value
 
 ---
 
-## 7. Duplicate Git Root Finding
+## 8. Duplicate Git Root Finding
 
 **Problem**: `_find_git_root()` is implemented in multiple places:
 - `builtin_tasks.py:23-32`
@@ -177,7 +205,7 @@ _deserialize_value = deserialize_value
 
 ---
 
-## 8. Context Module Has Too Many Globals
+## 9. Context Module Has Too Many Globals
 
 **Problem**: `context.py` has multiple module-level globals:
 ```python
@@ -210,7 +238,7 @@ _config: RecomposeConfig | None = None
 
 ---
 
-## 9. `gha.py` Virtual Task Factories
+## 10. `gha.py` Virtual Task Factories
 
 **Problem**: `setup_python()`, `setup_uv()`, etc. return `GHAAction` objects but are called
 like they're tasks. The return type is inconsistent with their usage.
@@ -239,7 +267,7 @@ callable objects. Just needs documentation.
 
 ---
 
-## 10. Document Error Handling Convention
+## 11. Document Error Handling Convention
 
 **Observation**: Some internal functions return `Result[T]` while others raise exceptions:
 - `workspace.py:read_params()` raises `FileNotFoundError`
@@ -260,7 +288,7 @@ This is internal framework code, not user-facing task code.
 
 ---
 
-## 11. Test Coverage Gaps
+## 12. Test Coverage Gaps
 
 **Current test files**:
 - `test_task.py`, `test_flow.py`, `test_automation.py` - Core functionality
@@ -286,23 +314,24 @@ This is internal framework code, not user-facing task code.
 ## Priority Order
 
 ### Phase 1: Quick Wins (Low effort, high clarity)
-1. **#6**: Unused backwards compatibility aliases - Trivial cleanup
-2. **#7**: Duplicate git root finding - Trivial, removes duplication
-3. **#9**: GHAAction documentation - Trivial, improves clarity
+1. **#6**: Remove unnecessary topological sort - Small, simplifies code
+2. **#7**: Unused backwards compatibility aliases - Trivial cleanup
+3. **#8**: Duplicate git root finding - Trivial, removes duplication
+4. **#10**: GHAAction documentation - Trivial, improves clarity
+5. **#11**: Document error handling convention - Trivial (already done in ARCHITECTURE.md)
 
 ### Phase 2: Naming Clarity (Medium effort, high impact)
-4. **#1**: gha.py vs github.py naming - Clear up confusion
-5. **#2**: flow.py vs flowgraph.py naming - Clear up confusion
+6. **#1**: gha.py vs github.py naming - Clear up confusion
+7. **#2**: flow.py vs flowgraph.py naming - Clear up confusion
 
 ### Phase 3: Code Organization (Medium-Large effort)
-6. **#3**: Consolidate duplicate wrapper code - Reduces duplication
-7. **#4**: Split flow.py - Clearer responsibilities
-8. **#5**: Split cli.py - Clearer responsibilities
+8. **#3**: Consolidate duplicate wrapper code - Reduces duplication
+9. **#4**: Split flow.py - Clearer responsibilities
+10. **#5**: Split cli.py - Clearer responsibilities
 
 ### Phase 4: Polish
-9. **#8**: Context globals consolidation - Nice to have
-10. **#10**: Error handling standardization - Nice to have
-11. **#11**: Test coverage - Ongoing
+11. **#9**: Context globals consolidation - Nice to have
+12. **#12**: Test coverage - Ongoing
 
 ---
 
