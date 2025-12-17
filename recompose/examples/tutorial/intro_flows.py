@@ -20,12 +20,12 @@ Run this file to see all available commands:
     uv run python -m examples.tutorial.intro_flows --help
 
 Run flows:
-    uv run python -m examples.tutorial.intro_flows tool_check
-    uv run python -m examples.tutorial.intro_flows greeting_pipeline --name="Alice"
-    uv run python -m examples.tutorial.intro_flows math_pipeline --a=20 --b=4
-    uv run python -m examples.tutorial.intro_flows conditional_pipeline
-    uv run python -m examples.tutorial.intro_flows conditional_pipeline --run_extra
-    uv run python -m examples.tutorial.intro_flows complex_conditional --run_extra --target=prod
+    uv run python -m examples.tutorial.intro_flows tool-check
+    uv run python -m examples.tutorial.intro_flows greet-and-farewell --name="Alice"
+    uv run python -m examples.tutorial.intro_flows math-pipeline --a=20 --b=4
+    uv run python -m examples.tutorial.intro_flows conditional-pipeline
+    uv run python -m examples.tutorial.intro_flows conditional-pipeline --run-extra
+    uv run python -m examples.tutorial.intro_flows complex-conditional --run-extra --target=prod
 
 Inspect flows without running:
     uv run python -m examples.tutorial.intro_flows inspect --target=tool_check
@@ -35,7 +35,7 @@ Inspect flows without running:
 import recompose
 
 # Import tasks from intro_tasks to compose into flows
-from .intro_tasks import check_tool, divide, greet
+from .intro_tasks import check_tool, divide, goodbye, hello
 
 # =============================================================================
 # ADDITIONAL TASKS FOR FLOWS
@@ -43,23 +43,6 @@ from .intro_tasks import check_tool, divide, greet
 #
 # These tasks are designed to be composed in flows.
 # Notice the dependency parameters - they receive results from upstream tasks.
-
-
-@recompose.task
-def format_result(*, message: str, tool_version: str) -> recompose.Result[str]:
-    """
-    Format a greeting with tool info.
-
-    This task depends on results from greet and check_tool.
-
-    Args:
-        message: Result from greet task
-        tool_version: Result from check_tool task
-
-    """
-    formatted = f"{message} (using {tool_version})"
-    recompose.out(formatted)
-    return recompose.Ok(formatted)
 
 
 @recompose.task
@@ -116,31 +99,37 @@ def tool_check() -> None:
 
 
 # =============================================================================
-# FLOW WITH PARAMETERS
+# FLOW WITH PARAMETERS AND DEPENDENCIES
 # =============================================================================
 #
 # Flows can take parameters that are passed to tasks.
+# Results from one task can be passed to another using .value()
 
 
 @recompose.flow
-def greeting_pipeline(*, name: str = "World") -> None:
+def greet_and_farewell(*, name: str = "World") -> None:
     """
-    A pipeline that greets and checks tools.
+    A pipeline that greets and then says farewell.
 
     Flow parameters become CLI options:
-        greeting_pipeline --name="Alice"
+        greet_and_farewell --name="Alice"
 
     Tasks are wired together using .value() to pass results:
-        greeting = greet(name=name)           # Returns Result[str]
-        format_result(message=greeting.value()) # .value() gives str
-    """
-    # These tasks run in parallel (no dependencies between them)
-    greeting = greet(name=name)
-    tool_version = check_tool(tool="python")
+        greeting = hello(name=name)              # Returns Result[str]
+        goodbye(greeting=greeting.value(), ...)  # .value() gives str
 
-    # This task depends on both above tasks completing
-    # Use .value() to extract the result for type-safe passing
-    format_result(message=greeting.value(), tool_version=tool_version.value())
+    Note: hello() randomly picks a greeting (Hello, Hi, or Hey).
+    goodbye() only knows farewells for "Hello" and "Hi", so
+    if hello() returns "Hey", the flow will fail at goodbye().
+
+    Try it several times to see both success and failure cases!
+    """
+    # First, generate a random greeting
+    greeting = hello(name=name)
+
+    # Then generate a farewell based on the greeting
+    # This may fail if hello() returned "Hey" (unknown farewell)
+    goodbye(greeting=greeting.value(), name=name)
 
 
 # =============================================================================
@@ -348,7 +337,7 @@ if __name__ == "__main__":
             "Flows",
             [
                 tool_check,
-                greeting_pipeline,
+                greet_and_farewell,
                 math_pipeline,
                 risky_pipeline,
                 conditional_pipeline,
