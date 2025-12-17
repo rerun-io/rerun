@@ -11,9 +11,15 @@ if TYPE_CHECKING:
 
 def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: DatasetEntry) -> None:
     """
-    Tests count() on a dataframe which ensures we collect empty batches properly.
+    Tests filter pushdown correctness.
 
-    See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
+    These tests will verify that our push-down filtering returns the exact same results
+    as without push-down. It does this by first collecting record batches without any filters
+    and turning them into an in-memory table. Then we run the same filters on both the in-memory
+    table and the dataset to demonstrate we get exactly the same results.
+
+    This test does *not* guarantee that the push-down filters are being applied in the gRPC
+    requests.
     """
 
     all_segments = (
