@@ -193,4 +193,15 @@ def might_crash(*, should_crash: bool = False) -> recompose.Result[str]:
 # =============================================================================
 
 if __name__ == "__main__":
-    recompose.main()
+    commands = [
+        recompose.CommandGroup("Examples", [
+            hello,
+            greet,
+            verbose_task,
+            check_tool,
+            list_files,
+            divide,
+            might_crash,
+        ]),
+    ]
+    recompose.main(commands=commands)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import os
 import time
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Any, get_args, get_origin
@@ -12,10 +13,11 @@ from typing import Any, get_args, get_origin
 import click
 from rich.console import Console
 
+from .command_group import CommandGroup, Config
 from .context import set_debug, set_entry_point, set_python_cmd, set_working_directory
-from .flow import FlowInfo, get_flow_registry
+from .flow import FlowInfo, FlowWrapper
 from .result import Result
-from .task import TaskInfo, get_registry
+from .task import TaskInfo, TaskWrapper
 
 console = Console()
 
@@ -668,61 +670,169 @@ def _handle_flow_remote(
     console.print()
 
 
+class GroupedClickGroup(click.Group):
+    """Click group that displays commands organized by groups in help."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.command_groups: dict[str, str] = {}  # command_name -> group_name
+        self.hidden_groups: set[str] = set()
+        self.show_hidden: bool = False
+        super().__init__(*args, **kwargs)
+
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Format commands grouped by category."""
+        # Collect commands by group
+        groups: dict[str, list[tuple[str, click.Command]]] = {}
+        for name in self.list_commands(ctx):
+            cmd = self.get_command(ctx, name)
+            if cmd is None:
+                continue
+
+            group_name = self.command_groups.get(name, "Other")
+
+            # Skip hidden groups unless --show-hidden
+            if group_name in self.hidden_groups and not self.show_hidden:
+                continue
+
+            if group_name not in groups:
+                groups[group_name] = []
+            groups[group_name].append((name, cmd))
+
+        # Format each group
+        for group_name, cmds in groups.items():
+            with formatter.section(group_name):
+                formatter.write_dl([
+                    (name, cmd.get_short_help_str(limit=45))
+                    for name, cmd in sorted(cmds, key=lambda x: x[0])
+                ])
+
+
+def _build_grouped_cli(
+    name: str | None,
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+) -> GroupedClickGroup:
+    """Build a Click CLI with grouped commands."""
+    # Validate no duplicate command names
+    seen_names: dict[str, str] = {}  # name -> group_name
+
+    @click.group(name=name, cls=GroupedClickGroup)
+    @click.option("--debug/--no-debug", default=False, help="Enable debug output")
+    @click.option("--show-hidden", is_flag=True, default=False, help="Show hidden commands")
+    @click.pass_context
+    def cli(ctx: click.Context, debug: bool, show_hidden: bool) -> None:
+        """Recompose task runner."""
+        ctx.ensure_object(dict)
+        set_debug(debug)
+        # Store show_hidden on the group for format_commands
+        ctx.command.show_hidden = show_hidden  # type: ignore[attr-defined]
+
+    # Process commands and groups
+    for item in commands:
+        if isinstance(item, CommandGroup):
+            group_name = item.name
+            if item.hidden:
+                cli.hidden_groups.add(group_name)
+
+            for cmd_wrapper in item.commands:
+                _add_command_to_cli(cli, cmd_wrapper, group_name, seen_names)
+        else:
+            # Bare task or flow (not in a group)
+            _add_command_to_cli(cli, item, "Other", seen_names)
+
+    return cli
+
+
+def _add_command_to_cli(
+    cli: GroupedClickGroup,
+    cmd_wrapper: TaskWrapper[Any, Any] | FlowWrapper,
+    group_name: str,
+    seen_names: dict[str, str],
+) -> None:
+    """Add a task or flow to the CLI, checking for duplicates."""
+    # Get the info object from the wrapper
+    # FlowWrapper has _flow_info, TaskWrapper has _task_info
+    info: TaskInfo | FlowInfo
+    is_flow: bool
+    if hasattr(cmd_wrapper, "_flow_info"):
+        info = cmd_wrapper._flow_info
+        is_flow = True
+    elif hasattr(cmd_wrapper, "_task_info"):
+        info = cmd_wrapper._task_info
+        is_flow = False
+    else:
+        raise TypeError(
+            f"Expected a task or flow, got {type(cmd_wrapper).__name__}. "
+            "Make sure to use @task or @flow decorators."
+        )
+
+    cmd_name = info.name
+
+    # Check for duplicate names
+    if cmd_name in seen_names:
+        raise ValueError(
+            f"Duplicate command name '{cmd_name}': "
+            f"found in both '{seen_names[cmd_name]}' and '{group_name}'"
+        )
+    seen_names[cmd_name] = group_name
+
+    # Build the Click command
+    if is_flow:
+        assert isinstance(info, FlowInfo)
+        cmd = _build_flow_command(info)
+    else:
+        assert isinstance(info, TaskInfo)
+        cmd = _build_command(info)
+
+    cli.add_command(cmd)
+    cli.command_groups[cmd_name] = group_name
+
+
 def main(
     name: str | None = None,
-    python_cmd: str = "python",
-    working_directory: str | None = None,
+    *,
+    config: Config | None = None,
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+    automations: Sequence[Any] | None = None,
 ) -> None:
     """
-    Build and run the CLI from registered tasks.
-
-    Call this at the end of your script to expose all registered tasks as CLI commands.
+    Build and run the CLI with explicit command registration.
 
     Args:
         name: Optional name for the CLI group. Defaults to the script name.
-        python_cmd: Command to invoke Python in generated GHA workflows.
-                   Use "uv run python" for uv-managed projects.
-        working_directory: Working directory for GHA workflows (relative to repo root).
-                          If set, workflows will cd to this directory before running.
+        config: Configuration for the CLI (python_cmd, working_directory, etc.).
+        commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+        automations: List of automations to register for GHA workflow generation.
+
+    Example
+    -------
+        config = recompose.Config(python_cmd="uv run python")
+        commands = [
+            recompose.CommandGroup("Quality", [lint, format_check]),
+            recompose.CommandGroup("Testing", [test]),
+            recompose.builtin_commands(),
+        ]
+        recompose.main(config=config, commands=commands)
 
     """
     import sys
 
+    # Use defaults if no config provided
+    if config is None:
+        config = Config()
+
     # Store config for GHA workflow generation
-    set_python_cmd(python_cmd)
-    set_working_directory(working_directory)
+    set_python_cmd(config.python_cmd)
+    set_working_directory(config.working_directory)
 
     # Detect if we're running as a module (python -m) or as a script
-    # When running as a module, __spec__ is set in the calling module
     caller_frame = sys._getframe(1)
     caller_spec = caller_frame.f_globals.get("__spec__")
 
     if caller_spec is not None and caller_spec.name:
-        # Running as a module - store module name for -m invocation
         set_entry_point("module", caller_spec.name)
     else:
-        # Running as a script - store the script path
         set_entry_point("script", sys.argv[0])
 
-    @click.group(name=name)
-    @click.option("--debug/--no-debug", default=False, help="Enable debug output")
-    @click.pass_context
-    def cli(ctx: click.Context, debug: bool) -> None:
-        """Recompose task runner."""
-        ctx.ensure_object(dict)
-        set_debug(debug)
-
-    # Add a command for each registered task
-    registry = get_registry()
-    for _task_key, task_info in registry.items():
-        cmd = _build_command(task_info)
-        cli.add_command(cmd)
-
-    # Add a command for each registered flow
-    flow_registry = get_flow_registry()
-    for _flow_key, flow_info in flow_registry.items():
-        cmd = _build_flow_command(flow_info)
-        cli.add_command(cmd)
-
-    # Run the CLI
+    # Build and run the CLI
+    cli = _build_grouped_cli(name, commands)
     cli()

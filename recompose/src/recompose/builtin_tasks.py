@@ -5,14 +5,19 @@ These tasks are always available and can be used in flows/automations
 just like any user-defined task.
 """
 
+from __future__ import annotations
+
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
 from .gha import validate_workflow
 from .result import Err, Ok, Result
 from .task import task
+
+if TYPE_CHECKING:
+    from .command_group import CommandGroup
 
 
 def _find_git_root() -> Path | None:
@@ -469,3 +474,28 @@ def _print_automation_info(info: dict[str, Any]) -> None:
                 out(f"  {d['flow']}({d['params']})")
             else:
                 out(f"  {d['flow']}")
+
+
+def builtin_commands() -> CommandGroup:
+    """
+    Returns a CommandGroup containing all built-in recompose commands.
+
+    Built-in commands:
+        - generate_gha: Generate GitHub Actions workflow YAML
+        - inspect: Inspect tasks, flows, or automations
+
+    Example:
+        commands = [
+            recompose.CommandGroup("Quality", [lint, test]),
+            recompose.builtin_commands(),  # Adds generate_gha, inspect
+        ]
+        recompose.main(commands=commands)
+
+    Returns
+    -------
+        CommandGroup with built-in commands under "Built-in" heading.
+
+    """
+    from .command_group import CommandGroup
+
+    return CommandGroup("Built-in", [generate_gha, inspect])

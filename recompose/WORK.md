@@ -1,24 +1,43 @@
 # NOW
 
-**Status:** All major planned features are complete! Recompose is now a fully-functional task execution framework with:
-- ✅ Tasks, flows, and automations
-- ✅ CLI generation with type-safe parameters
-- ✅ GitHub Actions workflow generation
-- ✅ Remote workflow triggering and status checking
-- ✅ Conditional execution with `run_if()`
-- ✅ Tree-based output formatting
-- ✅ Real CI integration (working on GitHub Actions)
+**P11_explicit_registration** - IN PROGRESS
 
-**Next Steps:**
-Need to identify what comes next. Possibilities:
-1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks to recompose
-2. **Performance optimization** - Profile and optimize task execution
-3. **Documentation** - Comprehensive user guide and API reference
-4. **Deferred features** - Pick up items from DEFERRED section if needed
+Moving from auto-registration to explicit, organized command registration.
+
+**Target API:**
+```python
+config = recompose.Config(python_cmd="uv run python", working_directory="recompose")
+
+commands = [
+    recompose.CommandGroup("Python", [lint, format, test]),
+    recompose.CommandGroup("Rust", [...]),
+    recompose.builtin_commands(),
+    recompose.CommandGroup("Helpers", [...], hidden=True),
+]
+
+recompose.main(config=config, commands=commands, automations=[...])
+```
+
+**Why explicit:**
+- Better organization for large projects (rerun is huge)
+- Control over CLI visibility (some tasks internal-only)
+- Command groups for organized help output
+- Flat namespace but visual grouping
+- Clear what's exposed vs internal
+
+**Implementation phases:**
+- P11a: Config class + restructured main()
+- P11b: CommandGroup + builtin_commands()
+- P11c: Migration + validation
+
+See: `proj/P11_explicit_registration_TODO.md`
 
 # UPCOMING
 
-*Empty - awaiting next priority*
+After P11 completes, next priorities:
+1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
+2. **Documentation** - User guide and API reference
+3. **Performance optimization** - Profile task execution if needed
 
 # DEFERRED
 

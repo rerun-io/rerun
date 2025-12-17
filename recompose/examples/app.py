@@ -18,8 +18,8 @@ Inspect flows:
 
 import recompose
 
-# Import tasks and flows - registers them with recompose
-from .flows import ci, wheel_test
+from .flows.ci import ci
+from .flows.wheel_test import wheel_test
 from .tasks import (
     build_wheel,
     create_test_venv,
@@ -32,20 +32,33 @@ from .tasks import (
     test_installed,
 )
 
-# Suppress unused import warnings - these are used for registration
-_ = (
-    ci,
-    wheel_test,
-    build_wheel,
-    create_test_venv,
-    format_check,
-    format_code,
-    install_wheel,
-    lint,
-    smoke_test,
-    test,
-    test_installed,
-)
-
 if __name__ == "__main__":
-    recompose.main(python_cmd="uv run python", working_directory="recompose")
+    config = recompose.Config(
+        python_cmd="uv run python",
+        working_directory="recompose",
+    )
+
+    commands = [
+        recompose.CommandGroup("Quality", [
+            lint,
+            format_check,
+            format_code,
+        ]),
+        recompose.CommandGroup("Testing", [
+            test,
+        ]),
+        recompose.CommandGroup("Build", [
+            build_wheel,
+            create_test_venv,
+            install_wheel,
+            smoke_test,
+            test_installed,
+        ]),
+        recompose.CommandGroup("Flows", [
+            ci,
+            wheel_test,
+        ]),
+        recompose.builtin_commands(),
+    ]
+
+    recompose.main(config=config, commands=commands)
