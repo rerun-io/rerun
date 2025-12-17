@@ -412,3 +412,648 @@ fn compute_range_overlap(
         },
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arrow::datatypes::{Field, Schema};
+    use datafusion::logical_expr::expr::InList;
+    use datafusion::logical_expr::{col, lit};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn make_schema_with_index(index_name: &str) -> SchemaRef {
+        let mut metadata = HashMap::new();
+        metadata.insert(RERUN_KIND.to_owned(), "index".to_owned());
+
+        Arc::new(Schema::new(vec![
+            Field::new(index_name, arrow::datatypes::DataType::Int64, false)
+                .with_metadata(metadata),
+            Field::new("rerun_segment_id", arrow::datatypes::DataType::Utf8, false),
+        ]))
+    }
+
+    fn make_empty_query() -> QueryDatasetRequest {
+        QueryDatasetRequest::default()
+    }
+
+    fn make_query_with_segment(segment_id: &str) -> QueryDatasetRequest {
+        QueryDatasetRequest {
+            segment_ids: vec![segment_id.into()],
+            ..Default::default()
+        }
+    }
+
+    // ==================== Segment ID filter tests ====================
+
+    #[test]
+    fn test_segment_id_eq_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("rerun_segment_id").eq(lit("segment_a"));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        assert_eq!(queries[0].segment_ids.len(), 1);
+        assert_eq!(queries[0].segment_ids[0].to_string(), "segment_a");
+    }
+
+    #[test]
+    fn test_segment_id_gt_not_supported() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        // Greater than on segment_id is not supported
+        let expr = col("rerun_segment_id").gt(lit("segment_a"));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_segment_id_or_creates_multiple_queries() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("rerun_segment_id")
+            .eq(lit("segment_a"))
+            .or(col("rerun_segment_id").eq(lit("segment_b")));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 2);
+
+        // Each query should have exactly one segment ID
+        for query in &queries {
+            assert_eq!(
+                query.segment_ids.len(),
+                1,
+                "Each query should have exactly one segment ID"
+            );
+        }
+
+        // Collect all segment IDs
+        let segment_ids: Vec<_> = queries
+            .iter()
+            .map(|q| q.segment_ids[0].to_string())
+            .collect();
+
+        // Verify exactly the expected segment IDs are present (no duplicates, no extras)
+        assert_eq!(segment_ids.len(), 2);
+        assert!(segment_ids.contains(&"segment_a".to_string()));
+        assert!(segment_ids.contains(&"segment_b".to_string()));
+
+        // Verify no time queries were added
+        for query in &queries {
+            assert!(
+                query.query.is_none(),
+                "No time query should be present for segment-only filter"
+            );
+        }
+    }
+
+    // ==================== Time index filter tests ====================
+
+    #[test]
+    fn test_time_index_eq_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("frame_nr").eq(lit(100i64));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.latest_at.is_some());
+        assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 100);
+        assert!(q.range.is_none());
+    }
+
+    #[test]
+    fn test_time_index_gt_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("frame_nr").gt(lit(100i64));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        assert_eq!(range.index_range.min.as_i64(), 100);
+        assert_eq!(range.index_range.max, TimeInt::MAX);
+    }
+
+    #[test]
+    fn test_time_index_lt_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("frame_nr").lt(lit(100i64));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        assert_eq!(range.index_range.min, TimeInt::MIN);
+        assert_eq!(range.index_range.max.as_i64(), 100);
+    }
+
+    #[test]
+    fn test_time_index_range_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        // frame_nr >= 50 AND frame_nr <= 150
+        let expr = col("frame_nr")
+            .gt_eq(lit(50i64))
+            .and(col("frame_nr").lt_eq(lit(150i64)));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        assert_eq!(range.index_range.min.as_i64(), 50);
+        assert_eq!(range.index_range.max.as_i64(), 150);
+    }
+
+    #[test]
+    fn test_reversed_comparison_order() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        // 100 < frame_nr should be rearranged to frame_nr > 100
+        let expr = lit(100i64).lt(col("frame_nr"));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        // lt becomes gt when reversed, so min should be 100
+        assert_eq!(range.index_range.min.as_i64(), 100);
+    }
+
+    // ==================== Combined filter tests ====================
+
+    #[test]
+    fn test_segment_and_time_filter() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("rerun_segment_id")
+            .eq(lit("segment_a"))
+            .and(col("frame_nr").gt(lit(100i64)));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        assert_eq!(queries[0].segment_ids[0].to_string(), "segment_a");
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        assert_eq!(q.range.as_ref().unwrap().index_range.min.as_i64(), 100);
+    }
+
+    #[test]
+    fn test_or_with_different_segments_and_times() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        // (segment_a AND frame_nr > 100) OR (segment_b AND frame_nr < 50)
+        let expr = col("rerun_segment_id")
+            .eq(lit("segment_a"))
+            .and(col("frame_nr").gt(lit(100i64)))
+            .or(col("rerun_segment_id")
+                .eq(lit("segment_b"))
+                .and(col("frame_nr").lt(lit(50i64))));
+
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 2, "Should produce exactly 2 queries for OR");
+
+        // Each query should have exactly one segment ID
+        for query in &queries {
+            assert_eq!(
+                query.segment_ids.len(),
+                1,
+                "Each query should have exactly one segment ID"
+            );
+        }
+
+        // Collect segment IDs and verify no duplicates/extras
+        let segment_ids: Vec<_> = queries
+            .iter()
+            .map(|q| q.segment_ids[0].to_string())
+            .collect();
+        assert_eq!(segment_ids.len(), 2);
+        assert!(segment_ids.contains(&"segment_a".to_string()));
+        assert!(segment_ids.contains(&"segment_b".to_string()));
+
+        // Find each query by its segment ID
+        let query_a = queries
+            .iter()
+            .find(|q| q.segment_ids[0].to_string() == "segment_a")
+            .expect("segment_a query should exist");
+        let query_b = queries
+            .iter()
+            .find(|q| q.segment_ids[0].to_string() == "segment_b")
+            .expect("segment_b query should exist");
+
+        // Verify segment_a query: frame_nr > 100 (range from 100 to MAX)
+        let q_a = query_a.query.as_ref().expect("segment_a should have a time query");
+        let range_a = q_a.range.as_ref().expect("segment_a should have a range");
+        assert_eq!(range_a.index, "frame_nr");
+        assert_eq!(range_a.index_range.min.as_i64(), 100);
+        assert_eq!(range_a.index_range.max, TimeInt::MAX);
+
+        // Verify segment_b query: frame_nr < 50 (range from MIN to 50)
+        let q_b = query_b.query.as_ref().expect("segment_b should have a time query");
+        let range_b = q_b.range.as_ref().expect("segment_b should have a range");
+        assert_eq!(range_b.index, "frame_nr");
+        assert_eq!(range_b.index_range.min, TimeInt::MIN);
+        assert_eq!(range_b.index_range.max.as_i64(), 50);
+    }
+
+    // ==================== Between expression tests ====================
+
+    #[test]
+    fn test_between_expression() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = Expr::Between(datafusion::logical_expr::Between {
+            expr: Box::new(col("frame_nr")),
+            negated: false,
+            low: Box::new(lit(50i64)),
+            high: Box::new(lit(150i64)),
+        });
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        assert_eq!(range.index_range.min.as_i64(), 50);
+        assert_eq!(range.index_range.max.as_i64(), 150);
+    }
+
+    // ==================== InList expression tests ====================
+
+    #[test]
+    fn test_in_list_segment_ids() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("rerun_segment_id")),
+            list: vec![lit("segment_a"), lit("segment_b"), lit("segment_c")],
+            negated: false,
+        });
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        // InList is converted to OR of equality checks
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 3, "Should produce 3 queries for IN LIST with 3 items");
+
+        // Each query should have exactly one segment ID
+        for query in &queries {
+            assert_eq!(query.segment_ids.len(), 1);
+        }
+
+        // Verify all segment IDs are present
+        let segment_ids: Vec<_> = queries
+            .iter()
+            .map(|q| q.segment_ids[0].to_string())
+            .collect();
+        assert!(segment_ids.contains(&"segment_a".to_string()));
+        assert!(segment_ids.contains(&"segment_b".to_string()));
+        assert!(segment_ids.contains(&"segment_c".to_string()));
+    }
+
+    #[test]
+    fn test_in_list_time_values() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("frame_nr")),
+            list: vec![lit(100i64), lit(200i64)],
+            negated: false,
+        });
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        // InList on time values produces OR of equality checks
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 2, "Should produce 2 queries for IN LIST with 2 items");
+
+        // Each query should have a latest_at time (equality on time = latest_at)
+        let times: Vec<_> = queries
+            .iter()
+            .map(|q| {
+                q.query
+                    .as_ref()
+                    .unwrap()
+                    .latest_at
+                    .as_ref()
+                    .unwrap()
+                    .at
+                    .as_i64()
+            })
+            .collect();
+        assert!(times.contains(&100));
+        assert!(times.contains(&200));
+    }
+
+    #[test]
+    fn test_in_list_empty() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("rerun_segment_id")),
+            list: vec![],
+            negated: false,
+        });
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        // Empty list cannot be pushed down
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_in_list_single_item() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("rerun_segment_id")),
+            list: vec![lit("only_segment")],
+            negated: false,
+        });
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        assert_eq!(queries[0].segment_ids.len(), 1);
+        assert_eq!(queries[0].segment_ids[0].to_string(), "only_segment");
+    }
+
+    // ==================== Unsupported filter tests ====================
+
+    #[test]
+    fn test_unknown_column_not_supported() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("unknown_column").eq(lit(100i64));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_non_index_column_not_supported() {
+        // Schema without the index metadata
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "some_column",
+            arrow::datatypes::DataType::Int64,
+            false,
+        )]));
+        let query = make_empty_query();
+
+        let expr = col("some_column").eq(lit(100i64));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_none());
+    }
+
+    // ==================== Error case tests ====================
+
+    #[test]
+    fn test_conflicting_segment_ids_error() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_query_with_segment("segment_a");
+
+        // Try to AND with a different segment
+        let expr = col("rerun_segment_id").eq(lit("segment_b"));
+        let result = apply_filter_expr_to_queries(vec![query.clone()], &expr, &schema).unwrap();
+
+        // First apply creates query with segment_b
+        assert!(result.is_some());
+        let queries = result.unwrap();
+
+        // Now try to merge with conflicting segment
+        let merge_result = merge_queries_and(&query, &queries[0]);
+        assert!(merge_result.is_err());
+    }
+
+    #[test]
+    fn test_non_overlapping_time_ranges_error() {
+        let left = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(0),
+                max: TimeInt::new_temporal(100),
+            },
+        };
+        let right = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(200),
+                max: TimeInt::new_temporal(300),
+            },
+        };
+
+        let result = compute_range_overlap(&left, &right);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_different_index_names_error() {
+        let left = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(0),
+                max: TimeInt::new_temporal(100),
+            },
+        };
+        let right = QueryRange {
+            index: "log_time".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(50),
+                max: TimeInt::new_temporal(150),
+            },
+        };
+
+        let result = compute_range_overlap(&left, &right);
+        assert!(result.is_err());
+    }
+
+    // ==================== Scalar type conversion tests ====================
+
+    #[test]
+    fn test_timestamp_nanosecond_conversion() {
+        let schema = make_schema_with_index("log_time");
+        let query = make_empty_query();
+
+        let expr = col("log_time").eq(Expr::Literal(
+            ScalarValue::TimestampNanosecond(Some(1_000_000_000), None),
+            None,
+        ));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        let q = queries[0].query.as_ref().unwrap();
+        assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 1_000_000_000);
+    }
+
+    #[test]
+    fn test_timestamp_millisecond_conversion() {
+        let schema = make_schema_with_index("log_time");
+        let query = make_empty_query();
+
+        let expr = col("log_time").eq(Expr::Literal(
+            ScalarValue::TimestampMillisecond(Some(1000), None),
+            None,
+        ));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        let q = queries[0].query.as_ref().unwrap();
+        // 1000 ms = 1_000_000_000 ns
+        assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 1_000_000_000);
+    }
+
+    #[test]
+    fn test_timestamp_second_conversion() {
+        let schema = make_schema_with_index("log_time");
+        let query = make_empty_query();
+
+        let expr = col("log_time").eq(Expr::Literal(
+            ScalarValue::TimestampSecond(Some(1), None),
+            None,
+        ));
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        let q = queries[0].query.as_ref().unwrap();
+        // 1 s = 1_000_000_000 ns
+        assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 1_000_000_000);
+    }
+
+    // ==================== filter_expr_is_supported tests ====================
+
+    #[test]
+    fn test_filter_expr_is_supported_returns_inexact() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("frame_nr").eq(lit(100i64));
+        let result = filter_expr_is_supported(&expr, &query, &schema).unwrap();
+
+        assert_eq!(result, TableProviderFilterPushDown::Inexact);
+    }
+
+    #[test]
+    fn test_filter_expr_is_supported_returns_unsupported() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("unknown_column").eq(lit(100i64));
+        let result = filter_expr_is_supported(&expr, &query, &schema).unwrap();
+
+        assert_eq!(result, TableProviderFilterPushDown::Unsupported);
+    }
+
+    // ==================== Alias expression tests ====================
+
+    #[test]
+    fn test_aliased_expression() {
+        let schema = make_schema_with_index("frame_nr");
+        let query = make_empty_query();
+
+        let expr = col("frame_nr").eq(lit(100i64)).alias("my_filter");
+        let result = apply_filter_expr_to_queries(vec![query], &expr, &schema).unwrap();
+
+        assert!(result.is_some());
+        let queries = result.unwrap();
+        assert_eq!(queries.len(), 1);
+        let q = queries[0].query.as_ref().unwrap();
+        assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 100);
+    }
+
+    // ==================== Range overlap tests ====================
+
+    #[test]
+    fn test_compute_range_overlap_success() {
+        let left = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(0),
+                max: TimeInt::new_temporal(100),
+            },
+        };
+        let right = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(50),
+                max: TimeInt::new_temporal(150),
+            },
+        };
+
+        let result = compute_range_overlap(&left, &right).unwrap();
+        assert_eq!(result.index, "frame_nr");
+        assert_eq!(result.index_range.min.as_i64(), 50);
+        assert_eq!(result.index_range.max.as_i64(), 100);
+    }
+
+    #[test]
+    fn test_compute_range_overlap_touching_boundaries() {
+        let left = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(0),
+                max: TimeInt::new_temporal(100),
+            },
+        };
+        let right = QueryRange {
+            index: "frame_nr".to_owned(),
+            index_range: AbsoluteTimeRange {
+                min: TimeInt::new_temporal(100),
+                max: TimeInt::new_temporal(200),
+            },
+        };
+
+        let result = compute_range_overlap(&left, &right).unwrap();
+        assert_eq!(result.index_range.min.as_i64(), 100);
+        assert_eq!(result.index_range.max.as_i64(), 100);
+    }
+}
