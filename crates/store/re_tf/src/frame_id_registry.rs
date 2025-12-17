@@ -1,25 +1,32 @@
 use std::collections::hash_map::Entry;
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use re_byte_size::SizeBytes;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::TransformFrameId;
 use re_sdk_types::{TransformFrameIdHash, archetypes};
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {
     frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
+    frame_ids_per_entity: IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>,
 }
 
 impl Default for FrameIdRegistry {
     fn default() -> Self {
+        let root_frame_id_hash = TransformFrameIdHash::entity_path_hierarchy_root();
         Self {
             // Always register the root frame id since empty stores always have the root present in their `EntityTree`!
             // Not registering it from the start would mean that when a new store iterates over all its entities,
             // it would find that the root-derived frame id is missing!
             frame_id_lookup_table: std::iter::once((
-                TransformFrameIdHash::entity_path_hierarchy_root(),
+                root_frame_id_hash,
                 TransformFrameId::from_entity_path(&EntityPath::root()),
+            ))
+            .collect(),
+            frame_ids_per_entity: std::iter::once((
+                EntityPath::root().hash(),
+                std::iter::once(root_frame_id_hash).collect(),
             ))
             .collect(),
         }
@@ -30,9 +37,11 @@ impl SizeBytes for FrameIdRegistry {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             frame_id_lookup_table,
+            frame_ids_per_entity,
         } = self;
 
-        frame_id_lookup_table.total_size_bytes()
+        // TODO:
+        frame_id_lookup_table.total_size_bytes() + 0
     }
 }
 

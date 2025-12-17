@@ -10,6 +10,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
+use smallvec::SmallVec;
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::contexts::TransformTreeContext;
@@ -69,44 +70,60 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let Some(transform_info) = transform_info_for_entity_or_report_error(
+            let mut transforms_to_draw: SmallVec<[(_, _); 1]> = transforms
+                .all_reachable_frames()
+                .map(|(frame_id_hash, transform)| {
+                    (*frame_id_hash, transform.target_from_source.as_affine3a())
+                })
+                .collect();
+
+            if let Some(transform_info) = transform_info_for_entity_or_report_error(
                 transforms,
                 &data_result.entity_path,
                 &mut output,
-            ) else {
-                continue;
-            };
-
-            // Determine which transforms to draw axes at.
-            // For pinhole cameras, we draw at the pinhole location only.
-            // For normal entities, we iterate over all instance poses.
-            let transforms_to_draw: smallvec::SmallVec<[glam::Affine3A; 1]> =
-                if let Some(pinhole_tree_root_info) =
-                    transforms.pinhole_tree_root_info(transform_info.tree_root())
+            ) {
+                // Determine which transforms to draw axes at.
+                // For pinhole cameras, we draw at the pinhole location only.
+                // For normal entities, we iterate over all instance poses.
                 {
-                    if transform_info.tree_root()
-                        == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+                    let frame_id_hash =
+                        transforms.transform_frame_id_for(data_result.entity_path.hash());
+
+                    if let Some(pinhole_tree_root_info) =
+                        transforms.pinhole_tree_root_info(transform_info.tree_root())
                     {
-                        // We're _at_ that pinhole.
-                        // Don't apply the from-2D transform, stick with the last known 3D.
-                        smallvec::smallvec![
-                            pinhole_tree_root_info
-                                .parent_root_from_pinhole_root
-                                .as_affine3a()
-                        ]
+                        if transform_info.tree_root()
+                            == re_tf::TransformFrameIdHash::from_entity_path(
+                                &data_result.entity_path,
+                            )
+                        {
+                            // We're _at_ that pinhole.
+                            // Don't apply the from-2D transform, stick with the last known 3D.
+                            transforms_to_draw.push((
+                                frame_id_hash,
+                                pinhole_tree_root_info
+                                    .parent_root_from_pinhole_root
+                                    .as_affine3a(),
+                            ));
+                        } else {
+                            // We're inside a 2D space. But this is a 3D transform.
+                            // Something is wrong here and this is not the right place to report it.
+                            // Better just don't draw the axis!
+                        }
                     } else {
-                        // We're inside a 2D space. But this is a 3D transform.
-                        // Something is wrong here and this is not the right place to report it.
-                        // Better just don't draw the axis!
-                        continue;
+                        for t in transform_info.target_from_instances() {
+                            transforms_to_draw.push((frame_id_hash, t.as_affine3a()));
+                        }
                     }
-                } else {
-                    transform_info
-                        .target_from_instances()
-                        .iter()
-                        .map(|t| t.as_affine3a())
-                        .collect()
                 };
+            }
+
+            if !transforms_to_draw.is_empty() {
+                // TODO: For now this is just a crude approximation on when to report errors.
+                // If we have frames to draw we don't want to render errors. We should make this more
+                // fine granular.
+                output = Default::default();
+            }
 
             let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;
             let show_frame_identifier = TransformAxes3D::descriptor_show_frame().component;
@@ -136,40 +153,36 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
                 .into();
 
-            if show_frame {
-                // Add label at the center of each transform instance if `show_frame` is enabled.
-                let frame_id_hash =
-                    transforms.transform_frame_id_for(data_result.entity_path.hash());
-
-                if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
-                    self.0
-                        .ui_labels
-                        .extend(transforms_to_draw.iter().map(|transform| UiLabel {
+            // Draw axes for each instance
+            for (instance_index, (label_id_hash, world_from_obj)) in
+                transforms_to_draw.iter().enumerate()
+            {
+                if show_frame {
+                    if let Some(frame_id) = transforms.lookup_frame_id(*label_id_hash) {
+                        self.0.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
                             target: UiLabelTarget::Position3D(
-                                transform.transform_point3(glam::Vec3::ZERO),
+                                world_from_obj.transform_point3(glam::Vec3::ZERO),
                             ),
                             labeled_instance: InstancePathHash::entity_all(
                                 &data_result.entity_path,
                             ),
-                        }));
-                } else {
-                    // It should not be possible to hit this path and frame id hashes are not something that
-                    // we should ever expose to our users, so let's add a debug assert for good measure.
-                    debug_assert!(
-                        false,
-                        "[DEBUG ASSERT] unable to resolve frame id hash {frame_id_hash:?}"
-                    );
-                    output.report_error_for(
-                        data_result.entity_path.clone(),
-                        format!("Could not resolve frame id hash {frame_id_hash:?}"),
-                    );
+                        });
+                    } else {
+                        // It should not be possible to hit this path and frame id hashes are not something that
+                        // we should ever expose to our users, so let's add a debug assert for good measure.
+                        debug_assert!(
+                            false,
+                            "[DEBUG ASSERT] unable to resolve frame id hash {label_id_hash:?}"
+                        );
+                        output.report_error_for(
+                            data_result.entity_path.clone(),
+                            format!("Could not resolve frame id hash {label_id_hash:?}"),
+                        );
+                    }
                 }
-            }
 
-            // Draw axes for each instance
-            for (instance_index, world_from_obj) in transforms_to_draw.iter().enumerate() {
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
                 self.0.add_bounding_box(
                     data_result.entity_path.hash(),
