@@ -22,14 +22,10 @@ from .flows.ci import ci
 from .flows.wheel_test import wheel_test
 from .tasks import (
     build_wheel,
-    create_test_venv,
     format_check,
     format_code,
-    install_wheel,
     lint,
-    smoke_test,
     test,
-    test_installed,
 )
 
 if __name__ == "__main__":
@@ -57,10 +53,6 @@ if __name__ == "__main__":
             "Build",
             [
                 build_wheel,
-                create_test_venv,
-                install_wheel,
-                smoke_test,
-                test_installed,
             ],
         ),
         recompose.CommandGroup(
