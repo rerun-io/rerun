@@ -48,7 +48,7 @@ jsonwebtoken.workspace = true
 parking_lot.workspace = true
 saturating_cast.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["time"] }
 tonic.workspace = true
 tower.workspace = true
 
