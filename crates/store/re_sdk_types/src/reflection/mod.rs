@@ -37,7 +37,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
 
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
-    let array = [
+    let array = vec![
         (
             <AbsoluteTimeRange as Component>::name(),
             ComponentReflection {
