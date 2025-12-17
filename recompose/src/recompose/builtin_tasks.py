@@ -360,22 +360,77 @@ def _print_task_tree(plan: Any) -> None:
         out("  (empty)")
         return
 
-    for i, node in enumerate(plan.nodes):
-        is_last = i == len(plan.nodes) - 1
+    # Group conditional tasks by their condition_check_step
+    conditional_tasks: dict[str, list[Any]] = {}
+    for node in plan.nodes:
+        if node.condition_check_step:
+            conditional_tasks.setdefault(node.condition_check_step, []).append(node)
+
+    # Track which nodes we've printed (to skip conditional tasks printed under run_if)
+    printed: set[str] = set()
+
+    # Get top-level nodes (not gated by a condition)
+    top_level = [n for n in plan.nodes if not n.condition_check_step]
+
+    for i, node in enumerate(top_level):
+        is_last = i == len(top_level) - 1
         connector = "└─" if is_last else "├─"
+        cont_prefix = "   " if is_last else "│  "
 
-        # Build the label with optional condition
-        label = node.name
-        if node.condition is not None:
-            label = f"{node.name} [if: {node.condition}]"
+        # Check if this is a condition-check node (run_if_N)
+        is_condition_check = getattr(node.task_info, "is_condition_check", False)
 
-        out(f"  {connector} {label}")
+        if is_condition_check and node.step_name:
+            # Print the run_if node with its condition
+            condition_data = node.kwargs.get("condition_data", {})
+            condition_str = _format_condition(condition_data)
+            out(f"  {connector} {node.step_name} [if: {condition_str}]")
+            printed.add(node.name)
 
-        # Show dependencies if any
-        if node.dependencies:
-            dep_names = [d.name for d in node.dependencies]
-            dep_connector = "   " if is_last else "│  "
-            out(f"  {dep_connector}  depends: {', '.join(dep_names)}")
+            # Print nested conditional tasks
+            nested = conditional_tasks.get(node.step_name, [])
+            for j, nested_node in enumerate(nested):
+                nested_is_last = j == len(nested) - 1
+                nested_connector = "└─" if nested_is_last else "├─"
+                out(f"  {cont_prefix}{nested_connector} {nested_node.name}")
+                printed.add(nested_node.name)
+
+                # Show dependencies for nested task
+                if nested_node.dependencies:
+                    dep_names = [d.name for d in nested_node.dependencies]
+                    nested_cont = "   " if nested_is_last else "│  "
+                    out(f"  {cont_prefix}{nested_cont}  depends: {', '.join(dep_names)}")
+        else:
+            # Regular task
+            out(f"  {connector} {node.name}")
+            printed.add(node.name)
+
+            # Show dependencies if any
+            if node.dependencies:
+                dep_names = [d.name for d in node.dependencies]
+                out(f"  {cont_prefix}  depends: {', '.join(dep_names)}")
+
+
+def _format_condition(condition_data: dict[str, Any]) -> str:
+    """Format a serialized condition expression for display."""
+    if not condition_data:
+        return "?"
+
+    expr_type = condition_data.get("type")
+    if expr_type == "input":
+        return str(condition_data.get("name", "?"))
+    elif expr_type == "literal":
+        return repr(condition_data.get("value"))
+    elif expr_type == "binary":
+        left = _format_condition(condition_data.get("left", {}))
+        op = condition_data.get("op", "?")
+        right = _format_condition(condition_data.get("right", {}))
+        return f"{left} {op} {right}"
+    elif expr_type == "unary":
+        op = condition_data.get("op", "?")
+        operand = _format_condition(condition_data.get("operand", {}))
+        return f"{op} {operand}"
+    return "?"
 
 
 def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
