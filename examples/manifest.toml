@@ -58,7 +58,6 @@ Examples using machine learning and generative AI methods such as diffusion and 
 examples = [
   # display order, most interesting first
   "controlnet",
-  "depth_guided_stable_diffusion",
   "vista",
   "mcc",
   "lerobot",

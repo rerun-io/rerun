@@ -69,6 +69,17 @@ class MediaTypeExt:
     """
 
     # --------------------------
+    # Compressed Depth Data:
+
+    RVL: MediaType = None  # type: ignore[assignment]
+    """
+    RVL compressed depth: `application/rvl`.
+
+    Run length encoding and Variable Length encoding schemes (RVL) compressed depth data format.
+    <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>
+    """
+
+    # --------------------------
     # Video:
 
     MP4: MediaType = None  # type: ignore[assignment]
@@ -90,6 +101,8 @@ class MediaTypeExt:
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
         cls.STL = cls("model/stl")
+
+        cls.RVL = cls("application/rvl")
 
         cls.MP4 = cls("video/mp4")
 

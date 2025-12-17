@@ -20,6 +20,8 @@ fn setup_scene(test_context: &mut TestContext) {
     // Transform frame forest:
     // world
     //  ├─ points3d
+    //  ├─ misplaced_image
+    //  ├─ misplaced_depth_image
     //  └─ pinhole
     //     ├─ points2d
     //     └─ misplaced_boxes3d
@@ -31,6 +33,18 @@ fn setup_scene(test_context: &mut TestContext) {
                 TimePoint::STATIC,
                 &archetypes::Transform3D::new()
                     .with_child_frame("points3d")
+                    .with_parent_frame("world"),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::new()
+                    .with_child_frame("misplaced_image")
+                    .with_parent_frame("world"),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::new()
+                    .with_child_frame("misplaced_depth_image")
                     .with_parent_frame("world"),
             )
             .with_archetype_auto_row(
@@ -107,6 +121,36 @@ fn setup_scene(test_context: &mut TestContext) {
             .with_archetype_auto_row(
                 TimePoint::STATIC,
                 &archetypes::CoordinateFrame::new("misplaced_boxes3d"),
+            )
+    });
+    test_context.log_entity("misplaced_image_entity", |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Image::from_elements(
+                    &[255u8, 0, 0],
+                    [1, 1],
+                    re_sdk_types::datatypes::ColorModel::RGB,
+                ),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::CoordinateFrame::new("misplaced_image"),
+            )
+    });
+    test_context.log_entity("misplaced_depth_image_entity", |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::DepthImage::try_from(re_sdk_types::datatypes::TensorData::new(
+                    vec![1u64, 1u64],
+                    re_sdk_types::datatypes::TensorBuffer::U16(vec![1u16].into()),
+                ))
+                .expect("Failed to create depth image from tensor data"),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::CoordinateFrame::new("misplaced_depth_image"),
             )
     });
 }

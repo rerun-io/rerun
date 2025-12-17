@@ -9356,6 +9356,7 @@ dependencies = [
 name = "re_redap_client"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
  "ehttp",
  "itertools 0.14.0",
@@ -9493,6 +9494,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_rvl"
+version = "0.28.0-alpha.1+dev"
+dependencies = [
+ "byteorder",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "re_sdk"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
@@ -9563,6 +9572,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_rvl",
  "re_sorbet",
  "re_tracing",
  "re_types_core",
@@ -10376,6 +10386,7 @@ dependencies = [
  "re_query",
  "re_redap_client",
  "re_renderer",
+ "re_rvl",
  "re_sdk_types",
  "re_string_interner",
  "re_tf",

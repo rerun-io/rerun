@@ -116,6 +116,8 @@ class DepthImage(DepthImageExt, Archetype):
             For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
             and a range of up to ~65 meters (2^16 / 1000).
 
+            If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
+
             Note that the only effect on 2D views is the physical depth values shown when hovering the image.
             In 3D views on the other hand, this affects where the points of the point cloud are placed.
         colormap:
@@ -207,6 +209,8 @@ class DepthImage(DepthImageExt, Archetype):
 
             For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
             and a range of up to ~65 meters (2^16 / 1000).
+
+            If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
 
             Note that the only effect on 2D views is the physical depth values shown when hovering the image.
             In 3D views on the other hand, this affects where the points of the point cloud are placed.
@@ -323,6 +327,8 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
     # and a range of up to ~65 meters (2^16 / 1000).
+    #
+    # If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
     #
     # Note that the only effect on 2D views is the physical depth values shown when hovering the image.
     # In 3D views on the other hand, this affects where the points of the point cloud are placed.

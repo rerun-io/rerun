@@ -9,6 +9,7 @@
 # RustRover generated files
 misc.xml
 prettier.xml
+rust.xml
 # We may want to share some inspection profiles, but by default ignore
 inspectionProfiles/*xml
 

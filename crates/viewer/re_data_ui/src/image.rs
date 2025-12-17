@@ -281,7 +281,7 @@ impl ImageUi {
         ctx.store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     blob_row_id,
                     blob_component_descriptor.component,
                     blob,

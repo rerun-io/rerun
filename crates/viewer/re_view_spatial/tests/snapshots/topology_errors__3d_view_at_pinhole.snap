@@ -4,9 +4,9 @@ expression: visualizer_errors
 ---
 PerVisualizer(
     {
-        "Points3D": PerEntity(
+        "Image": PerEntity(
             {
-                /points3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
+                /misplaced_image_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
         "Ellipsoids3D": PerEntity(
@@ -19,9 +19,19 @@ PerVisualizer(
                 /misplaced_boxes3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
+        "Points3D": PerEntity(
+            {
+                /points3d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
+            },
+        ),
         "Points2D": PerEntity(
             {
                 /points2d_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
+            },
+        ),
+        "DepthImage": PerEntity(
+            {
+                /misplaced_depth_image_entity: "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera.",
             },
         ),
     },

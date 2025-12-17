@@ -16,11 +16,11 @@ workspace = true
 
 [dependencies]
 re_chunk.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_ros_msg.workspace = true
-re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_tracing.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
