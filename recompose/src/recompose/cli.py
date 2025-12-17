@@ -8,7 +8,7 @@ import time
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from typing import Any, cast, get_args, get_origin
 
 import click
 from rich.console import Console
@@ -476,7 +476,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             tree_ctx = install_tree_output()
 
             # Resolve dependencies from workspace
-            from .plan import InputPlaceholder, TaskNode as TaskNodeType
+            from .plan import InputPlaceholder
+            from .plan import TaskNode as TaskNodeType
 
             resolved_kwargs: dict[str, Any] = {}
             for kwarg_name, kwarg_value in target_node.kwargs.items():
@@ -574,10 +575,12 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             # This matches CI behavior where each step is a separate process
             from .local_executor import execute_flow_isolated
 
-            result = execute_flow_isolated(flow_info.fn, workspace=ws, **kwargs)
+            # flow_info.fn is the wrapper which satisfies FlowWrapper protocol
+            flow_wrapper = cast(FlowWrapper, flow_info.fn)
+            flow_result = execute_flow_isolated(flow_wrapper, workspace=ws, **kwargs)
 
             # Exit with appropriate code (execute_flow_isolated already printed the summary)
-            if result.failed:
+            if flow_result.failed:
                 sys.exit(1)
 
     cmd = click.Command(
