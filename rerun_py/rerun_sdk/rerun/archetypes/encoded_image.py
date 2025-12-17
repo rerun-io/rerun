@@ -32,7 +32,7 @@ class EncodedImage(EncodedImageExt, Archetype):
 
     Example
     -------
-    ### Encoded Image:
+    ### Encoded image:
     ```python
     from pathlib import Path
 

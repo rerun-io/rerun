@@ -27,7 +27,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Encoded Depth Image
+    /// ### Encoded depth image
     /// ![image](https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png)
     ///
     /// ```cpp

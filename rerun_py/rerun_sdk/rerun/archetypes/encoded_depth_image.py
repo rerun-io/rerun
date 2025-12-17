@@ -32,7 +32,7 @@ class EncodedDepthImage(Archetype):
 
     Example
     -------
-    ### Encoded Depth Image:
+    ### Encoded depth image:
     ```python
     import sys
     from pathlib import Path

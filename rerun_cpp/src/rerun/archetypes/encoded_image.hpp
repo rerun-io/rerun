@@ -26,7 +26,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Encoded Image
+    /// ### Encoded image
     /// ![image](https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png)
     ///
     /// ```cpp

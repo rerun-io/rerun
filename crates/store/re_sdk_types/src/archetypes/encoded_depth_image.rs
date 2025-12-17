@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Encoded Depth Image
+/// ### Encoded depth image
 /// ```ignore
 /// use rerun::external::anyhow;
 ///

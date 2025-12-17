@@ -35,7 +35,7 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
 
 ## Example
 
-### Encoded Depth Image
+### Encoded depth image
 
 snippet: archetypes/encoded_depth_image
 

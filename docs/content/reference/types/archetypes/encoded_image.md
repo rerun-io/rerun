@@ -32,7 +32,7 @@ For images that refer to video frames see [`archetypes.VideoFrameReference`](htt
 
 ## Example
 
-### Encoded Image
+### Encoded image
 
 snippet: archetypes/encoded_image
 
