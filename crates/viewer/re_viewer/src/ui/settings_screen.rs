@@ -1,10 +1,11 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
+use re_data_source::StreamMode;
 use re_log_types::{Timestamp, TimestampFormat};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{AppOptions, VideoOptions};
+use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
 use crate::StartupOptions;
 
@@ -45,8 +46,6 @@ fn settings_screen_ui_impl(
     startup_options: &mut StartupOptions,
     keep_open: &mut bool,
 ) {
-    // TODO(emilk): use destruction to make sure we remember to show options for everything.
-
     //
     // Title
     //
@@ -98,27 +97,61 @@ fn settings_screen_ui_impl(
         });
     });
 
+    let AppOptions {
+        experimental,
+        warn_e2e_latency: _, // not yet exposed
+        show_metrics,
+        include_rerun_examples_button_in_recordings_panel,
+        show_picking_debug_overlay: _, // not yet exposed
+        inspect_blueprint_timeline: _, // not yet exposed
+        blueprint_gc: _,               // not yet exposed
+        timestamp_format,
+        video,
+        mapbox_access_token,
+        cache_directory: _, // not yet exposed
+    } = app_options;
+
     ui.add_space(8.0);
 
     ui.re_checkbox(
-        &mut app_options.include_rerun_examples_button_in_recordings_panel,
+        include_rerun_examples_button_in_recordings_panel,
         "Show 'Rerun examples' button",
     );
 
-    ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
+    ui.re_checkbox(show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
     separator_with_some_space(ui);
     ui.strong("Timestamp format");
-    time_format_section_ui(ui, &mut app_options.timestamp_format);
+    time_format_section_ui(ui, timestamp_format);
 
     separator_with_some_space(ui);
     ui.strong("Map view");
-    map_view_section_ui(ui, &mut app_options.mapbox_access_token);
+    map_view_section_ui(ui, mapbox_access_token);
 
     separator_with_some_space(ui);
     ui.strong("Video");
-    video_section_ui(ui, &mut app_options.video);
+    video_section_ui(ui, video);
+
+    separator_with_some_space(ui);
+    ui.strong("Experimental");
+    experimental_section_ui(ui, experimental);
+}
+
+fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOptions) {
+    let ExperimentalAppOptions { stream_mode } = experimental;
+
+    let mut larger_than_ram = *stream_mode == StreamMode::OnDemand;
+    ui.re_checkbox(&mut larger_than_ram, "Larger-than-RAM streaming");
+    *stream_mode = if larger_than_ram {
+        StreamMode::OnDemand
+    } else {
+        StreamMode::FullLoad
+    };
+
+    if larger_than_ram {
+        ui.warning_label("This is an experimental feature that is not yet fully supported.");
+    }
 }
 
 fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {

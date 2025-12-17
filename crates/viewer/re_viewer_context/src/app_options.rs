@@ -27,7 +27,7 @@ pub struct AppOptions {
     /// Inspect the blueprint timeline.
     pub inspect_blueprint_timeline: bool,
 
-    /// Disable garbage collection of the blueprint.
+    /// Is garbage collection of the blueprint enabled?
     pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
