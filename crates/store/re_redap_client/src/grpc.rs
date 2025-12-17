@@ -438,27 +438,30 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let manifest_result = client
-        .get_rrd_manifest(dataset_id, segment_id.clone())
-        .await;
-    match manifest_result {
-        Ok(rrd_manifest) => {
-            if tx
-                .send(DataSourceMessage::RrdManifest(
-                    store_id.clone(),
-                    rrd_manifest.into(),
-                ))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(())); // cancelled
+    // TODO(RR-3110): load RRD manifest first
+    if false {
+        let manifest_result = client
+            .get_rrd_manifest(dataset_id, segment_id.clone())
+            .await;
+        match manifest_result {
+            Ok(rrd_manifest) => {
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.into(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ControlFlow::Break(())); // cancelled
+                }
             }
-        }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                // TODO(RR-3110): implement rrd manifest on cloud
-            } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
+            Err(err) => {
+                if err.kind == ApiErrorKind::Unimplemented {
+                    // TODO(RR-3110): implement rrd manifest on cloud
+                } else {
+                    re_log::warn!("Failed to load RRD manifest: {err}");
+                }
             }
         }
     }
