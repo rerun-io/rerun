@@ -1,6 +1,6 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
-use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown, lit};
+use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
@@ -17,7 +17,45 @@ fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
         Operator::GtEq => Operator::Lt,
         Operator::Lt => Operator::GtEq,
         Operator::LtEq => Operator::Gt,
-        _ => expr.op,
+
+        Operator::Eq
+        | Operator::NotEq
+        | Operator::Plus
+        | Operator::Minus
+        | Operator::Multiply
+        | Operator::Divide
+        | Operator::Modulo
+        | Operator::And
+        | Operator::Or
+        | Operator::IsDistinctFrom
+        | Operator::IsNotDistinctFrom
+        | Operator::RegexMatch
+        | Operator::RegexIMatch
+        | Operator::RegexNotMatch
+        | Operator::RegexNotIMatch
+        | Operator::LikeMatch
+        | Operator::ILikeMatch
+        | Operator::NotLikeMatch
+        | Operator::NotILikeMatch
+        | Operator::BitwiseAnd
+        | Operator::BitwiseOr
+        | Operator::BitwiseXor
+        | Operator::BitwiseShiftRight
+        | Operator::BitwiseShiftLeft
+        | Operator::StringConcat
+        | Operator::AtArrow
+        | Operator::ArrowAt
+        | Operator::Arrow
+        | Operator::LongArrow
+        | Operator::HashArrow
+        | Operator::HashLongArrow
+        | Operator::AtAt
+        | Operator::IntegerDivide
+        | Operator::HashMinus
+        | Operator::AtQuestion
+        | Operator::Question
+        | Operator::QuestionAnd
+        | Operator::QuestionPipe => expr.op,
     };
 
     BinaryExpr {
@@ -69,12 +107,12 @@ pub(crate) fn apply_filter_expr_to_queries(
                     let Some(left_queries) =
                         apply_filter_expr_to_queries(queries.clone(), &left, schema)?
                     else {
-                        return Ok(None);
+                        return apply_filter_expr_to_queries(queries.clone(), &right, schema);
                     };
                     let Some(right_queries) =
                         apply_filter_expr_to_queries(queries.clone(), &right, schema)?
                     else {
-                        return Ok(None);
+                        return Ok(Some(left_queries));
                     };
 
                     let final_exprs = left_queries
@@ -92,12 +130,12 @@ pub(crate) fn apply_filter_expr_to_queries(
                     let Some(mut left_queries) =
                         apply_filter_expr_to_queries(queries.clone(), &left, schema)?
                     else {
-                        return Ok(None);
+                        return Ok(Some(queries));
                     };
                     let Some(right_queries) =
                         apply_filter_expr_to_queries(queries.clone(), &right, schema)?
                     else {
-                        return Ok(None);
+                        return Ok(Some(queries));
                     };
 
                     left_queries.extend(right_queries);
@@ -156,10 +194,18 @@ pub(crate) fn apply_filter_expr_to_queries(
             apply_filter_expr_to_queries(queries, &expr, schema)?
         }
         Expr::InList(list_expr) => {
-            let expr = list_expr.list.iter().fold(lit(true), |acc, item| {
-                acc.or(list_expr.expr.as_ref().clone().eq(item.clone()))
-            });
-            apply_filter_expr_to_queries(queries, &expr, schema)?
+            let mut iter = list_expr.list.iter();
+            if let Some(first) = iter.next() {
+                let expr = iter.fold(
+                    list_expr.expr.as_ref().clone().eq(first.clone()),
+                    |acc, item| acc.or(list_expr.expr.as_ref().clone().eq(item.clone())),
+                );
+                apply_filter_expr_to_queries(queries, &expr, schema)?
+            } else {
+                return exec_err!(
+                    "Attempting to perform InList statement that would return no results due to empty list"
+                );
+            }
         }
         _ => None,
     })
@@ -680,14 +726,20 @@ mod tests {
             .expect("segment_b query should exist");
 
         // Verify segment_a query: frame_nr > 100 (range from 100 to MAX)
-        let q_a = query_a.query.as_ref().expect("segment_a should have a time query");
+        let q_a = query_a
+            .query
+            .as_ref()
+            .expect("segment_a should have a time query");
         let range_a = q_a.range.as_ref().expect("segment_a should have a range");
         assert_eq!(range_a.index, "frame_nr");
         assert_eq!(range_a.index_range.min.as_i64(), 100);
         assert_eq!(range_a.index_range.max, TimeInt::MAX);
 
         // Verify segment_b query: frame_nr < 50 (range from MIN to 50)
-        let q_b = query_b.query.as_ref().expect("segment_b should have a time query");
+        let q_b = query_b
+            .query
+            .as_ref()
+            .expect("segment_b should have a time query");
         let range_b = q_b.range.as_ref().expect("segment_b should have a range");
         assert_eq!(range_b.index, "frame_nr");
         assert_eq!(range_b.index_range.min, TimeInt::MIN);
@@ -736,7 +788,11 @@ mod tests {
         // InList is converted to OR of equality checks
         assert!(result.is_some());
         let queries = result.unwrap();
-        assert_eq!(queries.len(), 3, "Should produce 3 queries for IN LIST with 3 items");
+        assert_eq!(
+            queries.len(),
+            3,
+            "Should produce 3 queries for IN LIST with 3 items"
+        );
 
         // Each query should have exactly one segment ID
         for query in &queries {
@@ -768,7 +824,11 @@ mod tests {
         // InList on time values produces OR of equality checks
         assert!(result.is_some());
         let queries = result.unwrap();
-        assert_eq!(queries.len(), 2, "Should produce 2 queries for IN LIST with 2 items");
+        assert_eq!(
+            queries.len(),
+            2,
+            "Should produce 2 queries for IN LIST with 2 items"
+        );
 
         // Each query should have a latest_at time (equality on time = latest_at)
         let times: Vec<_> = queries
