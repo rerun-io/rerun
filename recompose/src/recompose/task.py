@@ -79,29 +79,6 @@ class TaskInfo:
         return f"{self.module}:{self.name}"
 
 
-# Global registry of all tasks
-_task_registry: dict[str, TaskInfo] = {}
-
-
-def get_registry() -> dict[str, TaskInfo]:
-    """Get the task registry."""
-    return _task_registry
-
-
-def get_task(name: str) -> TaskInfo | None:
-    """Get a task by name. Tries full name first, then short name."""
-    # Try exact match first
-    if name in _task_registry:
-        return _task_registry[name]
-
-    # Try matching by short name
-    for full_name, info in _task_registry.items():
-        if info.name == name:
-            return info
-
-    return None
-
-
 def _is_method_signature(fn: Callable[..., Any]) -> bool:
     """Check if a function signature indicates it's a method (first param is 'self')."""
     sig = inspect.signature(fn)
@@ -114,14 +91,16 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     Decorator to mark a function as a recompose task.
 
     The decorated function:
-    - Is registered in the global task registry
     - Gets automatic context management
     - Has exceptions caught and converted to Err results
     - Automatically detects if it's called inside a flow and behaves accordingly
 
+    Note: Tasks are NOT automatically registered. To expose a task as a CLI
+    command, include it in the `commands` parameter to `recompose.main()`.
+
     For methods (functions with 'self' as first parameter):
-    - The method is marked but NOT registered immediately
-    - Use @taskclass on the class to complete registration
+    - The method is marked but NOT wrapped immediately
+    - Use @taskclass on the class to complete wrapping
 
     Usage:
         @task
@@ -213,7 +192,6 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
         signature=inspect.signature(fn),
         doc=fn.__doc__,
     )
-    _task_registry[info.full_name] = info
 
     # Attach task info to wrapper for introspection
     wrapper._task_info = info  # type: ignore[attr-defined]
@@ -229,9 +207,9 @@ def taskclass(cls: type[T]) -> type[T]:
     """
     Decorator to register a class with @task-decorated methods.
 
-    This scans the class for methods decorated with @task and registers them
-    as class-based tasks. The CLI will expose them as `classname.methodname`
-    commands, combining __init__ arguments with method arguments.
+    This scans the class for methods decorated with @task and creates
+    task wrappers. The wrappers are stored on the class as `_recompose_tasks`
+    dict (mapping method name to wrapper).
 
     Example:
         @recompose.taskclass
@@ -243,11 +221,19 @@ def taskclass(cls: type[T]) -> type[T]:
             def sync(self, *, group: str | None = None) -> recompose.Result[None]:
                 ...
 
+        # Access task wrappers for explicit registration:
+        commands = [
+            recompose.CommandGroup("Venv", list(Venv._recompose_tasks.values())),
+        ]
+
         # CLI: ./app.py venv.sync --location=/tmp/venv --group=dev
 
     """
     class_name = cls.__name__.lower()
     module = cls.__module__
+
+    # Dict to store task wrappers for explicit registration
+    task_wrappers: dict[str, Any] = {}
 
     # Get __init__ parameters (excluding 'self')
     init_sig = inspect.signature(cls.__init__)
@@ -374,7 +360,11 @@ def taskclass(cls: type[T]) -> type[T]:
         # Attach task info to wrapper for introspection (needed for flow building)
         wrapper._task_info = info  # type: ignore[attr-defined]
 
-        _task_registry[info.full_name] = info
+        # Store wrapper for explicit registration
+        task_wrappers[attr_name] = wrapper
+
+    # Store wrappers on class for explicit registration
+    cls._recompose_tasks = task_wrappers  # type: ignore[attr-defined]
 
     return cls
 

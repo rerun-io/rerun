@@ -90,27 +90,6 @@ class AutomationInfo:
         return f"{self.module}:{self.name}"
 
 
-# Global registry of all automations
-_automation_registry: dict[str, AutomationInfo] = {}
-
-
-def get_automation_registry() -> dict[str, AutomationInfo]:
-    """Get the automation registry."""
-    return _automation_registry
-
-
-def get_automation(name: str) -> AutomationInfo | None:
-    """Get an automation by name."""
-    if name in _automation_registry:
-        return _automation_registry[name]
-
-    for full_name, info in _automation_registry.items():
-        if info.name == name:
-            return info
-
-    return None
-
-
 def automation(
     fn: Callable[..., None] | None = None,
     *,
@@ -170,7 +149,6 @@ def automation(
             gha_env=gha_env,
             gha_timeout_minutes=gha_timeout_minutes,
         )
-        _automation_registry[info.full_name] = info
 
         # Attach info and plan method
         wrapper._automation_info = info  # type: ignore[attr-defined]

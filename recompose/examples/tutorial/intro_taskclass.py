@@ -163,18 +163,9 @@ class FileOps:
 # =============================================================================
 
 if __name__ == "__main__":
-    # For taskclass examples, the tasks are registered in the global registry.
-    # We can retrieve them and register them explicitly.
-    from typing import Any
-
-    registry = recompose.get_registry()
-    all_tasks: list[Any] = [info.fn for info in registry.values() if "intro_taskclass" in info.module]
-
-    counter_tasks = [t for t in all_tasks if "counter" in t._task_info.name]
-    fileops_tasks = [t for t in all_tasks if "fileops" in t._task_info.name]
-
-    commands: list[recompose.CommandGroup] = [
-        recompose.CommandGroup("Counter", counter_tasks),
-        recompose.CommandGroup("FileOps", fileops_tasks),
+    # Access task wrappers via _recompose_tasks on the class
+    commands = [
+        recompose.CommandGroup("Counter", list(Counter._recompose_tasks.values())),  # type: ignore[attr-defined]
+        recompose.CommandGroup("FileOps", list(FileOps._recompose_tasks.values())),  # type: ignore[attr-defined]
     ]
     recompose.main(commands=commands)

@@ -70,8 +70,7 @@ class TestFlowsWithRequiredParams:
 
     def test_flow_with_required_param_gha_generation(self) -> None:
         """Test that GHA generation works for flows with required params."""
-        flow_info = recompose.get_flow("flow_with_required_param")
-        assert flow_info is not None
+        flow_info = flow_with_required_param._flow_info
 
         # This should work - the workflow should accept 'name' as a workflow_dispatch input
         spec = render_flow_workflow(flow_info, script_path="app.py")
@@ -90,8 +89,7 @@ class TestFlowsWithRequiredParams:
 
     def test_flow_with_mixed_params_gha_generation(self) -> None:
         """Test GHA generation for flows with both required and optional params."""
-        flow_info = recompose.get_flow("flow_with_mixed_params")
-        assert flow_info is not None
+        flow_info = flow_with_mixed_params._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -364,8 +362,7 @@ class TestParameterizedFlowYamlOutput:
 
     def test_yaml_is_valid(self) -> None:
         """Test that generated YAML for flows with required params is valid."""
-        flow_info = recompose.get_flow("flow_with_required_param")
-        assert flow_info is not None
+        flow_info = flow_with_required_param._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()
@@ -377,8 +374,7 @@ class TestParameterizedFlowYamlOutput:
 
     def test_yaml_has_correct_input_structure(self) -> None:
         """Test that the YAML has correct workflow_dispatch input structure."""
-        flow_info = recompose.get_flow("flow_with_required_param")
-        assert flow_info is not None
+        flow_info = flow_with_required_param._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()
@@ -397,8 +393,7 @@ class TestParameterizedFlowYamlOutput:
 
     def test_setup_step_passes_inputs_correctly(self) -> None:
         """Test that the setup step in YAML correctly passes workflow inputs."""
-        flow_info = recompose.get_flow("flow_with_mixed_params")
-        assert flow_info is not None
+        flow_info = flow_with_mixed_params._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()

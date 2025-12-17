@@ -281,12 +281,15 @@ def conditional_pipeline(*, run_extra: bool = False) -> None:
 
 if __name__ == "__main__":
     commands = [
-        recompose.CommandGroup("Flows", [
-            tool_check,
-            greeting_pipeline,
-            math_pipeline,
-            risky_pipeline,
-            conditional_pipeline,
-        ]),
+        recompose.CommandGroup(
+            "Flows",
+            [
+                tool_check,
+                greeting_pipeline,
+                math_pipeline,
+                risky_pipeline,
+                conditional_pipeline,
+            ],
+        ),
     ]
     recompose.main(commands=commands)

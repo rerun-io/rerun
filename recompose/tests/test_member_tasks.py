@@ -1,10 +1,10 @@
 """Tests for class-based member tasks."""
 
-from recompose import Ok, Result, get_registry, task, taskclass
+from recompose import Ok, Result, task, taskclass
 
 
-def test_taskclass_registers_method_tasks():
-    """Test that @taskclass registers @task methods."""
+def test_taskclass_creates_recompose_tasks():
+    """Test that @taskclass creates _recompose_tasks dict."""
 
     @taskclass
     class TestClass:
@@ -15,8 +15,8 @@ def test_taskclass_registers_method_tasks():
         def greet(self) -> Result[str]:
             return Ok(f"Hello, {self.name}!")
 
-    registry = get_registry()
-    assert any("testclass.greet" in key for key in registry)
+    assert hasattr(TestClass, "_recompose_tasks")
+    assert "greet" in TestClass._recompose_tasks
 
 
 def test_method_task_has_combined_signature():
@@ -31,12 +31,8 @@ def test_method_task_has_combined_signature():
         def add(self, *, value: int) -> Result[int]:
             return Ok(self.base + value)
 
-    registry = get_registry()
-    task_info = None
-    for key, info in registry.items():
-        if "calculator.add" in key:
-            task_info = info
-            break
+    wrapper = Calculator._recompose_tasks["add"]
+    task_info = wrapper._task_info
 
     assert task_info is not None
     assert task_info.is_method
@@ -61,17 +57,10 @@ def test_method_task_can_be_invoked():
         def say(self, *, name: str) -> Result[str]:
             return Ok(f"{self.prefix}, {name}!")
 
-    registry = get_registry()
-    task_info = None
-    for key, info in registry.items():
-        if "greeter.say" in key:
-            task_info = info
-            break
-
-    assert task_info is not None
+    wrapper = Greeter._recompose_tasks["say"]
 
     # Call the wrapper with combined args
-    result = task_info.fn(prefix="Hi", name="World")
+    result = wrapper(prefix="Hi", name="World")
     assert result.ok
     assert result.value() == "Hi, World!"
 
@@ -89,22 +78,15 @@ def test_method_task_with_defaults():
             self.value += by
             return Ok(self.value)
 
-    registry = get_registry()
-    task_info = None
-    for key, info in registry.items():
-        if "counter.increment" in key:
-            task_info = info
-            break
-
-    assert task_info is not None
+    wrapper = Counter._recompose_tasks["increment"]
 
     # Call with all defaults
-    result = task_info.fn()
+    result = wrapper()
     assert result.ok
     assert result.value() == 1
 
     # Call with custom values
-    result = task_info.fn(start=10, by=5)
+    result = wrapper(start=10, by=5)
     assert result.ok
     assert result.value() == 15
 
@@ -121,16 +103,9 @@ def test_method_task_exception_handling():
         def fail(self) -> Result[None]:
             raise ValueError("Intentional failure")
 
-    registry = get_registry()
-    task_info = None
-    for key, info in registry.items():
-        if "failer.fail" in key:
-            task_info = info
-            break
+    wrapper = Failer._recompose_tasks["fail"]
 
-    assert task_info is not None
-
-    result = task_info.fn()
+    result = wrapper()
     assert result.failed
     assert "ValueError" in result.error
     assert "Intentional failure" in result.error
@@ -152,26 +127,19 @@ def test_multiple_method_tasks():
         def second(self, *, extra: str = "") -> Result[str]:
             return Ok(f"second: {self.name} {extra}")
 
-    registry = get_registry()
+    assert "first" in MultiTask._recompose_tasks
+    assert "second" in MultiTask._recompose_tasks
 
-    first_info = None
-    second_info = None
-    for key, info in registry.items():
-        if "multitask.first" in key:
-            first_info = info
-        if "multitask.second" in key:
-            second_info = info
-
-    assert first_info is not None
-    assert second_info is not None
+    first_wrapper = MultiTask._recompose_tasks["first"]
+    second_wrapper = MultiTask._recompose_tasks["second"]
 
     # Call first
-    result = first_info.fn(name="test")
+    result = first_wrapper(name="test")
     assert result.ok
     assert result.value() == "first: test"
 
     # Call second
-    result = second_info.fn(name="test", extra="!")
+    result = second_wrapper(name="test", extra="!")
     assert result.ok
     assert result.value() == "second: test !"
 
@@ -201,12 +169,8 @@ def test_method_task_preserves_docstring():
             """This is the docstring."""
             return Ok(None)
 
-    registry = get_registry()
-    task_info = None
-    for key, info in registry.items():
-        if "documented.documented_method" in key:
-            task_info = info
-            break
+    wrapper = Documented._recompose_tasks["documented_method"]
+    task_info = wrapper._task_info
 
     assert task_info is not None
     assert task_info.doc == "This is the docstring."

@@ -1,14 +1,12 @@
 """Tests for automation decorator and workflow generation."""
 
+from typing import Any
+
 import pytest
 from ruamel.yaml import YAML
 
 import recompose
-from recompose.automation import (
-    AutomationPlan,
-    get_automation,
-    get_automation_registry,
-)
+from recompose.automation import AutomationInfo, AutomationPlan
 from recompose.gha import render_automation_workflow
 
 
@@ -33,7 +31,7 @@ def run_tests_flow() -> None:
 
 # Test automations
 @recompose.automation
-def simple_automation():
+def simple_automation() -> None:
     """A simple automation with no config."""
     build_flow.dispatch()
 
@@ -42,7 +40,7 @@ def simple_automation():
     gha_on={"schedule": [{"cron": "0 0 * * *"}]},
     gha_runs_on="ubuntu-latest",
 )
-def scheduled_automation():
+def scheduled_automation() -> None:
     """An automation with schedule trigger."""
     build_flow.dispatch(repo="main")
     run_tests_flow.dispatch()
@@ -53,9 +51,14 @@ def scheduled_automation():
     gha_env={"DEBUG": "true"},
     gha_timeout_minutes=30,
 )
-def push_automation():
+def push_automation() -> None:
     """An automation triggered on push."""
     build_flow.dispatch(repo="main")
+
+
+def get_automation_info(automation: Any) -> AutomationInfo:
+    """Helper to get _automation_info from an automation wrapper."""
+    return automation._automation_info  # type: ignore[no-any-return]
 
 
 class TestFlowDispatch:
@@ -80,15 +83,15 @@ class TestFlowDispatch:
 class TestAutomationDecorator:
     """Tests for @automation decorator."""
 
-    def test_automation_registers(self) -> None:
-        """Test that automation registers in registry."""
-        info = get_automation("simple_automation")
+    def test_automation_has_info(self) -> None:
+        """Test that automation has _automation_info."""
+        info = get_automation_info(simple_automation)
         assert info is not None
         assert info.name == "simple_automation"
 
     def test_automation_with_config(self) -> None:
         """Test automation with GHA config."""
-        info = get_automation("scheduled_automation")
+        info = get_automation_info(scheduled_automation)
         assert info is not None
         assert info.gha_on == {"schedule": [{"cron": "0 0 * * *"}]}
         assert info.gha_runs_on == "ubuntu-latest"
@@ -110,8 +113,7 @@ class TestRenderAutomationWorkflow:
 
     def test_simple_automation_yaml(self) -> None:
         """Test YAML generation for simple automation."""
-        info = get_automation("simple_automation")
-        assert info is not None
+        info = get_automation_info(simple_automation)
 
         spec = render_automation_workflow(info)
 
@@ -126,8 +128,7 @@ class TestRenderAutomationWorkflow:
 
     def test_scheduled_automation_yaml(self) -> None:
         """Test YAML generation with schedule trigger."""
-        info = get_automation("scheduled_automation")
-        assert info is not None
+        info = get_automation_info(scheduled_automation)
 
         spec = render_automation_workflow(info)
 
@@ -147,8 +148,7 @@ class TestRenderAutomationWorkflow:
 
     def test_push_automation_yaml(self) -> None:
         """Test YAML generation with push trigger and env."""
-        info = get_automation("push_automation")
-        assert info is not None
+        info = get_automation_info(push_automation)
 
         spec = render_automation_workflow(info)
 
@@ -162,8 +162,7 @@ class TestRenderAutomationWorkflow:
 
     def test_dispatch_step_has_gh_token(self) -> None:
         """Test that dispatch steps have GH_TOKEN env."""
-        info = get_automation("simple_automation")
-        assert info is not None
+        info = get_automation_info(simple_automation)
 
         spec = render_automation_workflow(info)
 
@@ -174,8 +173,7 @@ class TestRenderAutomationWorkflow:
 
     def test_dispatch_with_params_uses_json(self) -> None:
         """Test that dispatch with params uses --json."""
-        info = get_automation("scheduled_automation")
-        assert info is not None
+        info = get_automation_info(scheduled_automation)
 
         spec = render_automation_workflow(info)
 
@@ -187,8 +185,7 @@ class TestRenderAutomationWorkflow:
 
     def test_yaml_is_valid(self) -> None:
         """Test that generated YAML is valid."""
-        info = get_automation("scheduled_automation")
-        assert info is not None
+        info = get_automation_info(scheduled_automation)
 
         spec = render_automation_workflow(info)
         yaml_str = spec.to_yaml()
@@ -200,24 +197,19 @@ class TestRenderAutomationWorkflow:
         assert "schedule" in parsed["on"]
 
 
-class TestAutomationRegistry:
-    """Tests for automation registry."""
+class TestAutomationInfoAccess:
+    """Tests for accessing automation info directly."""
 
-    def test_get_automation_by_short_name(self) -> None:
-        """Test getting automation by short name."""
-        info = get_automation("simple_automation")
+    def test_access_automation_info_by_attribute(self) -> None:
+        """Test getting automation info via _automation_info attribute."""
+        info = get_automation_info(simple_automation)
         assert info is not None
         assert info.name == "simple_automation"
 
-    def test_get_automation_not_found(self) -> None:
-        """Test getting non-existent automation."""
-        info = get_automation("nonexistent")
-        assert info is None
-
-    def test_registry_contains_all(self) -> None:
-        """Test registry contains all automations."""
-        registry = get_automation_registry()
-        names = [info.name for info in registry.values()]
+    def test_all_automations_have_info(self) -> None:
+        """Test that all automations have _automation_info."""
+        automations = [simple_automation, scheduled_automation, push_automation]
+        names = [get_automation_info(a).name for a in automations]
         assert "simple_automation" in names
         assert "scheduled_automation" in names
         assert "push_automation" in names

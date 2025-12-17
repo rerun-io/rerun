@@ -210,8 +210,7 @@ class TestRenderFlowWorkflow:
 
     def test_simple_flow(self) -> None:
         """Test rendering a simple flow with no parameters."""
-        flow_info = recompose.get_flow("simple_flow")
-        assert flow_info is not None
+        flow_info = simple_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -227,8 +226,7 @@ class TestRenderFlowWorkflow:
 
     def test_flow_with_parameters(self) -> None:
         """Test rendering a flow with parameters."""
-        flow_info = recompose.get_flow("param_flow")
-        assert flow_info is not None
+        flow_info = param_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -250,8 +248,7 @@ class TestRenderFlowWorkflow:
 
     def test_multi_step_flow(self) -> None:
         """Test rendering a flow with multiple steps."""
-        flow_info = recompose.get_flow("multi_step_flow")
-        assert flow_info is not None
+        flow_info = multi_step_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -268,8 +265,7 @@ class TestRenderFlowWorkflow:
 
     def test_custom_runner(self) -> None:
         """Test specifying a custom runner."""
-        flow_info = recompose.get_flow("simple_flow")
-        assert flow_info is not None
+        flow_info = simple_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py", runs_on="macos-latest")
 
@@ -278,8 +274,7 @@ class TestRenderFlowWorkflow:
 
     def test_yaml_output_is_valid(self) -> None:
         """Test that generated YAML is valid."""
-        flow_info = recompose.get_flow("param_flow")
-        assert flow_info is not None
+        flow_info = param_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()
@@ -364,8 +359,7 @@ class TestFlowWithGHAActions:
 
     def test_flow_with_actions_generates_yaml(self) -> None:
         """Test that a flow with GHA actions generates correct YAML."""
-        flow_info = recompose.get_flow("flow_with_gha_actions")
-        assert flow_info is not None
+        flow_info = flow_with_gha_actions._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -389,8 +383,7 @@ class TestFlowWithGHAActions:
 
     def test_flow_without_actions_gets_auto_checkout(self) -> None:
         """Test that flows without GHA actions get checkout added automatically."""
-        flow_info = recompose.get_flow("simple_flow")
-        assert flow_info is not None
+        flow_info = simple_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
 
@@ -401,8 +394,7 @@ class TestFlowWithGHAActions:
 
     def test_gha_action_yaml_is_valid(self) -> None:
         """Test that generated YAML with GHA actions is valid."""
-        flow_info = recompose.get_flow("flow_with_gha_actions")
-        assert flow_info is not None
+        flow_info = flow_with_gha_actions._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()
@@ -442,8 +434,7 @@ class TestValidateWorkflow:
     )
     def test_valid_workflow_passes(self) -> None:
         """Test that a valid workflow passes validation."""
-        flow_info = recompose.get_flow("simple_flow")
-        assert flow_info is not None
+        flow_info = simple_flow._flow_info
 
         spec = render_flow_workflow(flow_info, script_path="app.py")
         yaml_str = spec.to_yaml()

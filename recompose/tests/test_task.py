@@ -1,15 +1,17 @@
 """Tests for the @task decorator."""
 
-from recompose import Ok, Result, get_registry, task
+from recompose import Ok, Result, task
 
 
-def test_task_registers_function():
+def test_task_creates_task_info():
+    """Test that @task attaches _task_info to the wrapper."""
+
     @task
     def my_test_task() -> Result[str]:
         return Ok("done")
 
-    registry = get_registry()
-    assert any("my_test_task" in key for key in registry)
+    assert hasattr(my_test_task, "_task_info")
+    assert my_test_task._task_info.name == "my_test_task"
 
 
 def test_task_returns_result():

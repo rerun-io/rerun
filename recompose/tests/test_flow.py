@@ -1,10 +1,10 @@
 """Tests for flow composition."""
 
-from recompose import Err, Ok, Result, flow, get_flow_registry, task
+from recompose import Err, Ok, Result, flow, task
 
 
-def test_flow_registers():
-    """Test that @flow registers the flow."""
+def test_flow_has_flow_info():
+    """Test that @flow attaches _flow_info to the wrapper."""
 
     @task
     def inner_task() -> Result[str]:
@@ -14,8 +14,8 @@ def test_flow_registers():
     def my_test_flow() -> None:
         inner_task()
 
-    registry = get_flow_registry()
-    assert any("my_test_flow" in key for key in registry)
+    assert hasattr(my_test_flow, "_flow_info")
+    assert my_test_flow._flow_info.name == "my_test_flow"
 
 
 def test_flow_returns_result():

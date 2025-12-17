@@ -135,27 +135,6 @@ class FlowInfo:
         return f"{self.module}:{self.name}"
 
 
-# Global registry of all flows
-_flow_registry: dict[str, FlowInfo] = {}
-
-
-def get_flow_registry() -> dict[str, FlowInfo]:
-    """Get the flow registry."""
-    return _flow_registry
-
-
-def get_flow(name: str) -> FlowInfo | None:
-    """Get a flow by name. Tries full name first, then short name."""
-    if name in _flow_registry:
-        return _flow_registry[name]
-
-    for full_name, info in _flow_registry.items():
-        if info.name == name:
-            return info
-
-    return None
-
-
 def _resolve_kwargs(kwargs: dict[str, Any], results: dict[str, Result[Any]]) -> dict[str, Any]:
     """Replace TaskNode values in kwargs with their actual results."""
     resolved = {}
@@ -518,7 +497,6 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         signature=inspect.signature(fn),
         doc=fn.__doc__,
     )
-    _flow_registry[info.full_name] = info
 
     def dispatch_impl(runs_on: str | None = None, **kwargs: Any) -> Any:
         """

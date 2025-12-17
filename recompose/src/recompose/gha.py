@@ -19,7 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 from ruamel.yaml import YAML
 
-from .flow import FlowInfo, get_flow
+from .context import get_flow
+from .flow import FlowInfo
 from .result import Ok, Result
 from .task import TaskInfo
 

@@ -14,7 +14,14 @@ import click
 from rich.console import Console
 
 from .command_group import CommandGroup, Config
-from .context import set_debug, set_entry_point, set_python_cmd, set_working_directory
+from .context import (
+    RecomposeContext,
+    set_debug,
+    set_entry_point,
+    set_python_cmd,
+    set_recompose_context,
+    set_working_directory,
+)
 from .flow import FlowInfo, FlowWrapper
 from .result import Result
 from .task import TaskInfo, TaskWrapper
@@ -701,10 +708,9 @@ class GroupedClickGroup(click.Group):
         # Format each group
         for group_name, cmds in groups.items():
             with formatter.section(group_name):
-                formatter.write_dl([
-                    (name, cmd.get_short_help_str(limit=45))
-                    for name, cmd in sorted(cmds, key=lambda x: x[0])
-                ])
+                formatter.write_dl(
+                    [(name, cmd.get_short_help_str(limit=45)) for name, cmd in sorted(cmds, key=lambda x: x[0])]
+                )
 
 
 def _build_grouped_cli(
@@ -761,8 +767,7 @@ def _add_command_to_cli(
         is_flow = False
     else:
         raise TypeError(
-            f"Expected a task or flow, got {type(cmd_wrapper).__name__}. "
-            "Make sure to use @task or @flow decorators."
+            f"Expected a task or flow, got {type(cmd_wrapper).__name__}. Make sure to use @task or @flow decorators."
         )
 
     cmd_name = info.name
@@ -770,8 +775,7 @@ def _add_command_to_cli(
     # Check for duplicate names
     if cmd_name in seen_names:
         raise ValueError(
-            f"Duplicate command name '{cmd_name}': "
-            f"found in both '{seen_names[cmd_name]}' and '{group_name}'"
+            f"Duplicate command name '{cmd_name}': found in both '{seen_names[cmd_name]}' and '{group_name}'"
         )
     seen_names[cmd_name] = group_name
 
@@ -833,6 +837,60 @@ def main(
     else:
         set_entry_point("script", sys.argv[0])
 
+    # Build the registry from commands and automations
+    recompose_ctx = _build_registry(commands, automations or [])
+    set_recompose_context(recompose_ctx)
+
     # Build and run the CLI
     cli = _build_grouped_cli(name, commands)
     cli()
+
+
+def _build_registry(
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+    automations: Sequence[Any],
+) -> RecomposeContext:
+    """
+    Build a RecomposeContext from the commands and automations lists.
+
+    Extracts TaskInfo and FlowInfo from the wrappers and populates the registries.
+    """
+    from .automation import AutomationInfo
+
+    tasks: dict[str, TaskInfo] = {}
+    flows: dict[str, FlowInfo] = {}
+    automation_registry: dict[str, AutomationInfo] = {}
+
+    # Extract tasks and flows from commands
+    for item in commands:
+        if isinstance(item, CommandGroup):
+            for cmd_wrapper in item.commands:
+                _register_command(cmd_wrapper, tasks, flows)
+        else:
+            _register_command(item, tasks, flows)
+
+    # Extract automations
+    for auto in automations:
+        if hasattr(auto, "_automation_info"):
+            info = auto._automation_info
+            automation_registry[info.full_name] = info
+
+    return RecomposeContext(
+        tasks=tasks,
+        flows=flows,
+        automations=automation_registry,
+    )
+
+
+def _register_command(
+    cmd_wrapper: TaskWrapper[Any, Any] | FlowWrapper,
+    tasks: dict[str, TaskInfo],
+    flows: dict[str, FlowInfo],
+) -> None:
+    """Register a task or flow in the appropriate registry."""
+    if hasattr(cmd_wrapper, "_flow_info"):
+        info = cmd_wrapper._flow_info
+        flows[info.full_name] = info
+    elif hasattr(cmd_wrapper, "_task_info"):
+        info = cmd_wrapper._task_info
+        tasks[info.full_name] = info

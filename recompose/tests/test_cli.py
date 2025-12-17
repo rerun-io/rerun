@@ -1,15 +1,10 @@
 """Tests for the CLI module."""
 
+import click
 from click.testing import CliRunner
 
 import recompose
 from recompose.cli import _build_command
-from recompose.task import _task_registry, get_registry
-
-
-def setup_function():
-    """Clear the task registry before each test."""
-    _task_registry.clear()
 
 
 def test_build_command_basic():
@@ -18,7 +13,7 @@ def test_build_command_basic():
         """A simple task."""
         return recompose.Ok("done")
 
-    info = get_registry()[f"{simple_task.__module__}:simple_task"]
+    info = simple_task._task_info
     cmd = _build_command(info)
 
     assert cmd.name == "simple_task"
@@ -31,7 +26,7 @@ def test_build_command_with_args():
         """Task with arguments."""
         return recompose.Ok(f"{name} x {count}")
 
-    info = get_registry()[f"{task_with_args.__module__}:task_with_args"]
+    info = task_with_args._task_info
     cmd = _build_command(info)
 
     param_names = [p.name for p in cmd.params]
@@ -47,15 +42,11 @@ def test_cli_help():
 
     runner = CliRunner()
 
-    # We need to build the CLI manually for testing
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(help_test_task._task_info))
 
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
@@ -70,14 +61,11 @@ def test_cli_task_help():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(task_help_test._task_info))
 
     result = runner.invoke(cli, ["task_help_test", "--help"])
     assert result.exit_code == 0
@@ -94,14 +82,11 @@ def test_cli_runs_task():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(runnable_task._task_info))
 
     result = runner.invoke(cli, ["runnable_task", "--x=5", "--y=3"])
     assert result.exit_code == 0
@@ -117,14 +102,11 @@ def test_cli_handles_failure():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(failing_cli_task._task_info))
 
     result = runner.invoke(cli, ["failing_cli_task"])
     assert "failed" in result.output
@@ -139,14 +121,11 @@ def test_cli_required_argument():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(required_arg_task._task_info))
 
     # Should fail without required argument
     result = runner.invoke(cli, ["required_arg_task"])
@@ -162,14 +141,11 @@ def test_cli_optional_argument():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(optional_arg_task._task_info))
 
     # Should work without the optional argument
     result = runner.invoke(cli, ["optional_arg_task"])
@@ -185,14 +161,11 @@ def test_cli_bool_argument():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(bool_task._task_info))
 
     # Test with --flag
     result = runner.invoke(cli, ["bool_task", "--flag"])
@@ -213,14 +186,11 @@ def test_cli_float_argument():
 
     runner = CliRunner()
 
-    import click
-
     @click.group()
     def cli():
         pass
 
-    for info in get_registry().values():
-        cli.add_command(_build_command(info))
+    cli.add_command(_build_command(float_task._task_info))
 
     result = runner.invoke(cli, ["float_task", "--value=3.14"])
     assert result.exit_code == 0
