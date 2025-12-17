@@ -19,6 +19,7 @@ Capsules3D = "Capsules3D"
 Cylinders3D = "Cylinders3D"
 DepthImage = "DepthImage"
 Ellipsoids3D = "Ellipsoids3D"
+EncodedDepthImage = "EncodedDepthImage"
 EncodedImage = "EncodedImage"
 GeoLineStrings = "GeoLineStrings"
 GeoPoints = "GeoPoints"
@@ -82,6 +83,10 @@ class _GeneratedVisualizerClasses:
     class Ellipsoids3D(Visualizer):
         def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:
             super().__init__("Ellipsoids3D", overrides=overrides, mappings=mappings)
+
+    class EncodedDepthImage(Visualizer):
+        def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:
+            super().__init__("EncodedDepthImage", overrides=overrides, mappings=mappings)
 
     class EncodedImage(Visualizer):
         def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:

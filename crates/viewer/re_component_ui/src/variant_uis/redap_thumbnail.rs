@@ -28,7 +28,7 @@ pub fn redap_thumbnail(
         .store_context
         .caches
         .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-            c.entry(row_id, component, slice, media_type.as_ref())
+            c.entry_encoded_color(row_id, component, slice, media_type.as_ref())
         })?;
 
     re_data_ui::image_preview_ui(

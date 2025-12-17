@@ -13,7 +13,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneEntityContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::textured_rect_from_image;
+use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
@@ -84,7 +84,7 @@ impl ImageVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         results: &HybridResults<'_>,
-        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        spatial_ctx: &mut SpatialSceneEntityContext<'_>,
     ) {
         use re_view::RangeResultsExt as _;
 
@@ -136,7 +136,7 @@ impl ImageVisualizer {
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;
 
-            if let Some(textured_rect) = textured_rect_from_image(
+            match textured_rect_from_image(
                 ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
@@ -145,22 +145,25 @@ impl ImageVisualizer {
                 multiplicative_tint,
                 Image::name(),
             ) {
-                self.data.add_pickable_rect(
-                    PickableTexturedRect {
-                        ent_path: entity_path.clone(),
-                        textured_rect,
-                        source_data: PickableRectSourceData::Image {
-                            image,
-                            depth_meter: None,
+                Ok(textured_rect) => {
+                    self.data.add_pickable_rect(
+                        PickableTexturedRect {
+                            ent_path: entity_path.clone(),
+                            textured_rect,
+                            source_data: PickableRectSourceData::Image {
+                                image,
+                                depth_meter: None,
+                            },
                         },
-                    },
-                    spatial_ctx.view_class_identifier,
-                );
+                        spatial_ctx.view_class_identifier,
+                    );
+                }
+                Err(err) => {
+                    spatial_ctx
+                        .output
+                        .report_error_for(entity_path.clone(), re_error::format(err));
+                }
             }
         }
     }
-}
-
-fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
-    slice.and_then(|element| element.first()).copied()
 }

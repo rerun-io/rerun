@@ -18,6 +18,7 @@ bitflags::bitflags! {
         const DEPTH_IMAGE = 0b1000;
         const VIDEO_ASSET = 0b10000;
         const VIDEO_STREAM = 0b100000;
+        const ENCODED_DEPTH_IMAGE = 0b1000000;
     }
 }
 
@@ -128,7 +129,10 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     (archetypes::DepthImage::name(), ImageTypes::DEPTH_IMAGE),
                     (archetypes::AssetVideo::name(), ImageTypes::VIDEO_ASSET),
                     (archetypes::VideoStream::name(), ImageTypes::VIDEO_STREAM),
-                    // TODO(#9046): handle encoded depth images.
+                    (
+                        archetypes::EncodedDepthImage::name(),
+                        ImageTypes::ENCODED_DEPTH_IMAGE,
+                    ),
                 ]
                 .iter()
                 .find_map(|(image_archetype_name, image_type)| {
@@ -226,7 +230,6 @@ fn try_size_from_blob(
 ) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
-    // TODO(#9046): handle encoded depth images.
     if archetype_name == archetypes::EncodedImage::name() {
         re_tracing::profile_scope!("image");
 
@@ -241,6 +244,10 @@ fn try_size_from_blob(
         }
 
         reader.into_dimensions().ok().map(|size| size.into())
+    } else if archetype_name == archetypes::EncodedDepthImage::name() {
+        // Encoded depth images always carry an ImageFormat component, so width/height
+        // are picked up via the format column earlier in the subscriber.
+        None
     } else if archetype_name == archetypes::AssetVideo::name() {
         re_tracing::profile_scope!("video asset");
 

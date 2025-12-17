@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### `encoded_image`:
+/// ### Encoded image
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_image").spawn()?;
@@ -43,6 +43,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png">
+///   <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct EncodedImage {
     /// The encoded content of some image file, e.g. a PNG or JPEG.
