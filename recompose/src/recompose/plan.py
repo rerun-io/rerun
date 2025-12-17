@@ -248,6 +248,9 @@ class FlowPlan:
     *after* it's created, `self.nodes` is already in valid execution order
     by construction.
 
+    Condition-check nodes are automatically created when a conditional task
+    is added. These are first-class nodes in the plan, not injected later.
+
     Provides utilities for:
     - Finding parallelizable groups (for visualization)
     - Visualizing the graph
@@ -256,122 +259,65 @@ class FlowPlan:
     nodes: list[TaskNode[Any]] = field(default_factory=list)
     terminal: TaskNode[Any] | None = None
 
+    # Track condition-check nodes by serialized condition for deduplication
+    _condition_checks: dict[str, TaskNode[bool]] = field(default_factory=dict)
+    _condition_counter: int = field(default=0)
+
     def add_node(self, node: TaskNode[Any]) -> None:
-        """Register a node in the plan."""
+        """
+        Register a node in the plan.
+
+        If the node has a condition and no condition-check node exists for it,
+        one is automatically created and inserted before this node.
+        """
+        # If this node has a condition, ensure we have a condition-check node
+        if node.condition is not None:
+            condition_key = str(node.condition.serialize())
+
+            if condition_key not in self._condition_checks:
+                # Create a condition-check node
+                check_node = self._create_condition_check_node(node.condition)
+                self.nodes.append(check_node)
+                self._condition_checks[condition_key] = check_node
+
+            # Link the conditional node to its condition-check step
+            check_node = self._condition_checks[condition_key]
+            node.condition_check_step = check_node.step_name
+
         self.nodes.append(node)
 
-    def inject_setup_node(self, task_info: TaskInfo) -> TaskNode[None] | None:
-        """
-        Inject a setup_workspace node into the plan.
+    def _create_condition_check_node(self, condition: Expr) -> TaskNode[bool]:
+        """Create a condition-check node for the given condition expression."""
+        from .task import TaskInfo
+        from .result import Ok
 
-        The setup node is inserted after all GHA action nodes but before the
-        first non-GHA task node. It depends on all GHA actions and all non-GHA
-        tasks depend on it.
+        self._condition_counter += 1
+        step_name = f"run_if_{self._condition_counter}"
 
-        Args:
-            task_info: TaskInfo for the setup_workspace virtual task.
+        # Create a TaskInfo for condition evaluation
+        def eval_condition_fn(**kwargs: Any) -> Any:
+            # This function is executed via --step run_if_N
+            # The actual evaluation happens in cli.py
+            return Ok(True)
 
-        Returns:
-            The injected TaskNode, or None if there are no non-GHA tasks.
-
-        """
-        # Separate GHA actions from regular tasks
-        gha_nodes = [n for n in self.nodes if n.task_info.is_gha_action]
-        task_nodes = [n for n in self.nodes if not n.task_info.is_gha_action]
-
-        if not task_nodes:
-            # No regular tasks, no setup needed
-            return None
-
-        # Create the setup node - it depends on all GHA actions
-        setup_node: TaskNode[None] = TaskNode(
-            task_info=task_info,
-            kwargs={},
+        task_info = TaskInfo(
+            name=step_name,
+            module="recompose.plan",
+            fn=eval_condition_fn,
+            original_fn=eval_condition_fn,
+            signature=__import__("inspect").Signature(),
+            doc=f"Evaluate condition: {condition}",
+            is_condition_check=True,
         )
 
-        # Make setup node depend on all GHA actions (not as kwargs, but we need
-        # to ensure ordering). We do this by making the first task node's
-        # original dependencies now depend on setup, and setup depends on GHA.
-        # Actually, simpler: we'll rewrite the node list with setup in the right place.
+        check_node: TaskNode[bool] = TaskNode(
+            task_info=task_info,
+            kwargs={"condition_data": condition.serialize()},
+        )
+        check_node.step_name = step_name  # Pre-assign the step name
 
-        # Insert setup node between GHA actions and tasks
-        # The topological sort will respect the list order for nodes at the same level
-        new_nodes = gha_nodes + [setup_node] + task_nodes
-        self.nodes = new_nodes
+        return check_node
 
-        return setup_node
-
-    def inject_condition_checks(self, condition_task_info: TaskInfo) -> list[TaskNode[bool]]:
-        """
-        Inject condition-check nodes for conditional tasks.
-
-        For each unique condition expression, creates a condition-check node
-        that evaluates it. Conditional tasks are updated with a reference to
-        their condition-check step.
-
-        Condition check nodes are named sequentially as "run_if_1", "run_if_2", etc.
-
-        Args:
-            condition_task_info: TaskInfo for the eval_condition pseudo-task.
-
-        Returns:
-            List of injected condition-check TaskNodes.
-
-        """
-        # Find all unique conditions (by serialized form)
-        condition_map: dict[str, tuple[Expr, list[TaskNode[Any]]]] = {}
-        for node in self.nodes:
-            if node.condition is not None:
-                # Use serialized form as key for deduplication
-                key = str(node.condition.serialize())
-                if key not in condition_map:
-                    condition_map[key] = (node.condition, [])
-                condition_map[key][1].append(node)
-
-        if not condition_map:
-            return []
-
-        # Create condition-check nodes and inject them
-        check_nodes: list[TaskNode[bool]] = []
-        new_nodes: list[TaskNode[Any]] = []
-
-        # Process nodes in original order, injecting checks before first conditional
-        injected_conditions: set[str] = set()
-        condition_counter = 0
-
-        for node in self.nodes:
-            if node.condition is not None:
-                key = str(node.condition.serialize())
-                if key not in injected_conditions:
-                    condition_counter += 1
-                    # Create and inject the condition-check node
-                    condition_expr, _ = condition_map[key]
-                    check_node: TaskNode[bool] = TaskNode(
-                        task_info=condition_task_info,
-                        kwargs={"condition_data": condition_expr.serialize()},
-                    )
-                    # Name sequentially: run_if_1, run_if_2, etc.
-                    check_node.step_name = f"run_if_{condition_counter}"
-                    new_nodes.append(check_node)
-                    check_nodes.append(check_node)
-                    injected_conditions.add(key)
-
-            new_nodes.append(node)
-
-        self.nodes = new_nodes
-
-        # Assign step names to non-condition nodes (condition nodes already have names)
-        self.assign_step_names()
-
-        # Update conditional nodes with their condition-check step name
-        # Match by position - check nodes are in same order as condition_map
-        check_iter = iter(check_nodes)
-        for key, (_, conditional_nodes) in condition_map.items():
-            check_node = next(check_iter)
-            for node in conditional_nodes:
-                node.condition_check_step = check_node.step_name
-
-        return check_nodes
 
     def assign_step_names(self) -> None:
         """

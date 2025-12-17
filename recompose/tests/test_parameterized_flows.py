@@ -32,9 +32,9 @@ class TestFlowsWithRequiredParams:
         result = flow_with_required_param(name="World")
         assert result.ok
 
-    def test_flow_with_required_param_plan_works_with_value(self) -> None:
-        """Test that .plan() works when given required params."""
-        plan = flow_with_required_param.plan(name="World")
+    def test_flow_with_required_param_plan_has_correct_structure(self) -> None:
+        """Test that .plan has correct structure (pre-built at decoration time)."""
+        plan = flow_with_required_param.plan
         assert len(plan.nodes) == 1
         assert plan.nodes[0].task_info.name == "greet"
 
@@ -90,12 +90,13 @@ class TestInputPlaceholder:
         assert "InputPlaceholder(repo: str)" == repr(placeholder)
 
     def test_input_placeholder_in_flow_plan(self) -> None:
-        """Test that InputPlaceholder is stored in TaskNode kwargs during plan construction."""
-        # Create a placeholder like GHA generation does
-        placeholder = InputPlaceholder[str](name="name", annotation=str)
+        """Test that InputPlaceholder is stored in TaskNode kwargs during plan construction.
 
-        # Build the plan with the placeholder
-        plan = flow_with_required_param.plan(name=placeholder)
+        With eager planning, the plan is built at decoration time with
+        InputPlaceholders for flow parameters.
+        """
+        # The pre-built plan should have InputPlaceholders for flow params
+        plan = flow_with_required_param.plan
 
         # The TaskNode should have the placeholder in its kwargs
         assert len(plan.nodes) == 1
@@ -105,10 +106,13 @@ class TestInputPlaceholder:
         assert node.kwargs["name"].name == "name"
 
     def test_input_placeholder_reused_across_tasks(self) -> None:
-        """Test that the same InputPlaceholder can be used in multiple tasks."""
-        placeholder = InputPlaceholder[str](name="message", annotation=str)
+        """Test that the same InputPlaceholder can be used in multiple tasks.
 
-        plan = flow_with_param_reuse.plan(message=placeholder)
+        With eager planning, the plan is built at decoration time with
+        InputPlaceholders for flow parameters.
+        """
+        # The pre-built plan should have InputPlaceholders for flow params
+        plan = flow_with_param_reuse.plan
 
         # Both tasks should have the same placeholder
         assert len(plan.nodes) == 2
@@ -155,26 +159,28 @@ class TestTaskSignature:
         assert "name" in param_names
 
     def test_task_rejects_unknown_kwargs_in_flow(self) -> None:
-        """Test that task raises TypeError for unknown kwargs when called in flow."""
+        """Test that task raises TypeError for unknown kwargs when called in flow.
 
-        @recompose.flow
-        def test_flow() -> None:
-            # This should raise TypeError for unknown kwarg
-            greet(name="test", unknown_arg="bad")  # type: ignore[call-arg]
-
+        With eager planning, this error is raised at decoration time.
+        """
         with pytest.raises(TypeError, match="unexpected keyword argument"):
-            test_flow()
+
+            @recompose.flow
+            def test_flow() -> None:
+                # This should raise TypeError for unknown kwarg
+                greet(name="test", unknown_arg="bad")  # type: ignore[call-arg]
 
     def test_flow_method_rejects_missing_required(self) -> None:
-        """Test that () raises TypeError for missing required args."""
+        """Test that () raises TypeError for missing required args.
 
-        @recompose.flow
-        def test_flow() -> None:
-            # greet requires 'name' parameter
-            greet()  # type: ignore[call-arg]
-
+        With eager planning, this error is raised at decoration time.
+        """
         with pytest.raises(TypeError, match="missing required keyword argument"):
-            test_flow()
+
+            @recompose.flow
+            def test_flow() -> None:
+                # greet requires 'name' parameter
+                greet()  # type: ignore[call-arg]
 
     def test_flow_method_accepts_optional_missing(self) -> None:
         """Test that () accepts missing optional args."""
@@ -189,18 +195,22 @@ class TestTaskSignature:
         assert result.ok
 
     def test_flow_method_accepts_input_placeholder(self) -> None:
-        """Test that () accepts InputPlaceholder values."""
+        """Test that flow parameters become InputPlaceholders in the pre-built plan.
+
+        With eager planning, the plan is built at decoration time using
+        InputPlaceholders for flow parameters.
+        """
 
         @recompose.flow
         def test_flow(*, name: str) -> None:
             greet(name=name)
 
-        # Build plan with placeholder
-        placeholder = InputPlaceholder[str](name="name")
-        plan = test_flow.plan(name=placeholder)
+        # The pre-built plan should have an InputPlaceholder for 'name'
+        plan = test_flow.plan
 
         assert len(plan.nodes) == 1
-        assert plan.nodes[0].kwargs["name"] is placeholder
+        assert isinstance(plan.nodes[0].kwargs["name"], InputPlaceholder)
+        assert plan.nodes[0].kwargs["name"].name == "name"
 
 
 class TestValueBasedComposition:
@@ -278,7 +288,7 @@ class TestValueBasedComposition:
             result = greet(name="World")
             echo(message=result.value())
 
-        plan = test_flow.plan()
+        plan = test_flow.plan
 
         # Should have 2 nodes
         assert len(plan.nodes) == 2
@@ -294,18 +304,22 @@ class TestValueBasedComposition:
         assert echo_node.kwargs["message"] is greet_node
 
     def test_flow_plan_with_placeholder_value(self) -> None:
-        """Test that InputPlaceholder.value() works in flow composition."""
+        """Test that InputPlaceholder.value() works in flow composition.
+
+        With eager planning, the plan is built at decoration time using
+        InputPlaceholders for flow parameters.
+        """
 
         @recompose.flow
         def test_flow(*, name: str) -> None:
             greet(name=name)
 
-        # Build plan with placeholder - simulating GHA generation
-        placeholder = InputPlaceholder[str](name="name")
-        plan = test_flow.plan(name=placeholder)
+        # The pre-built plan should have an InputPlaceholder for 'name'
+        plan = test_flow.plan
 
         # The placeholder should be in the node's kwargs
-        assert plan.nodes[0].kwargs["name"] is placeholder
+        assert isinstance(plan.nodes[0].kwargs["name"], InputPlaceholder)
+        assert plan.nodes[0].kwargs["name"].name == "name"
 
 
 class TestParameterizedFlowYamlOutput:

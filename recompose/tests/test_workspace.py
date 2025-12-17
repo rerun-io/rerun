@@ -154,8 +154,8 @@ class TestFlowPlanSteps:
             a = step_a()
             step_b(dep=a.value())
 
-        plan = test_flow.plan()
-        plan.assign_step_names()
+        plan = test_flow.plan
+        # Note: step names are already assigned at decoration time with eager planning
 
         steps = plan.get_steps()
         assert len(steps) == 2
@@ -174,8 +174,8 @@ class TestFlowPlanSteps:
         def simple_flow() -> None:
             task_x()
 
-        plan = simple_flow.plan()
-        plan.assign_step_names()
+        plan = simple_flow.plan
+        # Note: step names are already assigned at decoration time with eager planning
 
         # Can still retrieve by number
         node = plan.get_step("1")
@@ -193,8 +193,8 @@ class TestFlowPlanSteps:
         def flow_for_lookup() -> None:
             my_task()
 
-        plan = flow_for_lookup.plan()
-        plan.assign_step_names()
+        plan = flow_for_lookup.plan
+        # Note: step names are already assigned at decoration time with eager planning
 
         # Full name now includes "step_" prefix
         node = plan.get_step("step_1_my_task")

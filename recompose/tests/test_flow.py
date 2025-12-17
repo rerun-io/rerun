@@ -67,15 +67,17 @@ def test_flow_preserves_docstring():
 
 
 def test_flow_requires_tasks():
-    """Test that flows must have at least one task."""
+    """Test that flows must have at least one task.
+
+    With eager planning, this error is raised at decoration time, not call time.
+    """
     from recompose import flow
 
-    @flow
-    def empty_flow() -> None:
-        pass  # No tasks
-
     with pytest.raises(ValueError, match="has no tasks"):
-        empty_flow()
+
+        @flow
+        def empty_flow() -> None:
+            pass  # No tasks
 
 
 def test_flow_fail_fast():

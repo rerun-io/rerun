@@ -1,21 +1,18 @@
 # NOW
 
-**P12_architecture_cleanup** - Codebase organization and cleanup pass
+**P12_architecture_cleanup** - Phase 4 complete. Eager planning refactor done.
 
-**Status**: Phase 1-3 COMPLETE! Phase 4 (polish) remaining.
-
-**Completed:**
-- Phase 1 (Quick Wins): topological sort removal, unused aliases, duplicate git root, GHA docs
-- Phase 2 (Naming): renamed `github.py` → `gh_cli.py`, `flowgraph.py` → `plan.py`
-- Phase 3 (Code Organization):
-  - #3: Consolidated duplicate wrapper code in task.py (extracted shared helpers)
-  - #4: Simplified flow.py by removing in-process execution, then extracted `run_isolated_impl` to `local_executor.py` (flow.py 530→185 lines)
-  - #5: Moved GitHub handlers from cli.py to gh_cli.py (933→796 lines)
-  - Created `tests/flow_test_app.py` as module-level test app for subprocess compatibility
-
-**Remaining (Phase 4 - Polish):**
-- #9: Context globals consolidation (nice to have)
-- #12: Test coverage improvements (ongoing)
+**Latest Changes (Eager Planning):**
+- **Moved flow planning to decoration time** - Plans are built eagerly when `@flow` is applied
+  - `.plan` is now a property (not a method) returning the pre-built FlowPlan
+  - `InputPlaceholder` values for flow parameters are created at decoration time
+  - Errors (missing args, invalid kwargs, empty flows) are caught immediately at decoration
+- **Condition-check nodes are first-class plan nodes** - No longer injected by GHA
+  - When a task is added inside `run_if()`, a condition-check node is auto-created
+  - These nodes have step names like `run_if_1`, `run_if_2`
+  - GHA renders them; local executor skips them (evaluates conditions inline)
+- **Removed `--eval-condition` CLI flag** - Condition checks use `--step run_if_N`
+- **CLI resolves `InputPlaceholder` values** from `flow_params.params` at execution time
 
 See `proj/P12_architecture_cleanup_TODO.md` for full details.
 

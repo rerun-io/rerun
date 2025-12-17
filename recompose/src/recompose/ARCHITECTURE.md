@@ -62,17 +62,29 @@ Key types:
 ### 2. Flows (`flow.py`, `plan.py`)
 
 A **flow** is a composition of tasks decorated with `@flow`. Flows:
-- Build a task dependency graph at definition time
+- Build a task dependency graph **eagerly at decoration time** (not lazily at call time)
 - Execute tasks in linear order (valid by construction)
 - Support subprocess isolation (each task runs as separate process)
 - Generate GitHub Actions workflows
 
+**Eager Planning**: The flow's body is executed at decoration time with `InputPlaceholder`
+values for all flow parameters. This means:
+- `.plan` is a property (not a method) returning the pre-built `FlowPlan`
+- Errors (missing args, invalid kwargs, empty flows) are caught at decoration time
+- Flow parameters cannot be used in Python control flow (would raise `TypeError`)
+
 Key types:
-- `FlowInfo`: Metadata about a flow
+- `FlowInfo`: Metadata about a flow (includes pre-built `plan`)
 - `FlowWrapper`: Protocol for decorated flow functions
 - `FlowPlan`: The task dependency graph
 - `TaskNode[T]`: A node in the graph representing a deferred task call
-- `InputPlaceholder[T]`: Placeholder for flow parameters during GHA generation
+- `InputPlaceholder[T]`: Placeholder for flow parameters during plan building
+
+**InputPlaceholder Purpose**: `InputPlaceholder` exists to **catch invalid usage** at
+plan building time. If a flow tries to use a parameter in Python control flow
+(e.g., `if count > 0:` or `for i in range(count):`), `InputPlaceholder.__bool__`
+raises a `TypeError` explaining how to use `run_if()` instead. This ensures flows
+can be mapped to GitHub workflows where all steps are statically known.
 
 ### 3. Automations (`automation.py`)
 
@@ -178,23 +190,30 @@ topological sort is needed.
 ### Subprocess Isolation (run_isolated)
 ```
 flow.run_isolated() →
-  1. Build FlowPlan
-  2. Create workspace, write _params.json
-  3. For each step:
+  1. Use pre-built FlowPlan
+  2. Create workspace, write _params.json with flow params
+  3. For each step (skipping condition-check nodes - evaluated inline locally):
      - Spawn subprocess: `python app.py flow_name --step step_name`
-     - Step reads params, executes task, writes {step_name}.json
+     - CLI reads params, resolves InputPlaceholder/TaskNode values from workspace
+     - Executes task, writes {step_name}.json
   → returns Result[None]
 ```
+
+Note: Locally, condition checks are evaluated inline (not as subprocesses). The
+condition-check nodes exist for GHA where each step is a separate workflow step.
 
 ### GHA Generation
 ```
 generate_gha →
-  1. Build FlowPlan with InputPlaceholders
-  2. Inject setup_workspace step
-  3. Inject condition-check steps
-  4. Render to WorkflowSpec
-  5. Write YAML to .github/workflows/
+  1. Use pre-built FlowPlan (contains InputPlaceholders and condition-check nodes)
+  2. Add setup_workspace step during rendering (not injected into plan)
+  3. Render each plan node to a workflow step
+  4. Write YAML to .github/workflows/
 ```
+
+Note: Condition-check nodes (`run_if_1`, etc.) are **first-class nodes** in the
+FlowPlan, created at decoration time when a task is added inside `run_if()`.
+GHA simply renders them; no injection needed.
 
 ## Design Principles
 
