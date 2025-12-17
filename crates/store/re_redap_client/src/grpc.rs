@@ -447,46 +447,13 @@ async fn stream_segment_from_server(
 
             const DOWNLOAD_CHUNKS_ON_DEMAND: bool = true; // TODO
             if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
-                {
-                    // Pre-fetch everything static:
-                    let col_chunk_is_static =
-                        rrd_manifest.col_chunk_is_static().map_err(|err| {
-                            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
-                        })?;
-
-                    let mut indices = vec![];
-                    for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
-                        if chunk_is_static {
-                            indices.push(row_idx as u32);
-                        }
-                    }
-                    let static_chunks = arrow::compute::take_record_batch(
-                        &rrd_manifest.data,
-                        &arrow::array::UInt32Array::from(indices),
-                    )
-                    .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
-
-                    re_log::debug!(
-                        "Pre-fetching {} static chunks…",
-                        re_format::format_uint(static_chunks.num_rows())
-                    );
-                    load_chunks(client, tx, &store_id, static_chunks).await?;
-                }
-
-                re_log::debug!("Waiting for viewer to tell me what to load…");
-
-                loop {
-                    if let Ok(cmd) = tx.recv_cmd().await {
-                        match cmd {
-                            re_log_channel::LoadCommand::LoadChunks(batch) => {
-                                load_chunks(client, tx, &store_id, batch).await?;
-                            }
-                        }
-                    } else {
-                        re_log::debug!("Receiver disconnected");
-                        return Ok(()); // cancelled
-                    }
-                }
+                return load_chunks_on_demand(client, tx, &store_id, rrd_manifest).await;
+            } else {
+                // Load all chunks in one go:
+                let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                    ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                })?;
+                return load_chunks(client, tx, &store_id, batch).await;
             }
         }
         Err(err) => {
@@ -498,8 +465,9 @@ async fn stream_segment_from_server(
         }
     }
 
+    // Fallback for servers that does not support the RRD manifests:
+
     // Retrieve the chunk IDs we're interested in:
-    // TODO(RR-3110): use the rrd manifest instead
     let batches = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
@@ -523,6 +491,54 @@ async fn stream_segment_from_server(
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
     load_chunks(client, tx, &store_id, batch).await?;
+
+    Ok(())
+}
+
+async fn load_chunks_on_demand(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    rrd_manifest: re_log_encoding::RrdManifest,
+) -> Result<(), ApiError> {
+    {
+        // Pre-fetch everything static:
+        let col_chunk_is_static = rrd_manifest.col_chunk_is_static().map_err(|err| {
+            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
+        })?;
+
+        let mut indices = vec![];
+        for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
+            if chunk_is_static {
+                indices.push(row_idx as u32);
+            }
+        }
+        let static_chunks = arrow::compute::take_record_batch(
+            &rrd_manifest.data,
+            &arrow::array::UInt32Array::from(indices),
+        )
+        .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
+
+        re_log::debug!(
+            "Pre-fetching {} static chunks…",
+            re_format::format_uint(static_chunks.num_rows())
+        );
+        load_chunks(client, tx, store_id, static_chunks).await?;
+    }
+
+    re_log::debug!("Waiting for viewer to tell me what to load…");
+    loop {
+        if let Ok(cmd) = tx.recv_cmd().await {
+            match cmd {
+                re_log_channel::LoadCommand::LoadChunks(batch) => {
+                    load_chunks(client, tx, store_id, batch).await?;
+                }
+            }
+        } else {
+            re_log::debug!("Receiver disconnected");
+            return Ok(()); // cancelled
+        }
+    }
 
     Ok(())
 }
