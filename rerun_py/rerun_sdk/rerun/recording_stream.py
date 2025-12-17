@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     import numpy as np
+    import pyarrow as pa
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
     from rerun.memory import MemoryRecording
@@ -382,13 +383,22 @@ class RecordingStream:
     # TODO(RR-3065): SDK should flush both IO and app-level logic when a recording gets GC'd
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = self.to_native()
-        # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
-        # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still
+        # It's definitely a problem if we are in a forked child process. The rerun SDK will still
         # detect this case and prevent a hang internally, but will do so with a warning that we should avoid.
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if not recording.is_forked_child():
+            # Flush any pending data (non-blocking)
             bindings.flush(timeout_sec=0.0, recording=recording)  # NOLINT
+
+            # Drop our references to the native recording to make sure things will clean up
+            # properly.
+            del self.inner
+            del recording
+
+            # At this point if there aren't other references to this recording, it's considered
+            # orphaned. Do a sweep to clean up any orphaned recordings.
+            bindings.disconnect_orphaned_recordings()  # NOLINT
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
@@ -1134,6 +1144,21 @@ class RecordingStream:
         from ._send_columns import send_columns
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
+
+    def send_record_batch(self, batch: pa.RecordBatch) -> None:
+        """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
+
+        from ._send_dataframe import send_record_batch
+
+        send_record_batch(batch, recording=self)
+
+    # TODO(RR-3198): this should accept a `datafusion.DataFrame` as a soft dependency
+    def send_dataframe(self, df: pa.RecordBatchReader | pa.Table) -> None:
+        """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
+
+        from ._send_dataframe import send_dataframe
+
+        send_dataframe(df, recording=self)
 
     def __str__(self) -> str:
         return str(self.inner)

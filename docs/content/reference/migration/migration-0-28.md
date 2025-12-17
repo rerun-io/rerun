@@ -279,3 +279,79 @@ The `Schema` class and column descriptor/selector types have moved from `rerun.d
 ### Other deprecations
 
 `DatasetEntry.download_segments()` is deprecated and will be removed in a future release.
+
+
+## `RecordingView` and local dataframe API deprecated
+
+With the OSS server and the catalog APIs gaining maturity, we want to make this the primary way to query data out of Rerun, including when working locally.
+These APIs will receive ongoing improvements in the future, and offer a smoother migration path to cloud-based workflows.
+As a result, we are deprecating `rerun.dataframe` in this release, and in particular the ability to run dataframe queries on a `Recording` object. See the following sections for more details.
+
+
+### `RecordingView` deprecated
+
+
+The `RecordingView` class, along with `Recording.view()` and the ability to run dataframe queries locally, is deprecated. Use `Server` and the `rerun.catalog` API instead for local dataframe queries. In addition, the `AnyColumn`, `AnyComponentColumn`, and `ViewContentsLike` helper types are deprecated.
+
+**Before:**
+
+```python
+import rerun as rr
+
+# Load a recording file
+recording = rr.dataframe.load_recording("recording.rrd")
+
+# Create a view and query
+view = recording.view(index="frame_nr", contents="/world/**")
+view = view.filter_range_sequence(0, 100)
+view = view.fill_latest_at()
+
+# Select columns and read data
+batches = view.select()
+table = batches.read_all()
+df = table.to_pandas()
+```
+
+**After:**
+
+```python
+import rerun as rr
+from datafusion import col
+
+# Start a local server with the recording
+with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
+    client = server.client()
+    dataset = client.get_dataset("my_dataset")
+
+    # Create a filtered view and query
+    view = dataset.filter_contents(["/world/**"])
+    df = view.reader(index="frame_nr", fill_latest_at=True)
+
+    # Apply additional filters with DataFusion
+    df = df.filter(col("frame_nr") <= 100)
+
+    # Convert to pandas
+    pandas_df = df.to_pandas()
+```
+
+For more details on the new API, see the [Query data out of Rerun](../../howto/get-data-out.md) guide.
+
+### `Recording` moved to `rerun.recording`
+
+The `Recording` class and recording loading functions have been moved to a new `rerun.recording`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.load_recording()`         | `rr.recording.load_recording()`         |
+| `rr.dataframe.load_archive()`           | `rr.recording.load_archive()`           |
+| `rr.dataframe.Recording`                | `rr.recording.Recording`                |
+| `rr.dataframe.RRDArchive`               | `rr.recording.RRDArchive`               |
+
+### `send_dataframe()` moved to top-level `rerun`
+
+The `send_dataframe()` and `send_record_batch()` functions have been moved to the top-level `rerun` module and are also exposed as methods of `RecordingStream`. The old import paths are deprecated.
+
+| Old import                              | New import                              |
+|-----------------------------------------|-----------------------------------------|
+| `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
+| `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
