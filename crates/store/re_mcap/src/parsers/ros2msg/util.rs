@@ -1,4 +1,4 @@
-/// Helper for suffixing image frame IDs with "_plane".
+/// Helper for suffixing image frame IDs with `image_plane`.
 ///
 /// This is required to match the Rerun model for named pinhole frames, where the image plane has its own frame ID
 /// different from the pinhole frame. In ROS, both image and camera info share the same frame ID.
