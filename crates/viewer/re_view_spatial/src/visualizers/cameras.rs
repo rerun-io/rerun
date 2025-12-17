@@ -63,13 +63,13 @@ impl CamerasVisualizer {
         let ent_path = ctx.target_entity_path;
 
         // We're currently NOT using `CoordinateFrame` component for this visualization but instead `Pinhole::child_frame`.
-        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum which can be unintuitive.
+        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum, which can be unintuitive.
         //
-        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set it doesn't make a difference.
+        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set, it doesn't make a difference.
         //
-        // In theory `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree making it unclear what to show.
+        // In theory, `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree, making it unclear what to show.
         // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
-        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases which is arguably
+        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases, which is arguably
         // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
         let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
 
@@ -77,15 +77,15 @@ impl CamerasVisualizer {
         let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
-            // This can happen with various frame id mismatches.
+            // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
             return Err(format!(
-                "Expected well-defined pinhole transforming into the transform frame {:?}, but look-up in active transform tree failed.",
+                "The pinhole's child frame {:?} does not form the root of a 2D subspace. Ensure you're transform tree is valid.",
                 transforms.format_frame(pinhole_frame_id)
             ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
 
-        // Check for valid resolution.
+        // Check for a valid resolution.
         let resolution = resolved_pinhole
             .resolution
             .unwrap_or_else(|| typed_fallback_for(ctx, Pinhole::descriptor_resolution().component));
