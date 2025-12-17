@@ -1308,7 +1308,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
 
 fn generate_component_identifier_reflection() -> ComponentIdentifierReflectionMap {
     re_tracing::profile_function!();
-    let array = [
+    let array = vec![
         (
             ComponentIdentifier::new("AnnotationContext:context"),
             ComponentDescriptor {
