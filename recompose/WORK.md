@@ -1,12 +1,26 @@
 # NOW
 
-Ready for next task - P11 complete!
+**P12_architecture_cleanup** - Codebase organization and cleanup pass
+
+Created `src/recompose/ARCHITECTURE.md` documenting:
+- Module organization and responsibilities
+- Core concepts (Tasks, Flows, Automations, etc.)
+- Data flow patterns
+- Design principles
+
+See `proj/P12_architecture_cleanup_TODO.md` for detailed cleanup plan with:
+- 12 identified improvement areas
+- Prioritized into 4 phases
+- Clear completion criteria for each item
+
+Ready to begin Phase 1 (Quick Wins) or await feedback on priorities.
 
 # UPCOMING
 
-1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
-2. **Documentation** - User guide and API reference
-3. **Performance optimization** - Profile task execution if needed
+1. **P12 Phase 1**: Quick wins - duplicate code removal, consistency fixes
+2. **P12 Phase 2**: Module naming clarity (gha/github, flow/flowgraph)
+3. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
+4. **Documentation** - User guide and API reference
 
 # DEFERRED
 

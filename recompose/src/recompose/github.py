@@ -88,6 +88,21 @@ def _run_gh(*args: str, capture_json: bool = False) -> Result[str | dict[str, An
     return Ok(output)
 
 
+GH_NOT_FOUND_ERROR = (
+    "GitHub CLI (gh) not found.\n\n"
+    "The --remote and --status flags require the GitHub CLI.\n"
+    "Install from: https://cli.github.com/\n"
+    "Then run: gh auth login"
+)
+
+
+def is_gh_installed() -> bool:
+    """Check if the gh CLI is installed (doesn't check authentication)."""
+    import shutil
+
+    return shutil.which("gh") is not None
+
+
 def check_gh_available() -> Result[str]:
     """
     Check if gh CLI is available and authenticated.
@@ -96,9 +111,16 @@ def check_gh_available() -> Result[str]:
         Result containing the authenticated user on success
 
     """
+    if not is_gh_installed():
+        return Err(GH_NOT_FOUND_ERROR)
+
     result = _run_gh("auth", "status", "--show-token")
     if result.failed:
-        return Err(str(result.error))
+        # Provide more context for auth errors
+        error = str(result.error)
+        if "not logged in" in error.lower() or "auth" in error.lower():
+            return Err(f"GitHub CLI not authenticated.\n\nRun: gh auth login\n\nDetails: {error}")
+        return Err(error)
     return Ok(str(result.value()))
 
 
