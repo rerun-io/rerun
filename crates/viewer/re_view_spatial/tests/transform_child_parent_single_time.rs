@@ -235,7 +235,7 @@ fn test_transform_axes_for_explicit_transforms() {
         );
         ctx.save_blueprint_archetype(
             transforms_override_path.clone(),
-            &blueprint::archetypes::VisualizerOverrides::new(["SeriesPoints"]),
+            &blueprint::archetypes::VisualizerOverrides::new(["TransformAxes3D"]),
         );
         ctx.save_blueprint_archetype(
             transforms_override_path,
@@ -251,5 +251,5 @@ fn test_transform_axes_for_explicit_transforms() {
             test_context.run_with_single_view(ui, view_id);
         });
     test_harness.run();
-    test_harness.snapshot("test_transform_axes_for_explicit_transforms");
+    test_harness.snapshot("transform_axes_for_explicit_transforms");
 }
