@@ -511,6 +511,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns a DataFusion DataFrame.
 
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
+
         Parameters
         ----------
         index : str | None
@@ -858,6 +873,21 @@ class DatasetView:
         Create a reader over this DatasetView.
 
         Returns a DataFusion DataFrame.
+
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
 
         Parameters
         ----------
