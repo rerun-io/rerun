@@ -95,7 +95,7 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 
 ## 4. `flow.py` is Doing Too Much
 
-**Problem**: `flow.py` has 530 lines handling:
+**Problem**: `flow.py` had 530 lines handling:
 - Flow decorator
 - Flow context management
 - Flow execution (`_execute_plan`)
@@ -103,18 +103,18 @@ def _create_task_wrapper(info: TaskInfo, execute_fn: Callable) -> Callable:
 - Tree output rendering integration
 - Condition expression formatting
 
-**Recommendation**: Split into focused modules:
-- `flow.py`: Just the `@flow` decorator, `FlowInfo`, `FlowWrapper`
-- `execution.py`: `_execute_plan`, `run_isolated_impl`, step execution logic
-- Or: Keep `flow.py` but move `run_isolated_impl` to `workspace.py` since it's about subprocess isolation
+**Resolution**: Rather than splitting, we simplified:
+- Removed `_execute_plan` entirely - flows always use subprocess isolation
+- This matches GHA behavior and reduces complexity
+- `flow.py` is now ~350 lines and focused on the decorator and subprocess execution
 
 **Tasks**:
-- [ ] Identify clean boundaries
-- [ ] Move execution logic to appropriate module
-- [ ] Update imports
-- [ ] Ensure tests pass
+- [x] Remove `_execute_plan` - flows always use subprocess isolation
+- [x] Remove `FlowContext`, `TaskExecution`, `TaskFailed` - no longer needed
+- [x] Update tests to use module-level test app (subprocess compatible)
+- [x] Ensure tests pass
 
-**Effort**: Medium
+**Effort**: Medium (but simplified significantly)
 
 ---
 
@@ -325,8 +325,8 @@ This is internal framework code, not user-facing task code.
 7. **#2**: flow.py vs flowgraph.py naming - ✅ Done: renamed flowgraph.py → plan.py
 
 ### Phase 3: Code Organization (Medium-Large effort)
-8. **#3**: Consolidate duplicate wrapper code - Reduces duplication
-9. **#4**: Split flow.py - Clearer responsibilities
+8. **#3**: Consolidate duplicate wrapper code - ✅ Done: extracted _validate_task_kwargs, _create_task_node, _run_with_context
+9. **#4**: Split flow.py - ✅ Done: removed _execute_plan, flows now always use subprocess isolation
 10. **#5**: Split cli.py - Clearer responsibilities
 
 ### Phase 4: Polish

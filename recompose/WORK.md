@@ -2,25 +2,28 @@
 
 **P12_architecture_cleanup** - Codebase organization and cleanup pass
 
-Created `src/recompose/ARCHITECTURE.md` documenting:
-- Module organization and responsibilities
-- Core concepts (Tasks, Flows, Automations, etc.)
-- Data flow patterns
-- Design principles
+**Status**: Phase 1-3 complete, Phase 4 (polish) remaining
 
-See `proj/P12_architecture_cleanup_TODO.md` for detailed cleanup plan with:
-- 12 identified improvement areas
-- Prioritized into 4 phases
-- Clear completion criteria for each item
+**Completed:**
+- Phase 1 (Quick Wins): topological sort removal, unused aliases, duplicate git root, GHA docs
+- Phase 2 (Naming): renamed `github.py` → `gh_cli.py`, `flowgraph.py` → `plan.py`
+- Phase 3 (Code Organization):
+  - #3: Consolidated duplicate wrapper code in task.py (extracted shared helpers)
+  - #4: Simplified flow.py by removing in-process execution - flows always use subprocess isolation now (matches GHA behavior)
+  - Created `tests/flow_test_app.py` as module-level test app for subprocess compatibility
 
-Ready to begin Phase 1 (Quick Wins) or await feedback on priorities.
+**Remaining:**
+- #5: Split cli.py (~900 lines) - extract command builders
+- #9: Context globals consolidation (nice to have)
+- #12: Test coverage improvements (ongoing)
+
+See `proj/P12_architecture_cleanup_TODO.md` for full details.
 
 # UPCOMING
 
-1. **P12 Phase 1**: Quick wins - duplicate code removal, consistency fixes
-2. **P12 Phase 2**: Module naming clarity (gha/github, flow/flowgraph)
-3. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
-4. **Documentation** - User guide and API reference
+1. **P12 #5**: Split cli.py for clearer responsibilities
+2. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
+3. **Documentation** - User guide and API reference
 
 # DEFERRED
 
