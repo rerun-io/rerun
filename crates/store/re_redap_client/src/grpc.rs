@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
@@ -324,7 +325,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
-        stream_segment_from_server(
+        if stream_segment_from_server(
             &mut client,
             blueprint_store_info,
             &tx,
@@ -332,7 +333,11 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_segment,
             re_uri::Fragment::default(),
         )
-        .await?;
+        .await?
+        .is_break()
+        {
+            return Ok(());
+        }
 
         if tx
             .send(
@@ -366,7 +371,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         store_version: None,
     };
 
-    stream_segment_from_server(
+    if stream_segment_from_server(
         &mut client,
         store_info,
         &tx,
@@ -374,7 +379,11 @@ pub async fn stream_blueprint_and_segment_from_server(
         segment_id.into(),
         fragment,
     )
-    .await?;
+    .await?
+    .is_break()
+    {
+        return Ok(());
+    }
 
     Ok(())
 }
@@ -387,7 +396,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
-) -> ApiResult {
+) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Streaming {store_id:?}…");
@@ -403,7 +412,7 @@ async fn stream_segment_from_server(
         .is_err()
     {
         re_log::debug!("Receiver disconnected");
-        return Ok(());
+        return Ok(ControlFlow::Break(()));
     }
 
     // Send UI commands for recording (as opposed to blueprint) stores.
@@ -420,7 +429,7 @@ async fn stream_segment_from_server(
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
-            return Ok(());
+            return Ok(ControlFlow::Break(()));
         }
     }
 
@@ -442,7 +451,7 @@ async fn stream_segment_from_server(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+                return Ok(ControlFlow::Break(()));
             }
 
             const DOWNLOAD_CHUNKS_ON_DEMAND: bool = true; // TODO
@@ -480,7 +489,7 @@ async fn stream_segment_from_server(
 
     if batches.is_empty() {
         re_log::info!("Empty recording"); // We likely won't get here even on empty recording
-        return Ok(());
+        return Ok(ControlFlow::Continue(()));
     }
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches)
@@ -490,9 +499,7 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    load_chunks(client, tx, &store_id, batch).await?;
-
-    Ok(())
+    load_chunks(client, tx, &store_id, batch).await
 }
 
 async fn load_chunks_on_demand(
@@ -500,7 +507,7 @@ async fn load_chunks_on_demand(
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     rrd_manifest: re_log_encoding::RrdManifest,
-) -> Result<(), ApiError> {
+) -> ApiResult<ControlFlow<()>> {
     {
         // Pre-fetch everything static:
         let col_chunk_is_static = rrd_manifest.col_chunk_is_static().map_err(|err| {
@@ -523,7 +530,12 @@ async fn load_chunks_on_demand(
             "Pre-fetching {} static chunks…",
             re_format::format_uint(static_chunks.num_rows())
         );
-        load_chunks(client, tx, store_id, static_chunks).await?;
+        if load_chunks(client, tx, store_id, static_chunks)
+            .await?
+            .is_break()
+        {
+            return Ok(ControlFlow::Break(()));
+        }
     }
 
     re_log::debug!("Waiting for viewer to tell me what to load…");
@@ -531,16 +543,16 @@ async fn load_chunks_on_demand(
         if let Ok(cmd) = tx.recv_cmd().await {
             match cmd {
                 re_log_channel::LoadCommand::LoadChunks(batch) => {
-                    load_chunks(client, tx, store_id, batch).await?;
+                    if load_chunks(client, tx, store_id, batch).await?.is_break() {
+                        return Ok(ControlFlow::Break(()));
+                    }
                 }
             }
         } else {
             re_log::debug!("Receiver disconnected");
-            return Ok(()); // cancelled
+            return Ok(ControlFlow::Break(()));
         }
     }
-
-    Ok(())
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
@@ -549,9 +561,9 @@ async fn load_chunks(
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     batch: RecordBatch,
-) -> Result<(), ApiError> {
+) -> ApiResult<ControlFlow<()>> {
     if batch.num_rows() == 0 {
-        return Ok(());
+        return Ok(ControlFlow::Continue(()));
     }
 
     re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
@@ -581,14 +593,14 @@ async fn load_chunks(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+                return Ok(ControlFlow::Break(()));
             }
         }
     }
 
     re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
 
-    Ok(())
+    Ok(ControlFlow::Continue(()))
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
