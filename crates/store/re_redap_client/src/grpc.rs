@@ -16,7 +16,7 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    SegmentQueryParams, StreamMode,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -295,10 +295,13 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
+///
+/// `stream_mode` is a feature-flag for RRD manifest based larger-than-ram streaming.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
+    stream_mode: StreamMode,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -331,6 +334,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
+            StreamMode::FullLoad, // We always load the full blueprint
         )
         .await?;
 
@@ -373,6 +377,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         dataset_id.into(),
         segment_id.into(),
         fragment,
+        stream_mode,
     )
     .await?;
 
@@ -387,6 +392,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
+    stream_mode: StreamMode,
 ) -> ApiResult {
     let store_id = store_info.store_id.clone();
 
@@ -429,27 +435,29 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let manifest_result = client
-        .get_rrd_manifest(dataset_id, segment_id.clone())
-        .await;
-    match manifest_result {
-        Ok(rrd_manifest) => {
-            if tx
-                .send(DataSourceMessage::RrdManifest(
-                    store_id.clone(),
-                    rrd_manifest.into(),
-                ))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+    if stream_mode == StreamMode::OnDemand {
+        let manifest_result = client
+            .get_rrd_manifest(dataset_id, segment_id.clone())
+            .await;
+        match manifest_result {
+            Ok(rrd_manifest) => {
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.into(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(()); // cancelled
+                }
             }
-        }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                // TODO(RR-3110): implement rrd manifest on cloud
-            } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
+            Err(err) => {
+                if err.kind == ApiErrorKind::Unimplemented {
+                    // TODO(RR-3110): implement rrd manifest on cloud
+                } else {
+                    re_log::warn!("Failed to load RRD manifest: {err}");
+                }
             }
         }
     }

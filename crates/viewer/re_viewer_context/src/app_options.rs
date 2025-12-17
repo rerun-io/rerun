@@ -1,3 +1,4 @@
+use re_data_source::StreamMode;
 use re_log_types::TimestampFormat;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
@@ -7,6 +8,9 @@ const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppOptions {
+    /// Experimental feature flags.
+    pub experimental: ExperimentalAppOptions,
+
     /// Warn if the e2e latency exceeds this value.
     pub warn_e2e_latency: f32,
 
@@ -68,6 +72,8 @@ pub struct AppOptions {
 impl Default for AppOptions {
     fn default() -> Self {
         Self {
+            experimental: Default::default(),
+
             warn_e2e_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
@@ -128,6 +134,26 @@ impl AppOptions {
             ffmpeg_path: self
                 .video_decoder_override_ffmpeg_path
                 .then(|| std::path::PathBuf::from(&self.video_decoder_ffmpeg_path)),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub struct ExperimentalAppOptions {
+    /// Larger-than-RAM streaming using RRD manifest.
+    ///
+    /// If false, we load the entire recording into memory.
+    /// We skip loading the RRD manifest.
+    ///
+    /// If `true`, we stream in only the chunks we need, as we need it.
+    /// And we load the RRD manifest.
+    pub stream_mode: StreamMode,
+}
+
+impl Default for ExperimentalAppOptions {
+    fn default() -> Self {
+        Self {
+            stream_mode: StreamMode::FullLoad,
         }
     }
 }
