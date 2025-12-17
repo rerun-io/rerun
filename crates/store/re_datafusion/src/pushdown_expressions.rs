@@ -481,11 +481,14 @@ mod tests {
         let mut metadata = HashMap::new();
         metadata.insert(RERUN_KIND.to_owned(), "index".to_owned());
 
-        Arc::new(Schema::new(vec![
-            Field::new(index_name, arrow::datatypes::DataType::Int64, false)
-                .with_metadata(metadata),
-            Field::new("rerun_segment_id", arrow::datatypes::DataType::Utf8, false),
-        ]))
+        Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new(index_name, arrow::datatypes::DataType::Int64, false)
+                    .with_metadata(metadata),
+                Field::new("rerun_segment_id", arrow::datatypes::DataType::Utf8, false),
+            ],
+            HashMap::default(),
+        ))
     }
 
     fn make_empty_query() -> QueryDatasetRequest {
@@ -559,8 +562,8 @@ mod tests {
 
         // Verify exactly the expected segment IDs are present (no duplicates, no extras)
         assert_eq!(segment_ids.len(), 2);
-        assert!(segment_ids.contains(&"segment_a".to_string()));
-        assert!(segment_ids.contains(&"segment_b".to_string()));
+        assert!(segment_ids.contains(&"segment_a".to_owned()));
+        assert!(segment_ids.contains(&"segment_b".to_owned()));
 
         // Verify no time queries were added
         for query in &queries {
@@ -587,7 +590,10 @@ mod tests {
         let q = queries[0].query.as_ref().unwrap();
         assert!(q.latest_at.is_some());
         assert_eq!(q.latest_at.as_ref().unwrap().at.as_i64(), 100);
-        assert!(q.range.is_none());
+        assert!(q.range.is_some());
+        let range = q.range.as_ref().unwrap();
+        assert_eq!(range.index_range.min.as_i64(), 100);
+        assert_eq!(range.index_range.min.as_i64(), 100);
     }
 
     #[test]
@@ -721,8 +727,8 @@ mod tests {
             .map(|q| q.segment_ids[0].to_string())
             .collect();
         assert_eq!(segment_ids.len(), 2);
-        assert!(segment_ids.contains(&"segment_a".to_string()));
-        assert!(segment_ids.contains(&"segment_b".to_string()));
+        assert!(segment_ids.contains(&"segment_a".to_owned()));
+        assert!(segment_ids.contains(&"segment_b".to_owned()));
 
         // Find each query by its segment ID
         let query_a = queries
@@ -813,9 +819,9 @@ mod tests {
             .iter()
             .map(|q| q.segment_ids[0].to_string())
             .collect();
-        assert!(segment_ids.contains(&"segment_a".to_string()));
-        assert!(segment_ids.contains(&"segment_b".to_string()));
-        assert!(segment_ids.contains(&"segment_c".to_string()));
+        assert!(segment_ids.contains(&"segment_a".to_owned()));
+        assert!(segment_ids.contains(&"segment_b".to_owned()));
+        assert!(segment_ids.contains(&"segment_c".to_owned()));
     }
 
     #[test]
@@ -908,11 +914,14 @@ mod tests {
     #[test]
     fn test_non_index_column_not_supported() {
         // Schema without the index metadata
-        let schema = Arc::new(Schema::new(vec![Field::new(
-            "some_column",
-            arrow::datatypes::DataType::Int64,
-            false,
-        )]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new(
+                "some_column",
+                arrow::datatypes::DataType::Int64,
+                false,
+            )],
+            HashMap::default(),
+        ));
         let query = make_empty_query();
 
         let expr = col("some_column").eq(lit(100i64));

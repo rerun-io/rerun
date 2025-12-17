@@ -308,6 +308,7 @@ impl RecordBatchExt for RecordBatch {
 mod tests {
     #![expect(clippy::disallowed_methods)]
 
+    use std::collections::HashMap;
     use std::sync::Arc;
 
     use arrow::array::{
@@ -331,11 +332,14 @@ mod tests {
         );
 
         let batch = {
-            let schema = Schema::new(vec![
-                col1_schema.clone(),
-                col2_schema.clone(),
-                col3_schema.clone(),
-            ]);
+            let schema = Schema::new_with_metadata(
+                vec![
+                    col1_schema.clone(),
+                    col2_schema.clone(),
+                    col3_schema.clone(),
+                ],
+                HashMap::default(),
+            );
 
             let col1 = Int32Array::from_iter_values([1]);
             let col2 = StringArray::from_iter_values(["col".to_owned()]);
@@ -355,11 +359,14 @@ mod tests {
             .unwrap()
         };
 
-        let expected = Schema::new(vec![
-            col1_schema.clone(),
-            col2_schema.clone(),
-            col3_schema.clone(),
-        ]);
+        let expected = Schema::new_with_metadata(
+            vec![
+                col1_schema.clone(),
+                col2_schema.clone(),
+                col3_schema.clone(),
+            ],
+            HashMap::default(),
+        );
         assert_eq!(expected, *batch.schema());
 
         let batch_patched = batch.make_nullable();
@@ -375,11 +382,14 @@ mod tests {
                 true,
             );
 
-            Schema::new(vec![
-                col1_schema.clone(),
-                col2_schema.clone(),
-                col3_schema.clone(),
-            ])
+            Schema::new_with_metadata(
+                vec![
+                    col1_schema.clone(),
+                    col2_schema.clone(),
+                    col3_schema.clone(),
+                ],
+                HashMap::default(),
+            )
         };
         assert_eq!(expected, *batch_patched.schema());
     }
@@ -393,8 +403,11 @@ mod tests {
 
         let options = RecordBatchOptions::default().with_row_count(Some(1));
         let batch1 = {
-            let schema = Schema::new(vec![col1_schema, col2_schema.clone()])
-                .with_metadata(std::iter::once(("batch1".to_owned(), "yes".to_owned())).collect());
+            let schema = Schema::new_with_metadata(
+                vec![col1_schema, col2_schema.clone()],
+                HashMap::default(),
+            )
+            .with_metadata(std::iter::once(("batch1".to_owned(), "yes".to_owned())).collect());
 
             let col1 = Int32Array::from_iter_values([1]);
             let col2 = StringArray::from_iter_values(["col".to_owned()]);
@@ -407,8 +420,11 @@ mod tests {
             .unwrap()
         };
         let batch2 = {
-            let schema = Schema::new(vec![col3_schema, col4_schema.clone()])
-                .with_metadata(std::iter::once(("batch2".to_owned(), "no".to_owned())).collect());
+            let schema = Schema::new_with_metadata(
+                vec![col3_schema, col4_schema.clone()],
+                HashMap::default(),
+            )
+            .with_metadata(std::iter::once(("batch2".to_owned(), "no".to_owned())).collect());
 
             let col3 = BooleanArray::from(vec![true]);
             let col4 = UInt64Array::from_iter_values([42]);
@@ -421,15 +437,17 @@ mod tests {
             .unwrap()
         };
         let batch3 = {
-            let schema = Schema::new(vec![col2_schema, col4_schema]).with_metadata(
-                [
-                    ("batch1".to_owned(), "yes".to_owned()),
-                    ("batch2".to_owned(), "no".to_owned()),
-                    ("batch3".to_owned(), "maybe".to_owned()),
-                ]
-                .into_iter()
-                .collect(),
-            );
+            let schema =
+                Schema::new_with_metadata(vec![col2_schema, col4_schema], HashMap::default())
+                    .with_metadata(
+                        [
+                            ("batch1".to_owned(), "yes".to_owned()),
+                            ("batch2".to_owned(), "no".to_owned()),
+                            ("batch3".to_owned(), "maybe".to_owned()),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    );
 
             let col2 = StringArray::from_iter_values(["super-col".to_owned()]);
             let col4 = UInt64Array::from_iter_values([43]);
@@ -464,7 +482,7 @@ mod tests {
                 ("batch3".to_owned(), "maybe".to_owned()),
             ]
             .into_iter()
-            .collect::<std::collections::HashMap<String, String>>(),
+            .collect::<HashMap<String, String>>(),
         );
         batch_concat.schema_metadata_mut().clear();
 
@@ -553,7 +571,7 @@ mod tests {
         };
 
         let err = concat_polymorphic_batches(&[batch1.clone(), batch2.clone()]).unwrap_err();
-        assert!(matches!(err, arrow::error::ArrowError::SchemaError(_)));
+        assert!(matches!(err, ArrowError::SchemaError(_)));
 
         batch2
             .schema_metadata_mut()
@@ -564,10 +582,13 @@ mod tests {
     #[test]
     fn test_concat_horizontally_basic() {
         // Create first batch with two columns
-        let schema1 = Arc::new(Schema::new(vec![
-            Field::new("a", DataType::Int32, false),
-            Field::new("b", DataType::Utf8, false),
-        ]));
+        let schema1 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("a", DataType::Int32, false),
+                Field::new("b", DataType::Utf8, false),
+            ],
+            HashMap::default(),
+        ));
         let batch1 = RecordBatch::try_new(
             schema1,
             vec![
@@ -578,10 +599,13 @@ mod tests {
         .unwrap();
 
         // Create second batch with two columns
-        let schema2 = Arc::new(Schema::new(vec![
-            Field::new("c", DataType::Float64, false),
-            Field::new("d", DataType::Int32, false),
-        ]));
+        let schema2 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("c", DataType::Float64, false),
+                Field::new("d", DataType::Int32, false),
+            ],
+            HashMap::default(),
+        ));
         let batch2 = RecordBatch::try_new(
             schema2,
             vec![
@@ -624,11 +648,17 @@ mod tests {
 
     #[test]
     fn test_concat_horizontally_different_row_counts_fails() {
-        let schema1 = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let schema1 = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("a", DataType::Int32, false)],
+            HashMap::default(),
+        ));
         let batch1 =
             RecordBatch::try_new(schema1, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))]).unwrap();
 
-        let schema2 = Arc::new(Schema::new(vec![Field::new("b", DataType::Int32, false)]));
+        let schema2 = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("b", DataType::Int32, false)],
+            HashMap::default(),
+        ));
         let batch2 = RecordBatch::try_new(
             schema2,
             vec![Arc::new(Int32Array::from(vec![10, 20]))], // Only 2 rows
@@ -647,12 +677,18 @@ mod tests {
 
     #[test]
     fn test_concat_horizontally_empty_batches() {
-        let schema1 = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let schema1 = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("a", DataType::Int32, false)],
+            HashMap::default(),
+        ));
         let batch1 =
             RecordBatch::try_new(schema1, vec![Arc::new(Int32Array::from(Vec::<i32>::new()))])
                 .unwrap();
 
-        let schema2 = Arc::new(Schema::new(vec![Field::new("b", DataType::Utf8, false)]));
+        let schema2 = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("b", DataType::Utf8, false)],
+            HashMap::default(),
+        ));
         let batch2 = RecordBatch::try_new(
             schema2,
             vec![Arc::new(StringArray::from(Vec::<String>::new()))],
@@ -666,10 +702,13 @@ mod tests {
 
     #[test]
     fn test_concat_horizontally_preserves_column_order() {
-        let schema1 = Arc::new(Schema::new(vec![
-            Field::new("col1", DataType::Int32, false),
-            Field::new("col2", DataType::Int32, false),
-        ]));
+        let schema1 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("col1", DataType::Int32, false),
+                Field::new("col2", DataType::Int32, false),
+            ],
+            HashMap::default(),
+        ));
         let batch1 = RecordBatch::try_new(
             schema1,
             vec![
@@ -679,10 +718,13 @@ mod tests {
         )
         .unwrap();
 
-        let schema2 = Arc::new(Schema::new(vec![
-            Field::new("col3", DataType::Int32, false),
-            Field::new("col4", DataType::Int32, false),
-        ]));
+        let schema2 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("col3", DataType::Int32, false),
+                Field::new("col4", DataType::Int32, false),
+            ],
+            HashMap::default(),
+        ));
         let batch2 = RecordBatch::try_new(
             schema2,
             vec![
@@ -704,10 +746,13 @@ mod tests {
     #[test]
     fn test_concat_duplicate_field_names() {
         // Create first batch with column "id"
-        let schema1 = Arc::new(Schema::new(vec![
-            Field::new("id", DataType::Int32, false),
-            Field::new("name", DataType::Utf8, false),
-        ]));
+        let schema1 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("id", DataType::Int32, false),
+                Field::new("name", DataType::Utf8, false),
+            ],
+            HashMap::default(),
+        ));
         let batch1 = RecordBatch::try_new(
             schema1,
             vec![
@@ -718,10 +763,13 @@ mod tests {
         .unwrap();
 
         // Create second batch that ALSO has column "id"
-        let schema2 = Arc::new(Schema::new(vec![
-            Field::new("id", DataType::Int32, false), // Duplicate!
-            Field::new("value", DataType::Float64, false),
-        ]));
+        let schema2 = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("id", DataType::Int32, false), // Duplicate!
+                Field::new("value", DataType::Float64, false),
+            ],
+            HashMap::default(),
+        ));
         let batch2 = RecordBatch::try_new(
             schema2,
             vec![
@@ -751,13 +799,16 @@ mod tests {
         schema1_metadata.insert("left_version".to_owned(), "1.0".to_owned());
 
         let schema1 = Arc::new(
-            Schema::new(vec![
-                Field::new("id", DataType::Int32, false).with_metadata(HashMap::from([(
-                    "field_meta".to_owned(),
-                    "id_info".to_owned(),
-                )])),
-                Field::new("name", DataType::Utf8, false),
-            ])
+            Schema::new_with_metadata(
+                vec![
+                    Field::new("id", DataType::Int32, false).with_metadata(HashMap::from([(
+                        "field_meta".to_owned(),
+                        "id_info".to_owned(),
+                    )])),
+                    Field::new("name", DataType::Utf8, false),
+                ],
+                HashMap::default(),
+            )
             .with_metadata(schema1_metadata),
         );
 
@@ -776,10 +827,13 @@ mod tests {
         schema2_metadata.insert("right_timestamp".to_owned(), "2025-10-20".to_owned()); // Different key
 
         let schema2 = Arc::new(
-            Schema::new(vec![
-                Field::new("value", DataType::Float64, false)
-                    .with_metadata(HashMap::from([("unit".to_owned(), "meters".to_owned())])),
-            ])
+            Schema::new_with_metadata(
+                vec![
+                    Field::new("value", DataType::Float64, false)
+                        .with_metadata(HashMap::from([("unit".to_owned(), "meters".to_owned())])),
+                ],
+                HashMap::default(),
+            )
             .with_metadata(schema2_metadata),
         );
 
@@ -827,14 +881,22 @@ mod tests {
         metadata1.insert("owner".to_owned(), "alice".to_owned());
 
         let schema1 = Arc::new(
-            Schema::new(vec![Field::new("a", DataType::Int32, false)]).with_metadata(metadata1),
+            Schema::new_with_metadata(
+                vec![Field::new("a", DataType::Int32, false)],
+                HashMap::default(),
+            )
+            .with_metadata(metadata1),
         );
 
         let mut metadata2 = HashMap::new();
         metadata2.insert("owner".to_owned(), "bob".to_owned()); // Conflict!
 
         let schema2 = Arc::new(
-            Schema::new(vec![Field::new("b", DataType::Int32, false)]).with_metadata(metadata2),
+            Schema::new_with_metadata(
+                vec![Field::new("b", DataType::Int32, false)],
+                HashMap::default(),
+            )
+            .with_metadata(metadata2),
         );
 
         let batch1 =
@@ -856,11 +918,14 @@ mod tests {
 
     #[test]
     fn test_sort_columns_by() {
-        let schema = Arc::new(Schema::new(vec![
-            Field::new("zebra", DataType::Int32, false),
-            Field::new("apple", DataType::Utf8, false),
-            Field::new("mango", DataType::Int32, false),
-        ]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("zebra", DataType::Int32, false),
+                Field::new("apple", DataType::Utf8, false),
+                Field::new("mango", DataType::Int32, false),
+            ],
+            HashMap::default(),
+        ));
 
         let batch = RecordBatch::try_new(
             schema,
@@ -902,7 +967,7 @@ mod tests {
 
     #[test]
     fn test_sort_columns_by_preserves_metadata() {
-        let mut metadata = std::collections::HashMap::new();
+        let mut metadata = HashMap::new();
         metadata.insert("key".to_owned(), "value".to_owned());
 
         let schema = Arc::new(Schema::new_with_metadata(
@@ -931,7 +996,10 @@ mod tests {
 
     #[test]
     fn test_sort_columns_by_empty_batch() {
-        let schema = Arc::new(Schema::new(vec![Field::new("a", DataType::Int32, false)]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("a", DataType::Int32, false)],
+            HashMap::default(),
+        ));
         let batch = RecordBatch::try_new(
             schema,
             vec![Arc::new(Int32Array::from(Vec::<i32>::new())) as ArrayRef],
@@ -948,11 +1016,14 @@ mod tests {
 
     #[test]
     fn test_filter_columns_basic() {
-        let schema = Arc::new(Schema::new(vec![
-            Field::new("id", DataType::Int32, false),
-            Field::new("name", DataType::Utf8, false),
-            Field::new("age", DataType::Int32, false),
-        ]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("id", DataType::Int32, false),
+                Field::new("name", DataType::Utf8, false),
+                Field::new("age", DataType::Int32, false),
+            ],
+            HashMap::default(),
+        ));
 
         let batch = RecordBatch::try_new(
             schema,
@@ -977,7 +1048,7 @@ mod tests {
 
     #[test]
     fn test_filter_columns_preserves_metadata() {
-        let mut metadata = std::collections::HashMap::default();
+        let mut metadata = HashMap::default();
         metadata.insert("key".to_owned(), "value".to_owned());
 
         let schema = Arc::new(Schema::new_with_metadata(
@@ -1026,11 +1097,14 @@ mod tests {
 
     fn sample_batch() -> RecordBatch {
         RecordBatch::try_new(
-            Arc::new(Schema::new(vec![
-                Field::new("id", DataType::Int32, false),
-                Field::new("name", DataType::Utf8, false),
-                Field::new("age", DataType::Int32, false),
-            ])),
+            Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("id", DataType::Int32, false),
+                    Field::new("name", DataType::Utf8, false),
+                    Field::new("age", DataType::Int32, false),
+                ],
+                HashMap::default(),
+            )),
             vec![
                 Arc::new(Int32Array::from(vec![1, 2, 3])),
                 Arc::new(StringArray::from(vec!["Alice", "Bob", "Charlie"])),
@@ -1103,7 +1177,7 @@ mod tests {
 
     #[test]
     fn test_project_preserves_metadata() {
-        let mut metadata = std::collections::HashMap::new();
+        let mut metadata = HashMap::new();
         metadata.insert("key".to_owned(), "value".to_owned());
 
         let batch = RecordBatch::try_new(
@@ -1166,7 +1240,7 @@ mod tests {
 
     #[test]
     fn test_rename_columns_preserves_metadata() {
-        let mut metadata = std::collections::HashMap::new();
+        let mut metadata = HashMap::new();
         metadata.insert("key".to_owned(), "value".to_owned());
 
         let batch = RecordBatch::try_new(
@@ -1192,14 +1266,15 @@ mod tests {
 
     #[test]
     fn test_rename_columns_preserves_field_properties() {
-        let schema = Arc::new(Schema::new(vec![
-            Field::new("col", DataType::Int32, true).with_metadata(
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("col", DataType::Int32, true).with_metadata(
                 std::collections::HashMap::from([(
                     "description".to_owned(),
                     "A test column".to_owned(),
                 )]),
-            ),
-        ]));
+            )],
+            HashMap::default(),
+        ));
 
         let batch =
             RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))]).unwrap();
