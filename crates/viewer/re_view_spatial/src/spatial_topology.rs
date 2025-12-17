@@ -176,6 +176,10 @@ pub struct SpatialTopology {
     ///
     /// This is purely an optimization to speed up searching for `subspaces`.
     subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
+
+    /// When there is an explicit coordinate frame there are effectivly more entity
+    /// trees than are known about here. And heuristic can't make the same assumptions.
+    has_explicit_coordinate_frame: bool,
 }
 
 impl Default for SpatialTopology {
@@ -195,6 +199,7 @@ impl Default for SpatialTopology {
             .collect(),
 
             subspace_origin_per_logged_entity: Default::default(),
+            has_explicit_coordinate_frame: false,
         }
     }
 }
@@ -272,6 +277,8 @@ impl SpatialTopology {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
+            } else if added_component == re_tf::TransformFrameId::name() {
+                self.has_explicit_coordinate_frame = true;
             }
         }
 
@@ -410,6 +417,11 @@ impl SpatialTopology {
         }
 
         self.subspaces.insert(new_space.origin.hash(), new_space);
+    }
+
+    /// True if a component of type [`re_tf::TransformFrameId`] has been logged.
+    pub fn has_explicit_coordinate_frame(&self) -> bool {
+        self.has_explicit_coordinate_frame
     }
 }
 

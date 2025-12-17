@@ -460,7 +460,12 @@ impl ViewClass for SpatialView3D {
 
                         Some(origins.into_iter().map(RecommendedView::new_subtree).map(
                             |mut subtree| {
-                                subtree.exclude_entities(&excluded_entities);
+                                // Since we don't track the transform frames created by explicit
+                                // coordinate frames, we can't make assumptions about the tree if
+                                // there are any explicit coordinate frames.
+                                if !topo.has_explicit_coordinate_frame() {
+                                    subtree.exclude_entities(&excluded_entities);
+                                }
 
                                 subtree
                             },
