@@ -9355,6 +9355,7 @@ dependencies = [
 name = "re_redap_client"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
  "ehttp",
  "itertools 0.14.0",

@@ -18,7 +18,6 @@ use super::{
 };
 use crate::{
     contexts::TransformTreeContext,
-    view_kind::SpatialViewKind,
     visualizers::{
         depth_images::{DepthImageProcessResult, populate_depth_visualizer_execution_result},
         first_copied,
@@ -35,7 +34,7 @@ pub struct EncodedDepthImageVisualizer {
 impl Default for EncodedDepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: Default::default(),
         }
     }
