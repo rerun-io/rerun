@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
@@ -324,7 +325,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
-        stream_segment_from_server(
+        if stream_segment_from_server(
             &mut client,
             blueprint_store_info,
             &tx,
@@ -332,7 +333,11 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_segment,
             re_uri::Fragment::default(),
         )
-        .await?;
+        .await?
+        .is_break()
+        {
+            return Ok(());
+        }
 
         if tx
             .send(
@@ -366,7 +371,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         store_version: None,
     };
 
-    stream_segment_from_server(
+    if stream_segment_from_server(
         &mut client,
         store_info,
         &tx,
@@ -374,7 +379,11 @@ pub async fn stream_blueprint_and_segment_from_server(
         segment_id.into(),
         fragment,
     )
-    .await?;
+    .await?
+    .is_break()
+    {
+        return Ok(());
+    }
 
     Ok(())
 }
@@ -387,7 +396,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
-) -> ApiResult {
+) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Streaming {store_id:?}…");
@@ -403,7 +412,7 @@ async fn stream_segment_from_server(
         .is_err()
     {
         re_log::debug!("Receiver disconnected");
-        return Ok(());
+        return Ok(ControlFlow::Break(()));
     }
 
     // Send UI commands for recording (as opposed to blueprint) stores.
@@ -420,7 +429,7 @@ async fn stream_segment_from_server(
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
-            return Ok(());
+            return Ok(ControlFlow::Break(()));
         }
     }
 
@@ -442,7 +451,7 @@ async fn stream_segment_from_server(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+                return Ok(ControlFlow::Break(())); // cancelled
             }
         }
         Err(err) => {
@@ -476,7 +485,7 @@ async fn stream_segment_from_server(
 
     if batches.is_empty() {
         re_log::info!("Empty recording"); // We likely won't get here even on empty recording
-        return Ok(());
+        return Ok(ControlFlow::Continue(()));
     }
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches)
@@ -486,11 +495,24 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    // Fetch the chunks base on the ids:
+    load_chunks(client, tx, &store_id, batch).await
+}
+
+/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+async fn load_chunks(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    batch: RecordBatch,
+) -> Result<ControlFlow<()>, ApiError> {
+    if batch.num_rows() == 0 {
+        return Ok(ControlFlow::Continue(()));
+    }
+
+    re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
+
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
-
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
-
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
             if tx
@@ -510,12 +532,14 @@ async fn stream_segment_from_server(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+                return Ok(ControlFlow::Break(())); // cancelled
             }
         }
     }
 
-    Ok(())
+    re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
+
+    Ok(ControlFlow::Continue(()))
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
