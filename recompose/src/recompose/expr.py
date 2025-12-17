@@ -110,7 +110,10 @@ class InputExpr(Expr):
         return inputs[self.name]
 
     def __repr__(self) -> str:
-        return f"Input({self.name})"
+        return self.name
+
+    def __str__(self) -> str:
+        return self.name
 
 
 @dataclass

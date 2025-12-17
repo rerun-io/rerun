@@ -360,50 +360,22 @@ def _print_task_tree(plan: Any) -> None:
         out("  (empty)")
         return
 
-    # Check if there are any data dependencies
-    has_dependencies = any(node.dependencies for node in plan.nodes)
-
-    if not has_dependencies:
-        # Linear flow - show simple sequential list
-        for i, node in enumerate(plan.nodes):
-            is_last = i == len(plan.nodes) - 1
-            connector = "└─" if is_last else "├─"
-            out(f"  {connector} {node.name}")
-        return
-
-    # Has dependencies - show tree with dependency info
-    # Build adjacency for children (who depends on me?)
-    children: dict[str, list[str]] = {node.name: [] for node in plan.nodes}
-    for node in plan.nodes:
-        for dep in node.dependencies:
-            children[dep.name].append(node.name)
-
-    # Find root nodes (no dependencies)
-    roots = [node for node in plan.nodes if not node.dependencies]
-
-    # Track visited to avoid printing twice
-    visited: set[str] = set()
-
-    def print_node(name: str, prefix: str = "", is_last: bool = True) -> None:
-        if name in visited:
-            # Show reference to already-printed node
-            connector = "└─" if is_last else "├─"
-            out(f"{prefix}{connector} {name} (see above)")
-            return
-
-        visited.add(name)
+    for i, node in enumerate(plan.nodes):
+        is_last = i == len(plan.nodes) - 1
         connector = "└─" if is_last else "├─"
-        out(f"{prefix}{connector} {name}")
 
-        # Print children
-        child_names = children.get(name, [])
-        child_prefix = prefix + ("   " if is_last else "│  ")
-        for i, child in enumerate(child_names):
-            print_node(child, child_prefix, i == len(child_names) - 1)
+        # Build the label with optional condition
+        label = node.name
+        if node.condition is not None:
+            label = f"{node.name} [if: {node.condition}]"
 
-    # Print each root
-    for i, root in enumerate(roots):
-        print_node(root.name, "  ", i == len(roots) - 1)
+        out(f"  {connector} {label}")
+
+        # Show dependencies if any
+        if node.dependencies:
+            dep_names = [d.name for d in node.dependencies]
+            dep_connector = "   " if is_last else "│  "
+            out(f"  {dep_connector}  depends: {', '.join(dep_names)}")
 
 
 def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
