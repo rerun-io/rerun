@@ -358,7 +358,7 @@ fn sort_chunks_by_timepoint(iter_chunks: impl Iterator<Item = Arc<Chunk>>) -> Ve
     // Sorting by time point ensures that chunks are inserted in temporal order,
     // at least if all timelines increase monotonically.
     // This is currently required by our video playback.
-    // TODO(#RR-3163): handle out-of-order video samples
+    // TODO(RR-3163): handle out-of-order video samples
     let mut chunks: Vec<Arc<Chunk>> = iter_chunks.collect();
     chunks.sort_by_cached_key(|chunk| chunk.min_time_point());
     chunks

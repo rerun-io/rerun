@@ -135,7 +135,7 @@ pub enum VideoStreamProcessingError {
     FailedReadingCodec(Box<re_chunk::ChunkError>),
 
     #[error("Received video samples were not in chronological order.")]
-    OutOfOrderSamples, // TODO(#RR-3163): handle out-of-order video samples
+    OutOfOrderSamples, // TODO(RR-3163): handle out-of-order video samples
 }
 
 const _: () = assert!(
