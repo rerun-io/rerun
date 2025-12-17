@@ -108,7 +108,9 @@ fn settings_screen_ui_impl(
         timestamp_format,
         video,
         mapbox_access_token,
-        cache_directory: _, // not yet exposed
+
+        #[cfg(not(target_arch = "wasm32"))]
+            cache_directory: _, // not yet exposed
     } = app_options;
 
     ui.add_space(8.0);
