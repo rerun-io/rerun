@@ -580,6 +580,39 @@ impl Properties for CliCommandInvoked {
 
 // -----------------------------------------------
 
+/// Sent when an MCAP file is loaded, containing the list of schema names.
+pub struct McapFileLoaded {
+    /// List of unique schema names found in the MCAP file.
+    pub schema_names: Vec<String>,
+
+    /// Number of channels in the MCAP file.
+    pub num_channels: i64,
+
+    /// Number of schemas in the MCAP file.
+    pub num_schemas: i64,
+}
+
+impl Event for McapFileLoaded {
+    const NAME: &'static str = "mcap_file_loaded";
+}
+
+impl Properties for McapFileLoaded {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            schema_names,
+            num_channels,
+            num_schemas,
+        } = self;
+
+        // Join schema names as comma-separated string (analytics typically uses simple types)
+        event.insert("schema_names", schema_names.join(","));
+        event.insert("num_channels", num_channels);
+        event.insert("num_schemas", num_schemas);
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;

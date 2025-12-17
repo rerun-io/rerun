@@ -228,6 +228,31 @@ pub fn load_mcap(
     let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
+    // Record analytics for MCAP schema names
+    #[cfg(feature = "analytics")]
+    {
+        use std::collections::HashSet;
+
+        let schema_names: Vec<String> = summary
+            .channels
+            .values()
+            .filter_map(|channel| channel.schema.as_ref().map(|s| s.name.clone()))
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        #[expect(clippy::cast_possible_wrap)] // These counts will never be large enough to wrap
+        let num_channels = summary.channels.len() as i64;
+        #[expect(clippy::cast_possible_wrap)]
+        let num_schemas = summary.schemas.len() as i64;
+
+        re_analytics::record(|| re_analytics::event::McapFileLoaded {
+            schema_names,
+            num_channels,
+            num_schemas,
+        });
+    }
+
     // TODO(#10862): Add warning for channel that miss semantic information.
     LayerRegistry::all_builtin(raw_fallback_enabled)
         .select(selected_layers)
