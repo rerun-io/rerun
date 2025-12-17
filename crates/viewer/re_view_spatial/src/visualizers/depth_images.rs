@@ -15,7 +15,6 @@ use re_viewer_context::{
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
@@ -35,7 +34,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -96,7 +95,7 @@ pub fn process_depth_image_data(
     // First try to create a textured rect for this image.
     // Even if we end up only showing a depth cloud,
     // we still need most of this for ui interaction which still shows the image!
-    let Some(textured_rect) = textured_rect_from_image(
+    let textured_rect = match textured_rect_from_image(
         ctx.viewer_ctx(),
         entity_path,
         ent_context,
@@ -104,9 +103,16 @@ pub fn process_depth_image_data(
         Some(&colormap_with_range),
         re_renderer::Rgba::WHITE,
         archetype_name,
-    ) else {
-        // If we can't create a textured rect from this, we don't have to bother with clouds either.
-        return;
+    ) {
+        Ok(textured_rect) => textured_rect,
+        Err(err) => {
+            ent_context
+                .output
+                .report_error_for(ctx.target_entity_path.clone(), re_error::format(err));
+
+            // If we can't create a textured rect from this, we don't have to bother with clouds either.
+            return;
+        }
     };
 
     if is_3d_view {
