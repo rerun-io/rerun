@@ -5,7 +5,7 @@ as a separate subprocess. This matches the behavior of GitHub Actions workflows
 where each step is isolated.
 
 The main entry point is `execute_flow_isolated()` which:
-1. Builds a FlowPlan from the flow
+1. Uses the pre-built FlowPlan from the flow
 2. Creates a workspace directory for inter-step communication
 3. Runs each step as a subprocess via the CLI's --step mode
 4. Renders progress with a tree-based display
@@ -27,7 +27,6 @@ from rich.console import Console
 from .conditional import evaluate_condition
 from .context import dbg, get_entry_point, is_debug
 from .expr import format_expr
-from .plan import InputPlaceholder
 from .result import Err, Ok, Result
 from .workspace import FlowParams, create_workspace, read_step_result, write_params
 
@@ -52,7 +51,7 @@ def execute_flow_isolated(
     of GitHub Actions workflows where each step runs in isolation.
 
     Args:
-        flow: The flow wrapper (decorated function with _flow_info and .plan())
+        flow: The flow wrapper (decorated function with _flow_info and pre-built plan)
         workspace: Optional workspace directory. If not provided, one is auto-generated.
         **kwargs: Flow parameters.
 
@@ -64,21 +63,16 @@ def execute_flow_isolated(
     flow_name = flow_info.name
     console = Console()
 
-    # Build the plan with InputPlaceholders to preserve condition expressions
-    plan_kwargs: dict[str, Any] = {}
-    for param_name, param in flow_info.signature.parameters.items():
-        annotation = param.annotation if param.annotation is not inspect.Parameter.empty else None
-        default = param.default if param.default is not inspect.Parameter.empty else None
-        plan_kwargs[param_name] = InputPlaceholder(name=param_name, annotation=annotation, default=default)
+    # Use the pre-built plan from the flow (built at decoration time)
+    plan = flow_info.plan
 
-    plan = flow.plan(**plan_kwargs)
-
-    # Use linear order from flow definition - no topological sort needed
-    # Assign step names based on linear order
-    plan.assign_step_names()
-
-    # Get steps in linear order (skip GHA actions for local execution)
-    steps = [(n.step_name or n.name, n) for n in plan.nodes if not n.task_info.is_gha_action]
+    # Get steps in linear order (skip GHA actions and condition-check nodes for local execution)
+    # Condition-check nodes are for GHA workflows; locally we evaluate conditions inline
+    steps = [
+        (n.step_name or n.name, n)
+        for n in plan.nodes
+        if not n.task_info.is_gha_action and not n.task_info.is_condition_check
+    ]
 
     # Create or use provided workspace
     ws = create_workspace(flow_name, workspace=workspace)

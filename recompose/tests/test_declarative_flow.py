@@ -41,7 +41,11 @@ def test_declarative_flow_fail_fast():
 
 
 def test_flow_plan_method():
-    """Test that flows have a .plan() method for dry-run."""
+    """Test that flows have a .plan property for introspection.
+
+    With eager planning, the plan is built at decoration time and
+    accessible via the .plan property (not a method).
+    """
 
     @task
     def plan_task_a() -> Result[str]:
@@ -56,8 +60,8 @@ def test_flow_plan_method():
         a = plan_task_a()
         plan_task_b(from_a=a.value())
 
-    # Get the plan without executing
-    plan = plannable_flow.plan()
+    # Get the pre-built plan
+    plan = plannable_flow.plan
 
     assert isinstance(plan, FlowPlan)
     assert len(plan.nodes) == 2
@@ -81,7 +85,7 @@ def test_flow_plan_shows_dependencies():
         root = dep_root()
         dep_child(val=root.value())
 
-    plan = dep_flow.plan()
+    plan = dep_flow.plan
 
     # Find the child node
     child_node = next(n for n in plan.nodes if n.name == "dep_child")
@@ -110,7 +114,7 @@ def test_flow_plan_execution_order():
         b = order_b(a=a.value())
         order_c(b=b.value())
 
-    plan = ordered_plan_flow.plan()
+    plan = ordered_plan_flow.plan
 
     # Verify order: a before b before c
     # Nodes are in valid execution order by construction
@@ -130,7 +134,7 @@ def test_task_node_repr():
     def repr_flow() -> None:
         repr_task()
 
-    plan = repr_flow.plan()
+    plan = repr_flow.plan
     node = plan.nodes[0]
 
     node_repr = repr(node)

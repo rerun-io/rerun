@@ -465,48 +465,6 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
     return inputs
 
 
-def _create_setup_workspace_task_info() -> TaskInfo:
-    """Create a virtual TaskInfo for the setup_workspace step."""
-    from .result import Ok
-
-    def setup_workspace_fn(**kwargs: Any) -> Result[None]:
-        # No-op when called directly as a function.
-        # The actual work happens via CLI: `app.py flow_name --setup`
-        # which writes _params.json to the workspace for subprocess isolation.
-        return Ok(None)
-
-    return TaskInfo(
-        name="setup_workspace",
-        module="recompose.gha",
-        fn=setup_workspace_fn,
-        original_fn=setup_workspace_fn,
-        signature=inspect.Signature(),
-        doc="Initialize workspace and write flow parameters for subprocess isolation",
-        is_gha_action=False,
-        is_setup_step=True,
-    )
-
-
-def _create_eval_condition_task_info() -> TaskInfo:
-    """Create a virtual TaskInfo for condition evaluation steps."""
-    from .result import Ok
-
-    def eval_condition_fn(**kwargs: Any) -> Result[bool]:
-        # This is executed when running a step.
-        # The actual evaluation happens in cli.py using the condition_data kwarg.
-        return Ok(True)  # Placeholder - real work in CLI
-
-    return TaskInfo(
-        name="eval_condition",
-        module="recompose.gha",
-        fn=eval_condition_fn,
-        original_fn=eval_condition_fn,
-        signature=inspect.Signature(),
-        doc="Evaluate a condition expression for conditional task execution",
-        is_gha_action=False,
-        is_setup_step=False,
-        is_condition_check=True,
-    )
 
 
 def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
@@ -569,6 +527,22 @@ def _build_gha_action_step(step_name: str, node: Any) -> StepSpec:
     )
 
 
+def _build_condition_check_step(
+    step_name: str,
+    flow_name: str,
+    script_path: str,
+    python_cmd: str,
+    condition_expr_str: str,
+) -> StepSpec:
+    """Build a step that evaluates a condition and outputs true/false."""
+    return StepSpec(
+        name=step_name,
+        id=step_name,  # Need ID for referencing in if: conditions
+        run=f"{python_cmd} {script_path} {flow_name} --step {step_name}",
+        comment=f"[if: {condition_expr_str}]",
+    )
+
+
 def render_flow_workflow(
     flow_info: FlowInfo,
     script_path: str = "app.py",
@@ -590,6 +564,8 @@ def render_flow_workflow(
         A WorkflowSpec that can be rendered to YAML.
 
     """
+    from .expr import format_expr
+
     # Build workflow_dispatch inputs from flow parameters
     inputs = _flow_params_to_inputs(flow_info)
     inputs_dict = {inp.name: inp.to_dict() for inp in inputs}
@@ -599,39 +575,15 @@ def render_flow_workflow(
     if inputs_dict:
         on_trigger["workflow_dispatch"]["inputs"] = inputs_dict
 
-    # Build the plan to get step names
-    # For parameters without defaults, we create InputPlaceholders that allow
-    # the flow function body to execute and build the task graph
-    from .plan import InputPlaceholder
+    # Use the pre-built plan (built at decoration time with InputPlaceholders)
+    # Condition-check nodes are already first-class nodes in the plan
+    plan = flow_info.plan
 
-    plan_kwargs: dict[str, Any] = {}
-    for param_name, param in flow_info.signature.parameters.items():
-        # ALL parameters get placeholders during plan construction.
-        # This ensures flow parameters cannot be used in Python control flow,
-        # which would make the task graph dynamic and break GHA generation.
-        annotation = param.annotation if param.annotation is not inspect.Parameter.empty else None
-        default = param.default if param.default is not inspect.Parameter.empty else None
-        plan_kwargs[param_name] = InputPlaceholder(name=param_name, annotation=annotation, default=default)
-
-    plan = flow_info.fn.plan(**plan_kwargs)  # type: ignore[attr-defined]
-
-    # Check if flow has any non-GHA tasks (need setup step for those)
-    has_regular_tasks = any(not n.task_info.is_gha_action for n in plan.nodes)
-
-    # Inject setup_workspace node into the plan if there are regular tasks
-    if has_regular_tasks:
-        setup_task_info = _create_setup_workspace_task_info()
-        plan.inject_setup_node(setup_task_info)
-
-    # Inject condition-check nodes for any conditional tasks
-    condition_task_info = _create_eval_condition_task_info()
-    plan.inject_condition_checks(condition_task_info)
-
-    # Step names are assigned by inject_condition_checks, get the steps
-    steps_info = plan.get_steps()
-
-    # Check if flow has any GHA actions
-    has_gha_actions = any(node.task_info.is_gha_action for _, node in steps_info)
+    # Separate GHA actions from regular tasks (including condition-check nodes)
+    gha_nodes = [n for n in plan.nodes if n.task_info.is_gha_action]
+    non_gha_nodes = [n for n in plan.nodes if not n.task_info.is_gha_action]
+    has_regular_tasks = any(not n.task_info.is_condition_check for n in non_gha_nodes)
+    has_gha_actions = len(gha_nodes) > 0
 
     # Build job steps
     job_steps: list[StepSpec] = []
@@ -645,29 +597,36 @@ def render_flow_workflow(
             )
         )
 
-    # Build steps from the plan (now includes setup_workspace and condition checks)
-    for step_name, node in steps_info:
-        if node.task_info.is_gha_action:
-            job_steps.append(_build_gha_action_step(step_name, node))
-        elif node.task_info.is_setup_step:
-            job_steps.append(_build_setup_step(step_name, flow_info, script_path, python_cmd))
-        elif node.task_info.is_condition_check:
-            # Condition check step - outputs value=true/false
-            # Add comment showing the condition expression
-            from .expr import format_expr
+    # Add GHA action steps first (in order)
+    for node in gha_nodes:
+        step_name = node.step_name or node.name
+        job_steps.append(_build_gha_action_step(step_name, node))
 
+    # Add setup step if there are regular tasks
+    if has_regular_tasks:
+        job_steps.append(_build_setup_step("setup_workspace", flow_info, script_path, python_cmd))
+
+    # Add non-GHA steps in order (condition-checks and regular tasks)
+    # The plan already has condition-check nodes interleaved correctly
+    for node in non_gha_nodes:
+        step_name = node.step_name or node.name
+
+        if node.task_info.is_condition_check:
+            # Render the condition-check step
+            # Extract the condition expression for the comment
             condition_data = node.kwargs.get("condition_data", {})
-            condition_expr = format_expr(condition_data)
+            condition_expr_str = format_expr(condition_data) if condition_data else "unknown"
             job_steps.append(
-                StepSpec(
-                    name=step_name,
-                    id=step_name,  # Need ID for referencing in if: conditions
-                    run=f"{python_cmd} {script_path} {flow_info.name} --step {step_name}",
-                    comment=f"[if: {condition_expr}]",
+                _build_condition_check_step(
+                    step_name,
+                    flow_info.name,
+                    script_path,
+                    python_cmd,
+                    condition_expr_str,
                 )
             )
         else:
-            # Regular task - may have a condition
+            # Regular task step - use condition_check_step reference if present
             job_steps.append(
                 _build_task_step(
                     step_name,

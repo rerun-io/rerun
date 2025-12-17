@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
-from .plan import FlowPlan
+from .plan import FlowPlan, InputPlaceholder
 from .result import Result
 
 P = ParamSpec("P")
@@ -22,7 +22,7 @@ class FlowWrapper(Protocol):
     Protocol describing a flow-decorated function.
 
     Flow wrappers are callable (returning Result[None]) and have:
-    - .plan(): Inspect the task graph without execution
+    - .plan: The pre-built FlowPlan (computed at decoration time)
     - .run_isolated(): Execute each step as a separate subprocess
     - .dispatch(): Trigger this flow from within an automation
     """
@@ -31,7 +31,8 @@ class FlowWrapper(Protocol):
 
     def __call__(self, **kwargs: Any) -> Result[None]: ...
 
-    def plan(self, **kwargs: Any) -> FlowPlan: ...
+    @property
+    def plan(self) -> FlowPlan: ...
 
     def run_isolated(self, **kwargs: Any) -> Result[None]: ...
 
@@ -62,6 +63,7 @@ class FlowInfo:
     original_fn: Callable[..., Any]  # The original unwrapped function
     signature: inspect.Signature
     doc: str | None
+    plan: FlowPlan  # The pre-built plan (computed at decoration time)
 
     @property
     def full_name(self) -> str:
@@ -69,14 +71,55 @@ class FlowInfo:
         return f"{self.module}:{self.name}"
 
 
+def _build_plan(fn: Callable[..., None]) -> FlowPlan:
+    """
+    Build the flow plan at decoration time.
+
+    Executes the flow function body with InputPlaceholders for all parameters.
+    This builds the task graph without executing any tasks.
+
+    If the flow uses parameters in Python control flow (if statements, loops),
+    InputPlaceholder.__bool__ will raise a clear error explaining how to use
+    run_if() for conditional execution instead.
+
+    Raises:
+        ValueError: If the flow has no tasks
+        TypeError: If flow parameters are used in Python control flow
+
+    """
+    sig = inspect.signature(fn)
+
+    # Create InputPlaceholders for all parameters
+    plan_kwargs: dict[str, Any] = {}
+    for param_name, param in sig.parameters.items():
+        annotation = param.annotation if param.annotation is not inspect.Parameter.empty else None
+        default = param.default if param.default is not inspect.Parameter.empty else None
+        plan_kwargs[param_name] = InputPlaceholder(name=param_name, annotation=annotation, default=default)
+
+    # Build the plan
+    plan = FlowPlan()
+    set_current_plan(plan)
+
+    try:
+        fn(**plan_kwargs)
+
+        if not plan.nodes:
+            raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task calls to add tasks.")
+        plan.terminal = plan.nodes[-1]
+        plan.assign_step_names()
+        return plan
+    finally:
+        set_current_plan(None)
+
+
 def flow(fn: Callable[..., None]) -> FlowWrapper:
     """
     Decorator to mark a function as a recompose flow.
 
     A flow composes tasks into a dependency graph using task calls.
-    Tasks automatically detect they're in a flow-building context and
-    return TaskNodes instead of executing. The last task call becomes
-    the terminal node of the graph.
+    The plan is built eagerly at decoration time - if there are any errors
+    in the flow structure (e.g., using parameters in control flow), they
+    are raised immediately.
 
     Example:
         @recompose.flow
@@ -88,38 +131,18 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         # Execute the flow
         result = build_pipeline(repo="main")
 
-        # Or inspect the plan first
-        plan = build_pipeline.plan(repo="main")
+        # Or inspect the pre-built plan
+        plan = build_pipeline.plan
 
     The flow wrapper provides:
-    - Direct call: Builds the graph and executes it
-    - flow.plan(**kwargs): Build the plan without executing (for dry-run)
+    - Direct call: Executes the flow with subprocess isolation
+    - .plan: The pre-built FlowPlan (read-only property)
+    - .run_isolated(): Execute with explicit workspace
 
     """
-
-    def plan_only(**kwargs: Any) -> FlowPlan:
-        """
-        Build the flow plan without executing it.
-
-        This runs the flow function body to build the task graph,
-        but does not execute any tasks. Useful for dry-run and visualization.
-
-        Returns:
-            FlowPlan with all TaskNodes and their dependencies.
-
-        """
-        plan = FlowPlan()
-        set_current_plan(plan)
-
-        try:
-            fn(**kwargs)
-
-            if not plan.nodes:
-                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task calls to add tasks.")
-            plan.terminal = plan.nodes[-1]
-            return plan
-        finally:
-            set_current_plan(None)
+    # Build the plan eagerly at decoration time
+    # This catches errors like using parameters in control flow immediately
+    built_plan = _build_plan(fn)
 
     def run_isolated_impl(workspace: Path | None = None, **kwargs: Any) -> Result[None]:
         """
@@ -136,7 +159,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         # Direct flow execution uses subprocess isolation (matches GHA behavior)
         return run_isolated_impl(**kwargs)
 
-    # Create flow info
+    # Create flow info with the pre-built plan
     info = FlowInfo(
         name=fn.__name__,
         module=fn.__module__,
@@ -144,6 +167,7 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         original_fn=fn,
         signature=inspect.signature(fn),
         doc=fn.__doc__,
+        plan=built_plan,
     )
 
     def dispatch_impl(runs_on: str | None = None, **kwargs: Any) -> Any:
@@ -175,9 +199,9 @@ def flow(fn: Callable[..., None]) -> FlowWrapper:
         plan.add_dispatch(dispatch)
         return dispatch
 
-    # Attach flow info, plan method, run_isolated, and dispatch to wrapper
+    # Attach flow info, plan property, run_isolated, and dispatch to wrapper
     wrapper._flow_info = info  # type: ignore[attr-defined]
-    wrapper.plan = plan_only  # type: ignore[attr-defined]
+    wrapper.plan = built_plan  # type: ignore[attr-defined]
     wrapper.run_isolated = run_isolated_impl  # type: ignore[attr-defined]
     wrapper.dispatch = dispatch_impl  # type: ignore[attr-defined]
 

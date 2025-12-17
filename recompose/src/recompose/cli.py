@@ -412,9 +412,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             if ws is None:
                 ws = create_workspace(flow_name)
 
-            # Build the plan to get step names
-            plan = flow_info.fn.plan(**kwargs)  # type: ignore[attr-defined]
-            plan.assign_step_names()
+            # Use the pre-built plan (step names already assigned at decoration time)
+            plan = flow_info.plan
 
             step_names = [n.step_name for n in plan.nodes if n.step_name]
 
@@ -450,11 +449,8 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                 console.print("[dim]Run --setup first to initialize the workspace[/dim]")
                 sys.exit(1)
 
-            # Rebuild the plan using stored params
-            plan = flow_info.fn.plan(**flow_params.params)  # type: ignore[attr-defined]
-
-            # Use linear order - assign step names directly (no condition injection for local)
-            plan.assign_step_names()
+            # Use the pre-built plan (step names already assigned at decoration time)
+            plan = flow_info.plan
 
             # Find the requested step
             target_node = plan.get_step(step)
@@ -480,9 +476,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             tree_ctx = install_tree_output()
 
             # Resolve dependencies from workspace
+            from .plan import InputPlaceholder, TaskNode as TaskNodeType
+
             resolved_kwargs: dict[str, Any] = {}
             for kwarg_name, kwarg_value in target_node.kwargs.items():
-                if isinstance(kwarg_value, type(target_node)):  # TaskNode dependency
+                if isinstance(kwarg_value, TaskNodeType):  # TaskNode dependency
                     dep_node = kwarg_value
                     dep_step_name = dep_node.step_name or dep_node.name
                     dep_result = read_step_result(ws, dep_step_name)
@@ -490,6 +488,16 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                         console.print(f"[red]Error:[/red] Dependency '{dep_step_name}' failed or not found")
                         sys.exit(1)
                     resolved_kwargs[kwarg_name] = dep_result.value()
+                elif isinstance(kwarg_value, InputPlaceholder):
+                    # Resolve InputPlaceholder from flow params
+                    param_name = kwarg_value.name
+                    if param_name in flow_params.params:
+                        resolved_kwargs[kwarg_name] = flow_params.params[param_name]
+                    elif kwarg_value.default is not None:
+                        resolved_kwargs[kwarg_name] = kwarg_value.default
+                    else:
+                        console.print(f"[red]Error:[/red] Required parameter '{param_name}' not found in workspace")
+                        sys.exit(1)
                 else:
                     resolved_kwargs[kwarg_name] = kwarg_value
 
@@ -499,6 +507,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
             if target_node.task_info.is_condition_check:
                 # Special handling for condition evaluation
                 from .conditional import evaluate_condition
+                from .result import Ok
 
                 condition_data = target_node.kwargs.get("condition_data", {})
 
@@ -514,8 +523,11 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     if prev_result.ok:
                         eval_context_outputs[prev_step] = prev_result.value()
 
-                result = evaluate_condition(condition_data, eval_context_inputs, eval_context_outputs)
-                condition_value = result.value() if result.ok else False
+                eval_result = evaluate_condition(condition_data, eval_context_inputs, eval_context_outputs)
+                condition_value = eval_result.value() if eval_result.ok else False
+
+                # Create a proper Result for workspace storage
+                result = Ok(condition_value)
 
                 # Write to GITHUB_OUTPUT if available (for GHA)
                 github_output = os.environ.get("GITHUB_OUTPUT")
