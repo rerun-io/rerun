@@ -191,7 +191,7 @@ fn decode_png_depth(
     reader.set_format(image::ImageFormat::Png);
 
     let dynamic_image = reader.decode()?;
-    let (buffer, format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
+    let (buffer, mut format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
 
     if format.color_model != Some(ColorModel::L) {
         return Err(ImageLoadError::DecodeError(format!(
@@ -199,6 +199,8 @@ fn decode_png_depth(
             format.color_model
         )));
     }
+    // .. but in our semantics we treat depth as `None` color model since there _is_ no color. (see `ImageKind::Depth`)
+    format.color_model = None;
 
     let expected_num_bytes = format.num_bytes();
     let ImageBuffer(blob) = buffer;
@@ -372,7 +374,7 @@ mod tests {
         assert_eq!(image_info.kind, ImageKind::Depth);
         assert_eq!(
             image_info.format,
-            ImageFormat::depth([width, height], ChannelDatatype::F32)
+            ImageFormat::depth([width, height], ChannelDatatype::U16)
         );
     }
 
