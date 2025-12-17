@@ -499,8 +499,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
@@ -847,8 +847,8 @@ class DatasetView:
 
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
