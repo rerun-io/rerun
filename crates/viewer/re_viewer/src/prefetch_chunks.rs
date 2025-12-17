@@ -81,7 +81,7 @@ pub fn prefetch_chunks(
     });
 
     if !found_source {
-        re_log::debug!("Failed to find the source");
+        re_log::debug_once!("Failed to find the data source of the recording");
     }
 
     None
