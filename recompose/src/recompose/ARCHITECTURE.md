@@ -202,6 +202,22 @@ generate_gha →
 5. **Explicit registration**: Only commands passed to `main()` are CLI-accessible
 6. **Local/CI parity**: Flows execute identically locally and in GHA
 
+## Error Handling Conventions
+
+**User-facing code (tasks, flows):**
+- Tasks return `Result[T]` - use `Ok(value)` for success, `Err(message)` for failure
+- The `@task` decorator catches uncaught exceptions and converts to `Err`
+- Use `result.value()` to get the value - raises if failed (fail-fast for users)
+
+**Internal framework code:**
+- **Exceptions** for programming errors (invariants violated, setup not done)
+- **`Result`** for expected/recoverable conditions (step not run yet, file might not exist)
+- Use `result._value` for inspection without triggering failure semantics
+
+Examples:
+- `read_params()` raises `FileNotFoundError` - missing params is a programming error
+- `read_step_result()` returns `Err` - step not run yet is an expected condition
+
 ## Common Patterns
 
 ### Adding a New Task
