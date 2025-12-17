@@ -469,7 +469,7 @@ async fn stream_segment_from_server(
     let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
 
     if let Some(time_selection) = fragment.time_selection {
-        // Start be loading only the chunks required for the time selection:
+        // Start by loading only the chunks required for the time selection:
         let time_selection_batches = client
             .query_dataset_chunk_index(SegmentQueryParams {
                 dataset_id,
