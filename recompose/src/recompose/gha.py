@@ -38,13 +38,24 @@ class GHAAction:
     A virtual task that represents a GitHub Actions `uses:` step.
 
     GHA actions are no-ops when run locally but generate `uses:` steps
-    in workflow YAML. They can be used in flows just like regular tasks.
+    in workflow YAML. They can be called in flows just like regular tasks.
+
+    Factory Functions vs Direct GHAAction:
+        Most GHA actions are exposed through factory functions like
+        `setup_python(version="3.11")` rather than direct GHAAction instances.
+        These factories return GHAAction objects configured for the specific
+        action. The returned GHAAction is callable (via `__call__`), which
+        is what gets invoked in flows.
+
+        - Factory: `setup_python(version="3.11")` returns a GHAAction
+        - GHAAction is callable: `setup_python(version="3.11")()` or just
+          `setup_python(version="3.11")` in a flow (auto-called)
 
     Example:
         @recompose.flow
         def build_pipeline(*, repo: str = "main") -> None:
-            recompose.gha.checkout()  # Adds checkout step
-            recompose.gha.setup_python(version="3.11")  # Adds setup-python step
+            recompose.gha.checkout()  # checkout is a GHAAction instance
+            recompose.gha.setup_python(version="3.11")  # factory returns GHAAction
 
             source = fetch_source(repo=repo)
             ...
