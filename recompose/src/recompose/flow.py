@@ -204,21 +204,9 @@ def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
 
 def _format_condition_expr(condition_data: dict[str, Any]) -> str:
     """Format a serialized condition expression for display."""
-    expr_type = condition_data.get("type", "")
-    if expr_type == "input":
-        return str(condition_data.get("name", "?"))
-    elif expr_type == "literal":
-        return str(condition_data.get("value", "?"))
-    elif expr_type == "binary":
-        left = _format_condition_expr(condition_data.get("left", {}))
-        op = condition_data.get("op", "?")
-        right = _format_condition_expr(condition_data.get("right", {}))
-        return f"{left} {op} {right}"
-    elif expr_type == "unary":
-        op = condition_data.get("op", "?")
-        operand = _format_condition_expr(condition_data.get("operand", {}))
-        return f"{op} {operand}"
-    return "?"
+    from .expr import format_expr
+
+    return format_expr(condition_data)
 
 
 def flow(fn: Callable[..., None]) -> FlowWrapper:

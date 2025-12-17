@@ -305,8 +305,7 @@ class FlowPlan:
         that evaluates it. Conditional tasks are updated with a reference to
         their condition-check step.
 
-        Condition check nodes are named based on the condition expression
-        (e.g., "eval_full_tests" for a condition on the full_tests parameter).
+        Condition check nodes are named sequentially as "run_if_1", "run_if_2", etc.
 
         Args:
             condition_task_info: TaskInfo for the eval_condition pseudo-task.
@@ -334,19 +333,21 @@ class FlowPlan:
 
         # Process nodes in original order, injecting checks before first conditional
         injected_conditions: set[str] = set()
+        condition_counter = 0
 
         for node in self.nodes:
             if node.condition is not None:
                 key = str(node.condition.serialize())
                 if key not in injected_conditions:
+                    condition_counter += 1
                     # Create and inject the condition-check node
                     condition_expr, _ = condition_map[key]
                     check_node: TaskNode[bool] = TaskNode(
                         task_info=condition_task_info,
                         kwargs={"condition_data": condition_expr.serialize()},
                     )
-                    # Give it a meaningful name based on the condition expression
-                    check_node.step_name = self._condition_step_name(condition_expr)
+                    # Name sequentially: run_if_1, run_if_2, etc.
+                    check_node.step_name = f"run_if_{condition_counter}"
                     new_nodes.append(check_node)
                     check_nodes.append(check_node)
                     injected_conditions.add(key)
@@ -367,35 +368,6 @@ class FlowPlan:
                 node.condition_check_step = check_node.step_name
 
         return check_nodes
-
-    def _condition_step_name(self, condition: Expr) -> str:
-        """Generate a step name for a condition check based on the expression."""
-        data = condition.serialize()
-        expr_type = data.get("type", "")
-
-        if expr_type == "input":
-            # Simple input reference: eval_<param_name>
-            name = data.get("name", "condition")
-            return f"eval_{name}"
-        elif expr_type == "binary":
-            # Binary expression: use the input name if one side is an input
-            left = data.get("left", {})
-            right = data.get("right", {})
-            if left.get("type") == "input":
-                name = left.get("name", "condition")
-                return f"eval_{name}"
-            elif right.get("type") == "input":
-                name = right.get("name", "condition")
-                return f"eval_{name}"
-        elif expr_type == "unary":
-            # Unary expression: use the operand's input name
-            operand = data.get("operand", {})
-            if operand.get("type") == "input":
-                name = operand.get("name", "condition")
-                return f"eval_{name}"
-
-        # Fallback: generic name
-        return "eval_condition"
 
     def get_execution_order(self) -> list[TaskNode[Any]]:
         """

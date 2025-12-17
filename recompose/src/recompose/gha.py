@@ -632,11 +632,17 @@ def render_flow_workflow(
             job_steps.append(_build_setup_step(step_name, flow_info, script_path, python_cmd))
         elif node.task_info.is_condition_check:
             # Condition check step - outputs value=true/false
+            # Add comment showing the condition expression
+            from .expr import format_expr
+
+            condition_data = node.kwargs.get("condition_data", {})
+            condition_expr = format_expr(condition_data)
+            run_cmd = f"# [if: {condition_expr}]\n{python_cmd} {script_path} {flow_info.name} --step {step_name}"
             job_steps.append(
                 StepSpec(
                     name=step_name,
                     id=step_name,  # Need ID for referencing in if: conditions
-                    run=f"{python_cmd} {script_path} {flow_info.name} --step {step_name}",
+                    run=run_cmd,
                 )
             )
         else:

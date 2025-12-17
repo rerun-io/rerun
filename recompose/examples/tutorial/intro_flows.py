@@ -25,6 +25,7 @@ Run flows:
     uv run python -m examples.tutorial.intro_flows math_pipeline --a=20 --b=4
     uv run python -m examples.tutorial.intro_flows conditional_pipeline
     uv run python -m examples.tutorial.intro_flows conditional_pipeline --run_extra
+    uv run python -m examples.tutorial.intro_flows complex_conditional --run_extra --target=prod
 
 Inspect flows without running:
     uv run python -m examples.tutorial.intro_flows inspect --target=tool_check
@@ -276,6 +277,68 @@ def conditional_pipeline(*, run_extra: bool = False) -> None:
 
 
 # =============================================================================
+# COMPLEX CONDITIONAL EXPRESSIONS
+# =============================================================================
+#
+# run_if() supports complex boolean expressions using Python operators:
+#   - & (and): run_extra & (target == "prod")
+#   - | (or): deploy | (env == "staging")
+#   - ~ (not): ~skip_tests
+#   - == / != : target == "prod"
+
+
+@recompose.task
+def deploy_to_prod() -> recompose.Result[str]:
+    """Deploy to production environment."""
+    recompose.out("Deploying to production...")
+    return recompose.Ok("deployed-to-prod")
+
+
+@recompose.flow
+def complex_conditional(*, run_extra: bool = False, target: str = "staging") -> None:
+    """
+    A pipeline with complex conditional expressions.
+
+    The conditional task runs only if BOTH conditions are true:
+        run_extra AND (target == "prod")
+
+    This demonstrates combining boolean inputs with string comparisons.
+
+    Try different combinations:
+        # Won't deploy (run_extra=False):
+        complex_conditional
+
+        # Won't deploy (target != "prod"):
+        complex_conditional --run_extra
+
+        # WILL deploy (both conditions met):
+        complex_conditional --run_extra --target=prod
+
+    In the generated GHA workflow, the condition becomes:
+        - name: run_if_1
+          id: run_if_1
+          run: |
+            # [if: run_extra and target == prod]
+            uv run python -m ... --step run_if_1
+
+        - name: step_N_deploy_to_prod
+          if: ${{ steps.run_if_1.outputs.value == 'true' }}
+          run: ...
+
+    """
+    # Always runs
+    setup()
+
+    # Only runs if run_extra AND target == "prod"
+    # Use & for 'and' (Python's 'and' keyword won't work with expressions)
+    with recompose.run_if(run_extra & (target == "prod")):
+        deploy_to_prod()
+
+    # Always runs
+    finalize()
+
+
+# =============================================================================
 # ENTRYPOINT
 # =============================================================================
 
@@ -289,6 +352,7 @@ if __name__ == "__main__":
                 math_pipeline,
                 risky_pipeline,
                 conditional_pipeline,
+                complex_conditional,
             ],
         ),
     ]

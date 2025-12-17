@@ -223,3 +223,24 @@ def deserialize_expr(data: dict[str, Any]) -> Expr:
         )
     else:
         raise ValueError(f"Unknown expression type: {expr_type}")
+
+
+def format_expr(data: dict[str, Any]) -> str:
+    """Format a serialized condition expression for display."""
+    expr_type = data.get("type", "")
+    if expr_type == "input":
+        return str(data.get("name", "?"))
+    elif expr_type == "literal":
+        return str(data.get("value", "?"))
+    elif expr_type == "output":
+        return f"output({data.get('step', '?')})"
+    elif expr_type == "binary":
+        left = format_expr(data.get("left", {}))
+        op = data.get("op", "?")
+        right = format_expr(data.get("right", {}))
+        return f"{left} {op} {right}"
+    elif expr_type == "unary":
+        op = data.get("op", "?")
+        operand = format_expr(data.get("operand", {}))
+        return f"{op} {operand}"
+    return "?"
