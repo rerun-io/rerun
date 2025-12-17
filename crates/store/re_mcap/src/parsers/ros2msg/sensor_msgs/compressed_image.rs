@@ -1,10 +1,11 @@
-use super::super::definitions::sensor_msgs;
 use anyhow::bail;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_sdk_types::archetypes::{EncodedDepthImage, EncodedImage, VideoStream};
+use re_sdk_types::archetypes::{CoordinateFrame, EncodedDepthImage, EncodedImage, VideoStream};
 use re_sdk_types::components::{MediaType, VideoCodec};
 
 use super::super::Ros2MessageParser;
+use super::super::definitions::sensor_msgs;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
@@ -16,6 +17,7 @@ pub struct CompressedImageMessageParser {
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
     mode: ParsedPayloadKind,
+    frame_ids: Vec<String>,
 }
 
 impl Ros2MessageParser for CompressedImageMessageParser {
@@ -23,6 +25,7 @@ impl Ros2MessageParser for CompressedImageMessageParser {
         Self {
             blobs: Vec::with_capacity(num_rows),
             mode: ParsedPayloadKind::Unknown,
+            frame_ids: Vec::with_capacity(num_rows),
         }
     }
 }
@@ -40,6 +43,7 @@ impl MessageParser for CompressedImageMessageParser {
         ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
             header.stamp.as_nanos() as u64,
         ));
+        self.frame_ids.push(header.frame_id);
 
         let data = data.into_owned();
 
@@ -58,12 +62,16 @@ impl MessageParser for CompressedImageMessageParser {
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
         re_tracing::profile_function!();
-        let Self { blobs, mode } = *self;
+        let Self {
+            blobs,
+            mode,
+            frame_ids,
+        } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let components = match mode {
+        let mut components: Vec<_> = match mode {
             ParsedPayloadKind::DepthRvl => {
                 let media_types = std::iter::repeat_n(MediaType::rvl(), blobs.len());
                 EncodedDepthImage::update_fields()
@@ -85,11 +93,20 @@ impl MessageParser for CompressedImageMessageParser {
             }
         };
 
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (see also camera info parser).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
+        components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(image_plane_frame_ids)
+                .columns_of_unit_batches()?,
+        );
+
         let chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             timelines.clone(),
-            components,
+            components.into_iter().collect(),
         )?;
 
         if mode == ParsedPayloadKind::H264 {
