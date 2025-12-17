@@ -1,7 +1,9 @@
 use std::io::{IsTerminal as _, Write as _};
+use std::sync::Arc;
 
 use anyhow::Context as _;
 use itertools::Either;
+use re_chunk::Chunk;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
@@ -248,8 +250,9 @@ fn merge_and_compact(
                 let engine = unsafe { db.storage_engine_raw() };
 
                 let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
-                for chunk in engine.read().store().iter_chunks() {
-                    store.insert_chunk(chunk)?;
+                for chunk in sort_chunks_by_timepoint(engine.read().store().iter_chunks().cloned())
+                {
+                    store.insert_chunk(&chunk)?;
                 }
 
                 num_chunks_after += store.num_chunks() as u64;
@@ -347,4 +350,16 @@ fn merge_and_compact(
     );
 
     Ok(())
+}
+
+fn sort_chunks_by_timepoint(iter_chunks: impl Iterator<Item = Arc<Chunk>>) -> Vec<Arc<Chunk>> {
+    re_tracing::profile_function!();
+
+    // Sorting by time point ensures that chunks are inserted in temporal order,
+    // at least if all timelines increase monotonically.
+    // This is currently required by our video playback.
+    // TODO(#RR-3163): handle out-of-order video samples
+    let mut chunks: Vec<Arc<Chunk>> = iter_chunks.collect();
+    chunks.sort_by_cached_key(|chunk| chunk.min_time_point());
+    chunks
 }
