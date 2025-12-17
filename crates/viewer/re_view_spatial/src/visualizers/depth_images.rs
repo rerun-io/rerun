@@ -15,7 +15,6 @@ use re_viewer_context::{
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
@@ -35,7 +34,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -52,12 +51,12 @@ pub struct DepthImageComponentData {
 #[expect(clippy::too_many_arguments)]
 pub fn process_depth_image_data(
     ctx: &QueryContext<'_>,
-    ent_context: &SpatialSceneEntityContext<'_>,
+    ent_context: &mut SpatialSceneEntityContext<'_>,
     data_store: &mut SpatialViewVisualizerData,
     depth_cloud_entities: &mut IntMap<EntityPathHash, DepthImageProcessResult>,
     depth_clouds: &mut Vec<DepthCloud>,
     transforms: &TransformTreeContext,
-    data: DepthImageComponentData,
+    component_data: DepthImageComponentData,
     archetype_name: ArchetypeName,
     depth_meter_identifier: ComponentIdentifier,
     colormap_identifier: ComponentIdentifier,
@@ -71,7 +70,7 @@ pub fn process_depth_image_data(
         fill_ratio,
         colormap,
         value_range,
-    } = data;
+    } = component_data;
 
     let depth_meter =
         depth_meter.unwrap_or_else(|| typed_fallback_for(ctx, depth_meter_identifier));
@@ -96,7 +95,7 @@ pub fn process_depth_image_data(
     // First try to create a textured rect for this image.
     // Even if we end up only showing a depth cloud,
     // we still need most of this for ui interaction which still shows the image!
-    let Some(textured_rect) = textured_rect_from_image(
+    let textured_rect = match textured_rect_from_image(
         ctx.viewer_ctx(),
         entity_path,
         ent_context,
@@ -104,58 +103,71 @@ pub fn process_depth_image_data(
         Some(&colormap_with_range),
         re_renderer::Rgba::WHITE,
         archetype_name,
-    ) else {
-        // If we can't create a textured rect from this, we don't have to bother with clouds either.
-        return;
+    ) {
+        Ok(textured_rect) => textured_rect,
+        Err(err) => {
+            ent_context
+                .output
+                .report_error_for(ctx.target_entity_path.clone(), re_error::format(err));
+
+            // If we can't create a textured rect from this, we don't have to bother with clouds either.
+            return;
+        }
     };
 
-    if is_3d_view
-        && let Some(pinhole_tree_root_info) =
+    if is_3d_view {
+        // In 3D views we should show depth images as a depth cloud and no textured rect.
+        // For that we need a pinhole at or above that entity in the transform tree.
+        if let Some(pinhole_tree_root_info) =
             transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
-    {
-        let fill_ratio = fill_ratio.unwrap_or_default();
+        {
+            let fill_ratio = fill_ratio.unwrap_or_default();
 
-        // NOTE: we don't pass in `world_from_obj` because this corresponds to the
-        // transform of the projection plane, which is of no use to us here.
-        // What we want are the extrinsics of the depth camera!
-        let cloud = process_entity_view_as_depth_cloud(
-            ent_context,
-            entity_path,
-            pinhole_tree_root_info,
-            depth_meter,
-            fill_ratio,
-            &textured_rect.colormapped_texture,
-        );
-        data_store.add_bounding_box(
-            entity_path.hash(),
-            cloud.world_space_bbox(),
-            glam::Affine3A::IDENTITY,
-        );
-        depth_cloud_entities.insert(
-            entity_path.hash(),
-            DepthImageProcessResult {
-                image_info,
+            // NOTE: we don't pass in `world_from_obj` because this corresponds to the
+            // transform of the projection plane, which is of no use to us here.
+            // What we want are the extrinsics of the depth camera!
+            let cloud = process_entity_view_as_depth_cloud(
+                ent_context,
+                entity_path,
+                pinhole_tree_root_info,
                 depth_meter,
-                colormap: textured_rect.colormapped_texture,
+                fill_ratio,
+                &textured_rect.colormapped_texture,
+            );
+            data_store.add_bounding_box(
+                entity_path.hash(),
+                cloud.world_space_bbox(),
+                glam::Affine3A::IDENTITY,
+            );
+            depth_cloud_entities.insert(
+                entity_path.hash(),
+                DepthImageProcessResult {
+                    image_info,
+                    depth_meter,
+                    colormap: textured_rect.colormapped_texture,
+                },
+            );
+            depth_clouds.push(cloud);
+        } else {
+            ent_context.output.report_error_for(
+                ctx.target_entity_path.clone(),
+                "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera."
+                    .to_owned(),
+            );
+        }
+    } else {
+        data_store.add_pickable_rect(
+            PickableTexturedRect {
+                ent_path: entity_path.clone(),
+                textured_rect,
+                source_data: PickableRectSourceData::Image {
+                    image: image_info,
+                    depth_meter: Some(depth_meter),
+                },
             },
+            ent_context.view_class_identifier,
         );
-        depth_clouds.push(cloud);
-
-        // Skip creating a textured rect.
-        return;
     }
-
-    data_store.add_pickable_rect(
-        PickableTexturedRect {
-            ent_path: entity_path.clone(),
-            textured_rect,
-            source_data: PickableRectSourceData::Image {
-                image: image_info,
-                depth_meter: Some(depth_meter),
-            },
-        },
-        ent_context.view_class_identifier,
-    );
 }
 
 fn process_entity_view_as_depth_cloud(
