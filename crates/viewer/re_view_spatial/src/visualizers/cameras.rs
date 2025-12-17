@@ -63,13 +63,13 @@ impl CamerasVisualizer {
         let ent_path = ctx.target_entity_path;
 
         // We're currently NOT using `CoordinateFrame` component for this visualization but instead `Pinhole::child_frame`.
-        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum which can be unintuitive.
+        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum, which can be unintuitive.
         //
-        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set it doesn't make a difference.
+        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set, it doesn't make a difference.
         //
-        // In theory `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree making it unclear what to show.
+        // In theory, `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree, making it unclear what to show.
         // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
-        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases which is arguably
+        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases, which is arguably
         // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
         let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
 
@@ -77,14 +77,15 @@ impl CamerasVisualizer {
         let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            return Err(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!".to_owned(),
-            );
+            // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
+            return Err(format!(
+                "The pinhole's child frame {:?} does not form the root of a 2D subspace. Ensure you're transform tree is valid.",
+                transforms.format_frame(pinhole_frame_id)
+            ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
 
-        // Check for valid resolution.
+        // Check for a valid resolution.
         let resolution = resolved_pinhole
             .resolution
             .unwrap_or_else(|| typed_fallback_for(ctx, Pinhole::descriptor_resolution().component));
@@ -92,7 +93,7 @@ impl CamerasVisualizer {
         let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return Err("Invalid resolution".to_owned());
+            return Err("Invalid pinhole resolution.".to_owned());
         }
 
         let pinhole = crate::Pinhole {
@@ -112,19 +113,14 @@ impl CamerasVisualizer {
             return Err("Can't visualize pinholes at the view's origin".to_owned());
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
-        else {
-            return Err("No valid pinhole present".to_owned());
-        };
+        // If this transform is not representable as an `IsoTransform` we can't display it yet.
+        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let world_from_camera = pinhole_tree_root_info
             .parent_root_from_pinhole_root
             .as_affine3a();
-
-        // If this transform is not representable as an `IsoTransform` we can't display it yet.
-        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return Err("Can only visualize pinhole under isometric transforms".to_owned());
+            return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
 
         debug_assert!(world_from_camera_iso.is_finite());
