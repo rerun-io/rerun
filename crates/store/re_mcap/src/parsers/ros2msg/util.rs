@@ -5,6 +5,6 @@
 pub fn suffix_image_plane_frame_ids(frame_ids: impl IntoIterator<Item = String>) -> Vec<String> {
     frame_ids
         .into_iter()
-        .map(|id| format!("{id}_plane"))
+        .map(|id| format!("{id}_image_plane"))
         .collect::<Vec<_>>()
 }
