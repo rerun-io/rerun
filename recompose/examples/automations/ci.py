@@ -5,6 +5,7 @@ This automation orchestrates the CI pipeline as a multi-job GHA workflow.
 """
 
 import recompose
+from recompose.builtin_tasks import generate_gha
 
 from ..tasks import format_check, lint, test
 
@@ -18,7 +19,8 @@ def ci() -> None:
 
     Each task becomes a separate GHA job that can run in parallel.
     """
-    # All three jobs can run in parallel (no dependencies)
+    # All jobs can run in parallel (no dependencies)
     recompose.job(lint)
     recompose.job(format_check)
     recompose.job(test)
+    recompose.job(generate_gha, inputs={"check_only": True})
