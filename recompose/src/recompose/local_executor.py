@@ -382,20 +382,31 @@ class LocalExecutor:
             env = os.environ.copy()
             env["GITHUB_OUTPUT"] = str(output_file)
 
-            # Run the subprocess
-            # Note: working_directory is for GHA workflows; when running locally
-            # we're already in the correct directory, so we use cwd=None
-            result = subprocess.run(
+            # Run the subprocess with output streaming
+            # We use Popen to stream output line-by-line with proper prefixing
+            process = subprocess.Popen(
                 cmd,
                 cwd=None,
                 env=env,
-                capture_output=not self.verbose,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
             )
 
+            # Stream output with tree-style prefix
+            prefix = "    │ "
+            output_lines: list[str] = []
+            assert process.stdout is not None
+            for line in process.stdout:
+                line = line.rstrip("\n")
+                output_lines.append(line)
+                if self.verbose:
+                    console.print(f"[dim]{prefix}[/dim]{line}")
+
+            process.wait()
             elapsed = time.perf_counter() - start_time
 
-            if result.returncode == 0:
+            if process.returncode == 0:
                 # Parse outputs
                 outputs = _parse_github_output(output_file)
                 console.print(f"    [green]✓[/green] completed in {elapsed:.2f}s")
@@ -409,16 +420,17 @@ class LocalExecutor:
                     outputs=outputs,
                 )
             else:
-                error_msg = result.stderr or result.stdout or "Unknown error"
                 console.print(f"    [red]✗[/red] failed in {elapsed:.2f}s")
-                if not self.verbose and error_msg:
-                    # Only show error if we weren't already streaming output
-                    console.print(f"    [red]Error:[/red] {error_msg[:200]}")
+                if not self.verbose and output_lines:
+                    # Show last few lines of output as error context
+                    error_lines = output_lines[-10:]
+                    for line in error_lines:
+                        console.print(f"[dim]{prefix}[/dim]{line}")
                 return JobResult(
                     job_id=job_id,
                     success=False,
                     elapsed_seconds=elapsed,
-                    error=error_msg,
+                    error="\n".join(output_lines[-10:]) if output_lines else "Unknown error",
                 )
 
         finally:
