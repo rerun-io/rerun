@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Single visualizer override the visualizers for an entity.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 #[repr(transparent)]
 pub struct VisualizerInstructionId(
     /// Names of a visualizer that should be active.
