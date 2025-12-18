@@ -7,12 +7,13 @@ from .build import (
     smoke_test,
     test_installed,
 )
-from .lint import format_check, format_code, lint
+from .lint import format_check, format_code, lint, lint_all
 from .test import test
 
 __all__ = [
     # Lint & format
     "lint",
+    "lint_all",
     "format_check",
     "format_code",
     # Test
