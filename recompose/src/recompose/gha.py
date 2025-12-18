@@ -465,16 +465,19 @@ def _flow_params_to_inputs(flow_info: FlowInfo) -> list[WorkflowDispatchInput]:
     return inputs
 
 
-def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, python_cmd: str) -> StepSpec:
+def _build_setup_step(step_name: str, flow_info: FlowInfo, module_name: str, python_cmd: str) -> StepSpec:
     """Build the setup step that initializes the workspace."""
     inputs = _flow_params_to_inputs(flow_info)
 
-    # Build the run command using _setup internal command
+    # Build the run command using recompose._run_step module
     # Note: workspace is set via RECOMPOSE_WORKSPACE env var at job level
     cmd_parts = [
         python_cmd,
-        script_path,
-        "_setup",
+        "-m",
+        "recompose._run_step",
+        "--module",
+        module_name,
+        "--setup",
         "--flow",
         flow_info.name,
     ]
@@ -492,7 +495,7 @@ def _build_setup_step(step_name: str, flow_info: FlowInfo, script_path: str, pyt
 def _build_task_step(
     step_name: str,
     flow_name: str,
-    script_path: str,
+    module_name: str,
     python_cmd: str,
     condition_check_step: str | None = None,
 ) -> StepSpec:
@@ -503,9 +506,11 @@ def _build_task_step(
         # Reference the condition-check step's output
         if_condition = f"${{{{ steps.{condition_check_step}.outputs.value == 'true' }}}}"
 
+    run_cmd = f"{python_cmd} -m recompose._run_step --module {module_name} --flow {flow_name} --step {step_name}"
+
     return StepSpec(
         name=step_name,
-        run=f"{python_cmd} {script_path} _run-step --flow {flow_name} --step {step_name}",
+        run=run_cmd,
         if_condition=if_condition,
     )
 
@@ -528,22 +533,23 @@ def _build_gha_action_step(step_name: str, node: Any) -> StepSpec:
 def _build_condition_check_step(
     step_name: str,
     flow_name: str,
-    script_path: str,
+    module_name: str,
     python_cmd: str,
     condition_expr_str: str,
 ) -> StepSpec:
     """Build a step that evaluates a condition and outputs true/false."""
+    run_cmd = f"{python_cmd} -m recompose._run_step --module {module_name} --flow {flow_name} --step {step_name}"
     return StepSpec(
         name=step_name,
         id=step_name,  # Need ID for referencing in if: conditions
-        run=f"{python_cmd} {script_path} _run-step --flow {flow_name} --step {step_name}",
+        run=run_cmd,
         comment=f"[if: {condition_expr_str}]",
     )
 
 
 def render_flow_workflow(
     flow_info: FlowInfo,
-    script_path: str = "app.py",
+    module_name: str,
     runs_on: str = "ubuntu-latest",
     python_cmd: str = "python",
     working_directory: str | None = None,
@@ -553,7 +559,7 @@ def render_flow_workflow(
 
     Args:
         flow_info: The flow to generate a workflow for.
-        script_path: Path to the script that contains the flow (relative to repo root).
+        module_name: Module name that contains the recompose.App (e.g., "examples.app").
         runs_on: The runner to use for the job.
         python_cmd: Command to invoke Python (e.g., "python", "uv run python").
         working_directory: Working directory for run steps (relative to repo root).
@@ -602,7 +608,7 @@ def render_flow_workflow(
 
     # Add setup step if there are regular tasks
     if has_regular_tasks:
-        job_steps.append(_build_setup_step("setup_workspace", flow_info, script_path, python_cmd))
+        job_steps.append(_build_setup_step("setup_workspace", flow_info, module_name, python_cmd))
 
     # Add non-GHA steps in order (condition-checks and regular tasks)
     # The plan already has condition-check nodes interleaved correctly
@@ -618,7 +624,7 @@ def render_flow_workflow(
                 _build_condition_check_step(
                     step_name,
                     flow_info.name,
-                    script_path,
+                    module_name,
                     python_cmd,
                     condition_expr_str,
                 )
@@ -629,7 +635,7 @@ def render_flow_workflow(
                 _build_task_step(
                     step_name,
                     flow_info.name,
-                    script_path,
+                    module_name,
                     python_cmd,
                     condition_check_step=node.condition_check_step,
                 )
@@ -730,7 +736,7 @@ def render_automation_workflow(
 
 def generate_workflow_yaml(
     flow_name: str,
-    script_path: str = "app.py",
+    module_name: str,
     runs_on: str = "ubuntu-latest",
 ) -> str:
     """
@@ -738,7 +744,7 @@ def generate_workflow_yaml(
 
     Args:
         flow_name: Name of the flow to generate workflow for.
-        script_path: Path to the script containing the flow.
+        module_name: Module name containing the recompose.App (e.g., "examples.app").
         runs_on: The runner to use.
 
     Returns:
@@ -752,7 +758,7 @@ def generate_workflow_yaml(
     if flow_info is None:
         raise ValueError(f"Flow '{flow_name}' not found")
 
-    spec = render_flow_workflow(flow_info, script_path=script_path, runs_on=runs_on)
+    spec = render_flow_workflow(flow_info, module_name=module_name, runs_on=runs_on)
     return spec.to_yaml()
 
 

@@ -81,7 +81,6 @@ def generate_gha(
         ./run generate_gha --output_dir=/tmp/workflows
 
     """
-    import sys
 
     from .context import get_automation, get_automation_registry, get_flow, get_flow_registry
     from .gha import render_automation_workflow, render_flow_workflow
@@ -95,31 +94,18 @@ def generate_gha(
             return Err("Could not find git root. Specify --output_dir explicitly.")
         workflows_dir = maybe_workflows_dir
 
-    # Determine script path (relative to git root or working_directory)
-    # Use entry_point info to construct the correct invocation
-    git_root = find_git_root()
-    working_dir = get_working_directory()
+    # Determine module name from entry point
     entry_point = get_entry_point()
 
     if script:
-        script_path = script
+        # Explicit script override - not supported with new module-based approach
+        return Err("--script is no longer supported. Use module-based entry points.")
     elif entry_point and entry_point[0] == "module":
-        # Running as a module - use -m style invocation
         module_name = entry_point[1]
-        script_path = f"-m {module_name}"
-    elif git_root:
-        # Try to make script path relative to git root
-        script_abs = Path(sys.argv[0]).resolve()
-        try:
-            script_path = str(script_abs.relative_to(git_root))
-        except ValueError:
-            script_path = sys.argv[0]
-
-        # If working_directory is set, adjust script_path to be relative to it
-        if working_dir and script_path.startswith(working_dir + "/"):
-            script_path = script_path[len(working_dir) + 1 :]
     else:
-        script_path = sys.argv[0]
+        return Err(
+            "Could not determine module name. Make sure you're using recompose.App with a module-based entry point."
+        )
 
     # Collect targets to generate
     # (short_name, target_type, info, description)
@@ -181,7 +167,7 @@ def generate_gha(
             if target_type == "flow":
                 spec = render_flow_workflow(
                     info,
-                    script_path=script_path,
+                    module_name=module_name,
                     runs_on=runs_on,
                     python_cmd=get_python_cmd(),
                     working_directory=get_working_directory(),

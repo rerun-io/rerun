@@ -12,7 +12,6 @@ The main entry points are:
 
 from __future__ import annotations
 
-import inspect
 import os
 import subprocess
 import sys
@@ -386,11 +385,13 @@ def execute_flow_isolated(
     # Create or use provided workspace
     ws = create_workspace(flow_name, workspace=workspace)
 
-    # Get entry point info - use the same invocation method as the parent
+    # Get entry point info - must be module mode for subprocess isolation
     entry_point = get_entry_point()
-    if entry_point is None:
-        # Fallback to script mode with the module where the flow is defined
-        entry_point = ("script", inspect.getfile(flow_info.original_fn))
+    if entry_point is None or entry_point[0] != "module":
+        raise ValueError(
+            "Flow execution requires module-based entry point. "
+            "Make sure you're using recompose.App with a module-based entry point."
+        )
 
     entry_type, entry_value = entry_point
 
@@ -453,28 +454,21 @@ def execute_flow_isolated(
             sys.executable,
             "-m",
             "recompose._run_step",
+            "--module",
+            entry_value,
+            "--flow",
+            flow_name,
+            "--step",
+            step_name,
         ]
-        # Use --module for module entry points, --script for file paths
-        if entry_type == "module":
-            cmd.extend(["--module", entry_value])
-        else:
-            cmd.extend(["--script", entry_value])
-        cmd.extend(
-            [
-                "--flow",
-                flow_name,
-                "--step",
-                step_name,
-                "--workspace",
-                str(ws),
-            ]
-        )
 
         if is_debug():
             dbg(f"Running: {' '.join(cmd)}")
 
         # Set up environment with tree rendering context
+        # Include RECOMPOSE_WORKSPACE so _run_step can find the workspace
         step_env = os.environ.copy()
+        step_env["RECOMPOSE_WORKSPACE"] = str(ws)
         step_env.update(renderer.get_step_env(step_idx))
 
         # Run step as subprocess (output streams directly with tree prefix)

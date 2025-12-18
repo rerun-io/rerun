@@ -212,7 +212,7 @@ class TestRenderFlowWorkflow:
         """Test rendering a simple flow with no parameters."""
         flow_info = simple_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         assert spec.name == "simple_flow"
         assert "workflow_dispatch" in spec.on
@@ -221,14 +221,14 @@ class TestRenderFlowWorkflow:
         job = spec.jobs["simple_flow"]
         assert len(job.steps) == 3
         assert job.steps[0].uses == "actions/checkout@v4"
-        assert "_setup --flow" in (job.steps[1].run or "")
-        assert "_run-step --flow" in (job.steps[2].run or "")
+        assert "--setup --flow" in (job.steps[1].run or "")
+        assert "--step" in (job.steps[2].run or "")
 
     def test_flow_with_parameters(self) -> None:
         """Test rendering a flow with parameters."""
         flow_info = param_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         # Check workflow_dispatch inputs
         inputs = spec.on["workflow_dispatch"]["inputs"]
@@ -250,7 +250,7 @@ class TestRenderFlowWorkflow:
         """Test rendering a flow with multiple steps."""
         flow_info = multi_step_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         # Should have checkout + setup + 2 task steps
         job = spec.jobs["multi_step_flow"]
@@ -267,7 +267,7 @@ class TestRenderFlowWorkflow:
         """Test specifying a custom runner."""
         flow_info = simple_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py", runs_on="macos-latest")
+        spec = render_flow_workflow(flow_info, module_name="app.py", runs_on="macos-latest")
 
         job = spec.jobs["simple_flow"]
         assert job.runs_on == "macos-latest"
@@ -276,7 +276,7 @@ class TestRenderFlowWorkflow:
         """Test that generated YAML is valid."""
         flow_info = param_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         # Should be parseable
@@ -349,11 +349,18 @@ def flow_with_gha_actions() -> None:
     simple_task()
 
 
+# App for GHA action flow tests - must be at module level for subprocess isolation
+_gha_actions_app = recompose.App(
+    commands=[flow_with_gha_actions],
+)
+
+
 class TestFlowWithGHAActions:
     """Tests for flows containing GHA actions."""
 
     def test_flow_with_actions_runs_locally(self) -> None:
         """Test that a flow with GHA actions runs (actions are no-ops)."""
+        _gha_actions_app.setup_context()
         result = flow_with_gha_actions()
         assert result.ok
 
@@ -361,7 +368,7 @@ class TestFlowWithGHAActions:
         """Test that a flow with GHA actions generates correct YAML."""
         flow_info = flow_with_gha_actions._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         # Should have: checkout, setup-python, setup-uv, setup workspace, simple_task
         job = spec.jobs["flow_with_gha_actions"]
@@ -385,7 +392,7 @@ class TestFlowWithGHAActions:
         """Test that flows without GHA actions get checkout added automatically."""
         flow_info = simple_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         job = spec.jobs["simple_flow"]
         # First step should be auto-added checkout
@@ -396,7 +403,7 @@ class TestFlowWithGHAActions:
         """Test that generated YAML with GHA actions is valid."""
         flow_info = flow_with_gha_actions._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         # Should be parseable
@@ -436,7 +443,7 @@ class TestValidateWorkflow:
         """Test that a valid workflow passes validation."""
         flow_info = simple_flow._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         success, message = validate_workflow(yaml_str)
