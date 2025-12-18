@@ -30,10 +30,8 @@ from .tasks import (
 
 # Create the app at module level so subprocess isolation can access it
 app = recompose.App(
-    config=recompose.Config(
-        python_cmd="uv run python",
-        working_directory="recompose",
-    ),
+    python_cmd="uv run python",
+    working_directory="recompose",
     commands=[
         recompose.CommandGroup(
             "Quality",

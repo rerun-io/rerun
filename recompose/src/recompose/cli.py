@@ -12,7 +12,7 @@ from typing import Any, cast, get_args, get_origin
 import click
 from rich.console import Console
 
-from .command_group import CommandGroup, Config
+from .command_group import CommandGroup
 from .context import (
     RecomposeContext,
     set_debug,
@@ -616,7 +616,8 @@ def _add_command_to_cli(
 def main(
     name: str | None = None,
     *,
-    config: Config | None = None,
+    python_cmd: str = "python",
+    working_directory: str | None = None,
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
     automations: Sequence[Any] | None = None,
     entry_point: tuple[str, str] | None = None,
@@ -626,7 +627,8 @@ def main(
 
     Args:
         name: Optional name for the CLI group. Defaults to the script name.
-        config: Configuration for the CLI (python_cmd, working_directory, etc.).
+        python_cmd: Command to invoke Python in generated GHA workflows.
+        working_directory: Working directory for GHA workflows (relative to repo root).
         commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
         entry_point: Optional (type, value) tuple for subprocess invocation.
@@ -634,24 +636,19 @@ def main(
 
     Example
     -------
-        config = recompose.Config(python_cmd="uv run python")
         commands = [
             recompose.CommandGroup("Quality", [lint, format_check]),
             recompose.CommandGroup("Testing", [test]),
             recompose.builtin_commands(),
         ]
-        recompose.main(config=config, commands=commands)
+        recompose.main(python_cmd="uv run python", commands=commands)
 
     """
     import sys
 
-    # Use defaults if no config provided
-    if config is None:
-        config = Config()
-
     # Store config for GHA workflow generation
-    set_python_cmd(config.python_cmd)
-    set_working_directory(config.working_directory)
+    set_python_cmd(python_cmd)
+    set_working_directory(working_directory)
 
     # Set entry point (for subprocess isolation)
     if entry_point is not None:
