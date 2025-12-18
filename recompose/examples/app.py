@@ -19,7 +19,7 @@ Inspect flows:
 import recompose
 
 from .flows.ci import ci
-from .flows.wheel_test import wheel_test
+from .flows.wheel_test import wheel_test, wheel_test_v2
 from .tasks import (
     build_wheel,
     format_check,
@@ -60,6 +60,7 @@ if __name__ == "__main__":
             [
                 ci,
                 wheel_test,
+                wheel_test_v2,
             ],
         ),
         recompose.builtin_commands(),

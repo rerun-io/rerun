@@ -190,6 +190,42 @@ def smoke_test(*, venv: str) -> recompose.Result[None]:
     return recompose.Ok(None)
 
 
+# Import here to avoid circular import (Venv is in same package)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .venv import Venv as VenvType
+
+
+@recompose.task
+def smoke_test_venv(*, venv: "VenvType") -> recompose.Result[None]:
+    """
+    Run a quick smoke test using a Venv TaskClass.
+
+    This version accepts a Venv TaskClass instance instead of a path string,
+    demonstrating how TaskClasses can be passed to other tasks.
+
+    Args:
+        venv: Venv TaskClass instance with recompose installed.
+
+    """
+    smoke_test_script = Path(__file__).parent / "smoke_test.py"
+
+    if not smoke_test_script.exists():
+        return recompose.Err(f"Smoke test script not found: {smoke_test_script}")
+
+    recompose.out("Running smoke test...")
+
+    # Use the Venv's run() method
+    result = venv.run(str(smoke_test_script), check=False)
+
+    if result.failed:
+        return recompose.Err(f"Smoke test failed: {result.returncode}")
+
+    recompose.out("Smoke test passed!")
+    return recompose.Ok(None)
+
+
 @recompose.task
 def test_installed(*, venv: str, verbose: bool = False) -> recompose.Result[None]:
     """
@@ -220,6 +256,38 @@ def test_installed(*, venv: str, verbose: bool = False) -> recompose.Result[None
         args.append("-v")
 
     result = recompose.run(*args)
+
+    if result.failed:
+        return recompose.Err(f"Tests failed: {result.returncode}")
+
+    recompose.out("All tests passed against installed package!")
+    return recompose.Ok(None)
+
+
+@recompose.task
+def test_installed_venv(*, venv: "VenvType", verbose: bool = False) -> recompose.Result[None]:
+    """
+    Run the full test suite using a Venv TaskClass.
+
+    This version accepts a Venv TaskClass instance instead of a path string.
+
+    Args:
+        venv: Venv TaskClass instance with recompose installed.
+        verbose: Show verbose test output.
+
+    """
+    tests_dir = PROJECT_ROOT / "tests"
+
+    if not tests_dir.exists():
+        return recompose.Err(f"Tests directory not found: {tests_dir}")
+
+    recompose.out(f"Running tests from {tests_dir} using installed package...")
+
+    args = ["-m", "pytest", str(tests_dir)]
+    if verbose:
+        args.append("-v")
+
+    result = venv.run(*args, check=False)
 
     if result.failed:
         return recompose.Err(f"Tests failed: {result.returncode}")
