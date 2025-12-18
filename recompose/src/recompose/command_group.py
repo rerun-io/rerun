@@ -1,4 +1,4 @@
-"""Command group and configuration for explicit CLI registration."""
+"""Command group and App for explicit CLI registration."""
 
 from __future__ import annotations
 
@@ -9,31 +9,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .flow import FlowWrapper
     from .task import TaskWrapper
-
-
-@dataclass
-class Config:
-    """
-    Configuration for recompose CLI.
-
-    Args:
-        python_cmd: Command to invoke Python in generated GHA workflows.
-                   Use "uv run python" for uv-managed projects.
-        working_directory: Working directory for GHA workflows (relative to repo root).
-                          If set, workflows will cd to this directory before running.
-
-    Example
-    -------
-        config = recompose.Config(
-            python_cmd="uv run python",
-            working_directory="recompose",
-        )
-        recompose.main(config=config, commands=[...])
-
-    """
-
-    python_cmd: str = "python"
-    working_directory: str | None = None
 
 
 @dataclass
@@ -78,6 +53,15 @@ class App:
     so that subprocess invocations can import the module and access the app's
     configuration and registered commands.
 
+    Args:
+        python_cmd: Command to invoke Python in generated GHA workflows.
+                   Use "uv run python" for uv-managed projects.
+        working_directory: Working directory for GHA workflows (relative to repo root).
+                          If set, workflows will cd to this directory before running.
+        commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+        automations: List of automations to register for GHA workflow generation.
+        name: Optional name for the CLI group. Defaults to the script name.
+
     Example
     -------
         # examples/app.py
@@ -86,10 +70,8 @@ class App:
         from .flows import ci
 
         app = recompose.App(
-            config=recompose.Config(
-                python_cmd="uv run python",
-                working_directory="recompose",
-            ),
+            python_cmd="uv run python",
+            working_directory="recompose",
             commands=[
                 recompose.CommandGroup("Quality", [lint]),
                 recompose.CommandGroup("Flows", [ci]),
@@ -104,7 +86,8 @@ class App:
     def __init__(
         self,
         *,
-        config: Config | None = None,
+        python_cmd: str = "python",
+        working_directory: str | None = None,
         commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] | None = None,
         automations: Sequence[Any] | None = None,
         name: str | None = None,
@@ -113,7 +96,8 @@ class App:
         Initialize the recompose application.
 
         Args:
-            config: Configuration for the CLI (python_cmd, working_directory, etc.).
+            python_cmd: Command to invoke Python in generated GHA workflows.
+            working_directory: Working directory for GHA workflows (relative to repo root).
             commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
             automations: List of automations to register for GHA workflow generation.
             name: Optional name for the CLI group. Defaults to the script name.
@@ -121,7 +105,8 @@ class App:
         """
         import sys
 
-        self.config = config or Config()
+        self.python_cmd = python_cmd
+        self.working_directory = working_directory
         self.commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] = commands or []
         self.automations: Sequence[Any] = automations or []
         self.name = name
@@ -148,7 +133,8 @@ class App:
 
         cli_main(
             name=self.name,
-            config=self.config,
+            python_cmd=self.python_cmd,
+            working_directory=self.working_directory,
             commands=self.commands,
             automations=self.automations,
             entry_point=self._entry_point,
@@ -172,8 +158,8 @@ class App:
         )
 
         # Set config values
-        set_python_cmd(self.config.python_cmd)
-        set_working_directory(self.config.working_directory)
+        set_python_cmd(self.python_cmd)
+        set_working_directory(self.working_directory)
 
         # Set entry point (for GHA workflow generation)
         set_entry_point(self._entry_point[0], self._entry_point[1])
