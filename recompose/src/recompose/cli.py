@@ -619,6 +619,7 @@ def main(
     config: Config | None = None,
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
     automations: Sequence[Any] | None = None,
+    entry_point: tuple[str, str] | None = None,
 ) -> None:
     """
     Build and run the CLI with explicit command registration.
@@ -628,6 +629,8 @@ def main(
         config: Configuration for the CLI (python_cmd, working_directory, etc.).
         commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
+        entry_point: Optional (type, value) tuple for subprocess invocation.
+                    If not provided, auto-detected from caller frame.
 
     Example
     -------
@@ -650,14 +653,18 @@ def main(
     set_python_cmd(config.python_cmd)
     set_working_directory(config.working_directory)
 
-    # Detect if we're running as a module (python -m) or as a script
-    caller_frame = sys._getframe(1)
-    caller_spec = caller_frame.f_globals.get("__spec__")
-
-    if caller_spec is not None and caller_spec.name:
-        set_entry_point("module", caller_spec.name)
+    # Set entry point (for subprocess isolation)
+    if entry_point is not None:
+        set_entry_point(entry_point[0], entry_point[1])
     else:
-        set_entry_point("script", sys.argv[0])
+        # Auto-detect from caller frame
+        caller_frame = sys._getframe(1)
+        caller_spec = caller_frame.f_globals.get("__spec__")
+
+        if caller_spec is not None and caller_spec.name:
+            set_entry_point("module", caller_spec.name)
+        else:
+            set_entry_point("script", sys.argv[0])
 
     # Build the registry from commands and automations
     recompose_ctx = _build_registry(commands, automations or [])

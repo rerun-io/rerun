@@ -28,13 +28,13 @@ from .tasks import (
     test,
 )
 
-if __name__ == "__main__":
-    config = recompose.Config(
+# Create the app at module level so subprocess isolation can access it
+app = recompose.App(
+    config=recompose.Config(
         python_cmd="uv run python",
         working_directory="recompose",
-    )
-
-    commands = [
+    ),
+    commands=[
         recompose.CommandGroup(
             "Quality",
             [
@@ -63,6 +63,8 @@ if __name__ == "__main__":
             ],
         ),
         recompose.builtin_commands(),
-    ]
+    ],
+)
 
-    recompose.main(config=config, commands=commands)
+if __name__ == "__main__":
+    app.main()
