@@ -608,9 +608,6 @@ message Query {
   // If true, `columns` will contain the entire schema.
   bool columns_always_include_everything = 3;
 
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 4;
-
   // If true, `columns` always includes `byte_offset` and `byte_size`.
   bool columns_always_include_byte_offsets = 5;
 
@@ -625,6 +622,9 @@ message Query {
 
   // If true, `columns` always includes all component-level indexes.
   bool columns_always_include_component_indexes = 9;
+
+  reserved 4;
+  reserved "columns_always_include_chunk_ids";
 }
 
 // A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
