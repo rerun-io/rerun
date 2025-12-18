@@ -15,9 +15,9 @@ from rich.console import Console
 from .command_group import CommandGroup
 from .context import (
     RecomposeContext,
+    set_cli_command,
     set_debug,
     set_module_name,
-    set_python_cmd,
     set_recompose_context,
     set_working_directory,
 )
@@ -318,11 +318,10 @@ def _add_command_to_cli(
 def main(
     name: str | None = None,
     *,
-    python_cmd: str = "python",
+    cli_command: str = "./run",
     working_directory: str | None = None,
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
     automations: Sequence[Any] | None = None,
-    dispatchables: Sequence[Any] | None = None,
     module_name: str | None = None,
 ) -> None:
     """
@@ -330,11 +329,11 @@ def main(
 
     Args:
         name: Optional name for the CLI group. Defaults to the script name.
-        python_cmd: Command to invoke Python in generated GHA workflows.
+        cli_command: CLI entry point for generated GHA workflows (default: "./run").
         working_directory: Working directory for GHA workflows (relative to repo root).
         commands: List of CommandGroups or tasks to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
-        dispatchables: List of dispatchable tasks for GHA workflow generation.
+                    Dispatchables (from make_dispatchable) are also automations.
         module_name: Importable module path for subprocess isolation.
                     If not provided, auto-detected from caller frame.
 
@@ -345,13 +344,13 @@ def main(
             recompose.CommandGroup("Testing", [test]),
             recompose.builtin_commands(),
         ]
-        recompose.main(python_cmd="uv run python", commands=commands)
+        recompose.main(cli_command="./run", commands=commands)
 
     """
     import sys
 
     # Store config for GHA workflow generation
-    set_python_cmd(python_cmd)
+    set_cli_command(cli_command)
     set_working_directory(working_directory)
 
     # Set module name (for subprocess isolation)
@@ -371,7 +370,7 @@ def main(
             )
 
     # Build the registry from commands and automations
-    recompose_ctx = _build_registry(commands, automations or [], dispatchables or [])
+    recompose_ctx = _build_registry(commands, automations or [])
     set_recompose_context(recompose_ctx)
 
     # Build and run the CLI
@@ -382,18 +381,17 @@ def main(
 def _build_registry(
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
     automations: Sequence[Any],
-    dispatchables: Sequence[Any],
 ) -> RecomposeContext:
     """
-    Build a RecomposeContext from the commands, automations, and dispatchables lists.
+    Build a RecomposeContext from the commands and automations lists.
 
     Extracts TaskInfo from the wrappers and populates the registries.
+    Note: Dispatchables (from make_dispatchable) are automations with workflow_dispatch trigger.
     """
     from .jobs import AutomationInfo
 
     tasks: dict[str, TaskInfo] = {}
     automation_registry: dict[str, AutomationInfo] = {}
-    dispatchable_list: list[Any] = []
 
     # Extract tasks from commands
     for item in commands:
@@ -403,19 +401,15 @@ def _build_registry(
         else:
             _register_command(item, tasks)
 
-    # Extract automations
+    # Extract automations (includes dispatchables, which are also AutomationWrappers)
     for auto in automations:
         if hasattr(auto, "_automation_info"):
             info = auto._automation_info
             automation_registry[info.full_name] = info
 
-    # Store dispatchables
-    dispatchable_list.extend(dispatchables)
-
     return RecomposeContext(
         tasks=tasks,
         automations=automation_registry,
-        dispatchables=dispatchable_list,
     )
 
 

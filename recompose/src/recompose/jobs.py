@@ -1263,11 +1263,13 @@ def make_dispatchable(
     *,
     inputs: dict[str, DispatchInput] | None = None,
     name: str | None = None,
-) -> Dispatchable:
-    """Create a dispatchable wrapper for a task.
+) -> AutomationWrapper:
+    """Create an automation with workflow_dispatch trigger for a single task.
 
-    This creates a workflow that can be triggered via workflow_dispatch
-    and runs a single task.
+    This is a convenience function for creating a simple automation that:
+    - Has workflow_dispatch trigger (manually triggerable in GHA)
+    - Runs a single task
+    - Exposes task parameters as workflow inputs
 
     Args:
         task: The task to make dispatchable (must be @task decorated)
@@ -1276,7 +1278,7 @@ def make_dispatchable(
         name: Optional workflow name. Defaults to task name.
 
     Returns:
-        Dispatchable that can be added to an App for workflow generation.
+        AutomationWrapper that can be added to App.automations.
 
     Example:
         # Simple - infer inputs from task
@@ -1293,6 +1295,12 @@ def make_dispatchable(
         # With custom name
         deploy_prod = make_dispatchable(deploy, name="deploy_production")
 
+        # Register in App
+        app = App(
+            automations=[lint_workflow, test_workflow, deploy_prod],
+            ...
+        )
+
     """
     # Validate task
     task_info = getattr(task, "_task_info", None)
@@ -1302,19 +1310,67 @@ def make_dispatchable(
     # Determine inputs
     if inputs is None:
         # Infer from task signature
-        final_inputs = _infer_inputs_from_task(task_info)
+        dispatch_inputs = _infer_inputs_from_task(task_info)
     else:
-        # Use provided inputs (could also merge with inferred, but explicit is clearer)
-        final_inputs = inputs
+        dispatch_inputs = inputs
 
     # Determine name
     workflow_name = name if name is not None else task_info.name
 
-    # Create info
-    info = DispatchableInfo(
+    # Convert DispatchInput to InputParam
+    input_params: dict[str, InputParam[Any]] = {}
+    for param_name, dispatch_input in dispatch_inputs.items():
+        # Determine type and create InputParam
+        if isinstance(dispatch_input, BoolInput):
+            ip: InputParam[Any] = InputParam(
+                default=dispatch_input.default,
+                description=dispatch_input.description,
+                required=dispatch_input.required,
+            )
+        elif isinstance(dispatch_input, ChoiceInput):
+            ip = InputParam(
+                default=dispatch_input.default,
+                description=dispatch_input.description,
+                required=dispatch_input.required,
+                choices=dispatch_input.choices,
+            )
+        elif isinstance(dispatch_input, StringInput):
+            ip = InputParam(
+                default=dispatch_input.default,
+                description=dispatch_input.description,
+                required=dispatch_input.required,
+            )
+        else:
+            # Fallback for unknown DispatchInput subclasses
+            ip = InputParam(
+                default=None,
+                description=dispatch_input.description,
+                required=dispatch_input.required,
+            )
+        ip._set_name(param_name)
+        input_params[param_name] = ip
+
+    # Create the automation function that creates a single job
+    def automation_fn(**_kwargs: Any) -> None:
+        # Pass InputParam refs as job inputs
+        job_inputs = {pname: param.to_ref() for pname, param in input_params.items()}
+        job(task, inputs=job_inputs)
+
+    # Create the AutomationInfo
+    info = AutomationInfo(
         name=workflow_name,
-        task_info=task_info,
-        inputs=final_inputs,
+        module=task_info.module,
+        fn=automation_fn,  # Will be replaced with wrapper
+        original_fn=automation_fn,
+        signature=inspect.signature(automation_fn),
+        doc=task_info.doc,
+        trigger=on_workflow_dispatch(),
+        input_params=input_params,
     )
 
-    return Dispatchable(info)
+    # Create wrapper
+    wrapper = AutomationWrapper(info, automation_fn)
+    info.fn = wrapper
+    info.wrapper = wrapper
+
+    return wrapper

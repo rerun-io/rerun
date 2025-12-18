@@ -1,5 +1,55 @@
 # NOW
 
+**P15: Cleanup & Local Automation Execution** - Phase 1 COMPLETE
+
+See `proj/P15_cleanup_and_local_exec_TODO.md` for full plan.
+
+## Phase 1 COMPLETE: API Cleanup
+
+Simplified and unified the dispatchable/automation API:
+
+- **Renamed `python_cmd` to `cli_command`** (default: `"./run"`)
+  - Updated `App` class, `context.py`, `cli.py`
+  - Better reflects actual usage (entry point, not Python command)
+
+- **Unified dispatchables into automations**
+  - `make_dispatchable(task)` now returns `AutomationWrapper` (was `Dispatchable`)
+  - Removed `dispatchables=` parameter from `App` - use `automations=` instead
+  - Dispatchables are just automations with `workflow_dispatch` trigger
+  - Removed `get_dispatchables()` from context (no longer needed)
+  - `generate_gha` only uses `render_automation_jobs()` now
+
+- **Simplified workflow naming**
+  - All workflows named `recompose_<name>.yml` (was split by type)
+
+**Example migration:**
+```python
+# Before:
+app = App(
+    python_cmd="uv run python",
+    automations=[ci],
+    dispatchables=[lint_workflow, test_workflow],
+)
+
+# After:
+app = App(
+    cli_command="./run",
+    automations=[ci, lint_workflow, test_workflow],
+)
+```
+
+**Test results:** 209 tests pass, ruff clean
+
+## Next: Phase 2 - Local Automation Execution
+
+- Run automations locally: `./run ci`
+- Execute jobs as subprocesses in dependency order
+- Pass outputs between jobs via temp files
+- Handle InputParams from CLI args
+- Skip GHA-specific steps (checkout, setup-python)
+
+---
+
 **P14_architectural_pivot** - COMPLETE. All 7 phases done.
 
 See `proj/P14_architectural_pivot_DONE.md` for full design.

@@ -29,7 +29,8 @@ from .tasks import (
     test,
 )
 
-# Create dispatchables for tasks that can be manually triggered
+# Create dispatchable automations for tasks that can be manually triggered in GHA
+# make_dispatchable creates an automation with workflow_dispatch trigger
 lint_workflow = recompose.make_dispatchable(lint)
 test_workflow = recompose.make_dispatchable(
     test,
@@ -41,7 +42,7 @@ test_workflow = recompose.make_dispatchable(
 
 # Create the app at module level so subprocess isolation can access it
 app = recompose.App(
-    python_cmd="uv run python",
+    cli_command="./run",
     working_directory="recompose",
     commands=[
         recompose.CommandGroup(
@@ -66,8 +67,8 @@ app = recompose.App(
         ),
         recompose.builtin_commands(),
     ],
-    automations=[ci],
-    dispatchables=[lint_workflow, test_workflow],
+    # Automations include both multi-job automations and dispatchables
+    automations=[ci, lint_workflow, test_workflow],
 )
 
 if __name__ == "__main__":

@@ -53,13 +53,12 @@ class App:
     configuration and registered commands.
 
     Args:
-        python_cmd: Command to invoke Python in generated GHA workflows.
-                   Use "uv run python" for uv-managed projects.
+        cli_command: CLI entry point for generated GHA workflows (default: "./run").
         working_directory: Working directory for GHA workflows (relative to repo root).
                           If set, workflows will cd to this directory before running.
         commands: List of CommandGroups or tasks to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
-        dispatchables: List of dispatchables to register for GHA workflow generation.
+                    Dispatchables (from make_dispatchable) are also automations.
         name: Optional name for the CLI group. Defaults to the script name.
 
     Example
@@ -69,17 +68,17 @@ class App:
         from .tasks import lint, test
         from .automations import ci
 
+        # make_dispatchable creates an automation with workflow_dispatch trigger
         lint_workflow = recompose.make_dispatchable(lint)
 
         app = recompose.App(
-            python_cmd="uv run python",
+            cli_command="./run",
             working_directory="recompose",
             commands=[
                 recompose.CommandGroup("Quality", [lint]),
                 recompose.CommandGroup("Testing", [test]),
             ],
-            automations=[ci],
-            dispatchables=[lint_workflow],
+            automations=[ci, lint_workflow],
         )
 
         if __name__ == "__main__":
@@ -90,32 +89,30 @@ class App:
     def __init__(
         self,
         *,
-        python_cmd: str = "python",
+        cli_command: str = "./run",
         working_directory: str | None = None,
         commands: Sequence[CommandGroup | TaskWrapper[Any, Any]] | None = None,
         automations: Sequence[Any] | None = None,
-        dispatchables: Sequence[Any] | None = None,
         name: str | None = None,
     ) -> None:
         """
         Initialize the recompose application.
 
         Args:
-            python_cmd: Command to invoke Python in generated GHA workflows.
+            cli_command: CLI entry point for generated GHA workflows (default: "./run").
             working_directory: Working directory for GHA workflows (relative to repo root).
             commands: List of CommandGroups or tasks to expose as CLI commands.
             automations: List of automations to register for GHA workflow generation.
-            dispatchables: List of dispatchables to register for GHA workflow generation.
+                        Dispatchables (from make_dispatchable) are also automations.
             name: Optional name for the CLI group. Defaults to the script name.
 
         """
         import sys
 
-        self.python_cmd = python_cmd
+        self.cli_command = cli_command
         self.working_directory = working_directory
         self.commands: Sequence[CommandGroup | TaskWrapper[Any, Any]] = commands or []
         self.automations: Sequence[Any] = automations or []
-        self.dispatchables: Sequence[Any] = dispatchables or []
         self.name = name
 
         # Capture the caller's module name at instantiation time
@@ -142,11 +139,10 @@ class App:
 
         cli_main(
             name=self.name,
-            python_cmd=self.python_cmd,
+            cli_command=self.cli_command,
             working_directory=self.working_directory,
             commands=self.commands,
             automations=self.automations,
-            dispatchables=self.dispatchables,
             module_name=self._module_name,
         )
 
@@ -155,24 +151,24 @@ class App:
         Set up the global context from this app's configuration.
 
         This ensures that tasks like generate_gha have access to the correct
-        configuration (working_directory, python_cmd, etc.) even when not
+        configuration (working_directory, cli_command, etc.) even when not
         running through main().
         """
         from .cli import _build_registry
         from .context import (
+            set_cli_command,
             set_module_name,
-            set_python_cmd,
             set_recompose_context,
             set_working_directory,
         )
 
         # Set config values
-        set_python_cmd(self.python_cmd)
+        set_cli_command(self.cli_command)
         set_working_directory(self.working_directory)
 
         # Set module name (for GHA workflow generation)
         set_module_name(self._module_name)
 
         # Build and set the registry
-        recompose_ctx = _build_registry(self.commands, self.automations or [], self.dispatchables or [])
+        recompose_ctx = _build_registry(self.commands, self.automations or [])
         set_recompose_context(recompose_ctx)

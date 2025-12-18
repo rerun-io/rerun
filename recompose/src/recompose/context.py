@@ -19,8 +19,8 @@ _debug_mode: bool = False
 # This is the importable module path, e.g., "examples.app"
 _module_name: str | None = None
 
-# Python command for GHA workflow generation (e.g., "python", "uv run python")
-_python_cmd: str = "python"
+# CLI command for GHA workflow generation (e.g., "./run", "uv run python -m app")
+_cli_command: str = "./run"
 
 # Working directory for GHA workflow generation (relative to repo root)
 _working_directory: str | None = None
@@ -191,13 +191,15 @@ class RecomposeContext:
     """
     Global recompose execution context.
 
-    Holds the registries of tasks, automations, and dispatchables that were
+    Holds the registries of tasks and automations that were
     explicitly registered via main(). This replaces the global registries.
+
+    Note: Dispatchables (from make_dispatchable) are automations with
+    workflow_dispatch trigger, so they go in the automations registry.
     """
 
     tasks: dict[str, TaskInfo] = field(default_factory=dict)
     automations: dict[str, Any] = field(default_factory=dict)  # AutomationInfo
-    dispatchables: list[Any] = field(default_factory=list)  # Dispatchable objects
 
 
 # Context variable for the current task context (per-task)
@@ -249,18 +251,6 @@ def get_automation_registry() -> dict[str, Any]:
     if ctx is None:
         return {}
     return ctx.automations
-
-
-def get_dispatchables() -> list[Any]:
-    """
-    Get the dispatchables list from the current recompose context.
-
-    Returns an empty list if not running in a recompose context.
-    """
-    ctx = _recompose_context.get()
-    if ctx is None:
-        return []
-    return ctx.dispatchables
 
 
 def get_task(name: str) -> TaskInfo | None:
@@ -347,27 +337,27 @@ def get_module_name() -> str | None:
     return _module_name
 
 
-def set_python_cmd(cmd: str) -> None:
+def set_cli_command(cmd: str) -> None:
     """
-    Set the Python command for GHA workflow generation.
+    Set the CLI command for GHA workflow generation.
 
     Args:
-        cmd: Command to invoke Python (e.g., "python", "uv run python").
+        cmd: CLI entry point command (e.g., "./run", "uv run python -m app").
 
     """
-    global _python_cmd
-    _python_cmd = cmd
+    global _cli_command
+    _cli_command = cmd
 
 
-def get_python_cmd() -> str:
+def get_cli_command() -> str:
     """
-    Get the Python command for GHA workflow generation.
+    Get the CLI command for GHA workflow generation.
 
     Returns:
-        Command to invoke Python (default: "python").
+        CLI entry point command (default: "./run").
 
     """
-    return _python_cmd
+    return _cli_command
 
 
 def set_working_directory(directory: str | None) -> None:

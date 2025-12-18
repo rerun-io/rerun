@@ -28,9 +28,8 @@ from .context import (
     dbg,
     get_automation,
     get_automation_registry,
+    get_cli_command,
     get_context,
-    get_dispatchables,
-    get_python_cmd,
     get_secret,
     get_task,
     get_task_registry,
@@ -38,9 +37,9 @@ from .context import (
     is_debug,
     out,
     save_artifact,
+    set_cli_command,
     set_debug,
     set_output,
-    set_python_cmd,
     set_working_directory,
 )
 
@@ -110,8 +109,8 @@ __all__ = [
     "get_context",
     "set_debug",
     "is_debug",
-    "get_python_cmd",
-    "set_python_cmd",
+    "get_cli_command",
+    "set_cli_command",
     "get_working_directory",
     "set_working_directory",
     # Task outputs/artifacts/secrets
@@ -146,8 +145,6 @@ __all__ = [
     "JobOutputRef",
     "ArtifactRef",
     "InputParamRef",
-    # P14: Dispatchables
-    "get_dispatchables",
     # P14: Input types
     "InputParam",
     "Artifact",
