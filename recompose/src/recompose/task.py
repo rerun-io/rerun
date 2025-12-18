@@ -336,20 +336,26 @@ def taskclass(cls: type[T]) -> type[T]:
 
             from .plan import TaskNode
 
+            # Create TaskClassNode first to get its node_id
+            taskclass_node: TaskClassNode[T] = TaskClassNode(
+                cls=wrapped_cls,
+                init_kwargs=kwargs.copy(),
+            )
+
+            # Create init TaskNode with reference to TaskClassNode's node_id
+            init_kwargs_with_tcn = kwargs.copy()
+            init_kwargs_with_tcn["__taskclass_id__"] = taskclass_node.node_id
+
             init_node: TaskNode[T] = TaskNode(
                 task_info=init_task_info,
-                kwargs=kwargs.copy(),
+                kwargs=init_kwargs_with_tcn,
                 condition=condition,
             )
             plan.add_node(init_node)
 
-            # Create TaskClassNode
-            taskclass_node: TaskClassNode[T] = TaskClassNode(
-                cls=wrapped_cls,
-                init_kwargs=kwargs.copy(),
-                init_node=init_node,
-                current_node=init_node,
-            )
+            # Update TaskClassNode with init_node reference
+            taskclass_node.init_node = init_node
+            taskclass_node.current_node = init_node
 
             # Return a proxy that intercepts method calls
             return _TaskClassNodeProxy(taskclass_node, method_tasks)  # type: ignore[return-value]

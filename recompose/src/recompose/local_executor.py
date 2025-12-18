@@ -33,8 +33,10 @@ from .workspace import (
     create_workspace,
     read_params,
     read_step_result,
+    read_taskclass_state,
     write_params,
     write_step_result,
+    write_taskclass_state,
 )
 
 if TYPE_CHECKING:
@@ -153,11 +155,28 @@ def run_step(
     tree_ctx = install_tree_output()
 
     # Resolve dependencies from workspace
-    from .plan import InputPlaceholder
+    from .plan import InputPlaceholder, TaskClassNode
     from .plan import TaskNode as TaskNodeType
 
     resolved_kwargs: dict[str, Any] = {}
+    taskclass_node_proxy: Any = None  # Track if this is a TaskClass method call
+    taskclass_id: str | None = None
+
     for kwarg_name, kwarg_value in target_node.kwargs.items():
+        # Skip internal keys
+        if kwarg_name == "__taskclass_node__":
+            # This is a TaskClass method call - extract the TaskClassNode for state management
+            if hasattr(kwarg_value, "node"):
+                taskclass_node_proxy = kwarg_value.node  # Get TaskClassNode from proxy
+            else:
+                taskclass_node_proxy = kwarg_value
+            taskclass_id = taskclass_node_proxy.node_id
+            continue
+
+        if kwarg_name == "__taskclass_id__":
+            # Skip this - it's just for identifying the TaskClass, not for the function
+            continue
+
         if isinstance(kwarg_value, TaskNodeType):  # TaskNode dependency
             dep_node = kwarg_value
             dep_step_name = dep_node.step_name or dep_node.name
@@ -166,6 +185,23 @@ def run_step(
                 uninstall_tree_output(tree_ctx)
                 return Err(f"Dependency '{dep_step_name}' failed or not found")
             resolved_kwargs[kwarg_name] = dep_result.value()
+        elif isinstance(kwarg_value, TaskClassNode):
+            # TaskClass passed as parameter - deserialize from workspace
+            tcn_id = kwarg_value.node_id
+            instance = read_taskclass_state(workspace, tcn_id)
+            if instance is None:
+                uninstall_tree_output(tree_ctx)
+                return Err(f"TaskClass state not found for {tcn_id}")
+            resolved_kwargs[kwarg_name] = instance
+        elif hasattr(kwarg_value, "_is_taskclass_node_proxy") and kwarg_value._is_taskclass_node_proxy:
+            # TaskClassNodeProxy passed as parameter - get node and deserialize
+            tcn = kwarg_value.node
+            tcn_id = tcn.node_id
+            instance = read_taskclass_state(workspace, tcn_id)
+            if instance is None:
+                uninstall_tree_output(tree_ctx)
+                return Err(f"TaskClass state not found for {tcn_id}")
+            resolved_kwargs[kwarg_name] = instance
         elif isinstance(kwarg_value, InputPlaceholder):
             # Resolve InputPlaceholder from flow params
             param_name = kwarg_value.name
@@ -182,7 +218,10 @@ def run_step(
     # Execute the task (or condition check)
     start_time = time.perf_counter()
 
-    if target_node.task_info.is_condition_check:
+    task_info = target_node.task_info
+    taskclass_instance: Any = None  # Track instance for state serialization
+
+    if task_info.is_condition_check:
         # Special handling for condition evaluation
         condition_data = target_node.kwargs.get("condition_data", {})
 
@@ -210,14 +249,75 @@ def run_step(
             with open(github_output, "a") as f:
                 f.write(f"value={'true' if condition_value else 'false'}\n")
 
+    elif task_info.method_name == "__init__" and task_info.cls is not None:
+        # TaskClass __init__ step - construct the instance
+        cls = task_info.cls
+
+        # Get the TaskClass ID from kwargs (stored during plan building)
+        taskclass_id = target_node.kwargs.get("__taskclass_id__")
+        if taskclass_id is None:
+            uninstall_tree_output(tree_ctx)
+            return Err("TaskClass __init__ missing __taskclass_id__ in kwargs")
+
+        try:
+            # Create instance - bypass our modified __new__ which returns a proxy in flow context
+            # Use object.__new__ directly and then call original __init__
+            taskclass_instance = object.__new__(cls)
+
+            # Get the original __init__ (before any wrapping)
+            original_init = task_info.original_fn
+            original_init(taskclass_instance, **resolved_kwargs)
+
+            result = Ok(None)  # __init__ returns None
+
+        except Exception as e:
+            import traceback
+
+            tb = traceback.format_exc()
+            result = Err(f"{type(e).__name__}: {e}", traceback=tb)
+
+    elif taskclass_id is not None and task_info.is_method and task_info.method_name != "__init__":
+        # TaskClass method step - deserialize instance, call method, serialize back
+        taskclass_instance = read_taskclass_state(workspace, taskclass_id)
+        if taskclass_instance is None:
+            uninstall_tree_output(tree_ctx)
+            return Err(f"TaskClass state not found for {taskclass_id}")
+
+        # Get the bound method
+        method_name = task_info.method_name
+        if method_name is None:
+            uninstall_tree_output(tree_ctx)
+            return Err(f"TaskInfo missing method_name for TaskClass method")
+
+        bound_method = getattr(taskclass_instance, method_name)
+
+        # Execute with context management
+        from .context import Context, get_context, set_context
+        from .task import _execute_task
+
+        existing_ctx = get_context()
+        if existing_ctx is None:
+            ctx = Context(task_name=step_name)
+            set_context(ctx)
+            try:
+                result = _execute_task(bound_method, (), resolved_kwargs)
+            finally:
+                set_context(None)
+        else:
+            result = _execute_task(bound_method, (), resolved_kwargs)
+
     else:
-        # Use the wrapped function (fn) which catches exceptions
-        result = target_node.task_info.fn(**resolved_kwargs)
+        # Regular task - use the wrapped function (fn) which catches exceptions
+        result = task_info.fn(**resolved_kwargs)
 
     elapsed = time.perf_counter() - start_time
 
     # Uninstall tree output wrapper
     uninstall_tree_output(tree_ctx)
+
+    # Write TaskClass state if applicable
+    if taskclass_instance is not None and taskclass_id is not None and result.ok:
+        write_taskclass_state(workspace, taskclass_id, taskclass_instance)
 
     # Write result to workspace
     write_step_result(workspace, step_name, result)

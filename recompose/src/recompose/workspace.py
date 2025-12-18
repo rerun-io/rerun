@@ -407,3 +407,78 @@ def get_workspace_from_env() -> Path | None:
     if ws := os.environ.get("RECOMPOSE_WORKSPACE"):
         return Path(ws)
     return None
+
+
+# =============================================================================
+# TaskClass State Serialization
+# =============================================================================
+
+
+def write_taskclass_state(workspace: Path, taskclass_id: str, instance: Any) -> None:
+    """
+    Write a TaskClass instance's state to workspace.
+
+    The state is serialized using the existing serialize_value machinery,
+    which handles Pydantic models, dataclasses, and custom serializers.
+
+    Args:
+        workspace: Workspace directory
+        taskclass_id: Unique identifier for this TaskClass instance (from TaskClassNode.node_id)
+        instance: The TaskClass instance to serialize
+
+    """
+    state_file = workspace / f"_taskclass_{taskclass_id}.json"
+
+    # Get the instance's __dict__ for state
+    # We store both the class type and the instance state
+    instance_type = type(instance)
+
+    data = {
+        "__taskclass_type__": _get_type_key(instance_type),
+        "__state__": serialize_value(instance.__dict__),
+    }
+
+    state_file.write_text(json.dumps(data, indent=2))
+
+
+def read_taskclass_state(workspace: Path, taskclass_id: str) -> Any | None:
+    """
+    Read and reconstruct a TaskClass instance from workspace.
+
+    Args:
+        workspace: Workspace directory
+        taskclass_id: Unique identifier for this TaskClass instance
+
+    Returns:
+        The reconstructed TaskClass instance, or None if not found.
+
+    """
+    state_file = workspace / f"_taskclass_{taskclass_id}.json"
+
+    if not state_file.exists():
+        return None
+
+    data = json.loads(state_file.read_text())
+
+    type_key = data.get("__taskclass_type__")
+    state = data.get("__state__", {})
+
+    # Resolve the class
+    cls = _resolve_type(type_key)
+    if cls is None:
+        raise TypeError(f"Cannot resolve TaskClass type: {type_key}")
+
+    # Create instance without calling __init__ (we'll restore state directly)
+    instance = object.__new__(cls)
+
+    # Restore state
+    deserialized_state = deserialize_value(state)
+    if isinstance(deserialized_state, dict):
+        instance.__dict__.update(deserialized_state)
+
+    return instance
+
+
+def taskclass_state_exists(workspace: Path, taskclass_id: str) -> bool:
+    """Check if a TaskClass's state file exists."""
+    return (workspace / f"_taskclass_{taskclass_id}.json").exists()

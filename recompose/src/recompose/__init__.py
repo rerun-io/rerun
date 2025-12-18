@@ -63,9 +63,11 @@ from .workspace import (
     create_workspace,
     read_params,
     read_step_result,
+    read_taskclass_state,
     register_serializer,
     write_params,
     write_step_result,
+    write_taskclass_state,
 )
 
 __all__ = [
@@ -119,6 +121,8 @@ __all__ = [
     "read_params",
     "write_step_result",
     "read_step_result",
+    "write_taskclass_state",
+    "read_taskclass_state",
     # Serialization
     "Serializer",
     "register_serializer",
