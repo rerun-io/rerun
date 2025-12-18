@@ -168,14 +168,13 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     let segment_id = "static_test_segment";
     let tuid_prefix: u64 = 100;
 
-    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir = tempfile::tempdir()?;
     let tmp_path = tmp_dir.path().join(format!("{segment_id}.rrd"));
 
     let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
         .recording_id(segment_id)
         .send_properties(false)
-        .save(tmp_path.clone())
-        .unwrap();
+        .save(tmp_path.clone())?;
 
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);
@@ -191,8 +190,8 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
                 TimePoint::default(),
                 [(MyPoints::descriptor_points(), Some(&points as _))],
             )
-            .build()
-            .unwrap();
+            .build()?;
+
     rec.send_chunk(static_only_chunk);
 
     // /both: MyPoint logged as static and another logged at frame = 0
@@ -202,8 +201,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
             TimePoint::default(),
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
-        .build()
-        .unwrap();
+        .build()?;
     rec.send_chunk(both_static_chunk);
 
     let both_temporal_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
@@ -212,8 +210,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
             [build_frame_nr(frame0)],
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
-        .build()
-        .unwrap();
+        .build()?;
     rec.send_chunk(both_temporal_chunk);
 
     // /temporal_only: MyPoint logged at frame = 0
@@ -224,11 +221,10 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
                 [build_frame_nr(frame0)],
                 [(MyPoints::descriptor_points(), Some(&points as _))],
             )
-            .build()
-            .unwrap();
+            .build()?;
     rec.send_chunk(temporal_only_chunk);
 
-    rec.flush_blocking().unwrap();
+    rec.flush_blocking()?;
 
     Ok(crate::TempPath::new(tmp_dir, tmp_path))
 }
@@ -245,7 +241,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 DataSource {
                     storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
                     is_prefix: false,
-                    layer: "base".to_string(),
+                    layer: "base".to_owned(),
                     kind: DataSourceKind::Rrd,
                 }
                 .into(),
@@ -303,7 +299,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
             dataset_name,
             &format!("with_query_{snapshot_name}"),
         )
-        .await
+        .await;
     }
 }
 
