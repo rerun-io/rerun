@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 import sys
 import time
 from collections.abc import Sequence
@@ -162,12 +163,16 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         """Execute the task and display results."""
         task_name = task_info.name
 
+        # Check if running as subprocess of automation (suppress headers)
+        quiet_mode = os.environ.get("RECOMPOSE_SUBPROCESS") == "1"
+
         # Start timing
         start_time = time.perf_counter()
 
-        # Print task header
-        console.print(f"\n[bold blue]▶[/bold blue] [bold]{task_name}[/bold]")
-        console.print()
+        # Print task header (unless in quiet mode)
+        if not quiet_mode:
+            console.print(f"\n[bold blue]▶[/bold blue] [bold]{task_name}[/bold]")
+            console.print()
 
         # Convert enum values back to enum if needed
         for param_name, param in sig.parameters.items():
@@ -185,23 +190,24 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         # End timing
         elapsed = time.perf_counter() - start_time
 
-        # Print result
-        console.print()
-        if result.ok:
-            console.print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
-            if result._value is not None:
-                console.print(f"[dim]→[/dim] {result._value}")
-        else:
-            console.print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
-            if result.error:
-                console.print(f"[red]Error:[/red] {result.error}")
-            if result.traceback:
-                from .context import is_debug
+        # Print result (unless in quiet mode)
+        if not quiet_mode:
+            console.print()
+            if result.ok:
+                console.print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
+                if result._value is not None:
+                    console.print(f"[dim]→[/dim] {result._value}")
+            else:
+                console.print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
+                if result.error:
+                    console.print(f"[red]Error:[/red] {result.error}")
+                if result.traceback:
+                    from .context import is_debug
 
-                if is_debug():
-                    console.print(f"[dim]{result.traceback}[/dim]")
+                    if is_debug():
+                        console.print(f"[dim]{result.traceback}[/dim]")
 
-        console.print()
+            console.print()
 
         # Exit with non-zero code if task failed
         if not result.ok:
