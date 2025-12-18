@@ -203,7 +203,10 @@ async fn query_dataset_snapshot(
 
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
-        .remove_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
+        .remove_columns(&[
+            QueryDatasetResponse::FIELD_CHUNK_KEY,
+            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+        ])
         .auto_sort_rows()
         .unwrap();
 
