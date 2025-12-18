@@ -9,6 +9,7 @@ table TextLog (
   "attr.docs.category": "Text",
   "attr.docs.view_types": "TextLogView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "TextLog",
   "attr.rust.derive": "PartialEq"
 ) {
   /// The body of the message.

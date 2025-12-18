@@ -110,7 +110,7 @@ impl TestContextExt for TestContext {
                             resolver.update_overrides(
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
-                                ctx.time_ctrl.timeline().expect("Should have a valid timeline"),
+                                ctx.time_ctrl.timeline(),
                                 class_registry,
                                 &mut data_query_result,
                                 self.view_states.lock().get_mut_or_create(*view_id, class),

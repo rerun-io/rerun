@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::str::FromStr as _;
 
 use arrow::datatypes::Schema;
+use arrow::ffi::FFI_ArrowSchema;
 use pyo3::exceptions::PyLookupError;
-use pyo3::{PyResult, pyclass, pymethods};
+use pyo3::types::PyCapsule;
+use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 use re_log_types::EntityPath;
 use re_sorbet::{BatchType, ComponentColumnSelector, SorbetColumnDescriptors};
 
@@ -38,9 +40,6 @@ impl PySchemaInternal {
 }
 
 /// The schema representing a set of available columns.
-///
-/// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-/// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PySchemaInternal {
     /// Return a list of all the index columns in the schema.
@@ -128,6 +127,14 @@ impl PySchemaInternal {
                 self.resolve_component_column_selector(&selector.0)
             }
         }
+    }
+
+    fn __arrow_c_schema__<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PyCapsule>> {
+        let schema = self.clone().into_arrow_schema();
+        let ffi_schema = FFI_ArrowSchema::try_from(schema).map_err(to_py_err)?;
+        let capsule_name = cr"arrow_schema".into();
+
+        PyCapsule::new(py, ffi_schema, Some(capsule_name))
     }
 }
 

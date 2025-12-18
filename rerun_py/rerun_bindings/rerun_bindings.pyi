@@ -35,8 +35,8 @@ class IndexColumnDescriptor:
     generally correspond to Rerun timelines.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
-    column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select an index
+    column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
     """
 
     @property
@@ -85,8 +85,8 @@ class ComponentColumnDescriptor:
     Component columns contain the data for a specific component of an entity.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
-    column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select a component
+    column, use [`ComponentColumnSelector`][rerun.catalog.ComponentColumnSelector].
     """
 
     @property
@@ -187,10 +187,19 @@ class SchemaInternal:
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
+    def __arrow_c_schema__(self) -> Any: ...
 
+# TODO(RR-3130): remove RecordingView when rerun.dataframe is removed
+@deprecated(
+    """RecordingView is deprecated. Use the catalog API instead.
+    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
+)
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
+
+    .. deprecated::
+        RecordingView is deprecated. Use the catalog API instead.
 
     See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
 
@@ -340,7 +349,7 @@ class RecordingView:
         If they exist in the original data they are selected, otherwise empty rows are added to the view.
 
         The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
+        those rows are empty. Use with `.fill_latest_at()`
         to populate these rows with the most recent data.
 
         Parameters
@@ -380,7 +389,7 @@ class RecordingView:
         The selected columns do not change the rows that are included in the
         view. The rows are determined by the index values and the components
         that were included in the view contents, or can be overridden with
-        [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
+        `.using_index_values()`.
 
         If a column was not provided with data for a given row, it will be
         `null` in the output.
@@ -438,19 +447,23 @@ class Recording:
     """
     A single Rerun recording.
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
 
     A recording is a collection of data that was logged to Rerun. This data is organized
     as a column for each index (timeline) and each entity/component pair that was logged.
 
-    You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
-    what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
-    to retrieve the data.
+    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+    what data is available.
     """
 
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
 
+    # TODO(RR-3130): remove Recording.view() when rerun.dataframe is removed
+    @deprecated(
+        """Recording.view() is deprecated. Use the catalog API instead.
+        See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link""",
+    )
     def view(
         self,
         *,
@@ -460,7 +473,7 @@ class Recording:
         include_tombstone_columns: bool = False,
     ) -> RecordingView:
         """
-        Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+        Create a `RecordingView` of the recording according to a particular index and content specification.
 
         The only type of index currently supported is the name of a timeline, or `None` (see below
         for details).
@@ -852,6 +865,22 @@ def set_thread_local_blueprint_recording(
     Replaces the currently active recording in the thread-local scope with the specified one.
 
     Returns the previous one, if any.
+
+    """
+
+def check_for_rrd_footer(file_path: str | os.PathLike[str]) -> bool:
+    """
+    Check if the RRD has a valid RRD footer.
+
+    This is useful for unit-tests to verify that data has been fully flushed to disk.
+    """
+
+def disconnect_orphaned_recordings() -> None:
+    """
+    Disconnect any orphaned recordings.
+
+    This can be used to make sure that recordings get closed/finalized
+    properly when all references have been dropped.
     """
 
 #
@@ -1531,33 +1560,29 @@ class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
 class _ServerInternal:
-    """
-    Internal Rerun server instance.
-
-    This is the low-level binding to the Rust server implementation.
-    Users should typically use `rerun.server.Server` instead.
-    """
-
     def __init__(
         self,
         *,
-        address: str = "0.0.0.0",
-        port: int = 51234,
-        datasets: dict[str, str] | None = None,
-        tables: dict[str, str] | None = None,
+        address: str,
+        port: int,
+        datasets: dict[str, list[str]],
+        dataset_prefixes: dict[str, str],
+        tables: dict[str, str],
     ) -> None:
         """
         Create and start a Rerun server.
 
         Parameters
         ----------
-        address : str
+        address
             The address to bind the server to.
-        port : int
+        port
             The port to bind the server to.
-        datasets : dict[str, str] | None
-            Optional dictionary mapping dataset names to their file paths.
-        tables : dict[str, str] | None
+        datasets
+            Optional dictionary mapping dataset names to lists of RRD file paths.
+        dataset_prefixes
+            Optional dictionary mapping dataset names to directories containing RRDs.
+        tables
             Optional dictionary mapping table names to lance file paths,
             which will be loaded and made available when the server starts.
 

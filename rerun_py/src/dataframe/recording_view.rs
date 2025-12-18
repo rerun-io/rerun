@@ -1,5 +1,3 @@
-#![expect(deprecated)] // False positive due to macro
-
 use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
@@ -117,7 +115,7 @@ impl PyRecordingView {
     /// The selected columns do not change the rows that are included in the
     /// view. The rows are determined by the index values and the components
     /// that were included in the view contents, or can be overridden with
-    /// [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
+    /// `.using_index_values()`.
     ///
     /// If a column was not provided with data for a given row, it will be
     /// `null` in the output.
@@ -387,12 +385,6 @@ impl PyRecordingView {
         })
     }
 
-    /// DEPRECATED: Renamed to `filter_range_secs`.
-    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        self.filter_range_secs(start, end)
-    }
-
     #[expect(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
@@ -507,8 +499,7 @@ impl PyRecordingView {
     /// If they exist in the original data they are selected, otherwise empty rows are added to the view.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
-    /// those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
-    /// to populate these rows with the most recent data.
+    /// those rows are empty. Use with `.fill_latest_at()` to populate these rows with the most recent data.
     ///
     /// Parameters
     /// ----------

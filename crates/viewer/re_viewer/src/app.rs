@@ -2703,7 +2703,7 @@ impl App {
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
-        fn format_limit(limit: Option<i64>) -> String {
+        fn format_limit(limit: Option<u64>) -> String {
             if let Some(bytes) = limit {
                 format_bytes(bytes as _)
             } else {
@@ -2741,7 +2741,13 @@ impl App {
                     format_bytes(counted as f64 * fraction_to_purge as f64)
                 );
             }
-            store_hub.purge_fraction_of_ram(fraction_to_purge);
+
+            let time_cursor_for =
+                |store_id: &StoreId| -> Option<(re_log_types::Timeline, re_log_types::TimeInt)> {
+                    let time_ctrl = self.state.time_controls.get(store_id)?;
+                    Some((*time_ctrl.timeline()?, time_ctrl.time_int()?))
+                };
+            store_hub.purge_fraction_of_ram(fraction_to_purge, &time_cursor_for);
 
             let mem_use_after = MemoryUse::capture();
 

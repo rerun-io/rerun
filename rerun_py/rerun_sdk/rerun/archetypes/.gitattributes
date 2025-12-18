@@ -16,6 +16,7 @@ coordinate_frame.py linguist-generated=true
 cylinders3d.py linguist-generated=true
 depth_image.py linguist-generated=true
 ellipsoids3d.py linguist-generated=true
+encoded_depth_image.py linguist-generated=true
 encoded_image.py linguist-generated=true
 geo_line_strings.py linguist-generated=true
 geo_points.py linguist-generated=true

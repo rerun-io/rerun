@@ -1395,7 +1395,7 @@ mod tests {
 
         harness.get_by_label("test_app").hover();
 
-        harness.run();
+        harness.run_steps(5);
 
         harness.snapshot("selection_panel_recording_hover_app_id");
     }

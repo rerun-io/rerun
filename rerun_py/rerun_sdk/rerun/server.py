@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import socket
+from os import PathLike
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rerun_bindings import _ServerInternal
@@ -8,7 +10,7 @@ from rerun_bindings import _ServerInternal
 from .catalog import CatalogClient
 
 if TYPE_CHECKING:
-    from os import PathLike
+    from collections.abc import Sequence
     from types import TracebackType
 
 
@@ -44,14 +46,14 @@ class Server:
         *,
         address: str = "0.0.0.0",
         port: int | None = None,
-        datasets: dict[str, PathLike[str]] | None = None,
+        datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
         """
         Create a new Rerun server instance and start it.
 
-        The server will host recordings and serve them via HTTP. If datasets are provided,
-        they will be loaded and made available when the server starts.
+        The server will host recordings and serve them via HTTP. If datasets are provided, they will be loaded and made
+        available when the server starts.
 
         Parameters
         ----------
@@ -60,11 +62,13 @@ class Server:
         port:
             The port to bind the server to, or `None` to select a random available port.
         datasets:
-            Optional dictionary mapping dataset names to their file paths.
-            These datasets will be loaded and available when the server starts.
+            Optional dictionary specifying dataset to load in the server at startup. Values in the dictionary may be
+            either of:
+            - a single path: must be a directory, all the RRDs it contains will be registered
+            - a sequence of paths: each path must be a RRD file, which will all be registered
         tables:
-            Optional dictionary mapping table names to lance file paths,
-            which will be loaded and made available when the server starts.
+            Optional dictionary mapping table names to lance file paths which will be loaded and made available when the
+            server starts.
 
         """
 
@@ -77,10 +81,31 @@ class Server:
         else:
             resolved_port = port
 
+        all_datasets = {}
+        all_dataset_prefixes = {}
+
+        if datasets is not None:
+            for name, path in datasets.items():
+                if isinstance(path, str | PathLike):
+                    path = Path(path)
+
+                    if not path.is_dir():
+                        raise ValueError(f"Prefix path '{path}' for dataset '{name}' must be a directory.")
+
+                    all_dataset_prefixes[name] = str(path.absolute())
+                else:
+                    paths = [Path(p) for p in path]
+                    for p in paths:
+                        if not p.is_file():
+                            raise ValueError(f"Path '{p}' for dataset '{name}' must be a RRD file.")
+
+                    all_datasets[name] = [str(p.absolute()) for p in paths]
+
         self._internal = _ServerInternal(
             address=address,
             port=resolved_port,
-            datasets={name: str(path) for name, path in (datasets or {}).items()},
+            datasets=all_datasets,
+            dataset_prefixes=all_dataset_prefixes,
             tables={name: str(path) for name, path in (tables or {}).items()},
         )
 

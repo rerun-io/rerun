@@ -13,7 +13,8 @@ namespace rerun.archetypes;
 table SeriesPoints (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "TimeSeriesView",
-  "attr.rerun.state": "stable"
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "SeriesPoints"
 ) {
   // --- Required ---
 

@@ -67,7 +67,7 @@ def test_registration_invalidargs(
     try:
         with pytest.raises(ValueError, match="no data sources to register"):
             ds.register([])
-        with pytest.raises(ValueError, match="no data sources to register"):
+        with pytest.raises(ValueError, match="no rrd files found in"):
             ds.register_prefix(temp_empty_directory)
         with pytest.raises(ValueError, match="expected prefix / directory but got an object"):
             ds.register_prefix(temp_empty_file)
@@ -136,7 +136,7 @@ def test_register_batch(
     result = handle.wait()
 
     assert len(result.segment_ids) == 3
-    assert result.segment_ids == recording_ids
+    assert sorted(result.segment_ids) == sorted(recording_ids)
 
 
 @pytest.mark.local_only
@@ -208,7 +208,7 @@ def test_register_batch_with_different_layers(
     result = handle.wait()
 
     assert len(result.segment_ids) == 2
-    assert result.segment_ids == recording_ids
+    assert sorted(result.segment_ids) == sorted(recording_ids)
 
 
 @pytest.mark.local_only

@@ -4,6 +4,8 @@
 //!
 use serde::{Deserialize, Serialize};
 
+use super::std_msgs::Header;
+
 /// This represents a vector in free space.
 ///
 /// This is semantically different than a point.
@@ -38,4 +40,34 @@ pub struct Point {
 pub struct Pose {
     pub position: Point,
     pub orientation: Quaternion,
+}
+
+// A Pose with reference coordinate frame and timestamp.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PoseStamped {
+    pub header: Header,
+    pub pose: Pose,
+}
+
+/// This represents the transform between two coordinate frames in free space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Transform {
+    pub translation: Vector3,
+    pub rotation: Quaternion,
+}
+
+/// This expresses a transform from coordinate frame `header.frame_id`
+/// to the coordinate frame `child_frame_id` at the time of `header.stamp`
+///
+/// This message is mostly used by the [`tf2`](https://docs.ros.org/en/rolling/p/tf2/) package.
+/// See its documentation for more information.
+///
+/// The `child_frame_id` is necessary in addition to the `frame_id`
+/// in the Header to communicate the full reference for the transform
+/// in a self contained message.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransformStamped {
+    pub header: Header,
+    pub child_frame_id: String,
+    pub transform: Transform,
 }

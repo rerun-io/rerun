@@ -27,10 +27,10 @@ pub enum Value {
     String(String),
 
     /// Fixed-size array of values.
-    Array(Vec<Value>),
+    Array(Vec<Self>),
 
     /// Variable-size or bounded array of values.
-    Sequence(Vec<Value>),
+    Sequence(Vec<Self>),
 
     /// Fixed-size array of primitive values.
     PrimitiveArray(primitive_array::PrimitiveArray),
@@ -39,7 +39,7 @@ pub enum Value {
     PrimitiveSeq(primitive_array::PrimitiveArray),
 
     /// Nested message.
-    Message(BTreeMap<String, Value>),
+    Message(BTreeMap<String, Self>),
 }
 
 impl std::fmt::Debug for Value {

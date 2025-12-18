@@ -117,13 +117,34 @@ fn settings_screen_ui_impl(
     separator_with_some_space(ui);
     ui.strong("Video");
     video_section_ui(ui, app_options);
+
+    //
+    // Experimental features
+    //
+
+    separator_with_some_space(ui);
+    ui.strong("Experimental features");
+    plot_any_scalars_section_ui(ui, app_options);
+}
+
+fn plot_any_scalars_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
+    ui.re_checkbox(
+            &mut app_options.experimental_any_scalars,
+            "Plot any scalars",
+        )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "The time series plot handles arbitrary scalar values, not just components logged via `archetypes.Scalars`.\n\n\
+                Also allows adding multiple visualizers of the same type to the same entity, with the extra option of specifying a component remapping.",
+            );
+        });
 }
 
 fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
-    const BYTES_PER_GIB: i64 = 1024 * 1024 * 1024;
-    const UPPER_LIMIT_BYTES: i64 = 1_000 * BYTES_PER_GIB;
+    const BYTES_PER_GIB: u64 = 1024 * 1024 * 1024;
+    const UPPER_LIMIT_BYTES: u64 = 1_000 * BYTES_PER_GIB;
 
-    let mut bytes = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
+    let mut bytes = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
 
     let speed = (0.02 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
 
