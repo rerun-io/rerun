@@ -182,6 +182,7 @@ class TaskNode(Generic[T]):
     step_name: str | None = field(default=None)  # Assigned by FlowPlan.assign_step_names()
     condition: Expr | None = field(default=None)  # Condition for conditional execution (run_if)
     condition_check_step: str | None = field(default=None)  # Step name of the condition-check this depends on
+    taskclass_dep: TaskNode[Any] | None = field(default=None)  # Explicit dependency on TaskClass's previous node
 
     def value(self) -> T:
         """
@@ -227,14 +228,96 @@ class TaskNode(Generic[T]):
     def dependencies(self) -> list[TaskNode[Any]]:
         """Tasks this node depends on (extracted from kwargs)."""
         deps: list[TaskNode[Any]] = []
-        for v in self.kwargs.values():
+
+        # Check for explicit taskclass dependency (for method calls)
+        if self.taskclass_dep is not None:
+            deps.append(self.taskclass_dep)
+
+        for k, v in self.kwargs.items():
+            # Skip internal keys
+            if k.startswith("__"):
+                continue
+
             if isinstance(v, TaskNode):
                 deps.append(v)
+            elif isinstance(v, TaskClassNode):
+                # Depend on the TaskClass's current node (latest method call or init)
+                dep_node = v.dependency_node
+                if dep_node is not None:
+                    deps.append(dep_node)
+            elif hasattr(v, "_is_taskclass_node_proxy") and v._is_taskclass_node_proxy:
+                # It's a TaskClassNodeProxy - get the underlying TaskClassNode
+                tcn = v.node
+                dep_node = tcn.dependency_node
+                if dep_node is not None:
+                    deps.append(dep_node)
+
         return deps
 
     def __repr__(self) -> str:
         deps_str = ", ".join(d.name for d in self.dependencies) if self.dependencies else "none"
         return f"TaskNode({self.name}, deps=[{deps_str}])"
+
+
+@dataclass
+class TaskClassNode(Generic[T]):
+    """
+    Represents a deferred TaskClass instance in a flow graph.
+
+    When you instantiate a TaskClass inside a flow (e.g., `Venv(location=...)`),
+    it returns a TaskClassNode instead of the actual instance. The TaskClassNode:
+    - Tracks the TaskClass type (for deserialization)
+    - Tracks the init_node (TaskNode for __init__)
+    - Tracks current_node (latest method call, for dependency chaining)
+
+    When a @task method is called on a TaskClassNode, it creates a new TaskNode
+    for that method and updates current_node. This ensures proper dependency
+    ordering: if you call `venv.install(...)` then pass `venv` to another task,
+    that task depends on install completing, not just __init__.
+
+    Example:
+        @flow
+        def wheel_test():
+            venv = Venv(location=Path("/tmp/test"))  # Returns TaskClassNode[Venv]
+            venv.install_wheel(wheel=wheel_path)      # Creates TaskNode, updates current_node
+            smoke_test(venv=venv)                     # Depends on install_wheel step
+
+    TaskClassNode is passed directly to tasks (no .value() needed) since it
+    represents the TaskClass instance itself, not a computed result.
+    """
+
+    cls: type[T]
+    """The TaskClass type (e.g., Venv)."""
+
+    init_kwargs: dict[str, Any] = field(default_factory=dict)
+    """Arguments passed to __init__."""
+
+    init_node: TaskNode[T] | None = field(default=None)
+    """TaskNode for the __init__ step (created when TaskClassNode is added to plan)."""
+
+    current_node: TaskNode[Any] | None = field(default=None)
+    """The most recent TaskNode for this TaskClass (for dependency tracking)."""
+
+    node_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    """Unique identifier for this TaskClassNode."""
+
+    @property
+    def name(self) -> str:
+        """Name of this TaskClass (lowercase class name)."""
+        return self.cls.__name__.lower()
+
+    @property
+    def dependency_node(self) -> TaskNode[Any] | None:
+        """
+        The node that downstream tasks should depend on.
+
+        Returns current_node if any methods have been called, otherwise init_node.
+        """
+        return self.current_node or self.init_node
+
+    def __repr__(self) -> str:
+        current = self.current_node.name if self.current_node else "init"
+        return f"TaskClassNode({self.cls.__name__}, current={current})"
 
 
 @dataclass
@@ -425,7 +508,7 @@ class FlowPlan:
 # analysis time (e.g., ensuring TaskNode[str] matches where str is expected).
 # Runtime validation is performed in calls.
 
-Input = T | TaskNode[T] | InputPlaceholder[T]  # type: ignore[misc]
+Input = T | TaskNode[T] | InputPlaceholder[T] | TaskClassNode[T]  # type: ignore[misc]
 """
 Type alias for values accepted by task calls.
 
@@ -433,9 +516,15 @@ Input[T] accepts:
 - T: A literal value of the expected type
 - TaskNode[T]: Output from another task call
 - InputPlaceholder[T]: A placeholder for flow parameters
+- TaskClassNode[T]: A TaskClass instance (for passing TaskClasses to tasks)
 
 Example:
     @recompose.flow
     def my_flow(*, name: Input[str]) -> None:
         greet(name=name)  # name can be str, TaskNode[str], or InputPlaceholder[str]
+
+    @recompose.flow
+    def wheel_test() -> None:
+        venv = Venv(location=Path("/tmp"))  # TaskClassNode[Venv]
+        smoke_test(venv=venv)               # Pass TaskClassNode directly
 """
