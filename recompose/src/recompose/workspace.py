@@ -290,7 +290,7 @@ class FlowParams:
     params: dict[str, Any]
     steps: list[str]  # Step names in execution order
     created_at: str
-    script_path: str  # Path to the script (for subprocess invocation)
+    module_name: str  # Importable module path (for subprocess invocation)
     # Config values for subprocess restoration
     working_directory: str | None = None
     python_cmd: str = "python"
