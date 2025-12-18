@@ -133,11 +133,12 @@ impl<T> StableIndexDeque<T> {
     /// v.pop_front();
     /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &1)]);
     /// ```
-    pub fn iter_indexed(&self) -> impl Iterator<Item = (usize, &T)> {
+    pub fn iter_indexed(&self) -> impl DoubleEndedIterator<Item = (usize, &T)> {
+        let offset = self.index_offset;
         self.vec
             .iter()
             .enumerate()
-            .map(|(i, v)| (i + self.index_offset, v))
+            .map(move |(i, v)| (i + offset, v))
     }
 
     /// Like `iter_mut().enumerate()` but with the index offset applied.

@@ -42,11 +42,13 @@ nasm = [
 
 [dependencies]
 re_byte_size.workspace = true
+re_chunk.workspace = true
 re_log.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 bit-vec.workspace = true
 cros-codecs.workspace = true
 crossbeam.workspace = true

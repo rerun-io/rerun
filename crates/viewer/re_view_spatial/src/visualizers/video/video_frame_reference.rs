@@ -178,7 +178,7 @@ impl VideoFrameReferenceVisualizer {
                 );
             }
 
-            Some((video, video_buffer)) => match video.as_ref() {
+            Some(video) => match video.as_ref() {
                 Ok(video) => {
                     if let Some([w, h]) = video.dimensions() {
                         video_resolution = glam::vec2(w as _, h as _);
@@ -190,12 +190,7 @@ impl VideoFrameReferenceVisualizer {
                         video.data_descr().timescale,
                     );
 
-                    match video.frame_at(
-                        ctx.render_ctx(),
-                        player_stream_id,
-                        video_time,
-                        &std::iter::once(video_buffer.as_ref()).collect(),
-                    ) {
+                    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time) {
                         Ok(video_frame_reference) => {
                             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                             let multiplicative_tint =
@@ -258,7 +253,7 @@ impl VideoFrameReferenceVisualizer {
 fn latest_at_query_video_from_datastore(
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> Option<(Arc<Result<Video, VideoLoadError>>, Blob)> {
+) -> Option<Arc<Result<Video, VideoLoadError>>> {
     let query = ctx.current_query();
 
     let results = ctx.recording_engine().cache().latest_at(
@@ -283,5 +278,5 @@ fn latest_at_query_video_from_datastore(
             ctx.app_options().video_decoder_settings(),
         )
     });
-    Some((video, blob))
+    Some(video)
 }

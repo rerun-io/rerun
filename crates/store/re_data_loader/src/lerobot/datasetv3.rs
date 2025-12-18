@@ -16,7 +16,7 @@ use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
-use re_video::{StableIndexDeque, VideoDataDescription};
+use re_video::VideoDataDescription;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -488,8 +488,6 @@ impl LeRobotDatasetV3 {
 
         // Extract all video samples in this range
         let mut samples = Vec::with_capacity(sample_range.len());
-        let mut buffers = StableIndexDeque::new();
-        buffers.push_back(video_bytes);
 
         for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
             let Some(sample_meta) = sample_meta.sample() else {
@@ -503,7 +501,7 @@ impl LeRobotDatasetV3 {
                 continue;
             }
 
-            let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
+            let chunk = sample_meta.get(sample_idx).ok_or_else(|| {
                 anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
             })?;
 

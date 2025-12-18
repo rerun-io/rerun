@@ -7,7 +7,7 @@ use ahash::HashMap;
 use parking_lot::Mutex;
 pub use player::PlayerConfiguration;
 use re_log::ResultExt as _;
-use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
+use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
@@ -294,7 +294,6 @@ impl Video {
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -320,12 +319,9 @@ impl Video {
         };
 
         decoder_entry.used_last_frame = true;
-        decoder_entry.player.frame_at(
-            render_context,
-            video_time,
-            &self.video_description,
-            video_buffers,
-        )
+        decoder_entry
+            .player
+            .frame_at(render_context, video_time, &self.video_description)
     }
 
     /// Removes all decoders that have been unused in the last frame.

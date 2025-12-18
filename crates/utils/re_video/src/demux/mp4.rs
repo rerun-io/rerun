@@ -41,6 +41,8 @@ impl VideoDataDescription {
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
         let mut keyframe_indices = Vec::new();
 
+        let buffer = arrow::buffer::Buffer::from(bytes);
+
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
@@ -65,7 +67,8 @@ impl VideoDataDescription {
                     presentation_timestamp,
                     duration: Some(duration),
                     // There's only a single buffer, which is the raw mp4 video data.
-                    buffer_index: 0,
+                    buffer: buffer.clone(),
+                    chunk_id: re_chunk::ChunkId::ZERO,
                     byte_span,
                 }));
             }
