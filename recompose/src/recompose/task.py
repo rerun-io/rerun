@@ -7,7 +7,7 @@ import inspect
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, ParamSpec, Protocol, TypeVar, overload
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
 
 
 class TaskWrapper(Protocol[P, T]):
@@ -86,6 +87,69 @@ def _is_method_signature(fn: Callable[..., Any]) -> bool:
     return len(params) > 0 and params[0] == "self"
 
 
+class MethodWrapper(Protocol[P, T_co]):
+    """
+    Protocol describing a @method-decorated TaskClass method.
+
+    In flow context, method calls on a TaskClassNodeProxy return MethodWrapper
+    objects. The signature P excludes 'self', so type checkers see:
+
+        venv.install_wheel(wheel="pkg.whl")  # Correct - no self needed
+
+    Rather than:
+
+        venv.install_wheel(self, wheel="pkg.whl")  # Wrong - self not needed
+    """
+
+    _is_pending_method_task: bool
+    _method_doc: str | None
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Result[T_co]: ...
+
+
+def method(fn: Callable[..., Result[T]]) -> MethodWrapper[P, T]:
+    """
+    Decorator for TaskClass methods that should become flow steps.
+
+    Use this instead of @task for methods inside a @taskclass. The key difference
+    is that @method properly types the method for flow context where 'self' is
+    not passed explicitly.
+
+    Example:
+        @recompose.taskclass
+        class Venv:
+            def __init__(self, *, location: Path):
+                self.location = location
+
+            @recompose.method
+            def install_wheel(self, *, wheel: str) -> recompose.Result[None]:
+                # Install wheel...
+                return recompose.Ok(None)
+
+        # In a flow - type checker sees install_wheel(wheel: str), not install_wheel(self, wheel: str)
+        @recompose.flow
+        def my_flow():
+            venv = Venv(location=Path("/tmp"))
+            venv.install_wheel(wheel="pkg.whl")  # No type error!
+
+    Note: @method can only be used inside a @taskclass-decorated class.
+    """
+    if not _is_method_signature(fn):
+        raise TypeError(
+            f"@method can only be used on methods (expected 'self' as first parameter in {fn.__name__}). "
+            f"Use @recompose.task for standalone functions."
+        )
+
+    # Mark as pending method task - will be registered by @taskclass
+    fn._is_pending_method_task = True  # type: ignore[attr-defined]
+    fn._method_doc = fn.__doc__  # type: ignore[attr-defined]
+
+    # Return the function with a lie about its type - we say it's MethodWrapper[P, T]
+    # where P is the signature WITHOUT self. At runtime, this is still the original
+    # method, but the type checker thinks it's a callable without self.
+    return fn  # type: ignore[return-value]
+
+
 def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     """
     Decorator to mark a function as a recompose task.
@@ -120,12 +184,12 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     mimics Result[T]) instead of executing. This enables type-safe composition
     via .value() while building the task graph.
     """
-    # Check if this looks like a method
+    # Check if this looks like a method - error and direct to @method decorator
     if _is_method_signature(fn):
-        # Mark as pending method task - will be registered by @taskclass
-        fn._is_pending_method_task = True  # type: ignore[attr-defined]
-        fn._method_doc = fn.__doc__  # type: ignore[attr-defined]
-        return fn  # type: ignore[return-value]  # @taskclass will handle wrapping
+        raise TypeError(
+            f"@task cannot be used on methods (found 'self' parameter in {fn.__name__}). "
+            f"Use @recompose.method instead for TaskClass methods."
+        )
 
     # Regular function task - register immediately
     @functools.wraps(fn)

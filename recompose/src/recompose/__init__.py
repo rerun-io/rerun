@@ -56,7 +56,7 @@ from .flow import (
 from .plan import FlowPlan, Input, InputPlaceholder, TaskClassNode, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
-from .task import TaskInfo, TaskWrapper, task, taskclass
+from .task import MethodWrapper, TaskInfo, TaskWrapper, method, task, taskclass
 from .workspace import (
     FlowParams,
     Serializer,
@@ -78,6 +78,8 @@ __all__ = [
     # Task decorator
     "task",
     "taskclass",
+    "method",
+    "MethodWrapper",
     "TaskInfo",
     "TaskWrapper",
     "get_task_registry",

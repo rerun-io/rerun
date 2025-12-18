@@ -1,6 +1,6 @@
 """Tests for class-based member tasks."""
 
-from recompose import Ok, Result, task, taskclass
+from recompose import Ok, Result, method, task, taskclass
 
 
 def test_taskclass_creates_recompose_tasks():
@@ -11,7 +11,7 @@ def test_taskclass_creates_recompose_tasks():
         def __init__(self, *, name: str):
             self.name = name
 
-        @task
+        @method
         def greet(self) -> Result[str]:
             return Ok(f"Hello, {self.name}!")
 
@@ -27,7 +27,7 @@ def test_method_task_has_combined_signature():
         def __init__(self, *, base: int = 0):
             self.base = base
 
-        @task
+        @method
         def add(self, *, value: int) -> Result[int]:
             return Ok(self.base + value)
 
@@ -53,7 +53,7 @@ def test_method_task_can_be_invoked():
         def __init__(self, *, prefix: str = "Hello"):
             self.prefix = prefix
 
-        @task
+        @method
         def say(self, *, name: str) -> Result[str]:
             return Ok(f"{self.prefix}, {name}!")
 
@@ -73,7 +73,7 @@ def test_method_task_with_defaults():
         def __init__(self, *, start: int = 0):
             self.value = start
 
-        @task
+        @method
         def increment(self, *, by: int = 1) -> Result[int]:
             self.value += by
             return Ok(self.value)
@@ -99,7 +99,7 @@ def test_method_task_exception_handling():
         def __init__(self):
             pass
 
-        @task
+        @method
         def fail(self) -> Result[None]:
             raise ValueError("Intentional failure")
 
@@ -112,18 +112,18 @@ def test_method_task_exception_handling():
 
 
 def test_multiple_method_tasks():
-    """Test class with multiple @task methods."""
+    """Test class with multiple @method methods."""
 
     @taskclass
     class MultiTask:
         def __init__(self, *, name: str):
             self.name = name
 
-        @task
+        @method
         def first(self) -> Result[str]:
             return Ok(f"first: {self.name}")
 
-        @task
+        @method
         def second(self, *, extra: str = "") -> Result[str]:
             return Ok(f"second: {self.name} {extra}")
 
@@ -156,7 +156,7 @@ def test_task_decorator_still_works_for_functions():
     assert result.value() == 42
 
 
-def test_method_task_preserves_docstring():
+def test_method_decorator_preserves_docstring():
     """Test that method docstrings are preserved."""
 
     @taskclass
@@ -164,7 +164,7 @@ def test_method_task_preserves_docstring():
         def __init__(self):
             pass
 
-        @task
+        @method
         def documented_method(self) -> Result[None]:
             """This is the docstring."""
             return Ok(None)
@@ -174,3 +174,25 @@ def test_method_task_preserves_docstring():
 
     assert task_info is not None
     assert task_info.doc == "This is the docstring."
+
+
+def test_task_decorator_errors_on_methods():
+    """Test that @task raises an error when used on methods."""
+    import pytest
+
+    with pytest.raises(TypeError, match="@task cannot be used on methods"):
+
+        @task
+        def method_with_self(self, *, value: int) -> Result[int]:
+            return Ok(value)
+
+
+def test_method_decorator_errors_on_functions():
+    """Test that @method raises an error when used on non-methods."""
+    import pytest
+
+    with pytest.raises(TypeError, match="@method can only be used on methods"):
+
+        @method
+        def function_without_self(*, value: int) -> Result[int]:
+            return Ok(value)

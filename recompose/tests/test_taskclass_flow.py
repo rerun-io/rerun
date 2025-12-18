@@ -1,6 +1,6 @@
 """Tests for TaskClass usage in flows."""
 
-from recompose import Ok, Result, flow, task, taskclass
+from recompose import Ok, Result, flow, method, task, taskclass
 
 
 @taskclass
@@ -10,13 +10,13 @@ class Counter:
     def __init__(self, *, start: int = 0):
         self.count = start
 
-    @task
+    @method
     def increment(self, *, amount: int = 1) -> Result[int]:
         """Increment the counter and return the new value."""
         self.count += amount
         return Ok(self.count)
 
-    @task
+    @method
     def double(self) -> Result[int]:
         """Double the counter value."""
         self.count *= 2
