@@ -604,20 +604,20 @@ app = recompose.App(
 - [x] Implement local secrets file (`~/.recompose/secrets.toml`)
 - [x] Implement `recompose.step()` context manager and decorator (nested locally, `::group::` in GHA)
 
-### Phase 2: Automation Framework
-- [ ] Create `@automation` decorator with context tracking
-- [ ] Implement `recompose.job()` returning JobSpec
-- [ ] Implement `JobSpec.get()` returning JobOutputRef (for outputs)
-- [ ] Implement `JobSpec.artifact()` returning ArtifactRef
-- [ ] Implement dependency inference from JobOutputRef/ArtifactRef
-- [ ] Add InputParam type for automation parameters
-- [ ] Add Artifact type for artifact inputs
-- [ ] Implement condition expression algebra (reuse/adapt from old expr.py)
-- [ ] Add `recompose.github.*` context references for conditions
+### Phase 2: Automation Framework ✅ COMPLETE
+- [x] Create `@automation` decorator with context tracking
+- [x] Implement `recompose.job()` returning JobSpec
+- [x] Implement `JobSpec.get()` returning JobOutputRef (for outputs)
+- [x] Implement `JobSpec.artifact()` returning ArtifactRef
+- [x] Implement dependency inference from JobOutputRef/ArtifactRef
+- [x] Add InputParam type for automation parameters
+- [x] Add Artifact type for artifact inputs
+- [x] Implement condition expression algebra (reuse/adapt from old expr.py)
+- [x] Add `recompose.github.*` context references for conditions
 
-### Phase 3: Triggers
-- [ ] Implement trigger classes (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
-- [ ] Implement trigger combination with `|`
+### Phase 3: Triggers ✅ COMPLETE (implemented in Phase 2)
+- [x] Implement trigger classes (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
+- [x] Implement trigger combination with `|`
 
 ### Phase 4: Workflow Generation
 - [ ] Update GHA generation for new multi-job model

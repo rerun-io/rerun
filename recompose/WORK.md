@@ -14,7 +14,22 @@ See `proj/P14_architectural_pivot_TODO.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Phase 1 COMPLETE. Ready for Phase 2.
+**Current phase:** Phase 2+3 COMPLETE. Ready for Phase 4 (Workflow Generation).
+
+## Phase 2 COMPLETE: Automation Framework
+
+Implemented in `jobs.py`:
+- `@automation` decorator with context tracking
+- `job()` function returning `JobSpec`
+- `JobSpec.get()` returning `JobOutputRef` for output references
+- `JobSpec.artifact()` returning `ArtifactRef` for artifact references
+- Dependency inference from `JobOutputRef`/`ArtifactRef` in job inputs
+- `InputParam[T]` type for automation parameters
+- `Artifact` type for artifact inputs to tasks
+- Condition expression algebra (`&`, `|`, `~`, `==`, `!=`)
+- `github.*` context references for conditions (ref_name, event_name, etc.)
+- Trigger types (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
+- 47 new tests, all passing (266 total)
 
 ## Phase 1 COMPLETE: Task Decorator Enhancements
 
@@ -25,23 +40,31 @@ Implemented:
 - `get_secret(name)` - validates against declared secrets, reads from env or ~/.recompose/secrets.toml
 - `Result.outputs` and `Result.artifacts` properties
 - `step(name)` context manager and `@step_decorator` for visual output grouping
-- 24 new tests, all passing (219 total)
+- 24 tests for Phase 1
+
+## Phase 3 COMPLETE: Triggers (implemented in Phase 2)
+
+Implemented:
+- `on_push(branches=[], tags=[], paths=[])` trigger
+- `on_pull_request(branches=[], types=[], paths=[])` trigger
+- `on_schedule(cron=...)` trigger
+- `on_workflow_dispatch()` trigger
+- Trigger combination with `|` operator
+- All triggers have `to_gha_dict()` for YAML generation
 
 # UPCOMING
 
-1. **Phase 2: Automation Framework** (NEXT)
-   - `@automation` decorator with context tracking
-   - `job()` function returning JobSpec
-   - JobSpec.get() for output references
-   - JobSpec.artifact() for artifact references
-   - Dependency inference from references
-   - InputParam type for automation parameters
-   - Condition expression algebra
+1. **Phase 4: Workflow Generation** (NEXT)
+   - Update GHA generation for new multi-job model
+   - Generate jobs using app's entry_point
+   - Handle job outputs/inputs mapping
+   - Handle artifact upload/download steps
+   - Handle secrets in job env
+   - Handle per-task setup overrides
+   - Handle matrix jobs
 
-2. Phase 3: Triggers (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
-3. Phase 4: Workflow generation for new multi-job model
-4. Phase 5: make_dispatchable() for single-task workflows
-5. Phase 6-7: Cleanup old code, migration, documentation
+2. Phase 5: make_dispatchable() for single-task workflows
+3. Phase 6-7: Cleanup old code, migration, documentation
 
 # DEFERRED
 
@@ -77,3 +100,15 @@ Previous work preserved in `jleibs/recompose-backup-flows-as-steps`:
 | `artifacts` | File artifacts (upload/download) |
 | `secrets` | Required secrets (from GHA or local file) |
 | `setup` | Override default GHA setup steps |
+
+## Automation/Job Types (Phase 2)
+
+| Type | Purpose |
+|------|---------|
+| `JobSpec` | Represents a job in an automation |
+| `JobOutputRef` | Reference to a job's output (creates dependency) |
+| `ArtifactRef` | Reference to a job's artifact (creates dependency) |
+| `InputParam[T]` | Automation input parameter (→ workflow_dispatch input) |
+| `Artifact` | Type hint for artifact inputs to tasks |
+| `ConditionExpr` | Job condition expression |
+| `Trigger` | Workflow trigger (on_push, etc.) |

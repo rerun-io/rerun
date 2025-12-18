@@ -1,4 +1,8 @@
-"""Tests for automation decorator and workflow generation."""
+"""Tests for LEGACY automation decorator and workflow generation.
+
+These tests are for the old flow-dispatch automation model (automation.py).
+The new job-based automation model (jobs.py) is tested in test_jobs.py.
+"""
 
 from typing import Any
 
@@ -29,14 +33,14 @@ def run_tests_flow() -> None:
     build_task()
 
 
-# Test automations
-@recompose.automation
+# Test automations - using legacy_automation for backward compatibility
+@recompose.legacy_automation
 def simple_automation() -> None:
     """A simple automation with no config."""
     build_flow.dispatch()
 
 
-@recompose.automation(
+@recompose.legacy_automation(
     gha_on={"schedule": [{"cron": "0 0 * * *"}]},
     gha_runs_on="ubuntu-latest",
 )
@@ -46,7 +50,7 @@ def scheduled_automation() -> None:
     run_tests_flow.dispatch()
 
 
-@recompose.automation(
+@recompose.legacy_automation(
     gha_on={"push": {"branches": ["main"]}},
     gha_env={"DEBUG": "true"},
     gha_timeout_minutes=30,
