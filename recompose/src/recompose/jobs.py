@@ -889,6 +889,9 @@ class AutomationInfo:
     input_params: dict[str, InputParam[Any]] = field(default_factory=dict)
     """InputParam objects from the signature."""
 
+    wrapper: Any = None
+    """Reference to the AutomationWrapper (set after wrapper creation)."""
+
     @property
     def full_name(self) -> str:
         """Full qualified name of the automation."""
@@ -1032,6 +1035,7 @@ def automation(
         # Create wrapper
         wrapper = AutomationWrapper(info, func)
         info.fn = wrapper  # Update to point to wrapper
+        info.wrapper = wrapper  # Store reference for GHA generation
 
         return wrapper
 

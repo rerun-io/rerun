@@ -1,7 +1,7 @@
 """
 Built-in utility tasks that ship with recompose.
 
-These tasks are always available and can be used in flows/automations
+These tasks are always available and can be used in automations
 just like any user-defined task.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .context import dbg, get_python_cmd, get_working_directory, out
+from .context import dbg, get_working_directory, out
 from .gh_cli import find_git_root
 from .gha import validate_workflow
 from .result import Err, Ok, Result
@@ -30,10 +30,10 @@ def _get_default_workflows_dir() -> Path | None:
 
 def _workflow_filename(name: str, target_type: str) -> str:
     """Generate workflow filename with recompose prefix."""
-    if target_type == "flow":
-        return f"recompose_flow_{name}.yml"
-    else:
+    if target_type == "automation":
         return f"recompose_automation_{name}.yml"
+    else:
+        return f"recompose_dispatchable_{name}.yml"
 
 
 @task
@@ -41,25 +41,21 @@ def generate_gha(
     *,
     target: str | None = None,
     output_dir: str | None = None,
-    script: str | None = None,
-    runs_on: str = "ubuntu-latest",
     check_only: bool = False,
 ) -> Result[list[Path]]:
     """
-    Generate GitHub Actions workflow YAML for flows and automations.
+    Generate GitHub Actions workflow YAML for automations and dispatchables.
 
-    By default, generates workflows for ALL registered flows and automations
+    By default, generates workflows for ALL registered automations and dispatchables
     to .github/workflows/ in the git repository root.
 
     Workflow files are named:
-    - recompose_flow_<name>.yml for flows
     - recompose_automation_<name>.yml for automations
+    - recompose_dispatchable_<name>.yml for dispatchables
 
     Args:
-        target: Specific flow/automation to generate. If not provided, generates all.
+        target: Specific automation/dispatchable to generate. If not provided, generates all.
         output_dir: Output directory for workflow files. Default: .github/workflows/
-        script: Script path for workflow steps (default: auto-detect from sys.argv[0]).
-        runs_on: GitHub runner to use (default: ubuntu-latest).
         check_only: If True, only check if files are up-to-date (don't write).
                    Returns Err if any files would change.
 
@@ -69,21 +65,20 @@ def generate_gha(
 
     Examples:
         # Generate all workflows
-        ./run generate_gha
+        ./run generate-gha
 
         # Generate specific workflow
-        ./run generate_gha --target=ci
+        ./run generate-gha --target=ci
 
         # Check if workflows are up-to-date (for CI)
-        ./run generate_gha --check_only
+        ./run generate-gha --check-only
 
         # Generate to custom directory
-        ./run generate_gha --output_dir=/tmp/workflows
+        ./run generate-gha --output-dir=/tmp/workflows
 
     """
-
-    from .context import get_automation, get_automation_registry, get_flow, get_flow_registry, get_module_name
-    from .gha import render_automation_workflow, render_flow_workflow
+    from .context import get_automation, get_automation_registry, get_dispatchables
+    from .gha import render_automation_jobs, render_dispatchable
 
     # Determine output directory
     if output_dir:
@@ -91,64 +86,73 @@ def generate_gha(
     else:
         maybe_workflows_dir = _get_default_workflows_dir()
         if maybe_workflows_dir is None:
-            return Err("Could not find git root. Specify --output_dir explicitly.")
+            return Err("Could not find git root. Specify --output-dir explicitly.")
         workflows_dir = maybe_workflows_dir
 
-    # Determine module name
-    if script:
-        # Explicit script override - not supported with module-based approach
-        return Err("--script is no longer supported. Use module-based entry points.")
+    # Get configuration
+    working_directory = get_working_directory()
 
-    module_name = get_module_name()
-    if module_name is None:
-        return Err(
-            "Module name not set. Run with `python -m <module>` or use recompose.App which handles this automatically."
-        )
+    # Build entry point
+    # For simplicity, we use "./run" as default since that's the typical pattern
+    entry_point = "./run"
 
     # Collect targets to generate
-    # (short_name, target_type, info, description)
+    # (name, target_type, obj, description)
     targets: list[tuple[str, str, Any, str | None]] = []
 
     def _get_description(info: Any) -> str | None:
         """Extract first line of docstring as description."""
-        if info.doc:
-            first_line: str = info.doc.strip().split("\n")[0]
+        doc = getattr(info, "doc", None)
+        if doc:
+            first_line: str = doc.strip().split("\n")[0]
             return first_line
         return None
 
     if target:
         # Specific target
-        flow_info = get_flow(target)
         automation_info = get_automation(target)
+        dispatchable = None
 
-        if flow_info is None and automation_info is None:
-            flow_names = list(get_flow_registry().keys())
+        # Check dispatchables for a match
+        for d in get_dispatchables():
+            if d.info.name == target:
+                dispatchable = d
+                break
+
+        if automation_info is None and dispatchable is None:
             auto_names = list(get_automation_registry().keys())
+            disp_names = [d.info.name for d in get_dispatchables()]
             msg = f"'{target}' not found.\n"
-            if flow_names:
-                msg += f"Flows: {', '.join(flow_names)}\n"
             if auto_names:
-                msg += f"Automations: {', '.join(auto_names)}"
+                msg += f"Automations: {', '.join(auto_names)}\n"
+            if disp_names:
+                msg += f"Dispatchables: {', '.join(disp_names)}"
             return Err(msg)
 
-        if flow_info:
-            short_name = flow_info.name.split(":")[-1]
-            targets.append((short_name, "flow", flow_info, _get_description(flow_info)))
+        if automation_info:
+            # Need to find the wrapper from the registry
+            for full_key, auto_info in get_automation_registry().items():
+                if auto_info.name == target or full_key == target:
+                    # Get the wrapper from the stored info
+                    # We need to get the actual wrapper to call .plan()
+                    # The info has a reference to the wrapper
+                    targets.append((auto_info.name, "automation", auto_info, _get_description(auto_info)))
+                    break
         else:
-            assert automation_info is not None  # We checked both aren't None above
-            short_name = automation_info.name.split(":")[-1]
-            targets.append((short_name, "automation", automation_info, _get_description(automation_info)))
+            assert dispatchable is not None
+            targets.append((dispatchable.info.name, "dispatchable", dispatchable, _get_description(dispatchable.info)))
     else:
-        # All flows and automations
-        for full_key, flow in get_flow_registry().items():
-            short_name = flow.name.split(":")[-1]
-            targets.append((short_name, "flow", flow, _get_description(flow)))
-        for full_key, auto in get_automation_registry().items():
-            short_name = auto.name.split(":")[-1]
-            targets.append((short_name, "automation", auto, _get_description(auto)))
+        # All automations and dispatchables
+        for full_key, auto_info in get_automation_registry().items():
+            targets.append((auto_info.name, "automation", auto_info, _get_description(auto_info)))
+        for dispatchable in get_dispatchables():
+            targets.append(
+                (dispatchable.info.name, "dispatchable", dispatchable, _get_description(dispatchable.info))
+            )
 
     if not targets:
-        return Err("No flows or automations registered.")
+        out("No automations or dispatchables registered.")
+        return Ok([])
 
     # Generate workflows
     changed_paths: list[Path] = []
@@ -157,26 +161,31 @@ def generate_gha(
     mode = "Checking" if check_only else "Generating"
     out(f"{mode} {len(targets)} workflow(s) to {workflows_dir}")
 
-    for short_name, target_type, info, description in targets:
-        filename = _workflow_filename(short_name, target_type)
+    for name, target_type, obj, description in targets:
+        filename = _workflow_filename(name, target_type)
         output_file = workflows_dir / filename
 
         try:
-            if target_type == "flow":
-                spec = render_flow_workflow(
-                    info,
-                    module_name=module_name,
-                    runs_on=runs_on,
-                    python_cmd=get_python_cmd(),
-                    working_directory=get_working_directory(),
+            if target_type == "automation":
+                # obj is AutomationInfo - need to get the wrapper
+                wrapper = obj.wrapper
+                spec = render_automation_jobs(
+                    wrapper,
+                    entry_point=entry_point,
+                    working_directory=working_directory,
                 )
             else:
-                spec = render_automation_workflow(info)
+                # obj is Dispatchable
+                spec = render_dispatchable(
+                    obj,
+                    entry_point=entry_point,
+                    working_directory=working_directory,
+                )
 
             # Set the output path on the spec
             spec.path = output_file
 
-            yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {short_name}")
+            yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {name}")
 
             # Determine status
             if output_file.exists():
@@ -203,7 +212,7 @@ def generate_gha(
                 dbg("actionlint: not available, skipping validation")
             else:
                 dbg(f"actionlint: {filename} FAILED validation")
-                errors.append(f"{short_name}: actionlint: {validation_msg}")
+                errors.append(f"{name}: actionlint: {validation_msg}")
 
             # Print status
             status_icon = {"created": "+", "updated": "~", "unchanged": "=", "would change": "~", "would create": "+"}
@@ -212,7 +221,7 @@ def generate_gha(
             out(f"  [{icon}] {filename}{desc}")
 
         except Exception as e:
-            errors.append(f"{short_name}: {e}")
+            errors.append(f"{name}: {e}")
             out(f"  [!] {filename} - ERROR: {e}")
 
     if errors:
@@ -220,7 +229,7 @@ def generate_gha(
 
     if check_only and changed_paths:
         return Err(
-            f"Workflows out of sync ({len(changed_paths)} file(s) would change).\nRun without --check_only to update."
+            f"Workflows out of sync ({len(changed_paths)} file(s) would change).\nRun without --check-only to update."
         )
 
     if check_only:
@@ -234,12 +243,12 @@ def generate_gha(
 @task
 def inspect(*, target: str) -> Result[None]:
     """
-    Inspect a task, flow, or automation without executing it.
+    Inspect a task or automation without executing it.
 
-    Shows signature, documentation, and for flows/automations, the task graph.
+    Shows signature, documentation, and for automations, the job list.
 
     Args:
-        target: Name of the task, flow, or automation to inspect.
+        target: Name of the task or automation to inspect.
 
     Examples:
         ./run inspect --target=lint
@@ -248,18 +257,12 @@ def inspect(*, target: str) -> Result[None]:
     """
     import inspect as py_inspect
 
-    from .context import get_automation, get_flow, get_task
+    from .context import get_automation, get_dispatchables, get_task
 
     # Try task first
     task_info = get_task(target)
     if task_info is not None:
         _print_task_info(task_info, py_inspect)
-        return Ok(None)
-
-    # Try flow
-    flow_info = get_flow(target)
-    if flow_info is not None:
-        _print_flow_info(flow_info, py_inspect)
         return Ok(None)
 
     # Try automation
@@ -268,20 +271,26 @@ def inspect(*, target: str) -> Result[None]:
         _print_automation_info(automation_info, py_inspect)
         return Ok(None)
 
+    # Try dispatchable
+    for dispatchable in get_dispatchables():
+        if dispatchable.info.name == target:
+            _print_dispatchable_info(dispatchable, py_inspect)
+            return Ok(None)
+
     # Not found
-    from .context import get_automation_registry, get_flow_registry, get_task_registry
+    from .context import get_automation_registry, get_task_registry
 
     task_names = list(get_task_registry().keys())
-    flow_names = list(get_flow_registry().keys())
     auto_names = list(get_automation_registry().keys())
+    disp_names = [d.info.name for d in get_dispatchables()]
 
     msg = f"'{target}' not found.\n"
     if task_names:
         msg += f"Tasks: {', '.join(task_names)}\n"
-    if flow_names:
-        msg += f"Flows: {', '.join(flow_names)}\n"
     if auto_names:
-        msg += f"Automations: {', '.join(auto_names)}"
+        msg += f"Automations: {', '.join(auto_names)}\n"
+    if disp_names:
+        msg += f"Dispatchables: {', '.join(disp_names)}"
     return Err(msg)
 
 
@@ -308,113 +317,13 @@ def _print_task_info(task_info: Any, py_inspect: Any) -> None:
     if not has_params:
         out("  (none)")
 
-
-def _print_flow_info(flow_info: Any, py_inspect: Any) -> None:
-    """Print flow inspection info."""
-    from .plan import FlowPlan
-
-    out(f"\nFlow: {flow_info.name}")
-    out(f"Module: {flow_info.module}")
-
-    if flow_info.doc:
-        out(f"\nDescription: {flow_info.doc.strip().split(chr(10))[0]}")
-
-    out("\nParameters:")
-    has_params = False
-    for param_name, param in flow_info.signature.parameters.items():
-        has_params = True
-        annotation = param.annotation
-        type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
-        if param.default is not py_inspect.Parameter.empty:
-            out(f"  --{param_name}: {type_str} = {param.default!r}")
-        else:
-            out(f"  --{param_name}: {type_str} [required]")
-    if not has_params:
-        out("  (none)")
-
-    # Get the plan
-    plan: FlowPlan = flow_info.plan
-    out(f"\nTask Graph ({len(plan.nodes)} steps):")
-    _print_task_tree(plan)
-
-
-def _print_task_tree(plan: Any) -> None:
-    """Print a tree visualization of the flow's task graph."""
-    if not plan.nodes:
-        out("  (empty)")
-        return
-
-    # Group conditional tasks by their condition_check_step
-    conditional_tasks: dict[str, list[Any]] = {}
-    for node in plan.nodes:
-        if node.condition_check_step:
-            conditional_tasks.setdefault(node.condition_check_step, []).append(node)
-
-    # Track which nodes we've printed (to skip conditional tasks printed under run_if)
-    printed: set[str] = set()
-
-    # Get top-level nodes (not gated by a condition)
-    top_level = [n for n in plan.nodes if not n.condition_check_step]
-
-    for i, node in enumerate(top_level):
-        is_last = i == len(top_level) - 1
-        connector = "└─" if is_last else "├─"
-        cont_prefix = "   " if is_last else "│  "
-
-        # Check if this is a condition-check node (run_if_N)
-        is_condition_check = getattr(node.task_info, "is_condition_check", False)
-
-        if is_condition_check and node.step_name:
-            # Print the run_if node with its condition
-            condition_data = node.kwargs.get("condition_data", {})
-            condition_str = _format_condition(condition_data)
-            out(f"  {connector} {node.step_name} [if: {condition_str}]")
-            printed.add(node.name)
-
-            # Print nested conditional tasks
-            nested = conditional_tasks.get(node.step_name, [])
-            for j, nested_node in enumerate(nested):
-                nested_is_last = j == len(nested) - 1
-                nested_connector = "└─" if nested_is_last else "├─"
-                out(f"  {cont_prefix}{nested_connector} {nested_node.name}")
-                printed.add(nested_node.name)
-
-                # Show dependencies for nested task
-                if nested_node.dependencies:
-                    dep_names = [d.name for d in nested_node.dependencies]
-                    nested_cont = "   " if nested_is_last else "│  "
-                    out(f"  {cont_prefix}{nested_cont}  depends: {', '.join(dep_names)}")
-        else:
-            # Regular task
-            out(f"  {connector} {node.name}")
-            printed.add(node.name)
-
-            # Show dependencies if any
-            if node.dependencies:
-                dep_names = [d.name for d in node.dependencies]
-                out(f"  {cont_prefix}  depends: {', '.join(dep_names)}")
-
-
-def _format_condition(condition_data: dict[str, Any]) -> str:
-    """Format a serialized condition expression for display."""
-    if not condition_data:
-        return "?"
-
-    expr_type = condition_data.get("type")
-    if expr_type == "input":
-        return str(condition_data.get("name", "?"))
-    elif expr_type == "literal":
-        return repr(condition_data.get("value"))
-    elif expr_type == "binary":
-        left = _format_condition(condition_data.get("left", {}))
-        op = condition_data.get("op", "?")
-        right = _format_condition(condition_data.get("right", {}))
-        return f"{left} {op} {right}"
-    elif expr_type == "unary":
-        op = condition_data.get("op", "?")
-        operand = _format_condition(condition_data.get("operand", {}))
-        return f"{op} {operand}"
-    return "?"
+    # Show task decorator parameters if present
+    if task_info.outputs:
+        out(f"\nOutputs: {', '.join(task_info.outputs)}")
+    if task_info.artifacts:
+        out(f"Artifacts: {', '.join(task_info.artifacts)}")
+    if task_info.secrets:
+        out(f"Secrets: {', '.join(task_info.secrets)}")
 
 
 def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
@@ -425,18 +334,57 @@ def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
     if automation_info.doc:
         out(f"\nDescription: {automation_info.doc.strip().split(chr(10))[0]}")
 
-    # Get plan
+    # Show trigger if present
+    if automation_info.trigger:
+        out(f"\nTrigger: {automation_info.trigger}")
+
+    # Show input parameters
+    if automation_info.input_params:
+        out("\nInputs:")
+        for name, param in automation_info.input_params.items():
+            default_str = f" = {param._default!r}" if param._default is not None else ""
+            required_str = " [required]" if param._required else ""
+            out(f"  --{name}{default_str}{required_str}")
+
+    # Get jobs from the plan
     try:
-        plan = automation_info.fn.plan()
-        out("\nDispatches:")
-        for d in plan.dispatches:
-            if d.params:
-                params_str = ", ".join(f"{k}={v!r}" for k, v in d.params.items())
-                out(f"  {d.flow_name}({params_str})")
-            else:
-                out(f"  {d.flow_name}()")
+        wrapper = automation_info.wrapper
+        jobs = wrapper.plan()
+        out(f"\nJobs ({len(jobs)}):")
+        for job in jobs:
+            needs_str = ""
+            deps = job.get_all_dependencies()
+            if deps:
+                needs_str = f" (needs: {', '.join(d.job_id for d in deps)})"
+            condition_str = ""
+            if job.condition:
+                condition_str = f" [if: {job.condition.to_gha_expr()}]"
+            out(f"  - {job.job_id}{needs_str}{condition_str}")
     except Exception as e:
-        out(f"\nCould not build plan: {e}")
+        out(f"\nCould not build job plan: {e}")
+
+
+def _print_dispatchable_info(dispatchable: Any, py_inspect: Any) -> None:
+    """Print dispatchable inspection info."""
+    info = dispatchable.info
+    out(f"\nDispatchable: {info.name}")
+
+    # Show underlying task
+    task_info = info.task_info
+    out(f"Task: {task_info.name}")
+    out(f"Module: {task_info.module}")
+
+    if task_info.doc:
+        out(f"\nDescription: {task_info.doc.strip().split(chr(10))[0]}")
+
+    # Show dispatch inputs
+    if info.inputs:
+        out("\nWorkflow Dispatch Inputs:")
+        for name, input_spec in info.inputs.items():
+            type_str = type(input_spec).__name__
+            default_str = f" = {input_spec.default!r}" if input_spec.default is not None else ""
+            required_str = " [required]" if input_spec.required else ""
+            out(f"  --{name}: {type_str}{default_str}{required_str}")
 
 
 def builtin_commands() -> CommandGroup:
@@ -445,7 +393,7 @@ def builtin_commands() -> CommandGroup:
 
     Built-in commands:
         - generate_gha: Generate GitHub Actions workflow YAML
-        - inspect: Inspect tasks, flows, or automations
+        - inspect: Inspect tasks or automations
 
     Example:
         commands = [
