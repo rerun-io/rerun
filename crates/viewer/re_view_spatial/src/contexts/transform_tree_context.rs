@@ -158,6 +158,8 @@ impl ViewContextSystem for TransformTreeContext {
     fn execute_once_per_frame(
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
+        re_tracing::profile_function!();
+
         let caches = ctx.store_context.caches;
         let (transform_forest, transform_cache) =
             caches.entry(|c: &mut TransformDatabaseStoreCache| {

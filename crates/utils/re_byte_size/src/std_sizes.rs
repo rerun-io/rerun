@@ -73,9 +73,10 @@ impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
         // NOTE: It's all on the heap at this point.
 
         if K::is_pod() {
-            (self.len() * std::mem::size_of::<K>()) as _
+            (self.capacity() * std::mem::size_of::<K>()) as _
         } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+            (self.capacity() * std::mem::size_of::<K>()) as u64
+                + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
     }
 }
