@@ -14,21 +14,38 @@ See `proj/P14_architectural_pivot_TODO.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Design review. Ready to begin Phase 1 implementation.
+**Current phase:** Phase 1 COMPLETE. Ready for Phase 2.
+
+## Phase 1 COMPLETE: Task Decorator Enhancements
+
+Implemented:
+- `@task(outputs=["..."], artifacts=["..."], secrets=["..."], setup=[...])` decorator parameters
+- `set_output(name, value)` - validates against declared outputs, writes to GITHUB_OUTPUT
+- `save_artifact(name, path)` - validates against declared artifacts
+- `get_secret(name)` - validates against declared secrets, reads from env or ~/.recompose/secrets.toml
+- `Result.outputs` and `Result.artifacts` properties
+- `step(name)` context manager and `@step_decorator` for visual output grouping
+- 24 new tests, all passing (219 total)
 
 # UPCOMING
 
-1. Phase 1: Task decorator enhancements (outputs, artifacts, secrets, setup)
-2. Phase 2: Automation framework (job(), context tracking, dependencies)
-3. Phase 3-5: Triggers, workflow generation, dispatchable
-4. Phase 6-7: Cleanup old code, migration, documentation
+1. **Phase 2: Automation Framework** (NEXT)
+   - `@automation` decorator with context tracking
+   - `job()` function returning JobSpec
+   - JobSpec.get() for output references
+   - JobSpec.artifact() for artifact references
+   - Dependency inference from references
+   - InputParam type for automation parameters
+   - Condition expression algebra
+
+2. Phase 3: Triggers (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
+3. Phase 4: Workflow generation for new multi-job model
+4. Phase 5: make_dispatchable() for single-task workflows
+5. Phase 6-7: Cleanup old code, migration, documentation
 
 # DEFERRED
 
-**Visual step grouping** - A `@step` decorator for local output grouping
-- Purely cosmetic for tree-view output
-- No GHA implications
-- Consider after core implementation is stable
+(Empty - no deferred items)
 
 # RECENTLY COMPLETED
 

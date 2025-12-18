@@ -592,17 +592,17 @@ app = recompose.App(
 
 ## Implementation Plan
 
-### Phase 1: Core Infrastructure - Task Decorator Enhancements
-- [ ] Add `outputs` parameter to `@task` decorator
-- [ ] Add `artifacts` parameter to `@task` decorator
-- [ ] Add `secrets` parameter to `@task` decorator
-- [ ] Add `setup` parameter to `@task` decorator
-- [ ] Implement `recompose.set_output()` helper (with validation)
-- [ ] Implement `recompose.save_artifact()` helper (with validation)
-- [ ] Implement `recompose.get_secret()` helper (with validation)
-- [ ] Add outputs/artifacts to Result type
-- [ ] Implement local secrets file (`~/.recompose/secrets.toml`)
-- [ ] Implement `recompose.step()` context manager and decorator (nested locally, `::group::` in GHA)
+### Phase 1: Core Infrastructure - Task Decorator Enhancements ✅ COMPLETE
+- [x] Add `outputs` parameter to `@task` decorator
+- [x] Add `artifacts` parameter to `@task` decorator
+- [x] Add `secrets` parameter to `@task` decorator
+- [x] Add `setup` parameter to `@task` decorator
+- [x] Implement `recompose.set_output()` helper (with validation)
+- [x] Implement `recompose.save_artifact()` helper (with validation)
+- [x] Implement `recompose.get_secret()` helper (with validation)
+- [x] Add outputs/artifacts to Result type
+- [x] Implement local secrets file (`~/.recompose/secrets.toml`)
+- [x] Implement `recompose.step()` context manager and decorator (nested locally, `::group::` in GHA)
 
 ### Phase 2: Automation Framework
 - [ ] Create `@automation` decorator with context tracking
