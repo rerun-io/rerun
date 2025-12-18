@@ -1146,3 +1146,121 @@ def render_automation_jobs(
         on=on_config,
         jobs=gha_jobs,
     )
+
+
+# =============================================================================
+# P14 Phase 5: render_dispatchable - Single-Job Workflow from Dispatchable
+# =============================================================================
+
+
+def render_dispatchable(
+    dispatchable: Any,  # Dispatchable from jobs.py, avoid circular import
+    entry_point: str = "./run",
+    default_setup: list[SetupStep] | None = None,
+    working_directory: str | None = None,
+) -> WorkflowSpec:
+    """
+    Generate a single-job WorkflowSpec from a Dispatchable.
+
+    This creates a simple workflow with:
+    - workflow_dispatch trigger with inputs derived from dispatchable.inputs
+    - A single job that runs the task via the entry point CLI
+
+    Args:
+        dispatchable: The Dispatchable wrapper (from make_dispatchable())
+        entry_point: CLI entry point for running the task (e.g., "./run")
+        default_setup: Default setup steps for the job (uses DEFAULT_SETUP_STEPS if None)
+        working_directory: Working directory for the job (relative to repo root)
+
+    Returns:
+        A WorkflowSpec representing the single-job workflow.
+
+    Example:
+        lint_workflow = make_dispatchable(lint)
+        spec = render_dispatchable(lint_workflow, entry_point="./run")
+        print(spec.to_yaml())
+
+    """
+    info = dispatchable.info
+    task_info = info.task_info
+    setup_steps = default_setup or DEFAULT_SETUP_STEPS
+
+    # Build workflow_dispatch trigger with inputs
+    dispatch_inputs: dict[str, dict[str, Any]] = {}
+    for input_name, input_spec in info.inputs.items():
+        dispatch_inputs[input_name] = input_spec.to_gha_dict()
+
+    on_config: dict[str, Any] = {"workflow_dispatch": {}}
+    if dispatch_inputs:
+        on_config["workflow_dispatch"]["inputs"] = dispatch_inputs
+
+    # Determine setup steps (task-specific or default)
+    if task_info.setup is not None:
+        job_setup = task_info.setup
+    else:
+        job_setup = setup_steps
+
+    # Build step list
+    steps: list[StepSpec] = []
+
+    # 1. Setup steps
+    for setup in job_setup:
+        if isinstance(setup, SetupStep):
+            steps.append(setup.to_step_spec())
+        elif isinstance(setup, GHAAction):
+            steps.append(
+                StepSpec(
+                    name=setup.name,
+                    uses=setup.uses,
+                    with_=setup.default_with_params if setup.default_with_params else None,
+                )
+            )
+        else:
+            # Assume it's a StepSpec or dict-like
+            steps.append(setup)
+
+    # 2. Task run step
+    # Build CLI arguments from inputs
+    args: list[str] = []
+    for input_name in info.inputs:
+        args.append(f"--{input_name}=${{{{ inputs.{input_name} }}}}")
+
+    cmd_parts = [entry_point, task_info.name] + args
+    run_cmd = " ".join(cmd_parts)
+
+    has_outputs = bool(task_info.outputs)
+    has_artifacts = bool(task_info.artifacts)
+
+    steps.append(
+        StepSpec(
+            name=task_info.name,
+            id="run" if (has_outputs or has_artifacts) else None,
+            run=run_cmd,
+        )
+    )
+
+    # 3. Upload artifact steps (for tasks that produce artifacts)
+    for artifact_name in task_info.artifacts:
+        steps.append(_build_artifact_upload_step(artifact_name, info.name))
+
+    # Build job outputs
+    outputs = _build_job_outputs(task_info.outputs, task_info.artifacts)
+
+    # Build secrets env
+    env = _build_secrets_env(task_info.secrets)
+
+    # Create the GHA job
+    gha_job = GHAJobSpec(
+        name=info.name,
+        runs_on="ubuntu-latest",
+        steps=steps,
+        env=env,
+        outputs=outputs,
+        working_directory=working_directory,
+    )
+
+    return WorkflowSpec(
+        name=info.name,
+        on=on_config,
+        jobs={info.name: gha_job},
+    )

@@ -73,6 +73,12 @@ from .jobs import (
     # Automation
     AutomationInfo,
     AutomationWrapper,
+    # P14 Phase 5: Dispatchable
+    BoolInput,
+    ChoiceInput,
+    Dispatchable,
+    DispatchableInfo,
+    DispatchInput,
     # Condition expressions
     ConditionExpr,
     GitHubCondition,
@@ -88,12 +94,14 @@ from .jobs import (
     PullRequestTrigger,
     PushTrigger,
     ScheduleTrigger,
+    StringInput,
     # Triggers
     Trigger,
     WorkflowDispatchTrigger,
     automation,
     github,
     job,
+    make_dispatchable,
     on_pull_request,
     on_push,
     on_schedule,
@@ -225,6 +233,14 @@ __all__ = [
     "on_pull_request",
     "on_schedule",
     "on_workflow_dispatch",
+    # P14 Phase 5: Dispatchable
+    "make_dispatchable",
+    "Dispatchable",
+    "DispatchableInfo",
+    "DispatchInput",
+    "StringInput",
+    "BoolInput",
+    "ChoiceInput",
     # Built-in tasks
     "builtin_commands",
     "generate_gha",

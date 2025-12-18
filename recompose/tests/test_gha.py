@@ -914,3 +914,353 @@ class TestGHAJobSpecEnhancements:
 
         assert "strategy" in d
         assert d["strategy"]["matrix"] == {"python": ["3.10", "3.11"]}
+
+
+# =============================================================================
+# P14 Phase 5: Tests for make_dispatchable and render_dispatchable
+# =============================================================================
+
+from recompose import (
+    BoolInput,
+    ChoiceInput,
+    Dispatchable,
+    DispatchableInfo,
+    StringInput,
+    make_dispatchable,
+)
+from recompose.gha import render_dispatchable
+
+
+# Test tasks for dispatchable tests
+@recompose.task
+def no_params_task() -> recompose.Result[None]:
+    """Task with no parameters."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def string_param_task(*, name: str) -> recompose.Result[None]:
+    """Task with required string parameter."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def default_param_task(*, name: str = "world", count: int = 5) -> recompose.Result[None]:
+    """Task with default parameters."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def bool_param_task(*, verbose: bool = False, debug: bool = True) -> recompose.Result[None]:
+    """Task with boolean parameters."""
+    return recompose.Ok(None)
+
+
+@recompose.task(outputs=["result_path"])
+def output_task() -> recompose.Result[None]:
+    """Task with outputs."""
+    return recompose.Ok(None)
+
+
+@recompose.task(artifacts=["report"])
+def artifact_task() -> recompose.Result[None]:
+    """Task with artifacts."""
+    return recompose.Ok(None)
+
+
+@recompose.task(secrets=["API_KEY"])
+def secret_task() -> recompose.Result[None]:
+    """Task with secrets."""
+    return recompose.Ok(None)
+
+
+class TestDispatchInputTypes:
+    """Tests for DispatchInput types."""
+
+    def test_string_input_basic(self) -> None:
+        """Test StringInput basic usage."""
+        inp = StringInput(default="hello", description="A greeting")
+        d = inp.to_gha_dict()
+
+        assert d["type"] == "string"
+        assert d["default"] == "hello"
+        assert d["description"] == "A greeting"
+        assert d["required"] is False
+
+    def test_string_input_required(self) -> None:
+        """Test StringInput as required."""
+        inp = StringInput(required=True, description="Required param")
+        d = inp.to_gha_dict()
+
+        assert d["required"] is True
+        assert "default" not in d
+
+    def test_bool_input_basic(self) -> None:
+        """Test BoolInput basic usage."""
+        inp = BoolInput(default=True, description="Enable feature")
+        d = inp.to_gha_dict()
+
+        assert d["type"] == "boolean"
+        assert d["default"] is True
+        assert d["description"] == "Enable feature"
+
+    def test_bool_input_defaults_to_false(self) -> None:
+        """Test BoolInput defaults to False."""
+        inp = BoolInput()
+        d = inp.to_gha_dict()
+
+        assert d["default"] is False
+
+    def test_choice_input_basic(self) -> None:
+        """Test ChoiceInput basic usage."""
+        inp = ChoiceInput(
+            choices=["dev", "staging", "prod"],
+            default="staging",
+            description="Target environment",
+        )
+        d = inp.to_gha_dict()
+
+        assert d["type"] == "choice"
+        assert d["options"] == ["dev", "staging", "prod"]
+        assert d["default"] == "staging"
+        assert d["description"] == "Target environment"
+
+    def test_choice_input_required(self) -> None:
+        """Test ChoiceInput as required."""
+        inp = ChoiceInput(choices=["a", "b"], required=True)
+        d = inp.to_gha_dict()
+
+        assert d["required"] is True
+
+
+class TestMakeDispatchable:
+    """Tests for make_dispatchable function."""
+
+    def test_non_task_raises(self) -> None:
+        """make_dispatchable requires a @task-decorated function."""
+        with pytest.raises(TypeError, match="requires a @task-decorated function"):
+            make_dispatchable(lambda: None)  # type: ignore[arg-type]
+
+    def test_basic_dispatchable(self) -> None:
+        """Test creating a basic dispatchable."""
+        d = make_dispatchable(no_params_task)
+
+        assert isinstance(d, Dispatchable)
+        assert d.name == "no_params_task"
+        assert isinstance(d.info, DispatchableInfo)
+        assert d.task_info.name == "no_params_task"
+
+    def test_infer_no_params(self) -> None:
+        """Test inferring inputs from task with no params."""
+        d = make_dispatchable(no_params_task)
+
+        assert d.info.inputs == {}
+
+    def test_infer_string_param(self) -> None:
+        """Test inferring string input from task signature."""
+        d = make_dispatchable(string_param_task)
+
+        assert "name" in d.info.inputs
+        inp = d.info.inputs["name"]
+        assert isinstance(inp, StringInput)
+        assert inp.required is True
+
+    def test_infer_default_params(self) -> None:
+        """Test inferring inputs with defaults."""
+        d = make_dispatchable(default_param_task)
+
+        assert "name" in d.info.inputs
+        name_inp = d.info.inputs["name"]
+        assert isinstance(name_inp, StringInput)
+        assert name_inp.default == "world"
+        assert name_inp.required is False
+
+        assert "count" in d.info.inputs
+        count_inp = d.info.inputs["count"]
+        assert isinstance(count_inp, StringInput)  # Numbers become strings
+        assert count_inp.default == "5"
+
+    def test_infer_bool_params(self) -> None:
+        """Test inferring boolean inputs."""
+        d = make_dispatchable(bool_param_task)
+
+        assert "verbose" in d.info.inputs
+        verbose_inp = d.info.inputs["verbose"]
+        assert isinstance(verbose_inp, BoolInput)
+        assert verbose_inp.default is False
+
+        assert "debug" in d.info.inputs
+        debug_inp = d.info.inputs["debug"]
+        assert isinstance(debug_inp, BoolInput)
+        assert debug_inp.default is True
+
+    def test_explicit_inputs(self) -> None:
+        """Test providing explicit inputs."""
+        d = make_dispatchable(
+            string_param_task,
+            inputs={"name": StringInput(default="custom", description="Custom name")},
+        )
+
+        assert "name" in d.info.inputs
+        inp = d.info.inputs["name"]
+        assert inp.default == "custom"
+        assert inp.description == "Custom name"
+
+    def test_custom_name(self) -> None:
+        """Test providing a custom workflow name."""
+        d = make_dispatchable(no_params_task, name="custom_workflow")
+
+        assert d.name == "custom_workflow"
+        assert d.task_info.name == "no_params_task"
+
+
+class TestRenderDispatchable:
+    """Tests for render_dispatchable function."""
+
+    def test_basic_render(self) -> None:
+        """Test rendering a basic dispatchable."""
+        d = make_dispatchable(no_params_task)
+        spec = render_dispatchable(d)
+
+        assert spec.name == "no_params_task"
+        assert "workflow_dispatch" in spec.on
+        assert "no_params_task" in spec.jobs
+        assert len(spec.jobs) == 1
+
+    def test_workflow_dispatch_inputs(self) -> None:
+        """Test that inputs appear in workflow_dispatch."""
+        d = make_dispatchable(default_param_task)
+        spec = render_dispatchable(d)
+
+        inputs = spec.on["workflow_dispatch"]["inputs"]
+        assert "name" in inputs
+        assert inputs["name"]["type"] == "string"
+        assert inputs["name"]["default"] == "world"
+
+        assert "count" in inputs
+        assert inputs["count"]["type"] == "string"
+
+    def test_explicit_inputs_render(self) -> None:
+        """Test rendering with explicit inputs."""
+        d = make_dispatchable(
+            no_params_task,
+            inputs={
+                "env": ChoiceInput(choices=["dev", "prod"], default="dev"),
+                "verbose": BoolInput(default=False),
+            },
+        )
+        spec = render_dispatchable(d)
+
+        inputs = spec.on["workflow_dispatch"]["inputs"]
+        assert "env" in inputs
+        assert inputs["env"]["type"] == "choice"
+        assert inputs["env"]["options"] == ["dev", "prod"]
+
+        assert "verbose" in inputs
+        assert inputs["verbose"]["type"] == "boolean"
+
+    def test_entry_point_in_run_command(self) -> None:
+        """Test that entry_point is used in run command."""
+        d = make_dispatchable(no_params_task)
+        spec = render_dispatchable(d, entry_point="./custom_runner")
+
+        job = spec.jobs["no_params_task"]
+        run_step = [s for s in job.steps if s.run is not None][0]
+        assert run_step.run.startswith("./custom_runner no_params_task")
+
+    def test_inputs_passed_to_command(self) -> None:
+        """Test that inputs are passed as CLI args."""
+        d = make_dispatchable(default_param_task)
+        spec = render_dispatchable(d)
+
+        job = spec.jobs["default_param_task"]
+        run_step = [s for s in job.steps if s.run is not None][0]
+        assert "--name=${{ inputs.name }}" in run_step.run
+        assert "--count=${{ inputs.count }}" in run_step.run
+
+    def test_default_setup_steps(self) -> None:
+        """Test that default setup steps are included."""
+        d = make_dispatchable(no_params_task)
+        spec = render_dispatchable(d)
+
+        job = spec.jobs["no_params_task"]
+        assert job.steps[0].uses == "actions/checkout@v4"
+        assert job.steps[1].uses == "actions/setup-python@v5"
+        assert job.steps[2].uses == "astral-sh/setup-uv@v4"
+
+    def test_custom_setup_steps(self) -> None:
+        """Test with custom setup steps."""
+        custom_setup = [
+            SetupStep("Checkout", "actions/checkout@v4"),
+            SetupStep("Setup Rust", "dtolnay/rust-toolchain@master"),
+        ]
+
+        d = make_dispatchable(no_params_task)
+        spec = render_dispatchable(d, default_setup=custom_setup)
+
+        job = spec.jobs["no_params_task"]
+        assert len([s for s in job.steps if "setup-python" in (s.uses or "")]) == 0
+        assert len([s for s in job.steps if "rust-toolchain" in (s.uses or "")]) == 1
+
+    def test_working_directory(self) -> None:
+        """Test that working_directory is applied."""
+        d = make_dispatchable(no_params_task)
+        spec = render_dispatchable(d, working_directory="subdir")
+
+        job = spec.jobs["no_params_task"]
+        assert job.working_directory == "subdir"
+
+    def test_task_with_outputs(self) -> None:
+        """Test rendering a task with outputs."""
+        d = make_dispatchable(output_task)
+        spec = render_dispatchable(d)
+
+        job = spec.jobs["output_task"]
+        assert job.outputs is not None
+        assert "result_path" in job.outputs
+
+        # Run step should have id="run"
+        run_step = [s for s in job.steps if s.run is not None][0]
+        assert run_step.id == "run"
+
+    def test_task_with_artifacts(self) -> None:
+        """Test rendering a task with artifacts."""
+        d = make_dispatchable(artifact_task)
+        spec = render_dispatchable(d)
+
+        job = spec.jobs["artifact_task"]
+        upload_steps = [s for s in job.steps if s.uses and "upload-artifact" in s.uses]
+        assert len(upload_steps) == 1
+
+    def test_task_with_secrets(self) -> None:
+        """Test rendering a task with secrets."""
+        d = make_dispatchable(secret_task)
+        spec = render_dispatchable(d)
+
+        job = spec.jobs["secret_task"]
+        assert job.env is not None
+        assert "API_KEY" in job.env
+        assert job.env["API_KEY"] == "${{ secrets.API_KEY }}"
+
+    def test_yaml_output_valid(self) -> None:
+        """Test that generated YAML is valid."""
+        d = make_dispatchable(default_param_task)
+        spec = render_dispatchable(d)
+        yaml_str = spec.to_yaml()
+
+        # Should be parseable
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
+
+        assert parsed["name"] == "default_param_task"
+        assert "workflow_dispatch" in parsed["on"]
+        assert "default_param_task" in parsed["jobs"]
+
+
+class TestDispatchableRepr:
+    """Tests for Dispatchable string representation."""
+
+    def test_repr(self) -> None:
+        """Test Dispatchable repr."""
+        d = make_dispatchable(no_params_task)
+        assert "no_params_task" in repr(d)

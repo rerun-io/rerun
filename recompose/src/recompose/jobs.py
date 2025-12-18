@@ -1039,3 +1039,274 @@ def automation(
     if fn is not None:
         return decorator(fn)
     return decorator
+
+
+# =============================================================================
+# Dispatchable Tasks (P14 Phase 5)
+# =============================================================================
+
+
+@dataclass
+class DispatchInput:
+    """Base class for workflow_dispatch input specifications.
+
+    These are used with make_dispatchable() to define workflow inputs.
+    """
+
+    description: str | None = None
+    required: bool = False
+
+    def to_gha_dict(self) -> dict[str, Any]:
+        """Convert to GHA workflow_dispatch input format."""
+        raise NotImplementedError
+
+
+@dataclass
+class StringInput(DispatchInput):
+    """String input for workflow_dispatch.
+
+    Example:
+        workflow = make_dispatchable(
+            my_task,
+            inputs={"name": StringInput(default="world", description="Name to greet")},
+        )
+    """
+
+    default: str | None = None
+
+    def to_gha_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "type": "string",
+            "required": self.required,
+        }
+        if self.description:
+            d["description"] = self.description
+        else:
+            d["description"] = ""
+        if self.default is not None:
+            d["default"] = self.default
+        return d
+
+
+@dataclass
+class BoolInput(DispatchInput):
+    """Boolean input for workflow_dispatch.
+
+    Example:
+        workflow = make_dispatchable(
+            my_task,
+            inputs={"verbose": BoolInput(default=False, description="Enable verbose output")},
+        )
+    """
+
+    default: bool = False
+
+    def to_gha_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "type": "boolean",
+            "required": self.required,
+        }
+        if self.description:
+            d["description"] = self.description
+        else:
+            d["description"] = ""
+        d["default"] = self.default
+        return d
+
+
+@dataclass
+class ChoiceInput(DispatchInput):
+    """Choice input for workflow_dispatch.
+
+    Example:
+        workflow = make_dispatchable(
+            deploy_task,
+            inputs={"environment": ChoiceInput(
+                choices=["dev", "staging", "prod"],
+                default="staging",
+                description="Target environment",
+            )},
+        )
+    """
+
+    choices: list[str] = field(default_factory=list)
+    default: str | None = None
+
+    def to_gha_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "type": "choice",
+            "required": self.required,
+            "options": self.choices,
+        }
+        if self.description:
+            d["description"] = self.description
+        else:
+            d["description"] = ""
+        if self.default is not None:
+            d["default"] = self.default
+        return d
+
+
+@dataclass
+class DispatchableInfo:
+    """Metadata about a dispatchable task."""
+
+    name: str
+    """Workflow name (defaults to task name)."""
+
+    task_info: TaskInfo
+    """The underlying task."""
+
+    inputs: dict[str, DispatchInput]
+    """Workflow dispatch inputs."""
+
+    @property
+    def full_name(self) -> str:
+        """Full qualified name."""
+        return f"{self.task_info.module}:{self.name}"
+
+
+class Dispatchable:
+    """A task wrapped for workflow_dispatch triggering.
+
+    Created by make_dispatchable(). Can be rendered to a single-job
+    workflow with workflow_dispatch trigger.
+
+    Example:
+        lint_workflow = make_dispatchable(lint)
+        test_workflow = make_dispatchable(
+            test,
+            inputs={"verbose": BoolInput(default=False)},
+        )
+
+        # Add to App for workflow generation
+        app = App(
+            commands=[...],
+            dispatchables=[lint_workflow, test_workflow],
+        )
+    """
+
+    def __init__(self, info: DispatchableInfo):
+        self._info = info
+
+    @property
+    def info(self) -> DispatchableInfo:
+        """Get the dispatchable info."""
+        return self._info
+
+    @property
+    def name(self) -> str:
+        """Get the workflow name."""
+        return self._info.name
+
+    @property
+    def task_info(self) -> TaskInfo:
+        """Get the underlying task info."""
+        return self._info.task_info
+
+    def __repr__(self) -> str:
+        return f"Dispatchable({self.name})"
+
+
+def _infer_inputs_from_task(task_info: TaskInfo) -> dict[str, DispatchInput]:
+    """Infer workflow_dispatch inputs from task signature."""
+    inputs: dict[str, DispatchInput] = {}
+
+    for param_name, param in task_info.signature.parameters.items():
+        annotation = param.annotation
+        has_default = param.default is not inspect.Parameter.empty
+        default_value = param.default if has_default else None
+
+        # Determine input type from annotation
+        if annotation is bool or isinstance(default_value, bool):
+            inputs[param_name] = BoolInput(
+                default=default_value if isinstance(default_value, bool) else False,
+                required=not has_default,
+                description=f"Parameter: {param_name}",
+            )
+        elif annotation is int or annotation is float:
+            # GHA doesn't have a native number input, use string
+            inputs[param_name] = StringInput(
+                default=str(default_value) if default_value is not None else None,
+                required=not has_default,
+                description=f"Parameter: {param_name}",
+            )
+        else:
+            # Default to string
+            str_default = None
+            if default_value is not None:
+                if isinstance(default_value, Path):
+                    str_default = str(default_value)
+                elif isinstance(default_value, str):
+                    str_default = default_value
+                else:
+                    str_default = str(default_value)
+            inputs[param_name] = StringInput(
+                default=str_default,
+                required=not has_default,
+                description=f"Parameter: {param_name}",
+            )
+
+    return inputs
+
+
+def make_dispatchable(
+    task: TaskWrapper[..., Any],
+    *,
+    inputs: dict[str, DispatchInput] | None = None,
+    name: str | None = None,
+) -> Dispatchable:
+    """Create a dispatchable wrapper for a task.
+
+    This creates a workflow that can be triggered via workflow_dispatch
+    and runs a single task.
+
+    Args:
+        task: The task to make dispatchable (must be @task decorated)
+        inputs: Optional workflow inputs. If None, infers from task signature.
+                If provided, these override/extend the inferred inputs.
+        name: Optional workflow name. Defaults to task name.
+
+    Returns:
+        Dispatchable that can be added to an App for workflow generation.
+
+    Example:
+        # Simple - infer inputs from task
+        lint_workflow = make_dispatchable(lint)
+
+        # With explicit inputs
+        test_workflow = make_dispatchable(
+            test,
+            inputs={
+                "verbose": BoolInput(default=False, description="Verbose output"),
+            },
+        )
+
+        # With custom name
+        deploy_prod = make_dispatchable(deploy, name="deploy_production")
+
+    """
+    # Validate task
+    task_info = getattr(task, "_task_info", None)
+    if task_info is None:
+        raise TypeError(f"make_dispatchable() requires a @task-decorated function, got {type(task).__name__}")
+
+    # Determine inputs
+    if inputs is None:
+        # Infer from task signature
+        final_inputs = _infer_inputs_from_task(task_info)
+    else:
+        # Use provided inputs (could also merge with inferred, but explicit is clearer)
+        final_inputs = inputs
+
+    # Determine name
+    workflow_name = name if name is not None else task_info.name
+
+    # Create info
+    info = DispatchableInfo(
+        name=workflow_name,
+        task_info=task_info,
+        inputs=final_inputs,
+    )
+
+    return Dispatchable(info)

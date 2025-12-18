@@ -629,9 +629,13 @@ app = recompose.App(
 - [x] Handle matrix jobs
 - [x] Handle job conditions (if:)
 
-### Phase 5: Dispatchable
-- [ ] Implement `make_dispatchable()` function
-- [ ] Generate single-job workflow_dispatch workflows
+### Phase 5: Dispatchable ✅ COMPLETE
+- [x] Implement `make_dispatchable()` function
+- [x] Generate single-job workflow_dispatch workflows
+- [x] DispatchInput base class with StringInput, BoolInput, ChoiceInput
+- [x] Input inference from task signature
+- [x] render_dispatchable() function in gha.py
+- [x] 27 tests for Phase 5
 
 ### Phase 6: Cleanup Old Code
 - [ ] Remove `@flow` decorator and FlowPlan/TaskNode/InputPlaceholder
@@ -659,8 +663,8 @@ app = recompose.App(
 - [x] Job conditions work with expression algebra, map to GHA `if:`
 - [x] Artifact upload/download steps generated correctly
 - [x] Secrets plumbed to job env in GHA
-- [ ] `make_dispatchable()` creates single-job workflows
+- [x] `make_dispatchable()` creates single-job workflows
 - [x] Generated workflows use app entry_point directly (copy-paste runnable)
 - [ ] All examples migrated to new model
 - [ ] All old flow/taskclass code removed
-- [x] All tests passing (291 tests)
+- [x] All tests passing (318 tests)
