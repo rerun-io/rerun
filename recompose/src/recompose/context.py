@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -34,6 +36,14 @@ class OutputLine:
 
 
 @dataclass
+class ArtifactInfo:
+    """Information about a saved artifact."""
+
+    name: str
+    path: Path
+
+
+@dataclass
 class TaskContext:
     """
     Execution context for a single task.
@@ -44,6 +54,15 @@ class TaskContext:
     task_name: str
     output: list[OutputLine] = field(default_factory=list)
 
+    # P14: Task declarations for validation
+    declared_outputs: list[str] = field(default_factory=list)
+    declared_artifacts: list[str] = field(default_factory=list)
+    declared_secrets: list[str] = field(default_factory=list)
+
+    # P14: Collected outputs and artifacts
+    task_outputs: dict[str, str] = field(default_factory=dict)
+    task_artifacts: dict[str, ArtifactInfo] = field(default_factory=dict)
+
     def capture_out(self, message: str) -> None:
         """Capture an output line."""
         self.output.append(OutputLine(level="out", message=message))
@@ -51,6 +70,84 @@ class TaskContext:
     def capture_dbg(self, message: str) -> None:
         """Capture a debug line."""
         self.output.append(OutputLine(level="dbg", message=message))
+
+    def set_output(self, name: str, value: str) -> None:
+        """
+        Set a task output value.
+
+        Validates the name against declared outputs and writes to GITHUB_OUTPUT if in GHA.
+        """
+        if self.declared_outputs and name not in self.declared_outputs:
+            raise ValueError(
+                f"Output '{name}' not declared in @task(outputs=[...]). "
+                f"Declared outputs: {self.declared_outputs}"
+            )
+        self.task_outputs[name] = value
+
+        # Write to GITHUB_OUTPUT if running in GHA
+        github_output = os.environ.get("GITHUB_OUTPUT")
+        if github_output:
+            with open(github_output, "a") as f:
+                # Handle multi-line values with delimiter syntax
+                if "\n" in value:
+                    import uuid
+
+                    delimiter = f"ghadelimiter_{uuid.uuid4()}"
+                    f.write(f"{name}<<{delimiter}\n{value}\n{delimiter}\n")
+                else:
+                    f.write(f"{name}={value}\n")
+
+    def save_artifact(self, name: str, path: Path) -> None:
+        """
+        Save an artifact.
+
+        Validates the name against declared artifacts.
+        """
+        if self.declared_artifacts and name not in self.declared_artifacts:
+            raise ValueError(
+                f"Artifact '{name}' not declared in @task(artifacts=[...]). "
+                f"Declared artifacts: {self.declared_artifacts}"
+            )
+        if not path.exists():
+            raise FileNotFoundError(f"Artifact path does not exist: {path}")
+        self.task_artifacts[name] = ArtifactInfo(name=name, path=path)
+
+    def get_secret(self, name: str) -> str:
+        """
+        Get a secret value.
+
+        Validates the name against declared secrets.
+        In GHA, reads from environment (set by workflow).
+        Locally, reads from ~/.recompose/secrets.toml.
+        """
+        if self.declared_secrets and name not in self.declared_secrets:
+            raise ValueError(
+                f"Secret '{name}' not declared in @task(secrets=[...]). "
+                f"Declared secrets: {self.declared_secrets}"
+            )
+
+        # First try environment variable (GHA or explicit local)
+        value = os.environ.get(name)
+        if value is not None:
+            return value
+
+        # Fall back to local secrets file
+        secrets_file = Path.home() / ".recompose" / "secrets.toml"
+        if secrets_file.exists():
+            try:
+                import tomllib
+
+                with open(secrets_file, "rb") as f:
+                    secrets = tomllib.load(f)
+                if name in secrets:
+                    return str(secrets[name])
+            except Exception as e:
+                raise RuntimeError(f"Failed to read secrets file {secrets_file}: {e}") from e
+
+        raise ValueError(
+            f"Secret '{name}' not found. "
+            f"Set as environment variable or add to ~/.recompose/secrets.toml"
+        )
 
 
 # Backwards compatibility alias
@@ -319,3 +416,91 @@ def dbg(message: str) -> None:
     if _debug_mode:
         # Just print - if in tree mode, the TreePrefixWriter wrapper handles prefixing
         print(f"[debug] {message}", flush=True)
+
+
+def set_output(name: str, value: str) -> None:
+    """
+    Set a task output value.
+
+    Must be called from within a task that declared the output in @task(outputs=[...]).
+    In GHA, also writes to GITHUB_OUTPUT file.
+
+    Args:
+        name: Output name (must be declared in @task decorator)
+        value: Output value (will be converted to string)
+
+    Raises:
+        RuntimeError: If not called from within a task context
+        ValueError: If name is not in declared outputs
+
+    Example:
+        @task(outputs=["wheel_path", "version"])
+        def build_wheel() -> Result[None]:
+            recompose.set_output("wheel_path", "/dist/pkg-1.0.0.whl")
+            recompose.set_output("version", "1.0.0")
+            return Ok(None)
+    """
+    ctx = _current_task_context.get()
+    if ctx is None:
+        raise RuntimeError("set_output() must be called from within a task context")
+    ctx.set_output(name, str(value))
+
+
+def save_artifact(name: str, path: Path | str) -> None:
+    """
+    Save an artifact file.
+
+    Must be called from within a task that declared the artifact in @task(artifacts=[...]).
+    In GHA automation, this triggers upload-artifact after the task completes.
+
+    Args:
+        name: Artifact name (must be declared in @task decorator)
+        path: Path to the artifact file or directory
+
+    Raises:
+        RuntimeError: If not called from within a task context
+        ValueError: If name is not in declared artifacts
+        FileNotFoundError: If path does not exist
+
+    Example:
+        @task(artifacts=["wheel"])
+        def build_wheel() -> Result[None]:
+            run("uv", "build", "--wheel")
+            recompose.save_artifact("wheel", Path("dist/pkg-1.0.0.whl"))
+            return Ok(None)
+    """
+    ctx = _current_task_context.get()
+    if ctx is None:
+        raise RuntimeError("save_artifact() must be called from within a task context")
+    ctx.save_artifact(name, Path(path) if isinstance(path, str) else path)
+
+
+def get_secret(name: str) -> str:
+    """
+    Get a secret value.
+
+    Must be called from within a task that declared the secret in @task(secrets=[...]).
+    In GHA, reads from environment (secrets are passed via workflow env).
+    Locally, reads from ~/.recompose/secrets.toml.
+
+    Args:
+        name: Secret name (must be declared in @task decorator)
+
+    Returns:
+        The secret value
+
+    Raises:
+        RuntimeError: If not called from within a task context
+        ValueError: If name is not in declared secrets, or secret not found
+
+    Example:
+        @task(secrets=["PYPI_TOKEN"])
+        def publish() -> Result[None]:
+            token = recompose.get_secret("PYPI_TOKEN")
+            # use token...
+            return Ok(None)
+    """
+    ctx = _current_task_context.get()
+    if ctx is None:
+        raise RuntimeError("get_secret() must be called from within a task context")
+    return ctx.get_secret(name)

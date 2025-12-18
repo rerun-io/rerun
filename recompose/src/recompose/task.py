@@ -7,7 +7,7 @@ import inspect
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Concatenate, Generic, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Concatenate, Generic, ParamSpec, Protocol, TypeVar, overload
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
@@ -73,6 +73,12 @@ class TaskInfo:
 
     # Condition check step (for run_if evaluation)
     is_condition_check: bool = False  # True if this evaluates a run_if condition
+
+    # New P14 fields: outputs, artifacts, secrets, setup
+    outputs: list[str] = field(default_factory=list)  # Declared output names
+    artifacts: list[str] = field(default_factory=list)  # Declared artifact names
+    secrets: list[str] = field(default_factory=list)  # Declared secret names
+    setup: list[Any] | None = None  # Setup steps (overrides app-level defaults)
 
     @property
     def full_name(self) -> str:
@@ -153,7 +159,28 @@ def method(fn: Callable[Concatenate[Self, P], Result[T]]) -> MethodWrapper[P, T]
     return fn  # type: ignore[return-value]
 
 
-def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
+@overload
+def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]: ...
+
+
+@overload
+def task(
+    *,
+    outputs: list[str] | None = None,
+    artifacts: list[str] | None = None,
+    secrets: list[str] | None = None,
+    setup: list[Any] | None = None,
+) -> Callable[[Callable[P, Result[T]]], TaskWrapper[P, T]]: ...
+
+
+def task(
+    fn: Callable[P, Result[T]] | None = None,
+    *,
+    outputs: list[str] | None = None,
+    artifacts: list[str] | None = None,
+    secrets: list[str] | None = None,
+    setup: list[Any] | None = None,
+) -> TaskWrapper[P, T] | Callable[[Callable[P, Result[T]]], TaskWrapper[P, T]]:
     """
     Decorator to mark a function as a recompose task.
 
@@ -169,10 +196,28 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     - The method is marked but NOT wrapped immediately
     - Use @taskclass on the class to complete wrapping
 
+    Args:
+        outputs: List of output names this task can set via set_output().
+        artifacts: List of artifact names this task can save via save_artifact().
+        secrets: List of secret names this task requires via get_secret().
+        setup: Setup steps for GHA (overrides app-level defaults).
+
     Usage:
         @task
         def compile(*, source: Path) -> Result[Path]:
             ...
+
+        @task(outputs=["wheel_path", "version"])
+        def build_wheel() -> Result[None]:
+            recompose.set_output("wheel_path", "/dist/pkg-1.0.0.whl")
+            recompose.set_output("version", "1.0.0")
+            return Ok(None)
+
+        @task(secrets=["PYPI_TOKEN"])
+        def publish() -> Result[None]:
+            token = recompose.get_secret("PYPI_TOKEN")
+            # ... use token
+            return Ok(None)
 
         # Direct execution:
         result = compile(source=Path("src/"))  # Returns Result[Path]
@@ -187,48 +232,59 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     mimics Result[T]) instead of executing. This enables type-safe composition
     via .value() while building the task graph.
     """
-    # Check if this looks like a method - error and direct to @method decorator
-    if _is_method_signature(fn):
-        raise TypeError(
-            f"@task cannot be used on methods (found 'self' parameter in {fn.__name__}). "
-            f"Use @recompose.method instead for TaskClass methods."
+
+    def decorator(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
+        # Check if this looks like a method - error and direct to @method decorator
+        if _is_method_signature(fn):
+            raise TypeError(
+                f"@task cannot be used on methods (found 'self' parameter in {fn.__name__}). "
+                f"Use @recompose.method instead for TaskClass methods."
+            )
+
+        # Regular function task - register immediately
+        @functools.wraps(fn)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
+            from .flow import get_current_plan
+
+            plan = get_current_plan()
+
+            if plan is not None:
+                # FLOW-BUILDING MODE: Create TaskNode and add to plan
+                _validate_task_kwargs(info.name, info.signature, kwargs)
+                node = _create_task_node(info, kwargs)
+                plan.add_node(node)
+                return node  # type: ignore[return-value]
+
+            # NORMAL EXECUTION MODE
+            return _run_with_context(info, fn, args, kwargs)
+
+        # Create task info with the wrapper
+        info = TaskInfo(
+            name=fn.__name__,
+            module=fn.__module__,
+            fn=wrapper,  # Store the wrapper
+            original_fn=fn,  # Keep reference to original
+            signature=inspect.signature(fn),
+            doc=fn.__doc__,
+            outputs=outputs or [],
+            artifacts=artifacts or [],
+            secrets=secrets or [],
+            setup=setup,
         )
 
-    # Regular function task - register immediately
-    @functools.wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
-        from .flow import get_current_plan
+        # Attach task info to wrapper for introspection
+        wrapper._task_info = info  # type: ignore[attr-defined]
 
-        plan = get_current_plan()
+        # Cast to TaskWrapper to satisfy type checker
+        # (we've added ._task_info attribute dynamically)
+        from typing import cast
 
-        if plan is not None:
-            # FLOW-BUILDING MODE: Create TaskNode and add to plan
-            _validate_task_kwargs(info.name, info.signature, kwargs)
-            node = _create_task_node(info, kwargs)
-            plan.add_node(node)
-            return node  # type: ignore[return-value]
+        return cast(TaskWrapper[P, T], wrapper)
 
-        # NORMAL EXECUTION MODE
-        return _run_with_context(info.name, fn, args, kwargs)
-
-    # Create task info with the wrapper
-    info = TaskInfo(
-        name=fn.__name__,
-        module=fn.__module__,
-        fn=wrapper,  # Store the wrapper
-        original_fn=fn,  # Keep reference to original
-        signature=inspect.signature(fn),
-        doc=fn.__doc__,
-    )
-
-    # Attach task info to wrapper for introspection
-    wrapper._task_info = info  # type: ignore[attr-defined]
-
-    # Cast to TaskWrapper to satisfy type checker
-    # (we've added ._task_info attribute dynamically)
-    from typing import cast
-
-    return cast(TaskWrapper[P, T], wrapper)
+    # Handle both @task and @task(...) forms
+    if fn is not None:
+        return decorator(fn)
+    return decorator
 
 
 @dataclass
@@ -480,7 +536,7 @@ def taskclass(cls: type[T]) -> type[T]:
                 instance = cls(**init_kwargs)
                 bound_method = getattr(instance, method_name)
 
-                return _run_with_context(full_task_name, bound_method, (), method_kwargs)
+                return _run_with_context(wrapper._task_info, bound_method, (), method_kwargs)  # type: ignore[attr-defined]
 
             return wrapper
 
@@ -655,17 +711,36 @@ def _create_task_node(info: TaskInfo, kwargs: dict[str, Any]) -> TaskNode[Any]:
 
 
 def _run_with_context(
-    task_name: str, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
+    task_info: TaskInfo, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> Result[Any]:
     """Execute task with context management."""
     existing_ctx = get_context()
 
     if existing_ctx is None:
-        ctx = Context(task_name=task_name)
+        ctx = Context(
+            task_name=task_info.name,
+            declared_outputs=task_info.outputs,
+            declared_artifacts=task_info.artifacts,
+            declared_secrets=task_info.secrets,
+        )
         set_context(ctx)
         try:
-            return _execute_task(fn, args, kwargs)
+            result = _execute_task(fn, args, kwargs)
+            # Attach collected outputs/artifacts to the result
+            if result.ok:
+                result = _attach_context_to_result(result, ctx)
+            return result
         finally:
             set_context(None)
     else:
         return _execute_task(fn, args, kwargs)
+
+
+def _attach_context_to_result(result: Result[Any], ctx: Context) -> Result[Any]:
+    """Attach outputs and artifacts from context to the result."""
+    if ctx.task_outputs or ctx.task_artifacts:
+        # Create a new result with outputs/artifacts attached
+        # We need to update the Result class to support this
+        object.__setattr__(result, "_outputs", ctx.task_outputs.copy())
+        object.__setattr__(result, "_artifacts", ctx.task_artifacts.copy())
+    return result
