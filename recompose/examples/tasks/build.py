@@ -8,8 +8,12 @@ and validating that the installed package works correctly.
 import shutil
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import recompose
+
+if TYPE_CHECKING:
+    from .virtual_env import Venv
 
 # Project root is two levels up from tasks/
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -190,15 +194,8 @@ def smoke_test(*, venv: str) -> recompose.Result[None]:
     return recompose.Ok(None)
 
 
-# Import here to avoid circular import (Venv is in same package)
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .venv import Venv as VenvType
-
-
 @recompose.task
-def smoke_test_venv(*, venv: "VenvType") -> recompose.Result[None]:
+def smoke_test_venv(*, venv: "Venv") -> recompose.Result[None]:
     """
     Run a quick smoke test using a Venv TaskClass.
 
@@ -265,7 +262,7 @@ def test_installed(*, venv: str, verbose: bool = False) -> recompose.Result[None
 
 
 @recompose.task
-def test_installed_venv(*, venv: "VenvType", verbose: bool = False) -> recompose.Result[None]:
+def test_installed_venv(*, venv: "Venv", verbose: bool = False) -> recompose.Result[None]:
     """
     Run the full test suite using a Venv TaskClass.
 

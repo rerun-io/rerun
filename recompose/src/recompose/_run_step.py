@@ -7,14 +7,16 @@ without requiring the original script to have CLI handling code.
 
 Usage:
     # With a script path:
-    python -m recompose._run_step --script /path/to/script.py --flow flow_name --step step_name --workspace /path/to/workspace
+    python -m recompose._run_step --script /path/to/script.py \\
+        --flow flow_name --step step_name --workspace /path/to/workspace
 
     # With a module name:
-    python -m recompose._run_step --module examples.app --flow flow_name --step step_name --workspace /path/to/workspace
+    python -m recompose._run_step --module examples.app \\
+        --flow flow_name --step step_name --workspace /path/to/workspace
 
-The script/module is imported to define the flows/tasks, then the specified step is executed.
-This allows subprocess isolation to work with any Python file that defines flows,
-without requiring that file to set up a recompose CLI.
+The script/module is imported to define the flows/tasks, then the specified step
+is executed. This allows subprocess isolation to work with any Python file that
+defines flows, without requiring that file to set up a recompose CLI.
 """
 
 from __future__ import annotations
@@ -74,7 +76,7 @@ def main() -> None:
             sys.exit(1)
 
     # Find the flow - look through the module's attributes for FlowWrapper instances
-    from .flow import FlowInfo, FlowWrapper
+    from .flow import FlowInfo
 
     flow_info: FlowInfo | None = None
 
@@ -87,7 +89,10 @@ def main() -> None:
 
     if flow_info is None:
         print(f"Error: Flow '{flow_name}' not found in {script_path}", file=sys.stderr)
-        print(f"Available flows: {[getattr(module, n)._flow_info.name for n in dir(module) if hasattr(getattr(module, n), '_flow_info')]}", file=sys.stderr)
+        available = [
+            getattr(module, n)._flow_info.name for n in dir(module) if hasattr(getattr(module, n), "_flow_info")
+        ]
+        print(f"Available flows: {available}", file=sys.stderr)
         sys.exit(1)
 
     # Execute the step

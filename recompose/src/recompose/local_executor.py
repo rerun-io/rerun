@@ -241,7 +241,7 @@ def run_step(
         condition_value = eval_result.value() if eval_result.ok else False
 
         # Create a proper Result for workspace storage
-        result = Ok(condition_value)
+        result: Result[Any] = Ok(condition_value)
 
         # Write to GITHUB_OUTPUT if available (for GHA)
         github_output = os.environ.get("GITHUB_OUTPUT")
@@ -287,7 +287,7 @@ def run_step(
         method_name = task_info.method_name
         if method_name is None:
             uninstall_tree_output(tree_ctx)
-            return Err(f"TaskInfo missing method_name for TaskClass method")
+            return Err("TaskInfo missing method_name for TaskClass method")
 
         bound_method = getattr(taskclass_instance, method_name)
 
@@ -459,14 +459,16 @@ def execute_flow_isolated(
             cmd.extend(["--module", entry_value])
         else:
             cmd.extend(["--script", entry_value])
-        cmd.extend([
-            "--flow",
-            flow_name,
-            "--step",
-            step_name,
-            "--workspace",
-            str(ws),
-        ])
+        cmd.extend(
+            [
+                "--flow",
+                flow_name,
+                "--step",
+                step_name,
+                "--workspace",
+                str(ws),
+            ]
+        )
 
         if is_debug():
             dbg(f"Running: {' '.join(cmd)}")

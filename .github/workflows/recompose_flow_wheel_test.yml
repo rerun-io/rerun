@@ -34,21 +34,21 @@ jobs:
     - name: step_1_build_wheel
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
         step_1_build_wheel
-    - name: step_2_create_test_venv
+    - name: step_2_venv.__init__
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
-        step_2_create_test_venv
-    - name: step_3_install_wheel
+        step_2_venv.__init__
+    - name: step_3_venv.install_wheel
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
-        step_3_install_wheel
-    - name: step_4_smoke_test
+        step_3_venv.install_wheel
+    - name: step_4_smoke_test_venv
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
-        step_4_smoke_test
+        step_4_smoke_test_venv
     - name: run_if_1
       id: run_if_1
       # [if: full_tests]
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
         run_if_1
-    - name: step_6_test_installed
+    - name: step_6_test_installed_venv
       if: ${{ steps.run_if_1.outputs.value == 'true' }}
       run: uv run python -m examples.app _run-step --flow wheel_test --step 
-        step_6_test_installed
+        step_6_test_installed_venv

@@ -199,8 +199,8 @@ class TestTaskClassSerialization:
 
     def test_write_and_read_taskclass_state(self, tmp_path: object) -> None:
         """TaskClass state can be serialized and deserialized."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         from recompose.workspace import read_taskclass_state, write_taskclass_state
 
@@ -222,8 +222,8 @@ class TestTaskClassSerialization:
 
     def test_taskclass_serialization_round_trip(self) -> None:
         """Complex TaskClass state survives round-trip."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         from recompose.workspace import read_taskclass_state, write_taskclass_state
 
@@ -255,8 +255,8 @@ class TestTaskClassRunStep:
 
     def test_init_step_creates_instance_and_serializes(self) -> None:
         """Running an __init__ step creates instance and serializes state."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         from recompose import flow
         from recompose.local_executor import run_step, setup_workspace
@@ -264,7 +264,7 @@ class TestTaskClassRunStep:
 
         @flow
         def init_flow() -> None:
-            counter = Counter(start=42)
+            _counter = Counter(start=42)  # noqa: F841
 
         plan = init_flow.plan
         flow_info = init_flow._flow_info
@@ -289,8 +289,8 @@ class TestTaskClassRunStep:
 
     def test_method_step_deserializes_and_updates(self) -> None:
         """Running a method step deserializes instance, runs method, re-serializes."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         from recompose import flow
         from recompose.local_executor import run_step, setup_workspace
@@ -331,8 +331,8 @@ class TestTaskClassRunStep:
 
     def test_chained_method_steps(self) -> None:
         """Running multiple method steps maintains correct state."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         from recompose import flow
         from recompose.local_executor import run_step, setup_workspace
