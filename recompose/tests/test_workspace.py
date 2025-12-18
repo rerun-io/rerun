@@ -202,49 +202,93 @@ class TestFlowPlanSteps:
         assert node.step_name == "step_1_my_task"
 
 
+# =============================================================================
+# Module-level flows for subprocess isolation tests
+# These must be at module level so subprocesses can find them when importing
+# =============================================================================
+
+
+@recompose.task
+def _isolated_step_one() -> recompose.Result[str]:
+    return recompose.Ok("one")
+
+
+@recompose.task
+def _isolated_step_two(*, prev: str) -> recompose.Result[str]:
+    return recompose.Ok(f"{prev}-two")
+
+
+@recompose.task
+def _isolated_step_three(*, prev: str) -> recompose.Result[str]:
+    return recompose.Ok(f"{prev}-three")
+
+
+@recompose.flow
+def _isolated_simple_pipeline() -> None:
+    a = _isolated_step_one()
+    b = _isolated_step_two(prev=a.value())
+    _isolated_step_three(prev=b.value())
+
+
+@recompose.task
+def _isolated_echo_param(*, value: str) -> recompose.Result[str]:
+    return recompose.Ok(f"got: {value}")
+
+
+@recompose.task
+def _isolated_process(*, input: str) -> recompose.Result[str]:
+    return recompose.Ok(f"processed: {input}")
+
+
+@recompose.flow
+def _isolated_param_flow(*, name: str = "default") -> None:
+    v = _isolated_echo_param(value=name)
+    _isolated_process(input=v.value())
+
+
 class TestRunIsolated:
     """Tests for subprocess execution of flows."""
 
     def test_flow_executes_with_subprocess_isolation(self) -> None:
         """Direct flow call executes all steps as subprocesses."""
+        import tempfile
+        from pathlib import Path
 
-        @recompose.task
-        def step_one() -> recompose.Result[str]:
-            return recompose.Ok("one")
+        # Uses module-level flow _isolated_simple_pipeline
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            result = _isolated_simple_pipeline(workspace=workspace)
+            assert result.ok, f"Flow execution failed: {result.error}"
 
-        @recompose.task
-        def step_two(*, prev: str) -> recompose.Result[str]:
-            return recompose.Ok(f"{prev}-two")
+            # Verify step results were actually written (proves steps ran)
+            step1_result = read_step_result(workspace, "step_1__isolated_step_one")
+            assert step1_result.ok, f"Step 1 didn't write result: {step1_result.error}"
+            assert step1_result.value() == "one"
 
-        @recompose.task
-        def step_three(*, prev: str) -> recompose.Result[str]:
-            return recompose.Ok(f"{prev}-three")
+            step2_result = read_step_result(workspace, "step_2__isolated_step_two")
+            assert step2_result.ok, f"Step 2 didn't write result: {step2_result.error}"
+            assert step2_result.value() == "one-two"
 
-        @recompose.flow
-        def simple_pipeline() -> None:
-            a = step_one()
-            b = step_two(prev=a.value())
-            step_three(prev=b.value())
-
-        # Direct flow call uses subprocess isolation
-        result = simple_pipeline()
-        assert result.ok, f"Flow execution failed: {result.error}"
+            step3_result = read_step_result(workspace, "step_3__isolated_step_three")
+            assert step3_result.ok, f"Step 3 didn't write result: {step3_result.error}"
+            assert step3_result.value() == "one-two-three"
 
     def test_flow_with_params(self) -> None:
         """Flow parameters are passed correctly to steps."""
+        import tempfile
+        from pathlib import Path
 
-        @recompose.task
-        def echo_param(*, value: str) -> recompose.Result[str]:
-            return recompose.Ok(f"got: {value}")
+        # Uses module-level flow _isolated_param_flow
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            result = _isolated_param_flow(name="test-value", workspace=workspace)
+            assert result.ok, f"Flow execution failed: {result.error}"
 
-        @recompose.task
-        def process(*, input: str) -> recompose.Result[str]:
-            return recompose.Ok(f"processed: {input}")
+            # Verify the parameter was passed correctly
+            step1_result = read_step_result(workspace, "step_1__isolated_echo_param")
+            assert step1_result.ok, f"Step 1 didn't write result: {step1_result.error}"
+            assert step1_result.value() == "got: test-value"
 
-        @recompose.flow
-        def param_flow(*, name: str = "default") -> None:
-            v = echo_param(value=name)
-            process(input=v.value())
-
-        result = param_flow(name="test-value")
-        assert result.ok, f"Flow execution failed: {result.error}"
+            step2_result = read_step_result(workspace, "step_2__isolated_process")
+            assert step2_result.ok, f"Step 2 didn't write result: {step2_result.error}"
+            assert step2_result.value() == "processed: got: test-value"
