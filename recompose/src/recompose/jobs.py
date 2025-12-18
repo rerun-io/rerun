@@ -1070,6 +1070,7 @@ class StringInput(DispatchInput):
             my_task,
             inputs={"name": StringInput(default="world", description="Name to greet")},
         )
+
     """
 
     default: str | None = None
@@ -1097,6 +1098,7 @@ class BoolInput(DispatchInput):
             my_task,
             inputs={"verbose": BoolInput(default=False, description="Enable verbose output")},
         )
+
     """
 
     default: bool = False
@@ -1127,6 +1129,7 @@ class ChoiceInput(DispatchInput):
                 description="Target environment",
             )},
         )
+
     """
 
     choices: list[str] = field(default_factory=list)
@@ -1184,6 +1187,7 @@ class Dispatchable:
             commands=[...],
             dispatchables=[lint_workflow, test_workflow],
         )
+
     """
 
     def __init__(self, info: DispatchableInfo):

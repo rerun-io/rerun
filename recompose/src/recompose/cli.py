@@ -21,7 +21,6 @@ from .context import (
     set_recompose_context,
     set_working_directory,
 )
-from .flow import FlowInfo, FlowWrapper
 from .result import Result
 from .task import TaskInfo, TaskWrapper
 
@@ -211,185 +210,6 @@ def _build_command(task_info: TaskInfo) -> click.Command:
     return cmd
 
 
-def _build_flow_command(flow_info: FlowInfo) -> click.Command:
-    """Build a Click command from a flow."""
-    import sys
-
-    from .workspace import get_workspace_from_env
-
-    sig = flow_info.signature
-    params: list[click.Parameter] = []
-
-    # Add workspace option (for advanced use)
-    params.append(
-        click.Option(
-            ["--workspace"],
-            type=click.Path(path_type=Path),
-            default=None,
-            help="Workspace directory for step results (default: auto-generated in ~/.recompose/runs/)",
-        )
-    )
-
-    # Add GitHub integration options
-    params.append(
-        click.Option(
-            ["--remote"],
-            is_flag=True,
-            default=False,
-            help="Trigger this flow on GitHub Actions instead of running locally",
-        )
-    )
-    params.append(
-        click.Option(
-            ["--status"],
-            is_flag=True,
-            default=False,
-            help="Show recent GitHub Actions runs for this flow",
-        )
-    )
-    params.append(
-        click.Option(
-            ["--force"],
-            is_flag=True,
-            default=False,
-            help="Skip workflow sync validation when using --remote",
-        )
-    )
-    params.append(
-        click.Option(
-            ["--ref"],
-            type=str,
-            default=None,
-            help="Git ref (branch/tag) to run the workflow against (default: current branch)",
-        )
-    )
-
-    # Use get_type_hints to resolve string annotations from `from __future__ import annotations`
-    import typing
-
-    try:
-        type_hints = typing.get_type_hints(flow_info.original_fn)
-    except Exception:
-        type_hints = {}
-
-    # Add flow parameters
-    for param_name, param in sig.parameters.items():
-        if param_name == "self":
-            continue
-
-        # Get type annotation - prefer resolved type hints
-        annotation = type_hints.get(param_name, param.annotation)
-        if annotation is inspect.Parameter.empty:
-            annotation = str
-
-        click_type, type_required = _get_click_type(annotation)
-
-        has_default = param.default is not inspect.Parameter.empty
-        default_value = param.default if has_default else None
-        required = not has_default
-
-        # Convert underscores to hyphens for CLI option names (kebab-case)
-        cli_name = _to_kebab_case(param_name)
-        if annotation is bool:
-            if has_default and default_value is True:
-                params.append(
-                    click.Option(
-                        [f"--{cli_name}/--no-{cli_name}"],
-                        default=True,
-                        help="(default: True)",
-                    )
-                )
-            elif has_default and default_value is False:
-                params.append(
-                    click.Option(
-                        [f"--{cli_name}/--no-{cli_name}"],
-                        default=False,
-                        help="(default: False)",
-                    )
-                )
-            else:
-                params.append(
-                    click.Option(
-                        [f"--{cli_name}/--no-{cli_name}"],
-                        default=False,
-                        required=required,
-                    )
-                )
-        else:
-            help_text = None
-            if has_default and default_value is not None:
-                help_text = f"(default: {default_value})"
-
-            option_kwargs: dict[str, Any] = {
-                "type": click_type,
-                "required": required,
-                "help": help_text,
-            }
-            if has_default:
-                option_kwargs["default"] = default_value
-
-            params.append(
-                click.Option(
-                    [f"--{cli_name}"],
-                    **option_kwargs,
-                )
-            )
-
-    def callback(
-        workspace: Path | None,
-        remote: bool,
-        status: bool,
-        force: bool,
-        ref: str | None,
-        **kwargs: Any,
-    ) -> None:
-        """Execute the flow."""
-        flow_name = flow_info.name
-
-        # Convert enum values back to enum if needed
-        for param_name, param in sig.parameters.items():
-            if param_name in kwargs:
-                annotation = param.annotation
-                if isinstance(annotation, type) and issubclass(annotation, Enum):
-                    value = kwargs[param_name]
-                    if value is not None:
-                        kwargs[param_name] = annotation(value)
-
-        # Handle --status: show recent workflow runs
-        if status:
-            from . import gh_cli
-
-            gh_cli.display_flow_status(flow_name)
-            return
-
-        # Handle --remote: trigger workflow on GitHub
-        if remote:
-            from . import gh_cli
-
-            gh_cli.trigger_flow_remote(flow_name, kwargs, ref, force)
-            return
-
-        # Normal mode: Execute the entire flow with subprocess isolation
-        from .local_executor import execute_flow_isolated
-
-        ws = workspace or get_workspace_from_env()
-        flow_wrapper = cast(FlowWrapper, flow_info.fn)
-        flow_result = execute_flow_isolated(flow_wrapper, workspace=ws, **kwargs)
-
-        if flow_result.failed:
-            sys.exit(1)
-
-    # Build the command with kebab-case name
-    cmd = click.Command(
-        name=_to_kebab_case(flow_info.name),
-        callback=callback,
-        params=params,
-        help=f"[flow] {flow_info.doc}" if flow_info.doc else "[flow]",
-    )
-
-    return cmd
-
-
 class GroupedClickGroup(click.Group):
     """Click group that displays commands organized by groups in help."""
 
@@ -432,7 +252,7 @@ class GroupedClickGroup(click.Group):
 
 def _build_grouped_cli(
     name: str | None,
-    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
 ) -> GroupedClickGroup:
     """Build a Click CLI with grouped commands."""
     # Validate no duplicate command names
@@ -459,7 +279,7 @@ def _build_grouped_cli(
             for cmd_wrapper in item.commands:
                 _add_command_to_cli(cli, cmd_wrapper, group_name, seen_names)
         else:
-            # Bare task or flow (not in a group)
+            # Bare task (not in a group)
             _add_command_to_cli(cli, item, "Other", seen_names)
 
     return cli
@@ -467,25 +287,16 @@ def _build_grouped_cli(
 
 def _add_command_to_cli(
     cli: GroupedClickGroup,
-    cmd_wrapper: TaskWrapper[Any, Any] | FlowWrapper,
+    cmd_wrapper: TaskWrapper[Any, Any],
     group_name: str,
     seen_names: dict[str, str],
 ) -> None:
-    """Add a task or flow to the CLI, checking for duplicates."""
+    """Add a task to the CLI, checking for duplicates."""
     # Get the info object from the wrapper
-    # FlowWrapper has _flow_info, TaskWrapper has _task_info
-    info: TaskInfo | FlowInfo
-    is_flow: bool
-    if hasattr(cmd_wrapper, "_flow_info"):
-        info = cast(FlowWrapper, cmd_wrapper)._flow_info
-        is_flow = True
-    elif hasattr(cmd_wrapper, "_task_info"):
+    if hasattr(cmd_wrapper, "_task_info"):
         info = cast(TaskWrapper[Any, Any], cmd_wrapper)._task_info
-        is_flow = False
     else:
-        raise TypeError(
-            f"Expected a task or flow, got {type(cmd_wrapper).__name__}. Make sure to use @task or @flow decorators."
-        )
+        raise TypeError(f"Expected a task, got {type(cmd_wrapper).__name__}. Make sure to use @task decorator.")
 
     # Use kebab-case for CLI command names
     cmd_name = _to_kebab_case(info.name)
@@ -498,12 +309,7 @@ def _add_command_to_cli(
     seen_names[cmd_name] = group_name
 
     # Build the Click command
-    if is_flow:
-        assert isinstance(info, FlowInfo)
-        cmd = _build_flow_command(info)
-    else:
-        assert isinstance(info, TaskInfo)
-        cmd = _build_command(info)
+    cmd = _build_command(info)
 
     cli.add_command(cmd)
     cli.command_groups[cmd_name] = group_name
@@ -514,8 +320,9 @@ def main(
     *,
     python_cmd: str = "python",
     working_directory: str | None = None,
-    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
     automations: Sequence[Any] | None = None,
+    dispatchables: Sequence[Any] | None = None,
     module_name: str | None = None,
 ) -> None:
     """
@@ -525,10 +332,11 @@ def main(
         name: Optional name for the CLI group. Defaults to the script name.
         python_cmd: Command to invoke Python in generated GHA workflows.
         working_directory: Working directory for GHA workflows (relative to repo root).
-        commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+        commands: List of CommandGroups or tasks to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
+        dispatchables: List of dispatchable tasks for GHA workflow generation.
         module_name: Importable module path for subprocess isolation.
-                    Required for flows. If not provided, auto-detected from caller frame.
+                    If not provided, auto-detected from caller frame.
 
     Example
     -------
@@ -563,7 +371,7 @@ def main(
             )
 
     # Build the registry from commands and automations
-    recompose_ctx = _build_registry(commands, automations or [])
+    recompose_ctx = _build_registry(commands, automations or [], dispatchables or [])
     set_recompose_context(recompose_ctx)
 
     # Build and run the CLI
@@ -572,27 +380,27 @@ def main(
 
 
 def _build_registry(
-    commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
+    commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
     automations: Sequence[Any],
+    dispatchables: Sequence[Any],
 ) -> RecomposeContext:
     """
     Build a RecomposeContext from the commands and automations lists.
 
-    Extracts TaskInfo and FlowInfo from the wrappers and populates the registries.
+    Extracts TaskInfo from the wrappers and populates the registries.
     """
-    from .automation import AutomationInfo
+    from .jobs import AutomationInfo
 
     tasks: dict[str, TaskInfo] = {}
-    flows: dict[str, FlowInfo] = {}
     automation_registry: dict[str, AutomationInfo] = {}
 
-    # Extract tasks and flows from commands
+    # Extract tasks from commands
     for item in commands:
         if isinstance(item, CommandGroup):
             for cmd_wrapper in item.commands:
-                _register_command(cmd_wrapper, tasks, flows)
+                _register_command(cmd_wrapper, tasks)
         else:
-            _register_command(item, tasks, flows)
+            _register_command(item, tasks)
 
     # Extract automations
     for auto in automations:
@@ -600,22 +408,20 @@ def _build_registry(
             info = auto._automation_info
             automation_registry[info.full_name] = info
 
+    # Note: dispatchables are handled by builtin_tasks.generate_gha
+    # They don't need to be in the registry since they're passed directly
+
     return RecomposeContext(
         tasks=tasks,
-        flows=flows,
         automations=automation_registry,
     )
 
 
 def _register_command(
-    cmd_wrapper: TaskWrapper[Any, Any] | FlowWrapper,
+    cmd_wrapper: TaskWrapper[Any, Any],
     tasks: dict[str, TaskInfo],
-    flows: dict[str, FlowInfo],
 ) -> None:
-    """Register a task or flow in the appropriate registry."""
-    if hasattr(cmd_wrapper, "_flow_info"):
-        flow_info = cast(FlowWrapper, cmd_wrapper)._flow_info
-        flows[flow_info.full_name] = flow_info
-    elif hasattr(cmd_wrapper, "_task_info"):
+    """Register a task in the registry."""
+    if hasattr(cmd_wrapper, "_task_info"):
         task_info = cast(TaskWrapper[Any, Any], cmd_wrapper)._task_info
         tasks[task_info.full_name] = task_info

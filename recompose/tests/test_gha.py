@@ -8,10 +8,16 @@ from ruamel.yaml import YAML
 import recompose
 from recompose import (
     Artifact,
+    BoolInput,
+    ChoiceInput,
+    Dispatchable,
+    DispatchableInfo,
     InputParam,
+    StringInput,
     automation,
     github,
     job,
+    make_dispatchable,
     on_pull_request,
     on_push,
 )
@@ -23,12 +29,12 @@ from recompose.gha import (
     WorkflowDispatchInput,
     WorkflowSpec,
     render_automation_jobs,
-    render_flow_workflow,
+    render_dispatchable,
     validate_workflow,
 )
 
 
-# Test fixtures - simple flows for testing
+# Test fixtures - simple tasks for testing
 @recompose.task
 def simple_task() -> recompose.Result[str]:
     """A simple task with no parameters."""
@@ -39,25 +45,6 @@ def simple_task() -> recompose.Result[str]:
 def param_task(*, name: str, count: int = 5) -> recompose.Result[str]:
     """A task with parameters."""
     return recompose.Ok(f"{name}: {count}")
-
-
-@recompose.flow
-def simple_flow() -> None:
-    """A flow with no parameters."""
-    simple_task()
-
-
-@recompose.flow
-def param_flow(*, repo: str = "main", debug: bool = False) -> None:
-    """A flow with parameters."""
-    simple_task()
-
-
-@recompose.flow
-def multi_step_flow() -> None:
-    """A flow with multiple steps."""
-    a = simple_task()
-    param_task(name=a.value(), count=10)
 
 
 class TestStepSpec:
@@ -217,87 +204,6 @@ class TestWorkflowSpec:
         assert "workflow_dispatch" in parsed["on"]
 
 
-class TestRenderFlowWorkflow:
-    """Tests for render_flow_workflow."""
-
-    def test_simple_flow(self) -> None:
-        """Test rendering a simple flow with no parameters."""
-        flow_info = simple_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-
-        assert spec.name == "simple_flow"
-        assert "workflow_dispatch" in spec.on
-
-        # Should have checkout + setup + 1 task step
-        job = spec.jobs["simple_flow"]
-        assert len(job.steps) == 3
-        assert job.steps[0].uses == "actions/checkout@v4"
-        assert "--setup --flow" in (job.steps[1].run or "")
-        assert "--step" in (job.steps[2].run or "")
-
-    def test_flow_with_parameters(self) -> None:
-        """Test rendering a flow with parameters."""
-        flow_info = param_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-
-        # Check workflow_dispatch inputs
-        inputs = spec.on["workflow_dispatch"]["inputs"]
-        assert "repo" in inputs
-        assert inputs["repo"]["default"] == "main"
-        assert inputs["repo"]["type"] == "string"
-
-        assert "debug" in inputs
-        assert inputs["debug"]["type"] == "boolean"
-        assert inputs["debug"]["default"] is False  # GHA boolean inputs need actual booleans
-
-        # Check setup step includes parameters
-        job = spec.jobs["param_flow"]
-        setup_step = job.steps[1]
-        assert "${{ inputs.repo }}" in (setup_step.run or "")
-        assert "${{ inputs.debug }}" in (setup_step.run or "")
-
-    def test_multi_step_flow(self) -> None:
-        """Test rendering a flow with multiple steps."""
-        flow_info = multi_step_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-
-        # Should have checkout + setup + 2 task steps
-        job = spec.jobs["multi_step_flow"]
-        assert len(job.steps) == 4
-
-        # Verify step names are in order
-        step_names = [s.name for s in job.steps]
-        assert step_names[0] == "Checkout"
-        assert "setup_workspace" in step_names[1]  # Numbered, e.g., "1_setup_workspace"
-        assert "simple_task" in step_names[2]
-        assert "param_task" in step_names[3]
-
-    def test_custom_runner(self) -> None:
-        """Test specifying a custom runner."""
-        flow_info = simple_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py", runs_on="macos-latest")
-
-        job = spec.jobs["simple_flow"]
-        assert job.runs_on == "macos-latest"
-
-    def test_yaml_output_is_valid(self) -> None:
-        """Test that generated YAML is valid."""
-        flow_info = param_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-        yaml_str = spec.to_yaml()
-
-        # Should be parseable
-        yaml = YAML()
-        parsed = yaml.load(yaml_str)
-        assert parsed["name"] == "param_flow"
-        assert "jobs" in parsed
-
-
 class TestGHAActions:
     """Tests for GHA virtual actions."""
 
@@ -308,13 +214,6 @@ class TestGHAActions:
         result = checkout()
         assert result.ok
         assert result.value() is None
-
-    def test_checkout_outside_flow_is_noop(self) -> None:
-        """Test that GHA actions are no-ops when called outside a flow."""
-        from recompose.gha import checkout
-
-        result = checkout()
-        assert result.ok  # GHA actions return Ok(None) when run locally
 
     def test_setup_python_creates_action(self) -> None:
         """Test setup_python creates an action with version."""
@@ -349,86 +248,6 @@ class TestGHAActions:
         assert "cache-key" in action.default_with_params["key"]
 
 
-# Flow with GHA actions for testing
-@recompose.flow
-def flow_with_gha_actions() -> None:
-    """A flow that uses GHA actions."""
-    from recompose.gha import checkout, setup_python, setup_uv
-
-    checkout()
-    setup_python(version="3.11")()
-    setup_uv()()
-    simple_task()
-
-
-# App for GHA action flow tests - must be at module level for subprocess isolation
-_gha_actions_app = recompose.App(
-    commands=[flow_with_gha_actions],
-)
-
-
-class TestFlowWithGHAActions:
-    """Tests for flows containing GHA actions."""
-
-    def test_flow_with_actions_runs_locally(self) -> None:
-        """Test that a flow with GHA actions runs (actions are no-ops)."""
-        _gha_actions_app.setup_context()
-        result = flow_with_gha_actions()
-        assert result.ok
-
-    def test_flow_with_actions_generates_yaml(self) -> None:
-        """Test that a flow with GHA actions generates correct YAML."""
-        flow_info = flow_with_gha_actions._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-
-        # Should have: checkout, setup-python, setup-uv, setup workspace, simple_task
-        job = spec.jobs["flow_with_gha_actions"]
-        assert len(job.steps) == 5
-
-        # First three should be uses: steps
-        assert job.steps[0].uses == "actions/checkout@v4"
-        assert job.steps[1].uses == "actions/setup-python@v5"
-        assert job.steps[1].with_ == {"python-version": "3.11"}
-        assert job.steps[2].uses == "astral-sh/setup-uv@v4"
-
-        # Fourth should be setup step (numbered, e.g., "4_setup_workspace")
-        assert "setup_workspace" in job.steps[3].name
-        assert job.steps[3].run is not None
-
-        # Fifth should be task step
-        assert "simple_task" in job.steps[4].name
-        assert job.steps[4].run is not None
-
-    def test_flow_without_actions_gets_auto_checkout(self) -> None:
-        """Test that flows without GHA actions get checkout added automatically."""
-        flow_info = simple_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-
-        job = spec.jobs["simple_flow"]
-        # First step should be auto-added checkout
-        assert job.steps[0].uses == "actions/checkout@v4"
-        assert job.steps[0].name == "Checkout"
-
-    def test_gha_action_yaml_is_valid(self) -> None:
-        """Test that generated YAML with GHA actions is valid."""
-        flow_info = flow_with_gha_actions._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-        yaml_str = spec.to_yaml()
-
-        # Should be parseable
-        yaml = YAML()
-        parsed = yaml.load(yaml_str)
-        assert parsed["name"] == "flow_with_gha_actions"
-
-        # Check the uses steps
-        steps = parsed["jobs"]["flow_with_gha_actions"]["steps"]
-        uses_steps = [s for s in steps if "uses" in s]
-        assert len(uses_steps) == 3
-
-
 class TestValidateWorkflow:
     """Tests for actionlint validation."""
 
@@ -446,20 +265,6 @@ class TestValidateWorkflow:
             # If actionlint is installed, it will actually validate
             # The empty jobs dict should cause an error
             pass  # Result depends on actionlint behavior
-
-    @pytest.mark.skipif(
-        shutil.which("actionlint") is None,
-        reason="actionlint not installed",
-    )
-    def test_valid_workflow_passes(self) -> None:
-        """Test that a valid workflow passes validation."""
-        flow_info = simple_flow._flow_info
-
-        spec = render_flow_workflow(flow_info, module_name="app.py")
-        yaml_str = spec.to_yaml()
-
-        success, message = validate_workflow(yaml_str)
-        assert success, f"Validation failed: {message}"
 
     @pytest.mark.skipif(
         shutil.which("actionlint") is None,
@@ -919,16 +724,6 @@ class TestGHAJobSpecEnhancements:
 # =============================================================================
 # P14 Phase 5: Tests for make_dispatchable and render_dispatchable
 # =============================================================================
-
-from recompose import (
-    BoolInput,
-    ChoiceInput,
-    Dispatchable,
-    DispatchableInfo,
-    StringInput,
-    make_dispatchable,
-)
-from recompose.gha import render_dispatchable
 
 
 # Test tasks for dispatchable tests

@@ -2,7 +2,7 @@
 
 **P14_architectural_pivot** - Major redesign: Tasks as Jobs, not Steps.
 
-See `proj/P14_architectural_pivot_TODO.md` for full design.
+See `proj/P14_architectural_pivot_DONE.md` for full design.
 
 **Key changes:**
 - Tasks map to GHA **jobs** (not steps) - each job runs one task via CLI
@@ -14,7 +14,20 @@ See `proj/P14_architectural_pivot_TODO.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Phase 5 COMPLETE. Ready for Phase 6 (cleanup old code).
+**Current phase:** Phase 6 COMPLETE. All legacy code removed.
+
+## Phase 6 COMPLETE: Cleanup Old Code
+
+Removed all legacy flow-based code:
+- Deleted source files: `flow.py`, `plan.py`, `workspace.py`, `_run_step.py`, `local_executor.py`, `automation.py` (old), `conditional.py`, `expr.py`
+- Cleaned `task.py`: removed `@taskclass`, `@method`, `TaskClassInfo`, `_TaskClassNodeProxy`, `_TaskMethodCaller`
+- Cleaned `gha.py`: removed `render_flow_workflow`, `render_automation_workflow` (old), flow rendering functions
+- Cleaned `context.py`: removed flow registry functions
+- Cleaned `cli.py`: removed `_build_flow_command`, `FlowWrapper` references
+- Cleaned `__init__.py`: removed legacy exports
+- Deleted test files: `test_flow.py`, `test_declarative_flow.py`, `test_workspace.py`, `test_taskclass_flow.py`, `test_member_tasks.py`, `test_parameterized_flows.py`, `test_automation.py` (old), `flow_test_app.py`
+
+**Test results:** 209 tests pass (down from 318 - removed 109 legacy tests)
 
 ## Phase 5 COMPLETE: make_dispatchable()
 
@@ -22,19 +35,8 @@ Implemented in `jobs.py` and `gha.py`:
 - `DispatchInput` base class with `StringInput`, `BoolInput`, `ChoiceInput` subclasses
 - `Dispatchable` class wrapping a task for workflow_dispatch triggering
 - `DispatchableInfo` dataclass for dispatchable metadata
-- `make_dispatchable(task, inputs=None, name=None)` function:
-  - Validates task is @task-decorated
-  - Infers workflow inputs from task signature if inputs=None
-  - Supports explicit input overrides
-  - Supports custom workflow name
-- `render_dispatchable()` function in gha.py:
-  - Generates single-job WorkflowSpec with workflow_dispatch trigger
-  - Inputs become workflow_dispatch inputs
-  - Task parameters passed as CLI args via `${{ inputs.X }}`
-  - Supports task outputs, artifacts, secrets
-  - Uses default or task-specific setup steps
-- Exported from `__init__.py`: `make_dispatchable`, `Dispatchable`, `DispatchableInfo`, `DispatchInput`, `StringInput`, `BoolInput`, `ChoiceInput`
-- 27 new tests for Phase 5 (318 total, all passing)
+- `make_dispatchable(task, inputs=None, name=None)` function
+- `render_dispatchable()` function in gha.py
 
 ## Phase 4 COMPLETE: Workflow Generation
 
@@ -43,32 +45,17 @@ Implemented in `gha.py`:
 - `GHAJobSpec` class with support for needs, outputs, if_condition, matrix
 - `SetupStep` class for configuring setup steps
 - `DEFAULT_SETUP_STEPS` - checkout, setup-python, setup-uv
-- Job generation with:
-  - Entry point CLI commands (`./run task_name --arg=value`)
-  - Job dependencies (needs:) from explicit + inferred references
-  - Job outputs exposed via `${{ steps.run.outputs.X }}`
-  - Artifact upload/download steps (actions/upload-artifact, download-artifact)
-  - Secrets as job env vars (`${{ secrets.NAME }}`)
-  - Per-task setup overrides via `@task(setup=[...])`
-  - Matrix job support via `strategy.matrix`
-  - Job conditions via `if:` expression
-  - InputParam → workflow_dispatch inputs
-- 25 new tests for workflow generation (291 total, all passing)
 
-## Phase 2 COMPLETE: Automation Framework
+## Phase 2+3 COMPLETE: Automation Framework & Triggers
 
 Implemented in `jobs.py`:
 - `@automation` decorator with context tracking
 - `job()` function returning `JobSpec`
-- `JobSpec.get()` returning `JobOutputRef` for output references
-- `JobSpec.artifact()` returning `ArtifactRef` for artifact references
-- Dependency inference from `JobOutputRef`/`ArtifactRef` in job inputs
+- Job output/artifact references with automatic dependency inference
 - `InputParam[T]` type for automation parameters
-- `Artifact` type for artifact inputs to tasks
-- Condition expression algebra (`&`, `|`, `~`, `==`, `!=`)
-- `github.*` context references for conditions (ref_name, event_name, etc.)
+- Condition expressions with `&`, `|`, `~`, `==`, `!=`
+- `github.*` context references
 - Trigger types (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
-- 47 new tests, all passing
 
 ## Phase 1 COMPLETE: Task Decorator Enhancements
 
@@ -76,37 +63,25 @@ Implemented:
 - `@task(outputs=["..."], artifacts=["..."], secrets=["..."], setup=[...])` decorator parameters
 - `set_output(name, value)` - validates against declared outputs, writes to GITHUB_OUTPUT
 - `save_artifact(name, path)` - validates against declared artifacts
-- `get_secret(name)` - validates against declared secrets, reads from env or ~/.recompose/secrets.toml
-- `Result.outputs` and `Result.artifacts` properties
+- `get_secret(name)` - validates against declared secrets
 - `step(name)` context manager and `@step_decorator` for visual output grouping
-- 24 tests for Phase 1
-
-## Phase 3 COMPLETE: Triggers (implemented in Phase 2)
-
-Implemented:
-- `on_push(branches=[], tags=[], paths=[])` trigger
-- `on_pull_request(branches=[], types=[], paths=[])` trigger
-- `on_schedule(cron=...)` trigger
-- `on_workflow_dispatch()` trigger
-- Trigger combination with `|` operator
-- All triggers have `to_gha_dict()` for YAML generation
 
 # UPCOMING
 
-1. **Phase 6: Cleanup old code** (NEXT)
-   - Remove `@flow` decorator and FlowPlan/TaskNode/InputPlaceholder
-   - Remove `@taskclass` and all TaskClass machinery
-   - Remove `workspace.py` step serialization
-   - Remove `_run_step.py`
-   - Remove `execute_flow_isolated()`
-
-2. Phase 7: Migration & Polish (migrate examples, update App class, documentation)
+1. **Phase 7: Migration & Polish** (NEXT)
+   - Migrate examples to new model
+   - Update App class for dispatchables parameter
+   - Update builtin_tasks.generate_gha to handle automations and dispatchables
+   - Documentation
 
 # DEFERRED
 
 (Empty - no deferred items)
 
 # RECENTLY COMPLETED
+
+- P14 Phase 6: Cleanup old code (flow, taskclass, etc.)
+- P14 Phases 1-5: Full P14 implementation
 
 Previous work preserved in `jleibs/recompose-backup-flows-as-steps`:
 - P01-P13: Foundation through TaskClass in flows
@@ -154,6 +129,7 @@ Previous work preserved in `jleibs/recompose-backup-flows-as-steps`:
 | Component | Purpose |
 |-----------|---------|
 | `render_automation_jobs()` | Main function to generate WorkflowSpec from automation |
+| `render_dispatchable()` | Generate WorkflowSpec from dispatchable |
 | `GHAJobSpec` | Represents a GHA job with needs, outputs, if, matrix |
 | `SetupStep` | Represents a setup step (checkout, setup-python, etc.) |
 | `DEFAULT_SETUP_STEPS` | Default setup: checkout + python 3.12 + uv |
