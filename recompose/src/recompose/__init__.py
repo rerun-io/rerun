@@ -20,10 +20,48 @@ Basic usage:
 """
 
 from . import gh_cli, gha
+
+# Legacy flow-dispatch automation (to be removed in Phase 6)
 from .automation import (
-    AutomationInfo,
+    AutomationInfo as LegacyAutomationInfo,
     AutomationPlan,
     FlowDispatch,
+    automation as legacy_automation,
+)
+
+# New P14 job-based automation framework
+from .jobs import (
+    # Reference types
+    ArtifactRef,
+    JobOutputRef,
+    InputParamRef,
+    # Input types
+    InputParam,
+    Artifact,
+    # Job specification
+    JobSpec,
+    job,
+    # Condition expressions
+    ConditionExpr,
+    InputCondition,
+    GitHubCondition,
+    AndCondition,
+    OrCondition,
+    NotCondition,
+    github,
+    # Triggers
+    Trigger,
+    PushTrigger,
+    PullRequestTrigger,
+    ScheduleTrigger,
+    WorkflowDispatchTrigger,
+    on_push,
+    on_pull_request,
+    on_schedule,
+    on_workflow_dispatch,
+    # Automation
+    AutomationInfo,
+    AutomationWrapper,
     automation,
 )
 from .builtin_tasks import builtin_commands, generate_gha, inspect
@@ -111,7 +149,7 @@ __all__ = [
     "run",
     "RunResult",
     "SubprocessError",
-    # Flow
+    # Flow (legacy - to be removed in Phase 6)
     "flow",
     "FlowInfo",
     "FlowWrapper",
@@ -129,7 +167,7 @@ __all__ = [
     "main",
     "App",
     "CommandGroup",
-    # Workspace (for subprocess isolation)
+    # Workspace (for subprocess isolation - legacy)
     "FlowParams",
     "create_workspace",
     "write_params",
@@ -145,13 +183,44 @@ __all__ = [
     "gha",
     # GitHub CLI integration
     "gh_cli",
-    # Automations
-    "automation",
-    "AutomationInfo",
+    # Legacy automations (to be removed in Phase 6)
+    "LegacyAutomationInfo",
+    "legacy_automation",
     "AutomationPlan",
     "FlowDispatch",
+    # P14: Job-based automation framework
+    "automation",
+    "AutomationInfo",
+    "AutomationWrapper",
     "get_automation",
     "get_automation_registry",
+    # P14: Job types
+    "job",
+    "JobSpec",
+    "JobOutputRef",
+    "ArtifactRef",
+    "InputParamRef",
+    # P14: Input types
+    "InputParam",
+    "Artifact",
+    # P14: Condition expressions
+    "ConditionExpr",
+    "InputCondition",
+    "GitHubCondition",
+    "AndCondition",
+    "OrCondition",
+    "NotCondition",
+    "github",
+    # P14: Triggers
+    "Trigger",
+    "PushTrigger",
+    "PullRequestTrigger",
+    "ScheduleTrigger",
+    "WorkflowDispatchTrigger",
+    "on_push",
+    "on_pull_request",
+    "on_schedule",
+    "on_workflow_dispatch",
     # Built-in tasks
     "builtin_commands",
     "generate_gha",

@@ -6,11 +6,12 @@ import os
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from .automation import AutomationInfo
     from .flow import FlowInfo
+    from .jobs import JobSpec
     from .task import TaskInfo
 
 # Debug mode flag
@@ -152,6 +153,44 @@ class TaskContext:
 
 # Backwards compatibility alias
 Context = TaskContext
+
+
+@dataclass
+class AutomationContext:
+    """
+    Context for building an automation plan.
+
+    Tracks jobs created via recompose.job() calls during @automation execution.
+    """
+
+    automation_name: str
+    """Name of the automation being built."""
+
+    jobs: list[JobSpec] = field(default_factory=list)
+    """Jobs created during automation execution."""
+
+    input_params: dict[str, Any] = field(default_factory=dict)
+    """Input parameter values (for local execution)."""
+
+    def add_job(self, job_spec: JobSpec) -> None:
+        """Add a job to this automation."""
+        self.jobs.append(job_spec)
+
+
+# Context variable for the current automation context
+_current_automation_context: ContextVar[AutomationContext | None] = ContextVar(
+    "recompose_automation_context", default=None
+)
+
+
+def get_automation_context() -> AutomationContext | None:
+    """Get the current automation context, or None if not in an automation."""
+    return _current_automation_context.get()
+
+
+def set_automation_context(ctx: AutomationContext | None) -> None:
+    """Set the current automation context."""
+    _current_automation_context.set(ctx)
 
 
 @dataclass
