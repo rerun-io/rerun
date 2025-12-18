@@ -16,7 +16,7 @@ from .command_group import CommandGroup
 from .context import (
     RecomposeContext,
     set_debug,
-    set_entry_point,
+    set_module_name,
     set_python_cmd,
     set_recompose_context,
     set_working_directory,
@@ -516,7 +516,7 @@ def main(
     working_directory: str | None = None,
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper],
     automations: Sequence[Any] | None = None,
-    entry_point: tuple[str, str] | None = None,
+    module_name: str | None = None,
 ) -> None:
     """
     Build and run the CLI with explicit command registration.
@@ -527,8 +527,8 @@ def main(
         working_directory: Working directory for GHA workflows (relative to repo root).
         commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
-        entry_point: Optional (type, value) tuple for subprocess invocation.
-                    If not provided, auto-detected from caller frame.
+        module_name: Importable module path for subprocess isolation.
+                    Required for flows. If not provided, auto-detected from caller frame.
 
     Example
     -------
@@ -546,18 +546,21 @@ def main(
     set_python_cmd(python_cmd)
     set_working_directory(working_directory)
 
-    # Set entry point (for subprocess isolation)
-    if entry_point is not None:
-        set_entry_point(entry_point[0], entry_point[1])
+    # Set module name (for subprocess isolation)
+    if module_name is not None:
+        set_module_name(module_name)
     else:
         # Auto-detect from caller frame
         caller_frame = sys._getframe(1)
         caller_spec = caller_frame.f_globals.get("__spec__")
 
         if caller_spec is not None and caller_spec.name:
-            set_entry_point("module", caller_spec.name)
+            set_module_name(caller_spec.name)
         else:
-            set_entry_point("script", sys.argv[0])
+            raise ValueError(
+                "Could not detect module name. Run with `python -m <module>` "
+                "or use recompose.App which handles this automatically."
+            )
 
     # Build the registry from commands and automations
     recompose_ctx = _build_registry(commands, automations or [])

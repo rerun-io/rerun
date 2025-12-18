@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 from rich.console import Console
 
 from .conditional import evaluate_condition
-from .context import dbg, get_entry_point, is_debug
+from .context import dbg, get_module_name, is_debug
 from .expr import format_expr
 from .flow import FlowInfo
 from .result import Err, Ok, Result
@@ -81,16 +81,19 @@ def setup_workspace(
     plan = flow_info.plan
     step_names = [n.step_name for n in plan.nodes if n.step_name]
 
-    # Get entry point info
-    entry_point = get_entry_point()
-    script_path = entry_point[1] if entry_point else sys.argv[0]
+    # Get module name for subprocess isolation
+    module_name = get_module_name()
+    if module_name is None:
+        raise ValueError(
+            "Module name not set. Run with `python -m <module>` or use recompose.App which handles this automatically."
+        )
 
     flow_params = FlowParams(
         flow_name=flow_name,
         params=kwargs,
         steps=step_names,
         created_at=datetime.now().isoformat(),
-        script_path=script_path,
+        script_path=module_name,  # Store module name (legacy field name)
     )
     write_params(ws, flow_params)
 
@@ -385,19 +388,16 @@ def execute_flow_isolated(
     # Create or use provided workspace
     ws = create_workspace(flow_name, workspace=workspace)
 
-    # Get entry point info - must be module mode for subprocess isolation
-    entry_point = get_entry_point()
-    if entry_point is None or entry_point[0] != "module":
+    # Get module name for subprocess isolation
+    module_name = get_module_name()
+    if module_name is None:
         raise ValueError(
-            "Flow execution requires module-based entry point. "
-            "Make sure you're using recompose.App with a module-based entry point."
+            "Module name not set. Run with `python -m <module>` or use recompose.App which handles this automatically."
         )
-
-    entry_type, entry_value = entry_point
 
     if is_debug():
         dbg(f"Flow: {flow_name}")
-        dbg(f"Entry point: {entry_type} -> {entry_value}")
+        dbg(f"Module: {module_name}")
         dbg(f"Workspace: {ws}")
         dbg(f"Steps: {[s[0] for s in steps]}")
         dbg(f"Params: {kwargs}")
@@ -408,7 +408,7 @@ def execute_flow_isolated(
         params=kwargs,
         steps=[s[0] for s in steps],
         created_at=datetime.now().isoformat(),
-        script_path=entry_value,  # Store the module name or script path
+        script_path=module_name,  # Store module name (legacy field name)
     )
     write_params(ws, flow_params)
 
@@ -455,7 +455,7 @@ def execute_flow_isolated(
             "-m",
             "recompose._run_step",
             "--module",
-            entry_value,
+            module_name,
             "--flow",
             flow_name,
             "--step",

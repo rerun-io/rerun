@@ -111,16 +111,18 @@ class App:
         self.automations: Sequence[Any] = automations or []
         self.name = name
 
-        # Capture the caller's module info at instantiation time
-        # This is used later to determine the entry point for subprocess isolation
+        # Capture the caller's module name at instantiation time
+        # This is required for subprocess isolation - the module must be importable
         caller_frame = sys._getframe(1)
         caller_spec = caller_frame.f_globals.get("__spec__")
         if caller_spec is not None and caller_spec.name:
-            self._entry_point: tuple[str, str] = ("module", caller_spec.name)
+            self._module_name: str = caller_spec.name
         else:
-            # Fallback to script path from the caller's __file__
-            caller_file = caller_frame.f_globals.get("__file__", sys.argv[0])
-            self._entry_point = ("script", caller_file)
+            raise ValueError(
+                "App must be instantiated in a module context (run with `python -m <module>`). "
+                "Script-based execution is not supported because flows require subprocess isolation "
+                "which needs an importable module path."
+            )
 
     def main(self) -> None:
         """
@@ -137,7 +139,7 @@ class App:
             working_directory=self.working_directory,
             commands=self.commands,
             automations=self.automations,
-            entry_point=self._entry_point,
+            module_name=self._module_name,
         )
 
     def setup_context(self) -> None:
@@ -151,7 +153,7 @@ class App:
         """
         from .cli import _build_registry
         from .context import (
-            set_entry_point,
+            set_module_name,
             set_python_cmd,
             set_recompose_context,
             set_working_directory,
@@ -161,8 +163,8 @@ class App:
         set_python_cmd(self.python_cmd)
         set_working_directory(self.working_directory)
 
-        # Set entry point (for GHA workflow generation)
-        set_entry_point(self._entry_point[0], self._entry_point[1])
+        # Set module name (for GHA workflow generation and subprocess isolation)
+        set_module_name(self._module_name)
 
         # Build and set the registry
         recompose_ctx = _build_registry(self.commands, self.automations or [])
