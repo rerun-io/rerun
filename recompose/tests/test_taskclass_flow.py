@@ -65,7 +65,8 @@ class TestTaskClassInFlow:
 
         # First node is __init__
         assert plan.nodes[0].task_info.name == "counter.__init__"
-        assert plan.nodes[0].kwargs == {"start": 0}
+        assert plan.nodes[0].kwargs.get("start") == 0
+        assert "__taskclass_id__" in plan.nodes[0].kwargs  # Internal tracking
 
         # Second node is increment
         assert plan.nodes[1].task_info.name == "counter.increment"
@@ -191,3 +192,176 @@ class TestTaskClassStepNames:
         assert len(steps) == 2
         assert "counter.__init__" in steps[0][0]
         assert "counter.increment" in steps[1][0]
+
+
+class TestTaskClassSerialization:
+    """Test TaskClass state serialization/deserialization."""
+
+    def test_write_and_read_taskclass_state(self, tmp_path: object) -> None:
+        """TaskClass state can be serialized and deserialized."""
+        from pathlib import Path
+        import tempfile
+
+        from recompose.workspace import read_taskclass_state, write_taskclass_state
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+
+            # Create a Counter instance directly (not in flow)
+            counter = Counter(start=42)
+            counter.count = 100  # Modify state
+
+            # Serialize
+            write_taskclass_state(workspace, "test_counter", counter)
+
+            # Deserialize
+            restored = read_taskclass_state(workspace, "test_counter")
+            assert restored is not None
+            assert isinstance(restored, Counter)
+            assert restored.count == 100
+
+    def test_taskclass_serialization_round_trip(self) -> None:
+        """Complex TaskClass state survives round-trip."""
+        from pathlib import Path
+        import tempfile
+
+        from recompose.workspace import read_taskclass_state, write_taskclass_state
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+
+            # Create and modify counter
+            counter = Counter(start=0)
+            counter.count = 12345
+
+            # Round-trip through serialization
+            write_taskclass_state(workspace, "counter_1", counter)
+            restored = read_taskclass_state(workspace, "counter_1")
+
+            assert restored is not None
+            assert restored.count == 12345
+
+            # Modify and round-trip again
+            restored.count = 99999
+            write_taskclass_state(workspace, "counter_1", restored)
+            final = read_taskclass_state(workspace, "counter_1")
+
+            assert final is not None
+            assert final.count == 99999
+
+
+class TestTaskClassRunStep:
+    """Test run_step handling of TaskClass steps (unit tests, no subprocess)."""
+
+    def test_init_step_creates_instance_and_serializes(self) -> None:
+        """Running an __init__ step creates instance and serializes state."""
+        from pathlib import Path
+        import tempfile
+
+        from recompose import flow
+        from recompose.local_executor import run_step, setup_workspace
+        from recompose.workspace import read_taskclass_state
+
+        @flow
+        def init_flow() -> None:
+            counter = Counter(start=42)
+
+        plan = init_flow.plan
+        flow_info = init_flow._flow_info
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            setup_workspace(flow_info, workspace=workspace)
+
+            # Run the __init__ step directly (not via subprocess)
+            result = run_step(flow_info, "step_1_counter.__init__", workspace)
+
+            assert result.ok, f"Step failed: {result.error}"
+
+            # Verify TaskClass state was serialized
+            taskclass_id = plan.nodes[0].kwargs.get("__taskclass_id__")
+            assert taskclass_id is not None
+
+            restored = read_taskclass_state(workspace, taskclass_id)
+            assert restored is not None
+            assert isinstance(restored, Counter)
+            assert restored.count == 42
+
+    def test_method_step_deserializes_and_updates(self) -> None:
+        """Running a method step deserializes instance, runs method, re-serializes."""
+        from pathlib import Path
+        import tempfile
+
+        from recompose import flow
+        from recompose.local_executor import run_step, setup_workspace
+        from recompose.workspace import read_taskclass_state
+
+        @flow
+        def method_flow() -> None:
+            counter = Counter(start=10)
+            counter.increment(amount=5)
+
+        plan = method_flow.plan
+        flow_info = method_flow._flow_info
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            setup_workspace(flow_info, workspace=workspace)
+
+            taskclass_id = plan.nodes[0].kwargs.get("__taskclass_id__")
+            assert taskclass_id is not None
+
+            # Run __init__ step
+            result1 = run_step(flow_info, "step_1_counter.__init__", workspace)
+            assert result1.ok, f"Init step failed: {result1.error}"
+
+            # Verify initial state
+            counter = read_taskclass_state(workspace, taskclass_id)
+            assert counter is not None
+            assert counter.count == 10
+
+            # Run increment step
+            result2 = run_step(flow_info, "step_2_counter.increment", workspace)
+            assert result2.ok, f"Increment step failed: {result2.error}"
+
+            # Verify updated state
+            counter = read_taskclass_state(workspace, taskclass_id)
+            assert counter is not None
+            assert counter.count == 15  # 10 + 5
+
+    def test_chained_method_steps(self) -> None:
+        """Running multiple method steps maintains correct state."""
+        from pathlib import Path
+        import tempfile
+
+        from recompose import flow
+        from recompose.local_executor import run_step, setup_workspace
+        from recompose.workspace import read_taskclass_state
+
+        @flow
+        def chain_flow() -> None:
+            counter = Counter(start=1)
+            counter.increment(amount=2)
+            counter.double()
+            counter.increment(amount=3)
+
+        plan = chain_flow.plan
+        flow_info = chain_flow._flow_info
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            setup_workspace(flow_info, workspace=workspace)
+
+            taskclass_id = plan.nodes[0].kwargs.get("__taskclass_id__")
+            assert taskclass_id is not None
+
+            # Run all steps
+            for i, node in enumerate(plan.nodes, 1):
+                step_name = node.step_name or f"step_{i}_{node.name}"
+                result = run_step(flow_info, step_name, workspace)
+                assert result.ok, f"Step {step_name} failed: {result.error}"
+
+            # Verify final state: 1 + 2 = 3, * 2 = 6, + 3 = 9
+            counter = read_taskclass_state(workspace, taskclass_id)
+            assert counter is not None
+            assert counter.count == 9
