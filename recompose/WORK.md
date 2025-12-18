@@ -14,7 +14,27 @@ See `proj/P14_architectural_pivot_TODO.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Phase 4 COMPLETE. Ready for Phase 5 (make_dispatchable).
+**Current phase:** Phase 5 COMPLETE. Ready for Phase 6 (cleanup old code).
+
+## Phase 5 COMPLETE: make_dispatchable()
+
+Implemented in `jobs.py` and `gha.py`:
+- `DispatchInput` base class with `StringInput`, `BoolInput`, `ChoiceInput` subclasses
+- `Dispatchable` class wrapping a task for workflow_dispatch triggering
+- `DispatchableInfo` dataclass for dispatchable metadata
+- `make_dispatchable(task, inputs=None, name=None)` function:
+  - Validates task is @task-decorated
+  - Infers workflow inputs from task signature if inputs=None
+  - Supports explicit input overrides
+  - Supports custom workflow name
+- `render_dispatchable()` function in gha.py:
+  - Generates single-job WorkflowSpec with workflow_dispatch trigger
+  - Inputs become workflow_dispatch inputs
+  - Task parameters passed as CLI args via `${{ inputs.X }}`
+  - Supports task outputs, artifacts, secrets
+  - Uses default or task-specific setup steps
+- Exported from `__init__.py`: `make_dispatchable`, `Dispatchable`, `DispatchableInfo`, `DispatchInput`, `StringInput`, `BoolInput`, `ChoiceInput`
+- 27 new tests for Phase 5 (318 total, all passing)
 
 ## Phase 4 COMPLETE: Workflow Generation
 
@@ -73,13 +93,14 @@ Implemented:
 
 # UPCOMING
 
-1. **Phase 5: make_dispatchable()** (NEXT)
-   - Simple wrapper to create workflow_dispatch workflow for a single task
-   - `recompose.make_dispatchable(task, inputs={})` → Dispatchable
-   - Generates single-job workflow with task's setup + run
+1. **Phase 6: Cleanup old code** (NEXT)
+   - Remove `@flow` decorator and FlowPlan/TaskNode/InputPlaceholder
+   - Remove `@taskclass` and all TaskClass machinery
+   - Remove `workspace.py` step serialization
+   - Remove `_run_step.py`
+   - Remove `execute_flow_isolated()`
 
-2. Phase 6: Cleanup old code (remove @flow, @taskclass, workspace.py, etc.)
-3. Phase 7: Migration & Polish (migrate examples, update App class, documentation)
+2. Phase 7: Migration & Polish (migrate examples, update App class, documentation)
 
 # DEFERRED
 
