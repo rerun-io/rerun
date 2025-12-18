@@ -1,9 +1,8 @@
 use futures::StreamExt as _;
-use itertools::merge;
-use re_log_types::TimeInt;
+use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt,
+    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -157,7 +156,8 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     }
 }
 
-fn create_recording_with_temporal_and_static_data() -> anyhow::Result<TempPath> {
+//TODO(ab): this recording needs fleshing out in order to test more interesting queries.
+fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{EntityPath, TimeInt, build_frame_nr};
@@ -233,8 +233,8 @@ fn create_recording_with_temporal_and_static_data() -> anyhow::Result<TempPath> 
     Ok(crate::TempPath::new(tmp_dir, tmp_path))
 }
 
-pub async fn query_dataset_with_static(service: impl RerunCloudService) {
-    let recording_path = create_recording_with_temporal_and_static_data().unwrap();
+pub async fn query_dataset_with_various_queries(service: impl RerunCloudService) {
+    let recording_path = create_recording_for_query_testing().unwrap();
 
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
@@ -253,50 +253,55 @@ pub async fn query_dataset_with_static(service: impl RerunCloudService) {
         )
         .await;
 
-    let requests = [
+    // TODO(ab): we need considerably more use-cases here, but OSS server currently disregards the
+    // `query` parameter. So we're stuck with queries that should return all chunks. In the mean
+    // time, this test is useful to validate that the returned schema is correct.
+    let queries = [
+        (None, "none"),
+        (Some(Query::default()), "default"),
         (
-            QueryDatasetRequest {
-                segment_ids: vec![],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: false,
-                exclude_temporal_data: false,
-                scan_parameters: None,
-                query: None,
-            },
-            "base",
+            Some(Query {
+                latest_at: Some(QueryLatestAt {
+                    index: Some("frame_nr".to_owned()),
+                    at: TimeInt::MAX,
+                }),
+                range: None,
+                ..Default::default()
+            }),
+            "latest_at_end",
         ),
         (
-            QueryDatasetRequest {
-                segment_ids: vec![],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                fuzzy_descriptors: vec![],
-                exclude_static_data: false,
-                exclude_temporal_data: false,
-                scan_parameters: None,
-                query: Some(Query {
-                    latest_at: Some(QueryLatestAt {
-                        index: Some("frame_nr".to_owned()),
-                        at: TimeInt::new_temporal(5),
-                    }),
-                    range: None,
-                    ..Default::default()
+            Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: "frame_nr".to_owned(),
+                    index_range: AbsoluteTimeRange {
+                        min: TimeInt::MIN,
+                        max: TimeInt::MAX,
+                    },
                 }),
-            },
-            "latest_at",
+                ..Default::default()
+            }),
+            "range_all",
         ),
     ];
 
-    for (request, snapshot_name) in requests {
+    for (query, snapshot_name) in queries {
         query_dataset_snapshot(
             &service,
-            request,
+            QueryDatasetRequest {
+                segment_ids: vec![],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                fuzzy_descriptors: vec![],
+                exclude_static_data: false,
+                exclude_temporal_data: false,
+                scan_parameters: None,
+                query,
+            },
             dataset_name,
-            &format!("with_static_data_{snapshot_name}"),
+            &format!("with_query_{snapshot_name}"),
         )
         .await
     }
@@ -325,10 +330,6 @@ async fn query_dataset_snapshot(
         .await;
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
-
-    //TODO: cleanup
-    println!("\n{snapshot_name}:");
-    println!("{}\n=====\n\n", merged_chunk_info.format_snapshot(true));
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
