@@ -1,7 +1,6 @@
 """Tests for the job-based automation framework (P14 Phase 2)."""
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -21,7 +20,6 @@ from recompose import (
     on_schedule,
     on_workflow_dispatch,
 )
-
 
 # =============================================================================
 # Test Tasks (fixtures)

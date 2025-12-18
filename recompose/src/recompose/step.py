@@ -11,10 +11,9 @@ from __future__ import annotations
 
 import functools
 import os
-import sys
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
@@ -158,6 +157,7 @@ def step(name: str) -> Generator[None, None, None]:
         ::group::Run tests
         cargo test
         ::endgroup::
+
     """
     ctx = _push_step(name)
 

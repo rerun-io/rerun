@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-import recompose
 from recompose import Ok, Result, get_secret, save_artifact, set_output, step, step_decorator, task
 
 
