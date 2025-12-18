@@ -305,9 +305,9 @@ class InputCondition(ConditionExpr):
         inputs = context.get("inputs", {})
         actual = inputs.get(self.param_name)
         if self.op == "==":
-            return actual == self.value
+            return bool(actual == self.value)
         elif self.op == "!=":
-            return actual != self.value
+            return bool(actual != self.value)
         raise ValueError(f"Unknown operator: {self.op}")
 
     def __repr__(self) -> str:
@@ -359,9 +359,9 @@ class GitHubCondition(ConditionExpr):
         if self.op is None:
             return bool(value)
         elif self.op == "==":
-            return value == self.value
+            return bool(value == self.value)
         elif self.op == "!=":
-            return value != self.value
+            return bool(value != self.value)
         raise ValueError(f"Unknown operator: {self.op}")
 
     def __repr__(self) -> str:
@@ -871,8 +871,8 @@ class AutomationInfo:
     module: str
     """Module where the automation is defined."""
 
-    fn: Callable[..., None]
-    """The wrapped function."""
+    fn: Callable[..., Any]
+    """The wrapped function (may be the AutomationWrapper)."""
 
     original_fn: Callable[..., None]
     """The original unwrapped function."""

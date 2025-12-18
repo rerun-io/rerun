@@ -623,11 +623,12 @@ def render_automation_jobs(
     job_specs: list[AutomationJobSpec] = automation_wrapper.plan()
 
     # Build trigger config
+    on_config: dict[str, Any]
     if info.trigger:
         on_config = info.trigger.to_gha_dict()
     else:
         # Default to workflow_dispatch if no trigger specified
-        on_config: dict[str, Any] = {"workflow_dispatch": None}
+        on_config = {"workflow_dispatch": None}
 
     # Add workflow_dispatch inputs from InputParam parameters
     if info.input_params:

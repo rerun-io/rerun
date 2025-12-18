@@ -425,6 +425,7 @@ class TestRenderAutomationJobs:
 
         lint_job = spec.jobs["lint_task"]
         run_step = [s for s in lint_job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert run_step.run.startswith("./custom_runner lint_task")
 
     def test_job_with_outputs(self) -> None:
@@ -457,6 +458,7 @@ class TestRenderAutomationJobs:
 
         # Check that the run command uses the output reference
         run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert "needs.build_wheel_task.outputs.wheel_path" in run_step.run
 
     def test_job_with_artifacts_upload(self) -> None:
@@ -471,6 +473,7 @@ class TestRenderAutomationJobs:
         build_job = spec.jobs["build_artifact_task"]
         upload_steps = [s for s in build_job.steps if s.uses and "upload-artifact" in s.uses]
         assert len(upload_steps) == 1
+        assert upload_steps[0].with_ is not None
         assert "build_artifact_task-wheel" in upload_steps[0].with_["name"]
 
     def test_job_with_artifact_download(self) -> None:
@@ -486,10 +489,12 @@ class TestRenderAutomationJobs:
         test_job = spec.jobs["artifact_test_task"]
         download_steps = [s for s in test_job.steps if s.uses and "download-artifact" in s.uses]
         assert len(download_steps) == 1
+        assert download_steps[0].with_ is not None
         assert "build_artifact_task-wheel" in download_steps[0].with_["name"]
 
         # Check run command uses artifact path
         run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert "artifacts/wheel" in run_step.run
 
     def test_job_with_secrets(self) -> None:
@@ -667,6 +672,7 @@ class TestRenderAutomationJobs:
 
         test_job = spec.jobs["wheel_test_task"]
         run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert "inputs.env" in run_step.run
 
 
@@ -965,6 +971,7 @@ class TestRenderDispatchable:
 
         job = spec.jobs["no_params_task"]
         run_step = [s for s in job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert run_step.run.startswith("./custom_runner no_params_task")
 
     def test_inputs_passed_to_command(self) -> None:
@@ -974,6 +981,7 @@ class TestRenderDispatchable:
 
         job = spec.jobs["default_param_task"]
         run_step = [s for s in job.steps if s.run is not None][0]
+        assert run_step.run is not None
         assert "--name=${{ inputs.name }}" in run_step.run
         assert "--count=${{ inputs.count }}" in run_step.run
 
