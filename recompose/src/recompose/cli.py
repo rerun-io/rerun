@@ -203,6 +203,10 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
         console.print()
 
+        # Exit with non-zero code if task failed
+        if not result.ok:
+            sys.exit(1)
+
     # Build the command with kebab-case name
     cmd = click.Command(
         name=_to_kebab_case(task_info.name),
