@@ -186,16 +186,16 @@ The `TaskClassNode` must track its "current version" (latest step that modified 
 
 ## Completion Criteria
 
-- [ ] `TaskClassNode` type implemented
-- [ ] `@taskclass` returns `TaskClassNode` in flow context
-- [ ] Method calls on `TaskClassNode` create `TaskNode` with correct dependencies
-- [ ] TaskClass state serializes/deserializes correctly
-- [ ] Passing TaskClass to tasks works with implicit state tracking
-- [ ] `Counter` example works (stateful test case)
+- [x] `TaskClassNode` type implemented
+- [x] `@taskclass` returns `TaskClassNode` in flow context
+- [x] Method calls on `TaskClassNode` create `TaskNode` with correct dependencies
+- [x] TaskClass state serializes/deserializes correctly
+- [x] Passing TaskClass to tasks works with implicit state tracking
+- [x] `Counter` example works (stateful test case) - in test_taskclass_flow.py
 - [ ] `Venv` TaskClass implemented
 - [ ] `wheel_test` flow updated to use `Venv`
 - [ ] GHA generation works for TaskClass flows
-- [ ] All tests pass
+- [ ] All tests pass (193/193 passing)
 
 ## Notes
 

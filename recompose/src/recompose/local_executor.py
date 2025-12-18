@@ -447,23 +447,21 @@ def execute_flow_isolated(
         # Print step header (with condition if present)
         renderer.step_header(step_name, step_idx, condition_expr=condition_expr_str)
 
-        # Build command using _run-step internal command
-        if entry_type == "module":
-            cmd = [sys.executable, "-m", entry_value]
-        else:
-            cmd = [sys.executable, entry_value]
-
-        cmd.extend(
-            [
-                "_run-step",
-                "--flow",
-                flow_name,
-                "--step",
-                step_name,
-                "--workspace",
-                str(ws),
-            ]
-        )
+        # Build command using the standalone _run_step module
+        # This works regardless of whether the original script has CLI handling
+        cmd = [
+            sys.executable,
+            "-m",
+            "recompose._run_step",
+            "--script",
+            entry_value,
+            "--flow",
+            flow_name,
+            "--step",
+            step_name,
+            "--workspace",
+            str(ws),
+        ]
 
         if is_debug():
             dbg(f"Running: {' '.join(cmd)}")
