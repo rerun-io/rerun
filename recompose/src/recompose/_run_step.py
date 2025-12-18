@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .command_group import App
-    from .flow import FlowInfo
 
 
 def _find_app(module: ModuleType) -> App | None:
@@ -40,30 +39,6 @@ def _find_app(module: ModuleType) -> App | None:
     return None
 
 
-def _find_flow_info(module: ModuleType, flow_name: str) -> FlowInfo | None:
-    """Find a FlowInfo by name from module attributes."""
-    from .flow import FlowInfo
-
-    for attr_name in dir(module):
-        attr = getattr(module, attr_name)
-        if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
-            if attr._flow_info.name == flow_name:
-                return attr._flow_info
-    return None
-
-
-def _get_available_flows(module: ModuleType) -> list[str]:
-    """Get list of available flow names from module attributes."""
-    from .flow import FlowInfo
-
-    flows = []
-    for attr_name in dir(module):
-        attr = getattr(module, attr_name)
-        if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
-            flows.append(attr._flow_info.name)
-    return flows
-
-
 def _parse_param(param: str) -> tuple[str, str]:
     """Parse a key=value parameter string."""
     if "=" not in param:
@@ -74,9 +49,6 @@ def _parse_param(param: str) -> tuple[str, str]:
 
 def main() -> None:
     """Execute a flow step or setup workspace."""
-    from .context import set_module_name
-    from .flow import FlowInfo
-
     parser = argparse.ArgumentParser(
         description="Execute a flow step or setup workspace",
         epilog="Parameters can be passed as key=value after the other arguments",
@@ -108,9 +80,6 @@ def main() -> None:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Set the module name for subprocess isolation
-    set_module_name(module_name)
-
     # Import the module
     try:
         module = importlib.import_module(module_name)
@@ -118,54 +87,24 @@ def main() -> None:
         print(f"Error: Could not import module '{module_name}': {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Look for a recompose.App instance in the module
+    # Find the recompose.App instance in the module
     app = _find_app(module)
+    if app is None:
+        print(f"Error: No recompose.App instance found in module '{module_name}'", file=sys.stderr)
+        sys.exit(1)
 
-    if app is not None:
-        # Use the app to set up context
-        app.setup_context()
+    # Set up context from the app (this sets module_name, registers flows/tasks, etc.)
+    app.setup_context()
 
-        # Find the flow from the app's context
-        from .context import get_flow, get_flow_registry
+    # Find the flow from the app's context
+    from .context import get_flow, get_flow_registry
 
-        flow_info = get_flow(flow_name)
-        if flow_info is None:
-            available = list(get_flow_registry().keys())
-            print(f"Error: Flow '{flow_name}' not found in app", file=sys.stderr)
-            print(f"Available flows: {available}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # Fallback: scan module for FlowWrapper directly
-        flow_info = _find_flow_info(module, flow_name)
-
-        if flow_info is None:
-            available = _get_available_flows(module)
-            print(f"Error: Flow '{flow_name}' not found in module", file=sys.stderr)
-            print(f"Available flows: {available}", file=sys.stderr)
-            sys.exit(1)
-
-        # Set up minimal context
-        from .context import RecomposeContext, set_recompose_context
-        from .task import TaskInfo
-
-        all_flows: dict[str, FlowInfo] = {}
-        all_tasks: dict[str, TaskInfo] = {}
-
-        for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-            if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
-                fi = attr._flow_info
-                all_flows[fi.name] = fi
-            if hasattr(attr, "_task_info") and isinstance(attr._task_info, TaskInfo):
-                ti = attr._task_info
-                all_tasks[ti.name] = ti
-
-        ctx = RecomposeContext(
-            tasks=all_tasks,
-            flows=all_flows,
-            automations={},
-        )
-        set_recompose_context(ctx)
+    flow_info = get_flow(flow_name)
+    if flow_info is None:
+        available = list(get_flow_registry().keys())
+        print(f"Error: Flow '{flow_name}' not found in app", file=sys.stderr)
+        print(f"Available flows: {available}", file=sys.stderr)
+        sys.exit(1)
 
     if args.setup:
         # Setup workspace mode
