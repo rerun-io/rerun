@@ -296,11 +296,11 @@ impl VideoDataDescription {
             }
         }
 
+        // Make sure all keyframes are tracked.
         let mut keyframes = self.keyframe_indices.iter().copied();
         for (sample_idx, sample) in self
             .samples
-            .iter()
-            .enumerate()
+            .iter_indexed()
             .filter_map(|(idx, s)| Some((idx, s.sample()?)))
         {
             if sample.is_sync && keyframes.next().is_none_or(|idx| idx != sample_idx) {

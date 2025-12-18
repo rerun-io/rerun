@@ -140,6 +140,21 @@ impl<T> StableIndexDeque<T> {
             .map(|(i, v)| (i + self.index_offset, v))
     }
 
+    /// Like `iter_mut().enumerate()` but with the index offset applied.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &mut 1)]);
+    /// ```
+    pub fn iter_indexed_mut(&mut self) -> impl Iterator<Item = (usize, &mut T)> {
+        self.vec
+            .iter_mut()
+            .enumerate()
+            .map(|(i, v)| (i + self.index_offset, v))
+    }
+
     /// See [`VecDeque::back`].
     #[inline]
     pub fn back(&self) -> Option<&T> {
@@ -350,6 +365,17 @@ impl<T> StableIndexDeque<T> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
         self.iter_indexed().skip(range_start).take(num_elements)
+    }
+
+    /// Mutable version of [`Self::iter_index_range_clamped`].
+    #[inline]
+    pub fn iter_index_range_clamped_mut(
+        &mut self,
+        range: &std::ops::Range<usize>,
+    ) -> impl Iterator<Item = (usize, &mut T)> {
+        let range_start = range.start.saturating_sub(self.index_offset);
+        let num_elements = range.end - range.start;
+        self.iter_indexed_mut().skip(range_start).take(num_elements)
     }
 }
 

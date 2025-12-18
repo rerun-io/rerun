@@ -334,7 +334,11 @@ impl VideoPlayer {
                 InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp,
             ))?;
 
-        self.handle_errors_and_reset_decoder_if_needed(video_description, requested_sample_idx)?;
+        self.handle_errors_and_reset_decoder_if_needed(
+            video_description,
+            requested_sample_idx,
+            requested_keyframe_idx,
+        )?;
 
         // Ensure that we have as many keyframes enqueued currently as needed in order to…
         // * cover the keyframe of the requested sample _plus one_ so we can always smoothly transition to the next keyframe
@@ -428,6 +432,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         requested: SampleIndex,
+        requested_keyframe: KeyframeIndex,
     ) -> Result<(), VideoPlayerError> {
         // If we haven't decoded anything at all yet, reset the decoder.
         let Some(last_requested) = self.last_requested else {
@@ -450,11 +455,10 @@ impl VideoPlayer {
         }
         // Seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
-        else if self.last_enqueued.is_some_and(|e| {
-            video_description
-                .sample_keyframe_idx(requested)
-                .is_some_and(|k| e < video_description.keyframe_indices[k])
-        }) {
+        else if self
+            .last_enqueued
+            .is_some_and(|e| e < video_description.keyframe_indices[requested_keyframe])
+        {
             self.reset(video_description)?;
         }
         // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
