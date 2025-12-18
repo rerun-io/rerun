@@ -2,14 +2,13 @@
 
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 from . import flow_test_app
 
-# Path to the test app for subprocess invocation
-TEST_APP = Path(__file__).parent / "flow_test_app.py"
+# Module name for subprocess invocation (must be run as module for subprocess isolation)
+TEST_APP_MODULE = "tests.flow_test_app"
 
 
 def test_flow_has_flow_info():
@@ -89,9 +88,9 @@ def test_flow_fail_fast():
 
 def test_flow_cli_invocation():
     """Test that flows can be invoked via CLI."""
-    # Use kebab-case command name
+    # Use kebab-case command name, run as module for subprocess isolation
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "simple-flow"],
+        [sys.executable, "-m", TEST_APP_MODULE, "simple-flow"],
         capture_output=True,
         text=True,
     )
@@ -100,9 +99,9 @@ def test_flow_cli_invocation():
 
 def test_flow_cli_with_args():
     """Test CLI invocation with arguments."""
-    # Use kebab-case command name
+    # Use kebab-case command name, run as module for subprocess isolation
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "arg-flow", "--initial", "42"],
+        [sys.executable, "-m", TEST_APP_MODULE, "arg-flow", "--initial", "42"],
         capture_output=True,
         text=True,
     )
@@ -111,9 +110,9 @@ def test_flow_cli_with_args():
 
 def test_flow_cli_failure():
     """Test that CLI exits with error on flow failure."""
-    # Use kebab-case command name
+    # Use kebab-case command name, run as module for subprocess isolation
     result = subprocess.run(
-        [sys.executable, str(TEST_APP), "fail-fast-flow"],
+        [sys.executable, "-m", TEST_APP_MODULE, "fail-fast-flow"],
         capture_output=True,
         text=True,
     )

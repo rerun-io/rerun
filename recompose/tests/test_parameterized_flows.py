@@ -43,7 +43,7 @@ class TestFlowsWithRequiredParams:
         flow_info = flow_with_required_param._flow_info
 
         # This should work - the workflow should accept 'name' as a workflow_dispatch input
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         # Check that the workflow_dispatch input is created correctly
         assert "workflow_dispatch" in spec.on
@@ -61,7 +61,7 @@ class TestFlowsWithRequiredParams:
         """Test GHA generation for flows with both required and optional params."""
         flow_info = flow_with_mixed_params._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
 
         inputs = spec.on["workflow_dispatch"].get("inputs", {})
 
@@ -329,7 +329,7 @@ class TestParameterizedFlowYamlOutput:
         """Test that generated YAML for flows with required params is valid."""
         flow_info = flow_with_required_param._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         # Should be parseable
@@ -341,7 +341,7 @@ class TestParameterizedFlowYamlOutput:
         """Test that the YAML has correct workflow_dispatch input structure."""
         flow_info = flow_with_required_param._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         yaml = YAML()
@@ -360,7 +360,7 @@ class TestParameterizedFlowYamlOutput:
         """Test that the setup step in YAML correctly passes workflow inputs."""
         flow_info = flow_with_mixed_params._flow_info
 
-        spec = render_flow_workflow(flow_info, script_path="app.py")
+        spec = render_flow_workflow(flow_info, module_name="app.py")
         yaml_str = spec.to_yaml()
 
         yaml = YAML()

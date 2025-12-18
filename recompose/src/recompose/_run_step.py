@@ -3,32 +3,24 @@
 Standalone step executor for subprocess isolation.
 
 This module provides a CLI entry point that can execute a single step of a flow
-without requiring the original script to have CLI handling code.
+or set up a workspace, without requiring the original script to have CLI handling code.
 
 Usage:
-    # With a script path:
-    python -m recompose._run_step --script /path/to/script.py \\
-        --flow flow_name --step step_name --workspace /path/to/workspace
+    # Setup workspace for a flow:
+    python -m recompose._run_step --module examples.app --setup --flow flow_name [param=value ...]
 
-    # With a module name:
-    python -m recompose._run_step --module examples.app \\
-        --flow flow_name --step step_name --workspace /path/to/workspace
+    # Execute a single step:
+    python -m recompose._run_step --module examples.app --flow flow_name --step step_name
 
-The script/module is imported to define the flows/tasks, then the specified step
-is executed. This allows subprocess isolation to work with any Python file that
-defines flows, without requiring that file to set up a recompose CLI.
-
-When the module contains a recompose.App instance (recommended pattern), the app's
-configuration (working_directory, python_cmd, etc.) is automatically applied.
+The module is imported to find the recompose.App instance, which provides the
+configuration and registered flows/tasks.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib
-import importlib.util
 import sys
-from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -72,70 +64,65 @@ def _get_available_flows(module: ModuleType) -> list[str]:
     return flows
 
 
+def _parse_param(param: str) -> tuple[str, str]:
+    """Parse a key=value parameter string."""
+    if "=" not in param:
+        raise ValueError(f"Invalid parameter format: {param} (expected key=value)")
+    key, value = param.split("=", 1)
+    return key, value
+
+
 def main() -> None:
-    """Execute a single step from a flow defined in a script or module."""
+    """Execute a flow step or setup workspace."""
     from .context import set_entry_point
     from .flow import FlowInfo
 
-    parser = argparse.ArgumentParser(description="Execute a single flow step")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--script", type=Path, help="Path to the script defining the flow")
-    group.add_argument("--module", type=str, help="Module name defining the flow (e.g., examples.app)")
+    parser = argparse.ArgumentParser(
+        description="Execute a flow step or setup workspace",
+        epilog="Parameters can be passed as key=value after the other arguments",
+    )
+    parser.add_argument("--module", type=str, required=True, help="Module name containing the App (e.g., examples.app)")
     parser.add_argument("--flow", type=str, required=True, help="Flow name")
-    parser.add_argument("--step", type=str, required=True, help="Step name to execute")
-    parser.add_argument("--workspace", type=Path, required=True, help="Workspace directory")
+    parser.add_argument("--step", type=str, help="Step name to execute (omit for --setup)")
+    parser.add_argument("--setup", action="store_true", help="Setup workspace instead of running a step")
+    parser.add_argument("params", nargs="*", help="Flow parameters as key=value pairs")
 
     args = parser.parse_args()
 
+    module_name: str = args.module
     flow_name: str = args.flow
-    step_name: str = args.step
-    workspace: Path = args.workspace
 
-    # Set the entry point so tasks like generate_gha can determine the correct script path
-    if args.module:
-        set_entry_point("module", args.module)
-    else:
-        set_entry_point("script", str(args.script))
-
-    # Import the script/module to define flows/tasks
-    module: ModuleType | None = None
-
-    if args.module:
-        # Import by module name
+    # Parse parameters
+    params: dict[str, str] = {}
+    for param in args.params:
         try:
-            module = importlib.import_module(args.module)
-        except ImportError as e:
-            print(f"Error: Could not import module '{args.module}': {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # Import by script path
-        script_path: Path = args.script
-        if not script_path.exists():
-            print(f"Error: Script not found: {script_path}", file=sys.stderr)
-            sys.exit(1)
-
-        spec = importlib.util.spec_from_file_location("__recompose_script__", script_path)
-        if spec is None or spec.loader is None:
-            print(f"Error: Could not load script: {script_path}", file=sys.stderr)
+            key, value = _parse_param(param)
+            # Convert string values to appropriate types
+            if value.lower() == "true":
+                params[key] = True  # type: ignore[assignment]
+            elif value.lower() == "false":
+                params[key] = False  # type: ignore[assignment]
+            else:
+                params[key] = value
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["__recompose_script__"] = module
+    # Set the entry point
+    set_entry_point("module", module_name)
 
-        try:
-            spec.loader.exec_module(module)
-        except Exception as e:
-            print(f"Error loading script {script_path}: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    assert module is not None
+    # Import the module
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError as e:
+        print(f"Error: Could not import module '{module_name}': {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Look for a recompose.App instance in the module
-    # This is the recommended pattern - it provides config and registrations
     app = _find_app(module)
 
     if app is not None:
-        # Use the app to set up context (working_directory, python_cmd, registries)
+        # Use the app to set up context
         app.setup_context()
 
         # Find the flow from the app's context
@@ -148,8 +135,7 @@ def main() -> None:
             print(f"Available flows: {available}", file=sys.stderr)
             sys.exit(1)
     else:
-        # Fallback: scan module for FlowWrapper/TaskWrapper directly
-        # This works for simple cases but won't have config like working_directory
+        # Fallback: scan module for FlowWrapper directly
         flow_info = _find_flow_info(module, flow_name)
 
         if flow_info is None:
@@ -158,7 +144,7 @@ def main() -> None:
             print(f"Available flows: {available}", file=sys.stderr)
             sys.exit(1)
 
-        # Set up minimal context from module scanning
+        # Set up minimal context
         from .context import RecomposeContext, set_recompose_context
         from .task import TaskInfo
 
@@ -181,13 +167,32 @@ def main() -> None:
         )
         set_recompose_context(ctx)
 
-    # Execute the step
-    from .local_executor import run_step
+    if args.setup:
+        # Setup workspace mode
+        from .local_executor import setup_workspace
+        from .workspace import get_workspace_from_env
 
-    result = run_step(flow_info, step_name, workspace)
+        workspace = get_workspace_from_env()
+        ws = setup_workspace(flow_info, workspace=workspace, **params)
+        print(f"Workspace initialized: {ws}")
+    else:
+        # Execute step mode
+        if not args.step:
+            print("Error: --step is required when not using --setup", file=sys.stderr)
+            sys.exit(1)
 
-    if result.failed:
-        sys.exit(1)
+        from .local_executor import run_step
+        from .workspace import get_workspace_from_env
+
+        workspace = get_workspace_from_env()
+        if workspace is None:
+            print("Error: RECOMPOSE_WORKSPACE environment variable not set", file=sys.stderr)
+            sys.exit(1)
+
+        result = run_step(flow_info, args.step, workspace)
+
+        if result.failed:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

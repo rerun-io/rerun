@@ -390,106 +390,6 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     return cmd
 
 
-def _build_internal_commands() -> list[click.Command]:
-    """
-    Build hidden internal commands for flow execution.
-
-    These commands are used by both local_executor and GHA workflows:
-    - _setup: Initialize a workspace for a flow
-    - _run-step: Execute a single step of a flow
-    """
-    import sys
-
-    from .context import get_recompose_context
-    from .local_executor import run_step, setup_workspace
-    from .workspace import get_workspace_from_env
-
-    def _find_flow(flow_name: str) -> FlowInfo | None:
-        """Look up a flow by name from the registry."""
-        ctx = get_recompose_context()
-        if ctx is None:
-            return None
-        for name, info in ctx.flows.items():
-            if info.name == flow_name or name == flow_name:
-                return info
-        return None
-
-    # _setup command
-    setup_params: list[click.Parameter] = [
-        click.Option(["--flow"], type=str, required=True, help="Flow name"),
-        click.Option(["--workspace"], type=click.Path(path_type=Path), default=None, help="Workspace directory"),
-        click.Argument(["params"], nargs=-1),  # Capture remaining args as key=value pairs
-    ]
-
-    def setup_callback(flow: str, workspace: Path | None, params: tuple[str, ...]) -> None:
-        """Initialize workspace for a flow."""
-        flow_info = _find_flow(flow)
-        if flow_info is None:
-            console.print(f"[red]Error:[/red] Flow '{flow}' not found")
-            sys.exit(1)
-
-        # Parse key=value params
-        kwargs: dict[str, Any] = {}
-        for p in params:
-            if "=" in p:
-                key, value = p.split("=", 1)
-                # Try to parse as bool/int/float
-                if value.lower() in ("true", "false"):
-                    kwargs[key] = value.lower() == "true"
-                else:
-                    try:
-                        kwargs[key] = int(value)
-                    except ValueError:
-                        try:
-                            kwargs[key] = float(value)
-                        except ValueError:
-                            kwargs[key] = value
-
-        ws = setup_workspace(flow_info, workspace=workspace, **kwargs)
-        console.print(f"[green]✓[/green] Setup complete: {ws}")
-
-    setup_cmd = click.Command(
-        name="_setup",
-        callback=setup_callback,
-        params=setup_params,
-        help="[internal] Initialize workspace for a flow",
-        hidden=True,
-    )
-
-    # _run-step command
-    run_step_params: list[click.Parameter] = [
-        click.Option(["--flow"], type=str, required=True, help="Flow name"),
-        click.Option(["--step"], type=str, required=True, help="Step name to execute"),
-        click.Option(["--workspace"], type=click.Path(path_type=Path), default=None, help="Workspace directory"),
-    ]
-
-    def run_step_callback(flow: str, step: str, workspace: Path | None) -> None:
-        """Execute a single step of a flow."""
-        ws = workspace or get_workspace_from_env()
-        if ws is None:
-            console.print("[red]Error:[/red] --workspace required or set $RECOMPOSE_WORKSPACE")
-            sys.exit(1)
-
-        flow_info = _find_flow(flow)
-        if flow_info is None:
-            console.print(f"[red]Error:[/red] Flow '{flow}' not found")
-            sys.exit(1)
-
-        result = run_step(flow_info, step, ws)
-        if result.failed:
-            sys.exit(1)
-
-    run_step_cmd = click.Command(
-        name="_run-step",
-        callback=run_step_callback,
-        params=run_step_params,
-        help="[internal] Execute a single flow step",
-        hidden=True,
-    )
-
-    return [setup_cmd, run_step_cmd]
-
-
 class GroupedClickGroup(click.Group):
     """Click group that displays commands organized by groups in help."""
 
@@ -561,10 +461,6 @@ def _build_grouped_cli(
         else:
             # Bare task or flow (not in a group)
             _add_command_to_cli(cli, item, "Other", seen_names)
-
-    # Add hidden internal commands
-    for cmd in _build_internal_commands():
-        cli.add_command(cmd)
 
     return cli
 

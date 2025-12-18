@@ -246,6 +246,12 @@ def _isolated_param_flow(*, name: str = "default") -> None:
     _isolated_process(input=v.value())
 
 
+# App for isolated flow tests - must be at module level for subprocess isolation
+_isolated_app = recompose.App(
+    commands=[_isolated_simple_pipeline, _isolated_param_flow],
+)
+
+
 class TestRunIsolated:
     """Tests for subprocess execution of flows."""
 
@@ -253,6 +259,9 @@ class TestRunIsolated:
         """Direct flow call executes all steps as subprocesses."""
         import tempfile
         from pathlib import Path
+
+        # Set up the isolated app context for this test
+        _isolated_app.setup_context()
 
         # Uses module-level flow _isolated_simple_pipeline
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -277,6 +286,9 @@ class TestRunIsolated:
         """Flow parameters are passed correctly to steps."""
         import tempfile
         from pathlib import Path
+
+        # Set up the isolated app context for this test
+        _isolated_app.setup_context()
 
         # Uses module-level flow _isolated_param_flow
         with tempfile.TemporaryDirectory() as tmpdir:

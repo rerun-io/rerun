@@ -201,11 +201,11 @@ def flow_with_optional_only() -> None:
 
 
 # =============================================================================
-# CLI Entry Point
+# App Instance (must be at module level for subprocess isolation)
 # =============================================================================
 
-if __name__ == "__main__":
-    commands = [
+app = recompose.App(
+    commands=[
         recompose.CommandGroup(
             "Flows",
             [
@@ -224,5 +224,12 @@ if __name__ == "__main__":
                 flow_with_optional_only,
             ],
         ),
-    ]
-    recompose.main(commands=commands)
+    ],
+)
+
+# =============================================================================
+# CLI Entry Point
+# =============================================================================
+
+if __name__ == "__main__":
+    app.main()
