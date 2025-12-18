@@ -153,6 +153,65 @@ jobs:
 
 ---
 
+## Visual Step Grouping
+
+For organizing output within a task, use `@step` decorator or `with recompose.step()` context manager:
+
+```python
+@recompose.task
+def build_and_test() -> Result[None]:
+    with recompose.step("Compile"):
+        run("cargo", "build", "--release")
+
+    with recompose.step("Run tests"):
+        run("cargo", "test")
+
+    with recompose.step("Package"):
+        run("tar", "-czf", "dist.tar.gz", "target/release/binary")
+
+    return Ok(None)
+```
+
+**Local output** (nested tree):
+```
+▶ build_and_test
+  ├─ Compile
+  │  └─ cargo build --release
+  ├─ Run tests
+  │  └─ cargo test
+  └─ Package
+     └─ tar -czf dist.tar.gz target/release/binary
+✓ build_and_test (12.3s)
+```
+
+**GHA output** (flat groups):
+```
+::group::Compile
+cargo build --release
+::endgroup::
+::group::Run tests
+cargo test
+::endgroup::
+::group::Package
+tar -czf dist.tar.gz target/release/binary
+::endgroup::
+```
+
+Steps can also be used as a decorator for helper functions:
+
+```python
+@recompose.step("Compile")
+def compile_code():
+    run("cargo", "build", "--release")
+
+@recompose.task
+def build() -> Result[None]:
+    compile_code()  # Output grouped under "Compile"
+    return Ok(None)
+```
+
+---
+
 ## Setup Dependencies
 
 Tasks can declare their setup requirements in the decorator:
@@ -465,6 +524,8 @@ app = recompose.App(
 - `recompose.get_secret(name)` - Get a secret value (validates against declared secrets)
 - `recompose.run(...)` - Run subprocess (unchanged)
 - `recompose.out(...)`, `recompose.dbg(...)` - Output helpers (unchanged)
+- `recompose.step(name)` - Context manager for visual grouping (nested locally, flat `::group::` in GHA)
+- `@recompose.step(name)` - Decorator form for helper functions
 
 ### Automation Helpers
 - `recompose.job(task, inputs={}, needs=[], runs_on=..., matrix={}, condition=...)` - Define a job
@@ -519,11 +580,13 @@ app = recompose.App(
    Uses expression algebra (`&`, `|`, `~`, `==`, `!=`). Maps to GHA job-level `if:`.
    No step-level conditionals needed since each job runs one task.
 
-## Open Questions
+## Resolved Design Decisions (continued)
 
-1. **Visual step grouping (local)**: Should we have a `@step` decorator for grouping output in tree view?
-   - Useful for visual organization when tasks call many sub-operations
-   - No GHA implications - purely local visual aid
+6. **Visual step grouping**: `@step` decorator (or context manager) for output grouping.
+   - Takes optional `name` parameter for header
+   - **Locally**: Nested tree-view output (full hierarchy)
+   - **In GHA**: Flat `::group::` / `::endgroup::` (no nesting support in GHA)
+   - Useful for organizing output when tasks have many sub-operations
 
 ---
 
@@ -539,6 +602,7 @@ app = recompose.App(
 - [ ] Implement `recompose.get_secret()` helper (with validation)
 - [ ] Add outputs/artifacts to Result type
 - [ ] Implement local secrets file (`~/.recompose/secrets.toml`)
+- [ ] Implement `recompose.step()` context manager and decorator (nested locally, `::group::` in GHA)
 
 ### Phase 2: Automation Framework
 - [ ] Create `@automation` decorator with context tracking
