@@ -29,6 +29,7 @@ from .context import (
     get_automation,
     get_automation_registry,
     get_context,
+    get_dispatchables,
     get_python_cmd,
     get_secret,
     get_task,
@@ -145,6 +146,8 @@ __all__ = [
     "JobOutputRef",
     "ArtifactRef",
     "InputParamRef",
+    # P14: Dispatchables
+    "get_dispatchables",
     # P14: Input types
     "InputParam",
     "Artifact",

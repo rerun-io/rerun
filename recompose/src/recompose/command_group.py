@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .flow import FlowWrapper
     from .task import TaskWrapper
 
 
@@ -21,7 +20,7 @@ class CommandGroup:
 
     Args:
         name: Heading name displayed in help (e.g., "Python", "Testing").
-        commands: List of tasks and/or flows to include in this group.
+        commands: List of tasks to include in this group.
         hidden: If True, commands in this group are hidden from default help.
                Use --show-hidden to see them.
 
@@ -36,7 +35,7 @@ class CommandGroup:
     """
 
     name: str
-    commands: list[TaskWrapper | FlowWrapper] = field(default_factory=list)
+    commands: list[TaskWrapper[Any, Any]] = field(default_factory=list)
     hidden: bool = False
 
     def __post_init__(self) -> None:
@@ -58,8 +57,9 @@ class App:
                    Use "uv run python" for uv-managed projects.
         working_directory: Working directory for GHA workflows (relative to repo root).
                           If set, workflows will cd to this directory before running.
-        commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+        commands: List of CommandGroups or tasks to expose as CLI commands.
         automations: List of automations to register for GHA workflow generation.
+        dispatchables: List of dispatchables to register for GHA workflow generation.
         name: Optional name for the CLI group. Defaults to the script name.
 
     Example
@@ -67,15 +67,19 @@ class App:
         # examples/app.py
         import recompose
         from .tasks import lint, test
-        from .flows import ci
+        from .automations import ci
+
+        lint_workflow = recompose.make_dispatchable(lint)
 
         app = recompose.App(
             python_cmd="uv run python",
             working_directory="recompose",
             commands=[
                 recompose.CommandGroup("Quality", [lint]),
-                recompose.CommandGroup("Flows", [ci]),
+                recompose.CommandGroup("Testing", [test]),
             ],
+            automations=[ci],
+            dispatchables=[lint_workflow],
         )
 
         if __name__ == "__main__":
@@ -88,8 +92,9 @@ class App:
         *,
         python_cmd: str = "python",
         working_directory: str | None = None,
-        commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] | None = None,
+        commands: Sequence[CommandGroup | TaskWrapper[Any, Any]] | None = None,
         automations: Sequence[Any] | None = None,
+        dispatchables: Sequence[Any] | None = None,
         name: str | None = None,
     ) -> None:
         """
@@ -98,8 +103,9 @@ class App:
         Args:
             python_cmd: Command to invoke Python in generated GHA workflows.
             working_directory: Working directory for GHA workflows (relative to repo root).
-            commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+            commands: List of CommandGroups or tasks to expose as CLI commands.
             automations: List of automations to register for GHA workflow generation.
+            dispatchables: List of dispatchables to register for GHA workflow generation.
             name: Optional name for the CLI group. Defaults to the script name.
 
         """
@@ -107,8 +113,9 @@ class App:
 
         self.python_cmd = python_cmd
         self.working_directory = working_directory
-        self.commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] = commands or []
+        self.commands: Sequence[CommandGroup | TaskWrapper[Any, Any]] = commands or []
         self.automations: Sequence[Any] = automations or []
+        self.dispatchables: Sequence[Any] = dispatchables or []
         self.name = name
 
         # Capture the caller's module name at instantiation time
@@ -120,8 +127,8 @@ class App:
         else:
             raise ValueError(
                 "App must be instantiated in a module context (run with `python -m <module>`). "
-                "Script-based execution is not supported because flows require subprocess isolation "
-                "which needs an importable module path."
+                "Script-based execution is not supported because GHA workflow generation "
+                "needs an importable module path."
             )
 
     def main(self) -> None:
@@ -139,6 +146,7 @@ class App:
             working_directory=self.working_directory,
             commands=self.commands,
             automations=self.automations,
+            dispatchables=self.dispatchables,
             module_name=self._module_name,
         )
 
@@ -146,7 +154,6 @@ class App:
         """
         Set up the global context from this app's configuration.
 
-        Called by _run_step.py when executing steps in subprocess isolation.
         This ensures that tasks like generate_gha have access to the correct
         configuration (working_directory, python_cmd, etc.) even when not
         running through main().
@@ -163,9 +170,9 @@ class App:
         set_python_cmd(self.python_cmd)
         set_working_directory(self.working_directory)
 
-        # Set module name (for GHA workflow generation and subprocess isolation)
+        # Set module name (for GHA workflow generation)
         set_module_name(self._module_name)
 
         # Build and set the registry
-        recompose_ctx = _build_registry(self.commands, self.automations or [])
+        recompose_ctx = _build_registry(self.commands, self.automations or [], self.dispatchables or [])
         set_recompose_context(recompose_ctx)

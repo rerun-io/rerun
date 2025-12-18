@@ -1,6 +1,6 @@
 # NOW
 
-**P14_architectural_pivot** - Major redesign: Tasks as Jobs, not Steps.
+**P14_architectural_pivot** - COMPLETE. All 7 phases done.
 
 See `proj/P14_architectural_pivot_DONE.md` for full design.
 
@@ -14,7 +14,27 @@ See `proj/P14_architectural_pivot_DONE.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Phase 6 COMPLETE. All legacy code removed.
+## Phase 7 COMPLETE: Migration & Polish
+
+Final cleanup and example migration:
+
+- **builtin_tasks.py**: Updated `generate_gha` to use automations and dispatchables
+  - Removed old flow references
+  - Uses `render_automation_jobs()` for automations
+  - Uses `render_dispatchable()` for dispatchables
+  - Updated `inspect` to handle automations and dispatchables
+
+- **App class**: Added `dispatchables` parameter for workflow generation
+
+- **context.py**: Added `get_dispatchables()` function for registry access
+
+- **Examples migrated**:
+  - Deleted `examples/flows/` directory (old flow-based code)
+  - Deleted `examples/tasks/virtual_env.py` (TaskClass, no longer supported)
+  - Created `examples/automations/ci.py` with new `@automation` pattern
+  - Updated `examples/app.py` with automations and dispatchables
+
+**Test results:** 209 tests pass, ruff clean
 
 ## Phase 6 COMPLETE: Cleanup Old Code
 
@@ -68,11 +88,7 @@ Implemented:
 
 # UPCOMING
 
-1. **Phase 7: Migration & Polish** (NEXT)
-   - Migrate examples to new model
-   - Update App class for dispatchables parameter
-   - Update builtin_tasks.generate_gha to handle automations and dispatchables
-   - Documentation
+(P14 complete - identify next priorities)
 
 # DEFERRED
 
@@ -80,6 +96,7 @@ Implemented:
 
 # RECENTLY COMPLETED
 
+- P14 Phase 7: Migration & Polish - examples migrated, generate_gha updated
 - P14 Phase 6: Cleanup old code (flow, taskclass, etc.)
 - P14 Phases 1-5: Full P14 implementation
 

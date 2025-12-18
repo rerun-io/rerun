@@ -5,13 +5,10 @@ from .build import (
     create_test_venv,
     install_wheel,
     smoke_test,
-    smoke_test_venv,
     test_installed,
-    test_installed_venv,
 )
 from .lint import format_check, format_code, lint
 from .test import test
-from .virtual_env import Venv
 
 __all__ = [
     # Lint & format
@@ -25,9 +22,5 @@ __all__ = [
     "create_test_venv",
     "install_wheel",
     "smoke_test",
-    "smoke_test_venv",
     "test_installed",
-    "test_installed_venv",
-    # TaskClasses
-    "Venv",
 ]

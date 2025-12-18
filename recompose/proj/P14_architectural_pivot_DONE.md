@@ -644,11 +644,16 @@ app = recompose.App(
 - [ ] Remove `_run_step.py`
 - [ ] Remove `execute_flow_isolated()`
 
-### Phase 7: Migration & Polish
-- [ ] Migrate examples to new model
-- [ ] Update App class with entry_point and automations
-- [ ] Update documentation
-- [ ] Ensure all tests pass
+### Phase 7: Migration & Polish [DONE]
+- [x] Migrate examples to new model
+  - Deleted `examples/flows/` directory (old flow-based code)
+  - Deleted `examples/tasks/virtual_env.py` (TaskClass removed)
+  - Created `examples/automations/ci.py` with new @automation pattern
+  - Updated `examples/app.py` with automations and dispatchables
+- [x] Update App class with dispatchables parameter
+- [x] Update builtin_tasks.generate_gha for automations/dispatchables
+- [x] Update context.py with get_dispatchables()
+- [x] All 209 tests pass, ruff clean
 
 ---
 

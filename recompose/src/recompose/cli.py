@@ -385,7 +385,7 @@ def _build_registry(
     dispatchables: Sequence[Any],
 ) -> RecomposeContext:
     """
-    Build a RecomposeContext from the commands and automations lists.
+    Build a RecomposeContext from the commands, automations, and dispatchables lists.
 
     Extracts TaskInfo from the wrappers and populates the registries.
     """
@@ -393,6 +393,7 @@ def _build_registry(
 
     tasks: dict[str, TaskInfo] = {}
     automation_registry: dict[str, AutomationInfo] = {}
+    dispatchable_list: list[Any] = []
 
     # Extract tasks from commands
     for item in commands:
@@ -408,12 +409,13 @@ def _build_registry(
             info = auto._automation_info
             automation_registry[info.full_name] = info
 
-    # Note: dispatchables are handled by builtin_tasks.generate_gha
-    # They don't need to be in the registry since they're passed directly
+    # Store dispatchables
+    dispatchable_list.extend(dispatchables)
 
     return RecomposeContext(
         tasks=tasks,
         automations=automation_registry,
+        dispatchables=dispatchable_list,
     )
 
 

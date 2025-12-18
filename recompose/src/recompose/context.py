@@ -191,12 +191,13 @@ class RecomposeContext:
     """
     Global recompose execution context.
 
-    Holds the registries of tasks and automations that were
+    Holds the registries of tasks, automations, and dispatchables that were
     explicitly registered via main(). This replaces the global registries.
     """
 
     tasks: dict[str, TaskInfo] = field(default_factory=dict)
     automations: dict[str, Any] = field(default_factory=dict)  # AutomationInfo
+    dispatchables: list[Any] = field(default_factory=list)  # Dispatchable objects
 
 
 # Context variable for the current task context (per-task)
@@ -248,6 +249,18 @@ def get_automation_registry() -> dict[str, Any]:
     if ctx is None:
         return {}
     return ctx.automations
+
+
+def get_dispatchables() -> list[Any]:
+    """
+    Get the dispatchables list from the current recompose context.
+
+    Returns an empty list if not running in a recompose context.
+    """
+    ctx = _recompose_context.get()
+    if ctx is None:
+        return []
+    return ctx.dispatchables
 
 
 def get_task(name: str) -> TaskInfo | None:

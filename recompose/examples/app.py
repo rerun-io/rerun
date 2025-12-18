@@ -2,30 +2,41 @@
 """
 Recompose unified entrypoint.
 
-This app combines all tasks and flows for the recompose project.
+This app combines all tasks and automations for the recompose project.
 It serves as THE way to run recompose tasks for both development and CI.
 
 Usage:
     ./run --help
     ./run lint
-    ./run format_code
+    ./run format-code
     ./run test
-    ./run ci
 
-Inspect flows:
-    ./run inspect ci
+Inspect automations:
+    ./run inspect --target=ci
+
+Generate GHA workflows:
+    ./run generate-gha
 """
 
 import recompose
 
-from .flows.ci import ci
-from .flows.wheel_test import wheel_test
+from .automations import ci
 from .tasks import (
     build_wheel,
     format_check,
     format_code,
     lint,
     test,
+)
+
+# Create dispatchables for tasks that can be manually triggered
+lint_workflow = recompose.make_dispatchable(lint)
+test_workflow = recompose.make_dispatchable(
+    test,
+    inputs={
+        "verbose": recompose.BoolInput(default=False, description="Show verbose output"),
+        "coverage": recompose.BoolInput(default=False, description="Enable coverage reporting"),
+    },
 )
 
 # Create the app at module level so subprocess isolation can access it
@@ -53,15 +64,10 @@ app = recompose.App(
                 build_wheel,
             ],
         ),
-        recompose.CommandGroup(
-            "Flows",
-            [
-                ci,
-                wheel_test,
-            ],
-        ),
         recompose.builtin_commands(),
     ],
+    automations=[ci],
+    dispatchables=[lint_workflow, test_workflow],
 )
 
 if __name__ == "__main__":
