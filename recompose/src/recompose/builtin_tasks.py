@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .context import dbg, get_working_directory, out
+from .context import dbg, get_cli_command, get_working_directory, out
 from .gh_cli import find_git_root
 from .gha import validate_workflow
 from .result import Err, Ok, Result
@@ -28,12 +28,9 @@ def _get_default_workflows_dir() -> Path | None:
     return None
 
 
-def _workflow_filename(name: str, target_type: str) -> str:
+def _workflow_filename(name: str) -> str:
     """Generate workflow filename with recompose prefix."""
-    if target_type == "automation":
-        return f"recompose_automation_{name}.yml"
-    else:
-        return f"recompose_dispatchable_{name}.yml"
+    return f"recompose_{name}.yml"
 
 
 @task
@@ -44,17 +41,18 @@ def generate_gha(
     check_only: bool = False,
 ) -> Result[list[Path]]:
     """
-    Generate GitHub Actions workflow YAML for automations and dispatchables.
+    Generate GitHub Actions workflow YAML for automations.
 
-    By default, generates workflows for ALL registered automations and dispatchables
+    By default, generates workflows for ALL registered automations
     to .github/workflows/ in the git repository root.
 
-    Workflow files are named:
-    - recompose_automation_<name>.yml for automations
-    - recompose_dispatchable_<name>.yml for dispatchables
+    Workflow files are named recompose_<name>.yml.
+
+    Note: Dispatchables (from make_dispatchable) are automations with
+    workflow_dispatch trigger, so they are included automatically.
 
     Args:
-        target: Specific automation/dispatchable to generate. If not provided, generates all.
+        target: Specific automation to generate. If not provided, generates all.
         output_dir: Output directory for workflow files. Default: .github/workflows/
         check_only: If True, only check if files are up-to-date (don't write).
                    Returns Err if any files would change.
@@ -77,8 +75,8 @@ def generate_gha(
         ./run generate-gha --output-dir=/tmp/workflows
 
     """
-    from .context import get_automation, get_automation_registry, get_dispatchables
-    from .gha import render_automation_jobs, render_dispatchable
+    from .context import get_automation, get_automation_registry
+    from .gha import render_automation_jobs
 
     # Determine output directory
     if output_dir:
@@ -91,14 +89,11 @@ def generate_gha(
 
     # Get configuration
     working_directory = get_working_directory()
-
-    # Build entry point
-    # For simplicity, we use "./run" as default since that's the typical pattern
-    entry_point = "./run"
+    entry_point = get_cli_command()
 
     # Collect targets to generate
-    # (name, target_type, obj, description)
-    targets: list[tuple[str, str, Any, str | None]] = []
+    # (name, obj, description)
+    targets: list[tuple[str, Any, str | None]] = []
 
     def _get_description(info: Any) -> str | None:
         """Extract first line of docstring as description."""
@@ -111,47 +106,26 @@ def generate_gha(
     if target:
         # Specific target
         automation_info = get_automation(target)
-        dispatchable = None
 
-        # Check dispatchables for a match
-        for d in get_dispatchables():
-            if d.info.name == target:
-                dispatchable = d
-                break
-
-        if automation_info is None and dispatchable is None:
+        if automation_info is None:
             auto_names = list(get_automation_registry().keys())
-            disp_names = [d.info.name for d in get_dispatchables()]
             msg = f"'{target}' not found.\n"
             if auto_names:
-                msg += f"Automations: {', '.join(auto_names)}\n"
-            if disp_names:
-                msg += f"Dispatchables: {', '.join(disp_names)}"
+                msg += f"Automations: {', '.join(auto_names)}"
             return Err(msg)
 
-        if automation_info:
-            # Need to find the wrapper from the registry
-            for full_key, auto_info in get_automation_registry().items():
-                if auto_info.name == target or full_key == target:
-                    # Get the wrapper from the stored info
-                    # We need to get the actual wrapper to call .plan()
-                    # The info has a reference to the wrapper
-                    targets.append((auto_info.name, "automation", auto_info, _get_description(auto_info)))
-                    break
-        else:
-            assert dispatchable is not None
-            targets.append((dispatchable.info.name, "dispatchable", dispatchable, _get_description(dispatchable.info)))
-    else:
-        # All automations and dispatchables
+        # Need to find the wrapper from the registry
         for full_key, auto_info in get_automation_registry().items():
-            targets.append((auto_info.name, "automation", auto_info, _get_description(auto_info)))
-        for dispatchable in get_dispatchables():
-            targets.append(
-                (dispatchable.info.name, "dispatchable", dispatchable, _get_description(dispatchable.info))
-            )
+            if auto_info.name == target or full_key == target:
+                targets.append((auto_info.name, auto_info, _get_description(auto_info)))
+                break
+    else:
+        # All automations
+        for full_key, auto_info in get_automation_registry().items():
+            targets.append((auto_info.name, auto_info, _get_description(auto_info)))
 
     if not targets:
-        out("No automations or dispatchables registered.")
+        out("No automations registered.")
         return Ok([])
 
     # Generate workflows
@@ -161,31 +135,23 @@ def generate_gha(
     mode = "Checking" if check_only else "Generating"
     out(f"{mode} {len(targets)} workflow(s) to {workflows_dir}")
 
-    for name, target_type, obj, description in targets:
-        filename = _workflow_filename(name, target_type)
+    for name, obj, description in targets:
+        filename = _workflow_filename(name)
         output_file = workflows_dir / filename
 
         try:
-            if target_type == "automation":
-                # obj is AutomationInfo - need to get the wrapper
-                wrapper = obj.wrapper
-                spec = render_automation_jobs(
-                    wrapper,
-                    entry_point=entry_point,
-                    working_directory=working_directory,
-                )
-            else:
-                # obj is Dispatchable
-                spec = render_dispatchable(
-                    obj,
-                    entry_point=entry_point,
-                    working_directory=working_directory,
-                )
+            # obj is AutomationInfo - need to get the wrapper
+            wrapper = obj.wrapper
+            spec = render_automation_jobs(
+                wrapper,
+                entry_point=entry_point,
+                working_directory=working_directory,
+            )
 
             # Set the output path on the spec
             spec.path = output_file
 
-            yaml_content = spec.to_yaml(include_header=True, source=f"{target_type}: {name}")
+            yaml_content = spec.to_yaml(include_header=True, source=f"automation: {name}")
 
             # Determine status
             if output_file.exists():
@@ -257,7 +223,7 @@ def inspect(*, target: str) -> Result[None]:
     """
     import inspect as py_inspect
 
-    from .context import get_automation, get_dispatchables, get_task
+    from .context import get_automation, get_task
 
     # Try task first
     task_info = get_task(target)
@@ -265,32 +231,23 @@ def inspect(*, target: str) -> Result[None]:
         _print_task_info(task_info, py_inspect)
         return Ok(None)
 
-    # Try automation
+    # Try automation (includes dispatchables, which are automations with workflow_dispatch trigger)
     automation_info = get_automation(target)
     if automation_info is not None:
         _print_automation_info(automation_info, py_inspect)
         return Ok(None)
-
-    # Try dispatchable
-    for dispatchable in get_dispatchables():
-        if dispatchable.info.name == target:
-            _print_dispatchable_info(dispatchable, py_inspect)
-            return Ok(None)
 
     # Not found
     from .context import get_automation_registry, get_task_registry
 
     task_names = list(get_task_registry().keys())
     auto_names = list(get_automation_registry().keys())
-    disp_names = [d.info.name for d in get_dispatchables()]
 
     msg = f"'{target}' not found.\n"
     if task_names:
         msg += f"Tasks: {', '.join(task_names)}\n"
     if auto_names:
-        msg += f"Automations: {', '.join(auto_names)}\n"
-    if disp_names:
-        msg += f"Dispatchables: {', '.join(disp_names)}"
+        msg += f"Automations: {', '.join(auto_names)}"
     return Err(msg)
 
 
@@ -362,29 +319,6 @@ def _print_automation_info(automation_info: Any, py_inspect: Any) -> None:
             out(f"  - {job.job_id}{needs_str}{condition_str}")
     except Exception as e:
         out(f"\nCould not build job plan: {e}")
-
-
-def _print_dispatchable_info(dispatchable: Any, py_inspect: Any) -> None:
-    """Print dispatchable inspection info."""
-    info = dispatchable.info
-    out(f"\nDispatchable: {info.name}")
-
-    # Show underlying task
-    task_info = info.task_info
-    out(f"Task: {task_info.name}")
-    out(f"Module: {task_info.module}")
-
-    if task_info.doc:
-        out(f"\nDescription: {task_info.doc.strip().split(chr(10))[0]}")
-
-    # Show dispatch inputs
-    if info.inputs:
-        out("\nWorkflow Dispatch Inputs:")
-        for name, input_spec in info.inputs.items():
-            type_str = type(input_spec).__name__
-            default_str = f" = {input_spec.default!r}" if input_spec.default is not None else ""
-            required_str = " [required]" if input_spec.required else ""
-            out(f"  --{name}: {type_str}{default_str}{required_str}")
 
 
 def builtin_commands() -> CommandGroup:

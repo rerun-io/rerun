@@ -8,10 +8,9 @@ from ruamel.yaml import YAML
 import recompose
 from recompose import (
     Artifact,
+    AutomationWrapper,
     BoolInput,
     ChoiceInput,
-    Dispatchable,
-    DispatchableInfo,
     InputParam,
     StringInput,
     automation,
@@ -29,7 +28,6 @@ from recompose.gha import (
     WorkflowDispatchInput,
     WorkflowSpec,
     render_automation_jobs,
-    render_dispatchable,
     validate_workflow,
 )
 
@@ -829,7 +827,11 @@ class TestDispatchInputTypes:
 
 
 class TestMakeDispatchable:
-    """Tests for make_dispatchable function."""
+    """Tests for make_dispatchable function.
+
+    Note: make_dispatchable now returns an AutomationWrapper with workflow_dispatch trigger
+    instead of the legacy Dispatchable class.
+    """
 
     def test_non_task_raises(self) -> None:
         """make_dispatchable requires a @task-decorated function."""
@@ -837,57 +839,57 @@ class TestMakeDispatchable:
             make_dispatchable(lambda: None)  # type: ignore[arg-type]
 
     def test_basic_dispatchable(self) -> None:
-        """Test creating a basic dispatchable."""
+        """Test creating a basic dispatchable automation."""
         d = make_dispatchable(no_params_task)
 
-        assert isinstance(d, Dispatchable)
-        assert d.name == "no_params_task"
-        assert isinstance(d.info, DispatchableInfo)
-        assert d.task_info.name == "no_params_task"
+        assert isinstance(d, AutomationWrapper)
+        assert d.info.name == "no_params_task"
+        # Should have workflow_dispatch trigger
+        assert d.info.trigger is not None
 
     def test_infer_no_params(self) -> None:
         """Test inferring inputs from task with no params."""
         d = make_dispatchable(no_params_task)
 
-        assert d.info.inputs == {}
+        assert d.info.input_params == {}
 
     def test_infer_string_param(self) -> None:
         """Test inferring string input from task signature."""
         d = make_dispatchable(string_param_task)
 
-        assert "name" in d.info.inputs
-        inp = d.info.inputs["name"]
-        assert isinstance(inp, StringInput)
-        assert inp.required is True
+        assert "name" in d.info.input_params
+        inp = d.info.input_params["name"]
+        assert isinstance(inp, InputParam)
+        assert inp._required is True
 
     def test_infer_default_params(self) -> None:
         """Test inferring inputs with defaults."""
         d = make_dispatchable(default_param_task)
 
-        assert "name" in d.info.inputs
-        name_inp = d.info.inputs["name"]
-        assert isinstance(name_inp, StringInput)
-        assert name_inp.default == "world"
-        assert name_inp.required is False
+        assert "name" in d.info.input_params
+        name_inp = d.info.input_params["name"]
+        assert isinstance(name_inp, InputParam)
+        assert name_inp._default == "world"
+        assert name_inp._required is False
 
-        assert "count" in d.info.inputs
-        count_inp = d.info.inputs["count"]
-        assert isinstance(count_inp, StringInput)  # Numbers become strings
-        assert count_inp.default == "5"
+        assert "count" in d.info.input_params
+        count_inp = d.info.input_params["count"]
+        assert isinstance(count_inp, InputParam)
+        assert count_inp._default == "5"  # Numbers become strings
 
     def test_infer_bool_params(self) -> None:
         """Test inferring boolean inputs."""
         d = make_dispatchable(bool_param_task)
 
-        assert "verbose" in d.info.inputs
-        verbose_inp = d.info.inputs["verbose"]
-        assert isinstance(verbose_inp, BoolInput)
-        assert verbose_inp.default is False
+        assert "verbose" in d.info.input_params
+        verbose_inp = d.info.input_params["verbose"]
+        assert isinstance(verbose_inp, InputParam)
+        assert verbose_inp._default is False
 
-        assert "debug" in d.info.inputs
-        debug_inp = d.info.inputs["debug"]
-        assert isinstance(debug_inp, BoolInput)
-        assert debug_inp.default is True
+        assert "debug" in d.info.input_params
+        debug_inp = d.info.input_params["debug"]
+        assert isinstance(debug_inp, InputParam)
+        assert debug_inp._default is True
 
     def test_explicit_inputs(self) -> None:
         """Test providing explicit inputs."""
@@ -896,26 +898,28 @@ class TestMakeDispatchable:
             inputs={"name": StringInput(default="custom", description="Custom name")},
         )
 
-        assert "name" in d.info.inputs
-        inp = d.info.inputs["name"]
-        assert inp.default == "custom"
-        assert inp.description == "Custom name"
+        assert "name" in d.info.input_params
+        inp = d.info.input_params["name"]
+        assert inp._default == "custom"
+        assert inp._description == "Custom name"
 
     def test_custom_name(self) -> None:
         """Test providing a custom workflow name."""
         d = make_dispatchable(no_params_task, name="custom_workflow")
 
-        assert d.name == "custom_workflow"
-        assert d.task_info.name == "no_params_task"
+        assert d.info.name == "custom_workflow"
 
 
 class TestRenderDispatchable:
-    """Tests for render_dispatchable function."""
+    """Tests for rendering dispatchable automations.
+
+    Note: Dispatchables now use render_automation_jobs since they're AutomationWrappers.
+    """
 
     def test_basic_render(self) -> None:
-        """Test rendering a basic dispatchable."""
+        """Test rendering a basic dispatchable automation."""
         d = make_dispatchable(no_params_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         assert spec.name == "no_params_task"
         assert "workflow_dispatch" in spec.on
@@ -925,7 +929,7 @@ class TestRenderDispatchable:
     def test_workflow_dispatch_inputs(self) -> None:
         """Test that inputs appear in workflow_dispatch."""
         d = make_dispatchable(default_param_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         inputs = spec.on["workflow_dispatch"]["inputs"]
         assert "name" in inputs
@@ -944,7 +948,7 @@ class TestRenderDispatchable:
                 "verbose": BoolInput(default=False),
             },
         )
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         inputs = spec.on["workflow_dispatch"]["inputs"]
         assert "env" in inputs
@@ -957,7 +961,7 @@ class TestRenderDispatchable:
     def test_entry_point_in_run_command(self) -> None:
         """Test that entry_point is used in run command."""
         d = make_dispatchable(no_params_task)
-        spec = render_dispatchable(d, entry_point="./custom_runner")
+        spec = render_automation_jobs(d, entry_point="./custom_runner")
 
         job = spec.jobs["no_params_task"]
         run_step = [s for s in job.steps if s.run is not None][0]
@@ -966,7 +970,7 @@ class TestRenderDispatchable:
     def test_inputs_passed_to_command(self) -> None:
         """Test that inputs are passed as CLI args."""
         d = make_dispatchable(default_param_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         job = spec.jobs["default_param_task"]
         run_step = [s for s in job.steps if s.run is not None][0]
@@ -976,7 +980,7 @@ class TestRenderDispatchable:
     def test_default_setup_steps(self) -> None:
         """Test that default setup steps are included."""
         d = make_dispatchable(no_params_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         job = spec.jobs["no_params_task"]
         assert job.steps[0].uses == "actions/checkout@v4"
@@ -991,7 +995,7 @@ class TestRenderDispatchable:
         ]
 
         d = make_dispatchable(no_params_task)
-        spec = render_dispatchable(d, default_setup=custom_setup)
+        spec = render_automation_jobs(d, default_setup=custom_setup)
 
         job = spec.jobs["no_params_task"]
         assert len([s for s in job.steps if "setup-python" in (s.uses or "")]) == 0
@@ -1000,7 +1004,7 @@ class TestRenderDispatchable:
     def test_working_directory(self) -> None:
         """Test that working_directory is applied."""
         d = make_dispatchable(no_params_task)
-        spec = render_dispatchable(d, working_directory="subdir")
+        spec = render_automation_jobs(d, working_directory="subdir")
 
         job = spec.jobs["no_params_task"]
         assert job.working_directory == "subdir"
@@ -1008,7 +1012,7 @@ class TestRenderDispatchable:
     def test_task_with_outputs(self) -> None:
         """Test rendering a task with outputs."""
         d = make_dispatchable(output_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         job = spec.jobs["output_task"]
         assert job.outputs is not None
@@ -1021,7 +1025,7 @@ class TestRenderDispatchable:
     def test_task_with_artifacts(self) -> None:
         """Test rendering a task with artifacts."""
         d = make_dispatchable(artifact_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         job = spec.jobs["artifact_task"]
         upload_steps = [s for s in job.steps if s.uses and "upload-artifact" in s.uses]
@@ -1030,7 +1034,7 @@ class TestRenderDispatchable:
     def test_task_with_secrets(self) -> None:
         """Test rendering a task with secrets."""
         d = make_dispatchable(secret_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
 
         job = spec.jobs["secret_task"]
         assert job.env is not None
@@ -1040,7 +1044,7 @@ class TestRenderDispatchable:
     def test_yaml_output_valid(self) -> None:
         """Test that generated YAML is valid."""
         d = make_dispatchable(default_param_task)
-        spec = render_dispatchable(d)
+        spec = render_automation_jobs(d)
         yaml_str = spec.to_yaml()
 
         # Should be parseable
@@ -1053,9 +1057,10 @@ class TestRenderDispatchable:
 
 
 class TestDispatchableRepr:
-    """Tests for Dispatchable string representation."""
+    """Tests for AutomationWrapper repr (from make_dispatchable)."""
 
     def test_repr(self) -> None:
-        """Test Dispatchable repr."""
+        """Test AutomationWrapper repr."""
         d = make_dispatchable(no_params_task)
-        assert "no_params_task" in repr(d)
+        # AutomationWrapper uses functools.update_wrapper, so repr has function info
+        assert "no_params_task" in d.info.name

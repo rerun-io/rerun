@@ -126,14 +126,20 @@ Explicit inputs= only needed when you want to customize (different description, 
 
 ## Completion Criteria
 
-### Phase 1
-- [ ] `make_dispatchable(task)` works without explicit inputs
-- [ ] `App(cli_command="./run")` replaces `python_cmd`
-- [ ] `dispatchables=` removed from App
-- [ ] Examples simplified
-- [ ] All tests pass
+### Phase 1 - COMPLETE ✓
+- [x] `make_dispatchable(task)` works without explicit inputs
+- [x] `App(cli_command="./run")` replaces `python_cmd`
+- [x] `dispatchables=` removed from App
+- [x] Examples simplified
+- [x] All tests pass (209 passed)
 
-### Phase 2
+**Implementation Notes:**
+- `make_dispatchable()` now returns `AutomationWrapper` instead of `Dispatchable`
+- `generate_gha` uses only `render_automation_jobs()` (removed `render_dispatchable()` usage)
+- Workflow files now named `recompose_<name>.yml` (unified naming)
+- Legacy `Dispatchable` and `DispatchableInfo` classes kept for backwards compat
+
+### Phase 2 - TODO
 - [ ] `./run ci` executes the ci automation locally
 - [ ] Jobs run in correct dependency order
 - [ ] Outputs pass between jobs
