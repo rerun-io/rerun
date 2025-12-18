@@ -200,7 +200,7 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity_with_coo
     test_harness.snapshot("transform_many_child_parent_relations_on_single_time_and_entity_with_coordinate_frame_overrides");
 }
 
-/// Tests correct display of transform axes for explicit transforms.
+/// Tests correct display of transform axes for transformations that have a set child frame.
 #[test]
 fn test_transform_axes_for_explicit_transforms() {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
@@ -227,8 +227,7 @@ fn test_transform_axes_for_explicit_transforms() {
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
         setup_camera(ctx, view_id);
 
-        // Override green and blue frames:
-
+        // Override (set) the `TransformAxes3DVisualizer`
         let transforms_override_path = ViewContents::override_path_for_entity(
             view_id,
             &EntityPath::from("all_the_transforms"),

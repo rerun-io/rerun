@@ -6,10 +6,13 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::TransformFrameId;
 use re_sdk_types::{TransformFrameIdHash, archetypes};
 
-/// Frame id registry for resolving frame id hashes back to frame ids.
+/// Provides context around frame id hashes.
 pub struct FrameIdRegistry {
+    /// A lookup table for resolving frame id hashes back to frame ids.
     frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
-    frame_ids_per_entity: IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>,
+
+    /// Holds all frame ids per entity that were logged as a child frame.
+    child_frames_per_entity: IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>,
 }
 
 impl Default for FrameIdRegistry {
@@ -24,11 +27,9 @@ impl Default for FrameIdRegistry {
                 TransformFrameId::from_entity_path(&EntityPath::root()),
             ))
             .collect(),
-            frame_ids_per_entity: std::iter::once((
-                EntityPath::root().hash(),
-                std::iter::once(root_frame_id_hash).collect(),
-            ))
-            .collect(),
+
+            // This is initially empty, because implicit frames are not relevant to this map.
+            child_frames_per_entity: Default::default(),
         }
     }
 }
@@ -37,11 +38,10 @@ impl SizeBytes for FrameIdRegistry {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             frame_id_lookup_table,
-            frame_ids_per_entity,
+            child_frames_per_entity,
         } = self;
 
-        frame_id_lookup_table.total_size_bytes()
-            + frame_ids_per_entity.total_size_bytes()
+        frame_id_lookup_table.total_size_bytes() + child_frames_per_entity.total_size_bytes()
     }
 }
 
@@ -86,8 +86,9 @@ impl FrameIdRegistry {
                             frame_id_string.as_str(),
                         );
 
+                    // Keep track of child frames and which entities they belong to.
                     if component == identifier_child_frame {
-                        self.frame_ids_per_entity
+                        self.child_frames_per_entity
                             .entry(chunk.entity_path().hash())
                             .or_default()
                             .insert(frame_id_hash);
@@ -147,7 +148,7 @@ impl FrameIdRegistry {
     pub fn iter_entities_with_child_frames(
         &self,
     ) -> impl Iterator<Item = (&EntityPathHash, &IntSet<TransformFrameIdHash>)> {
-        self.frame_ids_per_entity.iter()
+        self.child_frames_per_entity.iter()
     }
 
     /// Hashes of all frame ids ever encountered.
