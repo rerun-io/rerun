@@ -383,9 +383,11 @@ class LocalExecutor:
             env["GITHUB_OUTPUT"] = str(output_file)
 
             # Run the subprocess
+            # Note: working_directory is for GHA workflows; when running locally
+            # we're already in the correct directory, so we use cwd=None
             result = subprocess.run(
                 cmd,
-                cwd=self.working_directory,
+                cwd=None,
                 env=env,
                 capture_output=not self.verbose,
                 text=True,
