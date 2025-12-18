@@ -381,6 +381,7 @@ class LocalExecutor:
             # Set up environment
             env = os.environ.copy()
             env["GITHUB_OUTPUT"] = str(output_file)
+            env["RECOMPOSE_SUBPROCESS"] = "1"  # Suppress task headers in subprocess
 
             # Run the subprocess with output streaming
             # We use Popen to stream output line-by-line with proper prefixing
