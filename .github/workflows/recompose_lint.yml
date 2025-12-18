@@ -10,7 +10,7 @@
 # ============================================================================
 name: lint
 on:
-  workflow_dispatch:
+  workflow_dispatch: null
 jobs:
   lint:
     runs-on: ubuntu-latest

@@ -220,6 +220,8 @@ class WorkflowSpec:
         """
         yaml = YAML()
         yaml.default_flow_style = False
+        # Disable YAML anchors/aliases - makes output more readable
+        yaml.representer.ignore_aliases = lambda *args: True
 
         stream = StringIO()
         yaml.dump(self.to_dict(), stream)
