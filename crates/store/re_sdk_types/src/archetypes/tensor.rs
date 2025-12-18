@@ -96,6 +96,12 @@ impl Tensor {
             component_type: Some("rerun.components.ValueRange".into()),
         }
     }
+
+    /// Returns the visualizer type name that corresponds to this archetype.
+    #[inline]
+    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
+        crate::blueprint::components::VisualizerType("Tensor".into())
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
