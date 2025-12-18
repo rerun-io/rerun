@@ -453,15 +453,20 @@ def execute_flow_isolated(
             sys.executable,
             "-m",
             "recompose._run_step",
-            "--script",
-            entry_value,
+        ]
+        # Use --module for module entry points, --script for file paths
+        if entry_type == "module":
+            cmd.extend(["--module", entry_value])
+        else:
+            cmd.extend(["--script", entry_value])
+        cmd.extend([
             "--flow",
             flow_name,
             "--step",
             step_name,
             "--workspace",
             str(ws),
-        ]
+        ])
 
         if is_debug():
             dbg(f"Running: {' '.join(cmd)}")

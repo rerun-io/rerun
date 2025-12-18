@@ -336,10 +336,17 @@ def taskclass(cls: type[T]) -> type[T]:
 
             from .plan import TaskNode
 
-            # Create TaskClassNode first to get its node_id
+            # Generate a deterministic node_id based on class name and position in plan
+            # This ensures the ID is stable across subprocess re-imports
+            class_name = wrapped_cls.__name__.lower()
+            node_count = len(plan.nodes) + 1  # +1 because we're about to add the init node
+            deterministic_id = f"{class_name}_{node_count}"
+
+            # Create TaskClassNode with deterministic ID
             taskclass_node: TaskClassNode[T] = TaskClassNode(
                 cls=wrapped_cls,
                 init_kwargs=kwargs.copy(),
+                node_id=deterministic_id,
             )
 
             # Create init TaskNode with reference to TaskClassNode's node_id
