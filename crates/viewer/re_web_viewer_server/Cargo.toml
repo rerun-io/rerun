@@ -33,7 +33,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true # Will also enable the `__disable_server` feature, meaning the docs will build even without a .wasm binary
 
-
 [features]
 ## This crate embeds the web viewer `.wasm`, and so before building this crate you must build the `.wasm` using `pixi run rerun-build-web-release`.
 ##
@@ -48,18 +47,13 @@ all-features = true # Will also enable the `__disable_server` feature, meaning t
 ## because none of the unit tests actually rely on us serving the `.wasm` file.
 __disable_server = []
 
-## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
-
 [dependencies]
+re_analytics.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 
 document-features.workspace = true
 tiny_http.workspace = true
 thiserror.workspace = true
-
-# Optional dependencies:
-re_analytics = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

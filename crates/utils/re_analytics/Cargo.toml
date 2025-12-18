@@ -24,6 +24,9 @@ default = []
 # During testing, analytics are disabled.
 testing = []
 
+# By default, analytics events are discarded. Set this feature flag to enable them.
+active = []
+
 [dependencies]
 # Internal dependencies:
 re_build_info.workspace = true
