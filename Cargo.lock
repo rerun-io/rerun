@@ -9947,6 +9947,7 @@ name = "re_video"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "bit-vec",
  "cfg_aliases",
  "criterion",
@@ -9961,6 +9962,7 @@ dependencies = [
  "parking_lot",
  "poll-promise",
  "re_byte_size",
+ "re_chunk",
  "re_log",
  "re_mp4",
  "re_rav1d",

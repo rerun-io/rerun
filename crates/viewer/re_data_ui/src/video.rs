@@ -11,7 +11,7 @@ use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
-use re_video::{FrameInfo, StableIndexDeque, VideoDataDescription};
+use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
     ViewerContext, video_stream_time_from_query,
@@ -243,7 +243,8 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
-                        buffer_index: _,
+                        buffer: _,
+                        chunk_id: _,
                         byte_span,
                     } = *sample;
 
@@ -312,17 +313,11 @@ fn decoded_frame_ui(
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
-    video_buffers: &StableIndexDeque<&[u8]>,
 ) {
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
-        ctx.render_ctx(),
-        player_stream_id,
-        video_time,
-        video_buffers,
-    ) {
+    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time) {
         Ok(VideoFrameTexture {
             texture,
             decoder_delay_state,
@@ -590,7 +585,6 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
-        re_sdk_types::datatypes::Blob,
     ),
 }
 
@@ -633,7 +627,7 @@ impl VideoUi {
             return None;
         }
 
-        Some(Self::Asset(result, video_timestamp, blob.clone()))
+        Some(Self::Asset(result, video_timestamp))
     }
 
     pub fn from_components(
@@ -672,11 +666,10 @@ impl VideoUi {
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
                     let time = video_stream_time_from_query(query);
-                    let buffers = video.sample_buffers();
-                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &buffers);
+                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time);
                 }
             }
-            Self::Asset(video_result, timestamp, blob) => {
+            Self::Asset(video_result, timestamp) => {
                 video_asset_result_ui(ui, ui_layout, video_result);
 
                 // Show a mini video player for video blobs:
@@ -700,9 +693,8 @@ impl VideoUi {
                         video_timestamp,
                         video.data_descr().timescale,
                     );
-                    let video_buffers = std::iter::once(blob.as_ref()).collect();
 
-                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &video_buffers);
+                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time);
                 }
             }
         }

@@ -157,7 +157,6 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
                     video_stream_time_from_query(query_context.query),
-                    &video.sample_buffers(),
                 )
             };
 

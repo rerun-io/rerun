@@ -287,10 +287,10 @@ impl VideoDataDescription {
                         return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
                     }
                 }
-                SampleMetadataState::Skip => {
+                SampleMetadataState::Skip(_) => {
                     return Err(format!("Keyframe {keyframe} refers to a skipped sample"));
                 }
-                SampleMetadataState::Unloaded => {
+                SampleMetadataState::Unloaded(_) => {
                     return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
                 }
             }
@@ -856,22 +856,33 @@ impl VideoDataDescription {
 #[derive(Debug, Clone)]
 pub enum SampleMetadataState {
     Present(SampleMetadata),
-    Skip,
-    Unloaded,
+    Skip(re_chunk::ChunkId),
+    Unloaded(re_chunk::ChunkId),
 }
 
 impl SampleMetadataState {
     pub fn sample(&self) -> Option<&SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Skip | Self::Unloaded => None,
+            Self::Skip(_) | Self::Unloaded(_) => None,
         }
     }
 
     pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Skip | Self::Unloaded => None,
+            Self::Skip(_) | Self::Unloaded(_) => None,
+        }
+    }
+
+    pub fn unload(&mut self) {
+        *self = Self::Unloaded(self.source_chunk());
+    }
+
+    pub fn source_chunk(&self) -> re_chunk::ChunkId {
+        match self {
+            Self::Present(sample) => sample.chunk_id,
+            Self::Skip(chunk_id) | Self::Unloaded(chunk_id) => *chunk_id,
         }
     }
 }
@@ -880,7 +891,7 @@ impl re_byte_size::SizeBytes for SampleMetadataState {
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
-            Self::Skip | Self::Unloaded => 0,
+            Self::Skip(c) | Self::Unloaded(c) => c.heap_size_bytes(),
         }
     }
 }
@@ -939,10 +950,13 @@ pub struct SampleMetadata {
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
 
-    /// Index of the data buffer in which this sample is stored.
-    pub buffer_index: usize,
+    /// The raw buffer this sample is in.
+    pub buffer: arrow::buffer::Buffer,
 
-    /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
+    /// The chunk this sample comes from.
+    pub chunk_id: re_chunk::ChunkId,
+
+    /// Offset and length within [`SampleMetadata::buffer`].
     pub byte_span: Span<u32>,
 }
 
@@ -966,9 +980,8 @@ impl SampleMetadata {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
-        let buffer = *buffers.get(self.buffer_index)?;
-        let data = buffer.get(self.byte_span.range_usize())?.to_vec();
+    pub fn get(&self, sample_idx: SampleIndex) -> Option<Chunk> {
+        let data = self.buffer.get(self.byte_span.range_usize())?.to_vec();
 
         Some(Chunk {
             data,
@@ -1078,7 +1091,8 @@ mod tests {
                     decode_timestamp: Time(dts),
                     presentation_timestamp: Time(pts),
                     duration: Some(Time(1)),
-                    buffer_index: 0,
+                    buffer: arrow::buffer::Buffer::default(),
+                    chunk_id: re_chunk::ChunkId::new(),
                     byte_span: Default::default(),
                 })
             })
@@ -1199,13 +1213,11 @@ mod tests {
         )
         .unwrap();
 
-        let buffers: crate::StableIndexDeque<&[u8]> = std::iter::once(data.as_slice()).collect();
-
         let mut idr_count = 0;
         let mut non_idr_count = 0;
 
         for (sample_idx, sample) in video_data.samples.iter_indexed() {
-            let chunk = sample.sample().unwrap().get(&buffers, sample_idx).unwrap();
+            let chunk = sample.sample().unwrap().get(sample_idx).unwrap();
             let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
 
             if chunk.is_sync {
