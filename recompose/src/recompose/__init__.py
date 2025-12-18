@@ -28,7 +28,7 @@ from .automation import (
 )
 from .builtin_tasks import builtin_commands, generate_gha, inspect
 from .cli import main
-from .command_group import CommandGroup, Config
+from .command_group import App, CommandGroup, Config
 from .conditional import run_if
 from .context import (
     dbg,
@@ -114,6 +114,7 @@ __all__ = [
     "run_if",
     # CLI
     "main",
+    "App",
     "Config",
     "CommandGroup",
     # Workspace (for subprocess isolation)

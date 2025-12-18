@@ -17,6 +17,9 @@ Usage:
 The script/module is imported to define the flows/tasks, then the specified step
 is executed. This allows subprocess isolation to work with any Python file that
 defines flows, without requiring that file to set up a recompose CLI.
+
+When the module contains a recompose.App instance (recommended pattern), the app's
+configuration (working_directory, python_cmd, etc.) is automatically applied.
 """
 
 from __future__ import annotations
@@ -26,10 +29,54 @@ import importlib
 import importlib.util
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .command_group import App
+    from .flow import FlowInfo
+
+
+def _find_app(module: ModuleType) -> App | None:
+    """Find a recompose.App instance in the module."""
+    from .command_group import App
+
+    for attr_name in dir(module):
+        attr = getattr(module, attr_name)
+        if isinstance(attr, App):
+            return attr
+    return None
+
+
+def _find_flow_info(module: ModuleType, flow_name: str) -> FlowInfo | None:
+    """Find a FlowInfo by name from module attributes."""
+    from .flow import FlowInfo
+
+    for attr_name in dir(module):
+        attr = getattr(module, attr_name)
+        if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
+            if attr._flow_info.name == flow_name:
+                return attr._flow_info
+    return None
+
+
+def _get_available_flows(module: ModuleType) -> list[str]:
+    """Get list of available flow names from module attributes."""
+    from .flow import FlowInfo
+
+    flows = []
+    for attr_name in dir(module):
+        attr = getattr(module, attr_name)
+        if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
+            flows.append(attr._flow_info.name)
+    return flows
 
 
 def main() -> None:
     """Execute a single step from a flow defined in a script or module."""
+    from .context import set_entry_point
+    from .flow import FlowInfo
+
     parser = argparse.ArgumentParser(description="Execute a single flow step")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--script", type=Path, help="Path to the script defining the flow")
@@ -44,8 +91,14 @@ def main() -> None:
     step_name: str = args.step
     workspace: Path = args.workspace
 
+    # Set the entry point so tasks like generate_gha can determine the correct script path
+    if args.module:
+        set_entry_point("module", args.module)
+    else:
+        set_entry_point("script", str(args.script))
+
     # Import the script/module to define flows/tasks
-    module = None
+    module: ModuleType | None = None
 
     if args.module:
         # Import by module name
@@ -75,25 +128,58 @@ def main() -> None:
             print(f"Error loading script {script_path}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Find the flow - look through the module's attributes for FlowWrapper instances
-    from .flow import FlowInfo
+    assert module is not None
 
-    flow_info: FlowInfo | None = None
+    # Look for a recompose.App instance in the module
+    # This is the recommended pattern - it provides config and registrations
+    app = _find_app(module)
 
-    for attr_name in dir(module):
-        attr = getattr(module, attr_name)
-        if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
-            if attr._flow_info.name == flow_name:
-                flow_info = attr._flow_info
-                break
+    if app is not None:
+        # Use the app to set up context (working_directory, python_cmd, registries)
+        app.setup_context()
 
-    if flow_info is None:
-        print(f"Error: Flow '{flow_name}' not found in {script_path}", file=sys.stderr)
-        available = [
-            getattr(module, n)._flow_info.name for n in dir(module) if hasattr(getattr(module, n), "_flow_info")
-        ]
-        print(f"Available flows: {available}", file=sys.stderr)
-        sys.exit(1)
+        # Find the flow from the app's context
+        from .context import get_flow, get_flow_registry
+
+        flow_info = get_flow(flow_name)
+        if flow_info is None:
+            available = list(get_flow_registry().keys())
+            print(f"Error: Flow '{flow_name}' not found in app", file=sys.stderr)
+            print(f"Available flows: {available}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Fallback: scan module for FlowWrapper/TaskWrapper directly
+        # This works for simple cases but won't have config like working_directory
+        flow_info = _find_flow_info(module, flow_name)
+
+        if flow_info is None:
+            available = _get_available_flows(module)
+            print(f"Error: Flow '{flow_name}' not found in module", file=sys.stderr)
+            print(f"Available flows: {available}", file=sys.stderr)
+            sys.exit(1)
+
+        # Set up minimal context from module scanning
+        from .context import RecomposeContext, set_recompose_context
+        from .task import TaskInfo
+
+        all_flows: dict[str, FlowInfo] = {}
+        all_tasks: dict[str, TaskInfo] = {}
+
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if hasattr(attr, "_flow_info") and isinstance(attr._flow_info, FlowInfo):
+                fi = attr._flow_info
+                all_flows[fi.name] = fi
+            if hasattr(attr, "_task_info") and isinstance(attr._task_info, TaskInfo):
+                ti = attr._task_info
+                all_tasks[ti.name] = ti
+
+        ctx = RecomposeContext(
+            tasks=all_tasks,
+            flows=all_flows,
+            automations={},
+        )
+        set_recompose_context(ctx)
 
     # Execute the step
     from .local_executor import run_step

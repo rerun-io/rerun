@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .flow import FlowWrapper
@@ -67,3 +68,116 @@ class CommandGroup:
         """Validate that commands list is not empty."""
         if not self.commands:
             raise ValueError(f"CommandGroup '{self.name}' must have at least one command")
+
+
+class App:
+    """
+    Recompose application that holds configuration and command registration.
+
+    Create an App instance at module level (outside of `if __name__ == "__main__"`)
+    so that subprocess invocations can import the module and access the app's
+    configuration and registered commands.
+
+    Example
+    -------
+        # examples/app.py
+        import recompose
+        from .tasks import lint, test
+        from .flows import ci
+
+        app = recompose.App(
+            config=recompose.Config(
+                python_cmd="uv run python",
+                working_directory="recompose",
+            ),
+            commands=[
+                recompose.CommandGroup("Quality", [lint]),
+                recompose.CommandGroup("Flows", [ci]),
+            ],
+        )
+
+        if __name__ == "__main__":
+            app.main()
+
+    """
+
+    def __init__(
+        self,
+        *,
+        config: Config | None = None,
+        commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] | None = None,
+        automations: Sequence[Any] | None = None,
+        name: str | None = None,
+    ) -> None:
+        """
+        Initialize the recompose application.
+
+        Args:
+            config: Configuration for the CLI (python_cmd, working_directory, etc.).
+            commands: List of CommandGroups, tasks, or flows to expose as CLI commands.
+            automations: List of automations to register for GHA workflow generation.
+            name: Optional name for the CLI group. Defaults to the script name.
+
+        """
+        import sys
+
+        self.config = config or Config()
+        self.commands: Sequence[CommandGroup | TaskWrapper[Any, Any] | FlowWrapper] = commands or []
+        self.automations: Sequence[Any] = automations or []
+        self.name = name
+
+        # Capture the caller's module info at instantiation time
+        # This is used later to determine the entry point for subprocess isolation
+        caller_frame = sys._getframe(1)
+        caller_spec = caller_frame.f_globals.get("__spec__")
+        if caller_spec is not None and caller_spec.name:
+            self._entry_point: tuple[str, str] = ("module", caller_spec.name)
+        else:
+            # Fallback to script path from the caller's __file__
+            caller_file = caller_frame.f_globals.get("__file__", sys.argv[0])
+            self._entry_point = ("script", caller_file)
+
+    def main(self) -> None:
+        """
+        Build and run the CLI.
+
+        This should be called inside `if __name__ == "__main__":` to avoid
+        running the CLI when the module is imported.
+        """
+        from .cli import main as cli_main
+
+        cli_main(
+            name=self.name,
+            config=self.config,
+            commands=self.commands,
+            automations=self.automations,
+            entry_point=self._entry_point,
+        )
+
+    def setup_context(self) -> None:
+        """
+        Set up the global context from this app's configuration.
+
+        Called by _run_step.py when executing steps in subprocess isolation.
+        This ensures that tasks like generate_gha have access to the correct
+        configuration (working_directory, python_cmd, etc.) even when not
+        running through main().
+        """
+        from .cli import _build_registry
+        from .context import (
+            set_entry_point,
+            set_python_cmd,
+            set_recompose_context,
+            set_working_directory,
+        )
+
+        # Set config values
+        set_python_cmd(self.config.python_cmd)
+        set_working_directory(self.config.working_directory)
+
+        # Set entry point (for GHA workflow generation)
+        set_entry_point(self._entry_point[0], self._entry_point[1])
+
+        # Build and set the registry
+        recompose_ctx = _build_registry(self.commands, self.automations or [])
+        set_recompose_context(recompose_ctx)
