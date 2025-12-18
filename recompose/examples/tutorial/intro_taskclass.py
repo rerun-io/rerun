@@ -58,7 +58,7 @@ class Counter:
         self.value = start
         recompose.dbg(f"Counter initialized with value={self.value}")
 
-    @recompose.task
+    @recompose.method
     def increment(self, *, by: int = 1) -> recompose.Result[int]:
         """
         Increment the counter.
@@ -72,7 +72,7 @@ class Counter:
         recompose.out(f"Incremented {old_value} by {by} = {self.value}")
         return recompose.Ok(self.value)
 
-    @recompose.task
+    @recompose.method
     def decrement(self, *, by: int = 1) -> recompose.Result[int]:
         """Decrement the counter."""
         old_value = self.value
@@ -80,7 +80,7 @@ class Counter:
         recompose.out(f"Decremented {old_value} by {by} = {self.value}")
         return recompose.Ok(self.value)
 
-    @recompose.task
+    @recompose.method
     def show(self) -> recompose.Result[int]:
         """Show the current counter value."""
         recompose.out(f"Counter value: {self.value}")
@@ -114,7 +114,7 @@ class FileOps:
         self.directory = Path(directory)
         recompose.dbg(f"FileOps initialized for: {self.directory}")
 
-    @recompose.task
+    @recompose.method
     def list(self, *, long: bool = False) -> recompose.Result[int]:
         """
         List files in the directory.
@@ -133,7 +133,7 @@ class FileOps:
         result = recompose.run(*args)
         return recompose.Ok(result.returncode)
 
-    @recompose.task
+    @recompose.method
     def count(self) -> recompose.Result[int]:
         """Count items in the directory."""
         if not self.directory.exists():
@@ -143,7 +143,7 @@ class FileOps:
         recompose.out(f"Found {len(items)} items in {self.directory}")
         return recompose.Ok(len(items))
 
-    @recompose.task
+    @recompose.method
     def size(self) -> recompose.Result[int]:
         """Get total size of files in the directory."""
         if not self.directory.exists():

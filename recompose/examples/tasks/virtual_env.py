@@ -66,7 +66,7 @@ class Venv:
         """Path to the venv's Python executable."""
         return self.location / "bin" / "python"
 
-    @recompose.task
+    @recompose.method
     def install_wheel(self, *, wheel: str, with_test_deps: bool = True) -> recompose.Result[None]:
         """
         Install a wheel into this virtual environment.
