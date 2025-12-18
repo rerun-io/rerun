@@ -90,8 +90,8 @@ class Example:
 
 def main() -> None:
     # force UTF-8 so emoji and such work on Windows
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace") # type: ignore[attr-defined,union-attr]
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace") # type: ignore[attr-defined,union-attr]
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
 
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
