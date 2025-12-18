@@ -98,6 +98,52 @@ def topological_sort(jobs: list[JobSpec]) -> list[JobSpec]:
     return result
 
 
+def _group_jobs_by_level(jobs: list[JobSpec]) -> list[list[JobSpec]]:
+    """
+    Group jobs into levels for parallel execution.
+
+    Jobs at the same level have no dependencies on each other and can run in parallel.
+    Level N+1 jobs depend on level N jobs completing.
+
+    Returns a list of levels, where each level is a list of jobs that can run in parallel.
+    Raises ValueError if there's a cycle.
+    """
+    if not jobs:
+        return []
+
+    job_map = {j.job_id: j for j in jobs}
+    in_degree: dict[str, int] = {j.job_id: 0 for j in jobs}
+    dependents: dict[str, list[str]] = {j.job_id: [] for j in jobs}
+
+    for job in jobs:
+        for dep in job.get_all_dependencies():
+            if dep.job_id in job_map:
+                in_degree[job.job_id] += 1
+                dependents[dep.job_id].append(job.job_id)
+
+    # Group by levels using modified Kahn's algorithm
+    levels: list[list[JobSpec]] = []
+    remaining = set(job_map.keys())
+
+    while remaining:
+        # Find all jobs with no remaining dependencies
+        level = [job_map[jid] for jid in remaining if in_degree[jid] == 0]
+
+        if not level:
+            # Cycle detected
+            raise ValueError(f"Dependency cycle detected involving jobs: {list(remaining)}")
+
+        levels.append(level)
+
+        # Remove this level from consideration
+        for job in level:
+            remaining.remove(job.job_id)
+            for dependent_id in dependents[job.job_id]:
+                in_degree[dependent_id] -= 1
+
+    return levels
+
+
 def _resolve_input_value(
     value: Any,
     job_outputs: dict[str, dict[str, str]],
@@ -288,9 +334,9 @@ class LocalExecutor:
                 elapsed_seconds=time.perf_counter() - start_time,
             )
 
-        # Topologically sort jobs
+        # Group jobs into levels for parallel execution
         try:
-            sorted_jobs = topological_sort(jobs)
+            levels = _group_jobs_by_level(jobs)
         except ValueError as e:
             console.print(f"[red]Error:[/red] {e}")
             return AutomationResult(
@@ -300,22 +346,78 @@ class LocalExecutor:
             )
 
         if self.verbose:
-            job_order = " → ".join(j.job_id for j in sorted_jobs)
-            console.print(f"[dim]Execution order: {job_order}[/dim]")
+            level_strs = []
+            for level in levels:
+                if len(level) == 1:
+                    level_strs.append(level[0].job_id)
+                else:
+                    level_strs.append(f"[{', '.join(j.job_id for j in level)}]")
+            console.print(f"[dim]Execution order: {' → '.join(level_strs)}[/dim]")
 
-        # Execute jobs in order
+        # Execute jobs level by level (parallel within each level)
         job_outputs: dict[str, dict[str, str]] = {}
         job_results: list[JobResult] = []
+        failed_jobs: set[str] = set()
 
-        for job_spec in sorted_jobs:
-            result = self._execute_job(job_spec, job_outputs, input_params)
-            job_results.append(result)
+        for level in levels:
+            # Filter out jobs whose dependencies failed
+            runnable = [j for j in level if not any(dep.job_id in failed_jobs for dep in j.get_all_dependencies())]
+            skipped = [j for j in level if j not in runnable]
 
-            if result.success:
-                job_outputs[job_spec.job_id] = result.outputs
+            # Mark skipped jobs
+            for job_spec in skipped:
+                job_results.append(
+                    JobResult(
+                        job_id=job_spec.job_id,
+                        success=False,
+                        elapsed_seconds=0,
+                        error="Skipped due to failed dependency",
+                    )
+                )
+                failed_jobs.add(job_spec.job_id)
+
+            if not runnable:
+                continue
+
+            # Run jobs in parallel (or sequentially if only one)
+            if len(runnable) == 1:
+                # Single job - run directly with live output
+                result = self._execute_job(runnable[0], job_outputs, input_params, buffer_output=False)
+                job_results.append(result)
+                if result.success:
+                    job_outputs[runnable[0].job_id] = result.outputs
+                else:
+                    failed_jobs.add(runnable[0].job_id)
             else:
-                # Stop on first failure
-                break
+                # Multiple jobs - run in parallel with buffered output
+                from concurrent.futures import ThreadPoolExecutor
+
+                # Show that we're running jobs in parallel
+                job_names = ", ".join(j.job_id for j in runnable)
+                console.print(f"\n  [bold cyan]⊕[/bold cyan] Running in parallel: [bold]{job_names}[/bold]")
+
+                results_map: dict[str, JobResult] = {}
+                with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
+                    futures = {
+                        executor.submit(
+                            self._execute_job, job_spec, job_outputs, input_params, buffer_output=True
+                        ): job_spec
+                        for job_spec in runnable
+                    }
+                    for future in futures:
+                        job_spec = futures[future]
+                        result = future.result()
+                        results_map[job_spec.job_id] = result
+
+                # Print results in consistent order
+                for job_spec in runnable:
+                    result = results_map[job_spec.job_id]
+                    job_results.append(result)
+                    self._print_job_result(job_spec, result)
+                    if result.success:
+                        job_outputs[job_spec.job_id] = result.outputs
+                    else:
+                        failed_jobs.add(job_spec.job_id)
 
         # Summary
         elapsed = time.perf_counter() - start_time
@@ -346,8 +448,21 @@ class LocalExecutor:
         job_spec: JobSpec,
         job_outputs: dict[str, dict[str, str]],
         input_params: dict[str, Any],
+        buffer_output: bool = False,
     ) -> JobResult:
-        """Execute a single job as a subprocess."""
+        """
+        Execute a single job as a subprocess.
+
+        Args:
+            job_spec: The job to execute
+            job_outputs: Outputs from previously completed jobs
+            input_params: Input parameter values
+            buffer_output: If True, don't print output (for parallel execution)
+
+        Returns:
+            JobResult with success status, outputs, and captured output lines
+
+        """
         start_time = time.perf_counter()
         job_id = job_spec.job_id
         task_name = job_spec.task_info.name
@@ -359,14 +474,17 @@ class LocalExecutor:
         cli_args = _build_cli_args(job_spec.inputs, job_outputs, input_params)
         cmd = [self.cli_command, cli_task_name] + cli_args
 
-        console.print(f"\n  [bold cyan]→[/bold cyan] [bold]{job_id}[/bold]", end="")
-        if self.verbose:
-            console.print(f" [dim]({' '.join(cmd)})[/dim]")
-        else:
-            console.print()
+        # Print job header (unless buffering)
+        if not buffer_output:
+            console.print(f"\n  [bold cyan]→[/bold cyan] [bold]{job_id}[/bold]", end="")
+            if self.verbose:
+                console.print(f" [dim]({' '.join(cmd)})[/dim]")
+            else:
+                console.print()
 
         if self.dry_run:
-            console.print(f"    [dim]Would run: {' '.join(cmd)}[/dim]")
+            if not buffer_output:
+                console.print(f"    [dim]Would run: {' '.join(cmd)}[/dim]")
             return JobResult(
                 job_id=job_id,
                 success=True,
@@ -383,8 +501,7 @@ class LocalExecutor:
             env["GITHUB_OUTPUT"] = str(output_file)
             env["RECOMPOSE_SUBPROCESS"] = "1"  # Suppress task headers in subprocess
 
-            # Run the subprocess with output streaming
-            # We use Popen to stream output line-by-line with proper prefixing
+            # Run the subprocess
             process = subprocess.Popen(
                 cmd,
                 cwd=None,
@@ -394,50 +511,71 @@ class LocalExecutor:
                 text=True,
             )
 
-            # Stream output with tree-style prefix
+            # Collect output
             prefix = "    │ "
             output_lines: list[str] = []
             assert process.stdout is not None
             for line in process.stdout:
                 line = line.rstrip("\n")
                 output_lines.append(line)
-                if self.verbose:
+                # Stream output if not buffering and verbose
+                if not buffer_output and self.verbose:
                     console.print(f"[dim]{prefix}[/dim]{line}")
 
             process.wait()
             elapsed = time.perf_counter() - start_time
 
-            if process.returncode == 0:
-                # Parse outputs
-                outputs = _parse_github_output(output_file)
-                console.print(f"    [green]✓[/green] completed in {elapsed:.2f}s")
-                if outputs and self.verbose:
-                    for k, v in outputs.items():
-                        console.print(f"    [dim]output: {k}={v}[/dim]")
-                return JobResult(
-                    job_id=job_id,
-                    success=True,
-                    elapsed_seconds=elapsed,
-                    outputs=outputs,
-                )
-            else:
-                console.print(f"    [red]✗[/red] failed in {elapsed:.2f}s")
-                if not self.verbose and output_lines:
-                    # Show last few lines of output as error context
-                    error_lines = output_lines[-10:]
-                    for line in error_lines:
-                        console.print(f"[dim]{prefix}[/dim]{line}")
-                return JobResult(
-                    job_id=job_id,
-                    success=False,
-                    elapsed_seconds=elapsed,
-                    error="\n".join(output_lines[-10:]) if output_lines else "Unknown error",
-                )
+            # Parse outputs
+            outputs = _parse_github_output(output_file)
+
+            # Create result with captured output
+            result = JobResult(
+                job_id=job_id,
+                success=process.returncode == 0,
+                elapsed_seconds=elapsed,
+                outputs=outputs if process.returncode == 0 else {},
+                error="\n".join(output_lines[-10:]) if process.returncode != 0 and output_lines else None,
+            )
+            # Store output lines for later printing
+            result._output_lines = output_lines  # type: ignore[attr-defined]
+
+            # Print result (unless buffering)
+            if not buffer_output:
+                self._print_job_result(job_spec, result, show_header=False)
+
+            return result
 
         finally:
             # Clean up temp file
             if output_file.exists():
                 output_file.unlink()
+
+    def _print_job_result(self, job_spec: JobSpec, result: JobResult, show_header: bool = True) -> None:
+        """Print the result of a job execution."""
+        prefix = "    │ "
+        output_lines: list[str] = getattr(result, "_output_lines", [])
+
+        # Print header
+        if show_header:
+            console.print(f"\n  [bold cyan]→[/bold cyan] [bold]{result.job_id}[/bold]")
+
+        # Print verbose output if enabled
+        if self.verbose and output_lines:
+            for line in output_lines:
+                console.print(f"[dim]{prefix}[/dim]{line}")
+
+        if result.success:
+            console.print(f"    [green]✓[/green] completed in {result.elapsed_seconds:.2f}s")
+            if result.outputs and self.verbose:
+                for k, v in result.outputs.items():
+                    console.print(f"    [dim]output: {k}={v}[/dim]")
+        else:
+            console.print(f"    [red]✗[/red] failed in {result.elapsed_seconds:.2f}s")
+            if not self.verbose and output_lines:
+                # Show last few lines of output as error context
+                error_lines = output_lines[-10:]
+                for line in error_lines:
+                    console.print(f"[dim]{prefix}[/dim]{line}")
 
 
 def execute_automation(

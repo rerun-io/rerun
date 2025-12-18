@@ -164,7 +164,8 @@ def _build_command(task_info: TaskInfo) -> click.Command:
         task_name = task_info.name
 
         # Check if running as subprocess of automation (suppress headers)
-        quiet_mode = os.environ.get("RECOMPOSE_SUBPROCESS") == "1"
+        # Clear it immediately so it doesn't propagate to grandchild processes
+        quiet_mode = os.environ.pop("RECOMPOSE_SUBPROCESS", None) == "1"
 
         # Start timing
         start_time = time.perf_counter()
