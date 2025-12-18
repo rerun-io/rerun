@@ -65,3 +65,15 @@ def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: 
         assert returned_schema == original_schema
     finally:
         table_entry.delete()
+
+
+@pytest.mark.creates_table
+def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
+    table_name = "created-table"
+
+    schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
+    with pytest.raises(
+        ValueError,
+        match="sql parser error: Unexpected token in identifier: -",
+    ):
+        _ = entry_factory.create_table(table_name, schema, tmp_path.absolute().as_uri())
