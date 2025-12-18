@@ -139,13 +139,19 @@ Explicit inputs= only needed when you want to customize (different description, 
 - Workflow files now named `recompose_<name>.yml` (unified naming)
 - Legacy `Dispatchable` and `DispatchableInfo` classes kept for backwards compat
 
-### Phase 2 - TODO
-- [ ] `./run ci` executes the ci automation locally
-- [ ] Jobs run in correct dependency order
-- [ ] Outputs pass between jobs
-- [ ] InputParams become CLI arguments
-- [ ] Nice progress/result reporting
-- [ ] All tests pass
+### Phase 2 - COMPLETE ✓
+- [x] `./run ci` executes the ci automation locally
+- [x] Jobs run in correct dependency order (topological sort)
+- [x] Outputs pass between jobs (via GITHUB_OUTPUT temp files)
+- [x] InputParams become CLI arguments
+- [x] Nice progress/result reporting (rich console output)
+- [x] All tests pass (234 tests, 25 new for local executor)
+
+**Implementation Notes:**
+- New `local_executor.py` module with `LocalExecutor` class
+- Jobs executed as subprocesses: `./run task-name --arg=value`
+- `--dry-run` and `--verbose` options for all automation commands
+- Automations appear in "Automations" group in CLI help
 
 ---
 

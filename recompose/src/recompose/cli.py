@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import inspect
+import sys
 import time
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast, get_args, get_origin
+from typing import TYPE_CHECKING, Any, cast, get_args, get_origin
 
 import click
 from rich.console import Console
@@ -23,6 +24,9 @@ from .context import (
 )
 from .result import Result
 from .task import TaskInfo, TaskWrapper
+
+if TYPE_CHECKING:
+    from .jobs import AutomationInfo, AutomationWrapper
 
 console = Console()
 
@@ -210,6 +214,106 @@ def _build_command(task_info: TaskInfo) -> click.Command:
     return cmd
 
 
+def _build_automation_command(
+    automation_wrapper: AutomationWrapper,
+    cli_command: str,
+    working_directory: str | None,
+) -> click.Command:
+    """Build a Click command from an automation."""
+
+    info = automation_wrapper.info
+    params: list[click.Parameter] = []
+
+    # Add common automation options
+    params.append(
+        click.Option(
+            ["--dry-run"],
+            is_flag=True,
+            default=False,
+            help="Show what would be run without executing",
+        )
+    )
+    params.append(
+        click.Option(
+            ["--verbose", "-v"],
+            is_flag=True,
+            default=False,
+            help="Show verbose output",
+        )
+    )
+
+    # Add options for each InputParam
+    for param_name, input_param in info.input_params.items():
+        cli_name = _to_kebab_case(param_name)
+        has_default = input_param._default is not None
+        required = input_param._required
+
+        # Determine type from choices or default
+        if input_param._choices:
+            click_type: Any = click.Choice(input_param._choices)
+        elif isinstance(input_param._default, bool):
+            # Bool flag
+            params.append(
+                click.Option(
+                    [f"--{cli_name}/--no-{cli_name}"],
+                    default=input_param._default,
+                    help=input_param._description or f"(default: {input_param._default})",
+                )
+            )
+            continue
+        elif isinstance(input_param._default, int):
+            click_type = click.INT
+        elif isinstance(input_param._default, float):
+            click_type = click.FLOAT
+        else:
+            click_type = click.STRING
+
+        option_kwargs: dict[str, Any] = {
+            "type": click_type,
+            "required": required,
+            "help": input_param._description,
+        }
+        if has_default:
+            option_kwargs["default"] = input_param._default
+
+        params.append(click.Option([f"--{cli_name}"], **option_kwargs))
+
+    def callback(dry_run: bool, verbose: bool, **kwargs: Any) -> None:
+        """Execute the automation locally."""
+        from .local_executor import LocalExecutor
+
+        # Convert kebab-case back to snake_case for kwargs
+        input_params = {}
+        for param_name in info.input_params:
+            cli_name = _to_kebab_case(param_name)
+            if cli_name in kwargs:
+                input_params[param_name] = kwargs[cli_name]
+            elif param_name in kwargs:
+                input_params[param_name] = kwargs[param_name]
+
+        executor = LocalExecutor(
+            cli_command=cli_command,
+            working_directory=working_directory,
+            dry_run=dry_run,
+            verbose=verbose,
+        )
+
+        result = executor.execute(automation_wrapper, **input_params)
+
+        if not result.success:
+            sys.exit(1)
+
+    # Build the command
+    cmd = click.Command(
+        name=_to_kebab_case(info.name),
+        callback=callback,
+        params=params,
+        help=info.doc or f"Run the {info.name} automation locally",
+    )
+
+    return cmd
+
+
 class GroupedClickGroup(click.Group):
     """Click group that displays commands organized by groups in help."""
 
@@ -253,6 +357,9 @@ class GroupedClickGroup(click.Group):
 def _build_grouped_cli(
     name: str | None,
     commands: Sequence[CommandGroup | TaskWrapper[Any, Any]],
+    automations: Sequence[Any] | None = None,
+    cli_command: str = "./run",
+    working_directory: str | None = None,
 ) -> GroupedClickGroup:
     """Build a Click CLI with grouped commands."""
     # Validate no duplicate command names
@@ -282,6 +389,12 @@ def _build_grouped_cli(
             # Bare task (not in a group)
             _add_command_to_cli(cli, item, "Other", seen_names)
 
+    # Add automation commands
+    if automations:
+        for auto in automations:
+            if hasattr(auto, "_automation_info"):
+                _add_automation_to_cli(cli, auto, "Automations", seen_names, cli_command, working_directory)
+
     return cli
 
 
@@ -310,6 +423,34 @@ def _add_command_to_cli(
 
     # Build the Click command
     cmd = _build_command(info)
+
+    cli.add_command(cmd)
+    cli.command_groups[cmd_name] = group_name
+
+
+def _add_automation_to_cli(
+    cli: GroupedClickGroup,
+    automation_wrapper: AutomationWrapper,
+    group_name: str,
+    seen_names: dict[str, str],
+    cli_command: str,
+    working_directory: str | None,
+) -> None:
+    """Add an automation to the CLI, checking for duplicates."""
+    info = automation_wrapper.info
+
+    # Use kebab-case for CLI command names
+    cmd_name = _to_kebab_case(info.name)
+
+    # Check for duplicate names
+    if cmd_name in seen_names:
+        raise ValueError(
+            f"Duplicate command name '{cmd_name}': found in both '{seen_names[cmd_name]}' and '{group_name}'"
+        )
+    seen_names[cmd_name] = group_name
+
+    # Build the Click command
+    cmd = _build_automation_command(automation_wrapper, cli_command, working_directory)
 
     cli.add_command(cmd)
     cli.command_groups[cmd_name] = group_name
@@ -347,8 +488,6 @@ def main(
         recompose.main(cli_command="./run", commands=commands)
 
     """
-    import sys
-
     # Store config for GHA workflow generation
     set_cli_command(cli_command)
     set_working_directory(working_directory)
@@ -373,8 +512,14 @@ def main(
     recompose_ctx = _build_registry(commands, automations or [])
     set_recompose_context(recompose_ctx)
 
-    # Build and run the CLI
-    cli = _build_grouped_cli(name, commands)
+    # Build and run the CLI (including automation commands)
+    cli = _build_grouped_cli(
+        name,
+        commands,
+        automations=automations,
+        cli_command=cli_command,
+        working_directory=working_directory,
+    )
     cli()
 
 
@@ -388,7 +533,6 @@ def _build_registry(
     Extracts TaskInfo from the wrappers and populates the registries.
     Note: Dispatchables (from make_dispatchable) are automations with workflow_dispatch trigger.
     """
-    from .jobs import AutomationInfo
 
     tasks: dict[str, TaskInfo] = {}
     automation_registry: dict[str, AutomationInfo] = {}

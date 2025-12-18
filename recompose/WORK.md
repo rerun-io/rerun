@@ -1,8 +1,48 @@
 # NOW
 
-**P15: Cleanup & Local Automation Execution** - Phase 1 COMPLETE
+**P15: Cleanup & Local Automation Execution** - COMPLETE
 
-See `proj/P15_cleanup_and_local_exec_TODO.md` for full plan.
+See `proj/P15_cleanup_and_local_exec_DONE.md` for full plan.
+
+## Phase 2 COMPLETE: Local Automation Execution
+
+Implemented local execution of automations - run `./run ci` to execute automations locally:
+
+- **LocalExecutor** (`local_executor.py`):
+  - `LocalExecutor` class for executing automations as subprocesses
+  - `topological_sort()` for ordering jobs by dependencies
+  - `_execute_job()` runs tasks via CLI (`./run task-name --arg=value`)
+  - Job outputs captured via temp GITHUB_OUTPUT files
+  - Output passing between jobs via resolved `JobOutputRef`
+
+- **CLI Integration** (`cli.py`):
+  - `_build_automation_command()` creates Click commands for automations
+  - `_add_automation_to_cli()` registers automations in "Automations" group
+  - Automations appear in `./run --help` under "Automations" section
+  - Common options: `--dry-run`, `--verbose`
+  - InputParam values become CLI arguments
+
+- **New exports** (`__init__.py`):
+  - `LocalExecutor` - class for programmatic execution
+  - `execute_automation()` - convenience function
+  - `AutomationResult`, `JobResult` - result types
+
+**Usage:**
+```bash
+# Run automation locally
+./run ci
+
+# Dry run (show what would execute)
+./run ci --dry-run
+
+# Verbose output
+./run ci --verbose
+
+# With input parameters (for automations with InputParam)
+./run deploy --environment=prod
+```
+
+**Test results:** 234 tests pass (25 new), ruff clean
 
 ## Phase 1 COMPLETE: API Cleanup
 
@@ -39,14 +79,6 @@ app = App(
 ```
 
 **Test results:** 209 tests pass, ruff clean
-
-## Next: Phase 2 - Local Automation Execution
-
-- Run automations locally: `./run ci`
-- Execute jobs as subprocesses in dependency order
-- Pass outputs between jobs via temp files
-- Handle InputParams from CLI args
-- Skip GHA-specific steps (checkout, setup-python)
 
 ---
 
@@ -138,23 +170,7 @@ Implemented:
 
 # UPCOMING
 
-**P15: Cleanup & Local Automation Execution**
-
-See `proj/P15_cleanup_and_local_exec_TODO.md` for full plan.
-
-Two parts:
-
-**Phase 1: API Cleanup**
-- Unify dispatchables into automations (remove `dispatchables=` from App)
-- `make_dispatchable(task)` auto-infers inputs from task signature
-- Rename `python_cmd` to `cli_command` (default: `"./run"`)
-
-**Phase 2: Local Automation Execution** (bigger)
-- Run automations locally: `./run ci`
-- Execute jobs as subprocesses in dependency order
-- Pass outputs between jobs via temp files
-- Handle InputParams from CLI args
-- Skip GHA-specific steps (checkout, setup-python)
+(Determine next priorities based on project needs)
 
 # DEFERRED
 
@@ -162,6 +178,8 @@ Two parts:
 
 # RECENTLY COMPLETED
 
+- P15 Phase 2: Local Automation Execution - `./run ci` now works
+- P15 Phase 1: API Cleanup - unified dispatchables/automations, renamed cli_command
 - P14 Phase 7: Migration & Polish - examples migrated, generate_gha updated
 - P14 Phase 6: Cleanup old code (flow, taskclass, etc.)
 - P14 Phases 1-5: Full P14 implementation

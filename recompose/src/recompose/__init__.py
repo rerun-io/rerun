@@ -87,6 +87,12 @@ from .jobs import (
     on_schedule,
     on_workflow_dispatch,
 )
+from .local_executor import (
+    AutomationResult,
+    JobResult,
+    LocalExecutor,
+    execute_automation,
+)
 from .result import Err, Ok, Result
 from .step import step, step_decorator
 from .subprocess import RunResult, SubprocessError, run
@@ -179,6 +185,11 @@ __all__ = [
     "builtin_commands",
     "generate_gha",
     "inspect",
+    # P15: Local automation execution
+    "LocalExecutor",
+    "execute_automation",
+    "AutomationResult",
+    "JobResult",
 ]
 
 __version__ = "0.1.0"
