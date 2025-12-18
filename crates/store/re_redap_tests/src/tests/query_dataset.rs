@@ -156,7 +156,7 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     }
 }
 
-//TODO(ab): this recording needs fleshing out in order to test more interesting queries.
+//TODO(RR-2613): this recording needs fleshing out in order to test more interesting queries.
 fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
     use re_log_types::example_components::{MyPoint, MyPoints};
@@ -249,7 +249,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         )
         .await;
 
-    // TODO(ab): we need considerably more use-cases here, but OSS server currently disregards the
+    // TODO(RR-2613): we need considerably more use-cases here, but OSS server currently disregards the
     // `query` parameter. So we're stuck with queries that should return all chunks. In the mean
     // time, this test is useful to validate that the returned schema is correct.
     let queries = [
