@@ -389,10 +389,17 @@ def _build_grouped_cli(
             # Bare task (not in a group)
             _add_command_to_cli(cli, item, "Other", seen_names)
 
-    # Add automation commands
+    # Add automation commands (skip those that conflict with task names)
     if automations:
         for auto in automations:
             if hasattr(auto, "_automation_info"):
+                info = auto._automation_info
+                cmd_name = _to_kebab_case(info.name)
+                # Skip if this automation has the same name as an existing task
+                # (e.g., make_dispatchable(lint) conflicts with lint task)
+                # Running the task directly is equivalent to running the dispatchable locally
+                if cmd_name in seen_names:
+                    continue
                 _add_automation_to_cli(cli, auto, "Automations", seen_names, cli_command, working_directory)
 
     return cli
