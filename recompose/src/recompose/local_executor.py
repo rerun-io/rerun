@@ -433,7 +433,7 @@ class LocalExecutor:
             failed = [r for r in job_results if not r.success]
             console.print(
                 f"[bold red]✗[/bold red] Automation [bold]{automation_name}[/bold] "
-                f"failed in {elapsed:.2f}s ({len(failed)}/{len(job_results)} jobs failed)"
+                f"failed in {elapsed:.2f}s ({len(job_results) - len(failed)}/{len(job_results)} jobs passed)"
             )
 
         return AutomationResult(
