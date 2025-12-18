@@ -93,7 +93,7 @@ def setup_workspace(
         params=kwargs,
         steps=step_names,
         created_at=datetime.now().isoformat(),
-        script_path=module_name,  # Store module name (legacy field name)
+        module_name=module_name,
     )
     write_params(ws, flow_params)
 
@@ -408,7 +408,7 @@ def execute_flow_isolated(
         params=kwargs,
         steps=[s[0] for s in steps],
         created_at=datetime.now().isoformat(),
-        script_path=module_name,  # Store module name (legacy field name)
+        module_name=module_name,
     )
     write_params(ws, flow_params)
 

@@ -28,7 +28,7 @@ class TestFlowParams:
             params={"repo": "main", "clean": True},
             steps=["1_fetch", "2_build", "3_test"],
             created_at="2024-01-01T00:00:00",
-            script_path="/path/to/script.py",
+            module_name="my.module",
         )
 
         json_str = params.to_json()
@@ -38,7 +38,7 @@ class TestFlowParams:
         assert restored.params == params.params
         assert restored.steps == params.steps
         assert restored.created_at == params.created_at
-        assert restored.script_path == params.script_path
+        assert restored.module_name == params.module_name
 
 
 class TestWorkspaceIO:
@@ -58,7 +58,7 @@ class TestWorkspaceIO:
             params={"repo": "test"},
             steps=["1_a", "2_b"],
             created_at="2024-01-01T00:00:00",
-            script_path="script.py",
+            module_name="test.module",
         )
 
         write_params(ws, params)
