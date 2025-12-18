@@ -1,86 +1,62 @@
 # NOW
 
-**P13_taskclass_in_flows** - TaskClass as first-class flow entities.
+**P14_architectural_pivot** - Major redesign: Tasks as Jobs, not Steps.
 
-Enable TaskClasses to work naturally in flows:
-- `Venv(location=...)` creates a TaskNode (instantiation as step)
-- `venv.install_wheel(...)` creates a TaskNode (method as step)
-- TaskClass state implicitly serialized after each method
-- TaskClasses can be passed to other tasks as regular objects
+See `proj/P14_architectural_pivot_TODO.md` for full design.
 
-See `proj/P13_taskclass_in_flows_TODO.md` for full design and plan.
+**Key changes:**
+- Tasks map to GHA **jobs** (not steps) - each job runs one task via CLI
+- `@flow` removed - tasks calling tasks is just Python, no graph building
+- `@taskclass` removed - no class-state sync across GHA jobs
+- `@automation` orchestrates multi-job workflows with inferred `needs:`
+- Artifacts, secrets, outputs, setup declared in `@task` decorator
+- Generated workflow steps use app's entry_point (copy-paste runnable locally)
+
+**Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
+
+**Current phase:** Design review. Ready to begin Phase 1 implementation.
 
 # UPCOMING
 
-1. **Real-world usage in rerun** - Start migrating actual rerun CI tasks
-2. **Documentation** - User guide and API reference
+1. Phase 1: Task decorator enhancements (outputs, artifacts, secrets, setup)
+2. Phase 2: Automation framework (job(), context tracking, dependencies)
+3. Phase 3-5: Triggers, workflow generation, dispatchable
+4. Phase 6-7: Cleanup old code, migration, documentation
 
 # DEFERRED
 
-**P05c_flows_parallel** - Parallel task execution within flows
-- Currently flows execute tasks sequentially (matches GHA step model)
-- Defer until clear use case emerges
-
-**Logging integration** - Replace `recompose.out` with Python logging
-- Could hook into Python's logging framework for standard patterns
-- Defer until more real usage to inform design
-- Current `recompose.out` works fine
+**Visual step grouping** - A `@step` decorator for local output grouping
+- Purely cosmetic for tree-view output
+- No GHA implications
+- Consider after core implementation is stable
 
 # RECENTLY COMPLETED
 
-For detailed plans, see `proj/P*_DONE.md` files.
-
-**Recent milestones:**
-- **P11_explicit_registration** - DONE. Moved from auto-discovery to explicit registration:
-  - Tasks/flows/automations are NOT auto-registered by decorators
-  - `main(commands=[...])` builds registry from explicit command list
-  - `CommandGroup` for organized CLI help output
-  - `Config` dataclass for python_cmd, working_directory
-  - `builtin_commands()` returns inspect/generate-gha tasks
-  - `_recompose_tasks` dict on @taskclass for explicit registration
-  - Registry accessible via context: `get_task_registry()`, `get_flow_registry()`, etc.
-- **P10_context_dispatch** - Simplified API: removed `.flow()` method, context-based dispatch
-- **P09_workflow_dispatch** - CLI-to-GitHub integration (`--remote`, `--status` flags)
-- **Tree-based output** - Visual flow execution with nested subprocess indicators
-- **Conditional execution** - `run_if()` context manager with expression algebra
-- **P08_ci_integration** - Full GitHub Actions integration, working CI pipeline
-- **P07_real_examples** - Real CI/dev workflow for recompose itself
-
-**Earlier work:**
-- P01-P06: Foundation (tasks, CLI, subprocess, member tasks, flows, GHA generation)
+Previous work preserved in `jleibs/recompose-backup-flows-as-steps`:
+- P01-P13: Foundation through TaskClass in flows
+- Full flow-as-steps model with subprocess isolation
+- GHA generation for flows → single-job workflows
 
 # ARCHITECTURE DECISIONS
 
-## Library Choices
+## New Hierarchy (P14)
 
-| Need | Choice | Rationale |
-|------|--------|-----------|
-| CLI generation | **Click** | Mature, well-documented. We want control over CLI generation. |
-| Result/data types | **Pydantic** | Perfect for typed, validatable Result classes. |
-| Console output | **Rich** | Great for formatted output, progress bars, etc. |
-| Async (later) | **asyncio** | Built-in. Only needed for parallel flow execution. |
+- **Task** - Single unit of work, maps to one GHA job
+- **Automation** - Orchestrates tasks as multi-job workflow with `needs:`
+- **Dispatchable** - Wrapper to make a task workflow_dispatch triggerable
 
-## Design Principles
+## Key Principles
 
-1. **Tasks are just functions** - The `@task` decorator minimally alters the function
-2. **CLI is opt-in** - `recompose.main()` builds CLI, but tasks work without it
-3. **Result is explicit** - Tasks return `Result[T]` with value + status + output
-4. **Context is ambient** - Helpers detect if running inside recompose engine
-5. **Explicit registration** - Only commands passed to `main()` are CLI-accessible
+1. **What you see is what you run** - Generated steps use actual CLI commands
+2. **Explicit over magic** - `.job()` calls explicit, dependencies from references
+3. **Validate at construction** - Automations validate during decoration
+4. **String outputs for GHA** - Embrace GitHub's string-based job outputs
 
-## Hierarchy
+## Task Decorator Parameters
 
-- **Task** - Single unit of work (Python function with @task)
-- **Flow** - Composition of tasks → Single GHA job, workflow_dispatch triggerable
-- **Automation** - Orchestrates flows → Uses workflow_run to chain workflows
-
-## Workflow Generation
-
-- Workflows sync to `.github/workflows/` (named `recompose_flow_<name>.yml` / `recompose_automation_<name>.yml`)
-- Generated files include header comment identifying them as generated
-- CI validates committed workflows match generated output via `generate_gha --check_only`
-
-## Local vs CI Tasks
-
-- **Local-only**: `format` (modifies files), workflow regeneration
-- **CI tasks**: `lint`, `format_check`, `test`, `generate_gha --check_only`
+| Parameter | Purpose |
+|-----------|---------|
+| `outputs` | String outputs (to GITHUB_OUTPUT) |
+| `artifacts` | File artifacts (upload/download) |
+| `secrets` | Required secrets (from GHA or local file) |
+| `setup` | Override default GHA setup steps |
