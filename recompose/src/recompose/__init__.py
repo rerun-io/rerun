@@ -31,6 +31,7 @@ from .cli import main
 from .command_group import App, CommandGroup
 from .conditional import run_if
 from .context import (
+    ArtifactInfo,
     dbg,
     get_automation,
     get_automation_registry,
@@ -38,12 +39,15 @@ from .context import (
     get_flow,
     get_flow_registry,
     get_python_cmd,
+    get_secret,
     get_task,
     get_task_registry,
     get_working_directory,
     is_debug,
     out,
+    save_artifact,
     set_debug,
+    set_output,
     set_python_cmd,
     set_working_directory,
 )
@@ -56,6 +60,7 @@ from .flow import (
 from .plan import FlowPlan, Input, InputPlaceholder, TaskClassNode, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
+from .step import step, step_decorator
 from .task import MethodWrapper, TaskInfo, TaskWrapper, method, task, taskclass
 from .workspace import (
     FlowParams,
@@ -94,6 +99,14 @@ __all__ = [
     "set_python_cmd",
     "get_working_directory",
     "set_working_directory",
+    # Task outputs/artifacts/secrets
+    "set_output",
+    "save_artifact",
+    "get_secret",
+    "ArtifactInfo",
+    # Step grouping
+    "step",
+    "step_decorator",
     # Subprocess helpers
     "run",
     "RunResult",

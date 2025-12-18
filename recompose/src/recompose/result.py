@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, PrivateAttr
+
+if TYPE_CHECKING:
+    from .context import ArtifactInfo
 
 T = TypeVar("T")
 
@@ -20,6 +23,8 @@ class Result(BaseModel, Generic[T]):
     error: str | None = None
     traceback: str | None = None
     _value: T | None = PrivateAttr(default=None)
+    _outputs: dict[str, str] = PrivateAttr(default_factory=dict)
+    _artifacts: dict[str, ArtifactInfo] = PrivateAttr(default_factory=dict)
 
     model_config = {"frozen": True}  # Make results immutable
 
@@ -32,6 +37,24 @@ class Result(BaseModel, Generic[T]):
     def failed(self) -> bool:
         """True if the task failed."""
         return self.status == "failure"
+
+    @property
+    def outputs(self) -> dict[str, str]:
+        """
+        Get task outputs set via set_output().
+
+        Returns an empty dict if no outputs were set.
+        """
+        return self._outputs
+
+    @property
+    def artifacts(self) -> dict[str, ArtifactInfo]:
+        """
+        Get task artifacts saved via save_artifact().
+
+        Returns an empty dict if no artifacts were saved.
+        """
+        return self._artifacts
 
     def value(self) -> T:
         """
