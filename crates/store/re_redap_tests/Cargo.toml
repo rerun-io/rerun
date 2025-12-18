@@ -25,10 +25,13 @@ all-features = true
 
 [dependencies]
 re_arrow_util.workspace = true
+re_auth.workspace = true
 re_chunk.workspace = true
-
+re_chunk_store.workspace = true
+re_datafusion.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
+re_redap_client.workspace = true
 re_sdk_types.workspace = true
 re_sdk.workspace = true
 re_sorbet.workspace = true
@@ -37,14 +40,18 @@ re_types_core.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true
+datafusion.workspace = true
 futures.workspace = true
+hyper-util.workspace = true
 insta = { workspace = true, features = ["filters"] }
 itertools.workspace = true
 lance.workspace = true
 prost-types.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
+tokio-stream.workspace = true
 tonic.workspace = true
+tower.workspace = true
 url.workspace = true
 
 # TODO(lancedb/lance#5075): we need to force activate this feature

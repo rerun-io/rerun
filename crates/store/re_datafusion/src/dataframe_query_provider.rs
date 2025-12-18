@@ -22,7 +22,7 @@ use datafusion::physical_expr::{
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use futures_util::Stream;
+use futures_util::{FutureExt, Stream};
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::utils::align_record_batch_to_schema;
@@ -109,6 +109,7 @@ pub struct DataframeSegmentStreamInner {
     /// We must keep a handle on the cpu runtime because the execution plan
     /// is dropped during streaming. We need this handle to continue to exist
     /// so that our worker does not shut down unexpectedly.
+    #[expect(dead_code)]
     cpu_runtime: Arc<CpuRuntime>,
     cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -153,7 +154,9 @@ impl Stream for DataframeSegmentStream {
             let Some(join_handle) = this.cpu_join_handle.take() else {
                 return Poll::Ready(Some(exec_err!("CPU join handle is None")));
             };
-            let cpu_join_result = this.cpu_runtime.handle().block_on(join_handle);
+
+            // Below is safe because we have already checked is_finished
+            let cpu_join_result = join_handle.now_or_never().expect("is_finished is true");
 
             match cpu_join_result {
                 Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
