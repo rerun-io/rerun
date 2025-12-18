@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+/// Single visualizer override the visualizers for an entity.
+table VisualizerInstructionId (
+  "attr.python.aliases": "str | list[str]",
+  "attr.python.array_aliases": "str",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq, Default",
+  "attr.rust.repr": "transparent"
+) {
+  /// Names of a visualizer that should be active.
+  visualizer: rerun.datatypes.Uuid (order: 100);
+}
