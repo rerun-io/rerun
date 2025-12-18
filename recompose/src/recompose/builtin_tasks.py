@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .context import dbg, get_entry_point, get_python_cmd, get_working_directory, out
+from .context import dbg, get_python_cmd, get_working_directory, out
 from .gh_cli import find_git_root
 from .gha import validate_workflow
 from .result import Err, Ok, Result
@@ -82,7 +82,7 @@ def generate_gha(
 
     """
 
-    from .context import get_automation, get_automation_registry, get_flow, get_flow_registry
+    from .context import get_automation, get_automation_registry, get_flow, get_flow_registry, get_module_name
     from .gha import render_automation_workflow, render_flow_workflow
 
     # Determine output directory
@@ -94,17 +94,15 @@ def generate_gha(
             return Err("Could not find git root. Specify --output_dir explicitly.")
         workflows_dir = maybe_workflows_dir
 
-    # Determine module name from entry point
-    entry_point = get_entry_point()
-
+    # Determine module name
     if script:
-        # Explicit script override - not supported with new module-based approach
+        # Explicit script override - not supported with module-based approach
         return Err("--script is no longer supported. Use module-based entry points.")
-    elif entry_point and entry_point[0] == "module":
-        module_name = entry_point[1]
-    else:
+
+    module_name = get_module_name()
+    if module_name is None:
         return Err(
-            "Could not determine module name. Make sure you're using recompose.App with a module-based entry point."
+            "Module name not set. Run with `python -m <module>` or use recompose.App which handles this automatically."
         )
 
     # Collect targets to generate

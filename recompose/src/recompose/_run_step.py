@@ -74,7 +74,7 @@ def _parse_param(param: str) -> tuple[str, str]:
 
 def main() -> None:
     """Execute a flow step or setup workspace."""
-    from .context import set_entry_point
+    from .context import set_module_name
     from .flow import FlowInfo
 
     parser = argparse.ArgumentParser(
@@ -108,8 +108,8 @@ def main() -> None:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Set the entry point
-    set_entry_point("module", module_name)
+    # Set the module name for subprocess isolation
+    set_module_name(module_name)
 
     # Import the module
     try:

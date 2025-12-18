@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 # Debug mode flag
 _debug_mode: bool = False
 
-# Entry point info (set by main())
-# Tuple of (type, value) where type is "module" or "script"
-_entry_point: tuple[str, str] | None = None
+# Module name for subprocess isolation (set by main())
+# This is the importable module path, e.g., "examples.app"
+_module_name: str | None = None
 
 # Python command for GHA workflow generation (e.g., "python", "uv run python")
 _python_cmd: str = "python"
@@ -220,29 +220,27 @@ def is_debug() -> bool:
     return _debug_mode
 
 
-def set_entry_point(entry_type: str, value: str) -> None:
+def set_module_name(name: str) -> None:
     """
-    Set the entry point info (called by main()).
+    Set the module name for subprocess isolation (called by main()).
 
     Args:
-        entry_type: "module" or "script"
-        value: Module name (e.g., "examples.app") or script path
+        name: Importable module path (e.g., "examples.app")
 
     """
-    global _entry_point
-    _entry_point = (entry_type, value)
+    global _module_name
+    _module_name = name
 
 
-def get_entry_point() -> tuple[str, str] | None:
+def get_module_name() -> str | None:
     """
-    Get the entry point info.
+    Get the module name for subprocess isolation.
 
     Returns:
-        Tuple of (type, value) where type is "module" or "script",
-        or None if not set.
+        Importable module path, or None if not set.
 
     """
-    return _entry_point
+    return _module_name
 
 
 def set_python_cmd(cmd: str) -> None:
