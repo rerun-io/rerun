@@ -274,6 +274,59 @@ def test_matrix() -> None:
     )
 ```
 
+### Conditional Jobs
+
+Jobs can have conditions using a lightweight expression algebra (similar to old flow conditionals).
+Maps to GHA job-level `if:` spec.
+
+```python
+@recompose.automation
+def conditional_deploy(
+    environment: recompose.InputParam,
+    skip_tests: recompose.InputParam = False,
+) -> None:
+    test_job = recompose.job(
+        test,
+        # Condition using InputParam - skipped if skip_tests is true
+        condition=~skip_tests,
+    )
+
+    # Deploy only to prod on main branch
+    deploy_job = recompose.job(
+        deploy,
+        needs=[test_job],
+        condition=(environment == "prod") & recompose.github.ref_name.eq("main"),
+    )
+```
+
+**Expression primitives:**
+- `param == value` - InputParam equality
+- `param != value` - InputParam inequality
+- `~param` - Negation (for boolean params)
+- `expr & expr` - AND
+- `expr | expr` - OR
+- `recompose.github.event_name` - GitHub context references
+- `recompose.github.ref_name`
+- `recompose.github.ref_type`
+- etc.
+
+**Generated GHA:**
+```yaml
+jobs:
+  test:
+    if: ${{ inputs.skip_tests != true }}
+    ...
+
+  deploy:
+    needs: [test]
+    if: ${{ inputs.environment == 'prod' && github.ref_name == 'main' }}
+    ...
+```
+
+**Local execution:**
+- Conditions evaluated at runtime with actual parameter values
+- Jobs with false conditions are skipped (shown in output)
+
 ---
 
 ## Generated Workflow Example
@@ -414,9 +467,16 @@ app = recompose.App(
 - `recompose.out(...)`, `recompose.dbg(...)` - Output helpers (unchanged)
 
 ### Automation Helpers
-- `recompose.job(task, inputs={}, needs=[], runs_on=..., matrix={})` - Define a job
+- `recompose.job(task, inputs={}, needs=[], runs_on=..., matrix={}, condition=...)` - Define a job
 - `job.get("output_name")` - Reference a job's output (creates dependency)
 - `job.artifact("artifact_name")` - Reference a job's artifact (creates dependency + download)
+
+### Condition Expressions
+- `param == value`, `param != value` - Equality/inequality
+- `~expr` - Negation
+- `expr & expr` - AND
+- `expr | expr` - OR
+- `recompose.github.event_name`, `.ref_name`, `.ref_type`, etc. - GitHub context
 
 ### Dispatchable
 - `recompose.make_dispatchable(task, inputs={})` - Create dispatchable workflow for task
@@ -455,12 +515,13 @@ app = recompose.App(
 
 4. **Setup overrides**: Via `@task(setup=[...])` decorator parameter.
 
+5. **Conditional jobs**: Via `condition=` parameter on `job()`.
+   Uses expression algebra (`&`, `|`, `~`, `==`, `!=`). Maps to GHA job-level `if:`.
+   No step-level conditionals needed since each job runs one task.
+
 ## Open Questions
 
-1. **Conditional jobs**: How to handle `if:` conditions on jobs?
-   - Proposal: `recompose.job(task, condition="${{ github.event_name == 'push' }}")`
-
-2. **Visual step grouping (local)**: Should we have a `@step` decorator for grouping output in tree view?
+1. **Visual step grouping (local)**: Should we have a `@step` decorator for grouping output in tree view?
    - Useful for visual organization when tasks call many sub-operations
    - No GHA implications - purely local visual aid
 
@@ -487,6 +548,8 @@ app = recompose.App(
 - [ ] Implement dependency inference from JobOutputRef/ArtifactRef
 - [ ] Add InputParam type for automation parameters
 - [ ] Add Artifact type for artifact inputs
+- [ ] Implement condition expression algebra (reuse/adapt from old expr.py)
+- [ ] Add `recompose.github.*` context references for conditions
 
 ### Phase 3: Triggers
 - [ ] Implement trigger classes (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
@@ -528,6 +591,7 @@ app = recompose.App(
 - [ ] `@task(setup=[...])` overrides default setup steps
 - [ ] `@automation` creates multi-job workflows via context tracking
 - [ ] Job dependencies inferred from output/artifact references
+- [ ] Job conditions work with expression algebra, map to GHA `if:`
 - [ ] Artifact upload/download steps generated correctly
 - [ ] Secrets plumbed to job env in GHA
 - [ ] `make_dispatchable()` creates single-job workflows
