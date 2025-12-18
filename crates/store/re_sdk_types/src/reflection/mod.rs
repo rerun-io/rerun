@@ -510,7 +510,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualizerComponentMapping as Component>::name(),
             ComponentReflection {
-                docstring_md: "Associate components of an entity to components of a visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "Associates components of an entity to components of a visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualizerComponentMapping::default().to_arrow()?),
                 datatype: VisualizerComponentMapping::arrow_datatype(),

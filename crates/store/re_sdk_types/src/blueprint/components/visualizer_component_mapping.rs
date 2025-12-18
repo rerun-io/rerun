@@ -21,7 +21,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Associate components of an entity to components of a visualizer.
+/// **Component**: Associates components of an entity to components of a visualizer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
