@@ -443,8 +443,9 @@ async fn chunk_store_cpu_worker_thread(
     Ok(())
 }
 
-/// Extract segment ID from a `chunk_info` `RecordBatch`. Currently standing assumption is that `chunk_info` batch contains
-/// chunks *for a single segment*, hence we can just take the first row's `segment_id`.
+/// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
+/// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
+/// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
 fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionError> {
     let segment_ids = chunk_info
         .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
@@ -490,7 +491,7 @@ fn create_request_batches(
     for chunk_info in chunk_infos {
         let segment_id = extract_segment_id(&chunk_info)?;
         let chunk_sizes = extract_chunk_sizes(&chunk_info)?;
-        let segment_size: u64 = (0..chunk_sizes.len()).map(|i| chunk_sizes.value(i)).sum();
+        let segment_size: u64 = chunk_sizes.iter().map(|v| v.unwrap_or(0)).sum();
 
         // Track original segment order
         if !segment_order.contains(&segment_id) {
