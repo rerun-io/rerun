@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from .automation import AutomationInfo
-    from .flow import FlowInfo
     from .jobs import JobSpec
     from .task import TaskInfo
 
@@ -193,13 +191,12 @@ class RecomposeContext:
     """
     Global recompose execution context.
 
-    Holds the registries of tasks, flows, and automations that were
+    Holds the registries of tasks and automations that were
     explicitly registered via main(). This replaces the global registries.
     """
 
     tasks: dict[str, TaskInfo] = field(default_factory=dict)
-    flows: dict[str, FlowInfo] = field(default_factory=dict)
-    automations: dict[str, AutomationInfo] = field(default_factory=dict)
+    automations: dict[str, Any] = field(default_factory=dict)  # AutomationInfo
 
 
 # Context variable for the current task context (per-task)
@@ -241,19 +238,7 @@ def get_task_registry() -> dict[str, TaskInfo]:
     return ctx.tasks
 
 
-def get_flow_registry() -> dict[str, FlowInfo]:
-    """
-    Get the flow registry from the current recompose context.
-
-    Returns an empty dict if not running in a recompose context.
-    """
-    ctx = _recompose_context.get()
-    if ctx is None:
-        return {}
-    return ctx.flows
-
-
-def get_automation_registry() -> dict[str, AutomationInfo]:
+def get_automation_registry() -> dict[str, Any]:
     """
     Get the automation registry from the current recompose context.
 
@@ -290,32 +275,7 @@ def get_task(name: str) -> TaskInfo | None:
     return None
 
 
-def get_flow(name: str) -> FlowInfo | None:
-    """
-    Look up a flow by name.
-
-    Args:
-        name: Flow name (short name or full module:name).
-
-    Returns:
-        FlowInfo if found, None otherwise.
-
-    """
-    registry = get_flow_registry()
-
-    # Try exact match first
-    if name in registry:
-        return registry[name]
-
-    # Try short name match
-    for full_name, info in registry.items():
-        if info.name == name:
-            return info
-
-    return None
-
-
-def get_automation(name: str) -> AutomationInfo | None:
+def get_automation(name: str) -> Any | None:
     """
     Look up an automation by name.
 

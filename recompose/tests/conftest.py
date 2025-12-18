@@ -2,15 +2,18 @@
 
 import pytest
 
-from . import flow_test_app
-
 
 @pytest.fixture(autouse=True)
-def setup_flow_test_app_context():
-    """Set up the flow_test_app context for all tests.
+def reset_context():
+    """Reset context state between tests."""
+    from recompose.context import set_automation_context, set_context, set_recompose_context
 
-    This ensures that tests which call flows from flow_test_app
-    have the proper module-based entry point configured.
-    """
-    flow_test_app.app.setup_context()
+    # Reset all context state before each test
+    set_context(None)
+    set_automation_context(None)
+    set_recompose_context(None)
     yield
+    # Clean up after test
+    set_context(None)
+    set_automation_context(None)
+    set_recompose_context(None)
