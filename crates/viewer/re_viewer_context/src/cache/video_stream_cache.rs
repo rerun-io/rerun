@@ -931,7 +931,7 @@ impl Cache for VideoStreamCache {
                         ) {
                             match err {
                                 VideoStreamProcessingError::OutOfOrderSamples => {
-                                    re_log::warn!("Found out of order samples");
+                                    re_log::debug!("Found out of order samples");
                                     drop(video_stream);
                                     // We found out of order samples, discard this video stream cache entry
                                     // to reconstruct it with all data in mind.
