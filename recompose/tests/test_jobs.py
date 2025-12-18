@@ -480,7 +480,7 @@ class TestInputParam:
         """InputParam cannot be used in Python if."""
         param = InputParam[bool](default=False)
         with pytest.raises(TypeError, match="cannot be used in Python control flow"):
-            if param:  # type: ignore[truthy-bool]
+            if param:
                 pass
 
 

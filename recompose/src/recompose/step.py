@@ -14,7 +14,7 @@ import os
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
 if TYPE_CHECKING:
     pass
@@ -111,14 +111,14 @@ class StepOutputWrapper:
         self._wrapped.flush()
 
     def fileno(self) -> int:
-        return self._wrapped.fileno()
+        return int(self._wrapped.fileno())
 
     @property
     def encoding(self) -> str:
         return getattr(self._wrapped, "encoding", "utf-8")
 
     def isatty(self) -> bool:
-        return self._wrapped.isatty()
+        return bool(self._wrapped.isatty())
 
 
 @contextmanager
@@ -179,16 +179,14 @@ def step(name: str) -> Generator[None, None, None]:
 
 
 @overload
-def step_decorator(fn: Callable[P, T]) -> Callable[P, T]: ...
+def step_decorator(__fn: Callable[P, T]) -> Callable[P, T]: ...
 
 
 @overload
-def step_decorator(name: str) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
+def step_decorator(__name: str) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
 
-def step_decorator(
-    fn_or_name: Callable[P, T] | str | None = None,
-) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
+def step_decorator(__fn_or_name: Callable[P, T] | str) -> Any:
     """
     Decorator form of step() for helper functions.
 
@@ -214,14 +212,14 @@ def step_decorator(
             with step(step_name):
                 return fn(*args, **kwargs)
 
-        return wrapper
+        return cast(Callable[P, T], wrapper)
 
     # Handle @step_decorator without arguments
-    if callable(fn_or_name):
-        return decorator(fn_or_name)
+    if callable(__fn_or_name):
+        return decorator(__fn_or_name)
 
     # Handle @step_decorator("name")
     def partial_decorator(fn: Callable[P, T]) -> Callable[P, T]:
-        return decorator(fn, fn_or_name)
+        return decorator(fn, __fn_or_name)
 
     return partial_decorator
