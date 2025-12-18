@@ -886,10 +886,11 @@ impl Cache for VideoStreamCache {
 
                 match event.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
-                        // If this came with a compaction, throw out all samples and gops that were compacted away and restart there.
-                        // This is a bit slower than re-using all the data, but much simpler and more robust.
+                        // If this came with a compaction, throw out all samples and tracked keyframes that were compacted
+                        // away and restart there. This is a bit slower than re-using all the data, but much simpler and
+                        // more robust.
                         //
-                        // Compactions events are document to happen on **addition** only.
+                        // Compactions events are documented to happen on **addition** only.
                         // Therefore, it should be save to remove only the newest data.
                         let chunk = if let Some(compaction) = &event.compacted {
                             for chunk_id in compaction.srcs.keys() {
@@ -911,7 +912,7 @@ impl Cache for VideoStreamCache {
                                 }
                             }
 
-                            adjust_keyframes_for_removed_samples_back(video_data);
+                            adjust_keyframes_for_removed_samples(video_data);
 
                             // `event.chunk` is added data PRIOR to compaction.
                             &compaction.new_chunk
@@ -954,11 +955,27 @@ impl Cache for VideoStreamCache {
                         }
                     }
                     re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                        // Chunk deletion typically happens at the start of the recording due to garbage collection.
-                        // Even if it were to happen somewhere in the middle of the stream,
-                        // we'd still want to delete all prior samples & buffers since we can't handle gaps
-                        // in the video stream.
-                        if let Some(last_invalid_buffer_idx) = video_sample_buffers
+                        if let Some(known_offset) = entry.known_chunk_offsets.get(&event.chunk.id()) &&
+                            let Some(buffer) = video_sample_buffers.get(known_offset.buffer as usize) {
+                            for (_idx, sample) in video_data.samples.iter_index_range_clamped_mut(&buffer.sample_index_range) {
+                                *sample = re_video::SampleMetadataState::Unloaded;
+                            }
+                            adjust_keyframes_for_removed_samples(video_data);
+
+                            if cfg!(debug_assertions)
+                                && let Err(err) = video_data.sanity_check()
+                            {
+                                panic!(
+                                    "VideoDataDescription sanity check stream at {:?} failed: {err}",
+                                    event.chunk.entity_path()
+                                );
+                            }
+                        }
+                        // For unknwon chunks, chunk deletion typically happens at the start of the recording
+                        // due to garbage collection. Even if it were to happen somewhere in the middle of
+                        // the stream, we'd still want to delete all prior samples & buffers since we can't
+                        // handle gaps in the video stream in this case.
+                        else if let Some(last_invalid_buffer_idx) = video_sample_buffers
                             .position(|buffer| buffer.source_chunk_id == event.chunk.id())
                         {
                             let last_invalid_buffer =
@@ -971,7 +988,7 @@ impl Cache for VideoStreamCache {
                                 .remove_all_with_index_smaller_equal(last_invalid_sample_idx);
                             video_sample_buffers
                                 .remove_all_with_index_smaller_equal(last_invalid_buffer_idx);
-                            adjust_keyframes_for_removed_samples_front(video_data);
+                            adjust_keyframes_for_removed_samples(video_data);
 
                             re_log::trace!(
                                 "GC'ed video sample buffer from video streaming cache. Now referencing {:?} video sample chunks with total size of {:?} bytes",
@@ -1023,28 +1040,12 @@ fn load_known_chunk_offsets(
     }
 }
 
-/// Adjust GOPs for removed samples at the back of the sample list.
-fn adjust_keyframes_for_removed_samples_back(video_data: &mut re_video::VideoDataDescription) {
-    let end_sample_index = video_data.samples.next_index();
-    match video_data.keyframe_indices.iter().enumerate().rev().find(|(_, idx)| **idx < end_sample_index) {
-        Some((idx, _)) => {
-            if idx + 1 < video_data.keyframe_indices.len() {
-                video_data.keyframe_indices.drain(idx + 1..);
-            }
-        },
-        None => video_data.keyframe_indices.clear(),
-    }
-}
-
-/// Adjust GOPs for removed samples at the front of the sample list.
-fn adjust_keyframes_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
-    let start_sample_index = video_data.samples.min_index();
-    match video_data.keyframe_indices.iter().enumerate().find(|(_, idx)| **idx >= start_sample_index) {
-        Some((idx, _)) => {
-            video_data.keyframe_indices.drain(..idx);
-        },
-        None => video_data.keyframe_indices.clear(),
-    }
+/// Adjust keyframes for removed samples.
+fn adjust_keyframes_for_removed_samples(video_data: &mut re_video::VideoDataDescription) {
+    // Keyframe indices don't have to be stable, so can retain here.
+    video_data.keyframe_indices.retain(|idx| {
+        video_data.samples.get(*idx).and_then(|s| s.sample()).is_some_and(|sample| sample.is_sync)
+    });
 }
 
 #[cfg(test)]
