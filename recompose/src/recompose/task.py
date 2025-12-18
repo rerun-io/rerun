@@ -231,6 +231,7 @@ def task(
     When called inside a @flow, the task automatically returns a TaskNode (which
     mimics Result[T]) instead of executing. This enables type-safe composition
     via .value() while building the task graph.
+
     """
 
     def decorator(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:

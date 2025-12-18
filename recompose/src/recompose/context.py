@@ -80,8 +80,7 @@ class TaskContext:
         """
         if self.declared_outputs and name not in self.declared_outputs:
             raise ValueError(
-                f"Output '{name}' not declared in @task(outputs=[...]). "
-                f"Declared outputs: {self.declared_outputs}"
+                f"Output '{name}' not declared in @task(outputs=[...]). Declared outputs: {self.declared_outputs}"
             )
         self.task_outputs[name] = value
 
@@ -123,8 +122,7 @@ class TaskContext:
         """
         if self.declared_secrets and name not in self.declared_secrets:
             raise ValueError(
-                f"Secret '{name}' not declared in @task(secrets=[...]). "
-                f"Declared secrets: {self.declared_secrets}"
+                f"Secret '{name}' not declared in @task(secrets=[...]). Declared secrets: {self.declared_secrets}"
             )
 
         # First try environment variable (GHA or explicit local)
@@ -145,10 +143,7 @@ class TaskContext:
             except Exception as e:
                 raise RuntimeError(f"Failed to read secrets file {secrets_file}: {e}") from e
 
-        raise ValueError(
-            f"Secret '{name}' not found. "
-            f"Set as environment variable or add to ~/.recompose/secrets.toml"
-        )
+        raise ValueError(f"Secret '{name}' not found. Set as environment variable or add to ~/.recompose/secrets.toml")
 
 
 # Backwards compatibility alias
@@ -478,6 +473,7 @@ def set_output(name: str, value: str) -> None:
             recompose.set_output("wheel_path", "/dist/pkg-1.0.0.whl")
             recompose.set_output("version", "1.0.0")
             return Ok(None)
+
     """
     ctx = _current_task_context.get()
     if ctx is None:
@@ -507,6 +503,7 @@ def save_artifact(name: str, path: Path | str) -> None:
             run("uv", "build", "--wheel")
             recompose.save_artifact("wheel", Path("dist/pkg-1.0.0.whl"))
             return Ok(None)
+
     """
     ctx = _current_task_context.get()
     if ctx is None:
@@ -538,6 +535,7 @@ def get_secret(name: str) -> str:
             token = recompose.get_secret("PYPI_TOKEN")
             # use token...
             return Ok(None)
+
     """
     ctx = _current_task_context.get()
     if ctx is None:

@@ -6,11 +6,23 @@ import pytest
 from ruamel.yaml import YAML
 
 import recompose
+from recompose import (
+    Artifact,
+    InputParam,
+    automation,
+    github,
+    job,
+    on_pull_request,
+    on_push,
+)
 from recompose.gha import (
+    GHAJobSpec,
     JobSpec,
+    SetupStep,
     StepSpec,
     WorkflowDispatchInput,
     WorkflowSpec,
+    render_automation_jobs,
     render_flow_workflow,
     validate_workflow,
 )
@@ -467,3 +479,438 @@ jobs:
         success, message = validate_workflow(invalid_yaml)
         # actionlint should catch the invalid expression
         assert not success or "error" in message.lower() or len(message) > 0
+
+
+# =============================================================================
+# P14: Tests for render_automation_jobs (multi-job workflow generation)
+# =============================================================================
+
+
+# Test tasks for automation tests
+@recompose.task
+def lint_task() -> recompose.Result[None]:
+    """Lint the code."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def format_task() -> recompose.Result[None]:
+    """Check formatting."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def run_tests_task() -> recompose.Result[None]:
+    """Run tests."""
+    return recompose.Ok(None)
+
+
+@recompose.task(outputs=["wheel_path", "version"])
+def build_wheel_task() -> recompose.Result[None]:
+    """Build a wheel and output path."""
+    recompose.set_output("wheel_path", "/dist/pkg-1.0.0.whl")
+    recompose.set_output("version", "1.0.0")
+    return recompose.Ok(None)
+
+
+@recompose.task(artifacts=["wheel"])
+def build_artifact_task() -> recompose.Result[None]:
+    """Build and save a wheel artifact."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def wheel_test_task(*, wheel_path: str) -> recompose.Result[None]:
+    """Test with a wheel path input."""
+    return recompose.Ok(None)
+
+
+@recompose.task
+def artifact_test_task(*, wheel: Artifact) -> recompose.Result[None]:
+    """Test using an artifact input."""
+    return recompose.Ok(None)
+
+
+@recompose.task(secrets=["PYPI_TOKEN", "AWS_KEY"])
+def publish_task() -> recompose.Result[None]:
+    """Publish (requires secrets)."""
+    return recompose.Ok(None)
+
+
+class TestRenderAutomationJobs:
+    """Tests for render_automation_jobs function."""
+
+    def test_simple_automation(self) -> None:
+        """Test rendering a simple automation with one job."""
+
+        @automation
+        def simple() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(simple)
+
+        assert spec.name == "simple"
+        assert "lint_task" in spec.jobs
+        assert len(spec.jobs) == 1
+
+        lint_job = spec.jobs["lint_task"]
+        assert lint_job.runs_on == "ubuntu-latest"
+        assert len(lint_job.steps) == 4  # 3 setup + 1 run
+
+    def test_automation_with_trigger(self) -> None:
+        """Test automation with trigger generates correct 'on:' config."""
+
+        @automation(trigger=on_push(branches=["main"]))
+        def ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(ci)
+
+        assert "push" in spec.on
+        assert spec.on["push"]["branches"] == ["main"]
+
+    def test_automation_combined_triggers(self) -> None:
+        """Test automation with combined triggers."""
+
+        @automation(trigger=on_push(branches=["main"]) | on_pull_request())
+        def ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(ci)
+
+        assert "push" in spec.on
+        assert "pull_request" in spec.on
+
+    def test_automation_multiple_jobs(self) -> None:
+        """Test automation with multiple independent jobs."""
+
+        @automation
+        def ci() -> None:
+            job(lint_task)
+            job(format_task)
+            job(run_tests_task)
+
+        spec = render_automation_jobs(ci)
+
+        assert len(spec.jobs) == 3
+        assert "lint_task" in spec.jobs
+        assert "format_task" in spec.jobs
+        assert "run_tests_task" in spec.jobs
+
+    def test_automation_with_dependencies(self) -> None:
+        """Test automation with job dependencies."""
+
+        @automation
+        def ci() -> None:
+            lint_job = job(lint_task)
+            format_job = job(format_task)
+            job(run_tests_task, needs=[lint_job, format_job])
+
+        spec = render_automation_jobs(ci)
+
+        test_job = spec.jobs["run_tests_task"]
+        assert test_job.needs == ["lint_task", "format_task"]
+
+    def test_automation_entry_point(self) -> None:
+        """Test that entry_point is used in run commands."""
+
+        @automation
+        def ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(ci, entry_point="./custom_runner")
+
+        lint_job = spec.jobs["lint_task"]
+        run_step = [s for s in lint_job.steps if s.run is not None][0]
+        assert run_step.run.startswith("./custom_runner lint_task")
+
+    def test_job_with_outputs(self) -> None:
+        """Test job with declared outputs exposes them correctly."""
+
+        @automation
+        def build() -> None:
+            job(build_wheel_task)
+
+        spec = render_automation_jobs(build)
+
+        build_job = spec.jobs["build_wheel_task"]
+        assert build_job.outputs is not None
+        assert "wheel_path" in build_job.outputs
+        assert "version" in build_job.outputs
+        assert "steps.run.outputs.wheel_path" in build_job.outputs["wheel_path"]
+
+    def test_job_output_reference_creates_dependency(self) -> None:
+        """Test that referencing a job's output creates dependency."""
+
+        @automation
+        def build_and_test() -> None:
+            build_job = job(build_wheel_task)
+            job(wheel_test_task, inputs={"wheel_path": build_job.get("wheel_path")})
+
+        spec = render_automation_jobs(build_and_test)
+
+        test_job = spec.jobs["wheel_test_task"]
+        assert test_job.needs == ["build_wheel_task"]
+
+        # Check that the run command uses the output reference
+        run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert "needs.build_wheel_task.outputs.wheel_path" in run_step.run
+
+    def test_job_with_artifacts_upload(self) -> None:
+        """Test job with artifacts gets upload step."""
+
+        @automation
+        def build() -> None:
+            job(build_artifact_task)
+
+        spec = render_automation_jobs(build)
+
+        build_job = spec.jobs["build_artifact_task"]
+        upload_steps = [s for s in build_job.steps if s.uses and "upload-artifact" in s.uses]
+        assert len(upload_steps) == 1
+        assert "build_artifact_task-wheel" in upload_steps[0].with_["name"]
+
+    def test_job_with_artifact_download(self) -> None:
+        """Test job consuming artifact gets download step."""
+
+        @automation
+        def build_and_test() -> None:
+            build_job = job(build_artifact_task)
+            job(artifact_test_task, inputs={"wheel": build_job.artifact("wheel")})
+
+        spec = render_automation_jobs(build_and_test)
+
+        test_job = spec.jobs["artifact_test_task"]
+        download_steps = [s for s in test_job.steps if s.uses and "download-artifact" in s.uses]
+        assert len(download_steps) == 1
+        assert "build_artifact_task-wheel" in download_steps[0].with_["name"]
+
+        # Check run command uses artifact path
+        run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert "artifacts/wheel" in run_step.run
+
+    def test_job_with_secrets(self) -> None:
+        """Test job with secrets gets them as env vars."""
+
+        @automation
+        def publish() -> None:
+            job(publish_task)
+
+        spec = render_automation_jobs(publish)
+
+        pub_job = spec.jobs["publish_task"]
+        assert pub_job.env is not None
+        assert "PYPI_TOKEN" in pub_job.env
+        assert "AWS_KEY" in pub_job.env
+        assert pub_job.env["PYPI_TOKEN"] == "${{ secrets.PYPI_TOKEN }}"
+
+    def test_job_with_condition(self) -> None:
+        """Test job with condition gets if: expression."""
+        skip_tests = InputParam[bool](default=False)
+        skip_tests._set_name("skip_tests")
+
+        @automation
+        def ci() -> None:
+            job(run_tests_task, condition=~skip_tests)
+
+        spec = render_automation_jobs(ci)
+
+        test_job = spec.jobs["run_tests_task"]
+        assert test_job.if_condition is not None
+        assert "inputs.skip_tests" in test_job.if_condition
+
+    def test_job_with_github_condition(self) -> None:
+        """Test job with GitHub context condition."""
+
+        @automation
+        def deploy() -> None:
+            job(lint_task, condition=github.ref_name == "main")
+
+        spec = render_automation_jobs(deploy)
+
+        lint_job = spec.jobs["lint_task"]
+        assert lint_job.if_condition is not None
+        assert "github.ref_name" in lint_job.if_condition
+
+    def test_job_with_matrix(self) -> None:
+        """Test job with matrix configuration."""
+
+        @automation
+        def test_matrix() -> None:
+            job(
+                run_tests_task,
+                matrix={
+                    "python": ["3.10", "3.11", "3.12"],
+                    "os": ["ubuntu-latest", "macos-latest"],
+                },
+            )
+
+        spec = render_automation_jobs(test_matrix)
+
+        test_job = spec.jobs["run_tests_task"]
+        assert test_job.matrix is not None
+        assert test_job.matrix["python"] == ["3.10", "3.11", "3.12"]
+        assert test_job.matrix["os"] == ["ubuntu-latest", "macos-latest"]
+
+    def test_job_with_custom_runner(self) -> None:
+        """Test job with custom runs_on."""
+
+        @automation
+        def macos_ci() -> None:
+            job(run_tests_task, runs_on="macos-latest")
+
+        spec = render_automation_jobs(macos_ci)
+
+        test_job = spec.jobs["run_tests_task"]
+        assert test_job.runs_on == "macos-latest"
+
+    def test_default_setup_steps(self) -> None:
+        """Test that default setup steps are included."""
+
+        @automation
+        def ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(ci)
+
+        lint_job = spec.jobs["lint_task"]
+        setup_steps = lint_job.steps[:3]  # First 3 should be setup
+
+        assert setup_steps[0].uses == "actions/checkout@v4"
+        assert setup_steps[1].uses == "actions/setup-python@v5"
+        assert setup_steps[2].uses == "astral-sh/setup-uv@v4"
+
+    def test_custom_setup_steps(self) -> None:
+        """Test that custom setup steps override defaults."""
+        custom_setup = [
+            SetupStep("Checkout", "actions/checkout@v4"),
+            SetupStep("Setup Rust", "dtolnay/rust-toolchain@master", {"toolchain": "stable"}),
+        ]
+
+        @automation
+        def rust_ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(rust_ci, default_setup=custom_setup)
+
+        lint_job = spec.jobs["lint_task"]
+        assert len([s for s in lint_job.steps if "setup-python" in (s.uses or "")]) == 0
+        rust_setup = [s for s in lint_job.steps if s.uses and "rust-toolchain" in s.uses]
+        assert len(rust_setup) == 1
+
+    def test_working_directory(self) -> None:
+        """Test that working_directory is applied to jobs."""
+
+        @automation
+        def ci() -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(ci, working_directory="subdir")
+
+        lint_job = spec.jobs["lint_task"]
+        assert lint_job.working_directory == "subdir"
+
+    def test_yaml_output_valid(self) -> None:
+        """Test that generated YAML is valid."""
+        from ruamel.yaml import YAML
+
+        @automation(trigger=on_push(branches=["main"]))
+        def ci() -> None:
+            lint_job = job(lint_task)
+            job(run_tests_task, needs=[lint_job])
+
+        spec = render_automation_jobs(ci)
+        yaml_str = spec.to_yaml()
+
+        # Should be parseable
+        yaml = YAML()
+        parsed = yaml.load(yaml_str)
+
+        assert parsed["name"] == "ci"
+        assert "push" in parsed["on"]
+        assert "lint_task" in parsed["jobs"]
+        assert "run_tests_task" in parsed["jobs"]
+        assert parsed["jobs"]["run_tests_task"]["needs"] == ["lint_task"]
+
+    def test_automation_with_input_params(self) -> None:
+        """Test automation with InputParam generates workflow_dispatch inputs."""
+
+        @automation
+        def deploy(
+            environment: InputParam[str] = InputParam(default="staging"),
+            force: InputParam[bool] = InputParam(default=False),
+        ) -> None:
+            job(lint_task)
+
+        spec = render_automation_jobs(deploy)
+
+        assert "workflow_dispatch" in spec.on
+        inputs = spec.on["workflow_dispatch"]["inputs"]
+        assert "environment" in inputs
+        assert "force" in inputs
+        assert inputs["environment"]["default"] == "staging"
+        assert inputs["force"]["type"] == "boolean"
+
+    def test_input_param_passed_to_job(self) -> None:
+        """Test InputParam value passed to job correctly."""
+
+        @automation
+        def parameterized(
+            env: InputParam[str] = InputParam(default="prod"),
+        ) -> None:
+            job(wheel_test_task, inputs={"wheel_path": env.to_ref()})
+
+        spec = render_automation_jobs(parameterized)
+
+        test_job = spec.jobs["wheel_test_task"]
+        run_step = [s for s in test_job.steps if s.run is not None][0]
+        assert "inputs.env" in run_step.run
+
+
+class TestGHAJobSpecEnhancements:
+    """Tests for the enhanced GHAJobSpec class."""
+
+    def test_job_spec_needs(self) -> None:
+        """Test GHAJobSpec with needs."""
+        job = GHAJobSpec(
+            name="test",
+            needs=["lint", "build"],
+            steps=[StepSpec(name="run", run="echo test")],
+        )
+        d = job.to_dict()
+
+        assert d["needs"] == ["lint", "build"]
+
+    def test_job_spec_outputs(self) -> None:
+        """Test GHAJobSpec with outputs."""
+        job = GHAJobSpec(
+            name="build",
+            outputs={"version": "${{ steps.build.outputs.version }}"},
+            steps=[StepSpec(name="build", run="echo v1.0.0")],
+        )
+        d = job.to_dict()
+
+        assert d["outputs"] == {"version": "${{ steps.build.outputs.version }}"}
+
+    def test_job_spec_if_condition(self) -> None:
+        """Test GHAJobSpec with if condition."""
+        job = GHAJobSpec(
+            name="deploy",
+            if_condition="${{ github.ref == 'refs/heads/main' }}",
+            steps=[StepSpec(name="deploy", run="echo deploy")],
+        )
+        d = job.to_dict()
+
+        assert d["if"] == "${{ github.ref == 'refs/heads/main' }}"
+
+    def test_job_spec_matrix(self) -> None:
+        """Test GHAJobSpec with matrix."""
+        job = GHAJobSpec(
+            name="test",
+            matrix={"python": ["3.10", "3.11"]},
+            steps=[StepSpec(name="test", run="pytest")],
+        )
+        d = job.to_dict()
+
+        assert "strategy" in d
+        assert d["strategy"]["matrix"] == {"python": ["3.10", "3.11"]}

@@ -16,6 +16,7 @@ Example:
             test_wheel,
             inputs={"wheel_path": build_job.get("wheel_path")},
         )
+
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ class JobOutputRef:
             needs: [build_wheel]
             steps:
               - run: ./run test --path="${{ needs.build_wheel.outputs.wheel_path }}"
+
     """
 
     job_id: str
@@ -87,6 +89,7 @@ class ArtifactRef:
 
     In GHA this generates upload-artifact after build_wheel and
     download-artifact before test.
+
     """
 
     job_id: str
@@ -138,6 +141,7 @@ class InputParam(Generic[T]):
         ) -> None:
             test_job = job(test, condition=~skip_tests)
             deploy_job = job(deploy_task, inputs={"env": environment})
+
     """
 
     def __init__(
@@ -190,8 +194,7 @@ class InputParam(Generic[T]):
     def __bool__(self) -> bool:
         """Raise error - use conditions instead of Python control flow."""
         raise TypeError(
-            "InputParam cannot be used in Python control flow.\n"
-            "Use job(..., condition=param == 'value') instead."
+            "InputParam cannot be used in Python control flow.\nUse job(..., condition=param == 'value') instead."
         )
 
     def __repr__(self) -> str:
@@ -217,6 +220,7 @@ class Artifact:
             # wheel is a Path to the downloaded artifact
             run("pip", "install", str(wheel))
             return Ok(None)
+
     """
 
     def __init__(self, path: Path | str | None = None):
@@ -433,6 +437,7 @@ class _GitHubContext:
                 deploy_task,
                 condition=(env == "prod") & github.ref_name.eq("main"),
             )
+
     """
 
     @property
@@ -505,6 +510,7 @@ class JobSpec:
         runs_on: Runner specification (default: "ubuntu-latest")
         matrix: Matrix configuration for parallel jobs
         condition: Condition expression for job-level if:
+
     """
 
     job_id: str
@@ -542,12 +548,12 @@ class JobSpec:
 
         Raises:
             ValueError: If output_name not in task's declared outputs
+
         """
         if output_name not in self.task_info.outputs:
             available = ", ".join(self.task_info.outputs) or "(none)"
             raise ValueError(
-                f"Task '{self.task_info.name}' has no output '{output_name}'. "
-                f"Declared outputs: {available}"
+                f"Task '{self.task_info.name}' has no output '{output_name}'. Declared outputs: {available}"
             )
         return JobOutputRef(self.job_id, output_name)
 
@@ -562,12 +568,12 @@ class JobSpec:
 
         Raises:
             ValueError: If artifact_name not in task's declared artifacts
+
         """
         if artifact_name not in self.task_info.artifacts:
             available = ", ".join(self.task_info.artifacts) or "(none)"
             raise ValueError(
-                f"Task '{self.task_info.name}' has no artifact '{artifact_name}'. "
-                f"Declared artifacts: {available}"
+                f"Task '{self.task_info.name}' has no artifact '{artifact_name}'. Declared artifacts: {available}"
             )
         return ArtifactRef(self.job_id, artifact_name)
 
@@ -654,21 +660,18 @@ def job(
                 test_wheel,
                 inputs={"wheel": build_job.get("wheel_path")},
             )
+
     """
     from .context import get_automation_context
 
     ctx = get_automation_context()
     if ctx is None:
-        raise RuntimeError(
-            "job() can only be called inside an @automation-decorated function."
-        )
+        raise RuntimeError("job() can only be called inside an @automation-decorated function.")
 
     # Validate task
     task_info = getattr(task, "_task_info", None)
     if task_info is None:
-        raise TypeError(
-            f"job() requires a @task-decorated function, got {type(task).__name__}"
-        )
+        raise TypeError(f"job() requires a @task-decorated function, got {type(task).__name__}")
 
     # Generate job_id from task name if not provided
     actual_job_id = job_id or task_info.name
@@ -990,6 +993,7 @@ def automation(
                 deploy_task,
                 inputs={"env": environment},
             )
+
     """
 
     def decorator(func: Callable[..., None]) -> AutomationWrapper:

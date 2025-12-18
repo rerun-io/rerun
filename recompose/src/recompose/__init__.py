@@ -24,45 +24,13 @@ from . import gh_cli, gha
 # Legacy flow-dispatch automation (to be removed in Phase 6)
 from .automation import (
     AutomationInfo as LegacyAutomationInfo,
+)
+from .automation import (
     AutomationPlan,
     FlowDispatch,
-    automation as legacy_automation,
 )
-
-# New P14 job-based automation framework
-from .jobs import (
-    # Reference types
-    ArtifactRef,
-    JobOutputRef,
-    InputParamRef,
-    # Input types
-    InputParam,
-    Artifact,
-    # Job specification
-    JobSpec,
-    job,
-    # Condition expressions
-    ConditionExpr,
-    InputCondition,
-    GitHubCondition,
-    AndCondition,
-    OrCondition,
-    NotCondition,
-    github,
-    # Triggers
-    Trigger,
-    PushTrigger,
-    PullRequestTrigger,
-    ScheduleTrigger,
-    WorkflowDispatchTrigger,
-    on_push,
-    on_pull_request,
-    on_schedule,
-    on_workflow_dispatch,
-    # Automation
-    AutomationInfo,
-    AutomationWrapper,
-    automation,
+from .automation import (
+    automation as legacy_automation,
 )
 from .builtin_tasks import builtin_commands, generate_gha, inspect
 from .cli import main
@@ -95,10 +63,46 @@ from .flow import (
     flow,
     get_current_plan,
 )
+
+# New P14 job-based automation framework
+from .jobs import (
+    AndCondition,
+    Artifact,
+    # Reference types
+    ArtifactRef,
+    # Automation
+    AutomationInfo,
+    AutomationWrapper,
+    # Condition expressions
+    ConditionExpr,
+    GitHubCondition,
+    InputCondition,
+    # Input types
+    InputParam,
+    InputParamRef,
+    JobOutputRef,
+    # Job specification
+    JobSpec,
+    NotCondition,
+    OrCondition,
+    PullRequestTrigger,
+    PushTrigger,
+    ScheduleTrigger,
+    # Triggers
+    Trigger,
+    WorkflowDispatchTrigger,
+    automation,
+    github,
+    job,
+    on_pull_request,
+    on_push,
+    on_schedule,
+    on_workflow_dispatch,
+)
 from .plan import FlowPlan, Input, InputPlaceholder, TaskClassNode, TaskNode
 from .result import Err, Ok, Result
-from .subprocess import RunResult, SubprocessError, run
 from .step import step, step_decorator
+from .subprocess import RunResult, SubprocessError, run
 from .task import MethodWrapper, TaskInfo, TaskWrapper, method, task, taskclass
 from .workspace import (
     FlowParams,

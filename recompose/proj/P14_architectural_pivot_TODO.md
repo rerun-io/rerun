@@ -619,14 +619,15 @@ app = recompose.App(
 - [x] Implement trigger classes (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
 - [x] Implement trigger combination with `|`
 
-### Phase 4: Workflow Generation
-- [ ] Update GHA generation for new multi-job model
-- [ ] Generate jobs using app's entry_point
-- [ ] Handle job outputs/inputs mapping
-- [ ] Handle artifact upload/download steps
-- [ ] Handle secrets in job env
-- [ ] Handle per-task setup overrides
-- [ ] Handle matrix jobs
+### Phase 4: Workflow Generation ✅ COMPLETE
+- [x] Update GHA generation for new multi-job model
+- [x] Generate jobs using app's entry_point
+- [x] Handle job outputs/inputs mapping
+- [x] Handle artifact upload/download steps
+- [x] Handle secrets in job env
+- [x] Handle per-task setup overrides
+- [x] Handle matrix jobs
+- [x] Handle job conditions (if:)
 
 ### Phase 5: Dispatchable
 - [ ] Implement `make_dispatchable()` function
@@ -649,17 +650,17 @@ app = recompose.App(
 
 ## Completion Criteria
 
-- [ ] `@task(outputs=[...])` works with `set_output()`
-- [ ] `@task(artifacts=[...])` works with `save_artifact()`
-- [ ] `@task(secrets=[...])` works with `get_secret()` and local secrets file
-- [ ] `@task(setup=[...])` overrides default setup steps
-- [ ] `@automation` creates multi-job workflows via context tracking
-- [ ] Job dependencies inferred from output/artifact references
-- [ ] Job conditions work with expression algebra, map to GHA `if:`
-- [ ] Artifact upload/download steps generated correctly
-- [ ] Secrets plumbed to job env in GHA
+- [x] `@task(outputs=[...])` works with `set_output()`
+- [x] `@task(artifacts=[...])` works with `save_artifact()`
+- [x] `@task(secrets=[...])` works with `get_secret()` and local secrets file
+- [x] `@task(setup=[...])` overrides default setup steps
+- [x] `@automation` creates multi-job workflows via context tracking
+- [x] Job dependencies inferred from output/artifact references
+- [x] Job conditions work with expression algebra, map to GHA `if:`
+- [x] Artifact upload/download steps generated correctly
+- [x] Secrets plumbed to job env in GHA
 - [ ] `make_dispatchable()` creates single-job workflows
-- [ ] Generated workflows use app entry_point directly (copy-paste runnable)
+- [x] Generated workflows use app entry_point directly (copy-paste runnable)
 - [ ] All examples migrated to new model
 - [ ] All old flow/taskclass code removed
-- [ ] All tests passing
+- [x] All tests passing (291 tests)

@@ -14,7 +14,26 @@ See `proj/P14_architectural_pivot_TODO.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-**Current phase:** Phase 2+3 COMPLETE. Ready for Phase 4 (Workflow Generation).
+**Current phase:** Phase 4 COMPLETE. Ready for Phase 5 (make_dispatchable).
+
+## Phase 4 COMPLETE: Workflow Generation
+
+Implemented in `gha.py`:
+- `render_automation_jobs(automation, entry_point, default_setup, working_directory)` - Main function
+- `GHAJobSpec` class with support for needs, outputs, if_condition, matrix
+- `SetupStep` class for configuring setup steps
+- `DEFAULT_SETUP_STEPS` - checkout, setup-python, setup-uv
+- Job generation with:
+  - Entry point CLI commands (`./run task_name --arg=value`)
+  - Job dependencies (needs:) from explicit + inferred references
+  - Job outputs exposed via `${{ steps.run.outputs.X }}`
+  - Artifact upload/download steps (actions/upload-artifact, download-artifact)
+  - Secrets as job env vars (`${{ secrets.NAME }}`)
+  - Per-task setup overrides via `@task(setup=[...])`
+  - Matrix job support via `strategy.matrix`
+  - Job conditions via `if:` expression
+  - InputParam → workflow_dispatch inputs
+- 25 new tests for workflow generation (291 total, all passing)
 
 ## Phase 2 COMPLETE: Automation Framework
 
@@ -29,7 +48,7 @@ Implemented in `jobs.py`:
 - Condition expression algebra (`&`, `|`, `~`, `==`, `!=`)
 - `github.*` context references for conditions (ref_name, event_name, etc.)
 - Trigger types (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
-- 47 new tests, all passing (266 total)
+- 47 new tests, all passing
 
 ## Phase 1 COMPLETE: Task Decorator Enhancements
 
@@ -54,17 +73,13 @@ Implemented:
 
 # UPCOMING
 
-1. **Phase 4: Workflow Generation** (NEXT)
-   - Update GHA generation for new multi-job model
-   - Generate jobs using app's entry_point
-   - Handle job outputs/inputs mapping
-   - Handle artifact upload/download steps
-   - Handle secrets in job env
-   - Handle per-task setup overrides
-   - Handle matrix jobs
+1. **Phase 5: make_dispatchable()** (NEXT)
+   - Simple wrapper to create workflow_dispatch workflow for a single task
+   - `recompose.make_dispatchable(task, inputs={})` → Dispatchable
+   - Generates single-job workflow with task's setup + run
 
-2. Phase 5: make_dispatchable() for single-task workflows
-3. Phase 6-7: Cleanup old code, migration, documentation
+2. Phase 6: Cleanup old code (remove @flow, @taskclass, workspace.py, etc.)
+3. Phase 7: Migration & Polish (migrate examples, update App class, documentation)
 
 # DEFERRED
 
@@ -112,3 +127,12 @@ Previous work preserved in `jleibs/recompose-backup-flows-as-steps`:
 | `Artifact` | Type hint for artifact inputs to tasks |
 | `ConditionExpr` | Job condition expression |
 | `Trigger` | Workflow trigger (on_push, etc.) |
+
+## Workflow Generation (Phase 4)
+
+| Component | Purpose |
+|-----------|---------|
+| `render_automation_jobs()` | Main function to generate WorkflowSpec from automation |
+| `GHAJobSpec` | Represents a GHA job with needs, outputs, if, matrix |
+| `SetupStep` | Represents a setup step (checkout, setup-python, etc.) |
+| `DEFAULT_SETUP_STEPS` | Default setup: checkout + python 3.12 + uv |
