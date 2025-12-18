@@ -31,8 +31,6 @@ pub fn generate_reflection(
         extension_contents_for_fqname,
         &mut imports,
     );
-    let component_identifier_reflection =
-        generate_component_identifier_reflection(reporter, objects);
     let archetype_reflection = generate_archetype_reflection(reporter, objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
@@ -50,8 +48,6 @@ pub fn generate_reflection(
         use re_types_core::{
             ArchetypeName,
             ComponentType,
-            ComponentDescriptor,
-            ComponentIdentifier,
             Component,
             Loggable as _,
             ComponentBatch as _,
@@ -61,7 +57,6 @@ pub fn generate_reflection(
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
                 ComponentReflection,
-                ComponentIdentifierReflectionMap,
                 ComponentReflectionMap,
                 Reflection,
             },
@@ -85,64 +80,12 @@ pub fn generate_reflection(
 
         #component_reflection
 
-        #component_identifier_reflection
-
         #archetype_reflection
     };
 
     let code = append_tokens(reporter, code, &quoted_reflection, &path);
 
     files_to_write.insert(path, code);
-}
-
-/// Generate reflection for component identifiers.
-fn generate_component_identifier_reflection(reporter: &Reporter, objects: &Objects) -> TokenStream {
-    let mut quoted_pairs = Vec::new();
-
-    for obj in objects
-        .objects_of_kind(ObjectKind::Archetype)
-        .filter(|obj| !obj.is_testing())
-    {
-        for field in &obj.fields {
-            let Some(component_type) = field.typ.fqname() else {
-                reporter.error(
-                    &field.virtpath,
-                    &field.fqname,
-                    "Archetype field must be an object/union or an array/vector of such",
-                );
-                continue;
-            };
-
-            let component = format!("{}:{}", obj.name, field.snake_case_name());
-            let archetype_fqname = obj.fqname.clone();
-
-            let pair = quote! {
-                (
-                    ComponentIdentifier::new(#component),
-                    ComponentDescriptor {
-                        archetype: Some(#archetype_fqname.into()),
-                        component: #component.into(),
-                        component_type: Some(#component_type.into()),
-                    }
-                )
-            };
-
-            quoted_pairs.push(pair);
-        }
-    }
-
-    quote! {
-        #[doc = "Generates reflection about all known component identifiers."]
-        #[doc = ""]
-        #[doc = "Call only once and reuse the results."]
-        fn generate_component_identifier_reflection() -> ComponentIdentifierReflectionMap {
-            re_tracing::profile_function!();
-            let array = [
-                #(#quoted_pairs,)*
-            ];
-            ComponentIdentifierReflectionMap::from_iter(array)
-        }
-    }
 }
 
 /// Generate reflection about components.

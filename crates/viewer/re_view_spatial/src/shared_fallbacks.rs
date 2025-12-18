@@ -152,6 +152,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
             {
+                let visualizer_instruction = VisualizerInstruction::placeholder(data_result); // coordinate frames aren't associated with any particular visualizer
                 let results = data_result
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
