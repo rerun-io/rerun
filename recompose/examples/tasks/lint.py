@@ -108,3 +108,32 @@ def format_code() -> recompose.Result[None]:
 
     recompose.out("Formatting complete!")
     return recompose.Ok(None)
+
+
+@recompose.task
+def lint_all() -> recompose.Result[None]:
+    """
+    Run all lint checks: ruff, mypy, formatting, and GHA workflow sync.
+
+    This is used in CI to run all static checks in a single job,
+    reducing container startup overhead.
+    """
+    from recompose.builtin_tasks import generate_gha
+
+    # Run linters (ruff + mypy)
+    result = lint()
+    if result.failed:
+        return result
+
+    # Check formatting
+    result = format_check()
+    if result.failed:
+        return result
+
+    # Check GHA workflows are in sync
+    gha_result = generate_gha(check_only=True)
+    if gha_result.failed:
+        return recompose.Err("GHA workflows out of sync - run './run generate-gha' to update")
+
+    recompose.out("All lint checks passed!")
+    return recompose.Ok(None)

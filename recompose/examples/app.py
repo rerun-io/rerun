@@ -26,6 +26,7 @@ from .tasks import (
     format_check,
     format_code,
     lint,
+    lint_all,
     test,
 )
 
@@ -49,6 +50,7 @@ app = recompose.App(
             "Quality",
             [
                 lint,
+                lint_all,
                 format_check,
                 format_code,
             ],

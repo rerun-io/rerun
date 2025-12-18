@@ -15,7 +15,7 @@ on:
     - main
   pull_request: null
 jobs:
-  lint:
+  lint_all:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,24 +29,8 @@ jobs:
         python-version: '3.12'
     - name: Setup uv
       uses: astral-sh/setup-uv@v4
-    - name: lint
-      run: ./run lint
-  format_check:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: recompose
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Setup uv
-      uses: astral-sh/setup-uv@v4
-    - name: format_check
-      run: ./run format_check
+    - name: lint_all
+      run: ./run lint_all
   test:
     runs-on: ubuntu-latest
     defaults:
@@ -63,19 +47,3 @@ jobs:
       uses: astral-sh/setup-uv@v4
     - name: test
       run: ./run test
-  generate_gha:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: recompose
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Setup uv
-      uses: astral-sh/setup-uv@v4
-    - name: generate_gha
-      run: ./run generate_gha --check_only=True
