@@ -192,10 +192,10 @@ The `TaskClassNode` must track its "current version" (latest step that modified 
 - [x] TaskClass state serializes/deserializes correctly
 - [x] Passing TaskClass to tasks works with implicit state tracking
 - [x] `Counter` example works (stateful test case) - in test_taskclass_flow.py
-- [ ] `Venv` TaskClass implemented
-- [ ] `wheel_test` flow updated to use `Venv`
+- [x] `Venv` TaskClass implemented - in examples/tasks/virtual_env.py
+- [x] `wheel_test_v2` flow uses `Venv` (kept original wheel_test for comparison)
 - [ ] GHA generation works for TaskClass flows
-- [ ] All tests pass (193/193 passing)
+- [x] All tests pass (193/193 passing)
 
 ## Notes
 
