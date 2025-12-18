@@ -1,6 +1,6 @@
 namespace rerun.blueprint.components;
 
-/// Associate components of an entity to components of a visualizer.
+/// Associates components of an entity to components of a visualizer.
 table VisualizerComponentMapping (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default"

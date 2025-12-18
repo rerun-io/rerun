@@ -9,5 +9,5 @@ table VisualizerInstructionId (
   "attr.rust.repr": "transparent"
 ) {
   /// Names of a visualizer that should be active.
-  visualizer: rerun.datatypes.Utf8 (order: 100);
+  visualizer: rerun.datatypes.Uuid (order: 100);
 }
