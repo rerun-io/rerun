@@ -469,7 +469,7 @@ def read_taskclass_state(workspace: Path, taskclass_id: str) -> Any | None:
         raise TypeError(f"Cannot resolve TaskClass type: {type_key}")
 
     # Create instance without calling __init__ (we'll restore state directly)
-    instance = object.__new__(cls)
+    instance: Any = object.__new__(cls)
 
     # Restore state
     deserialized_state = deserialize_value(state)

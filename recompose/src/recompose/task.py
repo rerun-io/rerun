@@ -7,7 +7,7 @@ import inspect
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, ParamSpec, Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Concatenate, Generic, ParamSpec, Protocol, TypeVar
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 T = TypeVar("T")
-T_co = TypeVar("T_co", covariant=True)
+Self = TypeVar("Self")
 
 
 class TaskWrapper(Protocol[P, T]):
@@ -87,12 +87,12 @@ def _is_method_signature(fn: Callable[..., Any]) -> bool:
     return len(params) > 0 and params[0] == "self"
 
 
-class MethodWrapper(Protocol[P, T_co]):
+class MethodWrapper(Protocol[P, T]):
     """
     Protocol describing a @method-decorated TaskClass method.
 
     In flow context, method calls on a TaskClassNodeProxy return MethodWrapper
-    objects. The signature P excludes 'self', so type checkers see:
+    objects. The wrapper is callable without 'self', so type checkers see:
 
         venv.install_wheel(wheel="pkg.whl")  # Correct - no self needed
 
@@ -104,10 +104,10 @@ class MethodWrapper(Protocol[P, T_co]):
     _is_pending_method_task: bool
     _method_doc: str | None
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Result[T_co]: ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Result[T]: ...
 
 
-def method(fn: Callable[..., Result[T]]) -> MethodWrapper[P, T]:
+def method(fn: Callable[Concatenate[Self, P], Result[T]]) -> MethodWrapper[P, T]:
     """
     Decorator for TaskClass methods that should become flow steps.
 
@@ -115,7 +115,8 @@ def method(fn: Callable[..., Result[T]]) -> MethodWrapper[P, T]:
     is that @method properly types the method for flow context where 'self' is
     not passed explicitly.
 
-    Example:
+    Example::
+
         @recompose.taskclass
         class Venv:
             def __init__(self, *, location: Path):
@@ -126,13 +127,15 @@ def method(fn: Callable[..., Result[T]]) -> MethodWrapper[P, T]:
                 # Install wheel...
                 return recompose.Ok(None)
 
-        # In a flow - type checker sees install_wheel(wheel: str), not install_wheel(self, wheel: str)
+        # In a flow - type checker sees install_wheel(wheel: str), not (self, wheel: str)
         @recompose.flow
         def my_flow():
             venv = Venv(location=Path("/tmp"))
             venv.install_wheel(wheel="pkg.whl")  # No type error!
 
-    Note: @method can only be used inside a @taskclass-decorated class.
+    Note:
+        @method can only be used inside a @taskclass-decorated class.
+
     """
     if not _is_method_signature(fn):
         raise TypeError(
@@ -375,9 +378,8 @@ def taskclass(cls: type[T]) -> type[T]:
     cls._taskclass_info = taskclass_info  # type: ignore[attr-defined]
     cls._init_task_info = init_task_info  # type: ignore[attr-defined]
 
-    # Save the original __new__ and __init__
+    # Save the original __new__
     original_new = cls.__new__
-    original_init = cls.__init__
 
     def new_wrapper(wrapped_cls: type[T], *args: Any, **kwargs: Any) -> T | TaskClassNode[T]:
         """
@@ -440,7 +442,7 @@ def taskclass(cls: type[T]) -> type[T]:
         return instance
 
     # Replace __new__
-    cls.__new__ = new_wrapper  # type: ignore[method-assign]
+    cls.__new__ = new_wrapper  # type: ignore[assignment]
 
     # Also create flat wrappers for CLI registration (backward compatibility)
     task_wrappers: dict[str, Any] = {}
@@ -546,7 +548,8 @@ class _TaskClassNodeProxy(Generic[T]):
     @property
     def node(self) -> TaskClassNode[T]:
         """Get the underlying TaskClassNode."""
-        return object.__getattribute__(self, "_taskclass_node")
+        result: TaskClassNode[T] = object.__getattribute__(self, "_taskclass_node")
+        return result
 
     def __repr__(self) -> str:
         taskclass_node: TaskClassNode[T] = object.__getattribute__(self, "_taskclass_node")

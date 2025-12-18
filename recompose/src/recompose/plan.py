@@ -275,15 +275,17 @@ class TaskClassNode(Generic[T]):
     ordering: if you call `venv.install(...)` then pass `venv` to another task,
     that task depends on install completing, not just __init__.
 
-    Example:
+    Example::
+
         @flow
         def wheel_test():
             venv = Venv(location=Path("/tmp/test"))  # Returns TaskClassNode[Venv]
-            venv.install_wheel(wheel=wheel_path)      # Creates TaskNode, updates current_node
-            smoke_test(venv=venv)                     # Depends on install_wheel step
+            venv.install_wheel(wheel=wheel_path)     # Creates TaskNode, updates current_node
+            smoke_test(venv=venv)                    # Depends on install_wheel step
 
     TaskClassNode is passed directly to tasks (no .value() needed) since it
     represents the TaskClass instance itself, not a computed result.
+
     """
 
     cls: type[T]
