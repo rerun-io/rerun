@@ -7,13 +7,13 @@ import inspect
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, ParamSpec, Protocol, TypeVar
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
 
 if TYPE_CHECKING:
-    from .plan import TaskNode
+    from .plan import TaskClassNode, TaskNode
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -164,43 +164,85 @@ def task(fn: Callable[P, Result[T]]) -> TaskWrapper[P, T]:
     return cast(TaskWrapper[P, T], wrapper)
 
 
+@dataclass
+class TaskClassInfo:
+    """Metadata about a TaskClass."""
+
+    name: str
+    """Lowercase class name."""
+
+    module: str
+    """Module where the class is defined."""
+
+    cls: type
+    """The original class."""
+
+    init_signature: inspect.Signature
+    """Signature of __init__ (excluding self)."""
+
+    method_tasks: dict[str, TaskInfo]
+    """Map of method name -> TaskInfo for @task methods."""
+
+
 def taskclass(cls: type[T]) -> type[T]:
     """
-    Decorator to register a class with @task-decorated methods.
+    Decorator to register a class as a TaskClass.
 
-    This scans the class for methods decorated with @task and creates
-    task wrappers. The wrappers are stored on the class as `_recompose_tasks`
-    dict (mapping method name to wrapper).
+    A TaskClass can be used in two modes:
+
+    1. **Direct mode** (outside flows): Creates a normal instance, @task methods
+       execute immediately when called.
+
+    2. **Flow mode** (inside @flow): Instantiation returns a TaskClassNode.
+       Method calls on the TaskClassNode create TaskNodes in the flow plan.
+
+    TaskClasses support:
+    - `__init__` becomes a task step (no decoration needed)
+    - `@task` decorated methods become task steps
+    - Non-decorated methods are regular methods (usable when passed to other tasks)
 
     Example:
         @recompose.taskclass
         class Venv:
             def __init__(self, *, location: Path):
                 self.location = location
+                # Create venv...
 
             @recompose.task
-            def sync(self, *, group: str | None = None) -> recompose.Result[None]:
-                ...
+            def install_wheel(self, *, wheel: str) -> recompose.Result[None]:
+                # Install wheel...
 
-        # Access task wrappers for explicit registration:
-        commands = [
-            recompose.CommandGroup("Venv", list(Venv._recompose_tasks.values())),
-        ]
+            def run(self, *args: str) -> recompose.RunResult:
+                # Regular method - run command in venv
+                python = self.location / "bin" / "python"
+                return recompose.run(str(python), *args)
 
-        # CLI: ./app.py venv.sync --location=/tmp/venv --group=dev
+        # In a flow:
+        @recompose.flow
+        def wheel_test() -> None:
+            venv = Venv(location=Path("/tmp/test"))  # TaskClassNode
+            venv.install_wheel(wheel="pkg.whl")       # TaskNode
+            smoke_test(venv=venv)                     # Depends on install_wheel
+
+        # Direct usage:
+        venv = Venv(location=Path("/tmp/test"))  # Actual Venv instance
+        venv.install_wheel(wheel="pkg.whl")       # Executes immediately
 
     """
+    from .flow import get_current_plan
+    from .plan import TaskClassNode
+
     class_name = cls.__name__.lower()
     module = cls.__module__
-
-    # Dict to store task wrappers for explicit registration
-    task_wrappers: dict[str, Any] = {}
 
     # Get __init__ parameters (excluding 'self')
     init_sig = inspect.signature(cls.__init__)
     init_params = [p for name, p in init_sig.parameters.items() if name != "self"]
+    init_param_names = [p.name for p in init_params]
 
-    # Scan class for @task-decorated methods
+    # Collect @task-decorated methods
+    method_tasks: dict[str, TaskInfo] = {}
+
     for attr_name in dir(cls):
         if attr_name.startswith("_"):
             continue
@@ -219,23 +261,130 @@ def taskclass(cls: type[T]) -> type[T]:
         # Get method signature (excluding 'self')
         method_sig = inspect.signature(method)
         method_params = [p for name, p in method_sig.parameters.items() if name != "self"]
+        method_param_sig = inspect.Signature(parameters=method_params)
 
-        # Build combined signature: init params + method params
-        combined_params = init_params + method_params
-        combined_sig = inspect.Signature(parameters=combined_params)
-
-        # Task name: classname.methodname
+        # Task name for the method: classname.methodname
         task_name = f"{class_name}.{attr_name}"
 
-        # Create wrapper that constructs instance and calls method
-        def make_wrapper(
-            cls: type, method_name: str, init_param_names: list[str], full_task_name: str, task_sig: inspect.Signature
+        # Create TaskInfo for method (fn will be set later when we have an instance)
+        info = TaskInfo(
+            name=task_name,
+            module=module,
+            fn=method,  # Will be replaced with bound method at runtime
+            original_fn=method,
+            signature=method_param_sig,
+            doc=method_doc,
+            cls=cls,
+            is_method=True,
+            method_name=attr_name,
+            init_params=init_params,
+        )
+
+        method_tasks[attr_name] = info
+
+    # Create TaskInfo for __init__
+    init_task_name = f"{class_name}.__init__"
+    init_param_sig = inspect.Signature(parameters=init_params)
+
+    init_task_info = TaskInfo(
+        name=init_task_name,
+        module=module,
+        fn=cls.__init__,
+        original_fn=cls.__init__,
+        signature=init_param_sig,
+        doc=cls.__init__.__doc__ or cls.__doc__,
+        cls=cls,
+        is_method=True,
+        method_name="__init__",
+    )
+
+    # Store class info
+    taskclass_info = TaskClassInfo(
+        name=class_name,
+        module=module,
+        cls=cls,
+        init_signature=init_param_sig,
+        method_tasks=method_tasks,
+    )
+
+    # Store on class for introspection
+    cls._taskclass_info = taskclass_info  # type: ignore[attr-defined]
+    cls._init_task_info = init_task_info  # type: ignore[attr-defined]
+
+    # Save the original __new__ and __init__
+    original_new = cls.__new__
+    original_init = cls.__init__
+
+    def new_wrapper(wrapped_cls: type[T], *args: Any, **kwargs: Any) -> T | TaskClassNode[T]:
+        """
+        Intercept instantiation to detect flow context.
+
+        In flow context: Return a TaskClassNode
+        Otherwise: Return a normal instance
+        """
+        plan = get_current_plan()
+
+        if plan is not None:
+            # FLOW-BUILDING MODE: Create TaskClassNode
+            _validate_task_kwargs(init_task_name, init_param_sig, kwargs)
+
+            # Create init TaskNode
+            from .conditional import get_current_condition
+
+            current_cond = get_current_condition()
+            condition = current_cond.condition if current_cond else None
+
+            from .plan import TaskNode
+
+            init_node: TaskNode[T] = TaskNode(
+                task_info=init_task_info,
+                kwargs=kwargs.copy(),
+                condition=condition,
+            )
+            plan.add_node(init_node)
+
+            # Create TaskClassNode
+            taskclass_node: TaskClassNode[T] = TaskClassNode(
+                cls=wrapped_cls,
+                init_kwargs=kwargs.copy(),
+                init_node=init_node,
+                current_node=init_node,
+            )
+
+            # Return a proxy that intercepts method calls
+            return _TaskClassNodeProxy(taskclass_node, method_tasks)  # type: ignore[return-value]
+
+        # NORMAL EXECUTION MODE: Create actual instance
+        if original_new is object.__new__:
+            instance = object.__new__(wrapped_cls)
+        else:
+            instance = original_new(wrapped_cls)
+
+        return instance
+
+    # Replace __new__
+    cls.__new__ = new_wrapper  # type: ignore[method-assign]
+
+    # Also create flat wrappers for CLI registration (backward compatibility)
+    task_wrappers: dict[str, Any] = {}
+
+    for method_name, method_info in method_tasks.items():
+        # Build combined signature: init params + method params
+        combined_params = init_params + list(method_info.signature.parameters.values())
+        combined_sig = inspect.Signature(parameters=combined_params)
+        task_name = method_info.name
+
+        def make_flat_wrapper(
+            cls: type,
+            method_name: str,
+            init_param_names: list[str],
+            full_task_name: str,
+            task_sig: inspect.Signature,
+            method_info: TaskInfo,
         ) -> Callable[..., Any]:
-            """Create a wrapper for a specific method."""
+            """Create a flat wrapper for CLI registration."""
 
             def wrapper(**kwargs: Any) -> Result[Any]:
-                from .flow import get_current_plan
-
                 plan = get_current_plan()
 
                 if plan is not None:
@@ -246,46 +395,135 @@ def taskclass(cls: type[T]) -> type[T]:
                     return node  # type: ignore[return-value]
 
                 # NORMAL EXECUTION MODE
-                # Split kwargs into init args and method args
                 init_kwargs = {k: v for k, v in kwargs.items() if k in init_param_names}
                 method_kwargs = {k: v for k, v in kwargs.items() if k not in init_param_names}
 
-                # Construct instance and get bound method
                 instance = cls(**init_kwargs)
                 bound_method = getattr(instance, method_name)
 
-                return _run_with_context(f"{cls.__name__.lower()}.{method_name}", bound_method, (), method_kwargs)
+                return _run_with_context(full_task_name, bound_method, (), method_kwargs)
 
             return wrapper
 
-        init_param_names = [p.name for p in init_params]
-        wrapper = make_wrapper(cls, attr_name, init_param_names, task_name, combined_sig)
-        wrapper.__doc__ = method_doc
+        wrapper = make_flat_wrapper(cls, method_name, init_param_names, task_name, combined_sig, method_info)
+        wrapper.__doc__ = method_info.doc
 
-        # Create TaskInfo for this method task
-        info = TaskInfo(
+        # Create combined TaskInfo for flat wrapper
+        flat_info = TaskInfo(
             name=task_name,
             module=module,
             fn=wrapper,
-            original_fn=method,
+            original_fn=method_info.original_fn,
             signature=combined_sig,
-            doc=method_doc,
+            doc=method_info.doc,
             cls=cls,
             is_method=True,
-            method_name=attr_name,
+            method_name=method_name,
             init_params=init_params,
         )
+        wrapper._task_info = flat_info  # type: ignore[attr-defined]
+        task_wrappers[method_name] = wrapper
 
-        # Attach task info to wrapper for introspection (needed for flow building)
-        wrapper._task_info = info  # type: ignore[attr-defined]
-
-        # Store wrapper for explicit registration
-        task_wrappers[attr_name] = wrapper
-
-    # Store wrappers on class for explicit registration
     cls._recompose_tasks = task_wrappers  # type: ignore[attr-defined]
 
     return cls
+
+
+class _TaskClassNodeProxy(Generic[T]):
+    """
+    Proxy that wraps a TaskClassNode and intercepts method calls.
+
+    When a @task method is called on this proxy, it creates a TaskNode
+    and updates the TaskClassNode's current_node for dependency tracking.
+
+    For non-task methods, it raises an error (they should only be called
+    on actual instances, not in flow context).
+    """
+
+    def __init__(self, taskclass_node: TaskClassNode[T], method_tasks: dict[str, TaskInfo]):
+        # Use object.__setattr__ to avoid triggering __setattr__ override
+        object.__setattr__(self, "_taskclass_node", taskclass_node)
+        object.__setattr__(self, "_method_tasks", method_tasks)
+
+    def __getattr__(self, name: str) -> Any:
+        taskclass_node: TaskClassNode[T] = object.__getattribute__(self, "_taskclass_node")
+        method_tasks: dict[str, TaskInfo] = object.__getattribute__(self, "_method_tasks")
+
+        if name in method_tasks:
+            # Return a callable that creates a TaskNode when called
+            method_info = method_tasks[name]
+            return _TaskMethodCaller(taskclass_node, method_info)
+
+        # For non-task attributes, raise an error - they're not available in flow context
+        raise AttributeError(
+            f"Cannot access '{name}' on TaskClassNode in flow context. "
+            f"Only @task-decorated methods can be called in flows. "
+            f"Available task methods: {list(method_tasks.keys())}"
+        )
+
+    @property
+    def _is_taskclass_node_proxy(self) -> bool:
+        """Marker to identify this as a TaskClassNode proxy."""
+        return True
+
+    @property
+    def node(self) -> TaskClassNode[T]:
+        """Get the underlying TaskClassNode."""
+        return object.__getattribute__(self, "_taskclass_node")
+
+    def __repr__(self) -> str:
+        taskclass_node: TaskClassNode[T] = object.__getattribute__(self, "_taskclass_node")
+        return f"TaskClassNodeProxy({taskclass_node!r})"
+
+
+class _TaskMethodCaller(Generic[T]):
+    """
+    Callable that creates a TaskNode when invoked.
+
+    This is returned when accessing a @task method on a TaskClassNodeProxy.
+    """
+
+    def __init__(self, taskclass_node: TaskClassNode[T], method_info: TaskInfo):
+        self._taskclass_node = taskclass_node
+        self._method_info = method_info
+
+    def __call__(self, **kwargs: Any) -> Result[Any]:
+        from .conditional import get_current_condition
+        from .flow import get_current_plan
+        from .plan import TaskNode
+
+        plan = get_current_plan()
+        if plan is None:
+            raise RuntimeError("_TaskMethodCaller should only be used in flow context")
+
+        # Validate kwargs
+        _validate_task_kwargs(self._method_info.name, self._method_info.signature, kwargs)
+
+        # Get current condition
+        current_cond = get_current_condition()
+        condition = current_cond.condition if current_cond else None
+
+        # Get the current dependency node BEFORE we update it
+        prev_node = self._taskclass_node.current_node
+
+        # Create kwargs that includes reference to the TaskClassNode
+        full_kwargs = kwargs.copy()
+        full_kwargs["__taskclass_node__"] = self._taskclass_node
+
+        # Create TaskNode for this method call with explicit dependency
+        node: TaskNode[Any] = TaskNode(
+            task_info=self._method_info,
+            kwargs=full_kwargs,
+            condition=condition,
+            taskclass_dep=prev_node,  # Explicit dependency on previous node
+        )
+
+        plan.add_node(node)
+
+        # Update the TaskClassNode's current_node AFTER creating the node
+        self._taskclass_node.current_node = node
+
+        return node  # type: ignore[return-value]
 
 
 def _execute_task(fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]) -> Result[Any]:

@@ -53,7 +53,7 @@ from .flow import (
     flow,
     get_current_plan,
 )
-from .plan import FlowPlan, Input, InputPlaceholder, TaskNode
+from .plan import FlowPlan, Input, InputPlaceholder, TaskClassNode, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, TaskWrapper, task, taskclass
@@ -100,6 +100,7 @@ __all__ = [
     "FlowWrapper",
     "FlowPlan",
     "TaskNode",
+    "TaskClassNode",
     "Input",
     "InputPlaceholder",
     "get_flow",

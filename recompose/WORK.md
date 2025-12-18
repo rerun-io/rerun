@@ -1,20 +1,14 @@
 # NOW
 
-**P12_architecture_cleanup** - Phase 4 complete. Eager planning refactor done.
+**P13_taskclass_in_flows** - TaskClass as first-class flow entities.
 
-**Latest Changes (Eager Planning):**
-- **Moved flow planning to decoration time** - Plans are built eagerly when `@flow` is applied
-  - `.plan` is now a property (not a method) returning the pre-built FlowPlan
-  - `InputPlaceholder` values for flow parameters are created at decoration time
-  - Errors (missing args, invalid kwargs, empty flows) are caught immediately at decoration
-- **Condition-check nodes are first-class plan nodes** - No longer injected by GHA
-  - When a task is added inside `run_if()`, a condition-check node is auto-created
-  - These nodes have step names like `run_if_1`, `run_if_2`
-  - GHA renders them; local executor skips them (evaluates conditions inline)
-- **Removed `--eval-condition` CLI flag** - Condition checks use `--step run_if_N`
-- **CLI resolves `InputPlaceholder` values** from `flow_params.params` at execution time
+Enable TaskClasses to work naturally in flows:
+- `Venv(location=...)` creates a TaskNode (instantiation as step)
+- `venv.install_wheel(...)` creates a TaskNode (method as step)
+- TaskClass state implicitly serialized after each method
+- TaskClasses can be passed to other tasks as regular objects
 
-See `proj/P12_architecture_cleanup_TODO.md` for full details.
+See `proj/P13_taskclass_in_flows_TODO.md` for full design and plan.
 
 # UPCOMING
 
