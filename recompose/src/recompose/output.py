@@ -105,8 +105,13 @@ class OutputManager:
             return
 
         symbol = SYMBOLS["success"] if success else SYMBOLS["failure"]
-        style = "green" if success else "red"
-        self.print(f"{prefix}{symbol} {elapsed:.2f}s", style=style)
+        status_style = "green" if success else "red"
+        if prefix:
+            # Print prefix in header style, then status in success/failure style
+            self.print(prefix, style="bold cyan", end="")
+            self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
+        else:
+            self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
 
     def print_top_level_status(self, name: str, success: bool, elapsed: float) -> None:
         """Print top-level task completion status."""
