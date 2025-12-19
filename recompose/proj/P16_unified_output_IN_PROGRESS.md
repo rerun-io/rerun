@@ -66,68 +66,98 @@ class OutputManager:
     def wrap_stdout(self) -> ContextManager  # wraps stdout with prefix
 ```
 
+## Symbology
+
+| Symbol | Meaning |
+|--------|---------|
+| `▼` | Top-level entry point (execution flows down from here) |
+| `│` | Main execution backbone |
+| `⊕─┬─▶` | Parallel fork (multiple jobs run concurrently) |
+| `├─▶` | Sequential job (single job on backbone) |
+| `└─▶` | Last item in a parallel group |
+| `✓` | Success (green) |
+| `✗` | Failure (red) |
+
 ### Mockup: Nested Tasks
 
 ```
-▶ lint_all
-
+▼ lint_all
+│
 ├─▶ lint
 │    Running ruff check...
-│    [green]All checks passed![/green]
-│    Ruff check passed!
+│    All checks passed!
 │    Running mypy...
-│    [green]Success: no issues found[/green]
-│    [green]✓[/green] completed in 0.37s
+│    Success: no issues found
+│    ✓ 0.37s
 │
 ├─▶ format_check
 │    Checking code formatting...
-│    [green]✓[/green] completed in 0.02s
+│    ✓ 0.02s
 │
 ├─▶ generate_gha
 │    Checking 3 workflow(s)...
 │    All workflows up-to-date!
-│    [green]✓[/green] completed in 0.01s
-
-[green]✓[/green] lint_all succeeded in 0.41s
+│    ✓ 0.01s
+│
+✓ lint_all succeeded in 0.41s
 ```
 
-### Mockup: Automation with Parallel Jobs
+### Mockup: Automation with Parallel Jobs (Single Wave)
 
 ```
-▶ Running automation: ci
+▼ ci
+│
+⊕─┬─▶ lint_all
+│ │    ├─▶ lint
+│ │    │    Running ruff check...
+│ │    │    ✓ 0.30s
+│ │    ├─▶ format_check
+│ │    │    ✓ 0.02s
+│ │    ✓ 0.35s
+│ │
+│ └─▶ test
+│      Running pytest...
+│      ✓ 0.48s
+│
+✓ ci completed in 0.50s (2 jobs)
+```
 
-  ⊕ Running in parallel: lint_all, test
+### Mockup: Multiple Waves (Dependencies)
 
-  → lint_all
-    ├─▶ lint
-    │    Running ruff check...
-    │    [green]✓[/green] completed in 0.30s
-    ├─▶ format_check
-    │    [green]✓[/green] completed in 0.02s
-    [green]✓[/green] completed in 0.35s
-
-  → test
-    Running pytest...
-    [green]✓[/green] completed in 0.48s
-
-[green]✓[/green] Automation ci completed in 0.50s (2 jobs)
+```
+▼ build_test_deploy
+│
+⊕─┬─▶ lint
+│ │    ✓ 0.3s
+│ └─▶ format_check
+│      ✓ 0.2s
+│
+⊕─┬─▶ unit_test
+│ │    ✓ 1.0s
+│ └─▶ integration_test
+│      ✓ 2.0s
+│
+├─▶ deploy
+│    Deploying to production...
+│    ✓ 1.2s
+│
+✓ build_test_deploy completed in 3.5s
 ```
 
 ### Mockup: Failure Case
 
 ```
-▶ lint_all
-
+▼ lint_all
+│
 ├─▶ lint
 │    Running ruff check...
-│    [green]All checks passed![/green]
+│    All checks passed!
 │    Running mypy...
-│    [red]src/foo.py:10: error: ...[/red]
-│    [red]Found 1 error[/red]
-│    [red]✗[/red] failed in 0.62s
-│    [dim]Error: Mypy failed with exit code 1[/dim]
-
-[red]✗[/red] lint_all failed in 0.62s
+│    src/foo.py:10: error: Incompatible types
+│    Found 1 error
+│    ✗ 0.62s
+│
+✗ lint_all failed in 0.62s
 ```
 
 ### Mockup: GHA Mode
