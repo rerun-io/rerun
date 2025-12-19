@@ -40,7 +40,7 @@ SYMBOLS = {
     "branch": "├─▶",  # Non-last sibling
     "last": "└─▶",  # Last sibling
     "pipe": "│",  # Continuation line
-    "parallel": "⊕─┬─▶",  # Parallel group header
+    "parallel": "⊕─┬",  # Parallel group header (no arrow - not a task)
     "success": "✓",  # Success
     "failure": "✗",  # Failure
 }
@@ -48,6 +48,7 @@ SYMBOLS = {
 # Prefix widths to align content under headers
 CONTENT_PREFIX = "│   "  # 4 chars: pipe + 3 spaces
 LAST_PREFIX = "    "  # 4 chars: 4 spaces (no continuation line)
+PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 
 
 def prefix_lines(text: str, prefix: str) -> str:
@@ -117,13 +118,12 @@ class OutputManager:
         style = "bold green" if success else "bold red"
         self.print(f"\n{symbol} {name} {status} in {elapsed:.2f}s", style=style)
 
-    def print_parallel_header(self, job_names: list[str]) -> None:
+    def print_parallel_header(self) -> None:
         """Print header for parallel execution group."""
         if self._is_gha:
             return
 
-        names_str = ", ".join(job_names)
-        self.print(f"{SYMBOLS['parallel']} Running in parallel: {names_str}", style="bold cyan")
+        self.print(f"{SYMBOLS['parallel']} (parallel)", style="bold cyan")
 
     def print_automation_header(self, name: str) -> None:
         """Print automation header."""

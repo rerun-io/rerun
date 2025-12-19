@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 import time
 from collections.abc import Callable
@@ -303,13 +304,16 @@ class LocalExecutor:
                     failed_jobs.add(job_spec.job_id)
             else:
                 # Multiple jobs - run in parallel, then print sequentially
+                # Parallel group is a recursive execution level
                 from concurrent.futures import ThreadPoolExecutor
+                from io import StringIO
 
-                # Show parallel header
-                job_names = [j.job_id for j in runnable]
-                output_mgr.print_parallel_header(job_names)
+                from .output import PARALLEL_PREFIX
 
-                # Execute all jobs in parallel (capturing output)
+                # 1. Print parallel header
+                output_mgr.print_parallel_header()
+
+                # 2. Execute all jobs in parallel (capturing output)
                 results_map: dict[str, JobResult] = {}
                 with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
                     futures = {
@@ -321,16 +325,29 @@ class LocalExecutor:
                         result = future.result()
                         results_map[job_spec.job_id] = result
 
-                # Print results sequentially with proper prefixing
-                for idx, job_spec in enumerate(runnable):
-                    result = results_map[job_spec.job_id]
-                    is_last = idx == len(runnable) - 1
-                    self._print_job_result(result, is_last=is_last)
-                    job_results.append(result)
-                    if result.success:
-                        job_outputs[job_spec.job_id] = result.outputs
-                    else:
-                        failed_jobs.add(job_spec.job_id)
+                # 3. Capture all job result printing into a buffer
+                buffer = StringIO()
+                old_stdout = sys.stdout
+                sys.stdout = buffer
+                try:
+                    for idx, job_spec in enumerate(runnable):
+                        result = results_map[job_spec.job_id]
+                        is_last = idx == len(runnable) - 1
+                        self._print_job_result(result, is_last=is_last)
+                        job_results.append(result)
+                        if result.success:
+                            job_outputs[job_spec.job_id] = result.outputs
+                        else:
+                            failed_jobs.add(job_spec.job_id)
+                finally:
+                    sys.stdout = old_stdout
+
+                # 4. Prefix all captured output and print
+                captured = buffer.getvalue()
+                if captured:
+                    from .output import prefix_lines
+
+                    print(prefix_lines(captured.rstrip("\n"), PARALLEL_PREFIX), flush=True)
 
         # Summary
         elapsed = time.perf_counter() - start_time
