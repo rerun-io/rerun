@@ -6,7 +6,7 @@ use re_sdk::external::re_data_loader::UrdfTree;
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
-#[pyclass(name = "UrdfTree", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(name = "_UrdfTreeInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyUrdfTree(UrdfTree);
 
 #[pymethods]
@@ -72,7 +72,7 @@ impl PyUrdfTree {
 }
 
 /// Wrapper around a URDF joint.
-#[pyclass(name = "UrdfJoint", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(name = "_UrdfJointInternal", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 pub struct PyUrdfJoint(pub Joint);
 
@@ -164,7 +164,7 @@ impl PyUrdfJoint {
 }
 
 /// URDF link
-#[pyclass(name = "UrdfLink", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(name = "_UrdfLinkInternal", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 pub struct PyUrdfLink(pub Link);
 
