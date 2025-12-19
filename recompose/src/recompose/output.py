@@ -86,6 +86,42 @@ def prefix_task_output(captured: str) -> str:
     return "\n".join(result)
 
 
+def print_task_output_styled(prefixed: str, console: Console) -> None:
+    """
+    Print prefixed task output with styled prefixes.
+
+    Prefix symbols (│, ├──▶) are printed in cyan, content in default color.
+    """
+    if not prefixed:
+        return
+
+    for line in prefixed.split("\n"):
+        # Find the prefix portion (│ or ├──▶ and continuations)
+        # The prefix is everything up to and including the last │ or ▶ plus trailing space
+        prefix_end = 0
+        for i, char in enumerate(line):
+            if char in "│├─▶✓✗":
+                prefix_end = i + 1
+            elif char == " " and prefix_end > 0 and i == prefix_end:
+                prefix_end = i + 1
+            elif char != " ":
+                break
+
+        if prefix_end > 0:
+            prefix = line[:prefix_end]
+            content = line[prefix_end:]
+            # Style based on what's in the prefix
+            if "✓" in prefix:
+                console.print(prefix, style="green", end="", markup=False, highlight=False)
+            elif "✗" in prefix:
+                console.print(prefix, style="red", end="", markup=False, highlight=False)
+            else:
+                console.print(prefix, style="bold cyan", end="", markup=False, highlight=False)
+            print(content, flush=True)
+        else:
+            print(line, flush=True)
+
+
 def prefix_lines(text: str, prefix: str) -> str:
     """Add prefix to each non-empty line of text."""
     if not text:
