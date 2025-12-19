@@ -39,7 +39,7 @@ class ActiveVisualizers(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, instruction_ids: datatypes.Utf8ArrayLike) -> None:
+    def __init__(self: Any, instruction_ids: datatypes.UuidArrayLike) -> None:
         """
         Create a new instance of the ActiveVisualizers archetype.
 
@@ -74,7 +74,7 @@ class ActiveVisualizers(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        instruction_ids: datatypes.Utf8ArrayLike | None = None,
+        instruction_ids: datatypes.UuidArrayLike | None = None,
     ) -> ActiveVisualizers:
         """
         Update only some specific fields of a `ActiveVisualizers`.

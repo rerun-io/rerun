@@ -109,7 +109,7 @@ pub fn visualizer_ui_impl(
                     active_visualizers
                         .iter()
                         .filter(|v| &v.id != visualizer_id)
-                        .map(|v| v.id.as_str()),
+                        .map(|v| v.id),
                 );
 
                 ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
@@ -715,7 +715,7 @@ fn menu_add_new_visualizer(
             // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
 
-            let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
+            let new_id = uuid::Uuid::new_v4(); // TODO: figure out a better id scheme.
 
             // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
             let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
@@ -732,7 +732,9 @@ fn menu_add_new_visualizer(
                     .iter()
                     .map(|v| &v.id)
                     .chain(std::iter::once(&new_instruction.id))
-                    .map(|v| v.as_str()),
+                    .map(|v| {
+                        re_sdk_types::blueprint::components::VisualizerInstructionId::from(*v)
+                    }),
             );
             ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
 

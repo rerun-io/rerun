@@ -14,7 +14,7 @@ from ..._baseclasses import (
 __all__ = ["VisualizerInstructionId", "VisualizerInstructionIdBatch"]
 
 
-class VisualizerInstructionId(datatypes.Utf8, ComponentMixin):
+class VisualizerInstructionId(datatypes.Uuid, ComponentMixin):
     """
     **Component**: Single visualizer override the visualizers for an entity.
 

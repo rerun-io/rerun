@@ -581,7 +581,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .enumerate()
                     .map(|(i, (visualizer_type, component_mappings))| {
                         VisualizerInstruction::new(
-                            i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
+                            // i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
+                            re_viewer_context::VisualizerInstructionId::new_v4(), // TODO: shouldn't this be a placeholder?
                             visualizer_type,
                             &node.data_result.override_base_path,
                             component_mappings,

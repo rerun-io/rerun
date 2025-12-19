@@ -16,7 +16,7 @@ use crate::{
 // TODO: That can probably go away?
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
-pub type VisualizerInstructionId = String;
+pub type VisualizerInstructionId = uuid::Uuid;
 
 /// A single component mapping for a visualizer instruction.
 #[derive(Clone, Debug, Hash)]
@@ -65,7 +65,7 @@ impl VisualizerInstruction {
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,
     ) -> EntityPath {
-        override_base_path.join(&EntityPath::from_single_string(id.as_str().to_owned()))
+        override_base_path.join(&EntityPath::from_single_string(id.to_string()))
     }
 
     /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
@@ -73,7 +73,7 @@ impl VisualizerInstruction {
     /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
     pub fn placeholder(data_result: &DataResult) -> Self {
         Self {
-            id: "___PLACEHOLDER___".into(),
+            id: uuid::Uuid::nil(),
             visualizer_type: "___PLACEHOLDER___".into(),
             component_overrides: IntSet::default(),
             override_path: data_result.override_base_path.clone(),
