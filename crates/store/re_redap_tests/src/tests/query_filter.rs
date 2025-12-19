@@ -7,7 +7,7 @@ use arrow::array::RecordBatch;
 use datafusion::datasource::TableProvider;
 use datafusion::execution::SessionState;
 use datafusion::physical_plan::ExecutionPlanProperties;
-use datafusion::prelude::{Expr, SessionContext};
+use datafusion::prelude::{Expr, SessionContext, col, lit};
 use futures::{StreamExt as _, TryStreamExt};
 use re_datafusion::DataframeQueryTableProvider;
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
@@ -49,14 +49,24 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
     let ctx = SessionContext::default();
     let state = ctx.state();
 
-    let tests = vec![(vec![], "default")];
+    let tests = vec![
+        (lit(true), "default"),
+        (
+            col("rerun_segment_id").eq(lit("my_segment_id2")),
+            "seg_id_eq",
+        ),
+        (
+            col("frame_nr").eq(lit(30)),
+            "frame_nr_eq",
+        ),
+    ];
 
-    for (filters, snapshot_name) in tests {
+    for (filter, snapshot_name) in tests {
         query_dataset_snapshot(
             &table_provider,
             &ctx,
             &state,
-            filters,
+            filter,
             &format!("simple_dataset_{snapshot_name}"),
         )
         .await;
@@ -69,11 +79,11 @@ async fn query_dataset_snapshot(
     table_provider: &DataframeQueryTableProvider,
     ctx: &SessionContext,
     state: &SessionState,
-    filters: Vec<Expr>,
+    filter: Expr,
     snapshot_name: &str,
 ) {
     let plan = table_provider
-        .scan(state, None, &filters, None)
+        .scan(state, None, &[filter], None)
         .await
         .unwrap();
 
