@@ -45,6 +45,19 @@ SYMBOLS = {
     "failure": "✗",  # Failure
 }
 
+# Colors for styled output (Rich style strings)
+# These use logical names so the palette can be easily adjusted
+COLORS = {
+    "tree": "cyan",  # Tree structure symbols (│, ├─▶, etc.)
+    "name": "bold",  # Task/automation names
+    "success": "green",  # Success status (✓)
+    "failure": "red",  # Failure status (✗)
+    "success_bold": "bold green",  # Top-level success messages
+    "failure_bold": "bold red",  # Top-level failure messages
+    "warning": "yellow",  # Warnings
+    "dim": "dim",  # Dimmed/secondary text
+}
+
 # Prefix widths to align content under headers
 CONTENT_PREFIX = "│   "  # 4 chars: pipe + 3 spaces
 LAST_PREFIX = "    "  # 4 chars: 4 spaces (no continuation line)
@@ -123,19 +136,19 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
                     else:
                         break
                 tree_segment = line[start:i]
-                console.print(tree_segment, style="cyan", end="", markup=False, highlight=False)
+                console.print(tree_segment, style=COLORS["tree"], end="", markup=False, highlight=False)
                 # Check if this segment ends with ▶ (subtask header)
                 last_was_header_arrow = tree_segment.endswith("▶")
 
             elif char == "✓":
-                # Success - print ✓ in green
-                console.print(char, style="green", end="", markup=False, highlight=False)
+                # Success - print ✓ in success color
+                console.print(char, style=COLORS["success"], end="", markup=False, highlight=False)
                 i += 1
                 last_was_header_arrow = False
 
             elif char == "✗":
-                # Failure - print ✗ in red
-                console.print(char, style="red", end="", markup=False, highlight=False)
+                # Failure - print ✗ in failure color
+                console.print(char, style=COLORS["failure"], end="", markup=False, highlight=False)
                 i += 1
                 last_was_header_arrow = False
 
@@ -149,11 +162,11 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
             else:
                 # Content - check if it's a task name (immediately after ├──▶)
                 if last_was_header_arrow:
-                    # Task name - print bold until space or end
+                    # Task name - print in name style until space or end
                     name_start = i
                     while i < len(line) and line[i] != " ":
                         i += 1
-                    console.print(line[name_start:i], style="bold", end="", markup=False, highlight=False)
+                    console.print(line[name_start:i], style=COLORS["name"], end="", markup=False, highlight=False)
                     last_was_header_arrow = False
                 else:
                     # Regular content - print rest of line in default color
@@ -211,12 +224,12 @@ class OutputManager:
             return
 
         if is_top_level:
-            self.print(f"\n{SYMBOLS['entry']} ", style="cyan", end="")
-            self.print(name, style="bold")
+            self.print(f"\n{SYMBOLS['entry']} ", style=COLORS["tree"], end="")
+            self.print(name, style=COLORS["name"])
         else:
             symbol = SYMBOLS["last"] if is_last else SYMBOLS["branch"]
-            self.print(f"{symbol} ", style="cyan", end="")
-            self.print(name, style="bold")
+            self.print(f"{symbol} ", style=COLORS["tree"], end="")
+            self.print(name, style=COLORS["name"])
 
     def print_status(self, success: bool, elapsed: float, prefix: str = "") -> None:
         """Print completion status with optional prefix."""
@@ -227,13 +240,13 @@ class OutputManager:
             return
 
         symbol = SYMBOLS["success"] if success else SYMBOLS["failure"]
-        status_style = "green" if success else "red"
+        status_style = COLORS["success"] if success else COLORS["failure"]
         if prefix:
             # Print prefix in header style, then status in success/failure style
-            self.print(prefix, style="cyan", end="")
+            self.print(prefix, style=COLORS["tree"], end="")
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
             # Extra blank line with prefix for visual separation
-            self.print(prefix.rstrip(), style="cyan")
+            self.print(prefix.rstrip(), style=COLORS["tree"])
         else:
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
 
@@ -244,7 +257,7 @@ class OutputManager:
 
         symbol = SYMBOLS["success"] if success else SYMBOLS["failure"]
         status = "succeeded" if success else "failed"
-        style = "bold green" if success else "bold red"
+        style = COLORS["success_bold"] if success else COLORS["failure_bold"]
         self.print(f"\n{symbol} {name} {status} in {elapsed:.2f}s", style=style)
 
     def print_parallel_header(self) -> None:
@@ -252,16 +265,16 @@ class OutputManager:
         if self._is_gha:
             return
 
-        self.print(f"{SYMBOLS['parallel']} (parallel)", style="cyan")
+        self.print(f"{SYMBOLS['parallel']} (parallel)", style=COLORS["tree"])
 
     def print_automation_header(self, name: str) -> None:
         """Print automation header."""
         if self._is_gha:
             return
 
-        self.print(f"\n{SYMBOLS['entry_down']} ", style="cyan", end="")
-        self.print(name, style="bold")
-        self.print(SYMBOLS["pipe"], style="cyan")
+        self.print(f"\n{SYMBOLS['entry_down']} ", style=COLORS["tree"], end="")
+        self.print(name, style=COLORS["name"])
+        self.print(SYMBOLS["pipe"], style=COLORS["tree"])
 
     def print_automation_status(self, name: str, success: bool, elapsed: float, job_count: int) -> None:
         """Print automation completion status."""
@@ -270,9 +283,11 @@ class OutputManager:
 
         symbol = SYMBOLS["success"] if success else SYMBOLS["failure"]
         if success:
-            self.print(f"\n{symbol} {name} completed in {elapsed:.2f}s ({job_count} jobs)", style="bold green")
+            msg = f"\n{symbol} {name} completed in {elapsed:.2f}s ({job_count} jobs)"
+            self.print(msg, style=COLORS["success_bold"])
         else:
-            self.print(f"\n{symbol} {name} failed in {elapsed:.2f}s", style="bold red")
+            msg = f"\n{symbol} {name} failed in {elapsed:.2f}s"
+            self.print(msg, style=COLORS["failure_bold"])
 
     def get_continuation_prefix(self, is_last: bool) -> str:
         """Get the prefix for child content based on whether this is the last sibling."""
@@ -284,7 +299,7 @@ class OutputManager:
             return
         for line in text.rstrip("\n").split("\n"):
             if prefix:
-                self.print(prefix, style="cyan", end="")
+                self.print(prefix, style=COLORS["tree"], end="")
             print(line, flush=True)
 
     def print_error(self, message: str) -> None:
@@ -292,7 +307,7 @@ class OutputManager:
         if self._is_gha:
             print(f"::error::{message}", flush=True)
         else:
-            self.print(f"Error: {message}", style="bold red")
+            self.print(f"Error: {message}", style=COLORS["failure_bold"])
 
     @contextmanager
     def capture_output(self) -> Generator[io.StringIO, None, None]:

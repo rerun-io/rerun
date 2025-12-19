@@ -201,7 +201,7 @@ def _run_with_context(
 
     from rich.console import Console
 
-    from .output import SUBTASK_MARKER, prefix_task_output, print_task_output_styled
+    from .output import COLORS, SUBTASK_MARKER, prefix_task_output, print_task_output_styled
 
     existing_ctx = get_context()
     task_name = task_info.name
@@ -214,8 +214,8 @@ def _run_with_context(
         # Nested task or subprocess - print with marker for parent to recognize
         print(f"{SUBTASK_MARKER}{task_name}", flush=True)
     else:
-        # Bare top-level task - print bold name
-        console.print(task_name, style="bold", markup=False, highlight=False)
+        # Bare top-level task - print name in name style
+        console.print(task_name, style=COLORS["name"], markup=False, highlight=False)
 
     # Set up context
     ctx = Context(
@@ -271,10 +271,10 @@ def _run_with_context(
             # Top-level: styled status
             if result.ok:
                 msg = f"✓ {task_name} succeeded in {elapsed:.2f}s"
-                console.print(msg, style="bold green", markup=False, highlight=False)
+                console.print(msg, style=COLORS["success_bold"], markup=False, highlight=False)
             else:
                 msg = f"✗ {task_name} failed in {elapsed:.2f}s"
-                console.print(msg, style="bold red", markup=False, highlight=False)
+                console.print(msg, style=COLORS["failure_bold"], markup=False, highlight=False)
         else:
             # Nested: plain status (parent will add colors)
             if result.ok:
