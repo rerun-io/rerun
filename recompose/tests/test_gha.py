@@ -426,7 +426,7 @@ class TestRenderAutomationJobs:
         lint_job = spec.jobs["lint_task"]
         run_step = [s for s in lint_job.steps if s.run is not None][0]
         assert run_step.run is not None
-        assert run_step.run.startswith("./custom_runner lint_task")
+        assert run_step.run.startswith("./custom_runner lint-task")
 
     def test_job_with_outputs(self) -> None:
         """Test job with declared outputs exposes them correctly."""
@@ -972,7 +972,7 @@ class TestRenderDispatchable:
         job = spec.jobs["no_params_task"]
         run_step = [s for s in job.steps if s.run is not None][0]
         assert run_step.run is not None
-        assert run_step.run.startswith("./custom_runner no_params_task")
+        assert run_step.run.startswith("./custom_runner no-params-task")
 
     def test_inputs_passed_to_command(self) -> None:
         """Test that inputs are passed as CLI args."""

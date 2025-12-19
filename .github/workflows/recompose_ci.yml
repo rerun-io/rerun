@@ -30,8 +30,8 @@ jobs:
         python-version: '3.12'
     - name: Setup uv
       uses: astral-sh/setup-uv@v4
-    - name: lint_all
-      run: ./run lint_all
+    - name: lint-all
+      run: ./run lint-all
   test:
     runs-on: ubuntu-latest
     defaults:

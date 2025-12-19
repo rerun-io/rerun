@@ -19,6 +19,12 @@ from ruamel.yaml import YAML
 
 from .result import Ok, Result
 
+
+def _to_kebab_case(name: str) -> str:
+    """Convert a snake_case name to kebab-case for CLI commands."""
+    return name.replace("_", "-")
+
+
 # =============================================================================
 # Workflow Spec Dataclasses
 # =============================================================================
@@ -702,7 +708,7 @@ def render_automation_jobs(
         steps.append(
             _build_task_run_step(
                 entry_point=entry_point,
-                task_name=task_info.name,
+                task_name=_to_kebab_case(task_info.name),
                 inputs=job_spec.inputs,
                 has_outputs=has_outputs,
                 has_artifacts=has_artifacts,
@@ -827,7 +833,8 @@ def render_dispatchable(
     for input_name in info.inputs:
         args.append(f"--{input_name}=${{{{ inputs.{input_name} }}}}")
 
-    cmd_parts = [entry_point, task_info.name] + args
+    cli_task_name = _to_kebab_case(task_info.name)
+    cmd_parts = [entry_point, cli_task_name] + args
     run_cmd = " ".join(cmd_parts)
 
     has_outputs = bool(task_info.outputs)
@@ -835,7 +842,7 @@ def render_dispatchable(
 
     steps.append(
         StepSpec(
-            name=task_info.name,
+            name=cli_task_name,
             id="run" if (has_outputs or has_artifacts) else None,
             run=run_cmd,
         )
