@@ -19,6 +19,9 @@ def reset_state(monkeypatch: pytest.MonkeyPatch):
     # (LocalExecutor sets this for capturing outputs, but pytest inherits it)
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
+    # Unset GITHUB_ACTIONS so step output uses local format ([Step]) not GHA format (::group::)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
     # Reset all context state and consoles so they pick up new env vars
     set_context(None)
     set_automation_context(None)
