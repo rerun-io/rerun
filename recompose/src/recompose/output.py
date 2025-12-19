@@ -110,6 +110,8 @@ class OutputManager:
             # Print prefix in header style, then status in success/failure style
             self.print(prefix, style="bold cyan", end="")
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
+            # Extra blank line with prefix for visual separation
+            self.print(prefix.rstrip(), style="bold cyan")
         else:
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
 
