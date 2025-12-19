@@ -198,19 +198,22 @@ def _run_with_context(
     import sys
     import time
 
-    from .output import SUBTASK_MARKER, prefix_task_output
+    from rich.console import Console
+
+    from .output import SUBTASK_MARKER, prefix_task_output, print_task_output_styled
 
     existing_ctx = get_context()
     task_name = task_info.name
     start_time = time.perf_counter()
+    console = Console()
 
     # 1. Print task name (with marker if nested so parent can recognize it)
     if existing_ctx is not None:
         # Nested task - print with marker for parent to prefix as header
         print(f"{SUBTASK_MARKER}{task_name}", flush=True)
     else:
-        # Top-level task - print plain name
-        print(task_name, flush=True)
+        # Top-level task - print bold name
+        console.print(task_name, style="bold", markup=False, highlight=False)
 
     # Set up context
     ctx = Context(
@@ -241,23 +244,41 @@ def _run_with_context(
 
         captured_output = buffer.getvalue()
 
-        # 3. Prefix captured output
+        # 3. Prefix and print captured output with styled prefixes
         if captured_output:
             prefixed = prefix_task_output(captured_output)
-            print(prefixed, flush=True)
+            if existing_ctx is None:
+                # Top-level: print with colors
+                print_task_output_styled(prefixed, console)
+            else:
+                # Nested: print plain (parent will add colors)
+                print(prefixed, flush=True)
 
         # Print error details if failed
         if not result.ok and result.error:
             error_lines = str(result.error).split("\n")[:5]
             prefixed_error = prefix_task_output("\n".join(error_lines))
-            print(prefixed_error, flush=True)
+            if existing_ctx is None:
+                print_task_output_styled(prefixed_error, console)
+            else:
+                print(prefixed_error, flush=True)
 
         # 4. Print status
         elapsed = time.perf_counter() - start_time
-        if result.ok:
-            print(f"✓ {task_name} succeeded in {elapsed:.2f}s", flush=True)
+        if existing_ctx is None:
+            # Top-level: styled status
+            if result.ok:
+                msg = f"✓ {task_name} succeeded in {elapsed:.2f}s"
+                console.print(msg, style="bold green", markup=False, highlight=False)
+            else:
+                msg = f"✗ {task_name} failed in {elapsed:.2f}s"
+                console.print(msg, style="bold red", markup=False, highlight=False)
         else:
-            print(f"✗ {task_name} failed in {elapsed:.2f}s", flush=True)
+            # Nested: plain status (parent will add colors)
+            if result.ok:
+                print(f"✓ {task_name} succeeded in {elapsed:.2f}s", flush=True)
+            else:
+                print(f"✗ {task_name} failed in {elapsed:.2f}s", flush=True)
 
         # Attach collected outputs/artifacts to the result
         if result.ok and should_set_context:
