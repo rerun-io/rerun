@@ -225,7 +225,7 @@ def _run_nested_task(
     import sys
     import time
 
-    from .output import CONTENT_PREFIX, prefix_lines
+    from .output import CONTENT_PREFIX
     from .step import _pop_step, _push_step
 
     task_name = task_info.name
@@ -253,15 +253,14 @@ def _run_nested_task(
 
         captured_output = buffer.getvalue()
 
-        # 3. Print captured output with prefix
+        # 3. Print captured output with prefix (styled)
         if captured_output:
-            print(prefix_lines(captured_output.rstrip("\n"), CONTENT_PREFIX), flush=True)
+            output_mgr.print_prefixed(captured_output, CONTENT_PREFIX)
 
         # Print error details if failed
         if not result.ok and result.error:
             error_lines = str(result.error).split("\n")[:5]
-            for line in error_lines:
-                print(f"{CONTENT_PREFIX}{line}", flush=True)
+            output_mgr.print_prefixed("\n".join(error_lines), CONTENT_PREFIX)
 
         # 4. Print status with SAME prefix (styled)
         elapsed = time.perf_counter() - start_time

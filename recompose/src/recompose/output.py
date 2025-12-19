@@ -58,6 +58,7 @@ def prefix_lines(text: str, prefix: str) -> str:
     lines = text.rstrip("\n").split("\n")
     return "\n".join(prefix + line for line in lines)
 
+
 @dataclass
 class OutputManager:
     """
