@@ -1,11 +1,11 @@
 //! Test that 2D content can be added to a 3D space and vice versa.
 
 use re_log_types::{EntityPathFilter, TimePoint};
-use re_sdk_types::{archetypes, components};
+use re_sdk_types::{archetypes, blueprint::archetypes as blueprint_archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
     use ndarray::{Array, ShapeBuilder as _};
@@ -93,8 +93,6 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
                         .with_parent_frame("camera")
                         .with_child_frame("2D"),
                 )
-                // TODO(RR-2997): The pinhole should show without this just fine. But space origin can only be an entity, so we rely on pinhole having a coordinate frame that we can pick up.
-                .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new("2D"))
         });
     } else {
         // Classic Rerun hierarchy.
@@ -161,7 +159,7 @@ fn test_3d_in_2d(use_explicit_frames: bool) {
 
     setup_scene(&mut test_context, use_explicit_frames);
 
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new(
             re_view_spatial::SpatialView2D::identifier(),
             RecommendedView {
@@ -169,6 +167,22 @@ fn test_3d_in_2d(use_explicit_frames: bool) {
                 query_filter: EntityPathFilter::all(),
             },
         );
+
+        // TODO(RR-3076): We don't correctly pick up the target frame from a pinhole origin without coordinate frame.
+        // But we also want to remove origin in the future. Either way it's a matter of better target frame heuristic.
+        if use_explicit_frames {
+            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                view.id,
+            )
+            .save_blueprint_component(
+                ctx,
+                &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_tf::TransformFrameId::new("2D"),
+            );
+        }
+
         blueprint.add_view_at_root(view)
     });
 

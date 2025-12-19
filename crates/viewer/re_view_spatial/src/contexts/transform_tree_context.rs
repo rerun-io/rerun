@@ -268,16 +268,29 @@ impl ViewContextSystem for TransformTreeContext {
             }
         }
 
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
+
         let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
-            self.entity_transform_id_mapping
-                .transform_frame_id_to_entity_path
-                .get(&transform_frame_id_hash)
-                .map_or_else(
-                    || 1.0,
-                    |entity_paths| {
-                        lookup_image_plane_distance(ctx, entity_paths, &latest_at_query) as f64
-                    },
-                )
+            // We're looking for an entity whose child frame is the given frame id hash.
+            // From that entity we'd like to know what image frame distance we should be using.
+            // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
+
+            let Some(frame_transforms) = transform_cache
+                .transforms_for_timeline(query.timeline)
+                .frame_transforms(transform_frame_id_hash)
+            else {
+                debug_assert!(
+                    false,
+                    "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
+                );
+                return 1.0;
+            };
+
+            let entity_path = frame_transforms.associated_entity_path(latest_at_query.at());
+            lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
         };
 
         let tree_transforms_per_frame = self
@@ -293,6 +306,8 @@ impl ViewContextSystem for TransformTreeContext {
             )
             .collect::<Vec<_>>();
 
+        // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
+        // Can we instead just do another lookup indirection to `self.transform_infos`?
         self.entity_frame_id_mapping = static_execution_result
             .child_frames_per_entity
             .iter()
@@ -313,10 +328,6 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let caches = ctx.viewer_ctx.store_context.caches;
-            let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.read_lock_transform_cache(ctx.recording())
-            });
             let transforms = transform_cache.transforms_for_timeline(query.timeline);
 
             let latest_at_query = &query.latest_at_query();
@@ -458,20 +469,12 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    entity_path: &SmallVec1<[EntityPathHash; 1]>,
+    entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
-) -> f32 {
-    // If there's several entity paths (with pinhole cameras) for the same transform id,
-    // we don't know which camera plane to use.
-    //
-    // That's rather strange, but a scene can be set up for this to happen!
-    // Unfortunately it's also really hard to log a warning or anything at this point since
-    // we don't know the full entity path names.
-    //
-    // We're letting it slide for now since it's kinda hard to get into that situation.
-    let entity_path_hash = *entity_path.first();
-
-    ctx.query_result
+) -> f64 {
+    let plane_distance_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
+    **ctx
+        .query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
         .cloned()
@@ -480,14 +483,11 @@ fn lookup_image_plane_distance(
                 .latest_at_with_blueprint_resolved_data_for_component(
                     ctx,
                     latest_at_query,
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
+                    plane_distance_component,
                 )
-                .get_mono_with_fallback::<ImagePlaneDistance>(
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
-                )
+                .get_mono_with_fallback::<ImagePlaneDistance>(plane_distance_component)
         })
-        .unwrap_or_default()
-        .into()
+        .unwrap_or_default() as _
 }
 
 impl EntityTransformIdMapping {

@@ -1856,6 +1856,12 @@ impl RecordingStream {
         }
 
         let f = move |inner: &RecordingStreamInner| -> Result<(), SinkFlushError> {
+            // 0. Wait for all pending data loader threads to complete
+            //
+            // This ensures that data from `log_file_from_path` and `log_file_from_contents`
+            // is fully loaded before we flush the batcher and sink.
+            inner.wait_for_dataloaders();
+
             // 1. Synchronously flush the batcher down the chunk channel
             //
             // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
