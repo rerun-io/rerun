@@ -164,8 +164,6 @@ impl Telemetry {
                 }
             }
 
-            eprintln!("Telemetry disabled. All logging will be ignored.");
-
             return Ok(Self {
                 logs: None,
                 metrics: None,
