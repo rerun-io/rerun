@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -67,6 +68,14 @@ PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 # Task output prefixes (for the recursive capture-and-prefix model)
 SUBTASK_MARKER = "\x00SUBTASK:"  # Marker for subtask names in captured output
 
+# Regex to strip ANSI escape codes
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    """Strip ANSI escape codes from text."""
+    return _ANSI_ESCAPE_RE.sub("", text)
+
 
 def _is_status_line(line: str) -> bool:
     """Check if a line is a status line (contains success/failure symbols and timing)."""
@@ -93,9 +102,12 @@ def prefix_task_output(captured: str) -> str:
     has_seen_subtask = False
 
     for i, line in enumerate(lines):
+        # Strip ANSI codes for prefix detection (but keep them in output)
+        stripped = _strip_ansi(line)
+
         if line.startswith(SUBTASK_MARKER):
             # Add blank line before subtask if there's preceding content (and not already blank)
-            if result and result[-1] != SYMBOLS["pipe"]:
+            if result and _strip_ansi(result[-1]) != SYMBOLS["pipe"]:
                 result.append(SYMBOLS["pipe"])
             has_seen_subtask = True
             # Subtask header (marker is always emitted plain)
@@ -107,7 +119,8 @@ def prefix_task_output(captured: str) -> str:
             result.append(f"{prefix}{line}")
 
             # Add blank line after status lines if more content follows
-            if _is_status_line(line) and i < len(lines) - 1:
+            # Only for "our" status lines (not nested ones that already have prefix)
+            if _is_status_line(line) and not stripped.startswith(SYMBOLS["pipe"]) and i < len(lines) - 1:
                 result.append(SYMBOLS["pipe"])
 
     return "\n".join(result)

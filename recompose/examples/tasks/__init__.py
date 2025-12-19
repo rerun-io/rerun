@@ -8,6 +8,7 @@ from .build import (
     test_installed,
 )
 from .lint import format_check, format_code, lint, lint_all
+from .nested_demo import level_1, level_2a, level_2b, level_3a, level_3b
 from .test import test
 
 __all__ = [
@@ -24,4 +25,10 @@ __all__ = [
     "install_wheel",
     "smoke_test",
     "test_installed",
+    # Nested demo
+    "level_1",
+    "level_2a",
+    "level_2b",
+    "level_3a",
+    "level_3b",
 ]
