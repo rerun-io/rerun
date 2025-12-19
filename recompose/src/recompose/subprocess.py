@@ -114,8 +114,7 @@ def run(
     else:
         # Streaming mode - output goes to console in real-time
         # We use Popen to have more control over output handling
-        # Note: In tree mode, sys.stdout/stderr are already wrapped with PrefixWriter
-        # which handles all the tree prefixing, so we just print normally here.
+        # Note: Output is captured by the task wrapper and prefixed appropriately.
 
         proc = subprocess.Popen(
             cmd,
@@ -132,7 +131,6 @@ def run(
 
         def print_line(line: str, is_stderr: bool = False) -> None:
             """Print a line with appropriate formatting."""
-            # Just print - the PrefixWriter on stdout/stderr handles tree prefixing
             if is_stderr:
                 print(line, file=sys.stderr, flush=True)
             else:

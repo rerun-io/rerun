@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import inspect
-import os
 import sys
-import time
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
@@ -175,20 +173,6 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
     def callback(**kwargs: Any) -> None:
         """Execute the task and display results."""
-        task_name = task_info.name
-
-        # Check if running as subprocess of automation (suppress headers)
-        # Clear it immediately so it doesn't propagate to grandchild processes
-        quiet_mode = os.environ.pop("RECOMPOSE_SUBPROCESS", None) == "1"
-
-        # Start timing
-        start_time = time.perf_counter()
-
-        # Print task header (unless in quiet mode)
-        if not quiet_mode:
-            _get_console().print(f"\n[bold cyan]▼[/bold cyan] [bold]{task_name}[/bold]")
-            _get_console().print("[bold cyan]│[/bold cyan]")
-
         # Convert enum values back to enum if needed
         for param_name, param in sig.parameters.items():
             if param_name in kwargs:
@@ -199,30 +183,12 @@ def _build_command(task_info: TaskInfo) -> click.Command:
                     if value is not None:
                         kwargs[param_name] = annotation(value)
 
-        # Execute the task
+        # Execute the task (it handles its own output: name, prefixed body, status)
         result: Result[Any] = task_info.fn(**kwargs)
 
-        # End timing
-        elapsed = time.perf_counter() - start_time
-
-        # Print result (unless in quiet mode)
-        if not quiet_mode:
-            _get_console().print()
-            if result.ok:
-                _get_console().print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
-                if result._value is not None:
-                    _get_console().print(f"[dim]→[/dim] {result._value}")
-            else:
-                _get_console().print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
-                if result.error:
-                    _get_console().print(f"[red]Error:[/red] {result.error}")
-                if result.traceback:
-                    from .context import is_debug
-
-                    if is_debug():
-                        _get_console().print(f"[dim]{result.traceback}[/dim]")
-
-            _get_console().print()
+        # Show return value if present
+        if result.ok and result._value is not None:
+            _get_console().print(f"[dim]→[/dim] {result._value}")
 
         # Exit with non-zero code if task failed
         if not result.ok:

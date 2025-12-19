@@ -120,6 +120,8 @@ def lint_all() -> recompose.Result[None]:
     """
     from recompose.builtin_tasks import generate_gha
 
+    recompose.out("Running all lint checks...")
+
     # Run linters (ruff + mypy)
     result = lint()
     if result.failed:

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 # Debug mode flag
 _debug_mode: bool = False
 
+
 # Module name for subprocess isolation (set by main())
 # This is the importable module path, e.g., "examples.app"
 _module_name: str | None = None
@@ -388,14 +389,12 @@ def out(message: str) -> None:
     Output a message.
 
     When running inside a task context, the message is captured.
-    Always prints to console. In tree mode, stdout is wrapped to add prefixes
-    automatically, so we just print normally.
+    The task wrapper handles prefixing captured output.
     """
     ctx = _current_task_context.get()
     if ctx is not None:
         ctx.capture_out(message)
 
-    # Just print - if in tree mode, the TreePrefixWriter wrapper handles prefixing
     print(message, flush=True)
 
 
@@ -405,13 +404,12 @@ def dbg(message: str) -> None:
 
     When running inside a task context, the message is captured.
     Only prints to console if debug mode is enabled.
-    In tree mode, stdout is wrapped to add prefixes automatically.
+    The task wrapper handles prefixing captured output.
     """
     ctx = _current_task_context.get()
     if ctx is not None:
         ctx.capture_dbg(message)
     if _debug_mode:
-        # Just print - if in tree mode, the TreePrefixWriter wrapper handles prefixing
         print(f"[debug] {message}", flush=True)
 
 

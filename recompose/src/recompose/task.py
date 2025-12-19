@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from typing import Any, ParamSpec, Protocol, TypeVar, overload
 
 from .context import Context, get_context, set_context
-from .output import get_output_manager
 from .result import Err, Result
 
 P = ParamSpec("P")
@@ -186,59 +185,48 @@ def _execute_task(fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[st
 def _run_with_context(
     task_info: TaskInfo, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> Result[Any]:
-    """Execute task with context management."""
-    existing_ctx = get_context()
+    """
+    Execute task with context management and tree-style output.
 
-    if existing_ctx is None:
-        ctx = Context(
-            task_name=task_info.name,
-            declared_outputs=task_info.outputs,
-            declared_artifacts=task_info.artifacts,
-            declared_secrets=task_info.secrets,
-        )
-        set_context(ctx)
-        try:
-            result = _execute_task(fn, args, kwargs)
-            # Attach collected outputs/artifacts to the result
-            if result.ok:
-                result = _attach_context_to_result(result, ctx)
-            return result
-        finally:
-            set_context(None)
-    else:
-        # Nested task call - add hierarchical output
-        return _run_nested_task(task_info, fn, args, kwargs)
-
-
-def _run_nested_task(
-    task_info: TaskInfo, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
-) -> Result[Any]:
-    """Execute a nested task with tree-style output.
-
-    Uses simple recursive output model:
-    1. Print header
-    2. Execute and capture ALL output
-    3. Prefix ALL captured output
-    4. Print status with SAME prefix
+    Uses recursive capture-and-prefix model:
+    1. Print task name (with marker if nested, plain if top-level)
+    2. Capture ALL body output
+    3. Prefix captured output appropriately
+    4. Print status
     """
     import io
     import sys
     import time
 
-    from .output import CONTENT_PREFIX
-    from .step import _pop_step, _push_step
+    from .output import SUBTASK_MARKER, prefix_task_output
 
+    existing_ctx = get_context()
     task_name = task_info.name
-    output_mgr = get_output_manager()
     start_time = time.perf_counter()
 
-    _push_step(task_name)
+    # 1. Print task name (with marker if nested so parent can recognize it)
+    if existing_ctx is not None:
+        # Nested task - print with marker for parent to prefix as header
+        print(f"{SUBTASK_MARKER}{task_name}", flush=True)
+    else:
+        # Top-level task - print plain name
+        print(task_name, flush=True)
+
+    # Set up context
+    ctx = Context(
+        task_name=task_name,
+        declared_outputs=task_info.outputs,
+        declared_artifacts=task_info.artifacts,
+        declared_secrets=task_info.secrets,
+    )
+
+    # Only set context if not already in one (avoid overwriting parent context)
+    should_set_context = existing_ctx is None
+    if should_set_context:
+        set_context(ctx)
 
     try:
-        # 1. Print header
-        output_mgr.print_header(task_name)
-
-        # 2. Execute task while capturing ALL output
+        # 2. Capture ALL body output
         buffer = io.StringIO()
         old_stdout = sys.stdout
         old_stderr = sys.stderr
@@ -253,22 +241,32 @@ def _run_nested_task(
 
         captured_output = buffer.getvalue()
 
-        # 3. Print captured output with prefix (styled)
+        # 3. Prefix captured output
         if captured_output:
-            output_mgr.print_prefixed(captured_output, CONTENT_PREFIX)
+            prefixed = prefix_task_output(captured_output)
+            print(prefixed, flush=True)
 
         # Print error details if failed
         if not result.ok and result.error:
             error_lines = str(result.error).split("\n")[:5]
-            output_mgr.print_prefixed("\n".join(error_lines), CONTENT_PREFIX)
+            prefixed_error = prefix_task_output("\n".join(error_lines))
+            print(prefixed_error, flush=True)
 
-        # 4. Print status with SAME prefix (styled)
+        # 4. Print status
         elapsed = time.perf_counter() - start_time
-        output_mgr.print_status(result.ok, elapsed, prefix=CONTENT_PREFIX)
+        if result.ok:
+            print(f"✓ {task_name} succeeded in {elapsed:.2f}s", flush=True)
+        else:
+            print(f"✗ {task_name} failed in {elapsed:.2f}s", flush=True)
+
+        # Attach collected outputs/artifacts to the result
+        if result.ok and should_set_context:
+            result = _attach_context_to_result(result, ctx)
 
         return result
     finally:
-        _pop_step()
+        if should_set_context:
+            set_context(None)
 
 
 def _attach_context_to_result(result: Result[Any], ctx: Context) -> Result[Any]:

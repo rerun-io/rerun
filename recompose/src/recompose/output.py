@@ -50,6 +50,41 @@ CONTENT_PREFIX = "│   "  # 4 chars: pipe + 3 spaces
 LAST_PREFIX = "    "  # 4 chars: 4 spaces (no continuation line)
 PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 
+# Task output prefixes (for the recursive capture-and-prefix model)
+SUBTASK_MARKER = "\x00SUBTASK:"  # Marker for subtask names in captured output
+OUTPUT_PREFIX = "│ "  # 2 chars: for task's direct output
+SUBTASK_HEADER = "├──▶"  # 4 chars: for subtask header
+CONTINUATION = "│   "  # 4 chars: continuation under subtask (aligns with ├──▶)
+
+
+def prefix_task_output(captured: str) -> str:
+    """
+    Prefix captured task output with appropriate tree symbols.
+
+    - Subtask markers → ├──▶ header
+    - Lines from nested tasks (start with │ or ✓/✗) → │   continuation
+    - Regular output → │  prefix
+    """
+    if not captured:
+        return ""
+
+    lines = captured.rstrip("\n").split("\n")
+    result = []
+
+    for line in lines:
+        if line.startswith(SUBTASK_MARKER):
+            # Subtask header
+            name = line[len(SUBTASK_MARKER) :]
+            result.append(f"{SUBTASK_HEADER}{name}")
+        elif line.startswith("│") or line.startswith("✓") or line.startswith("✗"):
+            # Output from nested task, use continuation prefix
+            result.append(f"{CONTINUATION}{line}")
+        else:
+            # Direct output from this task
+            result.append(f"{OUTPUT_PREFIX}{line}")
+
+    return "\n".join(result)
+
 
 def prefix_lines(text: str, prefix: str) -> str:
     """Add prefix to each non-empty line of text."""
