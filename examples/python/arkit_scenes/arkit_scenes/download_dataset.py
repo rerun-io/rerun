@@ -139,7 +139,7 @@ def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
 
 def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.DataFrame, download_dir: Path) -> None:
     video_metadata = metadata.loc[metadata["video_id"] == float(video_id)]
-    visit_id = video_metadata["visit_id"].iat[0]
+    visit_id = float(video_metadata["visit_id"].iat[0])
     has_laser_scanner_point_clouds = video_metadata["has_laser_scanner_point_clouds"].iat[0]
 
     if not has_laser_scanner_point_clouds:
