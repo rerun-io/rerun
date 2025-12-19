@@ -7,7 +7,7 @@ import os
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 import pandas as pd
 
@@ -146,11 +146,12 @@ def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.Da
         print(f"Warning: Laser scanner point clouds for video {video_id} are not available")
         return
 
-    if math.isnan(visit_id) or not visit_id.is_integer():
+    if math.isnan(visit_id) or not visit_id.is_integer():  # type: ignore[arg-type, union-attr]
         print(f"Warning: Downloading laser scanner point clouds for video {video_id} failed - Bad visit id {visit_id}")
         return
 
-    visit_id = int(visit_id)  # Expecting an 8 digit integer
+    # Expecting an 8 digit integer
+    visit_id = int(cast("int", visit_id))  # type: ignore[redundant-cast]
     laser_scanner_point_clouds_ids = laser_scanner_point_clouds_for_visit_id(visit_id, download_dir)
 
     for point_cloud_id in laser_scanner_point_clouds_ids:
