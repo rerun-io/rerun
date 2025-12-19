@@ -201,17 +201,19 @@ def _run_with_context(
 
     from rich.console import Console
 
-    from .output import COLORS, SUBTASK_MARKER, prefix_task_output, print_task_output_styled
+    from .output import COLORS, SUBTASK_MARKER, SYMBOLS, prefix_task_output, print_task_output_styled
 
     existing_ctx = get_context()
     task_name = task_info.name
     start_time = time.perf_counter()
-    console = Console()
+    # force_terminal=True ensures ANSI codes are output even when captured
+    console = Console(force_terminal=True)
 
     # 1. Print task name (with marker if nested/subprocess, plain if bare top-level)
     is_subprocess = os.environ.get("RECOMPOSE_SUBPROCESS") == "1"
     if existing_ctx is not None or is_subprocess:
         # Nested task or subprocess - print with marker for parent to recognize
+        # Marker is plain text so prefix_task_output can detect it
         print(f"{SUBTASK_MARKER}{task_name}", flush=True)
     else:
         # Bare top-level task - print name in name style
@@ -246,41 +248,25 @@ def _run_with_context(
 
         captured_output = buffer.getvalue()
 
-        # 3. Prefix and print captured output with styled prefixes
+        # 3. Prefix and print captured output with styled tree prefixes
+        # Content may already have ANSI colors which pass through
         if captured_output:
             prefixed = prefix_task_output(captured_output)
-            if existing_ctx is None:
-                # Top-level: print with colors
-                print_task_output_styled(prefixed, console)
-            else:
-                # Nested: print plain (parent will add colors)
-                print(prefixed, flush=True)
+            print_task_output_styled(prefixed, console)
 
         # Print error details if failed
         if not result.ok and result.error:
             error_lines = str(result.error).split("\n")[:5]
             prefixed_error = prefix_task_output("\n".join(error_lines))
-            if existing_ctx is None:
-                print_task_output_styled(prefixed_error, console)
-            else:
-                print(prefixed_error, flush=True)
+            print_task_output_styled(prefixed_error, console)
 
-        # 4. Print status
+        # 4. Print status (always styled - ANSI passes through when captured)
         elapsed = time.perf_counter() - start_time
-        if existing_ctx is None:
-            # Top-level: styled status
-            if result.ok:
-                msg = f"✓ {task_name} succeeded in {elapsed:.2f}s"
-                console.print(msg, style=COLORS["success_bold"], markup=False, highlight=False)
-            else:
-                msg = f"✗ {task_name} failed in {elapsed:.2f}s"
-                console.print(msg, style=COLORS["failure_bold"], markup=False, highlight=False)
-        else:
-            # Nested: plain status (parent will add colors)
-            if result.ok:
-                print(f"✓ {task_name} succeeded in {elapsed:.2f}s", flush=True)
-            else:
-                print(f"✗ {task_name} failed in {elapsed:.2f}s", flush=True)
+        symbol = SYMBOLS["success"] if result.ok else SYMBOLS["failure"]
+        status = "succeeded" if result.ok else "failed"
+        style = COLORS["success_bold"] if result.ok else COLORS["failure_bold"]
+        msg = f"{symbol} {task_name} {status} in {elapsed:.2f}s"
+        console.print(msg, style=style, markup=False, highlight=False)
 
         # Attach collected outputs/artifacts to the result
         if result.ok and should_set_context:

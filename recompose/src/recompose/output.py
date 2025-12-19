@@ -37,8 +37,8 @@ class Verbosity(Enum):
 SYMBOLS = {
     "entry": "▶",  # Top-level entry point
     "entry_down": "▼",  # Top-level with children
-    "branch": "├─▶",  # Non-last sibling
-    "last": "└─▶",  # Last sibling
+    "branch": "├──▶",  # Non-last sibling
+    "last": "└──▶",  # Last sibling
     "pipe": "│",  # Continuation line
     "parallel": "⊕─┐",  # Parallel group header (corner turns down to children)
     "success": "✓",  # Success
@@ -59,24 +59,20 @@ COLORS = {
 }
 
 # Prefix widths to align content under headers
-CONTENT_PREFIX = "│   "  # 4 chars: pipe + 3 spaces
+CONTENT_PREFIX = SYMBOLS["pipe"] + "   "  # 4 chars: pipe + 3 spaces
 LAST_PREFIX = "    "  # 4 chars: 4 spaces (no continuation line)
 PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 
 # Task output prefixes (for the recursive capture-and-prefix model)
 SUBTASK_MARKER = "\x00SUBTASK:"  # Marker for subtask names in captured output
-OUTPUT_PREFIX = "│ "  # 2 chars: for task's direct output
-SUBTASK_HEADER = "├──▶"  # 4 chars: for subtask header
-CONTINUATION = "│   "  # 4 chars: continuation under subtask (aligns with ├──▶)
 
 
 def prefix_task_output(captured: str) -> str:
     """
-    Prefix captured task output with appropriate tree symbols.
+    Prefix captured task output with tree symbols.
 
-    - Subtask markers → ├──▶ header
-    - Lines from nested tasks (start with │ or ✓/✗) → │   continuation
-    - Regular output → │  prefix
+    - Subtask markers (always plain) → branch header
+    - Everything else → content prefix (may contain ANSI colors)
     """
     if not captured:
         return ""
@@ -86,95 +82,42 @@ def prefix_task_output(captured: str) -> str:
 
     for line in lines:
         if line.startswith(SUBTASK_MARKER):
-            # Subtask header
+            # Subtask header (marker is always emitted plain)
             name = line[len(SUBTASK_MARKER) :]
-            result.append(f"{SUBTASK_HEADER}{name}")
-        elif line.startswith("│") or line.startswith("✓") or line.startswith("✗"):
-            # Output from nested task, use continuation prefix
-            result.append(f"{CONTINUATION}{line}")
+            result.append(f"{SYMBOLS['branch']}{name}")
         else:
-            # Direct output from this task
-            result.append(f"{OUTPUT_PREFIX}{line}")
+            # All other output (may contain ANSI colors)
+            result.append(f"{CONTENT_PREFIX}{line}")
 
     return "\n".join(result)
 
 
 def print_task_output_styled(prefixed: str, console: Console) -> None:
     """
-    Print prefixed task output with styled prefixes.
+    Print prefixed task output with styled tree prefixes.
 
     Tree symbols (│, ├──▶) are printed in cyan.
     Task names (after ├──▶) are printed in bold.
-    Status symbols (✓) in green, (✗) in red.
-    Content in default color.
+    Content is printed as-is (may contain ANSI colors from child output).
     """
     if not prefixed:
         return
 
+    branch = SYMBOLS["branch"]
+
     for line in prefixed.split("\n"):
-        i = 0
-        last_was_header_arrow = False  # Track if we just printed ├──▶
-        while i < len(line):
-            char = line[i]
-
-            if char in "│├─▶":
-                # Tree structure - collect tree chars and spaces between them
-                start = i
-                while i < len(line):
-                    if line[i] in "│├─▶":
-                        i += 1
-                    elif line[i] == " ":
-                        # Look ahead past ALL consecutive spaces
-                        j = i
-                        while j < len(line) and line[j] == " ":
-                            j += 1
-                        # Include spaces only if followed by more tree/status chars
-                        if j < len(line) and line[j] in "│├─▶✓✗":
-                            i = j
-                        else:
-                            break
-                    else:
-                        break
-                tree_segment = line[start:i]
-                console.print(tree_segment, style=COLORS["tree"], end="", markup=False, highlight=False)
-                # Check if this segment ends with ▶ (subtask header)
-                last_was_header_arrow = tree_segment.endswith("▶")
-
-            elif char == "✓":
-                # Success - print ✓ in success color
-                console.print(char, style=COLORS["success"], end="", markup=False, highlight=False)
-                i += 1
-                last_was_header_arrow = False
-
-            elif char == "✗":
-                # Failure - print ✗ in failure color
-                console.print(char, style=COLORS["failure"], end="", markup=False, highlight=False)
-                i += 1
-                last_was_header_arrow = False
-
-            elif char == " ":
-                # Space between styled components - print as-is
-                print(char, end="", flush=True)
-                i += 1
-                # Space after ▶ means it's not a subtask header (e.g., status line)
-                last_was_header_arrow = False
-
-            else:
-                # Content - check if it's a task name (immediately after ├──▶)
-                if last_was_header_arrow:
-                    # Task name - print in name style until space or end
-                    name_start = i
-                    while i < len(line) and line[i] != " ":
-                        i += 1
-                    console.print(line[name_start:i], style=COLORS["name"], end="", markup=False, highlight=False)
-                    last_was_header_arrow = False
-                else:
-                    # Regular content - print rest of line in default color
-                    print(line[i:], flush=True)
-                    break
+        # Check for branch header line (├──▶task_name)
+        if line.startswith(branch):
+            # Print branch symbol in tree color, task name in bold
+            console.print(branch, style=COLORS["tree"], end="", markup=False, highlight=False)
+            console.print(line[len(branch) :], style=COLORS["name"], markup=False, highlight=False)
+        elif line.startswith(SYMBOLS["pipe"]):
+            # Print pipe prefix in tree color, rest as-is (preserves ANSI)
+            console.print(SYMBOLS["pipe"], style=COLORS["tree"], end="", markup=False, highlight=False)
+            print(line[len(SYMBOLS["pipe"]) :], flush=True)
         else:
-            # Line ended without content
-            print(flush=True)
+            # No tree prefix, print as-is
+            print(line, flush=True)
 
 
 def prefix_lines(text: str, prefix: str) -> str:
@@ -228,7 +171,7 @@ class OutputManager:
             self.print(name, style=COLORS["name"])
         else:
             symbol = SYMBOLS["last"] if is_last else SYMBOLS["branch"]
-            self.print(f"{symbol} ", style=COLORS["tree"], end="")
+            self.print(symbol, style=COLORS["tree"], end="")
             self.print(name, style=COLORS["name"])
 
     def print_status(self, success: bool, elapsed: float, prefix: str = "") -> None:
