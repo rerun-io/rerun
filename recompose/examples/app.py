@@ -25,6 +25,7 @@ from .tasks import (
     build_wheel,
     format_check,
     format_code,
+    level_1,
     lint,
     lint_all,
     test,
@@ -65,6 +66,12 @@ app = recompose.App(
             "Build",
             [
                 build_wheel,
+            ],
+        ),
+        recompose.CommandGroup(
+            "Demo",
+            [
+                level_1,
             ],
         ),
         recompose.builtin_commands(),
