@@ -295,10 +295,10 @@ mod tests {
     }
 
     #[test]
-    fn decodes_rvl_u16_zero_without_quantization() {
+    fn decodes_rvl_with_quantization_when_parameters_zero() {
         let disparity = [0u16, 1200, 0];
-        let depth_params = (0.0, 0.0);
-        let data = build_depth_message([3, 1], &disparity, depth_params);
+        let quant_params = (0.0, 0.0);
+        let data = build_depth_message([3, 1], &disparity, quant_params);
         let metadata = RosRvlMetadata::parse(&data).unwrap();
         let decoded = decode_rvl_with_quantization(&data, &metadata).unwrap();
         assert!(!decoded[0].is_nan());
