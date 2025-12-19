@@ -37,7 +37,11 @@ For similar code in Rust, we have a full example [here](github.com/rerun-io/reru
 
 If you already have a recording with transforms loaded in Rerun and want to add an URDF to it, you can do so via drag-and-drop or the menu ("Import into current recording").
 
-For example in this video, we have loaded an ROS 2 `.mcap` file with TF messages that automatically get translated into Rerun `Transform3D`. We can then simply drag the corresponding URDF models into the viewer:
+In this video, we load an ROS 2 `.mcap` file with TF messages that automatically get translated into Rerun `Transform3D`.
+As indicated by the errors displayed in the viewer, there are some connections missing in the transform tree of this example MCAP.
+In our case, these missing transforms are static links that are stored in URDF models separate from the MCAP file.
+
+To add them, we can simply drag the corresponding URDF files into the viewer where we have loaded the MCAP:
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/69e08d9dcaed77f5f93190ffb9ccf75376c7d1c4_urdf_drag_and_drop.mp4" type="video/mp4" />
