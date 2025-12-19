@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import functools
 import inspect
+import os
+import time
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -205,7 +207,116 @@ def _run_with_context(
         finally:
             set_context(None)
     else:
-        return _execute_task(fn, args, kwargs)
+        # Nested task call - add hierarchical output
+        return _run_nested_task(task_info, fn, args, kwargs)
+
+
+class _TreePrefixWriter:
+    """Wrapper that adds tree-style prefix to output lines."""
+
+    def __init__(self, wrapped: Any, prefix: str):
+        self._wrapped = wrapped
+        self._prefix = prefix
+        self._at_line_start = True
+
+    def write(self, s: str) -> int:
+        if not s:
+            return 0
+
+        result = []
+        for char in s:
+            if self._at_line_start and char != "\n":
+                result.append(self._prefix)
+                self._at_line_start = False
+            result.append(char)
+            if char == "\n":
+                self._at_line_start = True
+
+        output = "".join(result)
+        self._wrapped.write(output)
+        return len(s)
+
+    def flush(self) -> None:
+        self._wrapped.flush()
+
+    def fileno(self) -> int:
+        return int(self._wrapped.fileno())
+
+    @property
+    def encoding(self) -> str:
+        return getattr(self._wrapped, "encoding", "utf-8")
+
+    def isatty(self) -> bool:
+        return bool(self._wrapped.isatty())
+
+
+def _run_nested_task(
+    task_info: TaskInfo, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> Result[Any]:
+    """Execute a nested task with tree-style output."""
+    import sys
+
+    from .step import _get_current_depth, _pop_step, _push_step
+
+    task_name = task_info.name
+
+    # Get current nesting depth for indentation
+    depth = _get_current_depth()
+    base_indent = "  " * depth
+
+    # Check if running in GHA
+    is_gha = os.environ.get("GITHUB_ACTIONS") == "true"
+
+    if is_gha:
+        # GHA: use group markers
+        print(f"::group::{task_name}", flush=True)
+    else:
+        # Local: tree-style header
+        print(f"{base_indent}├─▶ {task_name}", flush=True)
+
+    # Push step context for proper indentation of nested output
+    _push_step(task_name)
+    start_time = time.perf_counter()
+
+    # Set up output prefix for tree continuation
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    if not is_gha:
+        prefix = f"{base_indent}│    "
+        sys.stdout = _TreePrefixWriter(old_stdout, prefix)
+        sys.stderr = _TreePrefixWriter(old_stderr, prefix)
+
+    try:
+        result = _execute_task(fn, args, kwargs)
+        elapsed = time.perf_counter() - start_time
+
+        # Restore stdout before printing status
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+
+        if is_gha:
+            if result.ok:
+                print(f"✓ {task_name} succeeded in {elapsed:.2f}s", flush=True)
+            else:
+                print(f"✗ {task_name} failed in {elapsed:.2f}s", flush=True)
+            print("::endgroup::", flush=True)
+        else:
+            # Local: tree-style status
+            if result.ok:
+                print(f"{base_indent}│    ✓ completed in {elapsed:.2f}s", flush=True)
+            else:
+                print(f"{base_indent}│    ✗ failed in {elapsed:.2f}s", flush=True)
+                # Print error if available
+                if result.error:
+                    for line in str(result.error).split("\n")[:5]:
+                        print(f"{base_indent}│      {line}", flush=True)
+
+        return result
+    finally:
+        _pop_step()
+        # Ensure stdout/stderr are restored even if there was an exception
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
 
 def _attach_context_to_result(result: Result[Any], ctx: Context) -> Result[Any]:
