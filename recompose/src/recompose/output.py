@@ -256,6 +256,40 @@ class OutputManager:
 
         return "".join(parts)
 
+    def _get_indent_for_header_skip_last(self) -> str:
+        """Get indentation for a header line, skipping the last scope level.
+
+        Used for parallel job headers where the symbol already includes the │ character.
+        """
+        total_depth = self.depth
+        if total_depth <= 1:
+            return ""
+
+        # Build prefix for depth - 1 levels
+        parts = []
+        for _ in range(total_depth - 1):
+            parts.append(f"{SYMBOLS['pipe']}    ")
+
+        return "".join(parts)
+
+    def _get_line_prefix_for_parallel(self) -> str:
+        """Get line prefix for content inside a parallel job.
+
+        Similar to _get_line_prefix but accounts for parallel scope nesting.
+        """
+        # For parallel jobs, we want the content to be prefixed with │
+        # to continue the visual line from the parallel symbol
+        total_depth = self.depth
+        if total_depth == 0:
+            return ""
+
+        # At depth 1 (inside parallel scope), return │    for content
+        parts = []
+        for _ in range(total_depth):
+            parts.append(f"{SYMBOLS['pipe']}    ")
+
+        return "".join(parts)
+
     def parallel_header(self, job_names: list[str]) -> None:
         """Print header for parallel execution group."""
         if self._is_gha:
@@ -271,15 +305,18 @@ class OutputManager:
             print(f"::group::{name}", flush=True)
             return
 
-        indent = self._get_indent_for_header()
         if is_parallel:
+            # Parallel symbols already include │, so skip one level of indent
+            # to avoid double prefixing
+            indent = self._get_indent_for_header_skip_last()
             symbol = SYMBOLS["parallel_last"] if is_last else SYMBOLS["parallel_branch"]
         else:
+            indent = self._get_indent_for_header()
             symbol = SYMBOLS["last"] if is_last else SYMBOLS["branch"]
 
         self._print_raw(f"{indent}{symbol} {name}", style="bold cyan")
 
-    def job_status(self, name: str, success: bool, elapsed: float) -> None:
+    def job_status(self, name: str, success: bool, elapsed: float, is_parallel: bool = False) -> None:
         """Print job completion status."""
         if self._is_gha:
             symbol = SYMBOLS["success"] if success else SYMBOLS["failure"]
@@ -287,8 +324,13 @@ class OutputManager:
             print("::endgroup::", flush=True)
             return
 
-        # Print indent without styling, then status with styling
-        indent = self._get_line_prefix()
+        # For parallel jobs, use shorter prefix to align with the job header symbol
+        # (which already includes │)
+        if is_parallel:
+            indent = f"{SYMBOLS['pipe']} "  # Just "│ " to align with parallel symbol
+        else:
+            indent = self._get_line_prefix()
+
         self._print_raw(indent, end="")
         if success:
             self._print_raw(f"{SYMBOLS['success']} {elapsed:.2f}s", style="green")
