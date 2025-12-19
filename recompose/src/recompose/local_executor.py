@@ -462,15 +462,15 @@ class LocalExecutor:
             lines = result.output_text.split("\n")[-10:]
             output_mgr.print_prefixed("\n".join(lines), prefix)
 
-        # 4. Print status with SAME prefix
+        # 4. Print outputs if verbose (before status)
+        if result.success and result.outputs and self.verbose:
+            for k, v in result.outputs.items():
+                print(f"{prefix}output: {k}={v}", flush=True)
+
+        # 5. Print status with SAME prefix
         symbol = "✓" if result.success else "✗"
         status_line = f"{symbol} {result.elapsed_seconds:.2f}s"
         print(f"{prefix}{status_line}", flush=True)
-
-        # Print outputs if verbose and successful
-        if result.success and result.outputs and self.verbose:
-            for k, v in result.outputs.items():
-                print(f"output: {k}={v}", flush=True)
 
 
 def execute_automation(
