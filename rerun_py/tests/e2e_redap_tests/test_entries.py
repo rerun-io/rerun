@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.creates_table
-def test_entries_without_hidden(entry_factory: EntryFactory, tmp_path: Path, snapshot: SnapshotAssertion) -> None:
+def test_entries_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
     """Test that entries(), datasets(), and tables() exclude hidden entries by default."""
     client = entry_factory.client
 
@@ -25,7 +25,7 @@ def test_entries_without_hidden(entry_factory: EntryFactory, tmp_path: Path, sna
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get entries after - should only show user-created entries (no hidden)
     datasets_after = {d.name for d in client.datasets()}
@@ -45,7 +45,7 @@ def test_entries_without_hidden(entry_factory: EntryFactory, tmp_path: Path, sna
 
 @pytest.mark.creates_table
 def test_entries_with_hidden(
-    entry_factory: EntryFactory, tmp_path: Path, snapshot_redact_id: SnapshotAssertion
+    entry_factory: EntryFactory, snapshot_redact_id: SnapshotAssertion
 ) -> None:
     """Test that entries(), datasets(), and tables() include hidden entries when include_hidden=True."""
     client = entry_factory.client
@@ -57,7 +57,7 @@ def test_entries_with_hidden(
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get entries after with hidden - should include blueprint datasets and system tables
     datasets_after = {d.name for d in client.datasets(include_hidden=True)}
@@ -76,7 +76,7 @@ def test_entries_with_hidden(
 
 
 @pytest.mark.creates_table
-def test_entry_names_without_hidden(entry_factory: EntryFactory, tmp_path: Path, snapshot: SnapshotAssertion) -> None:
+def test_entry_names_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
     """Test that entry_names(), dataset_names(), and table_names() exclude hidden entries by default."""
     client = entry_factory.client
 
@@ -87,7 +87,7 @@ def test_entry_names_without_hidden(entry_factory: EntryFactory, tmp_path: Path,
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get names after - should only show user-created entries (no hidden)
     dataset_names_after = set(client.dataset_names())
@@ -107,7 +107,7 @@ def test_entry_names_without_hidden(entry_factory: EntryFactory, tmp_path: Path,
 
 @pytest.mark.creates_table
 def test_entry_names_with_hidden(
-    entry_factory: EntryFactory, tmp_path: Path, snapshot_redact_id: SnapshotAssertion
+    entry_factory: EntryFactory, snapshot_redact_id: SnapshotAssertion
 ) -> None:
     """Test that entry_names(), dataset_names(), and table_names() include hidden entries when include_hidden=True."""
     client = entry_factory.client
@@ -119,7 +119,7 @@ def test_entry_names_with_hidden(
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
-    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]), tmp_path.as_uri())
+    entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get names after with hidden - should include blueprint datasets and system tables
     dataset_names_after = set(client.dataset_names(include_hidden=True))
