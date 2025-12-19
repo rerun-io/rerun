@@ -33,6 +33,16 @@ snippet: howto/load_urdf
 
 For similar code in Rust, we have a full example [here](github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
 
+## Load URDF into an existing recording
+
+If you already have a recording with transforms loaded in Rerun and want to add an URDF to it, you can do so via drag-and-drop or the menu ("Import into current recording").
+
+For example in this video, we have loaded an ROS 2 `.mcap` file with TF messages that automatically get translated into Rerun `Transform3D`. We can then simply drag the corresponding URDF models into the viewer:
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/69e08d9dcaed77f5f93190ffb9ccf75376c7d1c4_urdf_drag_and_drop.mp4" type="video/mp4" />
+</video>
+
 ## References
 
 * [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
