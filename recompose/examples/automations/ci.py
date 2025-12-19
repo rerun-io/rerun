@@ -10,7 +10,7 @@ from ..tasks import lint_all, test
 
 
 @recompose.automation(
-    trigger=recompose.on_push(branches=["main"]) | recompose.on_pull_request(),
+    trigger=recompose.on_push(branches=["main", "jleibs/recompose"]) | recompose.on_pull_request(),
 )
 def ci() -> None:
     """
