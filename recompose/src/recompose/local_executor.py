@@ -476,7 +476,8 @@ class LocalExecutor:
         # 5. Print outputs if verbose (after status, dimmed)
         if result.success and result.outputs and self.verbose:
             for k, v in result.outputs.items():
-                output_mgr.print(f"{prefix}output: {k}={v}", style="dim")
+                output_mgr.print(prefix, style="bold cyan", end="")
+                output_mgr.print(f"output: {k}={v}", style="dim")
 
 
 def execute_automation(
