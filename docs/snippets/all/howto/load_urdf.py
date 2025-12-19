@@ -9,7 +9,9 @@ with RecordingStream("rerun_example_load_urdf") as rec:
     # `log_file_from_path` automatically uses the built-in URDF data-loader.
     urdf_path = Path(__file__).parent / "minimal.urdf"
     rec.log_file_from_path(urdf_path, static=True)
-    # Ensure the URDF is fully processed for testing consistency.
+
+    # The `flush` call is optional, but it helps with logging consistency,
+    # because it ensures that the URDF finishes loading before continuing.
     rec.flush()
 
     # Later, in your logging code, you'll update the joints using transforms.
