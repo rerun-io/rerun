@@ -40,7 +40,7 @@ SYMBOLS = {
     "branch": "├─▶",  # Non-last sibling
     "last": "└─▶",  # Last sibling
     "pipe": "│",  # Continuation line
-    "parallel": "⊕─┬",  # Parallel group header (no arrow - not a task)
+    "parallel": "└─┬─⊕",  # Parallel group header (corner connects to parent)
     "success": "✓",  # Success
     "failure": "✗",  # Failure
 }
