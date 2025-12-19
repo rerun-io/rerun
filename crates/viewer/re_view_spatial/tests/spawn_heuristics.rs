@@ -34,6 +34,7 @@ enum EntityKind {
     BBox2D,
     BBox3D,
     ViewCoords,
+    CoordinateFrame(&'static str),
     Pinhole(ImageSize),
     Image(ImageType, ImageSize),
 }
@@ -67,6 +68,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
                 ),
 
                 EntityKind::ViewCoords => &archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+                EntityKind::CoordinateFrame(frame) => &archetypes::CoordinateFrame::new(*frame),
 
                 EntityKind::Pinhole(image_size) => {
                     let [w, h] = image_size.wh();
@@ -239,6 +241,22 @@ fn test_mixed_2d_and_3d_at_root() {
 
     run_heuristics_snapshot_test("three_2d_views_and_one_3d_excluding_images", &test_context);
 }
+
+#[test]
+fn test_mixed_2d_and_3d_with_coordinate_frame() {
+    use ImageSize::*;
+    use ImageType::*;
+
+    let test_context = build_test_scene(&[
+        ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
+        ("camera", EntityKind::Pinhole(Small)),
+        // Nothing should be excluded because we have a frame.
+        ("frame", EntityKind::CoordinateFrame("test_frame")),
+    ]);
+
+    run_heuristics_snapshot_test("2d_and_3d_view_nothing_excluded", &test_context);
+}
+
 #[test]
 fn test_pinhole_with_2d() {
     use ImageSize::*;

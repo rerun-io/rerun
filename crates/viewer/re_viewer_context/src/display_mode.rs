@@ -8,7 +8,7 @@ pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
     ///
     /// The inner display mode is the one to return to when exiting this mode.
-    Settings(Box<DisplayMode>),
+    Settings(Box<Self>),
 
     // TODO(isse): It would be nice to only switch to newly loaded items if we
     // are on the loading screen for that specific item.
@@ -27,7 +27,7 @@ pub enum DisplayMode {
     /// The current recording's data store browser.
     ///
     /// The inner display mode is the one to return to when exiting this mode.
-    ChunkStoreBrowser(Box<DisplayMode>),
+    ChunkStoreBrowser(Box<Self>),
 }
 
 impl std::fmt::Debug for DisplayMode {

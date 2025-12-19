@@ -210,7 +210,7 @@ fmt = { depends-on = ["format"] }
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
 ] }
-link-check = 'lychee --verbose --cache --max-cache-age 1d . --base-url . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+link-check = 'lychee --verbose --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -370,9 +370,9 @@ py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/
 ] }
 
 # Build the `rerun-sdk` package in release mode.
-py-build-release = "env -u CONDA_PREFIX  RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
+py-build-release = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-web-viewer = { cmd = "env -u CONDA_PREFIX  RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer = { cmd = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
   "rerun-build-native-and-web",
 ] }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature in release mode.
@@ -496,7 +496,8 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.20.1.*"
+lychee = "0.21.0.*"
+mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbstripout = "*"
 ninja = "1.11.1.*"

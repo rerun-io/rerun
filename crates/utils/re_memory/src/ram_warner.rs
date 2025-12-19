@@ -59,8 +59,7 @@ impl RamLimitWarner {
             let used = crate::MemoryUse::capture();
             let used = used.counted.or(used.resident);
             if let Some(used) = used
-                && 0 <= used
-                && self.warn_limit <= used as u64
+                && self.warn_limit <= used
             {
                 self.has_warned = true;
                 re_log::warn!(

@@ -55,7 +55,7 @@ fn main() {
 /// Detect if we're in an isolated PEP 517 build environment.
 ///
 /// When pip or uv builds a package, they create an isolated virtual environment
-/// in a temporary directory. We can detect this by checking the PYO3_PYTHON path
+/// in a temporary directory. We can detect this by checking the `PYO3_PYTHON`` path
 /// which maturin sets to the Python interpreter being used.
 ///
 /// Known patterns for isolated build environments:

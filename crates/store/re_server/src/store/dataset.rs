@@ -6,16 +6,16 @@ use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
 use parking_lot::Mutex;
-use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _};
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_log_types::{EntryId, StoreKind};
+use re_log_encoding::RrdManifest;
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
-use crate::chunk_index::DatasetChunkIndexes;
 use crate::store::{Error, InMemoryStore, Layer, Segment, Tracked};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
@@ -23,7 +23,8 @@ pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
     segments: HashMap<SegmentId, Segment>,
-    indexes: DatasetChunkIndexes,
+    #[cfg(feature = "lance")]
+    indexes: crate::chunk_index::DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -47,7 +48,8 @@ impl Dataset {
                 name,
                 details,
                 segments: HashMap::default(),
-                indexes: DatasetChunkIndexes::new(id),
+                #[cfg(feature = "lance")]
+                indexes: crate::chunk_index::DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -87,7 +89,8 @@ impl Dataset {
         self.inner.updated_at()
     }
 
-    pub fn indexes(&self) -> &DatasetChunkIndexes {
+    #[cfg(feature = "lance")]
+    pub fn indexes(&self) -> &crate::chunk_index::DatasetChunkIndexes {
         &self.inner.indexes
     }
 
@@ -178,10 +181,10 @@ impl Dataset {
         let updated_at = self.updated_at();
 
         // Check if we have a valid cached schema
-        if let Some((cached_at, schema)) = cache.as_ref() {
-            if *cached_at == updated_at {
-                return Ok(Schema::clone(schema));
-            }
+        if let Some((cached_at, schema)) = cache.as_ref()
+            && *cached_at == updated_at
+        {
+            return Ok(Schema::clone(schema));
         }
 
         // Recompute schema
@@ -350,7 +353,7 @@ impl Dataset {
             .map_err(Error::failed_to_extract_properties)
     }
 
-    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RecordBatch, Error> {
+    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RrdManifest, Error> {
         let partition = self.segment(segment_id)?;
 
         let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
@@ -360,13 +363,11 @@ impl Dataset {
         for (layer_name, layer) in partition.iter_layers() {
             let store = layer.store_handle();
 
+            let mut offset = 0;
             for chunk in store.read().iter_chunks() {
                 let chunk_batch = chunk
                     .to_chunk_batch()
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
-
-                // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
-                let dummy_byte_span = re_span::Span::default();
 
                 // Not a totally accurate value, but we're certainly not going to encode every chunk
                 // into IPC bytes just to figure out their uncompressed size either.
@@ -378,8 +379,24 @@ impl Dataset {
                 use re_byte_size::SizeBytes as _;
                 let byte_size_uncompressed = chunk.heap_size_bytes();
 
+                // There is no such thing as "compressed data on disk" in the case of the OSS server,
+                // since there's no disk to begin with. That's fine, we just re-use the
+                // uncompressed values: the chunk-key (generated below) is what will be used to
+                // accurately fetch the data in any case.
+                //
+                // TODO(cmc): we could also keep track of the compressed values originally fetched
+                // from disk and/or network all the way into the OSS server's datastructures and
+                // resurface them here but that doesn't seem to have any practical use, so not
+                // worth the added complexity?
+                let uncompressed_byte_span = re_span::Span {
+                    start: offset,
+                    len: byte_size_uncompressed,
+                };
+
+                offset += byte_size_uncompressed;
+
                 rrd_manifest_builder
-                    .append(&chunk_batch, dummy_byte_span, byte_size_uncompressed)
+                    .append(&chunk_batch, uncompressed_byte_span, byte_size_uncompressed)
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
                 chunk_keys.push(
@@ -394,36 +411,35 @@ impl Dataset {
             }
         }
 
-        let rrd_manifest_batch = rrd_manifest_builder
-            .into_record_batch()
-            .map_err(|err| Error::RrdLoadingError(err.into()))?
-            .remove_columns(&["chunk_byte_offset", "chunk_byte_size"]);
+        let application_id = "n/a"; // irrelevant, dropped immediately
+        let store_id = StoreId::new(self.store_kind(), application_id, segment_id.to_string());
+        let mut rrd_manifest = rrd_manifest_builder
+            .build(store_id)
+            .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
-        let (schema, mut columns, num_rows) = rrd_manifest_batch.into_parts();
-
-        let schema = {
-            let mut schema = Arc::unwrap_or_clone(schema);
-            let mut fields = schema.fields.to_vec();
-            fields.push(Arc::new(arrow::datatypes::Field::new(
-                "chunk_key",
-                arrow::datatypes::DataType::Binary,
-                false,
-            )));
-            schema.fields = fields.into();
-            schema
-        };
         {
-            let chunk_keys = arrow::array::BinaryArray::from_iter_values(chunk_keys.iter());
-            columns.push(Arc::new(chunk_keys));
+            let (schema, mut columns, num_rows) = rrd_manifest.data.clone().into_parts();
+
+            let schema = {
+                let mut schema = Arc::unwrap_or_clone(schema);
+                let mut fields = schema.fields.to_vec();
+                fields.push(Arc::new(RrdManifest::field_chunk_key()));
+                schema.fields = fields.into();
+                schema
+            };
+            {
+                let chunk_keys = arrow::array::BinaryArray::from_iter_values(chunk_keys.iter());
+                columns.push(Arc::new(chunk_keys));
+            }
+
+            rrd_manifest.data = RecordBatch::try_new_with_options(
+                Arc::new(schema),
+                columns,
+                &RecordBatchOptions::new().with_row_count(Some(num_rows)),
+            )?;
         }
 
-        let rrd_manifest_batch = RecordBatch::try_new_with_options(
-            Arc::new(schema),
-            columns,
-            &RecordBatchOptions::new().with_row_count(Some(num_rows)),
-        )?;
-
-        Ok(rrd_manifest_batch)
+        Ok(rrd_manifest)
     }
 
     pub fn layer_store_handle(
@@ -438,6 +454,9 @@ impl Dataset {
             .map(|layer| layer.store_handle())
     }
 
+    // we can't expect there are no async calls without the lance feature
+    #[allow(clippy::allow_attributes)]
+    #[allow(clippy::unused_async)]
     pub async fn add_layer(
         &mut self,
         segment_id: SegmentId,
@@ -459,9 +478,13 @@ impl Dataset {
                 on_duplicate,
             )?;
 
+        #[cfg(feature = "lance")]
         self.indexes()
             .on_layer_added(segment_id, store_handle, &layer_name, overwritten)
             .await?;
+
+        #[cfg(not(feature = "lance"))]
+        let _ = overwritten;
 
         Ok(())
     }

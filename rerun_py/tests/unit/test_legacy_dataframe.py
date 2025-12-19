@@ -1,3 +1,10 @@
+"""
+Legacy dataframe API tests.
+
+These tests use the deprecated RecordingView API and are kept for backwards compatibility testing.
+They will be removed when the legacy dataframe API is removed (RR-3130).
+"""
+
 from __future__ import annotations
 
 import pathlib
@@ -14,6 +21,14 @@ if TYPE_CHECKING:
     from rerun.dataframe import AnyColumn, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
+
+
+# TODO(RR-3130): remove this test file when rerun.dataframe is removed
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:.*rerun\\.dataframe.*is deprecated:DeprecationWarning",
+    "ignore:.*RecordingView is deprecated:DeprecationWarning",
+    "ignore:.*Recording\\.view\\(\\) is deprecated:DeprecationWarning",
+)
 
 
 def test_load_recording() -> None:
@@ -413,7 +428,7 @@ class TestDataframe:
 
             with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
                 rec.save(rrd)
-                rr.dataframe.send_dataframe(df, rec=rec)
+                rr.dataframe.send_dataframe(df, recording=rec)
 
             round_trip_recording = rr.dataframe.load_recording(rrd)
 

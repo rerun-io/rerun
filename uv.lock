@@ -20,7 +20,6 @@ members = [
     "clock",
     "controlnet",
     "dataframe-query",
-    "depth-guided-stable-diffusion",
     "detect-and-track-objects",
     "dicom-mri",
     "dna",
@@ -928,41 +927,6 @@ wheels = [
 ]
 
 [[package]]
-name = "depth-guided-stable-diffusion"
-version = "0.1.0"
-source = { editable = "examples/python/depth_guided_stable_diffusion" }
-dependencies = [
-    { name = "accelerate" },
-    { name = "diffusers" },
-    { name = "ftfy" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "packaging" },
-    { name = "pillow" },
-    { name = "requests" },
-    { name = "rerun-sdk" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "torch" },
-    { name = "transformers" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "accelerate" },
-    { name = "diffusers", specifier = "==0.27.2" },
-    { name = "ftfy" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pillow" },
-    { name = "requests", specifier = ">=2.31,<3" },
-    { name = "rerun-sdk", editable = "rerun_py" },
-    { name = "scipy" },
-    { name = "torch", specifier = "==2.8.0" },
-    { name = "transformers", specifier = ">=4.26.0" },
-]
-
-[[package]]
 name = "descartes"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1231,18 +1195,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b6/27/954057b0d1f53f086f681755207dda6de6c660ce133c829158e8e8fe7895/fsspec-2025.12.0.tar.gz", hash = "sha256:c505de011584597b1060ff778bb664c1bc022e87921b0e4f10cc9c44f9635973", size = 309748, upload-time = "2025-12-03T15:23:42.687Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/c7/b64cae5dba3a1b138d7123ec36bb5ccd39d39939f18454407e5468f4763f/fsspec-2025.12.0-py3-none-any.whl", hash = "sha256:8bf1fe301b7d8acfa6e8571e3b1c3d158f909666642431cc78a1b7b4dbc5ec5b", size = 201422, upload-time = "2025-12-03T15:23:41.434Z" },
-]
-
-[[package]]
-name = "ftfy"
-version = "6.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "wcwidth" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/d3/8650919bc3c7c6e90ee3fa7fd618bf373cbbe55dff043bd67353dbb20cd8/ftfy-6.3.1.tar.gz", hash = "sha256:9b3c3d90f84fb267fe64d375a07b7f8912d817cf86009ae134aa03e1819506ec", size = 308927, upload-time = "2024-10-26T00:50:35.149Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/6e/81d47999aebc1b155f81eca4477a616a70f238a2549848c38983f3c22a82/ftfy-6.3.1-py3-none-any.whl", hash = "sha256:7c70eb532015cd2f9adb53f101fb6c7945988d023a085d127d1573dc49dd0083", size = 44821, upload-time = "2024-10-26T00:50:33.425Z" },
 ]
 
 [[package]]
@@ -4522,7 +4474,7 @@ source = { editable = "rerun_py/rerun_dev_fixup" }
 
 [[package]]
 name = "rerun-notebook"
-version = "0.28.0a1+dev"
+version = "0.29.0a1+dev"
 source = { editable = "rerun_notebook" }
 dependencies = [
     { name = "anywidget" },

@@ -40,7 +40,6 @@ examples = [
   "ros2_bridge",
   "ros_bridge",
   "kiss-icp",
-  "urdf_loader",
   "live_depth_sensor",
   "lidar",
   "rrt_star",
@@ -58,7 +57,6 @@ Examples using machine learning and generative AI methods such as diffusion and 
 examples = [
   # display order, most interesting first
   "controlnet",
-  "depth_guided_stable_diffusion",
   "vista",
   "mcc",
   "lerobot",
@@ -125,7 +123,6 @@ examples = [
   "notebook",
   "notebook_neural_field_2d",
   "lerobot_loader",
-  "urdf_loader",
   "vrs",
   "revy",
   "tfrecord_loader",

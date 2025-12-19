@@ -14,7 +14,7 @@ pub struct MemoryLimit {
     /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('counted').
     /// We limit based on this instead of `resident` (RSS) because `counted` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
-    pub max_bytes: Option<i64>,
+    pub max_bytes: Option<u64>,
 }
 
 impl MemoryLimit {
@@ -61,7 +61,7 @@ impl MemoryLimit {
         } else {
             re_format::parse_bytes(limit)
                 .map(|max_bytes| Self {
-                    max_bytes: Some(max_bytes),
+                    max_bytes: Some(max_bytes.max(0) as _),
                 })
                 .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
         }

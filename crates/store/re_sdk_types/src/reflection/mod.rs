@@ -14,7 +14,7 @@ use re_types_core::{
     SerializationError,
     reflection::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
-        ComponentReflectionMap, Reflection,
+        ComponentReflectionMap, Reflection, generate_component_identifier_reflection,
     },
 };
 
@@ -24,9 +24,11 @@ use re_types_core::{
 
 pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     re_tracing::profile_function!();
+    let archetypes = generate_archetype_reflection();
     Ok(Reflection {
         components: generate_component_reflection()?,
-        archetypes: generate_archetype_reflection(),
+        component_identifiers: generate_component_identifier_reflection(&archetypes),
+        archetypes,
     })
 }
 
@@ -1537,6 +1539,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
                         is_required: false,
                     },
+                    ArchetypeFieldReflection {
+                        name: "widths",
+                        display_name: "Widths",
+                        component_type: "rerun.components.Length".into(),
+                        docstring_md: "The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                        is_required: false,
+                    },
                 ],
             },
         ),
@@ -1922,7 +1931,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "meter",
                         display_name: "Meter",
                         component_type: "rerun.components.DepthMeter".into(),
-                        docstring_md: "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                        docstring_md: "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nIf omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
@@ -2032,6 +2041,66 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Class ids",
                         component_type: "rerun.components.ClassId".into(),
                         docstring_md: "Optional class ID for the ellipsoids.\n\nThe class ID provides colors and labels if not specified explicitly.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.EncodedDepthImage"),
+            ArchetypeReflection {
+                display_name: "Encoded depth image",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial2DView", "Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "blob",
+                        display_name: "Blob",
+                        component_type: "rerun.components.Blob".into(),
+                        docstring_md: "The encoded depth payload.\n\nSupported are:\n* single channel PNG\n* RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)",
+                        is_required: true,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "media_type",
+                        display_name: "Media type",
+                        component_type: "rerun.components.MediaType".into(),
+                        docstring_md: "Media type of the blob, e.g.:\n\n * `application/rvl` (RVL-compressed 16-bit)\n * `image/png`",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "meter",
+                        display_name: "Meter",
+                        component_type: "rerun.components.DepthMeter".into(),
+                        docstring_md: "Conversion from native units to meters (e.g. `0.001` for millimeters).\n\nIf omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colormap",
+                        display_name: "Colormap",
+                        component_type: "rerun.components.Colormap".into(),
+                        docstring_md: "Optional colormap for visualization of decoded depth.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "depth_range",
+                        display_name: "Depth range",
+                        component_type: "rerun.components.ValueRange".into(),
+                        docstring_md: "Optional visualization range for depth values.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "point_fill_ratio",
+                        display_name: "Point fill ratio",
+                        component_type: "rerun.components.FillRatio".into(),
+                        docstring_md: "Optional point fill ratio for point-cloud projection.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "draw_order",
+                        display_name: "Draw order",
+                        component_type: "rerun.components.DrawOrder".into(),
+                        docstring_md: "Optional 2D draw order.",
                         is_required: false,
                     },
                 ],

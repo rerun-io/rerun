@@ -4,7 +4,6 @@ from abc import ABC
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
-import datafusion
 import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
@@ -16,6 +15,8 @@ from rerun_bindings import (
     TableInsertMode,
 )
 
+from . import EntryId
+
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
     RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
@@ -24,13 +25,14 @@ _BatchesType: TypeAlias = (
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from rerun.dataframe import Recording
+    import datafusion
+
+    from rerun.recording import Recording
 
     from . import (
         CatalogClient,
         ComponentColumnDescriptor,
         ComponentColumnSelector,
-        EntryId,
         EntryKind,
         IndexColumnSelector,
         IndexConfig,
@@ -109,6 +111,32 @@ class Entry(ABC, Generic[InternalEntryT]):
         """
 
         self._internal.update(name=name)
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Compare this entry to another object.
+
+        Supports comparison with `str` and `EntryId` to enable the following patterns:
+        ```py
+        "entry_name" in client.entries()
+        entry_id in client.entries()
+        ```
+        """
+        match other:
+            case Entry():
+                return self.id == other.id
+
+            case str():
+                return self.name == other
+
+            case EntryId():
+                return self.id == other
+
+            case _:
+                return NotImplemented
+
+    # Make it explicit that `Entries` are view objects for which hashing cannot sensibly be implemented
+    __hash__ = None  # type: ignore[assignment]
 
 
 class DatasetEntry(Entry[DatasetEntryInternal]):
@@ -387,14 +415,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Download a partition from the dataset."""
         return self.download_segment(partition_id)
 
-    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
         Parameters
         ----------
         segment_ids
-            A list of segment ID strings or a DataFusion DataFrame
+            A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
             with a column named 'rerun_segment_id'. When passing a DataFrame,
             if there are additional columns, they will be ignored.
 
@@ -406,6 +434,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
+        # Filter to a single segment
+        view = dataset.filter_segments("recording_0")
+
         # Filter to specific segments
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
@@ -419,12 +450,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        if isinstance(segment_ids, datafusion.DataFrame):
+        import datafusion
+
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+        elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -434,8 +469,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        exprs : Sequence[str]
-            Entity path expressions.
+        exprs : str | Sequence[str]
+            Entity path expression or list of entity path expressions.
 
         Returns
         -------
@@ -445,6 +480,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
+        # Filter to a single entity path
+        view = dataset.filter_contents("/points/**")
+
         # Filter to specific entity paths
         view = dataset.filter_contents(["/points/**"])
 
@@ -452,17 +490,20 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         view = dataset.filter_contents(["/points/**", "-/text/**"])
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
+
+        if isinstance(exprs, str):
+            exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
 
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
@@ -472,6 +513,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Create a reader over this dataset.
 
         Returns a DataFusion DataFrame.
+
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
 
         Parameters
         ----------
@@ -809,8 +865,8 @@ class DatasetView:
 
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
@@ -820,6 +876,21 @@ class DatasetView:
         Create a reader over this DatasetView.
 
         Returns a DataFusion DataFrame.
+
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
 
         Parameters
         ----------
@@ -850,7 +921,7 @@ class DatasetView:
             using_index_values=using_index_values,
         )
 
-    def filter_segments(self, segment_ids: Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
@@ -859,8 +930,8 @@ class DatasetView:
 
         Parameters
         ----------
-        segment_ids : Sequence[str] | datafusion.DataFrame
-            Either a list of segment ID strings or a DataFusion DataFrame
+        segment_ids : str | Sequence[str] | datafusion.DataFrame
+            A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
             with a column named 'rerun_segment_id'.
 
         Returns
@@ -869,12 +940,16 @@ class DatasetView:
             A new view filtered to the given segments.
 
         """
-        if isinstance(segment_ids, datafusion.DataFrame):
+        import datafusion
+
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+        elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -884,8 +959,8 @@ class DatasetView:
 
         Parameters
         ----------
-        exprs : Sequence[str]
-            Entity path expressions.
+        exprs : str | Sequence[str]
+            Entity path expression or list of entity path expressions.
 
         Returns
         -------
@@ -893,6 +968,9 @@ class DatasetView:
             A new view filtered to the matching entity paths.
 
         """
+        if isinstance(exprs, str):
+            exprs = [exprs]
+
         return DatasetView(self._internal.filter_contents(list(exprs)))
 
     def __repr__(self) -> str:

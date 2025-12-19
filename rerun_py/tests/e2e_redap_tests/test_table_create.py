@@ -30,7 +30,7 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
 def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     table_name = "dataset_to_table"
 
-    df = prefilled_catalog.dataset.reader(index="time_1")
+    df = prefilled_catalog.prefilled_dataset.reader(index="time_1")
     original_schema = df.schema()
 
     table_entry = prefilled_catalog.factory.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
@@ -56,9 +56,24 @@ def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: 
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
 
-    df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
+    try:
+        df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
 
-    returned_schema = df.schema.remove_metadata()
-    assert returned_schema == original_schema
+        returned_schema = df.schema.remove_metadata()
+        assert returned_schema == original_schema
+    finally:
+        table_entry.delete()
+
+
+@pytest.mark.creates_table
+def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
+    table_name = "created-table"
+
+    schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
+    with pytest.raises(
+        ValueError,
+        match="sql parser error: Unexpected token in identifier: -",
+    ):
+        _ = entry_factory.create_table(table_name, schema, tmp_path.absolute().as_uri())

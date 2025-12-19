@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.28.0-alpha.1+dev"
-__version_info__ = (0, 28, 0, "alpha.1")
+__version__ = "0.29.0-alpha.1+dev"
+__version_info__ = (0, 29, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -26,8 +26,9 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
-    dataframe as dataframe,
+    dataframe as dataframe,  # TODO(RR-3130): deprecated
     experimental as experimental,
+    recording as recording,
     server as server,
 )
 from ._baseclasses import (
@@ -38,10 +39,6 @@ from ._baseclasses import (
     ComponentDescriptor as ComponentDescriptor,
     ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
-)
-from ._image_encoded import (
-    ImageEncoded as ImageEncoded,
-    ImageFormat as ImageFormat,
 )
 from ._log import (
     AsComponents as AsComponents,
@@ -60,10 +57,20 @@ from ._properties import (
 from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeColumnLike as TimeColumnLike,
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
+)
+from ._send_dataframe import (
+    RERUN_KIND as RERUN_KIND,
+    RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,
+    RERUN_KIND_INDEX as RERUN_KIND_INDEX,
+    SORBET_ARCHETYPE_NAME as SORBET_ARCHETYPE_NAME,
+    SORBET_COMPONENT as SORBET_COMPONENT,
+    SORBET_COMPONENT_TYPE as SORBET_COMPONENT_TYPE,
+    SORBET_ENTITY_PATH as SORBET_ENTITY_PATH,
+    SORBET_INDEX_NAME as SORBET_INDEX_NAME,
+    SORBET_IS_TABLE_INDEX as SORBET_IS_TABLE_INDEX,
+    send_dataframe as send_dataframe,
+    send_record_batch as send_record_batch,
 )
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
@@ -86,6 +93,7 @@ from .archetypes import (
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
+    EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
@@ -178,7 +186,6 @@ from .recording_stream import (
     get_recording_id as get_recording_id,
     get_thread_local_data_recording as get_thread_local_data_recording,
     is_enabled as is_enabled,
-    new_recording as new_recording,
     recording_stream_generator_ctx as recording_stream_generator_ctx,
     set_global_data_recording as set_global_data_recording,
     set_thread_local_data_recording as set_thread_local_data_recording,
@@ -198,7 +205,6 @@ from .sinks import (
     send_blueprint as send_blueprint,
     send_recording as send_recording,
     serve_grpc as serve_grpc,
-    serve_web as serve_web,
     set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
@@ -207,9 +213,6 @@ from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
     set_time as set_time,
-    set_time_nanos as set_time_nanos,
-    set_time_seconds as set_time_seconds,
-    set_time_sequence as set_time_sequence,
 )
 from .web import serve_web_viewer as serve_web_viewer
 
@@ -461,7 +464,7 @@ def notebook_show(
     width: int | None = None,
     height: int | None = None,
     blueprint: BlueprintLike | None = None,  # noqa: F811
-    recording: RecordingStream | None = None,
+    recording: RecordingStream | None = None,  # noqa: F811
 ) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].

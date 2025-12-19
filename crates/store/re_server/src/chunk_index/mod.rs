@@ -1,6 +1,4 @@
-#[cfg(feature = "lance")]
 mod index;
-#[cfg(feature = "lance")]
 mod search;
 
 use std::ops::Deref as _;
@@ -66,15 +64,11 @@ impl<T: Clone> ArcCell<T> {
 }
 
 /// An index for a column of a dataset's chunks
-#[cfg(feature = "lance")]
 struct Index {
     config: IndexConfig,
     // Mutex because we need to update the lance object after writing and checking out the latest version.
     lance_dataset: ArcCell<lance::dataset::Dataset>,
 }
-
-#[cfg(not(feature = "lance"))]
-struct Index {}
 
 /// All indexes for a dataset's chunks
 ///
@@ -93,7 +87,6 @@ pub struct DatasetChunkIndexes {
     indexes: tokio::sync::RwLock<HashMap<EntityPath, HashMap<ComponentIdentifier, Arc<Index>>>>,
 }
 
-#[cfg(feature = "lance")]
 impl DatasetChunkIndexes {
     pub fn new(dataset_id: EntryId) -> Self {
         Self {
@@ -320,30 +313,6 @@ impl DatasetChunkIndexes {
     }
 }
 
-#[cfg(not(feature = "lance"))]
-impl DatasetChunkIndexes {
-    pub fn new(dataset_id: EntryId) -> Self {
-        Self {
-            dataset_id,
-            dir: OnceLock::new(),
-            indexes: tokio::sync::RwLock::new(HashMap::new()),
-        }
-    }
-
-    pub async fn on_layer_added(
-        &self,
-        segment_id: SegmentId,
-        store: ChunkStoreHandle,
-        layer_name: &str,
-        _overwritten: bool,
-    ) -> Result<(), StoreError> {
-        Err(StoreError::IndexingError(
-            "Indexing not available: Lance feature not enabled".to_owned(),
-        ))
-    }
-}
-
-#[cfg(feature = "lance")]
 #[cfg(test)]
 mod tests {
     //! Simple test for vector search. More extensive tests are in the `redap_tests` package that

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::LogDataSource;
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -870,12 +870,18 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use re_viewer::external::re_viewer_context;
+
     use crate::external::re_ui::{UICommand, UICommandSender as _};
 
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
+
+    let (command_tx, command_rx) = re_viewer_context::command_channel();
+
+    let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
     #[allow(clippy::allow_attributes, unused_mut)]
     let ReceiversFromUrlParams {
@@ -885,6 +891,7 @@ fn start_native_viewer(
         url_or_paths,
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
+        Some(auth_error_handler),
     )?;
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -910,9 +917,8 @@ fn start_native_viewer(
     re_viewer::run_native_app(
         _main_thread_token,
         Box::new(move |cc| {
-            let (tx, rx) = re_viewer::command_channel();
             {
-                let tx = tx.clone();
+                let tx = command_tx.clone();
                 let egui_ctx = cc.egui_ctx.clone();
                 tokio::spawn(async move {
                     // We catch ctrl-c commands so we can properly quit.
@@ -938,7 +944,7 @@ fn start_native_viewer(
                 Some(connection_registry),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
-                (tx, rx),
+                (command_tx, command_rx),
             );
             app.set_profiler(profiler);
             for rx in log_receivers {
@@ -1015,6 +1021,7 @@ fn connect_to_existing_server(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
+        None,
     )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
@@ -1065,6 +1072,7 @@ fn serve_web(
         url_or_paths,
         &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
         connection_registry,
+        None,
     )?;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
@@ -1133,6 +1141,7 @@ fn serve_grpc(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
+        None,
     )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
@@ -1164,6 +1173,7 @@ fn save_or_test_receive(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
+        None,
     )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
@@ -1467,6 +1477,7 @@ impl ReceiversFromUrlParams {
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
+        auth_error_handler: Option<AuthErrorHandler>,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1509,9 +1520,15 @@ impl ReceiversFromUrlParams {
             }
         }
 
+        let auth_error_handler = auth_error_handler.unwrap_or_else(|| {
+            std::sync::Arc::new(|uri, err| {
+                re_log::error!("Authentication error for data source {uri}: {err}");
+            })
+        });
+
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(connection_registry))
+            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
