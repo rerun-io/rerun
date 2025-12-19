@@ -90,36 +90,55 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
     """
     Print prefixed task output with styled prefixes.
 
-    Prefix symbols (│, ├──▶) are printed in cyan, content in default color.
+    Tree symbols (│, ├──▶) are printed in cyan.
+    Status symbols (✓) in green, (✗) in red.
+    Content in default color.
     """
     if not prefixed:
         return
 
     for line in prefixed.split("\n"):
-        # Find the prefix portion (│ or ├──▶ and continuations)
-        # The prefix is everything up to and including the last │ or ▶ plus trailing space
-        prefix_end = 0
-        for i, char in enumerate(line):
-            if char in "│├─▶✓✗":
-                prefix_end = i + 1
-            elif char == " " and prefix_end > 0 and i == prefix_end:
-                prefix_end = i + 1
-            elif char != " ":
-                break
+        i = 0
+        while i < len(line):
+            char = line[i]
 
-        if prefix_end > 0:
-            prefix = line[:prefix_end]
-            content = line[prefix_end:]
-            # Style based on what's in the prefix
-            if "✓" in prefix:
-                console.print(prefix, style="green", end="", markup=False, highlight=False)
-            elif "✗" in prefix:
-                console.print(prefix, style="red", end="", markup=False, highlight=False)
+            if char in "│├─▶":
+                # Tree structure - collect consecutive tree chars and print cyan
+                start = i
+                while i < len(line) and line[i] in "│├─▶ ":
+                    # Include trailing space after tree chars
+                    if line[i] == " ":
+                        i += 1
+                        # Only include space if it follows a tree char
+                        if i < len(line) and line[i] not in "│├─▶✓✗":
+                            break
+                    else:
+                        i += 1
+                console.print(line[start:i], style="bold cyan", end="", markup=False, highlight=False)
+
+            elif char == "✓":
+                # Success - print ✓ and trailing space in green
+                end = i + 1
+                if end < len(line) and line[end] == " ":
+                    end += 1
+                console.print(line[i:end], style="green", end="", markup=False, highlight=False)
+                i = end
+
+            elif char == "✗":
+                # Failure - print ✗ and trailing space in red
+                end = i + 1
+                if end < len(line) and line[end] == " ":
+                    end += 1
+                console.print(line[i:end], style="red", end="", markup=False, highlight=False)
+                i = end
+
             else:
-                console.print(prefix, style="bold cyan", end="", markup=False, highlight=False)
-            print(content, flush=True)
+                # Regular content - print rest of line in default color
+                print(line[i:], flush=True)
+                break
         else:
-            print(line, flush=True)
+            # Line ended with prefix chars only
+            print(flush=True)
 
 
 def prefix_lines(text: str, prefix: str) -> str:
