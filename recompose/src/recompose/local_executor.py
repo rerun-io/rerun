@@ -476,7 +476,11 @@ class LocalExecutor:
             if self.verbose:
                 output_mgr.line(f"({' '.join(cmd)})", style="dim")
 
+        # Push scope for depth tracking (subprocess needs this)
+        output_mgr.push_scope(job_id, kind="job")
+
         if self.dry_run:
+            output_mgr.pop_scope()
             if not buffer_output:
                 output_mgr.line(f"Would run: {' '.join(cmd)}", style="dim")
             return JobResult(
@@ -505,15 +509,16 @@ class LocalExecutor:
                 text=True,
             )
 
-            # Collect output
+            # Collect output and stream with prefix if verbose
             output_lines: list[str] = []
+            prefix = output_mgr._get_line_prefix()
             assert process.stdout is not None
             for line in process.stdout:
                 line = line.rstrip("\n")
                 output_lines.append(line)
-                # Stream output if not buffering and verbose
+                # Stream output with prefix if not buffering and verbose
                 if not buffer_output and self.verbose:
-                    output_mgr.line(line)
+                    output_mgr._print_raw(f"{prefix}{line}")
 
             process.wait()
             elapsed = time.perf_counter() - start_time
@@ -532,6 +537,9 @@ class LocalExecutor:
             # Store output lines for later printing
             result._output_lines = output_lines  # type: ignore[attr-defined]
 
+            # Pop scope before printing status (so status isn't indented)
+            output_mgr.pop_scope()
+
             # Print result (unless buffering)
             if not buffer_output:
                 self._print_job_result(job_spec, result, show_header=False)
@@ -542,6 +550,10 @@ class LocalExecutor:
             # Clean up temp file
             if output_file.exists():
                 output_file.unlink()
+            # Ensure scope is popped even on exception
+            # (in case we didn't get to pop it above)
+            if output_mgr._scope_stack and output_mgr._scope_stack[-1].name == job_id:
+                output_mgr.pop_scope()
 
     def _print_job_result(
         self,
@@ -551,7 +563,7 @@ class LocalExecutor:
         is_parallel: bool = False,
         is_last: bool = False,
     ) -> None:
-        """Print the result of a job execution."""
+        """Print the result of a job execution (for buffered parallel jobs)."""
         output_mgr = get_output_manager()
         output_lines: list[str] = getattr(result, "_output_lines", [])
 
@@ -559,10 +571,17 @@ class LocalExecutor:
         if show_header:
             output_mgr.job_header(result.job_id, is_parallel=is_parallel, is_last=is_last)
 
-        # Print verbose output if enabled
+        # Push scope for proper indentation of output
+        output_mgr.push_scope(result.job_id, kind="job")
+        prefix = output_mgr._get_line_prefix()
+
+        # Print verbose output if enabled (with prefix)
         if self.verbose and output_lines:
             for line in output_lines:
-                output_mgr.line(line)
+                output_mgr._print_raw(f"{prefix}{line}")
+
+        # Pop scope before status
+        output_mgr.pop_scope()
 
         # Print status
         output_mgr.job_status(result.job_id, result.success, result.elapsed_seconds)
