@@ -8,7 +8,7 @@ fn main() {
     // These use isolated build environments which are very slow.
     // Direct `maturin develop` or `maturin build` invocations are fast and allowed.
     //
-    // We detect isolated builds by checking PYO3_PYTHON - in an isolated build,
+    // We detect isolated builds by checking `PYO3_PYTHON` - in an isolated build,
     // it points to a temp directory like ~/.cache/uv/builds-v0/.tmp*/
     // or a pip build-env directory.
     if re_build_tools::is_tracked_env_var_set("RERUN_BUILDING_WHEEL")
@@ -55,7 +55,7 @@ fn main() {
 /// Detect if we're in an isolated PEP 517 build environment.
 ///
 /// When pip or uv builds a package, they create an isolated virtual environment
-/// in a temporary directory. We can detect this by checking the `PYO3_PYTHON`` path
+/// in a temporary directory. We can detect this by checking the `PYO3_PYTHON` path
 /// which maturin sets to the Python interpreter being used.
 ///
 /// Known patterns for isolated build environments:
