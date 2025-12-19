@@ -1,5 +1,23 @@
 # Rerun changelog
 
+## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Fix some telemetry, depth images, and logging
+
+#### 🪵 Log API
+- Ensure that `flush` waits for all data loaders to finish [#12281](https://github.com/rerun-io/rerun/pull/12281)
+
+#### 🪳 Bug fixes
+- Fix video errors having black rectangle around them [#12284](https://github.com/rerun-io/rerun/pull/12284)
+- Fix RVL depth decoding for non-quantized images [#12289](https://github.com/rerun-io/rerun/pull/12289)
+
+#### 🌁 Viewer improvements
+- Fix image planes not working correctly in some named-transform frame scenarios [#12276](https://github.com/rerun-io/rerun/pull/12276)
+- Fix auto-size for 2d views with RVL encoded depth image not working [#12288](https://github.com/rerun-io/rerun/pull/12288)
+- Restore depth image visualizers to 2D view kind (fix heuristic) [#12290](https://github.com/rerun-io/rerun/pull/12290)
+- Add dataloader for encoded depth image (to allow `log_from_file` & dragdrop) [#12287](https://github.com/rerun-io/rerun/pull/12287)
+
+#### 🤷‍ Other
+- Improved error message when `rrd compare --unordered` fails [#12282](https://github.com/rerun-io/rerun/pull/12282)
+
 ## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Transforms, URDF, LeRobotV3, and Catalog API improvements
 
 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-28)
