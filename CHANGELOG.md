@@ -12,6 +12,8 @@ Much more can be found at our revamped docs page [here](https://rerun.io/docs/co
 
 **Improved URDF and MCAP Transform support.** Parent and child frame components are now available in the `Transform3D` archetype, meaning you can send transforms to a single entity instead of using the entity path to inform the structure (note, for URDFs this is required). Additionally, ROS2’s `tf2_msgs/TFMessage` and `PoseStamped` messages are automatically parsed as `Transform3D` and `InstancePoses3D` , respectively, from MCAP files.
 
+We also added a new documentation page for URDF [here](https://rerun.io/docs/howto/urdf).
+
 **AV1 video codec support.** `VideoStream` now supports the AV1 codec alongside existing formats.
 
 **Catalog API refinements (Python).** The Python catalog API has been substantially reworked: "partition" terminology is now "segment," table operations have moved to `TableEntry` objects, and the query interface has been simplified with methods like `filter_segments()`, `filter_contents()`, and `reader()`.
