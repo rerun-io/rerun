@@ -1,35 +1,27 @@
 # NOW
 
-**P16: Unified Task Output System** - IN PROGRESS
+No active project - ready for next task.
 
-See `proj/P16_unified_output_IN_PROGRESS.md` for full plan.
+---
 
-## Problem
+**P16: Unified Task Output System** - COMPLETE
 
-We have multiple overlapping output mechanisms that don't work together:
-- `local_executor.py` - rich console colors for automation jobs
-- `task.py` - `_TreePrefixWriter` for nested tasks (no colors)
-- `step.py` - `StepOutputWrapper` for step indentation
-- `context.py` - `out()` and `dbg()` functions
+See `proj/P16_unified_output_DONE.md` for full details.
 
-The nested task output lost colors when tree prefixes were added.
+## Summary
 
-## Goal
-
-Create a unified `OutputManager` that handles all output formatting:
-- Hierarchical tree-style output for both automations and nested tasks
-- Consistent colors and styling via rich console
+Created unified `OutputManager` class for all output formatting:
+- Tree-style hierarchy for nested tasks and automations
+- Rich console colors and consistent styling
 - GHA detection with `::group::` markers
-- Single source of truth for all output decisions
+- Proper symbols: `▼`, `├─▶`, `└─▶`, `⊕─┬─▶`, `✓`, `✗`
 
-## Status
+**Files modified:**
+- `src/recompose/output.py` - New OutputManager class
+- `src/recompose/task.py` - Uses OutputManager for nested tasks
+- `src/recompose/local_executor.py` - Uses OutputManager for automations
 
-- [x] Initial analysis and project plan
-- [ ] Phase 1: Create OutputManager class
-- [ ] Phase 2: Unify task execution output
-- [ ] Phase 3: Unify automation executor
-- [ ] Phase 4: Integrate step system
-- [ ] Phase 5: Testing and polish
+**Test results:** 234 tests pass, ruff clean
 
 ---
 
@@ -129,78 +121,6 @@ See `proj/P14_architectural_pivot_DONE.md` for full design.
 
 **Backup branch:** `jleibs/recompose-backup-flows-as-steps` preserves old approach.
 
-## Phase 7 COMPLETE: Migration & Polish
-
-Final cleanup and example migration:
-
-- **builtin_tasks.py**: Updated `generate_gha` to use automations and dispatchables
-  - Removed old flow references
-  - Uses `render_automation_jobs()` for automations
-  - Uses `render_dispatchable()` for dispatchables
-  - Updated `inspect` to handle automations and dispatchables
-
-- **App class**: Added `dispatchables` parameter for workflow generation
-
-- **context.py**: Added `get_dispatchables()` function for registry access
-
-- **Examples migrated**:
-  - Deleted `examples/flows/` directory (old flow-based code)
-  - Deleted `examples/tasks/virtual_env.py` (TaskClass, no longer supported)
-  - Created `examples/automations/ci.py` with new `@automation` pattern
-  - Updated `examples/app.py` with automations and dispatchables
-
-**Test results:** 209 tests pass, ruff clean
-
-## Phase 6 COMPLETE: Cleanup Old Code
-
-Removed all legacy flow-based code:
-- Deleted source files: `flow.py`, `plan.py`, `workspace.py`, `_run_step.py`, `local_executor.py`, `automation.py` (old), `conditional.py`, `expr.py`
-- Cleaned `task.py`: removed `@taskclass`, `@method`, `TaskClassInfo`, `_TaskClassNodeProxy`, `_TaskMethodCaller`
-- Cleaned `gha.py`: removed `render_flow_workflow`, `render_automation_workflow` (old), flow rendering functions
-- Cleaned `context.py`: removed flow registry functions
-- Cleaned `cli.py`: removed `_build_flow_command`, `FlowWrapper` references
-- Cleaned `__init__.py`: removed legacy exports
-- Deleted test files: `test_flow.py`, `test_declarative_flow.py`, `test_workspace.py`, `test_taskclass_flow.py`, `test_member_tasks.py`, `test_parameterized_flows.py`, `test_automation.py` (old), `flow_test_app.py`
-
-**Test results:** 209 tests pass (down from 318 - removed 109 legacy tests)
-
-## Phase 5 COMPLETE: make_dispatchable()
-
-Implemented in `jobs.py` and `gha.py`:
-- `DispatchInput` base class with `StringInput`, `BoolInput`, `ChoiceInput` subclasses
-- `Dispatchable` class wrapping a task for workflow_dispatch triggering
-- `DispatchableInfo` dataclass for dispatchable metadata
-- `make_dispatchable(task, inputs=None, name=None)` function
-- `render_dispatchable()` function in gha.py
-
-## Phase 4 COMPLETE: Workflow Generation
-
-Implemented in `gha.py`:
-- `render_automation_jobs(automation, entry_point, default_setup, working_directory)` - Main function
-- `GHAJobSpec` class with support for needs, outputs, if_condition, matrix
-- `SetupStep` class for configuring setup steps
-- `DEFAULT_SETUP_STEPS` - checkout, setup-python, setup-uv
-
-## Phase 2+3 COMPLETE: Automation Framework & Triggers
-
-Implemented in `jobs.py`:
-- `@automation` decorator with context tracking
-- `job()` function returning `JobSpec`
-- Job output/artifact references with automatic dependency inference
-- `InputParam[T]` type for automation parameters
-- Condition expressions with `&`, `|`, `~`, `==`, `!=`
-- `github.*` context references
-- Trigger types (on_push, on_pull_request, on_schedule, on_workflow_dispatch)
-
-## Phase 1 COMPLETE: Task Decorator Enhancements
-
-Implemented:
-- `@task(outputs=["..."], artifacts=["..."], secrets=["..."], setup=[...])` decorator parameters
-- `set_output(name, value)` - validates against declared outputs, writes to GITHUB_OUTPUT
-- `save_artifact(name, path)` - validates against declared artifacts
-- `get_secret(name)` - validates against declared secrets
-- `step(name)` context manager and `@step_decorator` for visual output grouping
-
 # UPCOMING
 
 (Determine next priorities based on project needs)
@@ -211,6 +131,7 @@ Implemented:
 
 # RECENTLY COMPLETED
 
+- P16: Unified Task Output System - colored tree output for tasks and automations
 - P15 Phase 2: Local Automation Execution - `./run ci` now works
 - P15 Phase 1: API Cleanup - unified dispatchables/automations, renamed cli_command
 - P14 Phase 7: Migration & Polish - examples migrated, generate_gha updated

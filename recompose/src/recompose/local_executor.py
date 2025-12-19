@@ -24,14 +24,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from rich.console import Console
-
 from .jobs import ArtifactRef, InputParamRef, JobOutputRef, JobSpec
+from .output import get_output_manager
 
 if TYPE_CHECKING:
     from .jobs import AutomationWrapper
-
-console = Console()
 
 
 @dataclass
@@ -311,6 +308,7 @@ class LocalExecutor:
 
         """
         start_time = time.perf_counter()
+        output_mgr = get_output_manager()
 
         # Get automation name
         if hasattr(automation, "info"):
@@ -320,14 +318,14 @@ class LocalExecutor:
         else:
             automation_name = "automation"
 
-        # Build the job graph
-        console.print(f"\n[bold blue]▶[/bold blue] Running automation: [bold]{automation_name}[/bold]")
+        # Print automation header
+        output_mgr.automation_header(automation_name)
 
         # Execute automation to get jobs
         jobs = automation(**input_params)
 
         if not jobs:
-            console.print("[yellow]No jobs to execute[/yellow]")
+            output_mgr.line("No jobs to execute", style="yellow")
             return AutomationResult(
                 automation_name=automation_name,
                 success=True,
@@ -338,7 +336,7 @@ class LocalExecutor:
         try:
             levels = _group_jobs_by_level(jobs)
         except ValueError as e:
-            console.print(f"[red]Error:[/red] {e}")
+            output_mgr.error(str(e))
             return AutomationResult(
                 automation_name=automation_name,
                 success=False,
@@ -352,14 +350,16 @@ class LocalExecutor:
                     level_strs.append(level[0].job_id)
                 else:
                     level_strs.append(f"[{', '.join(j.job_id for j in level)}]")
-            console.print(f"[dim]Execution order: {' → '.join(level_strs)}[/dim]")
+            output_mgr.line(f"Execution order: {' → '.join(level_strs)}", style="dim")
 
         # Execute jobs level by level (parallel within each level)
         job_outputs: dict[str, dict[str, str]] = {}
         job_results: list[JobResult] = []
         failed_jobs: set[str] = set()
 
-        for level in levels:
+        for level_idx, level in enumerate(levels):
+            is_last_level = level_idx == len(levels) - 1
+
             # Filter out jobs whose dependencies failed
             runnable = [j for j in level if not any(dep.job_id in failed_jobs for dep in j.get_all_dependencies())]
             skipped = [j for j in level if j not in runnable]
@@ -382,7 +382,8 @@ class LocalExecutor:
             # Run jobs in parallel (or sequentially if only one)
             if len(runnable) == 1:
                 # Single job - run directly with live output
-                result = self._execute_job(runnable[0], job_outputs, input_params, buffer_output=False)
+                is_last = is_last_level
+                result = self._execute_job(runnable[0], job_outputs, input_params, buffer_output=False, is_last=is_last)
                 job_results.append(result)
                 if result.success:
                     job_outputs[runnable[0].job_id] = result.outputs
@@ -392,9 +393,9 @@ class LocalExecutor:
                 # Multiple jobs - run in parallel with buffered output
                 from concurrent.futures import ThreadPoolExecutor
 
-                # Show that we're running jobs in parallel
-                job_names = ", ".join(j.job_id for j in runnable)
-                console.print(f"\n  [bold cyan]⊕[/bold cyan] Running in parallel: [bold]{job_names}[/bold]")
+                # Show parallel header
+                job_names = [j.job_id for j in runnable]
+                output_mgr.parallel_header(job_names)
 
                 results_map: dict[str, JobResult] = {}
                 with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
@@ -410,10 +411,11 @@ class LocalExecutor:
                         results_map[job_spec.job_id] = result
 
                 # Print results in consistent order
-                for job_spec in runnable:
+                for idx, job_spec in enumerate(runnable):
                     result = results_map[job_spec.job_id]
                     job_results.append(result)
-                    self._print_job_result(job_spec, result)
+                    is_last_parallel = idx == len(runnable) - 1
+                    self._print_job_result(job_spec, result, is_parallel=True, is_last=is_last_parallel)
                     if result.success:
                         job_outputs[job_spec.job_id] = result.outputs
                     else:
@@ -423,18 +425,7 @@ class LocalExecutor:
         elapsed = time.perf_counter() - start_time
         success = all(r.success for r in job_results)
 
-        console.print()
-        if success:
-            console.print(
-                f"[bold green]✓[/bold green] Automation [bold]{automation_name}[/bold] "
-                f"completed in {elapsed:.2f}s ({len(job_results)} jobs)"
-            )
-        else:
-            failed = [r for r in job_results if not r.success]
-            console.print(
-                f"[bold red]✗[/bold red] Automation [bold]{automation_name}[/bold] "
-                f"failed in {elapsed:.2f}s ({len(job_results) - len(failed)}/{len(job_results)} jobs passed)"
-            )
+        output_mgr.automation_status(automation_name, success, elapsed, len(job_results))
 
         return AutomationResult(
             automation_name=automation_name,
@@ -449,6 +440,8 @@ class LocalExecutor:
         job_outputs: dict[str, dict[str, str]],
         input_params: dict[str, Any],
         buffer_output: bool = False,
+        is_parallel: bool = False,
+        is_last: bool = False,
     ) -> JobResult:
         """
         Execute a single job as a subprocess.
@@ -458,12 +451,15 @@ class LocalExecutor:
             job_outputs: Outputs from previously completed jobs
             input_params: Input parameter values
             buffer_output: If True, don't print output (for parallel execution)
+            is_parallel: If True, this job is part of a parallel group
+            is_last: If True, this is the last job in its group
 
         Returns:
             JobResult with success status, outputs, and captured output lines
 
         """
         start_time = time.perf_counter()
+        output_mgr = get_output_manager()
         job_id = job_spec.job_id
         task_name = job_spec.task_info.name
 
@@ -476,15 +472,13 @@ class LocalExecutor:
 
         # Print job header (unless buffering)
         if not buffer_output:
-            console.print(f"\n  [bold cyan]→[/bold cyan] [bold]{job_id}[/bold]", end="")
+            output_mgr.job_header(job_id, is_parallel=is_parallel, is_last=is_last)
             if self.verbose:
-                console.print(f" [dim]({' '.join(cmd)})[/dim]")
-            else:
-                console.print()
+                output_mgr.line(f"({' '.join(cmd)})", style="dim")
 
         if self.dry_run:
             if not buffer_output:
-                console.print(f"    [dim]Would run: {' '.join(cmd)}[/dim]")
+                output_mgr.line(f"Would run: {' '.join(cmd)}", style="dim")
             return JobResult(
                 job_id=job_id,
                 success=True,
@@ -512,7 +506,6 @@ class LocalExecutor:
             )
 
             # Collect output
-            prefix = "    │ "
             output_lines: list[str] = []
             assert process.stdout is not None
             for line in process.stdout:
@@ -520,7 +513,7 @@ class LocalExecutor:
                 output_lines.append(line)
                 # Stream output if not buffering and verbose
                 if not buffer_output and self.verbose:
-                    console.print(f"[dim]{prefix}[/dim]{line}")
+                    output_mgr.line(line)
 
             process.wait()
             elapsed = time.perf_counter() - start_time
@@ -550,32 +543,39 @@ class LocalExecutor:
             if output_file.exists():
                 output_file.unlink()
 
-    def _print_job_result(self, job_spec: JobSpec, result: JobResult, show_header: bool = True) -> None:
+    def _print_job_result(
+        self,
+        job_spec: JobSpec,
+        result: JobResult,
+        show_header: bool = True,
+        is_parallel: bool = False,
+        is_last: bool = False,
+    ) -> None:
         """Print the result of a job execution."""
-        prefix = "    │ "
+        output_mgr = get_output_manager()
         output_lines: list[str] = getattr(result, "_output_lines", [])
 
         # Print header
         if show_header:
-            console.print(f"\n  [bold cyan]→[/bold cyan] [bold]{result.job_id}[/bold]")
+            output_mgr.job_header(result.job_id, is_parallel=is_parallel, is_last=is_last)
 
         # Print verbose output if enabled
         if self.verbose and output_lines:
             for line in output_lines:
-                console.print(f"[dim]{prefix}[/dim]{line}")
+                output_mgr.line(line)
 
-        if result.success:
-            console.print(f"    [green]✓[/green] completed in {result.elapsed_seconds:.2f}s")
-            if result.outputs and self.verbose:
-                for k, v in result.outputs.items():
-                    console.print(f"    [dim]output: {k}={v}[/dim]")
-        else:
-            console.print(f"    [red]✗[/red] failed in {result.elapsed_seconds:.2f}s")
-            if not self.verbose and output_lines:
-                # Show last few lines of output as error context
-                error_lines = output_lines[-10:]
-                for line in error_lines:
-                    console.print(f"[dim]{prefix}[/dim]{line}")
+        # Print status
+        output_mgr.job_status(result.job_id, result.success, result.elapsed_seconds)
+
+        # Print outputs if verbose and successful
+        if result.success and result.outputs and self.verbose:
+            for k, v in result.outputs.items():
+                output_mgr.line(f"output: {k}={v}", style="dim")
+
+        # Show error lines if failed and not verbose (verbose already shows all output)
+        if not result.success and not self.verbose and output_lines:
+            error_lines = output_lines[-10:]
+            output_mgr.error_detail(error_lines, max_lines=10)
 
 
 def execute_automation(
