@@ -59,6 +59,13 @@ def prefix_lines(text: str, prefix: str) -> str:
     return "\n".join(prefix + line for line in lines)
 
 
+def _make_console() -> Console:
+    """Create a Console that respects NO_COLOR even when FORCE_COLOR is set."""
+    if os.environ.get("NO_COLOR"):
+        return Console(no_color=True)
+    return Console()
+
+
 @dataclass
 class OutputManager:
     """
@@ -68,7 +75,7 @@ class OutputManager:
     and prefixes it uniformly.
     """
 
-    console: Console = field(default_factory=Console)
+    console: Console = field(default_factory=_make_console)
     verbosity: Verbosity = Verbosity.NORMAL
     _is_gha: bool = field(default_factory=lambda: os.environ.get("GITHUB_ACTIONS") == "true")
 
@@ -79,20 +86,14 @@ class OutputManager:
 
     @property
     def colors_enabled(self) -> bool:
-        """Whether color output is enabled.
-
-        Checks NO_COLOR first (standard way to disable colors), then uses
-        Rich's Console.color_system for actual color capability detection.
-        """
+        """Whether color output is enabled."""
         if self._is_gha:
-            return False
-        if os.environ.get("NO_COLOR"):
             return False
         return self.console.color_system is not None
 
     def print(self, message: str, style: str | None = None, end: str = "\n") -> None:
         """Print a message, optionally with Rich styling."""
-        if style and self.colors_enabled:
+        if style and not self._is_gha:
             self.console.print(message, style=style, end=end, markup=False, highlight=False)
         else:
             print(message, end=end, flush=True)
