@@ -91,6 +91,7 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
     Print prefixed task output with styled prefixes.
 
     Tree symbols (│, ├──▶) are printed in cyan.
+    Task names (after ├──▶) are printed in bold.
     Status symbols (✓) in green, (✗) in red.
     Content in default color.
     """
@@ -99,6 +100,7 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
 
     for line in prefixed.split("\n"):
         i = 0
+        last_was_header_arrow = False  # Track if we just printed ├──▶
         while i < len(line):
             char = line[i]
 
@@ -120,27 +122,43 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
                             break
                     else:
                         break
-                console.print(line[start:i], style="bold cyan", end="", markup=False, highlight=False)
+                tree_segment = line[start:i]
+                console.print(tree_segment, style="bold cyan", end="", markup=False, highlight=False)
+                # Check if this segment ends with ▶ (subtask header)
+                last_was_header_arrow = tree_segment.endswith("▶")
 
             elif char == "✓":
                 # Success - print ✓ in green
                 console.print(char, style="green", end="", markup=False, highlight=False)
                 i += 1
+                last_was_header_arrow = False
 
             elif char == "✗":
                 # Failure - print ✗ in red
                 console.print(char, style="red", end="", markup=False, highlight=False)
                 i += 1
+                last_was_header_arrow = False
 
             elif char == " ":
                 # Space between styled components - print as-is
                 print(char, end="", flush=True)
                 i += 1
+                # Space after ▶ means it's not a subtask header (e.g., status line)
+                last_was_header_arrow = False
 
             else:
-                # Regular content - print rest of line in default color
-                print(line[i:], flush=True)
-                break
+                # Content - check if it's a task name (immediately after ├──▶)
+                if last_was_header_arrow:
+                    # Task name - print bold until space or end
+                    name_start = i
+                    while i < len(line) and line[i] != " ":
+                        i += 1
+                    console.print(line[name_start:i], style="bold", end="", markup=False, highlight=False)
+                    last_was_header_arrow = False
+                else:
+                    # Regular content - print rest of line in default color
+                    print(line[i:], flush=True)
+                    break
         else:
             # Line ended without content
             print(flush=True)
@@ -193,10 +211,12 @@ class OutputManager:
             return
 
         if is_top_level:
-            self.print(f"\n{SYMBOLS['entry']} {name}", style="bold")
+            self.print(f"\n{SYMBOLS['entry']} ", style="bold cyan", end="")
+            self.print(name, style="bold")
         else:
             symbol = SYMBOLS["last"] if is_last else SYMBOLS["branch"]
-            self.print(f"{symbol} {name}", style="bold cyan")
+            self.print(f"{symbol} ", style="bold cyan", end="")
+            self.print(name, style="bold")
 
     def print_status(self, success: bool, elapsed: float, prefix: str = "") -> None:
         """Print completion status with optional prefix."""
@@ -239,7 +259,8 @@ class OutputManager:
         if self._is_gha:
             return
 
-        self.print(f"\n{SYMBOLS['entry_down']} {name}", style="bold cyan")
+        self.print(f"\n{SYMBOLS['entry_down']} ", style="bold cyan", end="")
+        self.print(name, style="bold")
         self.print(SYMBOLS["pipe"], style="bold cyan")
 
     def print_automation_status(self, name: str, success: bool, elapsed: float, job_count: int) -> None:
