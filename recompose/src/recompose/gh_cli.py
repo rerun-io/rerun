@@ -408,6 +408,20 @@ def workflow_to_flow_name(workflow_name: str) -> str | None:
     return None
 
 
+def automation_to_workflow_name(automation_name: str) -> str:
+    """
+    Convert an automation name to the corresponding workflow filename.
+
+    Args:
+        automation_name: Name of the automation (e.g., "ci")
+
+    Returns:
+        Workflow filename (e.g., "recompose_ci.yml")
+
+    """
+    return f"recompose_{automation_name}.yml"
+
+
 # =============================================================================
 # CLI display functions for --status and --remote
 # =============================================================================
@@ -582,4 +596,93 @@ def trigger_flow_remote(
 
     # Show how to check status
     console.print(f"[dim]Check status with:[/dim] ./run {flow_name} --status")
+    console.print()
+
+
+def display_automation_status(automation_name: str, branch: str | None = None) -> None:
+    """
+    Show recent GitHub Actions runs for an automation.
+
+    This is the handler for `./run <automation> --status`.
+    Displays recent workflow runs with status icons and links.
+
+    Args:
+        automation_name: Name of the automation to show status for
+        branch: Optional branch to filter runs by (defaults to current branch)
+
+    Raises:
+        SystemExit: If gh CLI is not installed or there's an error
+
+    """
+    import sys
+
+    from rich.console import Console
+
+    console = Console()
+
+    # Check gh CLI availability upfront
+    if not is_gh_installed():
+        console.print(f"\n[red]Error:[/red] {GH_NOT_FOUND_ERROR}")
+        sys.exit(1)
+
+    workflow_name = automation_to_workflow_name(automation_name)
+
+    # Get current branch if not specified
+    if branch is None:
+        branch_result = get_current_branch()
+        if branch_result.ok:
+            branch = branch_result.value()
+
+    console.print(f"\n[bold]Recent runs for [cyan]{automation_name}[/cyan][/bold]")
+    console.print(f"[dim]Workflow: {workflow_name}[/dim]")
+    if branch:
+        console.print(f"[dim]Branch: {branch}[/dim]")
+    console.print()
+
+    result = list_workflow_runs(workflow_name=workflow_name, limit=10, branch=branch)
+
+    if result.failed:
+        console.print(f"[red]Error:[/red] {result.error}")
+        sys.exit(1)
+
+    runs = result.value()
+    if not runs:
+        console.print("[dim]No workflow runs found[/dim]")
+        return
+
+    # Print runs in a table-like format
+    for run in runs:
+        # Status indicator
+        if run.status == "completed":
+            if run.conclusion == "success":
+                status_icon = "[green]✓[/green]"
+            elif run.conclusion == "failure":
+                status_icon = "[red]✗[/red]"
+            elif run.conclusion == "cancelled":
+                status_icon = "[yellow]⊘[/yellow]"
+            else:
+                status_icon = "[dim]?[/dim]"
+        elif run.status == "in_progress":
+            status_icon = "[blue]●[/blue]"
+        else:  # queued
+            status_icon = "[dim]○[/dim]"
+
+        # Format timestamp
+        from datetime import datetime
+
+        try:
+            created = datetime.fromisoformat(run.created_at.replace("Z", "+00:00"))
+            time_str = created.strftime("%Y-%m-%d %H:%M")
+        except (ValueError, AttributeError):
+            time_str = run.created_at[:16] if run.created_at else "?"
+
+        # Print run info
+        console.print(
+            f"  {status_icon} [bold]#{run.id}[/bold]  "
+            f"[dim]{time_str}[/dim]  "
+            f"[cyan]{run.head_branch}[/cyan]  "
+            f"{run.display_status}"
+        )
+        console.print(f"      [dim]{run.url}[/dim]")
+
     console.print()

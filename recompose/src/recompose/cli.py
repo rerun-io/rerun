@@ -252,6 +252,14 @@ def _build_automation_command(
     # Add common automation options
     params.append(
         click.Option(
+            ["--status"],
+            is_flag=True,
+            default=False,
+            help="Show recent GitHub Actions runs for this automation",
+        )
+    )
+    params.append(
+        click.Option(
             ["--dry-run"],
             is_flag=True,
             default=False,
@@ -303,8 +311,15 @@ def _build_automation_command(
 
         params.append(click.Option([f"--{cli_name}"], **option_kwargs))
 
-    def callback(dry_run: bool, verbose: bool, **kwargs: Any) -> None:
-        """Execute the automation locally."""
+    def callback(status: bool, dry_run: bool, verbose: bool, **kwargs: Any) -> None:
+        """Execute the automation locally or show status."""
+        # Handle --status flag
+        if status:
+            from .gh_cli import display_automation_status
+
+            display_automation_status(info.name)
+            return
+
         from .local_executor import LocalExecutor
 
         # Convert kebab-case back to snake_case for kwargs
