@@ -467,10 +467,8 @@ class LocalExecutor:
             for k, v in result.outputs.items():
                 print(f"{prefix}output: {k}={v}", flush=True)
 
-        # 5. Print status with SAME prefix
-        symbol = "✓" if result.success else "✗"
-        status_line = f"{symbol} {result.elapsed_seconds:.2f}s"
-        print(f"{prefix}{status_line}", flush=True)
+        # 5. Print status with SAME prefix (styled)
+        output_mgr.print_status(result.success, result.elapsed_seconds, prefix=prefix)
 
 
 def execute_automation(

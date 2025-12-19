@@ -263,10 +263,9 @@ def _run_nested_task(
             for line in error_lines:
                 print(f"{CONTENT_PREFIX}{line}", flush=True)
 
-        # 4. Print status with SAME prefix
+        # 4. Print status with SAME prefix (styled)
         elapsed = time.perf_counter() - start_time
-        symbol = "✓" if result.ok else "✗"
-        print(f"{CONTENT_PREFIX}{symbol} {elapsed:.2f}s", flush=True)
+        output_mgr.print_status(result.ok, elapsed, prefix=CONTENT_PREFIX)
 
         return result
     finally:
