@@ -15,10 +15,12 @@ Created unified `OutputManager` class for all output formatting:
 - Rich console colors and consistent styling
 - GHA detection with `::group::` markers
 - Proper symbols: `▼`, `├─▶`, `└─▶`, `⊕─┬─▶`, `✓`, `✗`
+- Recursive capture-and-prefix model: each task captures child output and applies prefixes
+- Color styling separated: cyan for tree chars, green for ✓, red for ✗
 
 **Files modified:**
-- `src/recompose/output.py` - New OutputManager class
-- `src/recompose/task.py` - Uses OutputManager for nested tasks
+- `src/recompose/output.py` - OutputManager, prefix_task_output, print_task_output_styled
+- `src/recompose/task.py` - Uses recursive capture model for nested tasks
 - `src/recompose/local_executor.py` - Uses OutputManager for automations
 
 **Test results:** 234 tests pass, ruff clean
