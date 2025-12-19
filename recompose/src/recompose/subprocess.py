@@ -93,6 +93,21 @@ def run(
     if env:
         run_env.update(env)
 
+    # Propagate color settings to subprocess if not already set
+    # This ensures tools like pytest, ruff, etc. output colors when the terminal supports it
+    if "NO_COLOR" not in run_env and "FORCE_COLOR" not in run_env:
+        from .context import get_context
+
+        # If we're inside a task context, enable colors (task uses force_terminal=True)
+        # Otherwise, check if the output manager thinks colors are enabled
+        if get_context() is not None:
+            run_env["FORCE_COLOR"] = "1"
+        else:
+            from .output import get_output_manager
+
+            if get_output_manager().colors_enabled:
+                run_env["FORCE_COLOR"] = "1"
+
     # Convert cwd to string if needed
     cwd_str = str(cwd) if cwd else None
 
