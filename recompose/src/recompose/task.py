@@ -10,7 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, ParamSpec, Protocol, TypeVar, overload
 
-from .context import Context, get_context, set_context
+from .context import Context, decrement_task_depth, get_context, increment_task_depth, set_context
 from .result import Err, Result
 
 P = ParamSpec("P")
@@ -194,6 +194,8 @@ def _run_with_context(
     2. Capture ALL body output
     3. Prefix captured output appropriately
     4. Print status
+
+    In GitHub Actions, first-level subtasks emit ::group:: / ::endgroup:: markers.
     """
     import io
     import sys
@@ -209,12 +211,22 @@ def _run_with_context(
     # force_terminal=True ensures ANSI codes are output even when captured
     console = Console(force_terminal=True)
 
-    # 1. Print task name (with marker if nested/subprocess, plain if bare top-level)
+    # Track nesting depth (depth after increment: 1=top-level, 2=first subtask, etc.)
+    depth = increment_task_depth()
+    is_gha = os.environ.get("GITHUB_ACTIONS") == "true"
     is_subprocess = os.environ.get("RECOMPOSE_SUBPROCESS") == "1"
-    if existing_ctx is not None or is_subprocess:
+    is_nested = existing_ctx is not None or is_subprocess
+    # Emit GHA groups for first-level subtasks only (depth == 2 after increment)
+    emit_gha_group = is_gha and depth == 2 and is_nested
+
+    # 1. Print task name (with marker if nested/subprocess, plain if bare top-level)
+    if is_nested:
         # Nested task or subprocess - print with marker for parent to recognize
         # Marker is plain text so prefix_task_output can detect it
         print(f"{SUBTASK_MARKER}{task_name}", flush=True)
+        # In GHA, emit group marker for first-level subtasks
+        if emit_gha_group:
+            print(f"::group::{task_name}", flush=True)
     else:
         # Bare top-level task - print name in name style
         console.print(task_name, style=COLORS["name"], markup=False, highlight=False)
@@ -268,12 +280,17 @@ def _run_with_context(
         msg = f"{symbol} {task_name} {status} in {elapsed:.2f}s"
         console.print(msg, style=style, markup=False, highlight=False)
 
+        # Close GHA group for first-level subtasks
+        if emit_gha_group:
+            print("::endgroup::", flush=True)
+
         # Attach collected outputs/artifacts to the result
         if result.ok and should_set_context:
             result = _attach_context_to_result(result, ctx)
 
         return result
     finally:
+        decrement_task_depth()
         if should_set_context:
             set_context(None)
 
