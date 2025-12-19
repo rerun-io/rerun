@@ -26,10 +26,10 @@ class VisualizerInstructionId(datatypes.Utf8, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VisualizerInstructionIdExt in visualizer_instruction_id_ext.py
 
-    # Note: there are no fields here because VisualizerInstructionId delegates to datatypes.Utf8
+    # Note: there are no fields here because VisualizerInstructionId delegates to datatypes.Uuid
 
 
-class VisualizerInstructionIdBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+class VisualizerInstructionIdBatch(datatypes.UuidBatch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.blueprint.components.VisualizerInstructionId"
 
 

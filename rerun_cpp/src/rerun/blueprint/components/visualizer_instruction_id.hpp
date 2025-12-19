@@ -3,45 +3,41 @@
 
 #pragma once
 
-#include "../../datatypes/utf8.hpp"
+#include "../../datatypes/uuid.hpp"
 #include "../../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <string>
-#include <utility>
 
 namespace rerun::blueprint::components {
     /// **Component**: Single visualizer override the visualizers for an entity.
-    ///
-    /// For details see `archetypes::ActiveVisualizers`.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VisualizerInstructionId {
         /// Names of a visualizer that should be active.
-        rerun::datatypes::Utf8 visualizer;
+        rerun::datatypes::Uuid visualizer;
 
       public:
         VisualizerInstructionId() = default;
 
-        VisualizerInstructionId(rerun::datatypes::Utf8 visualizer_)
-            : visualizer(std::move(visualizer_)) {}
+        VisualizerInstructionId(rerun::datatypes::Uuid visualizer_) : visualizer(visualizer_) {}
 
-        VisualizerInstructionId& operator=(rerun::datatypes::Utf8 visualizer_) {
-            visualizer = std::move(visualizer_);
+        VisualizerInstructionId& operator=(rerun::datatypes::Uuid visualizer_) {
+            visualizer = visualizer_;
             return *this;
         }
 
-        VisualizerInstructionId(std::string value_) : visualizer(std::move(value_)) {}
+        VisualizerInstructionId(std::array<uint8_t, 16> bytes_) : visualizer(bytes_) {}
 
-        VisualizerInstructionId& operator=(std::string value_) {
-            visualizer = std::move(value_);
+        VisualizerInstructionId& operator=(std::array<uint8_t, 16> bytes_) {
+            visualizer = bytes_;
             return *this;
         }
 
-        /// Cast to the underlying Utf8 datatype
-        operator rerun::datatypes::Utf8() const {
+        /// Cast to the underlying Uuid datatype
+        operator rerun::datatypes::Uuid() const {
             return visualizer;
         }
     };
@@ -49,7 +45,7 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::VisualizerInstructionId)
+        sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::VisualizerInstructionId)
     );
 
     /// \private
@@ -60,7 +56,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+            return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::VisualizerInstructionId` into an arrow array.
@@ -68,14 +64,14 @@ namespace rerun {
             const blueprint::components::VisualizerInstructionId* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::Utf8>::to_arrow(nullptr, 0);
+                return Loggable<rerun::datatypes::Uuid>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::Utf8>::to_arrow(
+                return Loggable<rerun::datatypes::Uuid>::to_arrow(
                     &instances->visualizer,
                     num_instances
                 );

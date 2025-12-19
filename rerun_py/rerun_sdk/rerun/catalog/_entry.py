@@ -4,7 +4,6 @@ from abc import ABC
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
-import datafusion
 import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
@@ -25,6 +24,8 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime
+
+    import datafusion
 
     from rerun.recording import Recording
 
@@ -448,6 +449,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```
 
         """
+
+        import datafusion
 
         if isinstance(segment_ids, str):
             segment_ids = [segment_ids]
@@ -937,6 +940,8 @@ class DatasetView:
             A new view filtered to the given segments.
 
         """
+        import datafusion
+
         if isinstance(segment_ids, str):
             segment_ids = [segment_ids]
         elif isinstance(segment_ids, datafusion.DataFrame):
