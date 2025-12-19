@@ -103,41 +103,46 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
             char = line[i]
 
             if char in "│├─▶":
-                # Tree structure - collect consecutive tree chars and print cyan
+                # Tree structure - collect tree chars and spaces between them
                 start = i
-                while i < len(line) and line[i] in "│├─▶ ":
-                    # Include trailing space after tree chars
-                    if line[i] == " ":
+                while i < len(line):
+                    if line[i] in "│├─▶":
                         i += 1
-                        # Only include space if it follows a tree char
-                        if i < len(line) and line[i] not in "│├─▶✓✗":
+                    elif line[i] == " ":
+                        # Look ahead past ALL consecutive spaces
+                        j = i
+                        while j < len(line) and line[j] == " ":
+                            j += 1
+                        # Include spaces only if followed by more tree/status chars
+                        if j < len(line) and line[j] in "│├─▶✓✗":
+                            i = j
+                        else:
                             break
                     else:
-                        i += 1
+                        break
                 console.print(line[start:i], style="bold cyan", end="", markup=False, highlight=False)
 
             elif char == "✓":
-                # Success - print ✓ and trailing space in green
-                end = i + 1
-                if end < len(line) and line[end] == " ":
-                    end += 1
-                console.print(line[i:end], style="green", end="", markup=False, highlight=False)
-                i = end
+                # Success - print ✓ in green
+                console.print(char, style="green", end="", markup=False, highlight=False)
+                i += 1
 
             elif char == "✗":
-                # Failure - print ✗ and trailing space in red
-                end = i + 1
-                if end < len(line) and line[end] == " ":
-                    end += 1
-                console.print(line[i:end], style="red", end="", markup=False, highlight=False)
-                i = end
+                # Failure - print ✗ in red
+                console.print(char, style="red", end="", markup=False, highlight=False)
+                i += 1
+
+            elif char == " ":
+                # Space between styled components - print as-is
+                print(char, end="", flush=True)
+                i += 1
 
             else:
                 # Regular content - print rest of line in default color
                 print(line[i:], flush=True)
                 break
         else:
-            # Line ended with prefix chars only
+            # Line ended without content
             print(flush=True)
 
 
