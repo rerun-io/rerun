@@ -156,9 +156,13 @@ class OutputManager:
         return LAST_PREFIX if is_last else CONTENT_PREFIX
 
     def print_prefixed(self, text: str, prefix: str) -> None:
-        """Print text with each line prefixed."""
-        if text:
-            print(prefix_lines(text, prefix), flush=True)
+        """Print text with each line prefixed (prefix styled as header)."""
+        if not text:
+            return
+        for line in text.rstrip("\n").split("\n"):
+            if prefix:
+                self.print(prefix, style="bold cyan", end="")
+            print(line, flush=True)
 
     def print_error(self, message: str) -> None:
         """Print an error message."""
