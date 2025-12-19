@@ -1,5 +1,38 @@
 # NOW
 
+**P16: Unified Task Output System** - IN PROGRESS
+
+See `proj/P16_unified_output_IN_PROGRESS.md` for full plan.
+
+## Problem
+
+We have multiple overlapping output mechanisms that don't work together:
+- `local_executor.py` - rich console colors for automation jobs
+- `task.py` - `_TreePrefixWriter` for nested tasks (no colors)
+- `step.py` - `StepOutputWrapper` for step indentation
+- `context.py` - `out()` and `dbg()` functions
+
+The nested task output lost colors when tree prefixes were added.
+
+## Goal
+
+Create a unified `OutputManager` that handles all output formatting:
+- Hierarchical tree-style output for both automations and nested tasks
+- Consistent colors and styling via rich console
+- GHA detection with `::group::` markers
+- Single source of truth for all output decisions
+
+## Status
+
+- [x] Initial analysis and project plan
+- [ ] Phase 1: Create OutputManager class
+- [ ] Phase 2: Unify task execution output
+- [ ] Phase 3: Unify automation executor
+- [ ] Phase 4: Integrate step system
+- [ ] Phase 5: Testing and polish
+
+---
+
 **P15: Cleanup & Local Automation Execution** - COMPLETE
 
 See `proj/P15_cleanup_and_local_exec_DONE.md` for full plan.
