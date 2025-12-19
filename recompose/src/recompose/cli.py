@@ -186,8 +186,8 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
         # Print task header (unless in quiet mode)
         if not quiet_mode:
-            _get_console().print(f"\n[bold blue]▶[/bold blue] [bold]{task_name}[/bold]")
-            _get_console().print()
+            _get_console().print(f"\n[bold cyan]▼[/bold cyan] [bold]{task_name}[/bold]")
+            _get_console().print("[bold cyan]│[/bold cyan]")
 
         # Convert enum values back to enum if needed
         for param_name, param in sig.parameters.items():

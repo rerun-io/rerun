@@ -144,8 +144,8 @@ class OutputManager:
         if self._is_gha:
             return
 
-        self.print(f"\n{SYMBOLS['entry_down']} {name}", style="bold blue")
-        self.print(SYMBOLS["pipe"])
+        self.print(f"\n{SYMBOLS['entry_down']} {name}", style="bold cyan")
+        self.print(SYMBOLS["pipe"], style="bold cyan")
 
     def print_automation_status(self, name: str, success: bool, elapsed: float, job_count: int) -> None:
         """Print automation completion status."""

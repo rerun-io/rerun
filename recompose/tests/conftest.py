@@ -15,6 +15,10 @@ def reset_state(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("FORCE_COLOR", raising=False)
     monkeypatch.setenv("NO_COLOR", "1")
 
+    # Unset GITHUB_OUTPUT so test tasks don't pollute real job outputs
+    # (LocalExecutor sets this for capturing outputs, but pytest inherits it)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+
     # Reset all context state and consoles so they pick up new env vars
     set_context(None)
     set_automation_context(None)
