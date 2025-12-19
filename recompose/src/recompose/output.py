@@ -113,6 +113,9 @@ def prefix_task_output(captured: str) -> str:
             # Subtask header (marker is always emitted plain)
             name = line[len(SUBTASK_MARKER) :]
             result.append(f"{SYMBOLS['branch']}{name}")
+        elif line.startswith("::group::") or line.startswith("::endgroup::"):
+            # GHA group markers pass through without prefixing
+            result.append(line)
         else:
             # Use tighter prefix before subtasks, wider alignment after
             prefix = CONTENT_PREFIX if has_seen_subtask else BODY_PREFIX

@@ -206,6 +206,9 @@ class RecomposeContext:
 # Context variable for the current task context (per-task)
 _current_task_context: ContextVar[TaskContext | None] = ContextVar("recompose_task_context", default=None)
 
+# Context variable for task nesting depth (0 = top-level, 1 = first subtask, etc.)
+_task_nesting_depth: ContextVar[int] = ContextVar("recompose_task_nesting_depth", default=0)
+
 # Context variable for the global recompose context (set by main())
 _recompose_context: ContextVar[RecomposeContext | None] = ContextVar("recompose_context", default=None)
 
@@ -218,6 +221,27 @@ def get_context() -> TaskContext | None:
 def set_context(ctx: TaskContext | None) -> None:
     """Set the current task context."""
     _current_task_context.set(ctx)
+
+
+def get_task_depth() -> int:
+    """Get the current task nesting depth (0 = top-level)."""
+    return _task_nesting_depth.get()
+
+
+def increment_task_depth() -> int:
+    """Increment task depth and return the new depth."""
+    current = _task_nesting_depth.get()
+    new_depth = current + 1
+    _task_nesting_depth.set(new_depth)
+    return new_depth
+
+
+def decrement_task_depth() -> int:
+    """Decrement task depth and return the new depth."""
+    current = _task_nesting_depth.get()
+    new_depth = max(0, current - 1)
+    _task_nesting_depth.set(new_depth)
+    return new_depth
 
 
 def get_recompose_context() -> RecomposeContext | None:
