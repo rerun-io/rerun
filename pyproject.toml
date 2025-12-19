@@ -86,11 +86,8 @@ examples = [
   "dicom_mri",
   "dna",
   "drone_lidar",
-  # "face_tracking",      # These conflict with opentelemetry
-  # "gesture_detection",  # These conflict with opentelemetry
   "graph_lattice",
   "graphs",
-  # "human_pose_tracking", # These conflict with opentelemetry
   "imu_signals",
   "incremental_logging",
   "lidar",
@@ -116,6 +113,10 @@ examples = [
   "shared_recording",
   "stdio",
   "structure_from_motion",
+  # TODO(RR-3223): fix opentelemetry conflicts
+  # "face_tracking",
+  # "gesture_detection",
+  # "human_pose_tracking",
 ]
 docs = [
   # Documentation build dependencies (mkdocs and plugins)

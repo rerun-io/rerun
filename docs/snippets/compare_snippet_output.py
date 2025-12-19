@@ -131,7 +131,6 @@ def main() -> None:
         run(
             ["uv", "sync", "--group", "snippets", "--inexact", "--no-install-package", "rerun-sdk"],
             env=build_env,
-            timeout=60,
         )
 
     if args.no_cpp:
