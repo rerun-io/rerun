@@ -213,27 +213,60 @@ def _run_with_context(
 def _run_nested_task(
     task_info: TaskInfo, fn: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
 ) -> Result[Any]:
-    """Execute a nested task with tree-style output via OutputManager."""
+    """Execute a nested task with tree-style output.
+
+    Uses simple recursive output model:
+    1. Print header
+    2. Execute and capture ALL output
+    3. Prefix ALL captured output
+    4. Print status with SAME prefix
+    """
+    import io
+    import sys
+    import time
+
+    from .output import CONTENT_PREFIX, prefix_lines
     from .step import _pop_step, _push_step
 
     task_name = task_info.name
     output_mgr = get_output_manager()
+    start_time = time.perf_counter()
 
-    # Push step context for proper nesting tracking
     _push_step(task_name)
 
     try:
-        # Use OutputManager's nested_task_scope for consistent output formatting
-        with output_mgr.nested_task_scope(task_name) as scope:
+        # 1. Print header
+        output_mgr.print_header(task_name)
+
+        # 2. Execute task while capturing ALL output
+        buffer = io.StringIO()
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = buffer
+        sys.stderr = buffer
+
+        try:
             result = _execute_task(fn, args, kwargs)
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
-            # Print error details if failed
-            if not result.ok and result.error:
-                error_lines = str(result.error).split("\n")[:5]
-                output_mgr.error_detail(error_lines)
+        captured_output = buffer.getvalue()
 
-            # Print status while still in scope (for proper indentation)
-            output_mgr.task_status(task_name, result.ok, scope.elapsed, is_nested=True)
+        # 3. Print captured output with prefix
+        if captured_output:
+            print(prefix_lines(captured_output.rstrip("\n"), CONTENT_PREFIX), flush=True)
+
+        # Print error details if failed
+        if not result.ok and result.error:
+            error_lines = str(result.error).split("\n")[:5]
+            for line in error_lines:
+                print(f"{CONTENT_PREFIX}{line}", flush=True)
+
+        # 4. Print status with SAME prefix
+        elapsed = time.perf_counter() - start_time
+        symbol = "✓" if result.ok else "✗"
+        print(f"{CONTENT_PREFIX}{symbol} {elapsed:.2f}s", flush=True)
 
         return result
     finally:

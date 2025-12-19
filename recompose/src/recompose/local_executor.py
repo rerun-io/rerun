@@ -3,14 +3,12 @@
 This module allows running automations locally, executing each job as a subprocess
 with proper dependency ordering and output passing.
 
-Usage:
-    # From CLI
-    ./run ci
-
-    # Programmatically
-    from recompose.local_executor import LocalExecutor
-    executor = LocalExecutor(cli_command="./run")
-    result = executor.execute(ci)
+The output model is recursive:
+1. Parent prints child's header
+2. Parent executes child, capturing ALL output
+3. Parent prefixes ALL captured output with continuation prefix
+4. Parent prints status with SAME prefix
+5. Move to next child
 """
 
 from __future__ import annotations
@@ -39,6 +37,7 @@ class JobResult:
     success: bool
     elapsed_seconds: float
     outputs: dict[str, str] = field(default_factory=dict)
+    output_text: str = ""  # Captured output from the job
     error: str | None = None
 
 
@@ -64,18 +63,16 @@ def topological_sort(jobs: list[JobSpec]) -> list[JobSpec]:
     Jobs are sorted so that dependencies come before dependents.
     Raises ValueError if there's a cycle.
     """
-    # Build adjacency list and in-degree count
     job_map = {j.job_id: j for j in jobs}
     in_degree: dict[str, int] = {j.job_id: 0 for j in jobs}
     dependents: dict[str, list[str]] = {j.job_id: [] for j in jobs}
 
     for job in jobs:
         for dep in job.get_all_dependencies():
-            if dep.job_id in job_map:  # Only count deps within this automation
+            if dep.job_id in job_map:
                 in_degree[job.job_id] += 1
                 dependents[dep.job_id].append(job.job_id)
 
-    # Kahn's algorithm
     queue = [jid for jid, deg in in_degree.items() if deg == 0]
     result: list[JobSpec] = []
 
@@ -88,7 +85,6 @@ def topological_sort(jobs: list[JobSpec]) -> list[JobSpec]:
                 queue.append(dependent_id)
 
     if len(result) != len(jobs):
-        # Find the cycle for error message
         remaining = [j.job_id for j in jobs if j not in result]
         raise ValueError(f"Dependency cycle detected involving jobs: {remaining}")
 
@@ -96,15 +92,7 @@ def topological_sort(jobs: list[JobSpec]) -> list[JobSpec]:
 
 
 def _group_jobs_by_level(jobs: list[JobSpec]) -> list[list[JobSpec]]:
-    """
-    Group jobs into levels for parallel execution.
-
-    Jobs at the same level have no dependencies on each other and can run in parallel.
-    Level N+1 jobs depend on level N jobs completing.
-
-    Returns a list of levels, where each level is a list of jobs that can run in parallel.
-    Raises ValueError if there's a cycle.
-    """
+    """Group jobs into levels for parallel execution."""
     if not jobs:
         return []
 
@@ -118,21 +106,14 @@ def _group_jobs_by_level(jobs: list[JobSpec]) -> list[list[JobSpec]]:
                 in_degree[job.job_id] += 1
                 dependents[dep.job_id].append(job.job_id)
 
-    # Group by levels using modified Kahn's algorithm
     levels: list[list[JobSpec]] = []
     remaining = set(job_map.keys())
 
     while remaining:
-        # Find all jobs with no remaining dependencies
         level = [job_map[jid] for jid in remaining if in_degree[jid] == 0]
-
         if not level:
-            # Cycle detected
             raise ValueError(f"Dependency cycle detected involving jobs: {list(remaining)}")
-
         levels.append(level)
-
-        # Remove this level from consideration
         for job in level:
             remaining.remove(job.job_id)
             for dependent_id in dependents[job.job_id]:
@@ -146,18 +127,7 @@ def _resolve_input_value(
     job_outputs: dict[str, dict[str, str]],
     input_params: dict[str, Any],
 ) -> Any:
-    """
-    Resolve an input value, replacing refs with actual values.
-
-    Args:
-        value: The input value (may be a ref type or literal)
-        job_outputs: Map of job_id -> {output_name -> value}
-        input_params: Map of param_name -> value
-
-    Returns:
-        The resolved value
-
-    """
+    """Resolve an input value, replacing refs with actual values."""
     if isinstance(value, JobOutputRef):
         job_outputs_for_job = job_outputs.get(value.job_id, {})
         if value.output_name not in job_outputs_for_job:
@@ -166,22 +136,15 @@ def _resolve_input_value(
                 f"Available outputs: {list(job_outputs_for_job.keys())}"
             )
         return job_outputs_for_job[value.output_name]
-
     elif isinstance(value, ArtifactRef):
-        # For local execution, artifacts are just file paths
-        # The producing job should have set an output with the artifact path
-        # For now, we'll just return a placeholder - artifact handling is deferred
         return f"<artifact:{value.job_id}/{value.artifact_name}>"
-
     elif isinstance(value, InputParamRef):
         if value.param_name not in input_params:
             raise ValueError(
                 f"Input parameter '{value.param_name}' not provided. Available params: {list(input_params.keys())}"
             )
         return input_params[value.param_name]
-
     else:
-        # Literal value
         return value
 
 
@@ -190,23 +153,10 @@ def _build_cli_args(
     job_outputs: dict[str, dict[str, str]],
     input_params: dict[str, Any],
 ) -> list[str]:
-    """
-    Build CLI arguments from job inputs.
-
-    Args:
-        inputs: The job's input dict
-        job_outputs: Map of job_id -> {output_name -> value}
-        input_params: Map of param_name -> value
-
-    Returns:
-        List of CLI arguments like ["--arg1=value1", "--arg2=value2"]
-
-    """
+    """Build CLI arguments from job inputs."""
     args: list[str] = []
     for name, value in inputs.items():
         resolved = _resolve_input_value(value, job_outputs, input_params)
-        # Convert to CLI argument
-        # Convert underscores to hyphens for CLI style
         cli_name = name.replace("_", "-")
         if isinstance(resolved, bool):
             if resolved:
@@ -219,11 +169,7 @@ def _build_cli_args(
 
 
 def _parse_github_output(output_file: Path) -> dict[str, str]:
-    """
-    Parse a GITHUB_OUTPUT file and return the key-value pairs.
-
-    Handles both simple `key=value` format and multiline delimiter format.
-    """
+    """Parse a GITHUB_OUTPUT file and return the key-value pairs."""
     outputs: dict[str, str] = {}
     if not output_file.exists():
         return outputs
@@ -235,12 +181,10 @@ def _parse_github_output(output_file: Path) -> dict[str, str]:
     while i < len(lines):
         line = lines[i]
         if "=" in line and "<<" not in line:
-            # Simple key=value
             key, value = line.split("=", 1)
             outputs[key] = value
             i += 1
         elif "<<" in line:
-            # Multiline format: key<<DELIMITER
             key, delimiter = line.split("<<", 1)
             delimiter = delimiter.strip()
             i += 1
@@ -249,7 +193,7 @@ def _parse_github_output(output_file: Path) -> dict[str, str]:
                 value_lines.append(lines[i])
                 i += 1
             outputs[key] = "\n".join(value_lines)
-            i += 1  # Skip delimiter line
+            i += 1
         else:
             i += 1
 
@@ -260,22 +204,8 @@ class LocalExecutor:
     """
     Executes automations locally by running jobs as subprocesses.
 
-    Each job is run via the CLI command (e.g., `./run task-name --arg=value`).
-    Job outputs are captured via temporary GITHUB_OUTPUT files and passed
-    to dependent jobs.
-
-    Args:
-        cli_command: The CLI entry point (e.g., "./run")
-        working_directory: Working directory for subprocess execution
-        dry_run: If True, print what would be run without executing
-        verbose: If True, show verbose output
-
-    Example:
-        executor = LocalExecutor(cli_command="./run")
-        result = executor.execute(ci, verbose=True)
-        if not result.success:
-            print(f"Failed jobs: {result.failed_jobs}")
-
+    Uses a recursive output model where each level captures child output
+    and prefixes it uniformly.
     """
 
     def __init__(
@@ -296,17 +226,7 @@ class LocalExecutor:
         automation: AutomationWrapper | Callable[..., list[JobSpec]],
         **input_params: Any,
     ) -> AutomationResult:
-        """
-        Execute an automation locally.
-
-        Args:
-            automation: The automation to execute (AutomationWrapper)
-            **input_params: Values for InputParam parameters
-
-        Returns:
-            AutomationResult with job results and overall status
-
-        """
+        """Execute an automation locally."""
         start_time = time.perf_counter()
         output_mgr = get_output_manager()
 
@@ -319,13 +239,13 @@ class LocalExecutor:
             automation_name = "automation"
 
         # Print automation header
-        output_mgr.automation_header(automation_name)
+        output_mgr.print_automation_header(automation_name)
 
         # Execute automation to get jobs
         jobs = automation(**input_params)
 
         if not jobs:
-            output_mgr.line("No jobs to execute", style="yellow")
+            output_mgr.print("No jobs to execute", style="yellow")
             return AutomationResult(
                 automation_name=automation_name,
                 success=True,
@@ -336,23 +256,14 @@ class LocalExecutor:
         try:
             levels = _group_jobs_by_level(jobs)
         except ValueError as e:
-            output_mgr.error(str(e))
+            output_mgr.print_error(str(e))
             return AutomationResult(
                 automation_name=automation_name,
                 success=False,
                 elapsed_seconds=time.perf_counter() - start_time,
             )
 
-        if self.verbose:
-            level_strs = []
-            for level in levels:
-                if len(level) == 1:
-                    level_strs.append(level[0].job_id)
-                else:
-                    level_strs.append(f"[{', '.join(j.job_id for j in level)}]")
-            output_mgr.line(f"Execution order: {' → '.join(level_strs)}", style="dim")
-
-        # Execute jobs level by level (parallel within each level)
+        # Execute jobs level by level
         job_outputs: dict[str, dict[str, str]] = {}
         job_results: list[JobResult] = []
         failed_jobs: set[str] = set()
@@ -379,33 +290,30 @@ class LocalExecutor:
             if not runnable:
                 continue
 
-            # Run jobs in parallel (or sequentially if only one)
+            # Execute jobs
             if len(runnable) == 1:
-                # Single job - run directly with live output
+                # Single job - execute directly
+                job_spec = runnable[0]
                 is_last = is_last_level
-                result = self._execute_job(runnable[0], job_outputs, input_params, buffer_output=False, is_last=is_last)
+                result = self._execute_and_print_job(job_spec, job_outputs, input_params, is_last=is_last)
                 job_results.append(result)
                 if result.success:
-                    job_outputs[runnable[0].job_id] = result.outputs
+                    job_outputs[job_spec.job_id] = result.outputs
                 else:
-                    failed_jobs.add(runnable[0].job_id)
+                    failed_jobs.add(job_spec.job_id)
             else:
-                # Multiple jobs - run in parallel with buffered output
+                # Multiple jobs - run in parallel, then print sequentially
                 from concurrent.futures import ThreadPoolExecutor
 
                 # Show parallel header
                 job_names = [j.job_id for j in runnable]
-                output_mgr.parallel_header(job_names)
+                output_mgr.print_parallel_header(job_names)
 
-                # Push parallel scope so job results have correct indentation
-                output_mgr.push_scope("parallel", kind="parallel")
-
+                # Execute all jobs in parallel (capturing output)
                 results_map: dict[str, JobResult] = {}
                 with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
                     futures = {
-                        executor.submit(
-                            self._execute_job, job_spec, job_outputs, input_params, buffer_output=True
-                        ): job_spec
+                        executor.submit(self._execute_job, job_spec, job_outputs, input_params): job_spec
                         for job_spec in runnable
                     }
                     for future in futures:
@@ -413,25 +321,22 @@ class LocalExecutor:
                         result = future.result()
                         results_map[job_spec.job_id] = result
 
-                # Print results in consistent order
+                # Print results sequentially with proper prefixing
                 for idx, job_spec in enumerate(runnable):
                     result = results_map[job_spec.job_id]
+                    is_last = idx == len(runnable) - 1
+                    self._print_job_result(result, is_last=is_last)
                     job_results.append(result)
-                    is_last_parallel = idx == len(runnable) - 1
-                    self._print_job_result(job_spec, result, is_parallel=True, is_last=is_last_parallel)
                     if result.success:
                         job_outputs[job_spec.job_id] = result.outputs
                     else:
                         failed_jobs.add(job_spec.job_id)
 
-                # Pop parallel scope
-                output_mgr.pop_scope()
-
         # Summary
         elapsed = time.perf_counter() - start_time
         success = all(r.success for r in job_results)
 
-        output_mgr.automation_status(automation_name, success, elapsed, len(job_results))
+        output_mgr.print_automation_status(automation_name, success, elapsed, len(job_results))
 
         return AutomationResult(
             automation_name=automation_name,
@@ -445,53 +350,23 @@ class LocalExecutor:
         job_spec: JobSpec,
         job_outputs: dict[str, dict[str, str]],
         input_params: dict[str, Any],
-        buffer_output: bool = False,
-        is_parallel: bool = False,
-        is_last: bool = False,
     ) -> JobResult:
-        """
-        Execute a single job as a subprocess.
-
-        Args:
-            job_spec: The job to execute
-            job_outputs: Outputs from previously completed jobs
-            input_params: Input parameter values
-            buffer_output: If True, don't print output (for parallel execution)
-            is_parallel: If True, this job is part of a parallel group
-            is_last: If True, this is the last job in its group
-
-        Returns:
-            JobResult with success status, outputs, and captured output lines
-
-        """
+        """Execute a single job, capturing all output."""
         start_time = time.perf_counter()
-        output_mgr = get_output_manager()
         job_id = job_spec.job_id
         task_name = job_spec.task_info.name
-
-        # Convert task name to CLI format (kebab-case)
         cli_task_name = task_name.replace("_", "-")
 
         # Build CLI command
         cli_args = _build_cli_args(job_spec.inputs, job_outputs, input_params)
         cmd = [self.cli_command, cli_task_name] + cli_args
 
-        # Print job header (unless buffering)
-        if not buffer_output:
-            output_mgr.job_header(job_id, is_parallel=is_parallel, is_last=is_last)
-            if self.verbose:
-                output_mgr.line(f"({' '.join(cmd)})", style="dim")
-            # Push scope for depth tracking (only for live output, not buffered parallel jobs)
-            output_mgr.push_scope(job_id, kind="job")
-
         if self.dry_run:
-            if not buffer_output:
-                output_mgr.pop_scope()
-                output_mgr.line(f"Would run: {' '.join(cmd)}", style="dim")
             return JobResult(
                 job_id=job_id,
                 success=True,
                 elapsed_seconds=0,
+                output_text=f"Would run: {' '.join(cmd)}\n",
             )
 
         # Create temp file for GITHUB_OUTPUT
@@ -499,12 +374,11 @@ class LocalExecutor:
             output_file = Path(f.name)
 
         try:
-            # Set up environment
             env = os.environ.copy()
             env["GITHUB_OUTPUT"] = str(output_file)
-            env["RECOMPOSE_SUBPROCESS"] = "1"  # Suppress task headers in subprocess
+            env["RECOMPOSE_SUBPROCESS"] = "1"
 
-            # Run the subprocess
+            # Run subprocess and capture output
             process = subprocess.Popen(
                 cmd,
                 cwd=None,
@@ -514,104 +388,72 @@ class LocalExecutor:
                 text=True,
             )
 
-            # Collect output and stream with prefix if verbose
             output_lines: list[str] = []
-            if not buffer_output:
-                prefix = output_mgr._get_line_prefix()
             assert process.stdout is not None
             for line in process.stdout:
-                line = line.rstrip("\n")
-                output_lines.append(line)
-                # Stream output with prefix if not buffering and verbose
-                if not buffer_output and self.verbose:
-                    output_mgr._print_raw(f"{prefix}{line}")
+                output_lines.append(line.rstrip("\n"))
 
             process.wait()
             elapsed = time.perf_counter() - start_time
 
-            # Parse outputs
             outputs = _parse_github_output(output_file)
 
-            # Create result with captured output
-            result = JobResult(
+            return JobResult(
                 job_id=job_id,
                 success=process.returncode == 0,
                 elapsed_seconds=elapsed,
                 outputs=outputs if process.returncode == 0 else {},
+                output_text="\n".join(output_lines),
                 error="\n".join(output_lines[-10:]) if process.returncode != 0 and output_lines else None,
             )
-            # Store output lines for later printing
-            result._output_lines = output_lines  # type: ignore[attr-defined]
-
-            # Pop scope before printing status (only if we pushed it)
-            if not buffer_output:
-                output_mgr.pop_scope()
-                # Print result for sequential (non-buffered) jobs
-                self._print_job_result(job_spec, result, show_header=False)
-
-            return result
 
         finally:
-            # Clean up temp file
             if output_file.exists():
                 output_file.unlink()
-            # Ensure scope is popped even on exception (only for non-buffered)
-            if not buffer_output and output_mgr._scope_stack and output_mgr._scope_stack[-1].name == job_id:
-                output_mgr.pop_scope()
 
-    def _print_job_result(
+    def _execute_and_print_job(
         self,
         job_spec: JobSpec,
-        result: JobResult,
-        show_header: bool = True,
-        is_parallel: bool = False,
+        job_outputs: dict[str, dict[str, str]],
+        input_params: dict[str, Any],
         is_last: bool = False,
-    ) -> None:
-        """Print the result of a job execution (for buffered parallel jobs)."""
+    ) -> JobResult:
+        """Execute a job and print its output with proper prefixing."""
+        # Execute the job (captures output)
+        result = self._execute_job(job_spec, job_outputs, input_params)
+
+        # Print using recursive model
+        self._print_job_result(result, is_last=is_last)
+
+        return result
+
+    def _print_job_result(self, result: JobResult, is_last: bool = False) -> None:
+        """Print job result using recursive output model."""
         output_mgr = get_output_manager()
-        output_lines: list[str] = getattr(result, "_output_lines", [])
 
-        # Print header
-        if show_header:
-            output_mgr.job_header(result.job_id, is_parallel=is_parallel, is_last=is_last)
+        # 1. Print header
+        output_mgr.print_header(result.job_id, is_last=is_last)
 
-        if is_parallel:
-            # For parallel jobs, use current depth for content prefix
-            # (don't push an extra scope - parallel scope is already active)
-            prefix = output_mgr._get_line_prefix()
+        # 2. Get continuation prefix based on is_last
+        prefix = output_mgr.get_continuation_prefix(is_last)
 
-            # Print verbose output if enabled (with prefix)
-            if self.verbose and output_lines:
-                for line in output_lines:
-                    output_mgr._print_raw(f"{prefix}{line}")
+        # 3. Print captured output with prefix (if verbose or failed)
+        if self.verbose and result.output_text:
+            output_mgr.print_prefixed(result.output_text, prefix)
+        elif not result.success and result.output_text:
+            # Show last few lines on failure
+            lines = result.output_text.split("\n")[-10:]
+            output_mgr.print_prefixed("\n".join(lines), prefix)
 
-            # Print status (with parallel-aware prefix)
-            output_mgr.job_status(result.job_id, result.success, result.elapsed_seconds, is_parallel=True)
-        else:
-            # For sequential jobs, push scope for proper indentation
-            output_mgr.push_scope(result.job_id, kind="job")
-            prefix = output_mgr._get_line_prefix()
-
-            # Print verbose output if enabled (with prefix)
-            if self.verbose and output_lines:
-                for line in output_lines:
-                    output_mgr._print_raw(f"{prefix}{line}")
-
-            # Pop scope before status
-            output_mgr.pop_scope()
-
-            # Print status
-            output_mgr.job_status(result.job_id, result.success, result.elapsed_seconds)
+        # 4. Print status with SAME prefix
+        symbol = "✓" if result.success else "✗"
+        status_line = f"{symbol} {result.elapsed_seconds:.2f}s"
+        print(f"{prefix}{status_line}", flush=True)
 
         # Print outputs if verbose and successful
         if result.success and result.outputs and self.verbose:
             for k, v in result.outputs.items():
-                output_mgr.line(f"output: {k}={v}", style="dim")
-
-        # Show error lines if failed and not verbose (verbose already shows all output)
-        if not result.success and not self.verbose and output_lines:
-            error_lines = output_lines[-10:]
-            output_mgr.error_detail(error_lines, max_lines=10)
+                print(f"output: {k}={v}", flush=True)
 
 
 def execute_automation(
@@ -623,29 +465,7 @@ def execute_automation(
     verbose: bool = False,
     **input_params: Any,
 ) -> AutomationResult:
-    """
-    Execute an automation locally.
-
-    This is a convenience function that creates a LocalExecutor and runs
-    the automation.
-
-    Args:
-        automation: The automation to execute
-        cli_command: CLI entry point (default: "./run")
-        working_directory: Working directory for execution
-        dry_run: If True, show what would run without executing
-        verbose: If True, show verbose output
-        **input_params: Values for InputParam parameters
-
-    Returns:
-        AutomationResult with job results and overall status
-
-    Example:
-        result = execute_automation(ci, verbose=True)
-        if not result.success:
-            sys.exit(1)
-
-    """
+    """Execute an automation locally."""
     executor = LocalExecutor(
         cli_command=cli_command,
         working_directory=working_directory,
