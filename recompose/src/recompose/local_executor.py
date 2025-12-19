@@ -394,9 +394,14 @@ class LocalExecutor:
             env = os.environ.copy()
             env["GITHUB_OUTPUT"] = str(output_file)
             env["RECOMPOSE_SUBPROCESS"] = "1"
-            # Preserve colors in subprocess if parent has colors enabled
-            if get_output_manager().colors_enabled:
-                env["FORCE_COLOR"] = "1"
+
+            # Propagate color settings to subprocess:
+            # - NO_COLOR takes precedence (already in env if set)
+            # - FORCE_COLOR is propagated if set
+            # - Otherwise, set FORCE_COLOR if terminal supports color
+            if "NO_COLOR" not in env:
+                if "FORCE_COLOR" not in env and get_output_manager().colors_enabled:
+                    env["FORCE_COLOR"] = "1"
 
             # Run subprocess and capture output
             process = subprocess.Popen(

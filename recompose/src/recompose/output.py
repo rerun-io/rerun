@@ -58,15 +58,6 @@ def prefix_lines(text: str, prefix: str) -> str:
     lines = text.rstrip("\n").split("\n")
     return "\n".join(prefix + line for line in lines)
 
-
-def _make_console() -> Console:
-    """Create a Console that respects NO_COLOR even when FORCE_COLOR is set."""
-    if os.environ.get("NO_COLOR"):
-        # Need both to override FORCE_COLOR
-        return Console(force_terminal=False, no_color=True)
-    return Console()
-
-
 @dataclass
 class OutputManager:
     """
@@ -76,7 +67,7 @@ class OutputManager:
     and prefixes it uniformly.
     """
 
-    console: Console = field(default_factory=_make_console)
+    console: Console = field(default_factory=Console)
     verbosity: Verbosity = Verbosity.NORMAL
     _is_gha: bool = field(default_factory=lambda: os.environ.get("GITHUB_ACTIONS") == "true")
 
