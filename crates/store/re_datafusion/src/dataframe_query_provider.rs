@@ -685,10 +685,7 @@ async fn chunk_stream_io_loop(
                     let fetch_chunks_request = FetchChunksRequest {
                         chunk_infos: vec![chunk_info],
                     };
-                    tracing::info!(
-                        "Sending FetchChunksRequest with {} chunk infos",
-                        fetch_chunks_request.chunk_infos.len()
-                    );
+
                     let fetch_chunks_response_stream = client
                         .inner()
                         .fetch_chunks(fetch_chunks_request)
