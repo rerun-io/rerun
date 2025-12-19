@@ -123,7 +123,7 @@ def print_task_output_styled(prefixed: str, console: Console) -> None:
                     else:
                         break
                 tree_segment = line[start:i]
-                console.print(tree_segment, style="bold cyan", end="", markup=False, highlight=False)
+                console.print(tree_segment, style="cyan", end="", markup=False, highlight=False)
                 # Check if this segment ends with ▶ (subtask header)
                 last_was_header_arrow = tree_segment.endswith("▶")
 
@@ -211,11 +211,11 @@ class OutputManager:
             return
 
         if is_top_level:
-            self.print(f"\n{SYMBOLS['entry']} ", style="bold cyan", end="")
+            self.print(f"\n{SYMBOLS['entry']} ", style="cyan", end="")
             self.print(name, style="bold")
         else:
             symbol = SYMBOLS["last"] if is_last else SYMBOLS["branch"]
-            self.print(f"{symbol} ", style="bold cyan", end="")
+            self.print(f"{symbol} ", style="cyan", end="")
             self.print(name, style="bold")
 
     def print_status(self, success: bool, elapsed: float, prefix: str = "") -> None:
@@ -230,10 +230,10 @@ class OutputManager:
         status_style = "green" if success else "red"
         if prefix:
             # Print prefix in header style, then status in success/failure style
-            self.print(prefix, style="bold cyan", end="")
+            self.print(prefix, style="cyan", end="")
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
             # Extra blank line with prefix for visual separation
-            self.print(prefix.rstrip(), style="bold cyan")
+            self.print(prefix.rstrip(), style="cyan")
         else:
             self.print(f"{symbol} {elapsed:.2f}s", style=status_style)
 
@@ -252,16 +252,16 @@ class OutputManager:
         if self._is_gha:
             return
 
-        self.print(f"{SYMBOLS['parallel']} (parallel)", style="bold cyan")
+        self.print(f"{SYMBOLS['parallel']} (parallel)", style="cyan")
 
     def print_automation_header(self, name: str) -> None:
         """Print automation header."""
         if self._is_gha:
             return
 
-        self.print(f"\n{SYMBOLS['entry_down']} ", style="bold cyan", end="")
+        self.print(f"\n{SYMBOLS['entry_down']} ", style="cyan", end="")
         self.print(name, style="bold")
-        self.print(SYMBOLS["pipe"], style="bold cyan")
+        self.print(SYMBOLS["pipe"], style="cyan")
 
     def print_automation_status(self, name: str, success: bool, elapsed: float, job_count: int) -> None:
         """Print automation completion status."""
@@ -284,7 +284,7 @@ class OutputManager:
             return
         for line in text.rstrip("\n").split("\n"):
             if prefix:
-                self.print(prefix, style="bold cyan", end="")
+                self.print(prefix, style="cyan", end="")
             print(line, flush=True)
 
     def print_error(self, message: str) -> None:
