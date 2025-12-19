@@ -77,6 +77,11 @@ class OutputManager:
         """Whether running in GitHub Actions."""
         return self._is_gha
 
+    @property
+    def colors_enabled(self) -> bool:
+        """Whether color output is enabled."""
+        return not self._is_gha and self.console.is_terminal
+
     def print(self, message: str, style: str | None = None, end: str = "\n") -> None:
         """Print a message, optionally with Rich styling."""
         if style and not self._is_gha:
