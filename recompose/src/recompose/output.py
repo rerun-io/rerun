@@ -67,27 +67,43 @@ PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 SUBTASK_MARKER = "\x00SUBTASK:"  # Marker for subtask names in captured output
 
 
+def _is_status_line(line: str) -> bool:
+    """Check if a line is a status line (contains success/failure symbols and timing)."""
+    # Status lines contain ✓ or ✗ followed by "succeeded" or "failed" and timing
+    return (SYMBOLS["success"] in line or SYMBOLS["failure"] in line) and (
+        "succeeded in" in line or "failed in" in line
+    )
+
+
 def prefix_task_output(captured: str) -> str:
     """
     Prefix captured task output with tree symbols.
 
     - Subtask markers (always plain) → branch header
     - Everything else → content prefix (may contain ANSI colors)
+    - Adds blank continuation lines for visual spacing
     """
     if not captured:
         return ""
 
     lines = captured.rstrip("\n").split("\n")
-    result = []
+    result: list[str] = []
 
-    for line in lines:
+    for i, line in enumerate(lines):
         if line.startswith(SUBTASK_MARKER):
+            # Add blank line before subtask if there's preceding content
+            if result and result[-1] != CONTENT_PREFIX:
+                result.append(CONTENT_PREFIX)
             # Subtask header (marker is always emitted plain)
             name = line[len(SUBTASK_MARKER) :]
             result.append(f"{SYMBOLS['branch']}{name}")
         else:
             # All other output (may contain ANSI colors)
             result.append(f"{CONTENT_PREFIX}{line}")
+
+            # Add blank line after status lines if more content follows
+            if _is_status_line(line) and i < len(lines) - 1:
+                result.append(CONTENT_PREFIX)
 
     return "\n".join(result)
 
