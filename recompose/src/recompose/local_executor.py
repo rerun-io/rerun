@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .jobs import ArtifactRef, InputParamRef, JobOutputRef, JobSpec
-from .output import get_output_manager
+from .output import SUBTASK_MARKER, get_output_manager
 
 if TYPE_CHECKING:
     from .jobs import AutomationWrapper
@@ -420,6 +420,10 @@ class LocalExecutor:
 
             process.wait()
             elapsed = time.perf_counter() - start_time
+
+            # Strip the marker line if present (task prints marker, we already printed header)
+            if output_lines and output_lines[0].startswith(SUBTASK_MARKER):
+                output_lines = output_lines[1:]
 
             outputs = _parse_github_output(output_file)
 

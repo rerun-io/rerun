@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import os
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -207,12 +208,13 @@ def _run_with_context(
     start_time = time.perf_counter()
     console = Console()
 
-    # 1. Print task name (with marker if nested so parent can recognize it)
-    if existing_ctx is not None:
-        # Nested task - print with marker for parent to prefix as header
+    # 1. Print task name (with marker if nested/subprocess, plain if bare top-level)
+    is_subprocess = os.environ.get("RECOMPOSE_SUBPROCESS") == "1"
+    if existing_ctx is not None or is_subprocess:
+        # Nested task or subprocess - print with marker for parent to recognize
         print(f"{SUBTASK_MARKER}{task_name}", flush=True)
     else:
-        # Top-level task - print bold name
+        # Bare top-level task - print bold name
         console.print(task_name, style="bold", markup=False, highlight=False)
 
     # Set up context
