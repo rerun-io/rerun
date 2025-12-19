@@ -242,6 +242,13 @@ impl PyCatalogClientInternal {
     ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
+        // Verify we have a valid table name
+        let dialect = datafusion::logical_expr::sqlparser::dialect::GenericDialect;
+        let _ = datafusion::logical_expr::sqlparser::parser::Parser::new(&dialect)
+            .try_with_sql(name.as_str())
+            .and_then(|mut parser| parser.parse_multipart_identifier())
+            .map_err(|err| PyValueError::new_err(format!("Invalid table name. {err}")))?;
+
         let url = url
             .parse::<url::Url>()
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
