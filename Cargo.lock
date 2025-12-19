@@ -10133,6 +10133,7 @@ dependencies = [
  "re_mp4",
  "re_query",
  "re_renderer",
+ "re_rvl",
  "re_sdk_types",
  "re_test_context",
  "re_test_viewport",
