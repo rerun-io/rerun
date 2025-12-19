@@ -31,7 +31,7 @@ Here is an example that demonstrates how to load and update a `URDF` with the Py
 
 snippet: howto/load_urdf
 
-For similar code in Rust, we have a full example [here](github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
+For similar code in Rust, we have a full example [here](https://github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
 
 ## Load URDF into an existing recording
 
