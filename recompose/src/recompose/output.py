@@ -62,7 +62,8 @@ def prefix_lines(text: str, prefix: str) -> str:
 def _make_console() -> Console:
     """Create a Console that respects NO_COLOR even when FORCE_COLOR is set."""
     if os.environ.get("NO_COLOR"):
-        return Console(no_color=True)
+        # Need both to override FORCE_COLOR
+        return Console(force_terminal=False, no_color=True)
     return Console()
 
 
