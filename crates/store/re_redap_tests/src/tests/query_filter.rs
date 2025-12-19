@@ -35,7 +35,11 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
 
     let client = create_test_client(service).await;
     let mut query = re_chunk_store::QueryExpression::default();
-    query.view_contents = Some([(EntityPath::from("my/entity"), None)].into_iter().collect());
+    query.view_contents = Some(
+        [(EntityPath::from("my/entity"), None)]
+            .into_iter()
+            .collect(),
+    );
     query.filtered_index = Some("frame_nr".into());
 
     let table_provider = DataframeQueryTableProvider::new_from_client(
@@ -57,10 +61,7 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
         //     col("rerun_segment_id").eq(lit("my_segment_id2")),
         //     "seg_id_eq",
         // ),
-        (
-            col("frame_nr").eq(lit(30)),
-            "frame_nr_eq",
-        ),
+        (col("frame_nr").eq(lit(30)), "frame_nr_eq"),
     ];
 
     for (filter, snapshot_name) in tests {

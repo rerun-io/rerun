@@ -1,10 +1,12 @@
 use hyper_util::rt::TokioIo;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
+    RerunCloudService, RerunCloudServiceServer,
+};
+use re_redap_client::{ConnectionClient, RedapClient};
 use tokio::io::DuplexStream;
 use tonic::transport::Channel;
 use tonic::transport::server::Connected;
-use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
-use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{RerunCloudService, RerunCloudServiceServer};
-use re_redap_client::{ConnectionClient, RedapClient};
 
 #[derive(Debug)]
 pub struct TestIo(pub DuplexStream);
