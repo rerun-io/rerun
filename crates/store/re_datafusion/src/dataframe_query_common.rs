@@ -81,7 +81,8 @@ impl DataframeQueryTableProvider {
             segment_ids,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
-        ).await
+        )
+        .await
     }
 
     #[tracing::instrument(level = "info", skip_all)]
