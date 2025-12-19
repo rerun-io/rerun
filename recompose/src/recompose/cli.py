@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast, get_args, get_origin
 
 import click
-from rich.console import Console
 
 from .command_group import CommandGroup
 from .context import (
@@ -23,13 +22,17 @@ from .context import (
     set_recompose_context,
     set_working_directory,
 )
+from .output import get_output_manager
 from .result import Result
 from .task import TaskInfo, TaskWrapper
 
 if TYPE_CHECKING:
     from .jobs import AutomationInfo, AutomationWrapper
 
-console = Console()
+
+def _get_console():
+    """Get console from OutputManager to respect NO_COLOR settings."""
+    return get_output_manager().console
 
 
 def _to_kebab_case(name: str) -> str:
@@ -172,8 +175,8 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
         # Print task header (unless in quiet mode)
         if not quiet_mode:
-            console.print(f"\n[bold blue]▶[/bold blue] [bold]{task_name}[/bold]")
-            console.print()
+            _get_console().print(f"\n[bold blue]▶[/bold blue] [bold]{task_name}[/bold]")
+            _get_console().print()
 
         # Convert enum values back to enum if needed
         for param_name, param in sig.parameters.items():
@@ -193,22 +196,22 @@ def _build_command(task_info: TaskInfo) -> click.Command:
 
         # Print result (unless in quiet mode)
         if not quiet_mode:
-            console.print()
+            _get_console().print()
             if result.ok:
-                console.print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
+                _get_console().print(f"[bold green]✓[/bold green] [bold]{task_name}[/bold] succeeded in {elapsed:.2f}s")
                 if result._value is not None:
-                    console.print(f"[dim]→[/dim] {result._value}")
+                    _get_console().print(f"[dim]→[/dim] {result._value}")
             else:
-                console.print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
+                _get_console().print(f"[bold red]✗[/bold red] [bold]{task_name}[/bold] failed in {elapsed:.2f}s")
                 if result.error:
-                    console.print(f"[red]Error:[/red] {result.error}")
+                    _get_console().print(f"[red]Error:[/red] {result.error}")
                 if result.traceback:
                     from .context import is_debug
 
                     if is_debug():
-                        console.print(f"[dim]{result.traceback}[/dim]")
+                        _get_console().print(f"[dim]{result.traceback}[/dim]")
 
-            console.print()
+            _get_console().print()
 
         # Exit with non-zero code if task failed
         if not result.ok:
