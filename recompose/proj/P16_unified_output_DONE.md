@@ -8,35 +8,36 @@ Created a unified `OutputManager` class that handles all output formatting for t
 
 ## What Was Implemented
 
-### Phase 1: OutputManager Class (output.py)
-- Created `OutputManager` dataclass with rich Console integration
-- Implemented `PrefixWriter` for tree-style output prefixing
-- Added `ScopeInfo` for tracking nested scopes with timing
-- Implemented context managers: `task_scope()`, `nested_task_scope()`, `job_scope()`, `step_scope()`, `parallel_scope()`
-- Added output methods: `task_header()`, `task_status()`, `job_header()`, `job_status()`, `automation_header()`, `automation_status()`
+### Core Design: Simple Recursive Output Model
+
+Each execution level follows the same pattern:
+1. Parent prints child's header (├─▶ or └─▶)
+2. Parent executes child, capturing ALL output
+3. Parent prefixes ALL captured output with continuation prefix
+4. Parent prints status with SAME prefix
+5. Move to next child
+
+This composable approach eliminates ~550 lines of complexity and works naturally
+for arbitrary nesting depth without special cases for parallel execution.
+
+### output.py - Simple OutputManager
+- `prefix_lines()` function to add prefix to each line of text
+- `CONTENT_PREFIX = "│   "` (4 chars) for non-last siblings
+- `LAST_PREFIX = "    "` (4 chars) for last sibling
+- Simple methods: `print_header()`, `print_status()`, `get_continuation_prefix()`, `print_prefixed()`
 - GHA detection via `GITHUB_ACTIONS` environment variable
-- Global singleton access via `get_output_manager()`
+- Global singleton via `get_output_manager()`
 
-### Phase 2: Nested Task Output (task.py)
-- Removed old `_TreePrefixWriter` class
-- Updated `_run_nested_task()` to use `OutputManager.nested_task_scope()`
-- Proper error detail display on failure
-- Status correctly reflects Result success/failure
+### task.py - Nested Task Output
+- `_run_nested_task()` captures all output and prefixes it
+- Uses same recursive model as other execution levels
+- Status printed with same prefix as content
 
-### Phase 3: Automation Executor (local_executor.py)
-- Refactored to use `OutputManager` for all output
-- `automation_header()` and `automation_status()` for automation scope
-- `job_header()` and `job_status()` for individual jobs
-- `parallel_header()` for parallel job groups
-- Proper symbols: `▼` for entry, `├─▶` for branch, `└─▶` for last, `⊕─┬─▶` for parallel
-- **Parent-side prefixing**: Subprocess output is captured by parent and prefixed at parent level
-  - This composes naturally for arbitrary nesting depth
-  - No env vars needed to coordinate indentation between processes
-
-### Phase 4: Step Integration
-- Kept existing step.py working
-- OutputManager has `step_scope()` context manager available for future use
-- Not heavily refactored since step functionality is working as-is
+### local_executor.py - Automation Executor
+- `JobResult` has `output_text` field for captured subprocess output
+- `_execute_job()` captures all subprocess output
+- `_print_job_result()` implements the recursive model
+- Parallel jobs run with ThreadPoolExecutor, results printed sequentially
 
 ## Symbology Implemented
 
@@ -108,17 +109,11 @@ All lint checks passed!
 ✓ ci completed in 0.44s (2 jobs)
 ```
 
-### Phase 5: Polish (subprocess.py, Rich cleanup)
-- Removed redundant `│` prefix from `subprocess.py` - PrefixWriter handles all prefixing now
-- Disabled Rich auto-highlighting in `_print_raw()` to prevent ANSI code pollution
-- Clean, consistent output with proper styling
-
 ## Files Modified
 
-- `src/recompose/output.py` - Completely rewritten with new OutputManager
-- `src/recompose/task.py` - Updated to use OutputManager for nested tasks
-- `src/recompose/local_executor.py` - Refactored to use OutputManager
-- `src/recompose/subprocess.py` - Removed redundant tree-mode prefix handling
+- `src/recompose/output.py` - Simplified to ~100 lines with `prefix_lines()` and simple OutputManager
+- `src/recompose/task.py` - Updated `_run_nested_task()` to capture and prefix output
+- `src/recompose/local_executor.py` - Refactored with recursive output model
 
 ## Completion Criteria
 
@@ -130,18 +125,22 @@ All lint checks passed!
 - [x] `./run lint-all` shows colored tree output
 - [x] `./run ci` shows colored parallel job output
 
-## Known Limitations / Future Work
-
-1. **Parallel job output buffering**: When jobs run in parallel, their output is buffered and printed after completion (in order). This is necessary to prevent interleaving, but means you don't see live output for parallel jobs.
-
-2. **Step integration**: The step.py module wasn't fully refactored to use OutputManager. It works as-is, but could be unified further if needed.
-
-3. **out()/dbg() integration**: These context helpers still use simple print() rather than going through OutputManager. Could be unified if needed.
-
 ## Key Design Decision
 
-**Parent-side prefixing**: Subprocess output is captured by the parent process and prefixed at the parent's level. This was chosen over having subprocesses manage their own indentation because:
-- It composes naturally for arbitrary nesting depth
-- No environment variable coordination needed between processes
-- Simpler to understand and maintain
+**Simple Recursive Model with Parent-Side Prefixing**: Each execution level captures its
+children's output and prefixes it uniformly. This was chosen over complex scope tracking
+and subprocess-managed indentation because:
+- Composes naturally for arbitrary nesting depth
+- No special cases for parallel vs sequential execution
+- No environment variable coordination between processes
+- Simpler to understand and maintain (~550 lines removed)
 - Works with any subprocess (not just recompose tasks)
+
+## Known Limitations / Future Work
+
+1. **Parallel job output buffering**: When jobs run in parallel, their output is buffered
+   and printed after completion (in order). This prevents interleaving but means no live
+   output for parallel jobs.
+
+2. **out()/dbg() integration**: These context helpers still use simple print() rather than
+   going through OutputManager. Could be unified if needed.
