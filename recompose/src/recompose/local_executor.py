@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .jobs import ArtifactRef, InputParamRef, JobOutputRef, JobSpec
-from .output import SUBTASK_MARKER, get_output_manager
+from .output import COLORS, SUBTASK_MARKER, get_output_manager
 
 if TYPE_CHECKING:
     from .jobs import AutomationWrapper
@@ -246,7 +246,7 @@ class LocalExecutor:
         jobs = automation(**input_params)
 
         if not jobs:
-            output_mgr.print("No jobs to execute", style="yellow")
+            output_mgr.print("No jobs to execute", style=COLORS["warning"])
             return AutomationResult(
                 automation_name=automation_name,
                 success=True,
@@ -480,8 +480,8 @@ class LocalExecutor:
         # 5. Print outputs if verbose (after status, dimmed)
         if result.success and result.outputs and self.verbose:
             for k, v in result.outputs.items():
-                output_mgr.print(prefix, style="bold cyan", end="")
-                output_mgr.print(f"output: {k}={v}", style="dim")
+                output_mgr.print(prefix, style=COLORS["tree"], end="")
+                output_mgr.print(f"output: {k}={v}", style=COLORS["dim"])
 
 
 def execute_automation(
