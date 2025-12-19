@@ -92,7 +92,7 @@ class OutputManager:
 
     def print(self, message: str, style: str | None = None, end: str = "\n") -> None:
         """Print a message, optionally with Rich styling."""
-        if style and not self._is_gha:
+        if style and self.colors_enabled:
             self.console.print(message, style=style, end=end, markup=False, highlight=False)
         else:
             print(message, end=end, flush=True)
