@@ -59,7 +59,8 @@ COLORS = {
 }
 
 # Prefix widths to align content under headers
-CONTENT_PREFIX = SYMBOLS["pipe"] + "   "  # 4 chars: pipe + 3 spaces
+BODY_PREFIX = SYMBOLS["pipe"] + " "  # 2 chars: pipe + 1 space (for task body content)
+CONTENT_PREFIX = SYMBOLS["pipe"] + "   "  # 4 chars: pipe + 3 spaces (aligns under ├──▶)
 LAST_PREFIX = "    "  # 4 chars: 4 spaces (no continuation line)
 PARALLEL_PREFIX = "  "  # 2 chars: indent under ⊕─┬
 
@@ -80,7 +81,8 @@ def prefix_task_output(captured: str) -> str:
     Prefix captured task output with tree symbols.
 
     - Subtask markers (always plain) → branch header
-    - Everything else → content prefix (may contain ANSI colors)
+    - Direct body content → BODY_PREFIX (tighter, before subtasks)
+    - Content after subtasks → CONTENT_PREFIX (wider, aligns under ├──▶)
     - Adds blank continuation lines for visual spacing
     """
     if not captured:
@@ -88,22 +90,25 @@ def prefix_task_output(captured: str) -> str:
 
     lines = captured.rstrip("\n").split("\n")
     result: list[str] = []
+    has_seen_subtask = False
 
     for i, line in enumerate(lines):
         if line.startswith(SUBTASK_MARKER):
-            # Add blank line before subtask if there's preceding content
-            if result and result[-1] != CONTENT_PREFIX:
-                result.append(CONTENT_PREFIX)
+            # Add blank line before subtask if there's preceding content (and not already blank)
+            if result and result[-1] != SYMBOLS["pipe"]:
+                result.append(SYMBOLS["pipe"])
+            has_seen_subtask = True
             # Subtask header (marker is always emitted plain)
             name = line[len(SUBTASK_MARKER) :]
             result.append(f"{SYMBOLS['branch']}{name}")
         else:
-            # All other output (may contain ANSI colors)
-            result.append(f"{CONTENT_PREFIX}{line}")
+            # Use tighter prefix before subtasks, wider alignment after
+            prefix = CONTENT_PREFIX if has_seen_subtask else BODY_PREFIX
+            result.append(f"{prefix}{line}")
 
             # Add blank line after status lines if more content follows
             if _is_status_line(line) and i < len(lines) - 1:
-                result.append(CONTENT_PREFIX)
+                result.append(SYMBOLS["pipe"])
 
     return "\n".join(result)
 
