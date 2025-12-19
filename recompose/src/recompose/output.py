@@ -81,10 +81,12 @@ class OutputManager:
     def colors_enabled(self) -> bool:
         """Whether color output is enabled.
 
-        Uses Rich's Console.color_system which respects NO_COLOR, FORCE_COLOR,
-        terminal detection, and actual color capability.
+        Checks NO_COLOR first (standard way to disable colors), then uses
+        Rich's Console.color_system for actual color capability detection.
         """
         if self._is_gha:
+            return False
+        if os.environ.get("NO_COLOR"):
             return False
         return self.console.color_system is not None
 
