@@ -70,7 +70,8 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             // We first add the axes for the entity transforms, because we want them to be drawn below
             // the additional transform data (the user usually knows which entity they are on).
             // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
@@ -149,6 +150,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 data_result,
                 [axis_length_identifier, show_frame_identifier],
                 false,
+                instruction,
             );
 
             let axis_length: f32 = results

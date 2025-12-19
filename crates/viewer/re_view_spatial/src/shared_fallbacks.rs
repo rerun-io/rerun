@@ -1,7 +1,9 @@
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
-use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
+use re_viewer_context::{
+    IdentifiedViewSystem as _, QueryContext, ViewStateExt as _, VisualizerInstruction,
+};
 
 use crate::{SpatialViewState, visualizers};
 
@@ -74,14 +76,20 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 .lookup_result_by_path(ctx.target_entity_path.hash())
                 .cloned()
                 .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&visualizers::CamerasVisualizer::identifier())
+                    // TODO(andreas): What if there's several camera visualizers?
+                    if let Some(camera_visualizer_instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instruction| {
+                            instruction.visualizer_type
+                                == visualizers::CamerasVisualizer::identifier()
+                        })
                     {
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<archetypes::Pinhole>(
                                 ctx.view_ctx,
                                 ctx.query,
+                                camera_visualizer_instruction,
                             );
 
                         Some(
@@ -144,10 +152,12 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
             {
+                let visualizer_instruction = VisualizerInstruction::placeholder(data_result); // coordinate frames aren't associated with any particular visualizer
                 let results = data_result
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
                         &query,
+                        &visualizer_instruction,
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
@@ -189,6 +199,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                             ctx.view_ctx,
                             &query,
                             archetypes::CoordinateFrame::descriptor_frame().component,
+                            &VisualizerInstruction::placeholder(&node.data_result), // TODO(aedm): can we do this without a placeholder?
                         )
                         .get_mono::<components::TransformFrameId>(
                             archetypes::CoordinateFrame::descriptor_frame().component,
