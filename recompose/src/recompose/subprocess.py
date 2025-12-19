@@ -114,11 +114,8 @@ def run(
     else:
         # Streaming mode - output goes to console in real-time
         # We use Popen to have more control over output handling
-        # Note: In tree mode, sys.stdout/stderr are already wrapped with TreePrefixWriter
-        # so we just need to add the nested indicators (│ for stdout, ! for stderr)
-        from .output import is_tree_mode
-
-        tree_mode = is_tree_mode()
+        # Note: In tree mode, sys.stdout/stderr are already wrapped with PrefixWriter
+        # which handles all the tree prefixing, so we just print normally here.
 
         proc = subprocess.Popen(
             cmd,
@@ -133,27 +130,13 @@ def run(
         stdout_lines: list[str] = []
         stderr_lines: list[str] = []
 
-        # ANSI codes for dimmed text
-        DIM = "\033[2m"
-        RESET = "\033[0m"
-
         def print_line(line: str, is_stderr: bool = False) -> None:
             """Print a line with appropriate formatting."""
-            if tree_mode:
-                # In tree mode, add nested indicators (dimmed)
-                # The TreePrefixWriter on sys.stdout/stderr will add the tree prefix
-                if is_stderr:
-                    # Stderr gets ! indicator (dimmed)
-                    print(f"{DIM}!{RESET} {line}", file=sys.stderr, flush=True)
-                else:
-                    # Stdout gets nested │ indicator (dimmed)
-                    print(f"{DIM}│{RESET} {line}", flush=True)
+            # Just print - the PrefixWriter on stdout/stderr handles tree prefixing
+            if is_stderr:
+                print(line, file=sys.stderr, flush=True)
             else:
-                # Outside tree mode, just print normally
-                if is_stderr:
-                    print(line, file=sys.stderr, flush=True)
-                else:
-                    print(line, flush=True)
+                print(line, flush=True)
 
         # Stream output from both stdout and stderr
         # Use select on Unix, fallback to sequential reading on Windows

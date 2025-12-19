@@ -108,14 +108,8 @@ class OutputManager:
     Handles all output with consistent tree-style formatting, colors,
     and GHA compatibility.
 
-    Usage:
-        mgr = get_output_manager()
-
-        with mgr.task_scope("build"):
-            mgr.line("Compiling...")
-            # nested task output is prefixed with │
-
-        # Task status is printed automatically on scope exit
+    Key design: Subprocess output is captured by the parent and prefixed
+    at the parent's level. This composes naturally for arbitrary nesting.
     """
 
     console: Console = field(default_factory=Console)
@@ -136,18 +130,32 @@ class OutputManager:
         """Whether running in GitHub Actions."""
         return self._is_gha
 
+    def push_scope(self, name: str, kind: str = "job") -> ScopeInfo:
+        """
+        Manually push a scope for depth tracking.
+
+        Use this when you need to track depth without using a context manager.
+        Remember to call pop_scope() when done.
+        """
+        scope = ScopeInfo(name=name, kind=kind, start_time=time.perf_counter())
+        self._scope_stack.append(scope)
+        return scope
+
+    def pop_scope(self) -> ScopeInfo | None:
+        """Pop and return the current scope."""
+        if self._scope_stack:
+            return self._scope_stack.pop()
+        return None
+
     def _get_line_prefix(self) -> str:
         """Get the prefix for the current line based on scope stack."""
         if not self._scope_stack:
             return ""
 
-        # Build prefix from scope stack
+        # Build prefix for all levels of depth
         parts = []
-        for scope in self._scope_stack:
-            if scope.kind == "parallel":
-                parts.append(f"{SYMBOLS['pipe']} ")
-            else:
-                parts.append(f"{SYMBOLS['pipe']}    ")
+        for _ in range(len(self._scope_stack)):
+            parts.append(f"{SYMBOLS['pipe']}    ")
 
         return "".join(parts)
 
@@ -182,14 +190,15 @@ class OutputManager:
         if self._prefix_writer_installed and self._original_stdout:
             if style:
                 # Create a temporary console that writes to original stdout
-                temp_console = Console(file=self._original_stdout, force_terminal=True)
-                temp_console.print(message, style=style, end=end)
+                # Disable markup and highlighting to prevent Rich from parsing content
+                temp_console = Console(file=self._original_stdout, force_terminal=True, highlight=False)
+                temp_console.print(message, style=style, end=end, markup=False, highlight=False)
             else:
                 self._original_stdout.write(message + end)
                 self._original_stdout.flush()
         else:
             if style:
-                self.console.print(message, style=style, end=end)
+                self.console.print(message, style=style, end=end, markup=False, highlight=False)
             else:
                 print(message, end=end, flush=True)
 
@@ -234,15 +243,14 @@ class OutputManager:
 
     def _get_indent_for_header(self) -> str:
         """Get indentation for a header line."""
-        if not self._scope_stack:
+        total_depth = self.depth
+        if total_depth == 0:
             return ""
 
+        # Build prefix for all levels of depth
         parts = []
-        for scope in self._scope_stack:
-            if scope.kind == "parallel":
-                parts.append(f"{SYMBOLS['pipe']} ")
-            else:
-                parts.append(f"{SYMBOLS['pipe']}    ")
+        for _ in range(total_depth):
+            parts.append(f"{SYMBOLS['pipe']}    ")
 
         return "".join(parts)
 
