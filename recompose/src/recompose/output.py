@@ -235,11 +235,13 @@ class OutputManager:
                 self._print_raw(f"\n{SYMBOLS['failure']} {name} failed in {elapsed:.2f}s", style="bold red")
         else:
             # Nested task - status line at same indent as task content
+            # Print indent without styling, then status with styling
             indent = self._get_line_prefix()
+            self._print_raw(indent, end="")
             if success:
-                self._print_raw(f"{indent}{SYMBOLS['success']} {elapsed:.2f}s", style="green")
+                self._print_raw(f"{SYMBOLS['success']} {elapsed:.2f}s", style="green")
             else:
-                self._print_raw(f"{indent}{SYMBOLS['failure']} {elapsed:.2f}s", style="red")
+                self._print_raw(f"{SYMBOLS['failure']} {elapsed:.2f}s", style="red")
 
     def _get_indent_for_header(self) -> str:
         """Get indentation for a header line."""
@@ -285,11 +287,13 @@ class OutputManager:
             print("::endgroup::", flush=True)
             return
 
+        # Print indent without styling, then status with styling
         indent = self._get_line_prefix()
+        self._print_raw(indent, end="")
         if success:
-            self._print_raw(f"{indent}{SYMBOLS['success']} {elapsed:.2f}s", style="green")
+            self._print_raw(f"{SYMBOLS['success']} {elapsed:.2f}s", style="green")
         else:
-            self._print_raw(f"{indent}{SYMBOLS['failure']} {elapsed:.2f}s", style="red")
+            self._print_raw(f"{SYMBOLS['failure']} {elapsed:.2f}s", style="red")
 
     def automation_header(self, name: str) -> None:
         """Print automation header."""
