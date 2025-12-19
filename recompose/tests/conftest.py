@@ -4,7 +4,9 @@ import os
 
 import pytest
 
-# Set NO_COLOR before any imports happen (module-level, runs at conftest load time)
+# Disable colors before any imports happen (module-level, runs at conftest load time)
+# Must unset FORCE_COLOR because Rich ignores NO_COLOR when FORCE_COLOR is set
+os.environ.pop("FORCE_COLOR", None)
 os.environ["NO_COLOR"] = "1"
 
 
