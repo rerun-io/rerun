@@ -238,7 +238,7 @@ fn try_size_from_blob(
 
         read_image_size_via_image_library(blob, media_type)
     } else if archetype_name == archetypes::EncodedDepthImage::name() {
-        re_tracing::profile_scope!("depth_image");
+        re_tracing::profile_scope!("encoded_depth_image");
 
         let media_type = components::MediaType::or_guess_from_data(media_type, blob);
 
