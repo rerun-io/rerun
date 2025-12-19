@@ -210,7 +210,7 @@ fmt = { depends-on = ["format"] }
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
 ] }
-link-check = 'lychee --verbose --cache --max-cache-age 1d . --base-url . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+link-check = 'lychee --verbose --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -496,7 +496,7 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.20.1.*"
+lychee = "0.21.0.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 pyyaml = ">=6.0" # For `check_doc_redirects.py`

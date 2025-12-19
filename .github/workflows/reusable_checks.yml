@@ -286,12 +286,12 @@ jobs:
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
-        uses: lycheeverse/lychee-action@v2.6.1
+        uses: lycheeverse/lychee-action@v2.7.0
         with:
           fail: true
-          lycheeVersion: "v0.20.1"
+          lycheeVersion: "v0.21.0"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           # If updating version or args update the pixi.toml to match.
           args: |
-            --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
