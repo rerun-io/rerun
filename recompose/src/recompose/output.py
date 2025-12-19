@@ -79,8 +79,16 @@ class OutputManager:
 
     @property
     def colors_enabled(self) -> bool:
-        """Whether color output is enabled."""
-        return not self._is_gha and self.console.is_terminal
+        """Whether color output is enabled.
+
+        Uses sys.stdout.isatty() to check actual TTY status, not influenced
+        by FORCE_COLOR environment variable. Also respects NO_COLOR standard.
+        """
+        if self._is_gha:
+            return False
+        if os.environ.get("NO_COLOR"):
+            return False
+        return sys.stdout.isatty()
 
     def print(self, message: str, style: str | None = None, end: str = "\n") -> None:
         """Print a message, optionally with Rich styling."""
