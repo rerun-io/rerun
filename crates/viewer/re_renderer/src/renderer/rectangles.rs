@@ -204,6 +204,11 @@ pub struct RectangleOptions {
     /// Tint that is multiplied to the rect, supports pre-multiplied alpha.
     pub multiplicative_tint: Rgba,
 
+    /// Force drawing the rectangle with alpha blending enabled even if `multiplicative_tint` is opaque.
+    /// (Note that we'll draw without pre-multiplied alpha here, assuming all alpha is unmultiplied)
+    /// TODO(#12223): This is only really needed if you know you have a texture that you know has a meaningful alpha channel.
+    pub force_draw_with_transparency: bool,
+
     pub depth_offset: DepthOffset,
 
     /// Optional outline mask.
@@ -216,6 +221,7 @@ impl Default for RectangleOptions {
             texture_filter_magnification: TextureFilterMag::Nearest,
             texture_filter_minification: TextureFilterMin::Linear,
             multiplicative_tint: Rgba::WHITE,
+            force_draw_with_transparency: false,
             depth_offset: 0,
             outline_mask: OutlineMaskPreference::NONE,
         }
@@ -332,6 +338,7 @@ mod gpu_data {
                 multiplicative_tint,
                 depth_offset,
                 outline_mask,
+                force_draw_with_transparency: _,
             } = options;
 
             let sample_type = match texture_format.sample_type(None, None) {
@@ -535,7 +542,8 @@ impl RectangleDrawData {
                     },
                 ),
                 draw_outline_mask: rectangle.options.outline_mask.is_some(),
-                has_transparency: rectangle.options.multiplicative_tint.a() < 1.0, // TODO(#12223): what about textures with alpha?
+                has_transparency: rectangle.options.multiplicative_tint.a() < 1.0
+                    || rectangle.options.force_draw_with_transparency, // TODO(#12223): what about textures with alpha?
             });
         }
 
