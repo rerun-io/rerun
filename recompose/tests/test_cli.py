@@ -18,6 +18,7 @@ def test_build_command_basic():
 
     # Command name should be kebab-case
     assert cmd.name == "simple-task"
+    assert cmd.help is not None
     assert "A simple task." in cmd.help
 
 

@@ -55,6 +55,7 @@ def test_task_catches_exceptions():
 
     result = failing_task()
     assert result.failed
+    assert result.error is not None
     assert "ValueError: Something went wrong!" in result.error
     assert result.traceback is not None
 
