@@ -87,11 +87,11 @@ and has appropriate CORS headers set. See: `asset_server.py` for a simple exampl
 Use Pixi:
 
 ```sh
-# install rerun-sdk from source with the "notebook" extra
-pixi run -e examples py-build-notebook
+# build rerun-sdk and rerun-notebook from source
+pixi run py-build && pixi run py-build-notebook
 
 # run jupyter
-pixi run -e examples jupyter notebook
+pixi run uv run jupyter notebook
 ```
 
 

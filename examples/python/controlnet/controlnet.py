@@ -37,8 +37,8 @@ def controlnet_callback(
     rr.set_time("timestep", duration=timestep)
     latents = callback_kwargs["latents"]
 
-    image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]
-    image = pipe.image_processor.postprocess(image, output_type="np").squeeze()
+    image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]  # type: ignore[attr-defined]
+    image = pipe.image_processor.postprocess(image, output_type="np").squeeze()  # type: ignore[attr-defined]
     rr.log("output", rr.Image(image))
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 

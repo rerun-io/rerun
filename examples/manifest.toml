@@ -80,8 +80,6 @@ examples = [
   "annotation_gradio",
   "prompt_depth_anything",
   "sam2_depthanything",
-  "human_pose_tracking",
-  "gesture_detection",
   "ocr",
   "live_camera_edge_detection",
   "segment_anything_model",
@@ -190,4 +188,8 @@ examples = [
   "table_zoo",
   "template",
   "viewer_callbacks",
+
+  # TODO(jleibs): We want to bring them back once opentelemtry is fixed
+  "human_pose_tracking",
+  "gesture_detection",
 ]

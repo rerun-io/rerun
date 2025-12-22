@@ -66,7 +66,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             albedo_texture = None
 
             try:
-                vertex_texcoords = mesh.visual.uv
+                vertex_texcoords = mesh.visual.uv  # type: ignore[union-attr]
                 # trimesh uses the OpenGL convention for UV coordinates, so we need to flip the V coordinate
                 # since Rerun uses the Vulkan/Metal/DX12/WebGPU convention.
                 vertex_texcoords[:, 1] = 1.0 - vertex_texcoords[:, 1]
@@ -74,13 +74,13 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                 pass
 
             try:
-                albedo_texture = mesh.visual.material.baseColorTexture
-                if mesh.visual.material.baseColorTexture is None:
+                albedo_texture = mesh.visual.material.baseColorTexture  # type: ignore[union-attr]
+                if mesh.visual.material.baseColorTexture is None:  # type: ignore[union-attr]
                     raise ValueError()
             except Exception:
                 # Try vertex colors instead.
                 try:
-                    colors = mesh.visual.to_color().vertex_colors
+                    colors = mesh.visual.to_color().vertex_colors  # type: ignore[union-attr]
                     if len(colors) == 4:
                         # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
                         # as an albedo factor for the whole primitive.

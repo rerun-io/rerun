@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import requests
 from github import Github
+from github.NamedUser import NamedUser
 
 if TYPE_CHECKING:
     from github.WorkflowRun import WorkflowRun
@@ -50,10 +51,13 @@ def main() -> None:
         if APPROVAL not in comment.body:
             continue
 
+        user = comment.user
+        assert isinstance(user, NamedUser), f"Expected NamedUser, got {type(user)}"
+
         can_user_approve_workflows = (
-            repo.owner.login == comment.user.login
-            or repo.organization.has_in_members(comment.user)
-            or repo.has_in_collaborators(comment.user)
+            repo.owner.login == user.login
+            or repo.organization.has_in_members(user)
+            or repo.has_in_collaborators(user)
         )
         if not can_user_approve_workflows:
             continue

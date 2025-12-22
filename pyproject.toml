@@ -1,0 +1,358 @@
+# This pyproject.toml defines the uv workspace for Python development.
+#
+# Pixi (pixi.toml) manages build tools, while uv uses this file to manage
+# Python runtime dependencies in a .venv directory. The two work together:
+#
+#   pixi run py-build    # Uses maturin to build rerun-sdk into .venv
+#   pixi run uv run …  # Runs Python scripts using .venv
+#
+# Workspace members (rerun_py, rerun_notebook, examples) are defined in
+# [tool.uv.workspace] below.
+
+[project]
+name = "rerun-workspace"
+version = "0.28.0-alpha.1+dev"
+description = "Rerun Python workspace"
+requires-python = ">=3.10,<3.13"
+
+[dependency-groups]
+dev = [
+  # We can't include `rerun-sdk` in dev dependencies because the isolation of
+  # uv build interacts poorly with maturin, causing spurious rebuilds.
+  # Instead, `pixi run py-build` uses `maturin develop` to install into .venv.
+  # This fixup package installs a .pth file that allows `maturin develop` to work
+  # without needing the fix_rerun_pth.py post-processing script.
+  "rerun-dev-fixup",
+  "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+  "maturin>=1.0.0",
+  "ruff==0.12.10",
+  "mypy==1.14.1",
+  "nbqa==1.9.1",
+  # Packages needed for running scripts + their type stubs for mypy
+  "pandas>=2.0",
+  "pandas-stubs==2.3.3.251201",
+  "requests>=2.28",
+  "types-requests==2.32.4.20250913",
+  "tqdm>=4.60",
+  "types-tqdm==4.67.0.20250809",
+  "colorama>=0.4",
+  "types-colorama>=0.4.15",
+  # It looks like we end up with slightly different binary encodings of the same image on different OSes starting with Pillow 11
+  # Don't bump this until you want to spend time debugging that.
+  "Pillow>=10.0.0,<11.0.0", # has py.typed, no stubs needed
+  # Typed packages needed for linting scripts/examples
+  "attrs>=23.1.0",
+  "semver>=3.0,<3.1",
+  "tomlkit>=0.12",
+  "GitPython>=3.1",
+  "PyGithub>=2.0", #NOLINT
+  "Jinja2>=3.1",
+  "rich>=13.0",
+  # Testing packages (typed, needed for linting tests)
+  "pytest>=8.0",
+  "inline-snapshot>=0.31",
+  "syrupy>=4.0",
+  # Notebook dependencies (needed for linting rerun_notebook)
+  "anywidget>=0.9",
+  "jupyter-ui-poll>=0.2",
+  "ipywidgets>=8.0",
+  # Example dependencies (needed for linting examples)
+  "platformdirs>=4.0",
+  # Script dependencies (needed for linting scripts)
+  "google-cloud-storage>=2.9.0",
+  # Needed by lerobot dataloader example
+  "huggingface-hub<1.0",
+  # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
+  "polars>=1.0",
+  "datafusion>=50.0",
+  "jupyter>=1.0",
+]
+snippets = ["av"]
+examples = [
+  # External deps used by examples
+  "polars>=0.12.0",
+  "opencv-python>=4.6",
+  "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
+  # Example packages from workspace
+  "air_traffic_data",
+  "arkit_scenes",
+  "blueprint",
+  "blueprint_stocks",
+  "camera_video_stream",
+  "clock",
+  "controlnet",
+  "dataframe_query",
+  "detect_and_track_objects",
+  "dicom_mri",
+  "dna",
+  "drone_lidar",
+  "graph_lattice",
+  "graphs",
+  "imu_signals",
+  "incremental_logging",
+  "lidar",
+  "live_camera_edge_detection",
+  "live_scrolling_plot",
+  "llm_embedding_ner",
+  "log_file",
+  "minimal",
+  "minimal_options",
+  "multiprocess_logging",
+  "multithreading",
+  "nuscenes_dataset",
+  "nv12",
+  "objectron",
+  "open_photogrammetry_format",
+  "openstreetmap_data",
+  "plots",
+  "raw_mesh",
+  "rgbd",
+  "rrt_star",
+  "segment_anything_model",
+  "server_tables",
+  "shared_recording",
+  "stdio",
+  "structure_from_motion",
+  # TODO(RR-3223): fix opentelemetry conflicts
+  # "face_tracking",
+  # "gesture_detection",
+  # "human_pose_tracking",
+]
+docs = [
+  # Documentation build dependencies (mkdocs and plugins)
+  "griffe==1.4.1",
+  "griffe-warnings-deprecated==1.1.0",
+  "mkdocs==1.6.1",
+  "mkdocs-gen-files==0.5.0",
+  "mkdocs-literate-nav==0.6.1",
+  "mkdocs-material==9.4.7",
+  "mkdocs-material-extensions==1.3",
+  "mkdocs-redirects @ git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003",
+  "mkdocstrings==0.26.2",
+  "mkdocstrings-python==1.12.1",
+  "setuptools>75",
+  "sphobjinv==2.3.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+rerun-sdk = { workspace = true }
+rerun-notebook = { workspace = true }
+rerun-dev-fixup = { workspace = true }
+# Example packages
+air_traffic_data = { workspace = true }
+arkit_scenes = { workspace = true }
+blueprint = { workspace = true }
+blueprint_stocks = { workspace = true }
+camera_video_stream = { workspace = true }
+clock = { workspace = true }
+controlnet = { workspace = true }
+dataframe_query = { workspace = true }
+detect_and_track_objects = { workspace = true }
+dicom_mri = { workspace = true }
+dna = { workspace = true }
+drone_lidar = { workspace = true }
+# face_tracking = { workspace = true }
+# gesture_detection = { workspace = true }
+graph_lattice = { workspace = true }
+graphs = { workspace = true }
+# human_pose_tracking = { workspace = true }
+imu_signals = { workspace = true }
+incremental_logging = { workspace = true }
+lidar = { workspace = true }
+live_camera_edge_detection = { workspace = true }
+live_scrolling_plot = { workspace = true }
+llm_embedding_ner = { workspace = true }
+log_file = { workspace = true }
+minimal = { workspace = true }
+minimal_options = { workspace = true }
+multiprocess_logging = { workspace = true }
+multithreading = { workspace = true }
+nuscenes_dataset = { workspace = true }
+nv12 = { workspace = true }
+objectron = { workspace = true }
+open_photogrammetry_format = { workspace = true }
+openstreetmap_data = { workspace = true }
+plots = { workspace = true }
+raw_mesh = { workspace = true }
+rgbd = { workspace = true }
+rrt_star = { workspace = true }
+segment_anything_model = { workspace = true }
+server_tables = { workspace = true }
+shared_recording = { workspace = true }
+stdio = { workspace = true }
+structure_from_motion = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "rerun_py",
+  "rerun_py/rerun_dev_fixup",
+  "rerun_notebook",
+  # Examples
+  "examples/python/air_traffic_data",
+  "examples/python/arkit_scenes",
+  "examples/python/blueprint",
+  "examples/python/blueprint_stocks",
+  "examples/python/camera_video_stream",
+  "examples/python/clock",
+  "examples/python/controlnet",
+  "examples/python/dataframe_query",
+  "examples/python/depth_guided_stable_diffusion",
+  "examples/python/detect_and_track_objects",
+  "examples/python/dicom_mri",
+  "examples/python/dna",
+  "examples/python/drone_lidar",
+  # "examples/python/face_tracking",
+  # "examples/python/gesture_detection",
+  "examples/python/graph_lattice",
+  "examples/python/graphs",
+  # "examples/python/human_pose_tracking",
+  "examples/python/imu_signals",
+  "examples/python/incremental_logging",
+  "examples/python/lidar",
+  "examples/python/live_camera_edge_detection",
+  # "examples/python/live_depth_sensor",  # Excluded: requires Python <3.11
+  "examples/python/live_scrolling_plot",
+  "examples/python/llm_embedding_ner",
+  "examples/python/log_file",
+  "examples/python/minimal",
+  "examples/python/minimal_options",
+  "examples/python/multiprocess_logging",
+  "examples/python/multithreading",
+  "examples/python/nuscenes_dataset",
+  "examples/python/nv12",
+  "examples/python/objectron",
+  # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
+  "examples/python/open_photogrammetry_format",
+  "examples/python/openstreetmap_data",
+  "examples/python/plots",
+  "examples/python/raw_mesh",
+  "examples/python/rgbd",
+  "examples/python/rrt_star",
+  "examples/python/segment_anything_model",
+  "examples/python/server_tables",
+  "examples/python/shared_recording",
+  "examples/python/stdio",
+  "examples/python/structure_from_motion",
+  "examples/python/table_zoo",
+  "examples/python/template",
+]
+
+[tool.ruff]
+src = ["rerun_py", "rerun_py/rerun_sdk", "rerun_notebook"]
+extend-exclude = [
+  "crates",
+  "target",
+  ".venv",
+
+  # Automatically generated test artifacts
+  "target_ra/",
+  "target_wasm/",
+  "target/",
+  "venv/",
+
+  "scripts/ci/compare_path_digest.py",
+
+  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
+  "docs/snippets/all/archetypes/text_document.py",
+  "docs/snippets/all/views/text_document.py",
+
+  # TODO(#4047): incomplete example snippet
+  "docs/snippets/all/tutorials/timelines_example.py",
+
+  # Intentionally incomplete snippets
+  "docs/snippets/all/concepts/how_helix_was_logged.py",
+  "docs/snippets/all/concepts/static",
+  "docs/snippets/all/tutorials/custom-application-id.py",
+  "docs/snippets/all/tutorials/custom-recording-id.py",
+
+  # generated
+  "examples/python/objectron/objectron/proto/objectron/proto.py",
+
+  # Copied from https://github.com/huggingface/diffusers/blob/fc9fecc217e58d72c0d5796575c72088251ff4df/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
+  "examples/python/depth_guided_stable_diffusion/depth_guided_stable_diffusion/huggingface_pipeline.py",
+
+  # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
+  "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/snippets/all/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
+
+"crates/viewer/re_viewer/data/quick_start_guides/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
+
+"tests/python/*" = [
+  # We don't care about nice APIs in our tests:
+  "PLR0917",
+]
+
+"examples/notebook/notebook_neural_field_2d/neural_field_2d.ipynb" = [
+  # Intentional use of  `σ`
+  "RUF001",
+]
+
+"examples/*" = [
+  # We don't care about nice APIs in our examples:
+  "PLR0917",
+]
+"scripts/*" = [
+  # We don't care about nice APIs in our scripts:
+  "PLR0917",
+]
+
+######################
+# mypy configuration #
+######################
+
+[tool.mypy]
+# Examples and docs are managed independently of the SDK.
+# in ini file adjacent to this.
+files = [
+  "rerun_py/rerun_sdk/rerun",
+  "rerun_py/rerun_bindings",
+  "rerun_py/tests",
+  "rerun_notebook/src/rerun_notebook",
+  "tests/python",
+]
+# These paths allow mypy to find rerun and rerun_bindings without needing
+# to run maturin develop first (which installs the .pth file).
+mypy_path = ["rerun_py", "rerun_py/rerun_sdk"]
+namespace_packages = true
+show_error_codes = true
+strict = true
+enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code", "possibly-undefined"]
+ignore_missing_imports = false
+no_implicit_reexport = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+
+module = [
+  "pyarrow.*",
+  # https://github.com/jupyter-widgets/ipywidgets/issues/3688
+  "ipywidgets.*",
+  "anywidget.*",
+  # TODO(nick): is this blocked on above?
+  "jupyter_ui_poll.*",
+  # Ignore imports used in tests but not in the SDK.
+  "torch.*",
+  "torchvision.*",
+  "torchaudio.*",
+  "cv2.*",
+  "huggingface_hub.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# rerun_draft is a sandbox for testing new APIs - we don't care about strict type checking
+module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
+ignore_errors = true
+ignore_missing_imports = true
