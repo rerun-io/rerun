@@ -139,19 +139,18 @@ def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
 
 def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.DataFrame, download_dir: Path) -> None:
     video_metadata = metadata.loc[metadata["video_id"] == float(video_id)]
-    visit_id = float(video_metadata["visit_id"].iat[0])
+    visit_id = video_metadata["visit_id"].iat[0]  # type: ignore[assignment]
     has_laser_scanner_point_clouds = video_metadata["has_laser_scanner_point_clouds"].iat[0]
 
     if not has_laser_scanner_point_clouds:
         print(f"Warning: Laser scanner point clouds for video {video_id} are not available")
         return
 
-    if math.isnan(visit_id) or not visit_id.is_integer():  # type: ignore[arg-type, union-attr]
+    if math.isnan(visit_id) or not visit_id.is_integer():  # type: ignore[union-attr]
         print(f"Warning: Downloading laser scanner point clouds for video {video_id} failed - Bad visit id {visit_id}")
         return
 
-    # Expecting an 8 digit integer
-    visit_id = int(cast("int", visit_id))  # type: ignore[redundant-cast]
+    visit_id = int(visit_id)  # type: ignore[arg-type]
     laser_scanner_point_clouds_ids = laser_scanner_point_clouds_for_visit_id(visit_id, download_dir)
 
     for point_cloud_id in laser_scanner_point_clouds_ids:
