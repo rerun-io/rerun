@@ -26,7 +26,7 @@ All the data that you log within Rerun is mapped to the concepts of entities and
 For example, consider the case of logging a point:
 
 ```python
-rr.log("my_point", rr.Points2D([32.7, 45.9], color=[255, 0, 0]))
+rr.log("my_point", rr.Points2D([32.7, 45.9], colors=[255, 0, 0]))
 ```
 
 This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points2D) archetype.
