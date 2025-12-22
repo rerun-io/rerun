@@ -14,9 +14,7 @@ pub struct TestIo(pub DuplexStream);
 impl Connected for TestIo {
     type ConnectInfo = ();
 
-    fn connect_info(&self) -> Self::ConnectInfo {
-        ()
-    }
+    fn connect_info(&self) -> Self::ConnectInfo {}
 }
 
 impl tokio::io::AsyncRead for TestIo {
@@ -53,7 +51,7 @@ impl tokio::io::AsyncWrite for TestIo {
     }
 }
 
-/// Utility function to create a ConnectionClient for a redap test service.
+/// Utility function to create a [`ConnectionClient`] for a redap test service.
 /// Some APIs in our stack require a client. This function creates a simple
 /// channel for connecting to a service.
 pub async fn create_test_client<S>(service: S) -> ConnectionClient
@@ -90,11 +88,14 @@ where
             re_protos::headers::new_rerun_headers_layer(name, version, is_client)
         });
 
+    #[cfg(feature = "perf_telemetry")]
+    let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
+
     let svc = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client: RedapClient = RerunCloudServiceClient::new(svc.into());
+    let client: RedapClient = RerunCloudServiceClient::new(svc);
 
     ConnectionClient::new(client)
 }

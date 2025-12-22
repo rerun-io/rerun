@@ -19,7 +19,7 @@ use datafusion::physical_expr::{
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use futures_util::{FutureExt, Stream};
+use futures_util::{FutureExt as _, Stream};
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
