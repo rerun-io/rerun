@@ -18,13 +18,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
@@ -63,11 +56,6 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
@@ -109,11 +97,6 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
@@ -169,10 +152,7 @@ jobs:
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache_key: "build-${{ matrix.name }}"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          cache_key_suffix: "${{ matrix.name }}"
 
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.9.1
