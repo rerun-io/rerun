@@ -1127,13 +1127,16 @@ impl RerunCloudService for RerunCloudHandler {
                                 latest_at
                                     .index
                                     .clone()
-                                    .ok_or(tonic::Status::invalid_argument(
-                                        "latest_at must specify time index",
-                                    ))?
+                                    .ok_or_else(|| {
+                                        tonic::Status::invalid_argument(
+                                            "latest_at must specify time index",
+                                        )
+                                    })?
                                     .into(),
                                 latest_at.at,
                             );
-                            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+                            let range =
+                                RangeQuery::new(range.index.clone().into(), range.index_range);
                             paths
                                 .iter()
                                 .flat_map(|entity_path| {
@@ -1146,18 +1149,10 @@ impl RerunCloudService for RerunCloudHandler {
                                         );
                                     let mut range = read_lock
                                         .range_relevant_chunks_for_all_components(
-                                            &range.clone().into(),
+                                            &range.clone(),
                                             entity_path,
                                             true,
                                         );
-
-                                    println!("latest at log {} chunks", latest_at.len());
-                                    println!("range got {} chunks", range.len());
-                                    for c in &latest_at {
-                                        for t in c.timelines() {
-                                            println!("timeline in latest at chunk {} {:?}", t.0, t.1);
-                                        }
-                                    }
 
                                     range.retain(|chunk| !latest_at.contains(chunk));
                                     latest_at.extend(range);
@@ -1171,9 +1166,11 @@ impl RerunCloudService for RerunCloudHandler {
                                 latest_at
                                     .index
                                     .clone()
-                                    .ok_or(tonic::Status::invalid_argument(
-                                        "latest_at must specify time index",
-                                    ))?
+                                    .ok_or_else(|| {
+                                        tonic::Status::invalid_argument(
+                                            "latest_at must specify time index",
+                                        )
+                                    })?
                                     .into(),
                                 latest_at.at,
                             );
@@ -1183,7 +1180,7 @@ impl RerunCloudService for RerunCloudHandler {
                                     store_handle
                                         .read()
                                         .latest_at_relevant_chunks_for_all_components(
-                                            &latest_at.clone().into(),
+                                            &latest_at.clone(),
                                             entity_path,
                                             true,
                                         )
@@ -1191,24 +1188,33 @@ impl RerunCloudService for RerunCloudHandler {
                                 .collect::<Vec<_>>()
                         }
                         (None, Some(range)) => {
-                            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+                            let range =
+                                RangeQuery::new(range.index.clone().into(), range.index_range);
                             paths
                                 .iter()
                                 .flat_map(|entity_path| {
-                                   store_handle
+                                    store_handle
                                         .read()
                                         .range_relevant_chunks_for_all_components(
-                                            &range.clone().into(),
+                                            &range.clone(),
                                             entity_path,
                                             true,
                                         )
                                 })
                                 .collect::<Vec<_>>()
                         }
-                        (None, None) => store_handle.read().iter_chunks().map(Clone::clone).collect(),
+                        (None, None) => store_handle
+                            .read()
+                            .iter_chunks()
+                            .map(Clone::clone)
+                            .collect(),
                     }
                 } else {
-                    store_handle.read().iter_chunks().map(Clone::clone).collect()
+                    store_handle
+                        .read()
+                        .iter_chunks()
+                        .map(Clone::clone)
+                        .collect()
                 };
 
                 for chunk in chunks {
