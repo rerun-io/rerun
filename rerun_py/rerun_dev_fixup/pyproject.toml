@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rerun-dev-fixup"
+version = "0.1.0"
+description = "Development helper for rerun-sdk editable installs"
+requires-python = ">=3.10"
+
+[tool.hatch.build.targets.wheel]
+# No Python packages, just the .pth file
+packages = []
+
+[tool.hatch.build.targets.wheel.force-include]
+"rerun_sdk_fixup.pth" = "rerun_sdk_fixup.pth"

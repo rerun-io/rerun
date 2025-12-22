@@ -5,7 +5,7 @@ Welcome to the release checklist.
 
 Run the checklist with:
 ```
-pixi run -e py py-build && pixi run -e py python tests/python/release_checklist/main.py
+pixi run py-build && pixi run uv run tests/python/release_checklist/main.py
 ```
 
 ### When releasing
