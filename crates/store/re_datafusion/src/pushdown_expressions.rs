@@ -427,7 +427,6 @@ fn replace_time_in_query(
             latest_at,
             range,
             columns_always_include_everything: false,
-            columns_always_include_chunk_ids: false,
             columns_always_include_byte_offsets: false,
             columns_always_include_entity_paths: false,
             columns_always_include_static_indexes: false,

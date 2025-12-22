@@ -791,9 +791,6 @@ pub struct Query {
     /// If true, `columns` will contain the entire schema.
     #[prost(bool, tag = "3")]
     pub columns_always_include_everything: bool,
-    /// If true, `columns` always includes `chunk_id`,
-    #[prost(bool, tag = "4")]
-    pub columns_always_include_chunk_ids: bool,
     /// If true, `columns` always includes `byte_offset` and `byte_size`.
     #[prost(bool, tag = "5")]
     pub columns_always_include_byte_offsets: bool,
