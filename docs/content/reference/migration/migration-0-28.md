@@ -215,6 +215,17 @@ Key migration patterns:
 - Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
 - Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame <!-- NOLINT -->
 
+The `DataFrame` created by `reader()` now supports server side filtering for segment IDs and time indices.
+These can cause significant performance enhancements for some queries. Any filters involving these columns
+should occur immediately after the creation of the `DataFrame` to ensure they are properly pushed down to
+the server.
+
+```python
+df = view.reader(index="log_tick").filter(
+    (col("rerun_segment_id") == "recording_0") & (col("log_tick") == 123456)
+)
+```
+
 ### Registration and tasks
 
 The dataset segment registration APIs have been consolidated, and return a `RegistrationHandle` specific to the registration process. The more generic `Tasks` object previously used has been removed.

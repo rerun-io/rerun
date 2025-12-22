@@ -1125,6 +1125,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
+                let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
 
@@ -1180,6 +1181,12 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
+
+                    // Calculate chunk byte size for batching optimization
+                    let chunk_size_bytes =
+                        re_byte_size::SizeBytes::total_size_bytes(chunk.as_ref());
+                    chunk_byte_sizes.push(chunk_size_bytes);
+
                     chunk_keys.push(
                         ChunkKey {
                             chunk_id: chunk.id(),
@@ -1200,6 +1207,7 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_key_refs,
                     chunk_entity_path,
                     chunk_is_static,
+                    chunk_byte_sizes,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
