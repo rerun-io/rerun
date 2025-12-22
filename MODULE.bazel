@@ -1,0 +1,33 @@
+# gazelle_rust is not published yet, so we grab it from GitHub.
+GAZELLE_RUST_COMMIT = "c464fb6932a04a1ba94094d1f5dcd5f6bcca03e2"
+# GAZELLE_RUST_SHA256 = "sha256-aXTLXjMybAeMnBCMjTR35uPVi7ZLbhHaLMqgm3aoZ60="
+GAZELLE_RUST_SHA256 = None
+
+bazel_dep(name = "rules_rust", version = "0.68.1")
+bazel_dep(name = "gazelle", version = "0.47.0")
+bazel_dep(name = "gazelle_rust", version = "0.1.0")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2024",
+    versions = ["1.88.0"],
+)
+use_repo(rust, "rust_toolchains")
+
+register_toolchains("@rust_toolchains//:all")
+
+crates = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+crates.from_cargo(
+    name = "crates-io",
+    cargo_lockfile = "//:Cargo.lock",
+    manifests = ["//:Cargo.toml"],
+)
+
+use_repo(crates, "crates-io")
+
+archive_override(
+    module_name = "gazelle_rust",
+    sha256 = GAZELLE_RUST_SHA256,
+    strip_prefix = "gazelle_rust-{}".format(GAZELLE_RUST_COMMIT),
+    url = "https://github.com/Calsign/gazelle_rust/archive/{}.zip".format(GAZELLE_RUST_COMMIT),
+)

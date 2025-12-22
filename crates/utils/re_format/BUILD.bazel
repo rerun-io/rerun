@@ -1,0 +1,24 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "re_format",
+    srcs = [
+        "src/duration.rs",
+        "src/lib.rs",
+        "src/time.rs",
+    ],
+    compile_data = ["Cargo.toml"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@crates-io//:half",
+        "@crates-io//:itertools",
+        "@crates-io//:num-traits",
+    ],
+)
+
+rust_test(
+    name = "re_format_test",
+    size = "small",
+    compile_data = ["Cargo.toml"],
+    crate = ":re_format",
+)

@@ -1,0 +1,40 @@
+load("@gazelle//:def.bzl", "gazelle", "gazelle_binary", "gazelle_test")
+
+# The following look like comments, but are directives that are parsed by `gazelle_rust`.
+
+# gazelle:rust_cargo_lockfile Cargo.lock
+# gazelle:rust_crates_prefix @crates-io//:
+# gazelle:rust_mode generate_from_cargo
+
+# Directories to process with Gazelle. We gradually opt into more crates here.
+GAZELLE_DIRS = [
+    "crates/utils/re_format",
+    "crates/utils/re_case",
+    "crates/utils/re_rvl",
+]
+
+# Custom gazelle_binary with Rust language support
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = [
+        "@gazelle_rust//rust_language",
+    ],
+)
+
+# Run with: bazel run //:gazelle
+gazelle(
+    name = "gazelle",
+    gazelle = ":gazelle_bin",
+    args = GAZELLE_DIRS,
+)
+
+# Test to verify BUILD files are up to date
+# Run with: bazel test //:gazelle_test
+gazelle_test(
+    name = "gazelle_test",
+    workspace = "//:MODULE.bazel",
+    gazelle = ":gazelle_bin",
+    size = "small",
+    args = GAZELLE_DIRS,
+)
+

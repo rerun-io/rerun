@@ -1,0 +1,18 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "re_rvl",
+    srcs = ["src/lib.rs"],
+    compile_data = ["Cargo.toml"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@crates-io//:byteorder",
+        "@crates-io//:thiserror",
+    ],
+)
+
+rust_test(
+    name = "re_rvl_test",
+    compile_data = ["Cargo.toml"],
+    crate = ":re_rvl",
+)

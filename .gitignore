@@ -30,6 +30,9 @@ _deps
 /target_ra
 /target_wasm
 
+# Bazel build artifacts:
+/bazel-*
+
 # Python virtual environment:
 **/venv*
 **/.venv*

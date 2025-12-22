@@ -1,0 +1,15 @@
+# CMake build artifacts that may contain their own Bazel files
+build
+
+# Rust target directories
+target
+target_pixi
+target_pixi_wasm
+target_ra
+target_wasm
+
+# Arrow (if it contains its own Bazel files)
+arrow
+
+# Pixi Python environment (contains PyTorch with BUILD files)
+.pixi

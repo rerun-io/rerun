@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "re_case",
+    srcs = ["src/lib.rs"],
+    compile_data = ["Cargo.toml"],
+    visibility = ["//visibility:public"],
+    deps = ["@crates-io//:convert_case"],
+)
+
+rust_test(
+    name = "re_case_test",
+    compile_data = ["Cargo.toml"],
+    crate = ":re_case",
+)
