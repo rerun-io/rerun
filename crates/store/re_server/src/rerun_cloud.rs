@@ -12,7 +12,7 @@ use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle, LatestAtQuery, RangeQuery};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::LanceTable;
@@ -1108,7 +1108,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_static_data,
             exclude_temporal_data,
             scan_parameters,
-            query: _,
+            query,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -1151,7 +1151,103 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let mut timelines = BTreeMap::new();
 
-                for chunk in store_handle.read().iter_chunks() {
+                let chunks = if let Some(query) = &query {
+                    let paths = if entity_paths.is_empty() {
+                        IntSet::from_iter([EntityPath::from("/**")])
+                    } else {
+                        entity_paths.clone()
+                    };
+                    match (&query.latest_at, &query.range) {
+                        (Some(latest_at), Some(range)) => {
+                            let latest_at = LatestAtQuery::new(
+                                latest_at
+                                    .index
+                                    .clone()
+                                    .ok_or(tonic::Status::invalid_argument(
+                                        "latest_at must specify time index",
+                                    ))?
+                                    .into(),
+                                latest_at.at,
+                            );
+                            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+                            paths
+                                .iter()
+                                .flat_map(|entity_path| {
+                                    let read_lock = store_handle.read();
+                                    let mut latest_at = read_lock
+                                        .latest_at_relevant_chunks_for_all_components(
+                                            &latest_at,
+                                            entity_path,
+                                            true,
+                                        );
+                                    let mut range = read_lock
+                                        .range_relevant_chunks_for_all_components(
+                                            &range.clone().into(),
+                                            entity_path,
+                                            true,
+                                        );
+
+                                    println!("latest at log {} chunks", latest_at.len());
+                                    println!("range got {} chunks", range.len());
+                                    for c in &latest_at {
+                                        for t in c.timelines() {
+                                            println!("timeline in latest at chunk {} {:?}", t.0, t.1);
+                                        }
+                                    }
+
+                                    range.retain(|chunk| !latest_at.contains(chunk));
+                                    latest_at.extend(range);
+
+                                    latest_at
+                                })
+                                .collect::<Vec<_>>()
+                        }
+                        (Some(latest_at), None) => {
+                            let latest_at = LatestAtQuery::new(
+                                latest_at
+                                    .index
+                                    .clone()
+                                    .ok_or(tonic::Status::invalid_argument(
+                                        "latest_at must specify time index",
+                                    ))?
+                                    .into(),
+                                latest_at.at,
+                            );
+                            paths
+                                .iter()
+                                .flat_map(|entity_path| {
+                                    store_handle
+                                        .read()
+                                        .latest_at_relevant_chunks_for_all_components(
+                                            &latest_at.clone().into(),
+                                            entity_path,
+                                            true,
+                                        )
+                                })
+                                .collect::<Vec<_>>()
+                        }
+                        (None, Some(range)) => {
+                            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+                            paths
+                                .iter()
+                                .flat_map(|entity_path| {
+                                   store_handle
+                                        .read()
+                                        .range_relevant_chunks_for_all_components(
+                                            &range.clone().into(),
+                                            entity_path,
+                                            true,
+                                        )
+                                })
+                                .collect::<Vec<_>>()
+                        }
+                        (None, None) => store_handle.read().iter_chunks().map(Clone::clone).collect(),
+                    }
+                } else {
+                    store_handle.read().iter_chunks().map(Clone::clone).collect()
+                };
+
+                for chunk in chunks {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
                         continue;
                     }
