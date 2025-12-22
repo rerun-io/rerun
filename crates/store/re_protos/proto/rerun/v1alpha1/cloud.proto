@@ -862,9 +862,9 @@ message CreateTableEntryRequest {
 
   // Information about the table to register.
   //
-  // This must be encoded message of one one of the following supported types:
+  // This must be encoded message of one of the following supported types:
   // - LanceTable
-  google.protobuf.Any provider_details = 2;
+  optional google.protobuf.Any provider_details = 2;
 
   // Schema of the table to create
   rerun.common.v1alpha1.Schema schema = 3;

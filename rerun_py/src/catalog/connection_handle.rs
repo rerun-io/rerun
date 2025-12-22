@@ -209,7 +209,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         name: String,
         schema: SchemaRef,
-        url: &url::Url,
+        url: Option<url::Url>,
     ) -> PyResult<TableEntry> {
         let entry_id = wait_for_future(
             py,
