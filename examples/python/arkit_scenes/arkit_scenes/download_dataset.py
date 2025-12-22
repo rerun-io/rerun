@@ -7,7 +7,7 @@ import os
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Final, cast
+from typing import Final
 
 import pandas as pd
 
@@ -17,7 +17,14 @@ VALIDATION: Final = "Validation"
 HIGRES_DEPTH_ASSET_NAME: Final = "highres_depth"
 POINT_CLOUDS_FOLDER: Final = "laser_scanner_point_clouds"
 
-AVAILABLE_RECORDINGS: Final = ["48458663", "42444949", "41069046", "41125722", "41125763", "42446167"]
+AVAILABLE_RECORDINGS: Final = [
+    "48458663",
+    "42444949",
+    "41069046",
+    "41125722",
+    "41125763",
+    "42446167",
+]
 DATASET_DIR: Final = Path(__file__).parent.parent / "dataset"
 
 default_raw_dataset_assets = [
@@ -139,18 +146,18 @@ def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
 
 def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.DataFrame, download_dir: Path) -> None:
     video_metadata = metadata.loc[metadata["video_id"] == float(video_id)]
-    visit_id = video_metadata["visit_id"].iat[0]  # type: ignore[assignment]
+    visit_id: float = video_metadata["visit_id"].iat[0]  # type: ignore[assignment]
     has_laser_scanner_point_clouds = video_metadata["has_laser_scanner_point_clouds"].iat[0]
 
     if not has_laser_scanner_point_clouds:
         print(f"Warning: Laser scanner point clouds for video {video_id} are not available")
         return
 
-    if math.isnan(visit_id) or not visit_id.is_integer():  # type: ignore[union-attr]
+    if math.isnan(visit_id) or not visit_id.is_integer():
         print(f"Warning: Downloading laser scanner point clouds for video {video_id} failed - Bad visit id {visit_id}")
         return
 
-    visit_id = int(visit_id)  # type: ignore[arg-type]
+    visit_id = int(visit_id)
     laser_scanner_point_clouds_ids = laser_scanner_point_clouds_for_visit_id(visit_id, download_dir)
 
     for point_cloud_id in laser_scanner_point_clouds_ids:
