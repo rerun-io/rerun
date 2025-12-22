@@ -14,6 +14,7 @@ version.workspace = true
 
 [features]
 default = []
+perf_telemetry = ["re_redap_client/perf_telemetry", "re_perf_telemetry"]
 
 [lints]
 workspace = true
@@ -22,7 +23,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
 re_arrow_util.workspace = true
 re_auth.workspace = true
@@ -30,6 +30,7 @@ re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_datafusion.workspace = true
 re_log_types.workspace = true
+re_perf_telemetry = { workspace = true, optional = true }
 re_protos.workspace = true
 re_redap_client.workspace = true
 re_sdk_types.workspace = true

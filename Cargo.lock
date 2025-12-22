@@ -9433,6 +9433,7 @@ dependencies = [
  "re_chunk_store",
  "re_datafusion",
  "re_log_types",
+ "re_perf_telemetry",
  "re_protos",
  "re_redap_client",
  "re_sdk",
