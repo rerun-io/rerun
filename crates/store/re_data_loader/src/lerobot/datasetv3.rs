@@ -16,7 +16,7 @@ use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
-use re_video::{StableIndexDeque, VideoDataDescription};
+use re_video::VideoDataDescription;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -468,25 +468,32 @@ impl LeRobotDatasetV3 {
 
         // Find the GOPs that contain our time range
         let start_gop = video
-            .gop_index_containing_presentation_timestamp(start_video_time)
+            .presentation_time_keyframe_index(start_video_time)
             .unwrap_or(0);
 
-        let end_gop = video
-            .gop_index_containing_presentation_timestamp(end_video_time)
-            .unwrap_or_else(|| video.gops.num_elements() - 1);
+        let end_keyframe = video
+            .presentation_time_keyframe_index(end_video_time)
+            .map(|idx| idx + 1)
+            .unwrap_or_else(|| video.keyframe_indices.len());
 
         // Determine the sample range to extract from the video
-        let start_sample = video.gops[start_gop].sample_range.start;
-        let end_sample = video.gops[end_gop].sample_range.end;
+        let start_sample = video.keyframe_indices[start_gop];
+        let end_sample = video
+            .keyframe_indices
+            .get(end_keyframe)
+            .copied()
+            .unwrap_or_else(|| video.samples.next_index());
 
         let sample_range = start_sample..end_sample;
 
         // Extract all video samples in this range
         let mut samples = Vec::with_capacity(sample_range.len());
-        let mut buffers = StableIndexDeque::new();
-        buffers.push_back(video_bytes);
 
         for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
+            let Some(sample_meta) = sample_meta.sample() else {
+                continue;
+            };
+
             // make sure we absolutely do not leak any samples from outside the requested time range
             if sample_meta.presentation_timestamp < start_video_time
                 || sample_meta.presentation_timestamp >= end_video_time
@@ -494,7 +501,7 @@ impl LeRobotDatasetV3 {
                 continue;
             }
 
-            let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
+            let chunk = sample_meta.get(sample_idx).ok_or_else(|| {
                 anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
             })?;
 
