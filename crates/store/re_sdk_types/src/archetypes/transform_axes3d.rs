@@ -111,6 +111,12 @@ impl TransformAxes3D {
             component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
+
+    /// Returns the visualizer type name that corresponds to this archetype.
+    #[inline]
+    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
+        crate::blueprint::components::VisualizerType("TransformAxes3D".into())
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =

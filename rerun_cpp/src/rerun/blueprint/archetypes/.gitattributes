@@ -67,5 +67,7 @@ visible_time_ranges.cpp linguist-generated=true
 visible_time_ranges.hpp linguist-generated=true
 visual_bounds2d.cpp linguist-generated=true
 visual_bounds2d.hpp linguist-generated=true
+visualizer_instruction.cpp linguist-generated=true
+visualizer_instruction.hpp linguist-generated=true
 visualizer_overrides.cpp linguist-generated=true
 visualizer_overrides.hpp linguist-generated=true

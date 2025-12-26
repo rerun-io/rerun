@@ -63,6 +63,9 @@ pub struct AppOptions {
     /// see [`AppOptions::cache_subdirectory`].
     #[cfg(not(target_arch = "wasm32"))]
     pub cache_directory: Option<std::path::PathBuf>,
+
+    /// Enables experimental visualization of arbitrary scalar values.
+    pub experimental_any_scalars: bool,
 }
 
 impl Default for AppOptions {
@@ -90,6 +93,8 @@ impl Default for AppOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),
+
+            experimental_any_scalars: false,
         }
     }
 }

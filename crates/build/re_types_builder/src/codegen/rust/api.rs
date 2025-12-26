@@ -22,10 +22,10 @@ use crate::codegen::{Target, autogen_warning};
 use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
-    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    TypeRegistry, format_path,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RERUN_VISUALIZER,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, TypeRegistry, format_path,
 };
 
 // ---
@@ -1037,7 +1037,11 @@ fn quote_trait_impls_for_datatype_or_component(
 
 fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
     let Object {
-        fqname, name, kind, ..
+        fqname,
+        name,
+        kind,
+        attrs,
+        ..
     } = obj;
 
     assert_eq!(kind, &ObjectKind::Archetype);
@@ -1116,6 +1120,21 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         })
         .collect_vec();
 
+    let visualizer_override = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
+        let doc_lines = ["Returns the visualizer type name that corresponds to this archetype."];
+        let doc_attrs = doc_lines.iter().map(|line| {
+            quote! { #[doc = #line] }
+        });
+
+        quote! {
+            #(#doc_attrs)*
+            #[inline]
+            pub fn visualizer() -> crate::blueprint::components::VisualizerType {
+                crate::blueprint::components::VisualizerType(#visualizer.into())
+            }
+        }
+    });
+
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
     let (num_recommended_descriptors, recommended_descriptors) =
@@ -1177,6 +1196,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
     quote! {
         impl #name {
             #(#all_descriptor_methods)*
+
+            #visualizer_override
         }
 
         static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_required_descriptors]> =
