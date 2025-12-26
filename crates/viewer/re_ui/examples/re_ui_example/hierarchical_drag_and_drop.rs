@@ -358,7 +358,7 @@ impl HierarchicalDragAndDrop {
         //
 
         // find the item being dragged
-        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| (*payload))
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
         else {
             // nothing is being dragged, we're done here
             return;

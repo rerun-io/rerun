@@ -191,7 +191,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let both_static_and_non_static = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(both_static_and_non_static);
@@ -207,7 +207,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let static_only = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(static_only);
@@ -223,7 +223,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let non_static_only = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(non_static_only);
