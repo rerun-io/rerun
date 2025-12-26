@@ -43,7 +43,7 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
                 re_viewer::AsyncRuntimeHandle::new_native(runtime.handle().clone()),
             );
             app.add_log_receiver(rx);
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         force_wgpu_backend.as_deref(),
     )

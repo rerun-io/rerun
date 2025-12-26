@@ -246,7 +246,7 @@ impl App {
         }
 
         if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
-            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+            state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
         if app_env.is_test() {
@@ -1403,9 +1403,11 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source
-            .clone()
-            .stream(Self::auth_error_handler(sender), &self.connection_registry);
+        let stream = data_source.clone().stream(
+            Self::auth_error_handler(sender),
+            &self.connection_registry,
+            self.app_options().experimental.stream_mode,
+        );
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
