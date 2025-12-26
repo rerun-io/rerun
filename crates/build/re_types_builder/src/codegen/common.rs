@@ -31,6 +31,9 @@ pub struct ExampleInfo<'a> {
 
     /// Any of the extensions lists here are allowed to be missing.
     pub missing_extensions: Vec<String>,
+
+    /// Optional region name to extract from the snippet.
+    pub region: Option<&'a str>,
 }
 
 impl<'a> ExampleInfo<'a> {
@@ -64,7 +67,8 @@ impl<'a> ExampleInfo<'a> {
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
         let name = path.split('/').next_back().unwrap_or_default().to_owned();
 
-        let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
+        let (mut title, mut image, mut exclude_from_api_docs, mut region) =
+            (None, None, false, None);
 
         let mut missing_extensions = Vec::new();
 
@@ -82,9 +86,10 @@ impl<'a> ExampleInfo<'a> {
                 // \example example_name "Example Title"
                 title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
             } else {
-                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" missing="cpp, py"
+                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" missing="cpp, py" region="main-logic"
                 title = find_keyed("title", args);
                 image = find_keyed("image", args).map(ImageUrl::parse);
+                region = find_keyed("region", args);
                 if let Some(missing) = find_keyed("missing", args) {
                     missing_extensions.extend(missing.split(',').map(|s| s.trim().to_owned()));
                 }
@@ -98,6 +103,7 @@ impl<'a> ExampleInfo<'a> {
             image,
             exclude_from_api_docs,
             missing_extensions,
+            region,
         }
     }
 }
@@ -288,6 +294,52 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
+/// Extract a specific region from code content based on region markers.
+///
+/// Looks for comments like:
+/// - `// region: region_name` or `# region: region_name`
+/// - `// endregion: region_name` or `# endregion: region_name`
+///
+/// Returns the lines between the markers, or the original content if region not found.
+fn extract_region(content: &[String], region_name: &str) -> Vec<String> {
+    let start_markers = [
+        format!("// region: {}", region_name),
+        format!("# region: {}", region_name),
+        format!("<!-- region: {} -->", region_name),
+    ];
+    let end_markers = [
+        format!("// endregion: {}", region_name),
+        format!("# endregion: {}", region_name),
+        format!("<!-- endregion: {} -->", region_name),
+    ];
+
+    let mut start_idx = None;
+    let mut end_idx = None;
+
+    for (i, line) in content.iter().enumerate() {
+        let line_trimmed = line.trim();
+
+        if start_idx.is_none() && start_markers.iter().any(|marker| line_trimmed == marker) {
+            start_idx = Some(i + 1); // Start after the marker line
+        } else if start_idx.is_some() && end_markers.iter().any(|marker| line_trimmed == marker) {
+            end_idx = Some(i); // End before the marker line
+            break;
+        }
+    }
+
+    match (start_idx, end_idx) {
+        (Some(start), Some(end)) if start < end => content[start..end].to_vec(),
+        _ => {
+            // Region not found, return original content
+            re_log::warn!(
+                "Region '{}' not found in snippet, returning full content",
+                region_name
+            );
+            content.to_vec()
+        }
+    }
+}
+
 pub fn collect_snippets_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
@@ -342,6 +394,11 @@ pub fn collect_snippets_for_api_docs<'a>(
             && first_line.len() > 6
         {
             content.remove(0);
+        }
+
+        // Extract specific region if specified
+        if let Some(region_name) = base.region {
+            content = extract_region(&content, region_name);
         }
 
         // trim trailing blank lines
