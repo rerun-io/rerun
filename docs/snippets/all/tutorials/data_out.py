@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import numpy as np
 import rerun as rr
+
 # endregion: imports
 
 # ----------------------------------------------------------------------------------------------
 # Load and prepare the data
 
-# TODO find rrd and check in to repo
+# TODO(nick): find rrd and check in to repo
 # region: launch_server
 server = rr.server.Server(datasets={"tutorial": ["/Users/nick/Downloads/face_tracking.rrd"]})
 
@@ -48,7 +49,7 @@ pd_df["jawOpenState"] = pd_df["jawOpen"] > 0.15
 # ----------------------------------------------------------------------------------------------
 # Log the data back to the viewer
 
-# TODO: this is the only way to get the application_id but is deprecated
+# TODO(nick): this is the only way to get the application_id but is deprecated
 application_id = rr.dataframe.load_recording("/Users/nick/Downloads/face_tracking.rrd").application_id()
 
 # Connect to the viewer
@@ -77,4 +78,4 @@ rr.send_columns(
 )
 # endregion: log_labels
 
-input("Press Enter to terminate the server...")
+input("Press Enter to terminate the server…")

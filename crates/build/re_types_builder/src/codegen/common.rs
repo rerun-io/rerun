@@ -303,14 +303,14 @@ pub struct Example<'a> {
 /// Returns the lines between the markers, or the original content if region not found.
 fn extract_region(content: &[String], region_name: &str) -> Vec<String> {
     let start_markers = [
-        format!("// region: {}", region_name),
-        format!("# region: {}", region_name),
-        format!("<!-- region: {} -->", region_name),
+        format!("// region: {region_name}"),
+        format!("# region: {region_name}"),
+        format!("<!-- region: {region_name} -->"),
     ];
     let end_markers = [
-        format!("// endregion: {}", region_name),
-        format!("# endregion: {}", region_name),
-        format!("<!-- endregion: {} -->", region_name),
+        format!("// endregion: {region_name}"),
+        format!("# endregion: {region_name}"),
+        format!("<!-- endregion: {region_name} -->"),
     ];
 
     let mut start_idx = None;
