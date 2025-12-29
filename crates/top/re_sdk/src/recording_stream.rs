@@ -130,6 +130,9 @@ pub struct RecordingStreamBuilder {
     // Optional user-defined recording properties.
     should_send_properties: bool,
     recording_info: RecordingInfo,
+
+    /// Optional default blueprint.
+    default_blueprint: Option<crate::blueprint::Blueprint>,
 }
 
 impl RecordingStreamBuilder {
@@ -163,6 +166,8 @@ impl RecordingStreamBuilder {
             should_send_properties: true,
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
+
+            default_blueprint: None,
         }
     }
 
@@ -186,6 +191,8 @@ impl RecordingStreamBuilder {
             should_send_properties: true,
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
+
+            default_blueprint: None,
         }
     }
 
@@ -247,6 +254,16 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn send_properties(mut self, should_send: bool) -> Self {
         self.should_send_properties = should_send;
+        self
+    }
+
+    /// Set a default blueprint.
+    ///
+    /// To send a blueprint to an existing recording, use
+    /// [`RecordingStream::send_blueprint_builder`] instead.
+    #[inline]
+    pub fn default_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
+        self.default_blueprint = Some(blueprint);
         self
     }
 
@@ -613,7 +630,10 @@ impl RecordingStreamBuilder {
     ///     .spawn_opts(&re_sdk::SpawnOptions::default())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
+    pub fn spawn_opts(
+        mut self,
+        opts: &crate::SpawnOptions,
+    ) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(RecordingStream::disabled());
@@ -627,9 +647,17 @@ impl RecordingStreamBuilder {
             return self.connect_grpc_opts(url);
         }
 
+        // Spawn viewer and connect normally
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(url)
+        let blueprint = self.default_blueprint.take();
+        let rec = self.connect_grpc_opts(url)?;
+
+        if let Some(blueprint) = blueprint {
+            blueprint.send(&rec, false, true)?;
+        }
+
+        Ok(rec)
     }
 
     /// Returns whether or not logging is enabled, a [`StoreInfo`] and the associated batcher
@@ -659,6 +687,7 @@ impl RecordingStreamBuilder {
             batcher_hooks,
             should_send_properties,
             recording_info,
+            default_blueprint: _,
         } = self;
 
         let store_id = StoreId::new(
@@ -2230,10 +2259,6 @@ impl RecordingStream {
 
         if let Some(blueprint_id) = blueprint_id {
             if blueprint_id == activation_cmd.blueprint_id {
-                // Let the viewer know that the blueprint has been fully received,
-                // and that it can now be activated.
-                // We don't want to activate half-loaded blueprints, because that can be confusing,
-                // and can also lead to problems with view heuristics.
                 self.record_msg(activation_cmd.into());
             } else {
                 re_log::warn!(
@@ -2243,6 +2268,19 @@ impl RecordingStream {
                 );
             }
         }
+    }
+
+    /// Send a blueprint using the high-level builder API.
+    ///
+    /// This is a convenience wrapper around [`Self::send_blueprint`] that takes
+    /// a [`crate::blueprint::Blueprint`] instead of raw `LogMsgs`.
+    pub fn send_blueprint_builder(
+        &self,
+        blueprint: &crate::blueprint::Blueprint,
+        make_active: bool,
+        make_default: bool,
+    ) -> RecordingStreamResult<()> {
+        blueprint.send(self, make_active, make_default)
     }
 }
 

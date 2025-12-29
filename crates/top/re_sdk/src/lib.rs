@@ -21,6 +21,12 @@ mod log_sink;
 mod recording_stream;
 mod spawn;
 
+// ---------------
+// Public modules:
+
+/// Blueprint API for declarative viewer configuration.
+pub mod blueprint;
+
 // -------------
 // Public items:
 
@@ -99,6 +105,7 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
+
 pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,

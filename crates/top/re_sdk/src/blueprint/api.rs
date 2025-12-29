@@ -1,0 +1,128 @@
+use re_log_types::{BlueprintActivationCommand, LogMsg};
+use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
+use re_sdk_types::blueprint::components::{AutoLayout, AutoViews, RootContainer};
+use re_sdk_types::datatypes::Bool;
+
+use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
+
+use super::{ContainerLike, Tabs};
+
+/// Blueprint for configuring the viewer layout.
+#[derive(Debug)]
+pub struct Blueprint {
+    root_container: Option<ContainerLike>,
+    auto_layout: Option<bool>,
+    auto_views: Option<bool>,
+}
+
+impl Blueprint {
+    /// Create a new blueprint with the given root container.
+    pub fn new(root: impl Into<ContainerLike>) -> Self {
+        let root_like = root.into();
+        let root_container = match root_like {
+            ContainerLike::Horizontal(_)
+            | ContainerLike::Vertical(_)
+            | ContainerLike::Grid(_)
+            | ContainerLike::Tabs(_) => Some(root_like),
+            ContainerLike::View(view) => {
+                // Wrap a single view in a Tabs container (matching Python's behavior)
+                Some(Tabs::new([view]).into())
+            }
+        };
+
+        Self {
+            root_container,
+            auto_layout: None,
+            auto_views: None,
+        }
+    }
+
+    /// Enable or disable automatic layout.
+    pub fn with_auto_layout(mut self, enabled: bool) -> Self {
+        self.auto_layout = Some(enabled);
+        self
+    }
+
+    /// Enable or disable automatic view creation.
+    pub fn with_auto_views(mut self, enabled: bool) -> Self {
+        self.auto_views = Some(enabled);
+        self
+    }
+
+    /// Convert the blueprint into a vector of `LogMsgs`.
+    pub(crate) fn to_log_msgs(&self, application_id: &str) -> RecordingStreamResult<Vec<LogMsg>> {
+        // Create a temporary blueprint recording stream with memory sink
+        let (rec, storage) = RecordingStreamBuilder::new(application_id)
+            .recording_id(re_log_types::RecordingId::random())
+            .blueprint()
+            .memory()?;
+
+        // Set the "blueprint" timeline - required for viewer to identify blueprint data
+        rec.set_time_sequence("blueprint", 0);
+
+        // Log the root container and all its children
+        if let Some(ref root) = self.root_container {
+            root.log_to_stream(&rec)?;
+
+            // Get the root container ID
+            let root_id = match root {
+                ContainerLike::Horizontal(h) => h.0.id,
+                ContainerLike::Vertical(v) => v.0.id,
+                ContainerLike::Grid(g) => g.0.id,
+                ContainerLike::Tabs(t) => t.0.id,
+                ContainerLike::View(_) => {
+                    unreachable!("View should have been wrapped in Tabs container in new()")
+                }
+            };
+
+            let mut viewport = ViewportBlueprint::new();
+            viewport = viewport.with_root_container(RootContainer(root_id.into()));
+
+            if let Some(auto_layout) = self.auto_layout {
+                viewport = viewport.with_auto_layout(AutoLayout(Bool(auto_layout)));
+            }
+            if let Some(auto_views) = self.auto_views {
+                viewport = viewport.with_auto_views(AutoViews(Bool(auto_views)));
+            }
+
+            rec.log("viewport", &viewport)?;
+        }
+
+        let msgs = storage.take();
+
+        Ok(msgs)
+    }
+
+    /// Send the blueprint to the given recording stream.
+    pub fn send(
+        &self,
+        recording: &RecordingStream,
+        make_active: bool,
+        make_default: bool,
+    ) -> RecordingStreamResult<()> {
+        let application_id = recording
+            .store_info()
+            .map(|info| info.application_id().to_string())
+            .unwrap_or_else(|| "rerun_example_app".to_owned());
+
+        let msgs = self.to_log_msgs(&application_id)?;
+
+        let blueprint_id = msgs
+            .first()
+            .and_then(|msg| match msg {
+                LogMsg::SetStoreInfo(info) => Some(info.info.store_id.clone()),
+                _ => None,
+            })
+            .expect("Blueprint should have at least one SetStoreInfo message");
+
+        let activation_cmd = BlueprintActivationCommand {
+            blueprint_id: blueprint_id.clone(),
+            make_active,
+            make_default,
+        };
+
+        recording.send_blueprint(msgs, activation_cmd);
+
+        Ok(())
+    }
+}

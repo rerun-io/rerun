@@ -1301,6 +1301,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "blueprint"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "rerun",
+]
+
+[[package]]
 name = "bon"
 version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9536,6 +9544,7 @@ dependencies = [
  "similar-asserts",
  "thiserror 2.0.17",
  "tokio",
+ "uuid",
  "vec1",
  "webbrowser",
 ]
