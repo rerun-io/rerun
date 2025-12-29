@@ -755,7 +755,6 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         image,
         exclude_from_api_docs: _,
         missing_extensions: _,
-        region: _,
     } in examples
     {
         let title = title.unwrap_or(name);
