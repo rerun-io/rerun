@@ -146,4 +146,4 @@ _Note_: should you want to filter out the NaNs, you may use the [`dropna()`](htt
 
 ## Next steps
 
-With this, we are ready to analyze the data and log back the result to the Rerun viewer, which is covered in the [next section](analyze-and-log.md) of this guide.
+With this, we are ready to analyze the data and log back the result to the Rerun viewer, which is covered in the [next section](analyze-and-send.md) of this guide.

@@ -1,7 +1,7 @@
 ---
 title: Analyze the data and send back the results
 order: 3
-redirect: getting-started/data-out/query-data
+redirect: getting-started/data-out/analyze-and-send
 hidden: true
 ---
 
