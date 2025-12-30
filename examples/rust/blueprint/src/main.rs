@@ -45,7 +45,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ContainerLike::from(
                     Spatial2DView::new("Rect 1")
                         .with_origin("/")
-                        .with_contents(["/**"]),
+                        .with_contents(["/**"])
+                        .with_defaults(&rerun::Boxes2D::update_fields().with_radii([2.0]))
+                        .with_overrides(
+                            "rect/0",
+                            &rerun::Boxes2D::update_fields().with_radii([1.0]),
+                        ),
                 ),
             ]))
             .with_auto_views(args.auto_views)

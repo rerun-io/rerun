@@ -1,5 +1,6 @@
 //! View types for blueprint configuration.
 
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use re_log_types::EntityPath;
@@ -7,6 +8,7 @@ use re_sdk_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
+use re_sdk_types::{AsComponents, SerializedComponentBatch};
 
 /// Internal view type. Use specific view types like [`TimeSeriesView`], [`MapView`], etc.
 #[derive(Debug)]
@@ -17,12 +19,31 @@ pub struct View {
     pub(crate) origin: EntityPath,
     pub(crate) contents: Vec<String>, // Query expressions
     pub(crate) visible: Option<bool>,
+    pub(crate) defaults: Vec<Vec<SerializedComponentBatch>>,
+    pub(crate) overrides: HashMap<EntityPath, Vec<Vec<SerializedComponentBatch>>>,
 }
 
 impl View {
     /// Get the blueprint path for this view.
     pub fn blueprint_path(&self) -> EntityPath {
         format!("view/{}", self.id).into()
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub(crate) fn add_defaults(&mut self, archetype: &dyn AsComponents) {
+        self.defaults.push(archetype.as_serialized_batches());
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub(crate) fn add_overrides(
+        &mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) {
+        self.overrides
+            .entry(entity_path.into())
+            .or_insert_with(Vec::new)
+            .push(archetype.as_serialized_batches());
     }
 
     pub(crate) fn log_to_stream(
@@ -52,7 +73,34 @@ impl View {
             arch = arch.with_visible(Visible(Bool(visible)));
         }
 
-        stream.log(self.blueprint_path(), &arch)
+        stream.log(self.blueprint_path(), &arch)?;
+
+        // Log defaults
+        for default_batches in &self.defaults {
+            stream.log_serialized_batches(
+                format!("{}/defaults", self.blueprint_path()),
+                false, // not static
+                default_batches.iter().cloned(),
+            )?;
+        }
+
+        // Log overrides
+        for (entity_path, override_batches_list) in &self.overrides {
+            let override_path = format!(
+                "{}/ViewContents/overrides/{}",
+                self.blueprint_path(),
+                entity_path
+            );
+            for override_batches in override_batches_list {
+                stream.log_serialized_batches(
+                    override_path.clone(),
+                    false, // not static
+                    override_batches.iter().cloned(),
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -69,6 +117,8 @@ impl TimeSeriesView {
             origin: "/".into(),
             contents: vec!["/**".into()], // Default: show everything
             visible: None,
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
         })
     }
 
@@ -87,6 +137,22 @@ impl TimeSeriesView {
     /// Set visibility.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) -> Self {
+        self.0.add_overrides(entity_path, archetype);
         self
     }
 }
@@ -104,6 +170,8 @@ impl Spatial2DView {
             origin: "/".into(),
             contents: vec!["/**".into()], // Default: show everything
             visible: None,
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
         })
     }
 
@@ -122,6 +190,22 @@ impl Spatial2DView {
     /// Set visibility.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) -> Self {
+        self.0.add_overrides(entity_path, archetype);
         self
     }
 }
@@ -139,6 +223,8 @@ impl Spatial3DView {
             origin: "/".into(),
             contents: vec!["/**".into()], // Default: show everything
             visible: None,
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
         })
     }
 
@@ -157,6 +243,22 @@ impl Spatial3DView {
     /// Set visibility.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) -> Self {
+        self.0.add_overrides(entity_path, archetype);
         self
     }
 }
@@ -174,6 +276,8 @@ impl MapView {
             origin: "/".into(),
             contents: vec!["/**".into()],
             visible: None,
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
         })
     }
 
@@ -192,6 +296,22 @@ impl MapView {
     /// Set visibility.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) -> Self {
+        self.0.add_overrides(entity_path, archetype);
         self
     }
 }
@@ -209,6 +329,8 @@ impl TextDocumentView {
             origin: "/".into(),
             contents: vec!["/**".into()],
             visible: None,
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
         })
     }
 
@@ -227,6 +349,22 @@ impl TextDocumentView {
     /// Set visibility.
     pub fn with_visible(mut self, visible: bool) -> Self {
         self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add an override archetype for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        archetype: &dyn AsComponents,
+    ) -> Self {
+        self.0.add_overrides(entity_path, archetype);
         self
     }
 }
