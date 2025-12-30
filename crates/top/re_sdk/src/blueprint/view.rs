@@ -19,14 +19,37 @@ pub struct View {
     pub(crate) origin: EntityPath,
     pub(crate) contents: Vec<String>, // Query expressions
     pub(crate) visible: Option<bool>,
+    pub(crate) properties: HashMap<String, Vec<SerializedComponentBatch>>,
     pub(crate) defaults: Vec<Vec<SerializedComponentBatch>>,
     pub(crate) overrides: HashMap<EntityPath, Vec<Vec<SerializedComponentBatch>>>,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            class_identifier: String::new(),
+            name: None,
+            origin: "/".into(),
+            contents: vec!["/**".into()],
+            visible: None,
+            properties: HashMap::new(),
+            defaults: Vec::new(),
+            overrides: HashMap::new(),
+        }
+    }
 }
 
 impl View {
     /// Get the blueprint path for this view.
     pub fn blueprint_path(&self) -> EntityPath {
         format!("view/{}", self.id).into()
+    }
+
+    /// Add a property archetype that applies to the view itself.
+    pub(crate) fn add_property(&mut self, name: &str, archetype: &dyn AsComponents) {
+        self.properties
+            .insert(name.to_string(), archetype.as_serialized_batches());
     }
 
     /// Add a default archetype that applies to all entities in the view.
@@ -75,6 +98,15 @@ impl View {
 
         stream.log(self.blueprint_path(), &arch)?;
 
+        // Log view-specific properties/settings
+        for (prop_name, prop_batches) in &self.properties {
+            stream.log_serialized_batches(
+                format!("{}/{}", self.blueprint_path(), prop_name),
+                false,
+                prop_batches.iter().cloned(),
+            )?;
+        }
+
         // Log defaults
         for default_batches in &self.defaults {
             stream.log_serialized_batches(
@@ -111,14 +143,9 @@ impl TimeSeriesView {
     /// Create a new time series view.
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
-            id: Uuid::new_v4(),
             class_identifier: "TimeSeries".into(),
             name: Some(name.into()),
-            origin: "/".into(),
-            contents: vec!["/**".into()], // Default: show everything
-            visible: None,
-            defaults: Vec::new(),
-            overrides: HashMap::new(),
+            ..Default::default()
         })
     }
 
@@ -164,14 +191,9 @@ impl Spatial2DView {
     /// Create a new spatial 2D view.
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
-            id: Uuid::new_v4(),
             class_identifier: "2D".into(),
             name: Some(name.into()),
-            origin: "/".into(),
-            contents: vec!["/**".into()], // Default: show everything
-            visible: None,
-            defaults: Vec::new(),
-            overrides: HashMap::new(),
+            ..Default::default()
         })
     }
 
@@ -217,14 +239,9 @@ impl Spatial3DView {
     /// Create a new spatial 3D view.
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
-            id: Uuid::new_v4(),
             class_identifier: "3D".into(),
             name: Some(name.into()),
-            origin: "/".into(),
-            contents: vec!["/**".into()], // Default: show everything
-            visible: None,
-            defaults: Vec::new(),
-            overrides: HashMap::new(),
+            ..Default::default()
         })
     }
 
@@ -270,14 +287,9 @@ impl MapView {
     /// Create a new map view.
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
-            id: Uuid::new_v4(),
             class_identifier: "Map".into(),
             name: Some(name.into()),
-            origin: "/".into(),
-            contents: vec!["/**".into()],
-            visible: None,
-            defaults: Vec::new(),
-            overrides: HashMap::new(),
+            ..Default::default()
         })
     }
 
@@ -320,7 +332,8 @@ impl MapView {
         mut self,
         provider: re_sdk_types::blueprint::components::MapProvider,
     ) -> Self {
-        self.0.add_defaults(&MapBackground::new(provider));
+        self.0
+            .add_property("MapBackground", &MapBackground::new(provider));
         self
     }
 }
@@ -332,14 +345,9 @@ impl TextDocumentView {
     /// Create a new text document view.
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
-            id: Uuid::new_v4(),
             class_identifier: "TextDocument".into(),
             name: Some(name.into()),
-            origin: "/".into(),
-            contents: vec!["/**".into()],
-            visible: None,
-            defaults: Vec::new(),
-            overrides: HashMap::new(),
+            ..Default::default()
         })
     }
 
