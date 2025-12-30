@@ -673,6 +673,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
 numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+pandas = "*" # needed for cloud snippets
 
 [feature.python-dev.pypi-dependencies]
 # Install the `rerun_py` as a package in editable mode.
