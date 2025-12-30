@@ -104,16 +104,6 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 
 // ---
 
-/// Blueprint options for [`RecordingStreamBuilder`].
-#[derive(Debug)]
-struct BlueprintOpts {
-    blueprint: crate::blueprint::Blueprint,
-    make_active: bool,
-    make_default: bool,
-}
-
-// ---
-
 /// Construct a [`RecordingStream`].
 ///
 /// ``` no_run
@@ -142,7 +132,7 @@ pub struct RecordingStreamBuilder {
     recording_info: RecordingInfo,
 
     /// Optional blueprint with activation settings.
-    blueprint: Option<BlueprintOpts>,
+    blueprint: Option<crate::blueprint::BlueprintOpts>,
 }
 
 impl RecordingStreamBuilder {
@@ -275,7 +265,7 @@ impl RecordingStreamBuilder {
     /// To send a blueprint to an existing recording, use [`RecordingStream::send_blueprint`] instead.
     #[inline]
     pub fn with_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
-        self.blueprint = Some(BlueprintOpts {
+        self.blueprint = Some(crate::blueprint::BlueprintOpts {
             blueprint,
             make_active: true,
             make_default: true,
@@ -292,7 +282,7 @@ impl RecordingStreamBuilder {
     /// To send a blueprint to an existing recording, use [`RecordingStream::send_blueprint`] instead.
     #[inline]
     pub fn with_default_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
-        self.blueprint = Some(BlueprintOpts {
+        self.blueprint = Some(crate::blueprint::BlueprintOpts {
             blueprint,
             make_active: false,
             make_default: true,
@@ -686,7 +676,7 @@ impl RecordingStreamBuilder {
         let blueprint_opts = self.blueprint.take();
         let rec = self.connect_grpc_opts(url)?;
 
-        if let Some(BlueprintOpts {
+        if let Some(crate::blueprint::BlueprintOpts {
             blueprint,
             make_active,
             make_default,

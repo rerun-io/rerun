@@ -31,10 +31,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let blueprint = if args.skip_blueprint {
         None
     } else {
-        // Create a blueprint which includes 2 views each only showing 1 of the two rectangles.
-        //
-        // If auto_views is true, the blueprint will automatically add one of the heuristic
-        // views, which will include the image and both rectangles.
         Some(
             Blueprint::new(Grid::new(vec![
                 ContainerLike::from(
@@ -67,11 +63,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     };
 
-    let mut builder = rerun::RecordingStreamBuilder::new("rerun_example_blueprint");
-    if let Some(blueprint) = blueprint {
-        builder = builder.with_blueprint(blueprint);
-    }
-    let rec = builder.spawn()?;
+    let (rec, _) = match blueprint {
+        Some(blueprint) => args
+            .rerun
+            .init_with_blueprint("rerun_example_blueprint", blueprint)?,
+        None => args.rerun.init("rerun_example_blueprint")?,
+    };
 
     rec.set_time_sequence("custom", 0);
 

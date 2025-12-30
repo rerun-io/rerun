@@ -113,26 +113,86 @@ impl RerunArgs {
     /// Creates a new [`RecordingStream`] according to the CLI parameters.
     #[track_caller] // track_caller so that we can see if we are being called from an official example.
     pub fn init(&self, application_id: &str) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        self.init_with_blueprint_opts(application_id, None)
+    }
+
+    /// Creates a new [`RecordingStream`] with a blueprint that will be activated immediately.
+    ///
+    /// The blueprint will be sent and activated as soon as the recording stream connects.
+    /// Use this when you want your blueprint to be shown immediately.
+    ///
+    /// If you want a default blueprint that only activates when the user resets,
+    /// use [`Self::init_with_default_blueprint`] instead.
+    #[track_caller]
+    pub fn init_with_blueprint(
+        &self,
+        application_id: &str,
+        blueprint: re_sdk::blueprint::Blueprint,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        self.init_with_blueprint_opts(
+            application_id,
+            Some(re_sdk::blueprint::BlueprintOpts {
+                blueprint,
+                make_active: true,
+                make_default: true,
+            }),
+        )
+    }
+
+    /// Creates a new [`RecordingStream`] with a default blueprint.
+    ///
+    /// If the application already has an active blueprint, the new blueprint won't become
+    /// active until the user resets the blueprint. If you want to activate the blueprint
+    /// immediately, use [`Self::init_with_blueprint`] instead.
+    #[track_caller]
+    pub fn init_with_default_blueprint(
+        &self,
+        application_id: &str,
+        blueprint: re_sdk::blueprint::Blueprint,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        self.init_with_blueprint_opts(
+            application_id,
+            Some(re_sdk::blueprint::BlueprintOpts {
+                blueprint,
+                make_active: false,
+                make_default: true,
+            }),
+        )
+    }
+
+    /// Internal helper that handles blueprint options.
+    #[track_caller]
+    fn init_with_blueprint_opts(
+        &self,
+        application_id: &str,
+        blueprint_opts: Option<re_sdk::blueprint::BlueprintOpts>,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let mut builder = RecordingStreamBuilder::new(application_id);
+
+        // Add blueprint to builder if provided
+        if let Some(re_sdk::blueprint::BlueprintOpts {
+            blueprint,
+            make_active,
+            make_default: _,
+        }) = blueprint_opts
+        {
+            builder = if make_active {
+                builder.with_blueprint(blueprint)
+            } else {
+                builder.with_default_blueprint(blueprint)
+            };
+        }
+
         match self.to_behavior()? {
-            RerunBehavior::Stdout => Ok((
-                RecordingStreamBuilder::new(application_id).stdout()?,
-                Default::default(),
-            )),
+            RerunBehavior::Stdout => Ok((builder.stdout()?, Default::default())),
 
-            RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
-                Default::default(),
-            )),
+            RerunBehavior::Connect(url) => {
+                Ok((builder.connect_grpc_opts(url)?, Default::default()))
+            }
 
-            RerunBehavior::Save(path) => Ok((
-                RecordingStreamBuilder::new(application_id).save(path)?,
-                Default::default(),
-            )),
+            RerunBehavior::Save(path) => Ok((builder.save(path)?, Default::default())),
 
-            RerunBehavior::Spawn => Ok((
-                RecordingStreamBuilder::new(application_id).spawn()?,
-                Default::default(),
-            )),
+            RerunBehavior::Spawn => Ok((builder.spawn()?, Default::default())),
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
@@ -145,8 +205,11 @@ impl RerunArgs {
                         .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?,
                 };
 
-                let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
-                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_options)?;
+                let rec = builder.serve_grpc_opts(
+                    &self.bind,
+                    crate::DEFAULT_SERVER_PORT,
+                    server_options,
+                )?;
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,

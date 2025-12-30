@@ -7,6 +7,17 @@ use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
 use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
 
+/// Blueprint options for configuring how a blueprint should be activated.
+#[derive(Debug)]
+pub struct BlueprintOpts {
+    /// The blueprint to send.
+    pub blueprint: Blueprint,
+    /// Whether to activate the blueprint immediately.
+    pub make_active: bool,
+    /// Whether to set this blueprint as the default for this application.
+    pub make_default: bool,
+}
+
 /// Blueprint for configuring the viewer layout.
 #[derive(Debug)]
 pub struct Blueprint {
