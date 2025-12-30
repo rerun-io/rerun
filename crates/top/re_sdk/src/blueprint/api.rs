@@ -5,7 +5,7 @@ use re_sdk_types::datatypes::Bool;
 
 use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
-use super::{ContainerLike, Tabs};
+use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
 
 /// Blueprint for configuring the viewer layout.
 #[derive(Debug)]
@@ -13,6 +13,9 @@ pub struct Blueprint {
     root_container: Option<ContainerLike>,
     auto_layout: Option<bool>,
     auto_views: Option<bool>,
+    blueprint_panel: Option<BlueprintPanel>,
+    selection_panel: Option<SelectionPanel>,
+    time_panel: Option<TimePanel>,
 }
 
 impl Blueprint {
@@ -34,6 +37,9 @@ impl Blueprint {
             root_container,
             auto_layout: None,
             auto_views: None,
+            blueprint_panel: None,
+            selection_panel: None,
+            time_panel: None,
         }
     }
 
@@ -46,6 +52,24 @@ impl Blueprint {
     /// Enable or disable automatic view creation.
     pub fn with_auto_views(mut self, enabled: bool) -> Self {
         self.auto_views = Some(enabled);
+        self
+    }
+
+    /// Configure the blueprint panel.
+    pub fn with_blueprint_panel(mut self, panel: BlueprintPanel) -> Self {
+        self.blueprint_panel = Some(panel);
+        self
+    }
+
+    /// Configure the selection panel.
+    pub fn with_selection_panel(mut self, panel: SelectionPanel) -> Self {
+        self.selection_panel = Some(panel);
+        self
+    }
+
+    /// Configure the time panel.
+    pub fn with_time_panel(mut self, panel: TimePanel) -> Self {
+        self.time_panel = Some(panel);
         self
     }
 
@@ -86,6 +110,17 @@ impl Blueprint {
             }
 
             rec.log("viewport", &viewport)?;
+        }
+
+        // Log panel configurations
+        if let Some(ref panel) = self.blueprint_panel {
+            panel.log_to_stream(&rec)?;
+        }
+        if let Some(ref panel) = self.selection_panel {
+            panel.log_to_stream(&rec)?;
+        }
+        if let Some(ref panel) = self.time_panel {
+            panel.log_to_stream(&rec)?;
         }
 
         let msgs = storage.take();

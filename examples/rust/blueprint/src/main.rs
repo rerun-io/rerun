@@ -5,7 +5,9 @@
 //!   cargo run -p blueprint -- --skip-blueprint
 //!   cargo run -p blueprint -- --auto-views
 
-use rerun::blueprint::{Blueprint, ContainerLike, Grid, Spatial2DView};
+use rerun::blueprint::{
+    Blueprint, BlueprintPanel, ContainerLike, Grid, SelectionPanel, Spatial2DView, TimePanel,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -46,15 +48,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .with_contents(["/**"]),
                 ),
             ]))
-            .with_auto_views(args.auto_views),
+            .with_auto_views(args.auto_views)
+            .with_blueprint_panel(BlueprintPanel::from_state("collapsed"))
+            .with_selection_panel(SelectionPanel::from_state("collapsed"))
+            .with_time_panel(
+                TimePanel::new()
+                    .with_state_str("collapsed")
+                    .with_timeline("custom")
+                    .with_time_selection(10, 25)
+                    .with_loop_mode_str("selection")
+                    .with_play_state_str("playing"),
+            ),
         )
     };
 
     let mut builder = rerun::RecordingStreamBuilder::new("rerun_example_blueprint");
     if let Some(blueprint) = blueprint {
-        builder = builder.default_blueprint(blueprint);
+        builder = builder.with_blueprint(blueprint);
     }
     let rec = builder.spawn()?;
+
+    rec.set_time_sequence("custom", 0);
 
     // Log an image with horizontal stripes
     let mut img = vec![0u8; 128 * 128 * 3];
@@ -68,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log("image", &rerun::Image::from_rgb24(img, [128, 128]))?;
 
     // Log rectangles at different times
-    rec.set_time_sequence("frame", 10);
+    rec.set_time_sequence("custom", 10);
     rec.log(
         "rect/0",
         &rerun::Boxes2D::from_mins_and_sizes([(16.0, 16.0)], [(64.0, 64.0)])
@@ -76,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
     )?;
 
-    rec.set_time_sequence("frame", 20);
+    rec.set_time_sequence("custom", 20);
     rec.log(
         "rect/1",
         &rerun::Boxes2D::from_mins_and_sizes([(48.0, 48.0)], [(64.0, 64.0)])

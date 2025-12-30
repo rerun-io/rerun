@@ -104,6 +104,16 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 
 // ---
 
+/// Blueprint options for [`RecordingStreamBuilder`].
+#[derive(Debug)]
+struct BlueprintOpts {
+    blueprint: crate::blueprint::Blueprint,
+    make_active: bool,
+    make_default: bool,
+}
+
+// ---
+
 /// Construct a [`RecordingStream`].
 ///
 /// ``` no_run
@@ -131,8 +141,8 @@ pub struct RecordingStreamBuilder {
     should_send_properties: bool,
     recording_info: RecordingInfo,
 
-    /// Optional default blueprint.
-    default_blueprint: Option<crate::blueprint::Blueprint>,
+    /// Optional blueprint with activation settings.
+    blueprint: Option<BlueprintOpts>,
 }
 
 impl RecordingStreamBuilder {
@@ -167,7 +177,7 @@ impl RecordingStreamBuilder {
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
 
-            default_blueprint: None,
+            blueprint: None,
         }
     }
 
@@ -192,7 +202,7 @@ impl RecordingStreamBuilder {
             recording_info: RecordingInfo::new()
                 .with_start_time(re_sdk_types::components::Timestamp::now()),
 
-            default_blueprint: None,
+            blueprint: None,
         }
     }
 
@@ -257,13 +267,36 @@ impl RecordingStreamBuilder {
         self
     }
 
-    /// Set a default blueprint.
+    /// Set a blueprint and make it active immediately.
     ///
-    /// To send a blueprint to an existing recording, use
-    /// [`RecordingStream::send_blueprint_builder`] instead.
+    /// The blueprint will be sent and activated as soon as the recording stream connects.
+    /// Use this when you want your blueprint to be shown immediately.
+    ///
+    /// To send a blueprint to an existing recording, use [`RecordingStream::send_blueprint`] instead.
     #[inline]
-    pub fn default_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
-        self.default_blueprint = Some(blueprint);
+    pub fn with_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
+        self.blueprint = Some(BlueprintOpts {
+            blueprint,
+            make_active: true,
+            make_default: true,
+        });
+        self
+    }
+
+    /// Set a default blueprint for this application.
+    ///
+    /// If the application already has an active blueprint, the new blueprint won't become
+    /// active until the user resets the blueprint. If you want to activate the blueprint
+    /// immediately, use [`Self::with_blueprint`] instead.
+    ///
+    /// To send a blueprint to an existing recording, use [`RecordingStream::send_blueprint`] instead.
+    #[inline]
+    pub fn with_default_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
+        self.blueprint = Some(BlueprintOpts {
+            blueprint,
+            make_active: false,
+            make_default: true,
+        });
         self
     }
 
@@ -650,11 +683,16 @@ impl RecordingStreamBuilder {
         // Spawn viewer and connect normally
         crate::spawn(opts)?;
 
-        let blueprint = self.default_blueprint.take();
+        let blueprint_opts = self.blueprint.take();
         let rec = self.connect_grpc_opts(url)?;
 
-        if let Some(blueprint) = blueprint {
-            blueprint.send(&rec, false, true)?;
+        if let Some(BlueprintOpts {
+            blueprint,
+            make_active,
+            make_default,
+        }) = blueprint_opts
+        {
+            blueprint.send(&rec, make_active, make_default)?;
         }
 
         Ok(rec)
@@ -687,7 +725,7 @@ impl RecordingStreamBuilder {
             batcher_hooks,
             should_send_properties,
             recording_info,
-            default_blueprint: _,
+            blueprint: _,
         } = self;
 
         let store_id = StoreId::new(
