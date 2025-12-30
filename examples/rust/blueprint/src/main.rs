@@ -7,12 +7,26 @@
 
 use rerun::blueprint::{Blueprint, ContainerLike, Grid, Spatial2DView};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().collect();
-    let skip_blueprint = args.iter().any(|arg| arg == "--skip-blueprint");
-    let auto_views = args.iter().any(|arg| arg == "--auto-views");
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
 
-    let blueprint = if skip_blueprint {
+    /// Don't send the blueprint
+    #[clap(long)]
+    skip_blueprint: bool,
+
+    /// Automatically add views
+    #[clap(long)]
+    auto_views: bool,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use clap::Parser;
+    let args = Args::parse();
+
+    let blueprint = if args.skip_blueprint {
         None
     } else {
         // Create a blueprint which includes 2 views each only showing 1 of the two rectangles.
@@ -32,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .with_contents(["/**"]),
                 ),
             ]))
-            .with_auto_views(auto_views),
+            .with_auto_views(args.auto_views),
         )
     };
 
