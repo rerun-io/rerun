@@ -40,7 +40,7 @@ impl Blueprint {
             | ContainerLike::Tabs(_) => Some(root_like),
             ContainerLike::View(view) => {
                 // Wrap a single view in a Tabs container (matching Python's behavior)
-                Some(Tabs::new([view]).into())
+                Some(Tabs::new([view.into()]).into())
             }
         };
 

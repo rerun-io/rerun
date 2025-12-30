@@ -178,11 +178,11 @@ fn log_container(
 
 impl Horizontal {
     /// Create a new horizontal container with the given contents.
-    pub fn new(contents: impl IntoIterator<Item = impl Into<ContainerLike>>) -> Self {
+    pub fn new(contents: impl IntoIterator<Item = ContainerLike>) -> Self {
         Self(Container {
             id: Uuid::new_v4(),
             kind: ContainerKind::Horizontal,
-            contents: contents.into_iter().map(Into::into).collect(),
+            contents: contents.into_iter().collect(),
             name: None,
             visible: None,
             column_shares: None,
@@ -219,11 +219,11 @@ impl Horizontal {
 
 impl Vertical {
     /// Create a new vertical container with the given contents.
-    pub fn new(contents: impl IntoIterator<Item = impl Into<ContainerLike>>) -> Self {
+    pub fn new(contents: impl IntoIterator<Item = ContainerLike>) -> Self {
         Self(Container {
             id: Uuid::new_v4(),
             kind: ContainerKind::Vertical,
-            contents: contents.into_iter().map(Into::into).collect(),
+            contents: contents.into_iter().collect(),
             name: None,
             visible: None,
             column_shares: None,
@@ -260,11 +260,11 @@ impl Vertical {
 
 impl Tabs {
     /// Create a new tabs container with the given contents.
-    pub fn new(contents: impl IntoIterator<Item = impl Into<ContainerLike>>) -> Self {
+    pub fn new(contents: impl IntoIterator<Item = ContainerLike>) -> Self {
         Self(Container {
             id: Uuid::new_v4(),
             kind: ContainerKind::Tabs,
-            contents: contents.into_iter().map(Into::into).collect(),
+            contents: contents.into_iter().collect(),
             name: None,
             visible: None,
             column_shares: None,
@@ -297,11 +297,11 @@ impl Tabs {
 
 impl Grid {
     /// Create a new grid container with the given contents.
-    pub fn new(contents: impl IntoIterator<Item = impl Into<ContainerLike>>) -> Self {
+    pub fn new(contents: impl IntoIterator<Item = ContainerLike>) -> Self {
         Self(Container {
             id: Uuid::new_v4(),
             kind: ContainerKind::Grid,
-            contents: contents.into_iter().map(Into::into).collect(),
+            contents: contents.into_iter().collect(),
             name: None,
             visible: None,
             column_shares: None,

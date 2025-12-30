@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use re_log_types::EntityPath;
-use re_sdk_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
+use re_sdk_types::blueprint::archetypes::{MapBackground, ViewBlueprint, ViewContents};
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
@@ -312,6 +312,15 @@ impl MapView {
         archetype: &dyn AsComponents,
     ) -> Self {
         self.0.add_overrides(entity_path, archetype);
+        self
+    }
+
+    /// Set the map provider (background tiles).
+    pub fn with_map_provider(
+        mut self,
+        provider: re_sdk_types::blueprint::components::MapProvider,
+    ) -> Self {
+        self.0.add_defaults(&MapBackground::new(provider));
         self
     }
 }
