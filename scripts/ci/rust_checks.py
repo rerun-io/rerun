@@ -179,6 +179,8 @@ def main() -> None:
 
     for enabled_check_name in enabled_check_names:
         checks[check_names.index(enabled_check_name)][1](results)
+        du = subprocess.run(["du", "-d", "1", "-h", "."], check=False, capture_output=True, text=True)
+        print(f"Disk usage after '{enabled_check_name}': {du.stdout}")
 
     total_duration = time.time() - start_time
 
