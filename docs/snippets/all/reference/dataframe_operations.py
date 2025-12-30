@@ -7,8 +7,7 @@ import datafusion as dfn
 import numpy as np
 import pyarrow as pa
 import rerun as rr
-from datafusion import col, lit
-from datafusion import functions as F
+from datafusion import col, functions as F, lit
 
 sample_5_path = Path(__file__).parent.parent.parent.parent / "data" / "sample_5"
 

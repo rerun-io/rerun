@@ -1,6 +1,6 @@
 ---
 title: Query image & video types
-order: 51
+order: 60
 ---
 
 Images and videos are incredibly useful, however there are many ways to store and manipulate them.

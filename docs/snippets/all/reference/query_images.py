@@ -9,8 +9,7 @@ import av
 import numpy as np
 import pyarrow as pa
 import rerun as rr
-from datafusion import col
-from datafusion import functions as F
+from datafusion import col, functions as F
 from datafusion.expr import Window, WindowFrame
 from PIL import Image
 
@@ -78,12 +77,15 @@ container = av.open(data_buffer, format="h264", mode="r")
 
 start_time = times[0]
 video_stream = container.streams.video[0]
+frame = None
 for packet, time in zip(container.demux(video_stream), times, strict=False):
     packet.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
     packet.pts = int(time - start_time)
     packet.dts = packet.pts  # dts == pts since there's no B-frames.
-    for idx, frame in enumerate(packet.decode()):
+    for _idx, frame in enumerate(packet.decode()):  # noqa: B007
         pass
+if frame is None:
+    raise RuntimeError("Failed to decode any frame from video stream.")
 image = np.asarray(frame.to_image())
 print(f"{image.shape=}")
 # endregion: video_stream
