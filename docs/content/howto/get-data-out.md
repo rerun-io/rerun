@@ -35,7 +35,7 @@ with rr.server.Server(datasets={
 
 When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
 
-You can also start a longer runner server in a separate process and connect to it by it's local address.
+You can also start a longer runner server in a separate process and connect to it by its local address.
 
 ```python
 server = rr.server.Server()

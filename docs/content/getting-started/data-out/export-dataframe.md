@@ -73,7 +73,7 @@ Here is the result:
 We can make several observations from this output.
 
 -   The first four columns are timeline columns. These are the various timelines the data is logged to in this recording.
--   The last columns is named `/blendshapes/0/jawOpen:Scalars:scalars`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
+-   The last column is named `/blendshapes/0/jawOpen:Scalars:scalars`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
 -   Each row in the `/blendshapes/0/jawOpen:Scalar` column consists of a _list_ of (typically one) scalar.
 
 This last point may come as a surprise but is a consequence of Rerun's data model where components are always stored as arrays. This enables, for example, to log an entire point cloud using the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype under a single entity and at a single timestamp.

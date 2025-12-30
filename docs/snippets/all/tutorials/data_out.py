@@ -1,6 +1,8 @@
 # region: imports
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import rerun as rr
 
@@ -10,8 +12,11 @@ import rerun as rr
 # Load and prepare the data
 
 # TODO(nick): find rrd and check in to repo
+repo_root = Path(__file__).parent.parent.parent.parent.parent
+example_rrd = repo_root / "tests" / "assets" / "rrd" / "examples" / "face_tracking.rrd"
+assert example_rrd.exists(), f"Example RRD not found at {example_rrd}"
 # region: launch_server
-server = rr.server.Server(datasets={"tutorial": ["/Users/nick/Downloads/face_tracking.rrd"]})
+server = rr.server.Server(datasets={"tutorial": [example_rrd]})
 
 client = rr.catalog.CatalogClient(address=server.address())
 # endregion: launch_server
@@ -27,13 +32,14 @@ pd_df = df.to_pandas()
 # endregion: to_pandas
 
 # region: print_frames
-print(df["/blendshapes/0/jawOpen:Scalars:scalars"][160:180])
+print(pd_df["/blendshapes/0/jawOpen:Scalars:scalars"][160:180])
 # endregion: print_frames
 
 # convert the "jawOpen" column to a flat list of floats
+print(pd_df)
 # region: explode_jaw
 pd_df["jawOpen"] = pd_df["/blendshapes/0/jawOpen:Scalars:scalars"].explode().astype(float)
-print(df["jawOpen"][160:180])
+print(pd_df["jawOpen"][160:180])
 # endregion: explode_jaw
 
 # ----------------------------------------------------------------------------------------------
@@ -49,8 +55,7 @@ pd_df["jawOpenState"] = pd_df["jawOpen"] > 0.15
 # ----------------------------------------------------------------------------------------------
 # Log the data back to the viewer
 
-# TODO(nick): this is the only way to get the application_id but is deprecated
-application_id = rr.dataframe.load_recording("/Users/nick/Downloads/face_tracking.rrd").application_id()
+application_id = rr.recording.load_recording(example_rrd).application_id()
 
 # Connect to the viewer
 # region: connect_viewer
@@ -77,5 +82,3 @@ rr.send_columns(
     columns=rr.Boxes2D.columns(labels=np.where(pd_df["jawOpenState"], "OPEN", "CLOSE")),
 )
 # endregion: log_labels
-
-input("Press Enter to terminate the server…")
