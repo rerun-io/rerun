@@ -1,0 +1,18 @@
+[package]
+name = "blueprint_stocks"
+
+version = "0.29.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun",  features = ["clap"] }
+
+anyhow.workspace = true
+chrono = { workspace = true, features = ["clock"] }
+chrono-tz = "0.10"
+clap = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+yahoo_finance_api = "4.1"
