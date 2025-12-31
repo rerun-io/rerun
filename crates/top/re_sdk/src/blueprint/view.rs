@@ -31,7 +31,7 @@ impl Default for View {
             class_identifier: String::new(),
             name: None,
             origin: "/".into(),
-            contents: vec!["/**".into()],
+            contents: vec!["$origin/**".into()],
             visible: None,
             properties: HashMap::new(),
             defaults: Vec::new(),
