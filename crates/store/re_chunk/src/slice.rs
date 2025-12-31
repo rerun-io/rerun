@@ -20,10 +20,7 @@ use crate::{Chunk, RowId, TimeColumn};
 fn deep_slice_list_array(list_array: &ArrowListArray, index: usize, len: usize) -> ArrowListArray {
     // First, slice the outer ListArray normally
     let sliced_outer = list_array.slice(index, len);
-    let sliced_list = sliced_outer
-        .as_any()
-        .downcast_ref::<ArrowListArray>()
-        .unwrap();
+    let sliced_list = &sliced_outer;
 
     // Now, determine the actual range of inner values used by this slice
     let offsets = sliced_list.value_offsets();
@@ -60,18 +57,18 @@ fn deep_slice_list_array(list_array: &ArrowListArray, index: usize, len: usize) 
     )
 }
 
-/// Deep slicing function for UnionArrays that properly slices child arrays to avoid memory duplication.
+/// Deep slicing function for `UnionArrays` that properly slices child arrays to avoid memory duplication.
 ///
 /// This function handles both dense and sparse union arrays by:
 /// - For dense unions: Analyzing the offsets to determine which child array elements are actually used
 /// - For sparse unions: Slicing all child arrays to match the union slice
-/// - Recursively slicing child arrays using deep_slice_array to handle nested structures
+/// - Recursively slicing child arrays using `deep_slice_array` to handle nested structures
 fn deep_slice_union_array(union_array: &UnionArray, offset: usize, length: usize) -> UnionArray {
     use arrow::datatypes::{DataType, UnionMode};
 
     // First, slice the outer union array to get the correct type_ids and offsets for our slice
     let sliced_union = union_array.slice(offset, length);
-    let sliced_union_ref = sliced_union.as_any().downcast_ref::<UnionArray>().unwrap();
+    let sliced_union_ref = &sliced_union;
 
     // Get the union fields and mode
     let (union_fields, mode) = match union_array.data_type() {
@@ -105,11 +102,11 @@ fn deep_slice_dense_union(
         .expect("Dense union should have offsets");
 
     // Build a map of which type_ids are used and their offset ranges
-    let mut type_usage: HashMap<i8, (usize, usize)> = HashMap::new(); // type_id -> (min_offset, max_offset + 1)
+    let mut type_usage: HashMap<i8, (i32, i32)> = HashMap::new(); // type_id -> (min_offset, max_offset + 1)
 
     for i in 0..sliced_union.len() {
         let type_id = type_ids[i];
-        let offset = offsets[i] as usize;
+        let offset = offsets[i];
 
         type_usage
             .entry(type_id)
@@ -123,7 +120,7 @@ fn deep_slice_dense_union(
     // Create properly sliced child arrays
     let mut new_children = Vec::new();
     let mut new_offsets = Vec::new();
-    let mut offset_adjustments: HashMap<i8, usize> = HashMap::new();
+    let mut offset_adjustments: HashMap<i8, i32> = HashMap::new();
 
     // Process each field type in order
     for (type_id, _field) in union_fields.iter() {
@@ -131,8 +128,9 @@ fn deep_slice_dense_union(
 
         if let Some(&(min_offset, max_offset)) = type_usage.get(&type_id) {
             // This type is used in the slice - slice its child array to only the needed range
-            let slice_length = max_offset - min_offset;
-            let sliced_child = deep_slice_array(child_array.as_ref(), min_offset, slice_length);
+            let slice_length = (max_offset - min_offset) as usize;
+            let sliced_child =
+                deep_slice_array(child_array.as_ref(), min_offset as usize, slice_length);
             new_children.push(sliced_child);
             offset_adjustments.insert(type_id, min_offset);
         } else {
@@ -146,9 +144,9 @@ fn deep_slice_dense_union(
     // Adjust the offsets to account for the sliced child arrays
     for i in 0..offsets.len() {
         let type_id = type_ids[i];
-        let original_offset = offsets[i] as usize;
+        let original_offset = offsets[i];
         let adjustment = offset_adjustments[&type_id];
-        new_offsets.push((original_offset - adjustment) as i32);
+        new_offsets.push(original_offset - adjustment);
     }
 
     let new_offsets_buffer = ScalarBuffer::from(new_offsets);
@@ -204,10 +202,7 @@ fn deep_slice_array(
     // Handle StructArrays by slicing each child field
     if let Some(struct_array) = array.as_any().downcast_ref::<StructArray>() {
         let sliced_struct = struct_array.slice(offset, length);
-        let struct_ref = sliced_struct
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .unwrap();
+        let struct_ref = &sliced_struct;
 
         let sliced_children: Vec<ArrowArrayRef> = struct_ref
             .columns()
