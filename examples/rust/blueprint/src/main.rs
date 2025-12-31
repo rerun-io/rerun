@@ -1,10 +1,3 @@
-//! Example of using the blueprint APIs to configure Rerun.
-//!
-//! Usage:
-//!   cargo run -p blueprint
-//!   cargo run -p blueprint -- --skip-blueprint
-//!   cargo run -p blueprint -- --auto-views
-
 use rerun::blueprint::{
     Blueprint, BlueprintPanel, ContainerLike, Grid, SelectionPanel, Spatial2DView, TimePanel,
 };
