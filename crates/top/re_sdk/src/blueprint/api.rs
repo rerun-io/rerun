@@ -19,7 +19,7 @@ pub struct BlueprintOpts {
 }
 
 /// Blueprint for configuring the viewer layout.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Blueprint {
     root_container: Option<ContainerLike>,
     auto_layout: Option<bool>,
@@ -46,12 +46,16 @@ impl Blueprint {
 
         Self {
             root_container,
-            auto_layout: None,
-            auto_views: None,
-            blueprint_panel: None,
-            selection_panel: None,
-            time_panel: None,
+            ..Self::default()
         }
+    }
+
+    /// Create an auto blueprint with automatic layout and view creation.
+    ///
+    /// This blueprint has no root container and relies on the viewer to automatically
+    /// create views based on the logged data.
+    pub fn auto() -> Self {
+        Self::default().with_auto_views(true).with_auto_layout(true)
     }
 
     /// Enable or disable automatic layout.
