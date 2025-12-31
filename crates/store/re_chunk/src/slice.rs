@@ -1,13 +1,236 @@
 use arrow::array::{
     Array as _, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-    ListArray as ArrowListArray,
+    ListArray as ArrowListArray, StructArray, UnionArray,
 };
+use arrow::datatypes::UnionFields;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
 use crate::{Chunk, RowId, TimeColumn};
+
+// ---
+
+/// Deep slicing function that properly slices nested arrays to avoid memory duplication.
+///
+/// This function recursively slices the inner arrays to ensure that slicing a complex
+/// nested structure (like a list of structs containing lists and unions) properly
+/// reduces memory usage by only retaining the data that's actually accessible.
+fn deep_slice_list_array(list_array: &ArrowListArray, index: usize, len: usize) -> ArrowListArray {
+    // First, slice the outer ListArray normally
+    let sliced_outer = list_array.slice(index, len);
+    let sliced_list = sliced_outer
+        .as_any()
+        .downcast_ref::<ArrowListArray>()
+        .unwrap();
+
+    // Now, determine the actual range of inner values used by this slice
+    let offsets = sliced_list.value_offsets();
+    if offsets.len() < 2 {
+        return sliced_list.clone(); // Empty slice
+    }
+
+    let start_offset = offsets[0] as usize;
+    let end_offset = offsets[offsets.len() - 1] as usize;
+    let inner_len = end_offset - start_offset;
+
+    if inner_len == 0 {
+        return sliced_list.clone(); // No inner data
+    }
+
+    // Get the inner array and recursively slice it
+    let inner_array = list_array.values();
+    let sliced_inner = deep_slice_array(inner_array.as_ref(), start_offset, inner_len);
+
+    // Create new offsets that start from 0
+    let new_offsets: Vec<i32> = offsets.iter().map(|&offset| offset - offsets[0]).collect();
+    let offset_buffer = arrow::buffer::OffsetBuffer::new(new_offsets.into());
+
+    // Create a new ListArray with the properly sliced inner array
+    let list_field = match sliced_list.data_type() {
+        arrow::datatypes::DataType::List(field) => field.clone(),
+        _ => panic!("Expected List datatype"),
+    };
+    ArrowListArray::new(
+        list_field,
+        offset_buffer,
+        sliced_inner,
+        sliced_list.nulls().cloned(),
+    )
+}
+
+/// Deep slicing function for UnionArrays that properly slices child arrays to avoid memory duplication.
+///
+/// This function handles both dense and sparse union arrays by:
+/// - For dense unions: Analyzing the offsets to determine which child array elements are actually used
+/// - For sparse unions: Slicing all child arrays to match the union slice
+/// - Recursively slicing child arrays using deep_slice_array to handle nested structures
+fn deep_slice_union_array(union_array: &UnionArray, offset: usize, length: usize) -> UnionArray {
+    use arrow::datatypes::{DataType, UnionMode};
+
+    // First, slice the outer union array to get the correct type_ids and offsets for our slice
+    let sliced_union = union_array.slice(offset, length);
+    let sliced_union_ref = sliced_union.as_any().downcast_ref::<UnionArray>().unwrap();
+
+    // Get the union fields and mode
+    let (union_fields, mode) = match union_array.data_type() {
+        DataType::Union(fields, mode) => (fields.clone(), *mode),
+        _ => panic!("Expected Union data type"),
+    };
+
+    let is_dense = matches!(mode, UnionMode::Dense);
+
+    if is_dense {
+        // Dense union: we need to carefully slice child arrays based on which offsets are actually used
+        deep_slice_dense_union(union_array, sliced_union_ref, union_fields)
+    } else {
+        // Sparse union: all child arrays have the same length as the union, slice them all
+        deep_slice_sparse_union(sliced_union_ref, union_fields)
+    }
+}
+
+/// Handle deep slicing for dense union arrays
+fn deep_slice_dense_union(
+    original_union: &UnionArray,
+    sliced_union: &UnionArray,
+    union_fields: UnionFields,
+) -> UnionArray {
+    use arrow::buffer::ScalarBuffer;
+    use std::collections::HashMap;
+
+    let type_ids = sliced_union.type_ids();
+    let offsets = sliced_union
+        .offsets()
+        .expect("Dense union should have offsets");
+
+    // Build a map of which type_ids are used and their offset ranges
+    let mut type_usage: HashMap<i8, (usize, usize)> = HashMap::new(); // type_id -> (min_offset, max_offset + 1)
+
+    for i in 0..sliced_union.len() {
+        let type_id = type_ids[i];
+        let offset = offsets[i] as usize;
+
+        type_usage
+            .entry(type_id)
+            .and_modify(|(min_offset, max_offset)| {
+                *min_offset = (*min_offset).min(offset);
+                *max_offset = (*max_offset).max(offset + 1);
+            })
+            .or_insert((offset, offset + 1));
+    }
+
+    // Create properly sliced child arrays
+    let mut new_children = Vec::new();
+    let mut new_offsets = Vec::new();
+    let mut offset_adjustments: HashMap<i8, usize> = HashMap::new();
+
+    // Process each field type in order
+    for (type_id, _field) in union_fields.iter() {
+        let child_array = original_union.child(type_id);
+
+        if let Some(&(min_offset, max_offset)) = type_usage.get(&type_id) {
+            // This type is used in the slice - slice its child array to only the needed range
+            let slice_length = max_offset - min_offset;
+            let sliced_child = deep_slice_array(child_array.as_ref(), min_offset, slice_length);
+            new_children.push(sliced_child);
+            offset_adjustments.insert(type_id, min_offset);
+        } else {
+            // This type is not used in the slice - create an empty array of the same type
+            let empty_child = child_array.slice(0, 0);
+            new_children.push(empty_child);
+            offset_adjustments.insert(type_id, 0);
+        }
+    }
+
+    // Adjust the offsets to account for the sliced child arrays
+    for i in 0..offsets.len() {
+        let type_id = type_ids[i];
+        let original_offset = offsets[i] as usize;
+        let adjustment = offset_adjustments[&type_id];
+        new_offsets.push((original_offset - adjustment) as i32);
+    }
+
+    let new_offsets_buffer = ScalarBuffer::from(new_offsets);
+
+    // Create the new union array
+    UnionArray::try_new(
+        union_fields,
+        type_ids.clone(),
+        Some(new_offsets_buffer),
+        new_children,
+    )
+    .expect("Failed to create sliced dense union array")
+}
+
+/// Handle deep slicing for sparse union arrays
+fn deep_slice_sparse_union(sliced_union: &UnionArray, union_fields: UnionFields) -> UnionArray {
+    let type_ids = sliced_union.type_ids();
+
+    // For sparse unions, all child arrays should have the same length as the union
+    // and we slice them all to the same range
+    let mut new_children = Vec::new();
+
+    for (type_id, _field) in union_fields.iter() {
+        let child_array = sliced_union.child(type_id);
+
+        // For sparse unions, the child arrays are already sliced to the correct length
+        // but we still want to deep slice them in case they contain nested structures
+        let deep_sliced_child = deep_slice_array(child_array.as_ref(), 0, sliced_union.len());
+        new_children.push(deep_sliced_child);
+    }
+
+    // Create the new union array
+    UnionArray::try_new(
+        union_fields,
+        type_ids.clone(),
+        None, // Sparse unions don't use offsets
+        new_children,
+    )
+    .expect("Failed to create sliced sparse union array")
+}
+
+/// Recursively slice any Arrow array type, handling complex nested structures.
+fn deep_slice_array(
+    array: &dyn arrow::array::Array,
+    offset: usize,
+    length: usize,
+) -> ArrowArrayRef {
+    // Handle ListArrays recursively
+    if let Some(list_array) = array.as_any().downcast_ref::<ArrowListArray>() {
+        return std::sync::Arc::new(deep_slice_list_array(list_array, offset, length));
+    }
+
+    // Handle StructArrays by slicing each child field
+    if let Some(struct_array) = array.as_any().downcast_ref::<StructArray>() {
+        let sliced_struct = struct_array.slice(offset, length);
+        let struct_ref = sliced_struct
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+
+        let sliced_children: Vec<ArrowArrayRef> = struct_ref
+            .columns()
+            .iter()
+            .map(|child| deep_slice_array(child.as_ref(), 0, length))
+            .collect();
+
+        let fields = struct_array.fields().clone();
+        return std::sync::Arc::new(StructArray::new(
+            fields,
+            sliced_children,
+            struct_ref.nulls().cloned(),
+        ));
+    }
+
+    // Handle UnionArrays by slicing each child variant
+    if let Some(union_array) = array.as_any().downcast_ref::<UnionArray>() {
+        return std::sync::Arc::new(deep_slice_union_array(union_array, offset, length));
+    }
+
+    // For all other array types (StringArray, primitive arrays, etc.), use standard slicing
+    array.slice(offset, length)
+}
 
 // ---
 
@@ -87,7 +310,7 @@ impl Chunk {
                 .values()
                 .map(|column| {
                     SerializedComponentColumn::new(
-                        column.list_array.clone().slice(index, len),
+                        deep_slice_list_array(&column.list_array, index, len),
                         column.descriptor.clone(),
                     )
                 })
@@ -1639,6 +1862,163 @@ mod tests {
         );
 
         eprintln!("✓ Raw arrow array slice memory calculation test passed!");
+
+        Ok(())
+    }
+
+    #[test]
+    fn deep_slice_memory_size_conservation() -> anyhow::Result<()> {
+        use arrow::array::{
+            ListArray as ArrowListArray, StructArray, UInt8Array as ArrowUInt8Array,
+            UInt32Array as ArrowUInt32Array,
+        };
+        use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+        use arrow::datatypes::{DataType, Field};
+        use re_byte_size::SizeBytes as _;
+        use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
+
+        // Create a chunk with 3 rows of complex nested data:
+        // List<Struct<id: UInt32, data: List<UInt8>>>
+        // Each row contains a list of structs, where each struct has an ID and a blob of data
+        let entity_path = "test/complex_entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+
+        // Create blob data of different sizes for testing
+        let blob_size_1 = 5_000; // 5KB
+        let blob_size_2 = 15_000; // 15KB
+        let blob_size_3 = 25_000; // 25KB
+
+        let blob_data_1: Vec<u8> = (0..blob_size_1 as u8).cycle().take(blob_size_1).collect();
+        let blob_data_2: Vec<u8> = (0..blob_size_2 as u8).cycle().take(blob_size_2).collect();
+        let blob_data_3: Vec<u8> = (0..blob_size_3 as u8).cycle().take(blob_size_3).collect();
+
+        // Row 1: Single struct with small blob
+        // Row 2: Two structs with medium blobs
+        // Row 3: Single struct with large blob
+
+        // Combine all blob data
+        let mut all_blob_data: Vec<u8> = Vec::new();
+        all_blob_data.extend(&blob_data_1); // For row 1, struct 1
+        all_blob_data.extend(&blob_data_2); // For row 2, struct 1
+        all_blob_data.extend(&blob_data_2); // For row 2, struct 2 (duplicate for simplicity)
+        all_blob_data.extend(&blob_data_3); // For row 3, struct 1
+
+        // Create the inner UInt8Array containing all blob data
+        let blob_values_array = ArrowUInt8Array::from(all_blob_data);
+        let blob_values_ref: ArrowArrayRef = std::sync::Arc::new(blob_values_array);
+
+        // Create ListArray for the blob data (inner lists within each struct)
+        let blob_list_array = ArrowListArray::new(
+            Field::new("item", DataType::UInt8, false).into(),
+            ArrowOffsetBuffer::from_lengths([blob_size_1, blob_size_2, blob_size_2, blob_size_3]),
+            blob_values_ref,
+            None,
+        );
+
+        // Create IDs for each struct
+        let struct_ids = ArrowUInt32Array::from(vec![1u32, 2u32, 3u32, 4u32]);
+        let struct_ids_ref: ArrowArrayRef = std::sync::Arc::new(struct_ids);
+
+        // Create the StructArray with id and data fields
+        let struct_fields = vec![
+            Field::new("id", DataType::UInt32, false),
+            Field::new(
+                "data",
+                DataType::List(Field::new("item", DataType::UInt8, false).into()),
+                false,
+            ),
+        ];
+        let struct_array = StructArray::new(
+            struct_fields.into(),
+            vec![struct_ids_ref, std::sync::Arc::new(blob_list_array)],
+            None,
+        );
+
+        // Create the outer ListArray containing structs for each row
+        // Row 1: 1 struct, Row 2: 2 structs, Row 3: 1 struct
+        let outer_list_array = ArrowListArray::new(
+            Field::new("item", struct_array.data_type().clone(), false).into(),
+            ArrowOffsetBuffer::from_lengths([1, 2, 1]), // 1 struct, 2 structs, 1 struct
+            std::sync::Arc::new(struct_array),
+            None,
+        );
+
+        // Create component descriptor
+        let complex_descriptor = ComponentDescriptor::partial("complex_data");
+
+        // Create component column
+        let component_column = SerializedComponentColumn::new(outer_list_array, complex_descriptor);
+
+        // Create the chunk manually with complex nested data
+        let chunk = Chunk::new(
+            crate::ChunkId::new(),
+            re_log_types::EntityPath::from(entity_path),
+            Some(true), // is_sorted
+            RowId::arrow_from_slice(&[row_id1, row_id2, row_id3]),
+            std::iter::once((
+                *Timeline::new_sequence("frame").name(),
+                crate::TimeColumn::new_sequence("frame", [1, 2, 3]),
+            ))
+            .collect(),
+            std::iter::once(component_column).collect(),
+        )?;
+
+        let original_size = chunk.heap_size_bytes();
+        eprintln!("Original complex chunk size: {original_size} bytes");
+
+        // Create 3 single-row slices to test deep slicing
+        let slice1 = chunk.row_sliced(0, 1);
+        let slice2 = chunk.row_sliced(1, 1);
+        let slice3 = chunk.row_sliced(2, 1);
+
+        let slice1_size = slice1.heap_size_bytes();
+        let slice2_size = slice2.heap_size_bytes();
+        let slice3_size = slice3.heap_size_bytes();
+
+        eprintln!("Slice 1 size: {slice1_size} bytes (1 struct with {blob_size_1} byte blob)");
+        eprintln!(
+            "Slice 2 size: {slice2_size} bytes (2 structs with {blob_size_2} byte blobs each)"
+        );
+        eprintln!("Slice 3 size: {slice3_size} bytes (1 struct with {blob_size_3} byte blob)");
+
+        let total_slice_size = slice1_size + slice2_size + slice3_size;
+        eprintln!("Total slices size: {total_slice_size} bytes");
+
+        // The slices should add up to approximately the original size
+        // We allow some overhead for metadata duplication but the deep slicing
+        // should ensure that each slice only contains the data it actually references
+        let acceptable_overhead = 1500; // bytes for metadata overhead (higher due to complex nested structure)
+
+        assert!(
+            total_slice_size <= original_size + acceptable_overhead,
+            "Slices total size ({total_slice_size}) should not exceed original size ({original_size}) by more than {acceptable_overhead} bytes of overhead",
+        );
+
+        // Slice 2 should be largest since it has 2 structs with medium-sized blobs
+        // Slice 3 should be larger than slice 1 due to larger blob size
+        assert!(
+            slice2_size > slice3_size,
+            "Slice 2 with 2 structs ({slice2_size} total bytes) should be larger than slice 3 with 1 struct ({slice3_size} total bytes)",
+        );
+
+        assert!(
+            slice3_size > slice1_size,
+            "Slice 3 with {blob_size_3} byte blob ({slice3_size} total bytes) should be larger than slice 1 with {blob_size_1} byte blob ({slice1_size} total bytes)",
+        );
+
+        // Verify that deep slicing worked by checking the proportionality
+        // Slice 2 should be roughly twice the size of slice 3 (ignoring metadata)
+        // since it has 2 structs vs 1 struct with similar blob sizes
+        let size_ratio_2_to_3 = slice2_size as f64 / slice3_size as f64;
+        assert!(
+            size_ratio_2_to_3 > 1.0 && size_ratio_2_to_3 < 1.5,
+            "Size ratio between slice 2 and slice 3 ({size_ratio_2_to_3:.2}) should be close to 1.5 ( 30KB vs 25KB )",
+        );
+
+        eprintln!("✓ Deep slice memory conservation test with nested structures passed!");
 
         Ok(())
     }
