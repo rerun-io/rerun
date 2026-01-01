@@ -10,11 +10,11 @@ use crate::RecordingStreamResult;
 
 /// Blueprint panel configuration.
 #[derive(Debug, Default)]
-pub struct Panel {
+pub struct BlueprintPanel {
     state: Option<PanelState>,
 }
 
-impl Panel {
+impl BlueprintPanel {
     /// Create a new blueprint panel.
     pub fn new() -> Self {
         Self::default()

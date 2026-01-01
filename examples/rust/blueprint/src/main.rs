@@ -1,5 +1,5 @@
 use rerun::{
-    blueprint::{Blueprint, ContainerLike, Grid, Panel, SelectionPanel, Spatial2DView, TimePanel},
+    blueprint::{Blueprint, ContainerLike, Grid, BlueprintPanel, SelectionPanel, Spatial2DView, TimePanel},
     external::re_sdk_types::blueprint::components::{LoopMode, PanelState, PlayState},
 };
 
@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
             ]))
             .with_auto_views(args.auto_views)
-            .with_blueprint_panel(Panel::from_state(PanelState::Collapsed))
+            .with_blueprint_panel(BlueprintPanel::from_state(PanelState::Collapsed))
             .with_selection_panel(SelectionPanel::from_state(PanelState::Collapsed))
             .with_time_panel(
                 TimePanel::new()
