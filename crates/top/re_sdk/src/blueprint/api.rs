@@ -1,3 +1,5 @@
+//! Blueprint API for configuring viewer layouts.
+
 use re_log_types::{BlueprintActivationCommand, LogMsg};
 use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
 use re_sdk_types::blueprint::components::{AutoLayout, AutoViews, RootContainer};
@@ -7,10 +9,10 @@ use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
 use super::{ContainerLike, Panel, SelectionPanel, Tabs, TimePanel};
 
-/// Blueprint options for configuring how a blueprint should be activated.
+/// Blueprint options for configuring how a [`Blueprint`] should be activated.
 #[derive(Debug)]
 pub struct BlueprintOpts {
-    /// The blueprint to send.
+    /// The [`Blueprint`] to send.
     pub blueprint: Blueprint,
     /// Whether to activate the blueprint immediately.
     pub make_active: bool,
@@ -51,9 +53,6 @@ impl Blueprint {
     }
 
     /// Create an auto blueprint with automatic layout and view creation.
-    ///
-    /// This blueprint has no root container and relies on the viewer to automatically
-    /// create views based on the logged data.
     pub fn auto() -> Self {
         Self::default().with_auto_views(true).with_auto_layout(true)
     }
@@ -90,20 +89,17 @@ impl Blueprint {
 
     /// Convert the blueprint into a vector of `LogMsgs`.
     pub(crate) fn to_log_msgs(&self, application_id: &str) -> RecordingStreamResult<Vec<LogMsg>> {
-        // Create a temporary blueprint recording stream with memory sink
         let (rec, storage) = RecordingStreamBuilder::new(application_id)
             .recording_id(re_log_types::RecordingId::random())
             .blueprint()
             .memory()?;
 
-        // Set the "blueprint" timeline - required for viewer to identify blueprint data
+        // Required for viewer to identify blueprint data
         rec.set_time_sequence("blueprint", 0);
 
-        // Log the root container and all its children
         if let Some(ref root) = self.root_container {
             root.log_to_stream(&rec)?;
 
-            // Get the root container ID
             let root_id = match root {
                 ContainerLike::Horizontal(h) => h.0.id,
                 ContainerLike::Vertical(v) => v.0.id,
@@ -127,7 +123,6 @@ impl Blueprint {
             rec.log("viewport", &viewport)?;
         }
 
-        // Log panel configurations
         if let Some(ref panel) = self.blueprint_panel {
             panel.log_to_stream(&rec)?;
         }

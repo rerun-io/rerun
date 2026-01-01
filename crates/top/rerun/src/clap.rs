@@ -116,13 +116,9 @@ impl RerunArgs {
         self.init_with_blueprint_opts(application_id, None)
     }
 
-    /// Creates a new [`RecordingStream`] with a blueprint that will be activated immediately.
+    /// Creates a new [`RecordingStream`] with a [`re_sdk::blueprint::Blueprint`] that activates immediately.
     ///
-    /// The blueprint will be sent and activated as soon as the recording stream connects.
-    /// Use this when you want your blueprint to be shown immediately.
-    ///
-    /// If you want a default blueprint that only activates when the user resets,
-    /// use [`Self::init_with_default_blueprint`] instead.
+    /// For a default blueprint that only activates on reset, see [`Self::init_with_default_blueprint`].
     #[track_caller]
     pub fn init_with_blueprint(
         &self,
@@ -139,11 +135,9 @@ impl RerunArgs {
         )
     }
 
-    /// Creates a new [`RecordingStream`] with a default blueprint.
+    /// Creates a new [`RecordingStream`] with a default [`re_sdk::blueprint::Blueprint`].
     ///
-    /// If the application already has an active blueprint, the new blueprint won't become
-    /// active until the user resets the blueprint. If you want to activate the blueprint
-    /// immediately, use [`Self::init_with_blueprint`] instead.
+    /// The blueprint activates only when the user resets. For immediate activation, see [`Self::init_with_blueprint`].
     #[track_caller]
     pub fn init_with_default_blueprint(
         &self,

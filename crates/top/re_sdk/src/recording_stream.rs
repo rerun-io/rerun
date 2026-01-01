@@ -36,7 +36,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Returns path for force sink if private environment variable `_RERUN_TEST_FORCE_SAVE` is set
 ///
 /// Newly created [`RecordingStream`]s should use a [`crate::sink::FileSink`] pointing to this path.
-/// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
+/// Furthermore, [`RecordingStream::set_sink`] calls after this  not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file creation (and thus clearing) and pending file writes.
 pub fn forced_sink_path() -> Option<String> {
@@ -259,7 +259,6 @@ impl RecordingStreamBuilder {
 
     /// Set a blueprint and make it active immediately.
     ///
-    /// The blueprint will be sent and activated as soon as the recording stream connects.
     /// Use this when you want your blueprint to be shown immediately.
     ///
     /// To send a blueprint to an existing recording, use [`RecordingStream::send_blueprint`] instead.
@@ -2271,7 +2270,7 @@ impl RecordingStream {
         }
     }
 
-    /// Send a blueprint through this recording stream
+    /// Send a blueprint through this recording stream.
     pub fn send_blueprint(
         &self,
         blueprint: Vec<LogMsg>,
@@ -2287,6 +2286,10 @@ impl RecordingStream {
 
         if let Some(blueprint_id) = blueprint_id {
             if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with view heuristics.
                 self.record_msg(activation_cmd.into());
             } else {
                 re_log::warn!(
@@ -2298,17 +2301,13 @@ impl RecordingStream {
         }
     }
 
-    /// Send a blueprint using the high-level builder API.
-    ///
-    /// This is a convenience wrapper around [`Self::send_blueprint`] that takes
-    /// a [`crate::blueprint::Blueprint`] instead of raw `LogMsgs`.
-    pub fn send_blueprint_builder(
+    /// Send a [`crate::blueprint::Blueprint`] to configure the viewer layout.
+    pub fn send_blueprint_opts(
         &self,
-        blueprint: &crate::blueprint::Blueprint,
-        make_active: bool,
-        make_default: bool,
+        opts: &crate::blueprint::BlueprintOpts,
     ) -> RecordingStreamResult<()> {
-        blueprint.send(self, make_active, make_default)
+        opts.blueprint
+            .send(self, opts.make_active, opts.make_default)
     }
 }
 

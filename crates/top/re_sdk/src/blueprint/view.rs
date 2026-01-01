@@ -10,14 +10,14 @@ use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
 use re_sdk_types::{AsComponents, SerializedComponentBatch};
 
-/// Internal view type. Use specific view types like [`TimeSeriesView`], [`MapView`], etc.
+/// A view in the blueprint.
 #[derive(Debug)]
 pub struct View {
     pub(crate) id: Uuid,
     pub(crate) class_identifier: String,
     pub(crate) name: Option<String>,
     pub(crate) origin: EntityPath,
-    pub(crate) contents: Vec<String>, // Query expressions
+    pub(crate) contents: Vec<String>,
     pub(crate) visible: Option<bool>,
     pub(crate) properties: HashMap<String, Vec<SerializedComponentBatch>>,
     pub(crate) defaults: Vec<Vec<SerializedComponentBatch>>,
@@ -69,6 +69,7 @@ impl View {
             .push(archetype.as_serialized_batches());
     }
 
+    /// Log this view to the blueprint stream.
     pub(crate) fn log_to_stream(
         &self,
         stream: &crate::RecordingStream,
@@ -111,7 +112,7 @@ impl View {
         for default_batches in &self.defaults {
             stream.log_serialized_batches(
                 format!("{}/defaults", self.blueprint_path()),
-                false, // not static
+                false,
                 default_batches.iter().cloned(),
             )?;
         }
@@ -126,7 +127,7 @@ impl View {
             for override_batches in override_batches_list {
                 stream.log_serialized_batches(
                     override_path.clone(),
-                    false, // not static
+                    false,
                     override_batches.iter().cloned(),
                 )?;
             }

@@ -36,10 +36,6 @@ struct Args {
     show_panels: bool,
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Helper functions for formatting
-////////////////////////////////////////////////////////////////////////////////
-
 /// Format large numbers in a human-readable way (e.g., 2.8T, 394B, 1.2M)
 fn format_large_number(num: u64) -> String {
     let num_f = num as f64;
@@ -56,10 +52,6 @@ fn format_large_number(num: u64) -> String {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Helper functions for date handling
-////////////////////////////////////////////////////////////////////////////////
-
 /// Get the last N weekdays (excluding weekends) before the given date.
 fn get_last_weekdays(from_date: NaiveDate, count: usize) -> Vec<NaiveDate> {
     (1..)
@@ -71,10 +63,6 @@ fn get_last_weekdays(from_date: NaiveDate, count: usize) -> Vec<NaiveDate> {
         .rev()
         .collect()
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Helper functions for styling
-////////////////////////////////////////////////////////////////////////////////
 
 /// Brand colors for each stock symbol.
 fn brand_color(symbol: &str) -> u32 {
@@ -100,10 +88,6 @@ fn style_peak(symbol: &str) -> rerun::SeriesPoints {
         .with_names([format!("{symbol} (peak)")])
         .with_markers([rerun::components::MarkerShape::Up])
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Helper functions to create blueprints
-////////////////////////////////////////////////////////////////////////////////
 
 /// A blueprint enabling auto views, which matches the application default.
 fn auto_blueprint() -> Blueprint {
@@ -142,8 +126,6 @@ fn compare_two(symbol1: &str, symbol2: &str, day: &str) -> ContainerLike {
 }
 
 /// Create a blueprint showing a single stock without annotated peaks.
-///
-/// This uses an exclusion pattern to hide the peaks.
 fn one_stock_no_peaks(symbol: &str) -> ContainerLike {
     TimeSeriesView::new(symbol)
         .with_origin(format!("/stocks/{symbol}"))
@@ -259,7 +241,6 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Fetch and log stock data
     let mut provider = yahoo::YahooConnector::new()?;
 
     for &symbol in &symbols {
@@ -322,8 +303,7 @@ async fn main() -> Result<()> {
             &rerun::TextDocument::new(info_md).with_media_type(rerun::MediaType::MARKDOWN),
         )?;
 
-        // Fetch intraday data with 5-minute intervals
-        // Using a short range (5 days) to get 5-minute data
+        // Fetch 5-minute intraday data (5 days)
         match provider.get_quote_range(symbol, "5m", "5d").await {
             Ok(response) => {
                 let quotes = response.quotes()?;

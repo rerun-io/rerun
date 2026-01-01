@@ -24,7 +24,6 @@ mod spawn;
 // ---------------
 // Public modules:
 
-/// Blueprint API for declarative viewer configuration.
 pub mod blueprint;
 
 // -------------

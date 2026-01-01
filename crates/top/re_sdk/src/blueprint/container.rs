@@ -8,8 +8,6 @@ use re_sdk_types::blueprint::components::{ColumnShare, ContainerKind, IncludedCo
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::{Bool, Float32};
 
-// ---------- Internal shared data structure ----------
-
 /// Internal container data shared by all container types.
 #[derive(Debug)]
 pub(crate) struct Container {
@@ -23,8 +21,6 @@ pub(crate) struct Container {
     pub(crate) grid_columns: Option<u32>,
     pub(crate) active_tab: Option<String>,
 }
-
-// ---------- Public container types ----------
 
 /// A horizontal container that arranges children left-to-right.
 #[derive(Debug)]
@@ -42,8 +38,6 @@ pub struct Tabs(pub(crate) Container);
 #[derive(Debug)]
 pub struct Grid(pub(crate) Container);
 
-// ---------- ContainerLike enum ----------
-
 /// Types that can be contained in a container.
 #[derive(Debug)]
 pub enum ContainerLike {
@@ -58,8 +52,6 @@ pub enum ContainerLike {
     /// A view.
     View(crate::blueprint::View),
 }
-
-// ---------- Trait for shared container operations ----------
 
 pub(crate) trait AsContainer {
     fn as_container(&self) -> &Container;
@@ -89,8 +81,6 @@ impl AsContainer for Tabs {
     }
 }
 
-// ---------- ContainerLike implementation ----------
-
 impl ContainerLike {
     /// Get the blueprint path for this container or view.
     pub(crate) fn blueprint_path(&self) -> EntityPath {
@@ -118,24 +108,21 @@ impl ContainerLike {
     }
 }
 
-/// Helper function to log a container (shared implementation).
+/// Helper function to log a container.
 fn log_container(
     container: &Container,
     stream: &crate::RecordingStream,
 ) -> crate::RecordingStreamResult<()> {
-    // Recursively log all children first
     for child in &container.contents {
         child.log_to_stream(stream)?;
     }
 
-    // Build the container blueprint archetype
     let mut arch = ContainerBlueprint::new(container.kind);
 
     if let Some(ref name) = container.name {
         arch = arch.with_display_name(Name(name.clone().into()));
     }
 
-    // Add child paths as contents
     let child_paths: Vec<IncludedContent> = container
         .contents
         .iter()
@@ -174,8 +161,6 @@ fn log_container(
     stream.log(path, &arch)
 }
 
-// ---------- Horizontal implementation ----------
-
 impl Horizontal {
     /// Create a new horizontal container with the given contents.
     pub fn new(contents: impl IntoIterator<Item = ContainerLike>) -> Self {
@@ -199,10 +184,6 @@ impl Horizontal {
     }
 
     /// Set the column shares for layout.
-    ///
-    /// The share is used to determine what fraction of the total width each
-    /// column should take up. The column with index `i` will take up the
-    /// fraction `shares[i] / total_shares`.
     pub fn with_column_shares(mut self, shares: impl Into<Vec<f32>>) -> Self {
         self.0.column_shares = Some(shares.into());
         self
@@ -214,8 +195,6 @@ impl Horizontal {
         self
     }
 }
-
-// ---------- Vertical implementation ----------
 
 impl Vertical {
     /// Create a new vertical container with the given contents.
@@ -240,10 +219,6 @@ impl Vertical {
     }
 
     /// Set the row shares for layout.
-    ///
-    /// The share is used to determine what fraction of the total height each
-    /// row should take up. The row with index `i` will take up the
-    /// fraction `shares[i] / total_shares`.
     pub fn with_row_shares(mut self, shares: impl Into<Vec<f32>>) -> Self {
         self.0.row_shares = Some(shares.into());
         self
@@ -255,8 +230,6 @@ impl Vertical {
         self
     }
 }
-
-// ---------- Tabs implementation ----------
 
 impl Tabs {
     /// Create a new tabs container with the given contents.
@@ -292,8 +265,6 @@ impl Tabs {
         self
     }
 }
-
-// ---------- Grid implementation ----------
 
 impl Grid {
     /// Create a new grid container with the given contents.
@@ -341,8 +312,6 @@ impl Grid {
         self
     }
 }
-
-// ---------- From implementations for ContainerLike ----------
 
 impl From<Horizontal> for ContainerLike {
     fn from(c: Horizontal) -> Self {
