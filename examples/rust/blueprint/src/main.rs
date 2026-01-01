@@ -1,5 +1,7 @@
 use rerun::{
-    blueprint::{Blueprint, ContainerLike, Grid, BlueprintPanel, SelectionPanel, Spatial2DView, TimePanel},
+    blueprint::{
+        Blueprint, BlueprintPanel, ContainerLike, Grid, SelectionPanel, Spatial2DView, TimePanel,
+    },
     external::re_sdk_types::blueprint::components::{LoopMode, PanelState, PlayState},
 };
 
