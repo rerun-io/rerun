@@ -5,7 +5,7 @@ use re_sdk_types::datatypes::Bool;
 
 use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
-use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
+use super::{ContainerLike, Panel, SelectionPanel, Tabs, TimePanel};
 
 /// Blueprint options for configuring how a blueprint should be activated.
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub struct Blueprint {
     root_container: Option<ContainerLike>,
     auto_layout: Option<bool>,
     auto_views: Option<bool>,
-    blueprint_panel: Option<BlueprintPanel>,
+    blueprint_panel: Option<Panel>,
     selection_panel: Option<SelectionPanel>,
     time_panel: Option<TimePanel>,
 }
@@ -71,7 +71,7 @@ impl Blueprint {
     }
 
     /// Configure the blueprint panel.
-    pub fn with_blueprint_panel(mut self, panel: BlueprintPanel) -> Self {
+    pub fn with_blueprint_panel(mut self, panel: Panel) -> Self {
         self.blueprint_panel = Some(panel);
         self
     }

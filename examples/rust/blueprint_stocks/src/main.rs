@@ -2,9 +2,12 @@ use anyhow::Result;
 use chrono::{Datelike, Duration, NaiveDate, Weekday};
 use chrono_tz::America::New_York;
 use clap::Parser;
-use rerun::blueprint::{
-    Blueprint, ContainerLike, Horizontal, SelectionPanel, TextDocumentView, TimePanel,
-    TimeSeriesView, Vertical,
+use rerun::{
+    blueprint::{
+        Blueprint, ContainerLike, Horizontal, SelectionPanel, TextDocumentView, TimePanel,
+        TimeSeriesView, Vertical,
+    },
+    external::re_sdk_types::blueprint::components::PanelState,
 };
 use yahoo_finance_api as yahoo;
 
@@ -177,8 +180,8 @@ fn stock_grid(symbols: &[&str], dates: &[&str]) -> ContainerLike {
 /// Wrap a viewport in a blueprint that hides the time and selection panels.
 fn hide_panels(viewport: ContainerLike) -> Blueprint {
     Blueprint::new(viewport)
-        .with_time_panel(TimePanel::new().with_state_str("collapsed"))
-        .with_selection_panel(SelectionPanel::from_state("collapsed"))
+        .with_time_panel(TimePanel::new().with_state(PanelState::Collapsed))
+        .with_selection_panel(SelectionPanel::from_state(PanelState::Collapsed))
 }
 
 #[tokio::main]

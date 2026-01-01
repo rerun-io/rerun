@@ -9,23 +9,26 @@ use re_sdk_types::datatypes::Float64;
 use crate::RecordingStreamResult;
 
 /// Blueprint panel configuration.
-#[derive(Debug)]
-pub struct BlueprintPanel {
+#[derive(Debug, Default)]
+pub struct Panel {
     state: Option<PanelState>,
 }
 
-impl BlueprintPanel {
-    /// Create a new blueprint panel with the given state.
-    pub fn new(state: impl Into<PanelState>) -> Self {
-        Self {
-            state: Some(state.into()),
-        }
+impl Panel {
+    /// Create a new blueprint panel.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set the panel state.
     pub fn with_state(mut self, state: impl Into<PanelState>) -> Self {
         self.state = Some(state.into());
         self
+    }
+
+    /// Create a new blueprint panel with the given state.
+    pub fn from_state(state: PanelState) -> Self {
+        Self::new().with_state(state)
     }
 
     /// Log this panel to the blueprint stream.
@@ -42,23 +45,26 @@ impl BlueprintPanel {
 }
 
 /// Selection panel configuration.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SelectionPanel {
     state: Option<PanelState>,
 }
 
 impl SelectionPanel {
-    /// Create a new selection panel with the given state.
-    pub fn new(state: impl Into<PanelState>) -> Self {
-        Self {
-            state: Some(state.into()),
-        }
+    /// Create a new selection panel.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set the panel state.
     pub fn with_state(mut self, state: impl Into<PanelState>) -> Self {
         self.state = Some(state.into());
         self
+    }
+
+    /// Create a new selection panel with the given state.
+    pub fn from_state(state: PanelState) -> Self {
+        Self::new().with_state(state)
     }
 
     /// Log this panel to the blueprint stream.
@@ -75,7 +81,7 @@ impl SelectionPanel {
 }
 
 /// Time panel configuration.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TimePanel {
     state: Option<PanelState>,
     timeline: Option<String>,
@@ -89,15 +95,7 @@ pub struct TimePanel {
 impl TimePanel {
     /// Create a new time panel.
     pub fn new() -> Self {
-        Self {
-            state: None,
-            timeline: None,
-            playback_speed: None,
-            fps: None,
-            play_state: None,
-            loop_mode: None,
-            time_selection: None,
-        }
+        Self::default()
     }
 
     /// Set the panel state.
@@ -177,73 +175,5 @@ impl TimePanel {
         }
 
         stream.log("time_panel", &arch)
-    }
-}
-
-impl Default for TimePanel {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// Helper functions to convert string literals to enum values
-impl BlueprintPanel {
-    /// Create a blueprint panel from a state string ("hidden", "collapsed", "expanded").
-    pub fn from_state(state: &str) -> Self {
-        Self::new(parse_panel_state(state))
-    }
-}
-
-impl SelectionPanel {
-    /// Create a selection panel from a state string ("hidden", "collapsed", "expanded").
-    pub fn from_state(state: &str) -> Self {
-        Self::new(parse_panel_state(state))
-    }
-}
-
-impl TimePanel {
-    /// Set the panel state from a string ("hidden", "collapsed", "expanded").
-    pub fn with_state_str(mut self, state: &str) -> Self {
-        self.state = Some(parse_panel_state(state));
-        self
-    }
-
-    /// Set the play state from a string ("paused", "playing", "following").
-    pub fn with_play_state_str(mut self, play_state: &str) -> Self {
-        self.play_state = Some(parse_play_state(play_state));
-        self
-    }
-
-    /// Set the loop mode from a string ("off", "selection", "all").
-    pub fn with_loop_mode_str(mut self, loop_mode: &str) -> Self {
-        self.loop_mode = Some(parse_loop_mode(loop_mode));
-        self
-    }
-}
-
-fn parse_panel_state(s: &str) -> PanelState {
-    match s {
-        "hidden" => PanelState::Hidden,
-        "collapsed" => PanelState::Collapsed,
-        "expanded" => PanelState::Expanded,
-        _ => PanelState::Expanded, // Default to expanded for unknown values
-    }
-}
-
-fn parse_play_state(s: &str) -> PlayState {
-    match s {
-        "paused" => PlayState::Paused,
-        "playing" => PlayState::Playing,
-        "following" => PlayState::Following,
-        _ => PlayState::Playing, // Default
-    }
-}
-
-fn parse_loop_mode(s: &str) -> LoopMode {
-    match s {
-        "off" => LoopMode::Off,
-        "selection" => LoopMode::Selection,
-        "all" => LoopMode::All,
-        _ => LoopMode::Off, // Default
     }
 }

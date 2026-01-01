@@ -1,5 +1,6 @@
-use rerun::blueprint::{
-    Blueprint, BlueprintPanel, ContainerLike, Grid, SelectionPanel, Spatial2DView, TimePanel,
+use rerun::{
+    blueprint::{Blueprint, ContainerLike, Grid, Panel, SelectionPanel, Spatial2DView, TimePanel},
+    external::re_sdk_types::blueprint::components::{LoopMode, PanelState, PlayState},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -43,15 +44,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
             ]))
             .with_auto_views(args.auto_views)
-            .with_blueprint_panel(BlueprintPanel::from_state("collapsed"))
-            .with_selection_panel(SelectionPanel::from_state("collapsed"))
+            .with_blueprint_panel(Panel::from_state(PanelState::Collapsed))
+            .with_selection_panel(SelectionPanel::from_state(PanelState::Collapsed))
             .with_time_panel(
                 TimePanel::new()
-                    .with_state_str("collapsed")
+                    .with_state(PanelState::Collapsed)
                     .with_timeline("custom")
                     .with_time_selection(10, 25)
-                    .with_loop_mode_str("selection")
-                    .with_play_state_str("playing"),
+                    .with_loop_mode(LoopMode::Selection)
+                    .with_play_state(PlayState::Playing),
             ),
         )
     };
