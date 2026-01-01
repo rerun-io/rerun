@@ -49,7 +49,7 @@ impl View {
     /// Add a property archetype that applies to the view itself.
     pub(crate) fn add_property(&mut self, name: &str, archetype: &dyn AsComponents) {
         self.properties
-            .insert(name.to_string(), archetype.as_serialized_batches());
+            .insert(name.to_owned(), archetype.as_serialized_batches());
     }
 
     /// Add a default archetype that applies to all entities in the view.
@@ -65,7 +65,7 @@ impl View {
     ) {
         self.overrides
             .entry(entity_path.into())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(archetype.as_serialized_batches());
     }
 
