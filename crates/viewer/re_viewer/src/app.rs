@@ -3049,6 +3049,18 @@ impl App {
             blueprint_query,
         })
     }
+
+    /// Prefetch chunks for the open recording (stream from server)
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) -> Option<()> {
+        let recording = store_hub.active_recording_mut()?;
+        let time_ctrl = self.state.time_controls.get(recording.store_id())?;
+        crate::prefetch_chunks::prefetch_chunks(
+            &self.startup_options,
+            &self.rx_log,
+            recording,
+            time_ctrl,
+        )
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -3324,6 +3336,8 @@ impl eframe::App for App {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
+
+        self.prefetch_chunks(&mut store_hub);
 
         {
             let (storage_context, store_context) = store_hub.read_context();
