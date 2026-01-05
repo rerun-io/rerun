@@ -442,6 +442,47 @@ mod tests {
     use arrow::buffer::{NullBuffer, ScalarBuffer};
     use arrow::datatypes::{DataType, Int32Type};
 
+/// This implements a costly but always reliable deep-slicing operation for Arrow arrays.
+///
+/// On one hand, this both allocates & copies data around, similar how `concat()` behaves when performing the
+/// inverse operation. On the other hand, this is guaranteed to always behave as you'd expect, both
+/// in memory and on disk, in all possible niche scenarios.
+//
+// TODO(cmc): optimize from there; future results should always match this baseline.
+pub fn deep_slice_array_ref(
+    array: &dyn arrow::array::Array,
+    offset: usize,
+    length: usize,
+) -> ArrayRef {
+    let data = array.to_data();
+
+    let use_null_optimization = false;
+    let mut data_sliced =
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+
+    data_sliced.extend(0, offset, offset + length);
+
+    arrow::array::make_array(data_sliced.freeze())
+}
+
+/// This implements a costly but always reliable deep-slicing operation for Arrow arrays.
+///
+/// On one hand, this both allocates & copies data around, similar how `concat()` behaves when performing the
+/// inverse operation. On the other hand, this is guaranteed to always behave as you'd expect, both
+/// in memory and on disk, in all possible niche scenarios.
+//
+// TODO(cmc): optimize from there; future results should always match this baseline.
+pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, offset: usize, length: usize) -> T {
+    let data = array.to_data();
+
+    let use_null_optimization = false;
+    let mut data_sliced =
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+
+    data_sliced.extend(0, offset, offset + length);
+
+    T::from(data_sliced.freeze())
+}
     use super::*;
 
     #[test]
