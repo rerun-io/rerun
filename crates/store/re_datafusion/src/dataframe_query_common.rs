@@ -539,7 +539,6 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
             index_range: range.range,
         }),
         columns_always_include_everything: false,
-        columns_always_include_chunk_ids: false,
         columns_always_include_entity_paths: false,
         columns_always_include_byte_offsets: false,
         columns_always_include_static_indexes: false,
