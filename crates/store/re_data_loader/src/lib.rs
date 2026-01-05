@@ -471,6 +471,8 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
 ];
 
+pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
+
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
@@ -492,6 +494,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         .iter()
         .chain(SUPPORTED_THIRD_PARTY_FORMATS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_DEPTH_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
         .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)

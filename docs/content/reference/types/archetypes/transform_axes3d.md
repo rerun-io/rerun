@@ -18,9 +18,9 @@ A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/re
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `TransformAxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TransformAxes3D.html?speculative-link)
- * 🐍 [Python API docs for `TransformAxes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.TransformAxes3D)
- * 🦀 [Rust API docs for `TransformAxes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TransformAxes3D.html?speculative-link)
+ * 🌊 [C++ API docs for `TransformAxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TransformAxes3D.html)
+ * 🐍 [Python API docs for `TransformAxes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TransformAxes3D)
+ * 🦀 [Rust API docs for `TransformAxes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TransformAxes3D.html)
 
 ## Example
 

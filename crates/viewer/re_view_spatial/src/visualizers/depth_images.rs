@@ -15,6 +15,7 @@ use re_viewer_context::{
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
@@ -34,7 +35,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(None),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
             depth_cloud_entities: IntMap::default(),
         }
     }
