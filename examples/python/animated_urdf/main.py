@@ -43,10 +43,10 @@ def main() -> None:
                 # Remap from [-1, 1] to the joint's valid range
                 dynamic_angle = joint.limit_lower + (sin_value + 1.0) / 2.0 * (joint.limit_upper - joint.limit_lower)
 
-                # Compute the full transform including origin and parent/child frames
-
                 # Rerun loads the URDF transforms with child/parent frame relations.
                 # To move a joint, we just need to log a new transform between those frames.
+                # Here, we use the `compute_transform` method that automatically takes care
+                # of setting the frame names and calculating the full transform from the joint angle.
                 transform = joint.compute_transform(dynamic_angle)
                 rec.log("transforms", transform)
 
