@@ -336,8 +336,8 @@ async fn query_dataset_snapshot(
             .fields()
             .contains_unordered(&required_field),
         "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
-        merged_chunk_info.schema().fields(),
         required_field,
+        merged_chunk_info.schema().fields(),
     );
 
     let required_column_names = required_field
