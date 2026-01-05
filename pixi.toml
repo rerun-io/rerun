@@ -368,6 +368,8 @@ py-build-notebook-fast = { cmd = "uv sync --inexact --package rerun-notebook" }
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
+py-build-examples = { cmd = "pixi run uv sync --group examples --inexact --no-install-package rerun-sdk" }
+
 
 # Build the `rerun-sdk` package in release mode.
 py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }

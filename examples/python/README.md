@@ -61,6 +61,17 @@ Now you can run examples via uv:
 pixi run uv run examples/python/minimal/minimal.py
 ```
 
+### Installing and running examples
+You can install all of the rerun python examples into the uv managed environment with:
+```shell
+pixi run py-build-examples
+```
+
+Then you can just examples based on their installed name, for example:
+```shell
+pixi run uv run plots
+```
+
 ## Datasets
 Some examples will download a small datasets before they run. They will do so the first time you run the example. The datasets will be added to a subdir called `dataset`, which is in the repo-wide `.gitignore`.
 
