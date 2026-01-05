@@ -1334,6 +1334,7 @@ impl RecordingStream {
     /// will be configured as if the current SDK recording is the currently opened recording.
     /// Most dataloaders prefer logging to the currently opened recording if one is set.
     #[cfg(feature = "data_loaders")]
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn log_file(
         &self,
         filepath: impl AsRef<std::path::Path>,
