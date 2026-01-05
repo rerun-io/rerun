@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Animated URDF"
+title = "URDF"
 tags = ["3D", "Mesh", "URDF", "Animation"]
 channel = "main"
 thumbnail = "https://static.rerun.io/animated-urdf-thumbnail/02cd73ad1155db0a202392b1fd8f8036070ad888/480w.png"
@@ -32,12 +32,13 @@ The key steps are:
 
 ```python
 import rerun as rr
+import rerun.urdf as rru
 
 # Log the URDF file once, as a static resource
 rec.log_file_from_path(urdf_path, static=True)
 
 # Load the URDF tree structure into memory
-urdf_tree = rr.UrdfTree.from_file_path(urdf_path)
+urdf_tree = rru.UrdfTree.from_file_path(urdf_path)
 
 # Animate joints by logging transforms
 for joint in urdf_tree.joints():

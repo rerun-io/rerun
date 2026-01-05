@@ -3,7 +3,7 @@
 An example of how to load and animate a URDF given some changing joint angles.
 
 Usage:
-python -m animated_urdf
+python -m urdf
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def main() -> None:
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
-    rec = rr.script_setup(args, "rerun_example_animated_urdf")
+    rec = rr.script_setup(args, "rerun_example_urdf")
 
     rec.spawn()
     urdf_path = Path(__file__).parent.parent.parent / "rust" / "animated_urdf" / "data" / "so100.urdf"
