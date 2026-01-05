@@ -275,7 +275,7 @@ async fn create_table_entry(
             CreateTableEntryRequest {
                 name: table_name.to_owned(),
                 schema: schema.clone(),
-                provider_details,
+                provider_details: Some(provider_details),
             }
             .try_into()
             .unwrap(),
