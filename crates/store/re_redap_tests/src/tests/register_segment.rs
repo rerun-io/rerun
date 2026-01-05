@@ -5,12 +5,12 @@ use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_protos::cloud::v1alpha1::ext::DatasetDetails;
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
     GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use url::Url;
@@ -311,6 +311,59 @@ pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
 
     scan_segment_table_and_snapshot(&service, dataset_name, "empty").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "empty").await;
+}
+
+/// Any kind of bad file URI should return a not found error.
+///
+/// This includes:
+/// - file not found
+/// - path is not a file
+/// - URI has a host name
+///
+/// The latter can be caused by attempting to build a `file://` with a relative path, leading to
+/// `file://path/to/file.rrd`. This is valid URI, but here `path` is the hostname.
+pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService) {
+    let temp_dir = tempfile::tempdir().expect("creating temp dir");
+    let temp_dir_uri = format!("file://{}/", temp_dir.path().display());
+
+    let test_cases = vec![
+        ("file doesn't exist", "file:///does/not/exist.rrd"),
+        ("URI has a host name", "file://somehost/file/path.rrd"),
+        ("URI points to a directory", &temp_dir_uri),
+    ];
+
+    let dataset_name = "empty_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    for (test_name, bad_uri) in test_cases {
+        let request = RegisterWithDatasetRequest {
+            data_sources: vec![ext::DataSource {
+                storage_url: url::Url::parse(bad_uri).unwrap(),
+                layer: "base".to_owned(),
+                is_prefix: false,
+                kind: ext::DataSourceKind::Rrd,
+            }],
+            on_duplicate: Default::default(),
+        };
+
+        let result = service
+            .register_with_dataset(
+                tonic::Request::new(request.into())
+                    .with_entry_name(dataset_name)
+                    .unwrap(),
+            )
+            .await;
+
+        assert!(
+            result.is_err(),
+            "register on unknown file should fail (case: {test_name})"
+        );
+        assert_eq!(
+            result.unwrap_err().code(),
+            tonic::Code::NotFound,
+            "bad file URI should result in a not found error (case: {test_name})"
+        );
+    }
 }
 
 pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
