@@ -158,7 +158,7 @@ jobs:
           pixi-version: v0.55.0
 
       - name: Check Python example thumbnails
-        run: pixi run ./scripts/ci/thumbnails.py check
+        run: pixi run uvpy ./scripts/ci/thumbnails.py check
 
   check-example-manifest-coverage:
     name: Check example manifest coverage

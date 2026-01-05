@@ -204,7 +204,7 @@ jobs:
 
       - name: Build
         run: |
-          pixi run python scripts/ci/build_and_upload_wheels.py \
+          pixi run uvpy scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
@@ -227,7 +227,7 @@ jobs:
         run: |
           rm -rf dist
           pixi run js-build-base
-          pixi run python scripts/ci/build_and_upload_rerun_notebook.py \
+          pixi run uvpy scripts/ci/build_and_upload_rerun_notebook.py \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
 
       - name: Save rerun_notebook wheel artifact

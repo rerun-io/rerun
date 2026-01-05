@@ -10,7 +10,9 @@ from . import WASM_PATH, WIDGET_PATH
 
 
 class _Asset:
-    def __init__(self, path: str | Path, content_type: str, encode_gzip: bool = False) -> None:
+    def __init__(
+        self, path: str | Path, content_type: str, encode_gzip: bool = False
+    ) -> None:
         self.data = Path(path).read_bytes()
         self.headers = {
             "Content-Type": content_type,
@@ -88,12 +90,16 @@ def serve_assets(
         print("Loading assets into memory…")
         assets = {
             "widget.js": _Asset(WIDGET_PATH, "text/javascript"),
-            "re_viewer_bg.wasm": _Asset(WASM_PATH, "application/wasm", encode_gzip=True),
+            "re_viewer_bg.wasm": _Asset(
+                WASM_PATH, "application/wasm", encode_gzip=True
+            ),
         }
 
     httpd = socketserver.TCPServer((bind_address, port), AssetHandler)
     bound_addr = httpd.server_address
-    print(f"Serving rerun notebook assets at http://{bound_addr[0]!s}:{bound_addr[1]!s}")
+    print(
+        f"Serving rerun notebook assets at http://{bound_addr[0]!s}:{bound_addr[1]!s}"
+    )
 
     if background:
         import threading

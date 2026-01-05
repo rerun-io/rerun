@@ -42,7 +42,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: wheel-test
 
       - name: Download Wheel
         uses: actions/download-artifact@v4
@@ -59,18 +58,18 @@ jobs:
       - name: Get version
         id: get-version
         run: |
-          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
+          pixi run 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-notebook --dir wheel --platform-independent
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-notebook --dir wheel --platform-independent
 
       - name: Install Deps
-        run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
+        run: pixi run uv pip install -r examples/python/notebook/requirements.txt
 
       - name: Create notebook
-        run: pixi run -e wheel-test jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
+        run: pixi run uv jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
 
       - id: "auth"
         uses: google-github-actions/auth@v2

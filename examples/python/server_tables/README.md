@@ -39,8 +39,8 @@ pip install -e examples/python/server_tables
 python examples/python/server_tables/server_tables.py
 ```
 
-or to run it from pixi
+or to run it via pixi/uv
 
 ```bash
-pixi run -e examples server_tables
+pixi run py-build && pixi run uv run examples/python/server_tables/server_tables.py
 ```

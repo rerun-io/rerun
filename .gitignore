@@ -34,7 +34,6 @@ _deps
 **/venv*
 **/.venv*
 /env/
-.python-version
 
 # Python build artifacts:
 __pycache__
