@@ -208,7 +208,13 @@ class UrdfLink:
 
 
 class UrdfTree:
-    """A URDF robot model with joints and links."""
+    """
+    A URDF robot model with joints and links.
+
+    Not directly loggable. Use this to access the structure of a URDF file
+    and compute transforms for individual joints, which can then be logged
+    using [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+    """
 
     def __init__(self, inner: _UrdfTreeInternal) -> None:
         self._inner = inner
