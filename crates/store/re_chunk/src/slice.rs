@@ -78,7 +78,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: row_ids.clone().slice(index, len),
+            row_ids: re_arrow_util::deep_slice_array(row_ids, index, len),
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
@@ -87,7 +87,7 @@ impl Chunk {
                 .values()
                 .map(|column| {
                     SerializedComponentColumn::new(
-                        column.list_array.clone().slice(index, len),
+                        re_arrow_util::deep_slice_array(&column.list_array, index, len),
                         column.descriptor.clone(),
                     )
                 })
