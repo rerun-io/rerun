@@ -98,16 +98,15 @@ class UrdfJoint:
 
         if joint_type in ("revolute", "continuous"):
             # Revolute and continuous joints rotate around their axis
-            if joint_type == "revolute":
-                # Check limits only for revolute (continuous has no limits)
-                if not (self.limit_lower <= angle <= self.limit_upper):
-                    warnings.warn(
-                        f"Joint '{self.name}' angle {angle:.4f} rad is outside limits "
-                        f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] rad. Clamping.",
-                        UserWarning,
-                        stacklevel=2,
-                    )
-                    angle = max(self.limit_lower, min(self.limit_upper, angle))
+            # Check limits only for revolute (continuous has no limits)
+            if joint_type == "revolute" and not (self.limit_lower <= angle <= self.limit_upper):
+                warnings.warn(
+                    f"Joint '{self.name}' angle {angle:.4f} rad is outside limits "
+                    f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] rad. Clamping.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                angle = max(self.limit_lower, min(self.limit_upper, angle))
 
             # Combine origin rotation (RPY) with dynamic rotation (axis-angle)
             # First convert origin RPY to quaternion
@@ -158,38 +157,28 @@ class UrdfJoint:
 
             # For prismatic joints, rotation is just the origin rotation
             roll, pitch, yaw = self.origin_rpy
+            quat = None
             if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = _euler_to_quat(roll, pitch, yaw)
-                return Transform3D(
-                    quaternion=Quaternion(xyzw=quat),
-                    translation=translation,
-                    parent_frame=self.parent_link,
-                    child_frame=self.child_link,
-                )
-            else:
-                return Transform3D(
-                    translation=translation,
-                    parent_frame=self.parent_link,
-                    child_frame=self.child_link,
-                )
+                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
+            return Transform3D(
+                translation=translation,
+                quaternion=quat,
+                parent_frame=self.parent_link,
+                child_frame=self.child_link,
+            )
 
         elif joint_type == "fixed":
             # Fixed joints only have the origin transform
             roll, pitch, yaw = self.origin_rpy
+            quat = None
             if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = _euler_to_quat(roll, pitch, yaw)
-                return Transform3D(
-                    quaternion=Quaternion(xyzw=quat),
-                    translation=self.origin_xyz,
-                    parent_frame=self.parent_link,
-                    child_frame=self.child_link,
-                )
-            else:
-                return Transform3D(
-                    translation=self.origin_xyz,
-                    parent_frame=self.parent_link,
-                    child_frame=self.child_link,
-                )
+                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
+            return Transform3D(
+                translation=self.origin_xyz,
+                quaternion=quat,
+                parent_frame=self.parent_link,
+                child_frame=self.child_link,
+            )
 
         else:
             # Unsupported joint types
