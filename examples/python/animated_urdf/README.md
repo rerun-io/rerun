@@ -28,19 +28,19 @@ The key steps are:
 
 ```python
 import rerun as rr
-import rerun.urdf as rru
+import rerun.urdf import UrdfTree
 
 # Log the URDF file once, as a static resource
 rec.log_file_from_path(urdf_path, static=True)
 
 # Load the URDF tree structure into memory
-urdf_tree = rru.UrdfTree.from_file_path(urdf_path)
+urdf_tree = UrdfTree.from_file_path(urdf_path)
 
 # Animate joints by logging transforms
 for joint in urdf_tree.joints():
     if joint.joint_type == "revolute":
-        # compute_transform gives you a complete transform ready to log
-        # (includes origin, dynamic motion, and frame relationships)
+        # compute_transform gives you a complete transform that is ready to log,
+        # calculated from joint origin and the current angle and with the frame names set.
         transform = joint.compute_transform(angle)
         rec.log("transforms", transform)
 ```
