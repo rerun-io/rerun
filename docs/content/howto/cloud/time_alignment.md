@@ -15,13 +15,13 @@ The dependencies in this example require `rerun-sdk[all]`, and `pandas` because 
 Simplified setup to launch the local server for demonstration.
 In practice you'll connect to your cloud instance.
 
-snippet: reference/time_alignment[setup]
+snippet: howto/time_alignment[setup]
 
 ## Extract desired timepoints
 
 Select start and end time of data, downsample to a fixed frequency, and specify those as the desired output timestamps.
 
-snippet: reference/time_alignment[extract_timepoints]
+snippet: howto/time_alignment[extract_timepoints]
 
 ## Time-align data
 
@@ -29,4 +29,4 @@ Select the timeline, columns, and episode of interest.
 Extract rows at the specified time points, and fill forward to eliminate sparse entries.
 Finally, filter out nulls for initial sensor state that cannot be resolved with forward fill.
 
-snippet: reference/time_alignment[time_align]
+snippet: howto/time_alignment[time_align]

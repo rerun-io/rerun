@@ -380,6 +380,22 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/dataframe_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "rust",
+]
+"howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "rust",
+]
+"howto/time_alignment" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "rust",
+]
+"howto/view_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "rust",
+]
 
 # -----------------------------------------------------------------------------
 

@@ -15,13 +15,13 @@ The dependencies in this example are contained in `rerun-sdk[all]`.
 
 Perform initial import and spawn local server for demonstration.
 In practice you'll connect to your cloud instance.
-snippet: reference/dataframe_operations[setup]
+snippet: howto/dataframe_operations[setup]
 
 ## Group-by / Aggregation
 
 Perform an aggregation on the episodes to track the first and last timestamp for the columns of interest.
 
-snippet: reference/dataframe_operations[group_by]
+snippet: howto/dataframe_operations[group_by]
 
 ## Join and query
 
@@ -33,7 +33,7 @@ Even though datafusion pulls data lazily, we don't currently decouple our payloa
 E.g. in this example this means that we have to pull the full camera data to inspect their min/max timestamps.
 This works quickly when the data is already local and in memory, but can be a bottleneck on cloud at scale.
 
-snippet: reference/dataframe_operations[join_query]
+snippet: howto/dataframe_operations[join_query]
 
 ## Extract sub-episodes from recording
 
@@ -41,4 +41,4 @@ Oftentimes a recording will capture multiple episodes.
 For instance a robotic arm may place multiple items, where each item could be considered an episode.
 This example looks for contiguous time ranges where the gripper opens and closes in order to separate these sub-episodes for further downstream processing.
 
-snippet: reference/dataframe_operations[sub_episodes]
+snippet: howto/dataframe_operations[sub_episodes]
