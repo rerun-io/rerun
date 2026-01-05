@@ -340,7 +340,20 @@ impl TensorView {
     ) -> anyhow::Result<()> {
         let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, tensors, slice_selection)?;
 
-        if !response.hovered() {
+        if response.hovered() {
+            if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
+                response.on_hover_ui_at_pointer(|ui| {
+                    crate::tensor_slice_hover::show_tensor_hover_ui(
+                        ctx.viewer_ctx,
+                        ui,
+                        tensors,
+                        slice_selection,
+                        image_rect,
+                        pointer_pos,
+                    );
+                });
+            }
+        } else {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
             paint_axis_names(ui, image_rect, font_id, dimension_labels);
         }
@@ -438,6 +451,7 @@ impl TensorView {
                 data_range,
                 annotations,
                 opacity,
+                ..
             } = tensor_view;
 
             let colormap_with_range = ColormapWithRange {

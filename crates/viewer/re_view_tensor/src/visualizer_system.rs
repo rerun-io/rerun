@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_chunk_store::{LatestAtQuery, RowId};
+use re_log_types::EntityPath;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::components::{Opacity, TensorData, ValueRange};
@@ -13,6 +14,7 @@ use re_viewer_context::{
 
 #[derive(Clone)]
 pub struct TensorVisualization {
+    pub entity_path: EntityPath,
     pub tensor_row_id: RowId,
     pub tensor: TensorData,
     pub data_range: ValueRange,
@@ -107,6 +109,7 @@ impl VisualizerSystem for TensorSystem {
                     });
 
                 self.tensors.push(TensorVisualization {
+                    entity_path: data_result.entity_path.clone(),
                     tensor_row_id,
                     tensor: tensor.clone(),
                     data_range,
