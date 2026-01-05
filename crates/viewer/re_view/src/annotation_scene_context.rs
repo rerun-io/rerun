@@ -40,5 +40,4 @@ impl ViewContextSystem for AnnotationSceneContext {
             .0
             .clone();
     }
-
 }
