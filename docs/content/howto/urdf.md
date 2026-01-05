@@ -27,7 +27,7 @@ Once that is done, the joints can be updated by sending [`Transform3D`](../refer
 
 ## Example
 
-Here is a minimal example that demonstrates how to load and update a `URDF` with the Python SDK:
+Here is an example that demonstrates how to load and update a `URDF` with the Python SDK:
 
 snippet: howto/load_urdf
 
