@@ -672,10 +672,6 @@ async fn load_chunks(
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
-            if !chunk.is_static() && !cfg!(target_arch = "wasm32") {
-                // TODO: Remove sleep
-                // std::thread::sleep(std::time::Duration::from_millis(30));
-            }
             if tx
                 .send(
                     LogMsg::ArrowMsg(

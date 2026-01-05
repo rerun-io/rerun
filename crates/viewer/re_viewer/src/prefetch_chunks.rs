@@ -19,14 +19,15 @@ pub fn prefetch_chunks(
     let current_time = time_ctrl.time_i64()?;
     let timeline = *time_ctrl.timeline()?;
 
-    // Some reasonable margin on each side of the current time:
-    let time_margin = match timeline.typ() {
+    // Load data from slightly before the current time to give some room for latest-at.
+    // This is a bit hacky, but works for now.
+    let before_margin = match timeline.typ() {
         re_log_types::TimeType::Sequence => 30,
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
 
     let desired_range = AbsoluteTimeRange::new(
-        current_time.saturating_sub(time_margin),
+        current_time.saturating_sub(before_margin),
         re_chunk::TimeInt::MAX, // Keep loading until the end (if we have the space for it).
     );
 
@@ -35,11 +36,11 @@ pub fn prefetch_chunks(
         desired_range,
         total_byte_budget,
 
-        // TODO: what is a reasonable cap here?
+        // TODO(RR-3204): what is a reasonable cap here?
         // We don't request more until this much has been received.
         // Small number = low latency, low throughput.
         // High number = high latency, high throughput.
-        // Ideally it should depend on the actual bandwidth and latency.
+        // Ideally it should depend on the actual channel bandwidth and latency.
         delta_byte_budget: 500_000,
     };
 
@@ -57,10 +58,10 @@ pub fn prefetch_chunks(
             found_source = true;
 
             if !rx.has_waiting_command_receivers() {
-                // TODO: should probably allow 1-2 things in the queue?
+                // TODO(RR-3204): we should probably allow 1-2 things in the queue?
                 // Either there is noone on the other side,
                 // or they are busy processing previous requests.
-                // Let's not enqueu more work for them right now (debounce).
+                // Let's not enqueue more work for them right now (debounce).
                 return;
             }
 

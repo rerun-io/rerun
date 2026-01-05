@@ -3050,7 +3050,7 @@ impl App {
         })
     }
 
-    /// Prefetch chunks for the open recording (stream down from server)
+    /// Prefetch chunks for the open recording (stream from server)
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) -> Option<()> {
         let recording = store_hub.active_recording_mut()?;
         let time_ctrl = self.state.time_controls.get(recording.store_id())?;
