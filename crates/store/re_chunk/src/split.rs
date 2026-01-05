@@ -78,7 +78,7 @@ impl Chunk {
 
             // TODO(#11971): keep track of the split chunks' lineage
             let split_chunk = chunk
-                .row_sliced(start_idx, chunk_size)
+                .row_sliced_deep(start_idx, chunk_size)
                 .with_id(ChunkId::new());
 
             result.push(Arc::new(split_chunk));

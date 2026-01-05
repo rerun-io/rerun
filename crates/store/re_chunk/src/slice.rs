@@ -43,9 +43,20 @@ impl Chunk {
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
-    #[inline]
-    pub fn row_sliced(&self, index: usize, len: usize) -> Self {
-        re_tracing::profile_function!();
+    pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
+        let deep = false;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    #[must_use]
+    pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
+        let deep = true;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    #[must_use]
+    fn row_sliced_impl(&self, index: usize, len: usize, deep: bool) -> Self {
+        re_tracing::profile_function!(if deep { "deep" } else { "shallow" });
 
         let Self {
             id,
@@ -78,7 +89,11 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: re_arrow_util::deep_slice_array(row_ids, index, len),
+            row_ids: if deep {
+                re_arrow_util::deep_slice_array(row_ids, index, len)
+            } else {
+                row_ids.slice(index, len)
+            },
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
@@ -87,7 +102,11 @@ impl Chunk {
                 .values()
                 .map(|column| {
                     SerializedComponentColumn::new(
-                        re_arrow_util::deep_slice_array(&column.list_array, index, len),
+                        if deep {
+                            re_arrow_util::deep_slice_array(&column.list_array, index, len)
+                        } else {
+                            column.list_array.slice(index, len)
+                        },
                         column.descriptor.clone(),
                     )
                 })
@@ -451,7 +470,7 @@ impl Chunk {
         }
 
         if self.is_static() {
-            return self.row_sliced(self.num_rows().saturating_sub(1), 1);
+            return self.row_sliced_shallow(self.num_rows().saturating_sub(1), 1);
         }
 
         let Some(time_column) = self.timelines.get(index) else {
@@ -1591,9 +1610,9 @@ mod tests {
         eprintln!("Original chunk size: {original_size} bytes");
 
         // Create 3 single-row slices
-        let slice1 = chunk.row_sliced(0, 1);
-        let slice2 = chunk.row_sliced(1, 1);
-        let slice3 = chunk.row_sliced(2, 1);
+        let slice1 = chunk.row_sliced_deep(0, 1);
+        let slice2 = chunk.row_sliced_deep(1, 1);
+        let slice3 = chunk.row_sliced_deep(2, 1);
 
         let slice1_size = slice1.heap_size_bytes();
         let slice2_size = slice2.heap_size_bytes();

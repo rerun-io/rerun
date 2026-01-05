@@ -72,12 +72,13 @@ impl ChunkStore {
                 if min_idx < max_idx {
                     chunk_ids_to_drop.push(*chunk_id);
                     if 0 < min_idx {
-                        new_chunks.push(chunk.row_sliced(0, min_idx).with_id(ChunkId::new()));
+                        new_chunks
+                            .push(chunk.row_sliced_shallow(0, min_idx).with_id(ChunkId::new()));
                     }
                     if max_idx < num_rows {
                         new_chunks.push(
                             chunk
-                                .row_sliced(max_idx, num_rows - max_idx)
+                                .row_sliced_shallow(max_idx, num_rows - max_idx)
                                 .with_id(ChunkId::new()),
                         );
                     }
