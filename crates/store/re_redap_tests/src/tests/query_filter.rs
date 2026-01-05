@@ -11,7 +11,6 @@ use datafusion::prelude::{Expr, SessionContext, col, lit};
 use futures::{StreamExt as _, TryStreamExt as _};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::EntityPath;
-use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 
 pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
@@ -123,17 +122,13 @@ async fn query_dataset_snapshot(
 
     let results = concat_record_batches(&results);
 
-    // TODO(tsaucer) uncomment after all other parts are working
-    // insta::assert_snapshot!(
-    //     format!("{snapshot_name}_schema"),
-    //     results.format_schema_snapshot()
-    // );
+    insta::assert_snapshot!(
+        format!("{snapshot_name}_schema"),
+        results.format_schema_snapshot()
+    );
 
     // these columns are not stable, so we cannot snapshot them
-    let filtered_results = results
-        .remove_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
-        .auto_sort_rows()
-        .unwrap();
+    let filtered_results = results.auto_sort_rows().unwrap();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_data"),
