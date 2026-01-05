@@ -1,11 +1,11 @@
 [project]
-name = "urdf"
+name = "animated_urdf"
 version = "0.1.0"
 readme = "README.md"
 dependencies = ["rerun-sdk"]
 
 [project.scripts]
-urdf = "main:main"
+animated_urdf = "main:main"
 
 [build-system]
 requires = ["hatchling"]

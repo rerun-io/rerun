@@ -31,7 +31,7 @@ Here is a minimal example that demonstrates how to load and update a `URDF` with
 
 snippet: howto/load_urdf
 
-For a full animation example, see the [Python URDF example](https://github.com/rerun-io/rerun/tree/main/examples/python/urdf). There's also a [Rust example](https://github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
+For a full animation example, see the [Python animated URDF example](https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf). There's also a [Rust example](https://github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
 
 ## Python API
 
