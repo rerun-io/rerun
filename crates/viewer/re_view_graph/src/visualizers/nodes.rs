@@ -151,8 +151,4 @@ impl VisualizerSystem for NodeVisualizer {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

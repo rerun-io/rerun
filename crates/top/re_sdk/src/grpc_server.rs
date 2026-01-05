@@ -96,10 +96,6 @@ impl crate::sink::LogSink for GrpcServerSink {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl Drop for GrpcServerSink {
