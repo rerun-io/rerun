@@ -38,7 +38,7 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     let requests = vec![
@@ -103,7 +103,7 @@ pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     query_dataset_snapshot(

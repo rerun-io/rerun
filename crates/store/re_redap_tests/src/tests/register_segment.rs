@@ -36,7 +36,7 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     scan_segment_table_and_snapshot(&service, dataset_name, "simple").await;
@@ -89,7 +89,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
         .unwrap();
 
     service
-        .register_with_dataset_name(
+        .register_with_dataset_name_blocking(
             &blueprint_dataset_name,
             blueprint_data_sources_def.to_data_sources(),
         )
@@ -137,7 +137,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     scan_segment_table_and_snapshot(&service, dataset_name, "simple_with_properties").await;
@@ -184,11 +184,11 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     let dataset_name = "my_dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, last_logged_data_sources)
+        .register_with_dataset_name_blocking(dataset_name, last_logged_data_sources)
         .await;
 
     service
-        .register_with_dataset_name(dataset_name, first_logged_data_sources)
+        .register_with_dataset_name_blocking(dataset_name, first_logged_data_sources)
         .await;
 
     let dataset_manifest =
@@ -236,7 +236,7 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     scan_segment_table_and_snapshot(&service, dataset_name, "simple_with_layers").await;
@@ -286,7 +286,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     let root_url =
         Url::parse(&format!("file://{}/", root_dir.path().display())).expect("creating root url");
 
-    fe.register_with_dataset_name(
+    fe.register_with_dataset_name_blocking(
         dataset_name,
         vec![
             DataSource {
@@ -414,7 +414,7 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     );
 
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     let after_register_updated_at_nanos =
@@ -438,7 +438,7 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     );
 
     service
-        .register_with_dataset_name(dataset_name, layer_data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, layer_data_sources_def.to_data_sources())
         .await;
 
     let after_layer_updated_at_nanos = get_dataset_updated_at_nanos(&service, dataset_name).await;
