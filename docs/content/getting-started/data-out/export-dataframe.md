@@ -32,7 +32,7 @@ A lot is happening here, let's go step by step:
 2. In order to perform queries a view must become a dataframe. We use the reader call to specify this transformation where we specify our index (timeline) of interest.
 3. The object returned by `reader()` is a [`datafusion.Dataframe`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame).
 
-[DataFusion](https://datafusion.apache.org/python/) provides a pythonic dataframe interface to your data as well as [SQL](https://datafusion.apache.org/python/user-guide/sql.html).
+[DataFusion](https://datafusion.apache.org/python/) provides a pythonic dataframe interface to your data as well as [SQL](https://datafusion.apache.org/python/user-guide/sql.html) querying.
 
 ## Create a Pandas dataframe
 
@@ -70,10 +70,10 @@ Here is the result:
 
 <!-- NOLINT_END -->
 
-We can make several observations from this output.
+We can make several observations from this output:
 
 -   The first four columns are timeline columns. These are the various timelines the data is logged to in this recording.
--   The last columns is named `/blendshapes/0/jawOpen:Scalars:scalars`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
+-   The last column is named `/blendshapes/0/jawOpen:Scalars:scalars`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
 -   Each row in the `/blendshapes/0/jawOpen:Scalar` column consists of a _list_ of (typically one) scalar.
 
 This last point may come as a surprise but is a consequence of Rerun's data model where components are always stored as arrays. This enables, for example, to log an entire point cloud using the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype under a single entity and at a single timestamp.
@@ -110,7 +110,7 @@ Name: /blendshapes/0/jawOpen:Scalars:scalars, dtype: object
 
 We note that the data contains empty lists when no face is detected. When the blendshapes entities are [`Clear`](../../reference/types/archetypes/clear.md)ed, this happens for the corresponding timestamps and all further timestamps until a new value is logged.
 
-While this data representation is in general useful, a flat floating point representation with NaN for missing values is typically more convenient for scalar data. This is achieved using the [`explode()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.explode.html) method:
+While this data representation is in general useful, a flat floating point representation with `NaN` for missing values is typically more convenient for scalar data. This is achieved using the [`explode()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.explode.html) method:
 
 snippet: tutorials/data_out[explode_jaw]
 

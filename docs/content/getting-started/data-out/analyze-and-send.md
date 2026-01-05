@@ -16,9 +16,9 @@ snippet: tutorials/data_out[filter_jaw]
 ## Send the result back to the viewer
 
 The first step is to initialize the logging SDK targeting the same recording we just analyzed.
-This requires matching both the application ID and recording ID precisely.
+This requires using the exact same application ID and recording ID.
 By using the same identifiers, we're appending new data to an existing recording.
-If the recording is currently open in the viewer (and it's listening for new connections), this approach enables us to seamlessly add the new data to the ongoing session.
+If the recording is currently open in the viewer and listening for new connections, the new data will appear in the active session in real time.
 
 snippet: tutorials/data_out[connect_viewer]
 
@@ -28,8 +28,8 @@ _Note_: When automating data analysis, it is typically preferable to log the res
 
 We will send our jaw open state data in two forms:
 
-1. As a standalone `Scalar` component, to hold the raw data.
-2. As a `Text` component on the existing bounding box entity, such that we obtain a textual representation of the state in the visualization.
+1. As a standalone [`Scalar`](../../reference/types/components/scalar.md) component, to hold the raw data.
+2. As a [`Text`](../../reference/types/components/text.md) component on the existing bounding box entity, such that we obtain a textual representation of the state in the visualization.
 
 Here is how to send the data as a scalar:
 
