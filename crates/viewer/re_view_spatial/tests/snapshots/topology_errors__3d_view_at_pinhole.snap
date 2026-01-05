@@ -31,7 +31,7 @@ PerVisualizer(
         ),
         "DepthImage": PerEntity(
             {
-                /misplaced_depth_image_entity: "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera.",
+                /misplaced_depth_image_entity: "The origin of the 3D view (\"pinhole\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
     },

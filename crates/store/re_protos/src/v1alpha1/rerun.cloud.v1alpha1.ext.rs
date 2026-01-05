@@ -775,7 +775,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub provider_details: ProviderDetails,
+    pub provider_details: Option<ProviderDetails>,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
@@ -784,7 +784,10 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some((&value.provider_details).try_into()?),
+            provider_details: value
+                .provider_details
+                .map(|d| (&d).try_into())
+                .transpose()?,
         })
     }
 }
@@ -803,12 +806,10 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
-                missing_field!(
-                    crate::cloud::v1alpha1::CreateTableEntryRequest,
-                    "provider_details"
-                ),
-            )?)?,
+            provider_details: value
+                .provider_details
+                .map(|v| ProviderDetails::try_from(&v))
+                .transpose()?,
         })
     }
 }
@@ -1342,7 +1343,6 @@ pub struct Query {
     pub latest_at: Option<QueryLatestAt>,
     pub range: Option<QueryRange>,
     pub columns_always_include_everything: bool,
-    pub columns_always_include_chunk_ids: bool,
     pub columns_always_include_byte_offsets: bool,
     pub columns_always_include_entity_paths: bool,
     pub columns_always_include_static_indexes: bool,
@@ -1415,7 +1415,6 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
             latest_at,
             range,
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,
@@ -1438,7 +1437,6 @@ impl From<Query> for crate::cloud::v1alpha1::Query {
                 index_range: Some(range.index_range.into()),
             }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,

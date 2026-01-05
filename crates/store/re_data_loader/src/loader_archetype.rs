@@ -114,6 +114,14 @@ impl DataLoader for ArchetypeLoader {
                 entity_path,
                 contents.into_owned(),
             )?);
+        } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading depth image…",);
+            rows.extend(load_depth_image(
+                &filepath,
+                timepoint,
+                entity_path,
+                contents.into_owned(),
+            )?);
         } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading video…",);
             rows.extend(load_video(
@@ -187,6 +195,35 @@ fn load_image(
         },
         //
     ];
+
+    Ok(rows.into_iter())
+}
+
+fn load_depth_image(
+    filepath: &std::path::Path,
+    timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
+    re_tracing::profile_function!();
+
+    let rows = [{
+        let mut arch = re_sdk_types::archetypes::EncodedDepthImage::from_file_contents(contents);
+
+        if let Ok(format) = image::ImageFormat::from_path(filepath) {
+            arch = arch.with_media_type(format.to_mime_type());
+        } else if filepath
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.to_lowercase() == "rvl")
+        {
+            arch = arch.with_media_type(re_sdk_types::components::MediaType::RVL);
+        }
+
+        Chunk::builder(entity_path)
+            .with_archetype(RowId::new(), timepoint, &arch)
+            .build()?
+    }];
 
     Ok(rows.into_iter())
 }

@@ -290,7 +290,7 @@ class CatalogClient:
 
         return TableEntry(self._internal.register_table(name, url))
 
-    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str | None = None) -> TableEntry:
         """
         Create and register a new table.
 
