@@ -16,10 +16,6 @@ thumbnail_dimensions = [480, 480]
 
 An example of how to load and animate a URDF given some changing joint angles.
 
-## Used Rerun types
-
-[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`UrdfTree`](https://www.rerun.io/docs/reference/types/python#rerun.UrdfTree)
-
 ## Logging and visualizing with Rerun
 
 This example demonstrates how to:
