@@ -452,6 +452,8 @@ impl RecordingStreamBuilder {
     /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
     /// if both the server and client are running on the same machine, otherwise you're potentially
     /// doubling your memory usage!
+    ///
+    /// NOTE: When the `RecordingStream` is dropped or disconnected, it will shut down the gRPC server.
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
         use re_grpc_server::ServerOptions;
 
@@ -481,6 +483,8 @@ impl RecordingStreamBuilder {
     /// If server & client are running on the same machine and all clients are expected to connect before
     /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
     /// otherwise you're potentially doubling your memory usage!
+    ///
+    /// NOTE: When the `RecordingStream` is dropped or disconnected, it will shut down the gRPC server.
     pub fn serve_grpc_opts(
         self,
         bind_ip: impl AsRef<str>,
