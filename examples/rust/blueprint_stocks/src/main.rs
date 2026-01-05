@@ -351,8 +351,8 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            Err(e) => {
-                eprintln!("Failed to fetch data for {symbol}: {e}");
+            Err(err) => {
+                eprintln!("Failed to fetch data for {symbol}: {err}");
             }
         }
     }

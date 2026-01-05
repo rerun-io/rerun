@@ -14,8 +14,10 @@ use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
 pub struct BlueprintOpts {
     /// The [`Blueprint`] to send.
     pub blueprint: Blueprint,
+
     /// Whether to activate the blueprint immediately.
     pub make_active: bool,
+
     /// Whether to set this blueprint as the default for this application.
     pub make_default: bool,
 }

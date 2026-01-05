@@ -43,12 +43,16 @@ pub struct Grid(pub(crate) Container);
 pub enum ContainerLike {
     /// A horizontal container.
     Horizontal(Horizontal),
+
     /// A vertical container.
     Vertical(Vertical),
+
     /// A grid container.
     Grid(Grid),
+
     /// A tabs container.
     Tabs(Tabs),
+
     /// A view.
     View(crate::blueprint::View),
 }
