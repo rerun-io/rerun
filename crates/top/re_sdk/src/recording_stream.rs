@@ -3042,10 +3042,6 @@ mod tests {
         fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
             Ok(())
         }
-
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
     }
 
     struct ScopedEnvVarSet {
