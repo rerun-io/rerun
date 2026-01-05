@@ -1,7 +1,10 @@
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
 
-type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Box<dyn eframe::App>>;
+type DynError = Box<dyn std::error::Error + Send + Sync>;
+
+type AppCreator =
+    Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Result<Box<dyn eframe::App>, DynError>>;
 
 // NOTE: the name of this function is hard-coded in `crates/top/rerun/src/crash_handler.rs`!
 pub fn run_native_app(
@@ -24,7 +27,7 @@ pub fn run_native_app(
         native_options,
         Box::new(move |cc| {
             crate::customize_eframe_and_setup_renderer(cc)?;
-            Ok(app_creator(cc))
+            app_creator(cc)
         }),
     )
 }
