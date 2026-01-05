@@ -16,13 +16,13 @@ In practice you'll connect to your cloud instance.
 
 snippet: howto/query_images[setup]
 
-## Compressed Image
+## Compressed image
 
 Compressed images are just stored as a string of bytes, so you can query them directly and transform back into a raw image.
 
 snippet: howto/query_images[compressed_image]
 
-## Raw Image
+## Raw image
 
 Raw images are stored in a flattened layout, so we need to reshape them.
 These format details are written to the RRD when images are logged.

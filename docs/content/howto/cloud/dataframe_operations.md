@@ -17,7 +17,7 @@ Perform initial import and spawn local server for demonstration.
 In practice you'll connect to your cloud instance.
 snippet: howto/dataframe_operations[setup]
 
-## Group-by / Aggregation
+## Group-by / aggregation
 
 Perform an aggregation on the episodes to track the first and last timestamp for the columns of interest.
 
