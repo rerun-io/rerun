@@ -137,8 +137,8 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     // Use pixi ffmpeg install if available.
     let pixi_ffmpeg_path = pixi_ffmpeg_path();
     if pixi_ffmpeg_path.exists() {
-        test_context.app_options.video_decoder_ffmpeg_path =
-            pixi_ffmpeg_path.to_str().unwrap().to_owned();
+        test_context.app_options.video.override_ffmpeg_path = true;
+        test_context.app_options.video.ffmpeg_path = pixi_ffmpeg_path.to_str().unwrap().to_owned();
 
         re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
     } else {
