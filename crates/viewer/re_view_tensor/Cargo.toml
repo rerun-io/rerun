@@ -30,7 +30,7 @@ re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
-
+macaw.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
 egui.workspace = true
@@ -38,6 +38,7 @@ half.workspace = true
 ndarray.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
+
 
 [dev-dependencies]
 re_test_context.workspace = true

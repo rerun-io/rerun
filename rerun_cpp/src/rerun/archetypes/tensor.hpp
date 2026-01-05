@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/opacity.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/value_range.hpp"
 #include "../result.hpp"
@@ -68,6 +69,11 @@ namespace rerun::archetypes {
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
         std::optional<ComponentBatch> value_range;
 
+        /// Opacity of the tensor for 2D views.
+        ///
+        /// Only applied when the tensor is displayed as a 2D slice.
+        std::optional<ComponentBatch> opacity;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Tensor";
@@ -80,6 +86,10 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_value_range = ComponentDescriptor(
             ArchetypeName, "Tensor:value_range",
             Loggable<rerun::components::ValueRange>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `opacity` field.
+        static constexpr auto Descriptor_opacity = ComponentDescriptor(
+            ArchetypeName, "Tensor:opacity", Loggable<rerun::components::Opacity>::ComponentType
         );
 
       public: // START of extensions from tensor_ext.cpp:
@@ -171,6 +181,23 @@ namespace rerun::archetypes {
         ) && {
             value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Opacity of the tensor for 2D views.
+        ///
+        /// Only applied when the tensor is displayed as a 2D slice.
+        Tensor with_opacity(const rerun::components::Opacity& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `opacity` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
+        /// be used when logging a single row's worth of data.
+        Tensor with_many_opacity(const Collection<rerun::components::Opacity>& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             return std::move(*this);
         }
 

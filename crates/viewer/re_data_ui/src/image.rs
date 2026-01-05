@@ -166,6 +166,7 @@ fn show_image_preview(
             ..Default::default()
         },
         debug_name.into(),
+        None,
     ) {
         let color = ui.visuals().error_fg_color;
         painter.text(

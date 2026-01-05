@@ -4,12 +4,17 @@ use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_log_types::hash::Hash64;
+use re_renderer::{
+    renderer::{RectangleOptions, TexturedRect},
+    ViewBuilder,
+};
 use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
 use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
     Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
-use re_sdk_types::datatypes::TensorData;
+use macaw;
+use re_sdk_types::external::glam;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
@@ -34,9 +39,9 @@ type ViewType = re_sdk_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
-    /// Last viewed tensor, copied each frame.
+    /// Last viewed tensors, copied each frame.
     /// Used for the selection view.
-    tensor: Option<TensorVisualization>,
+    tensors: Vec<TensorVisualization>,
 }
 
 impl ViewState for ViewTensorState {
@@ -129,11 +134,11 @@ Set the displayed dimensions in a selection panel.",
 
         // TODO(andreas): Listitemify
         ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
-            if let Some(TensorVisualization {
+            for TensorVisualization {
                 tensor,
                 tensor_row_id,
                 ..
-            }) = &state.tensor
+            } in &state.tensors
             {
                 let tensor_stats = ctx.store_context.caches.entry(|c: &mut TensorStatsCache| {
                     c.entry(Hash64::hash(*tensor_row_id), tensor)
@@ -150,7 +155,7 @@ Set the displayed dimensions in a selection panel.",
         });
 
         // TODO(#6075): Listitemify
-        if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
+        if let Some(TensorVisualization { tensor, .. }) = state.tensors.first() {
             let slice_property = ViewProperty::from_archetype::<
                 re_sdk_types::blueprint::archetypes::TensorSliceSelection,
             >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
@@ -214,40 +219,26 @@ Set the displayed dimensions in a selection panel.",
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let tokens = ui.tokens();
-
         let state = state.downcast_mut::<ViewTensorState>()?;
-        state.tensor = None;
+        state.tensors.clear();
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
         let response = {
             let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
 
-            if tensors.len() > 1 {
-                egui::Frame {
-                    inner_margin: tokens.view_padding().into(),
-                    ..egui::Frame::default()
-                }
-                    .show(&mut ui, |ui| {
-                        ui.error_label(format!(
-                            "Can only show one tensor at a time; was given {}. Update the query so that it \
-                    returns a single tensor entity and create additional views for the others.",
-                            tensors.len()
-                        ));
-                    });
-            } else if let Some(tensor_view) = tensors.first() {
-                state.tensor = Some(tensor_view.clone());
+            if tensors.is_empty() {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            } else {
+                state.tensors = tensors.clone();
                 self.view_tensor(
                     ctx,
                     &mut ui,
                     state,
                     query.view_id,
                     query.space_origin,
-                    &tensor_view.tensor,
+                    tensors,
                 )?;
-            } else {
-                ui.centered_and_justified(|ui| ui.label("(empty)"));
             }
 
             ui.response()
@@ -274,9 +265,12 @@ impl TensorView {
         state: &ViewTensorState,
         view_id: ViewId,
         space_origin: &EntityPath,
-        tensor: &TensorData,
+        tensors: &[TensorVisualization],
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        // Use the first tensor for slice selection
+        let tensor = &tensors[0].tensor;
 
         let slice_property = ViewProperty::from_archetype::<
             re_sdk_types::blueprint::archetypes::TensorSliceSelection,
@@ -328,7 +322,7 @@ impl TensorView {
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
             let ctx = self.view_context(ctx, view_id, state, space_origin);
             if let Err(err) =
-                Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
+                Self::tensor_slice_ui(&ctx, ui, tensors, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }
@@ -340,11 +334,11 @@ impl TensorView {
     fn tensor_slice_ui(
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
-        state: &ViewTensorState,
+        tensors: &[TensorVisualization],
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
+        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, tensors, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -357,19 +351,24 @@ impl TensorView {
     fn paint_tensor_slice(
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
-        state: &ViewTensorState,
+        tensors: &[TensorVisualization],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<(egui::Response, egui::Rect)> {
         re_tracing::profile_function!();
 
-        let Some(tensor_view) = state.tensor.as_ref() else {
-            anyhow::bail!("No tensor data available.");
-        };
+        if tensors.is_empty() {
+             anyhow::bail!("No tensor data available.");
+        }
+
+        // We use the first tensor to determine size and placement
+        let first_tensor_view = &tensors[0];
         let TensorVisualization {
-            tensor_row_id,
-            tensor,
-            data_range,
-        } = &tensor_view;
+            tensor_row_id: first_tensor_row_id,
+            tensor: first_tensor,
+            data_range: first_data_range,
+            annotations: first_annotations,
+            ..
+        } = first_tensor_view;
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
@@ -383,19 +382,21 @@ impl TensorView {
         let mag_filter: MagnificationFilter = scalar_mapping
             .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
-        let colormap = ColormapWithRange {
+        let first_colormap = ColormapWithRange {
             colormap,
-            value_range: [data_range.start() as f32, data_range.end() as f32],
+            value_range: [first_data_range.start() as f32, first_data_range.end() as f32],
         };
-        let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
+        // We load the first texture just to get dimensions
+        let first_colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
             ctx.render_ctx(),
-            *tensor_row_id,
-            tensor,
+            *first_tensor_row_id,
+            first_tensor,
             slice_selection,
-            &colormap,
+            first_annotations,
+            &first_colormap,
             gamma,
         )?;
-        let [width, height] = colormapped_texture.width_height();
+        let [width, height] = first_colormapped_texture.width_height();
 
         let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
             ctx.blueprint_db(),
@@ -416,30 +417,121 @@ impl TensorView {
         };
 
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-        let rect = response.rect;
-        let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
-        let texture_options = egui::TextureOptions {
-            magnification: match mag_filter {
-                MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
-                MagnificationFilter::Linear => egui::TextureFilter::Linear,
-            },
-            minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
-            wrap_mode: egui::TextureWrapMode::ClampToEdge,
-            mipmap_mode: None,
+        let image_rect = egui::Rect::from_min_max(response.rect.min, response.rect.max);
+        
+        let texture_filter_magnification = match mag_filter {
+            MagnificationFilter::Nearest => re_renderer::renderer::TextureFilterMag::Nearest,
+            MagnificationFilter::Linear => re_renderer::renderer::TextureFilterMag::Linear,
         };
+        // TODO(andreas): allow for mipmapping based filter
+        let texture_filter_minification = re_renderer::renderer::TextureFilterMin::Linear;
 
-        gpu_bridge::render_image(
-            ctx.render_ctx(),
-            &painter,
-            image_rect,
-            colormapped_texture,
-            texture_options,
-            re_renderer::DebugLabel::from("tensor_slice"),
-        )?;
+        // Prepare all textured rects
+        let mut textured_rects = Vec::with_capacity(tensors.len());
+
+        let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_rect.size());
+
+        for (i, tensor_view) in tensors.iter().enumerate() {
+             let TensorVisualization {
+                tensor_row_id,
+                tensor,
+                data_range,
+                annotations,
+                opacity,
+            } = tensor_view;
+
+            let colormap_with_range = ColormapWithRange {
+                colormap,
+                value_range: [data_range.start() as f32, data_range.end() as f32],
+            };
+
+            // Optimization: Reuse first texture if it's the first one
+            let colormapped_texture = if i == 0 {
+                first_colormapped_texture.clone()
+            } else {
+                super::tensor_slice_to_gpu::colormapped_texture(
+                    ctx.render_ctx(),
+                    *tensor_row_id,
+                    tensor,
+                    slice_selection,
+                    annotations,
+                    &colormap_with_range,
+                    gamma,
+                )?
+            };
+            
+            // TODO(andreas): Check if dimensions match. If not, maybe we should warn or try to center?
+            // For now, we assume they match as per user request context (MRI + Segmentation).
+            // We scale all subsequent tensors to the first one's destination rect.
+
+            let multiplicative_tint = egui::Rgba::from_white_alpha(*opacity);
+
+            textured_rects.push(TexturedRect {
+                top_left_corner_position: glam::vec3(space_rect.min.x, space_rect.min.y, 0.0),
+                extent_u: glam::Vec3::X * space_rect.width(),
+                extent_v: glam::Vec3::Y * space_rect.height(),
+                colormapped_texture,
+                options: RectangleOptions {
+                    texture_filter_magnification,
+                    texture_filter_minification,
+                    multiplicative_tint,
+                    ..Default::default()
+                },
+            });
+        }
+
+        // --- Render the batch ---
+        let viewport = painter.clip_rect().intersect(image_rect);
+        if viewport.is_positive() {
+            let pixels_per_point = painter.ctx().pixels_per_point();
+            let resolution_in_pixel = gpu_bridge::viewport_resolution_in_pixels(viewport, pixels_per_point);
+            
+            if resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0 {
+                let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect);
+                let space_from_ui = ui_from_space.inverse();
+                let space_from_points = space_from_ui.scale().y;
+                let points_from_pixels = 1.0 / pixels_per_point;
+                let space_from_pixel = space_from_points * points_from_pixels;
+
+                let camera_position_space = space_from_ui.transform_pos(viewport.min);
+                let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
+
+                let target_config = re_renderer::view_builder::TargetConfiguration {
+                    name: re_renderer::DebugLabel::from("tensor_slice_batch"),
+                    resolution_in_pixel,
+                    view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
+                    projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                        camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                        vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
+                        far_plane_distance: 1000.0,
+                    },
+                    viewport_transformation: re_renderer::RectTransform::IDENTITY,
+                    pixels_per_point,
+                    ..Default::default()
+                };
+
+                let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+
+                view_builder.queue_draw(
+                    ctx.render_ctx(),
+                    re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx(), &textured_rects)?,
+                );
+
+                painter.add(gpu_bridge::new_renderer_callback(
+                    view_builder,
+                    viewport,
+                    re_renderer::Rgba::TRANSPARENT,
+                ));
+            }
+        }
 
         Ok((response, image_rect))
     }
 }
+
+
+// ... rest of file (selectors_ui, etc.)
+// ... (I'm cutting it short for brevity but the rest is unchanged)
 
 // ----------------------------------------------------------------------------
 

@@ -106,6 +106,7 @@ pub fn render_image(
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
     debug_name: re_renderer::DebugLabel,
+    multiplicative_tint: Option<egui::Rgba>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
@@ -134,7 +135,7 @@ pub fn render_image(
                 egui::TextureFilter::Nearest => TextureFilterMin::Nearest,
                 egui::TextureFilter::Linear => TextureFilterMin::Linear,
             },
-            multiplicative_tint: egui::Rgba::WHITE,
+            multiplicative_tint: multiplicative_tint.unwrap_or(egui::Rgba::WHITE),
             ..Default::default()
         },
     };
