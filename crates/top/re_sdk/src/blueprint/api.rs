@@ -9,17 +9,24 @@ use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
 use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
 
-/// Blueprint options for configuring how a [`Blueprint`] should be activated.
+/// Activation options for a [`Blueprint`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BlueprintActivation {
+    /// Activate the blueprint immediately in the viewer.
+    pub make_active: bool,
+
+    /// Set this blueprint as the default for the application.
+    pub make_default: bool,
+}
+
+/// A [`Blueprint`] bundled with its activation options.
 #[derive(Debug)]
 pub struct BlueprintOpts {
     /// The [`Blueprint`] to send.
     pub blueprint: Blueprint,
 
-    /// Whether to activate the blueprint immediately.
-    pub make_active: bool,
-
-    /// Whether to set this blueprint as the default for this application.
-    pub make_default: bool,
+    /// How to activate the blueprint.
+    pub activation: BlueprintActivation,
 }
 
 /// Blueprint for configuring the viewer layout.
@@ -145,8 +152,7 @@ impl Blueprint {
     pub fn send(
         &self,
         recording: &RecordingStream,
-        make_active: bool,
-        make_default: bool,
+        activiation: BlueprintActivation,
     ) -> RecordingStreamResult<()> {
         let application_id = recording
             .store_info()
@@ -165,8 +171,8 @@ impl Blueprint {
 
         let activation_cmd = BlueprintActivationCommand {
             blueprint_id: blueprint_id.clone(),
-            make_active,
-            make_default,
+            make_active: activiation.make_active,
+            make_default: activiation.make_default,
         };
 
         recording.send_blueprint(msgs, activation_cmd);

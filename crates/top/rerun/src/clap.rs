@@ -125,12 +125,15 @@ impl RerunArgs {
         application_id: &str,
         blueprint: re_sdk::blueprint::Blueprint,
     ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let activation = re_sdk::blueprint::BlueprintActivation {
+            make_active: true,
+            make_default: true,
+        };
         self.init_with_blueprint_opts(
             application_id,
             Some(re_sdk::blueprint::BlueprintOpts {
                 blueprint,
-                make_active: true,
-                make_default: true,
+                activation,
             }),
         )
     }
@@ -144,12 +147,15 @@ impl RerunArgs {
         application_id: &str,
         blueprint: re_sdk::blueprint::Blueprint,
     ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let activation = re_sdk::blueprint::BlueprintActivation {
+            make_active: false,
+            make_default: true,
+        };
         self.init_with_blueprint_opts(
             application_id,
             Some(re_sdk::blueprint::BlueprintOpts {
                 blueprint,
-                make_active: false,
-                make_default: true,
+                activation,
             }),
         )
     }
@@ -166,11 +172,10 @@ impl RerunArgs {
         // Add blueprint to builder if provided
         if let Some(re_sdk::blueprint::BlueprintOpts {
             blueprint,
-            make_active,
-            make_default: _,
+            activation,
         }) = blueprint_opts
         {
-            builder = if make_active {
+            builder = if activation.make_active {
                 builder.with_blueprint(blueprint)
             } else {
                 builder.with_default_blueprint(blueprint)

@@ -266,8 +266,10 @@ impl RecordingStreamBuilder {
     pub fn with_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
         self.blueprint = Some(crate::blueprint::BlueprintOpts {
             blueprint,
-            make_active: true,
-            make_default: true,
+            activation: crate::blueprint::BlueprintActivation {
+                make_active: true,
+                make_default: true,
+            },
         });
         self
     }
@@ -283,8 +285,10 @@ impl RecordingStreamBuilder {
     pub fn with_default_blueprint(mut self, blueprint: crate::blueprint::Blueprint) -> Self {
         self.blueprint = Some(crate::blueprint::BlueprintOpts {
             blueprint,
-            make_active: false,
-            make_default: true,
+            activation: crate::blueprint::BlueprintActivation {
+                make_active: false,
+                make_default: true,
+            },
         });
         self
     }
@@ -681,11 +685,10 @@ impl RecordingStreamBuilder {
 
         if let Some(crate::blueprint::BlueprintOpts {
             blueprint,
-            make_active,
-            make_default,
+            activation,
         }) = blueprint_opts
         {
-            blueprint.send(&rec, make_active, make_default)?;
+            blueprint.send(&rec, activation)?;
         }
 
         Ok(rec)
@@ -2311,8 +2314,7 @@ impl RecordingStream {
         &self,
         opts: &crate::blueprint::BlueprintOpts,
     ) -> RecordingStreamResult<()> {
-        opts.blueprint
-            .send(self, opts.make_active, opts.make_default)
+        opts.blueprint.send(self, opts.activation)
     }
 }
 
