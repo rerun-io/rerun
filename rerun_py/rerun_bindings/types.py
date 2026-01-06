@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, TypeAlias, Union
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
