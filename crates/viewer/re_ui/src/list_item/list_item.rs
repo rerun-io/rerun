@@ -374,6 +374,7 @@ impl ListItem {
         )
     }
 
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn show_hierarchical_with_children_impl<R>(
         mut self,
         ui: &mut Ui,

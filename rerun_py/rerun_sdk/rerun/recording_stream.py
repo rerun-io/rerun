@@ -606,6 +606,9 @@ class RecordingStream:
 
         This function returns immediately.
 
+        NOTE: When the `RecordingStream` is disconnected, or otherwise goes out of scope, it will shut down the
+        gRPC server.
+
         Parameters
         ----------
         grpc_port:

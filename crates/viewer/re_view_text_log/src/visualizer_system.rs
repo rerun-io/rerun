@@ -63,10 +63,6 @@ impl VisualizerSystem for TextLogSystem {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl TextLogSystem {

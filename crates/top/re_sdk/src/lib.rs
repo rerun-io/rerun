@@ -62,10 +62,6 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
             FileFlushError::Timeout => sink::SinkFlushError::Timeout,
         })
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 // ---------------

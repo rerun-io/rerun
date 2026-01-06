@@ -696,10 +696,6 @@ impl Cache for VideoStreamCache {
             }
         }
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }
 
 /// Adjust GOPs for removed samples at the back of the sample list.

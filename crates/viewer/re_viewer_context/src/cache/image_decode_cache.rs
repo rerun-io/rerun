@@ -329,10 +329,6 @@ impl Cache for ImageDecodeCache {
         self.cache
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }
 
 #[cfg(test)]

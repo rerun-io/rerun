@@ -212,14 +212,14 @@ pub(crate) fn apply_filter_expr_to_queries(
 }
 
 fn is_time_index(col_name: &str, schema: &SchemaRef) -> bool {
-    if let Some((_, field)) = schema.fields().find(col_name) {
-        if let Some(kind) = field.metadata().get(RERUN_KIND)
-            && kind == "index"
-        {
-            return true;
-        }
+    if let Some((_, field)) = schema.fields().find(col_name)
+        && let Some(kind) = field.metadata().get(RERUN_KIND)
+        && kind == "index"
+    {
+        true
+    } else {
+        false
     }
-    false
 }
 
 fn expr_to_literal_scalar(expr: &Expr) -> Option<&ScalarValue> {
@@ -427,7 +427,6 @@ fn replace_time_in_query(
             latest_at,
             range,
             columns_always_include_everything: false,
-            columns_always_include_chunk_ids: false,
             columns_always_include_byte_offsets: false,
             columns_always_include_entity_paths: false,
             columns_always_include_static_indexes: false,

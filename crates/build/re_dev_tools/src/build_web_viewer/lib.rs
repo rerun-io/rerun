@@ -74,6 +74,7 @@ impl argh::FromArgValue for Target {
 ///
 /// If `debug_symbols` is set, debug symbols are kept even in release builds,
 /// allowing for better callstacks on panics, as well as in-browser profiling of the wasm.
+#[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
 pub fn build(
     profile: Profile,
     debug_symbols: bool,
