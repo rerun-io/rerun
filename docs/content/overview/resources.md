@@ -57,7 +57,7 @@ Practical guides for specific tasks and advanced features:
 
 ### Data management
 - **[DataFrame API](../howto/dataframe-api.md)** - Query recordings programmatically
-- **[Get Data Out](../howto/get-data-out.md)** - Export data from Rerun
+- **[Get Data Out](../howto/get-data-out.md?speculative-link)** - Export data from Rerun
 - **[MCAP Integration](../howto/mcap.md)** - Working with MCAP files
 - **[Shared Recordings](../howto/shared-recordings.md)** - Collaborate with recordings
 

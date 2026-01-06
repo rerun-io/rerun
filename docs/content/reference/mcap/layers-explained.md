@@ -70,7 +70,7 @@ Each layer creates different types of components on entity paths (derived from M
 - Data from the `raw` layer appears as blob components containing the original message bytes
 - Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
 
-For more information on querying data and working with archetypes, see the [Data Queries documentation](../../howto/get-data-out.md).
+For more information on querying data and working with archetypes, see the [Data Queries documentation](../../howto/get-data-out.md?speculative-link).
 
 Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data.
 Below is a table showing the mapping between MCAP data and Rerun components:
