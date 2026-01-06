@@ -13,7 +13,7 @@ from datafusion import col, functions as F
 from datafusion.expr import Window, WindowFrame
 from PIL import Image
 
-sample_video_path = Path(__file__).parent.parent.parent.parent / "data" / "video_sample"
+sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 CATALOG_URL = server.address()
@@ -38,8 +38,8 @@ row = df.filter(col("log_time") == times[0]).select(content_column, format_colum
 table = pa.table(row)
 format_details = table[format_column][0][0]
 flattened_image = table[content_column].to_numpy()[0][0]
-num_channels = rr.datatypes.color_model.ColorModel.auto(int(format_details["color_model"])).num_channels()
-image = flattened_image.reshape(format_details["height"], format_details["width"], num_channels)
+num_channels = rr.datatypes.color_model.ColorModel.auto(int(format_details["color_model"].as_py())).num_channels()
+image = flattened_image.reshape(format_details["height"].as_py(), format_details["width"].as_py(), num_channels)
 print(f"{image.shape=}")
 # endregion: raw_image
 

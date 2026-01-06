@@ -9,7 +9,7 @@ import pyarrow as pa
 import rerun as rr
 from datafusion import col, functions as F, lit
 
-sample_5_path = Path(__file__).parent.parent.parent.parent / "data" / "sample_5"
+sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.address()

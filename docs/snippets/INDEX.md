@@ -20,6 +20,10 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 
 | Feature | Example | Description | Python | Rust | C+⁠+ |
 | ------- | ------- | ----------- | :----: | :--: | :-------: |
+| **Query dataplatform** | `dataframe_operations` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataframe_operations.py) |  |  |
+| **Query dataplatform** | `query_images` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_images.py) |  |  |
+| **Query dataplatform** | `time_alignment` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/time_alignment.py) |  |  |
+| **Query dataplatform** | `view_operations` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/view_operations.py) |  |  |
 | **Setting recording properties** | `recording_properties` | Sets the recording properties | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.cpp) |
 | **Update rows** | `arrows3d_row_updates` | Update a set of vectors over time | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp) |
 | **Update rows** | `scalars_row_updates` | Update a scalar over time | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/scalars_row_updates.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/scalars_row_updates.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/scalars_row_updates.cpp) |
