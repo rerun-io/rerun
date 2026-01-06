@@ -336,11 +336,22 @@ pub struct TensorView;
 
 type ViewType = re_sdk_types::blueprint::views::TensorView;
 
-#[derive(Default)]
 pub struct ViewTensorState {
     /// Last viewed tensors, copied each frame.
     /// Used for the selection view.
     tensors: Vec<TensorVisualization>,
+    pan: egui::Vec2,
+    zoom: f32,
+}
+
+impl Default for ViewTensorState {
+    fn default() -> Self {
+        Self {
+            tensors: Vec::new(),
+            pan: egui::Vec2::ZERO,
+            zoom: 1.0,
+        }
+    }
 }
 
 impl ViewState for ViewTensorState {
@@ -561,7 +572,7 @@ impl TensorView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &ViewTensorState,
+        state: &mut ViewTensorState,
         view_id: ViewId,
         space_origin: &EntityPath,
         tensors: &[TensorVisualization],
@@ -618,6 +629,9 @@ impl TensorView {
             }),
         ];
 
+        let mut pan = state.pan;
+        let mut zoom = state.zoom;
+
         egui::ScrollArea::both()
             .auto_shrink(false)
             .scroll_source(
@@ -625,20 +639,24 @@ impl TensorView {
                     | egui::scroll_area::ScrollSource::DRAG,
             )
             .show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            if let Err(err) = Self::tensor_slice_ui(
-                &ctx,
-                ui,
-                tensors,
-                dimension_labels,
-                &slice_selection,
-                &slice_property,
-                tensor,
-            )
-            {
-                ui.error_label(err.to_string());
-            }
-        });
+                let ctx = self.view_context(ctx, view_id, state, space_origin);
+                if let Err(err) = Self::tensor_slice_ui(
+                    &ctx,
+                    ui,
+                    tensors,
+                    dimension_labels,
+                    &slice_selection,
+                    &slice_property,
+                    tensor,
+                    &mut pan,
+                    &mut zoom,
+                ) {
+                    ui.error_label(err.to_string());
+                }
+            });
+
+        state.pan = pan;
+        state.zoom = zoom;
 
         Ok(())
     }
@@ -651,6 +669,8 @@ impl TensorView {
         slice_selection: &TensorSliceSelection,
         slice_property: &ViewProperty,
         tensor: &TensorData,
+        pan: &mut egui::Vec2,
+        zoom: &mut f32,
     ) -> anyhow::Result<()> {
         let mag_filter = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
@@ -660,7 +680,7 @@ impl TensorView {
         .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
         let (response, image_rect) =
-            paint_tensor_slice(ctx, ui, tensors, slice_selection, mag_filter)?;
+            paint_tensor_slice(ctx, ui, tensors, slice_selection, mag_filter, *pan, *zoom)?;
 
         if response.hovered() {
             let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
@@ -689,8 +709,29 @@ impl TensorView {
                     }
                 }
             }
+            if response.dragged_by(egui::PointerButton::Primary) {
+                if let Some((height, width)) = tensor_slice_shape(tensor, slice_selection) {
+                    let image_size = egui::vec2(width as f32, height as f32);
+                    let space_size = image_size / *zoom;
+                    let image_rect_size = image_rect.size();
+                    if image_rect_size.x > 0.0 && image_rect_size.y > 0.0 {
+                        let scale = egui::vec2(
+                            space_size.x / image_rect_size.x,
+                            space_size.y / image_rect_size.y,
+                        );
+                        *pan += response.drag_delta() * scale;
+                    }
+                }
+            }
+            if response.dragged_by(egui::PointerButton::Secondary) {
+                let delta = response.drag_delta().y;
+                if delta.abs() > 0.0 {
+                    let factor = (1.0 + delta * 0.01).clamp(0.2, 5.0);
+                    *zoom = (*zoom * factor).clamp(1.0, 20.0);
+                }
+            }
             if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                response.on_hover_ui_at_pointer(|ui| {
+                response.clone().on_hover_ui_at_pointer(|ui| {
                     crate::tensor_slice_hover::show_tensor_hover_ui(
                         ctx,
                         ui,
@@ -707,6 +748,11 @@ impl TensorView {
             paint_axis_names(ui, image_rect, font_id, dimension_labels);
         }
 
+        if response.double_clicked() {
+            *pan = egui::Vec2::ZERO;
+            *zoom = 1.0;
+        }
+
         Ok(())
     }
 }
@@ -718,6 +764,8 @@ pub fn paint_tensor_slice(
     tensors: &[TensorVisualization],
     slice_selection: &TensorSliceSelection,
     mag_filter: MagnificationFilter,
+    pan: egui::Vec2,
+    zoom: f32,
 ) -> anyhow::Result<(egui::Response, egui::Rect)> {
     re_tracing::profile_function!();
 
@@ -749,10 +797,20 @@ pub fn paint_tensor_slice(
         }
     };
 
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
     let image_rect = egui::Rect::from_min_max(response.rect.min, response.rect.max);
 
-    let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, img_size);
+    let zoom = zoom.max(1.0);
+    let space_size = img_size / zoom;
+    let image_center = img_size * 0.5;
+    let mut space_center = egui::pos2(image_center.x + pan.x, image_center.y + pan.y);
+    let half_size = space_size * 0.5;
+    let max_center = img_size - half_size;
+    space_center = egui::pos2(
+        space_center.x.clamp(half_size.x, max_center.x),
+        space_center.y.clamp(half_size.y, max_center.y),
+    );
+    let space_rect = egui::Rect::from_center_size(space_center, space_size);
 
     let (textured_rects, texture_filter_magnification) =
         create_textured_rects_for_batch(ctx, tensors, slice_selection, mag_filter)?;
