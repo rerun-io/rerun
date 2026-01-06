@@ -9359,6 +9359,7 @@ dependencies = [
  "ahash",
  "arrow",
  "ehttp",
+ "futures",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",
