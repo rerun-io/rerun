@@ -338,7 +338,8 @@ async fn query_dataset_snapshot(
         .await;
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
-    let merged_chunk_info = remove_rows_containing_chunk_id(merged_chunk_info, chunk_ids_to_remove);
+    let merged_chunk_info =
+        remove_rows_containing_chunk_id(&merged_chunk_info, chunk_ids_to_remove);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
@@ -385,7 +386,7 @@ async fn query_dataset_snapshot(
 /// not optimal, this function allows us to test for correctness while
 /// we make improvements in performance.
 fn remove_rows_containing_chunk_id(
-    rb: RecordBatch,
+    rb: &RecordBatch,
     chunk_ids: &[re_types_core::ChunkId],
 ) -> RecordBatch {
     let chunk_id_col = rb
@@ -401,9 +402,8 @@ fn remove_rows_containing_chunk_id(
 
     let mut indices_to_keep = Vec::new();
 
-    for row_idx in 0..chunk_id_slice.len() {
-        let chunk_id = chunk_id_slice[row_idx];
-        if !chunk_ids.contains(&chunk_id) {
+    for (row_idx, chunk_id) in chunk_id_slice.iter().enumerate() {
+        if !chunk_ids.contains(chunk_id) {
             indices_to_keep.push(row_idx as u32);
         }
     }
