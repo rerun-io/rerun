@@ -20,7 +20,7 @@ use crate::{
 
 use dae_parser::{
     Document, Effect, Geometry, Instance, Material as DaeMaterial, Node as DaeNode, Shader,
-    Transform as DaeTransform, VisualScene,
+    Transform as DaeTransform, UpAxis, VisualScene,
     geom::{Importer as DaeImporter, VertexImporter, VertexLoad},
     source::{ST, SourceReader, XYZ},
 };
@@ -52,6 +52,9 @@ pub fn load_dae_from_buffer(
     // Check for textures and warn if found
     check_for_textures(&document);
 
+    // Get the up-axis transformation to convert to Y-up coordinate system
+    let up_axis_transform = up_axis_to_y_up_transform(document.asset.up_axis);
+
     let mut model = CpuModel::default();
     let mut mesh_keys: HashMap<String, CpuModelMeshKey> = HashMap::default();
 
@@ -66,7 +69,7 @@ pub fn load_dae_from_buffer(
             continue;
         };
 
-        let cpu_mesh = import_geometry(geometry, mesh_element, triangles, &maps, ctx)?;
+        let cpu_mesh = import_geometry(geometry, mesh_element, triangles, &maps, ctx, up_axis_transform)?;
         let key = model.meshes.insert(cpu_mesh);
         let geom_id = geometry
             .id
@@ -83,7 +86,7 @@ pub fn load_dae_from_buffer(
     for scene in document.iter::<VisualScene>() {
         any_scene = true;
         for root in &scene.nodes {
-            gather_instances_recursive(&mut instances, root, &glam::Affine3A::IDENTITY, &mesh_keys);
+            gather_instances_recursive(&mut instances, root, &up_axis_transform, &mesh_keys);
         }
     }
 
@@ -95,12 +98,41 @@ pub fn load_dae_from_buffer(
     Ok(model)
 }
 
+/// Returns a transformation matrix to convert from the given up-axis to Y-up coordinate system.
+///
+/// COLLADA files can specify different up-axis orientations (X, Y, or Z).
+/// This function returns a transformation matrix that converts from the source
+/// coordinate system to Y-up, which is the standard in many 3D applications.
+fn up_axis_to_y_up_transform(up_axis: UpAxis) -> glam::Affine3A {
+    match up_axis {
+        // X-up: Right: -y, Up: +x, In: +z
+        // Y-up: Right: +x, Up: +y, In: +z
+        // Rotate 90° around Z-axis: (x,y,z) -> (y,-x,z)
+        UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::new(0.0, 1.0, 0.0),   // new X from old Y
+            glam::Vec3::new(-1.0, 0.0, 0.0),  // new Y from old -X
+            glam::Vec3::new(0.0, 0.0, 1.0),   // new Z from old Z
+        )),
+        // Already Y-up, no transformation needed
+        UpAxis::YUp => glam::Affine3A::IDENTITY,
+        // Z-up: Right: +x, Up: +z, In: -y
+        // Y-up: Right: +x, Up: +y, In: +z
+        // Rotate -90° around X-axis: (x,y,z) -> (x,z,-y)
+        UpAxis::ZUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::new(1.0, 0.0, 0.0),   // new X from old X
+            glam::Vec3::new(0.0, 0.0, 1.0),   // new Y from old Z
+            glam::Vec3::new(0.0, -1.0, 0.0),  // new Z from old -Y
+        )),
+    }
+}
+
 fn import_geometry(
     geo: &Geometry,
     mesh: &dae_parser::Mesh,
     triangles: &dae_parser::Triangles,
     maps: &dae_parser::LocalMaps<'_>,
     ctx: &RenderContext,
+    up_axis_transform: glam::Affine3A,
 ) -> Result<CpuMesh, DaeImportError> {
     let vertices = mesh.vertices.as_ref().ok_or(DaeImportError::NoTriangles)?;
     let vertex_importer: VertexImporter<'_> = vertices
@@ -121,8 +153,12 @@ fn import_geometry(
     let mut tri_indices = Vec::<glam::UVec3>::new();
 
     for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
-        pos_raw.push(v.position);
-        normals.push(v.normal);
+        // Apply up-axis transformation to position and normal
+        let transformed_pos = up_axis_transform.transform_point3(glam::Vec3::from_array(v.position));
+        let transformed_normal = up_axis_transform.transform_vector3(glam::Vec3::from_array(v.normal));
+
+        pos_raw.push(transformed_pos.to_array());
+        normals.push(transformed_normal.to_array());
         texcoords.push(v.texcoord);
 
         // Triangles are grouped in triplets
