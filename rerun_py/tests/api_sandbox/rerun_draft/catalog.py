@@ -13,8 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import pyarrow as pa
-    from rerun.catalog import RegistrationHandle
-    from rerun.dataframe import IndexColumnDescriptor
+    from rerun.catalog import RegistrationHandle, IndexColumnDescriptor
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
 

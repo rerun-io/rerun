@@ -26,7 +26,6 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
-    dataframe as dataframe,  # TODO(RR-3130): deprecated
     experimental as experimental,
     recording as recording,
     server as server,
