@@ -105,7 +105,7 @@ service RerunCloudService {
   // Get the RRD Footer manifest.
   //
   // This includes details about what chunks there are, and what kind of data they contain.
-  rpc GetRrdManifest(GetRrdManifestRequest) returns (GetRrdManifestResponse) {}
+  rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
   /* Indexing */
 

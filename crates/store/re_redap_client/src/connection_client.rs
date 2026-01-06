@@ -372,7 +372,12 @@ where
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<RrdManifest> {
-        self.inner()
+        // TODO(cmc): at some point we should probably continue the stream all the way down, but
+        // for now we simplify downstream's life by concatenating everything in here.
+        let mut rrd_manifest: Option<RrdManifest> = None;
+
+        let responses = self
+            .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
@@ -382,14 +387,44 @@ where
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
-            .into_inner()
-            .rrd_manifest
-            .ok_or_else(|| {
-                let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                ApiError::serialization(err, "missing field in /GetRrdManifest response")
-            })?
-            .to_application(())
-            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
+            .into_inner();
+
+        futures::pin_mut!(responses);
+        while let Some(resp) = responses.next().await {
+            let rrd_manifest_part = resp
+                .map_err(|err| {
+                    ApiError::connection(err, "failed fetching /GetRrdManifest response part")
+                })?
+                .rrd_manifest
+                .ok_or_else(|| {
+                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
+                    ApiError::serialization(err, "missing field in /GetRrdManifest response")
+                })?
+                .to_application(())
+                .map_err(|err| {
+                    ApiError::serialization(err, "failed parsing /GetRrdManifest response")
+                })?;
+
+            if let Some(mut temp) = rrd_manifest.take() {
+                temp.data =
+                    re_arrow_util::concat_polymorphic_batches(&[temp.data, rrd_manifest_part.data])
+                        .map_err(|err| {
+                            ApiError::serialization(
+                                err,
+                                "failed concatenating /GetRrdManifest response part",
+                            )
+                        })?;
+                rrd_manifest = Some(temp);
+            } else {
+                rrd_manifest = Some(rrd_manifest_part);
+            }
+        }
+
+        rrd_manifest.ok_or_else(|| ApiError {
+            message: "failed parsing /GetRrdManifest response (no data)".to_owned(),
+            kind: crate::ApiErrorKind::Serialization,
+            source: None,
+        })
     }
 
     /// Fetches all chunks ids for a specified segment.
