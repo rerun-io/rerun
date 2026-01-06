@@ -4556,7 +4556,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'tests'", specifier = ">=2.5" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["tests", "notebook", "datafusion", "all"]
+provides-extras = ["all", "datafusion", "notebook", "tests"]
 
 [[package]]
 name = "rerun-workspace"
@@ -4660,6 +4660,7 @@ examples = [
 ]
 snippets = [
     { name = "av" },
+    { name = "pandas" },
 ]
 
 [package.metadata]
@@ -4759,7 +4760,10 @@ examples = [
     { name = "stdio", editable = "examples/python/stdio" },
     { name = "structure-from-motion", editable = "examples/python/structure_from_motion" },
 ]
-snippets = [{ name = "av" }]
+snippets = [
+    { name = "av" },
+    { name = "pandas" },
+]
 
 [[package]]
 name = "rfc3339-validator"

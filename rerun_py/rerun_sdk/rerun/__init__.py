@@ -30,6 +30,7 @@ from . import (
     experimental as experimental,
     recording as recording,
     server as server,
+    urdf as urdf,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
