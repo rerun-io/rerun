@@ -99,6 +99,8 @@ impl Blueprint {
         // Required for viewer to identify blueprint data
         rec.set_time_sequence("blueprint", 0);
 
+        let mut viewport = ViewportBlueprint::new();
+
         if let Some(ref root) = self.root_container {
             root.log_to_stream(&rec)?;
 
@@ -112,18 +114,17 @@ impl Blueprint {
                 }
             };
 
-            let mut viewport = ViewportBlueprint::new();
             viewport = viewport.with_root_container(RootContainer(root_id.into()));
-
-            if let Some(auto_layout) = self.auto_layout {
-                viewport = viewport.with_auto_layout(AutoLayout(Bool(auto_layout)));
-            }
-            if let Some(auto_views) = self.auto_views {
-                viewport = viewport.with_auto_views(AutoViews(Bool(auto_views)));
-            }
-
-            rec.log("viewport", &viewport)?;
         }
+
+        if let Some(auto_layout) = self.auto_layout {
+            viewport = viewport.with_auto_layout(AutoLayout(Bool(auto_layout)));
+        }
+        if let Some(auto_views) = self.auto_views {
+            viewport = viewport.with_auto_views(AutoViews(Bool(auto_views)));
+        }
+
+        rec.log("viewport", &viewport)?;
 
         if let Some(ref panel) = self.blueprint_panel {
             panel.log_to_stream(&rec)?;
