@@ -51,15 +51,12 @@ libc = "2.28"
 # Global
 
 [activation]
+# Ensure pyo3-build.cfg exists before any cargo build.
+scripts = ["scripts/pixi/ensure_pyo3_build_cfg.sh"]
 
 [activation.env]
 RERUN_DEV_ENVIRONMENT = "true"
 
-[target.unix.activation]
-# Ensure pyo3-build.cfg exists before any cargo build.
-scripts = ["scripts/pixi/ensure_pyo3_build_cfg.sh"]
-
-[target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 # Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
@@ -68,6 +65,7 @@ PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
 [target.win-64.activation]
 # Ensure pyo3-build.cfg exists before any cargo build.
+# This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
 scripts = ["scripts/pixi/ensure_pyo3_build_cfg.bat"]
 
 [target.win-64.activation.env]
