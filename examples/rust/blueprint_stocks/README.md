@@ -1,4 +1,4 @@
-This example logs stock data to show how Rerun blueprints can be used to present different views of the same data. Very similar to Python's `blueprint_stocks` example, but using static (not live) data. 
+This example logs stock data to show how Rerun blueprints can be used to present different views of the same data. Very similar to Python's `blueprint_stocks` example, but using static (not live) data.
 
 ```bash
 # default grid layout
