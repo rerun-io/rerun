@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{RichText, Widget as _};
+use egui::{Color32, RichText, Widget as _};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
@@ -155,6 +155,12 @@ fn all_sections_ui(
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
     //
+    // Welcome and examples
+    //
+
+    welcome_item_ui(ctx, ui, recording_panel_data);
+
+    //
     // Empty placeholder
     //
 
@@ -185,6 +191,7 @@ fn all_sections_ui(
         if ui
             .list_item()
             .header()
+            .interactive(false) // prevent hover effect
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new("local items"),
@@ -211,45 +218,6 @@ fn all_sections_ui(
     }
 
     //
-    // Examples
-    //
-
-    if recording_panel_data.show_example_section {
-        let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.is_selected_or_loading(&item);
-        let active = matches!(
-            ctx.display_mode(),
-            DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
-        );
-        let list_item = ui.list_item().header().selected(selected).active(active);
-        let title = list_item::LabelContent::header("Rerun examples");
-        let response = if recording_panel_data.example_apps.is_empty() {
-            list_item.show_flat(ui, title)
-        } else {
-            list_item
-                .show_hierarchical_with_children(
-                    ui,
-                    egui::Id::new("example items"),
-                    true,
-                    title,
-                    |ui| {
-                        for app_id_data in &recording_panel_data.example_apps {
-                            app_id_section_ui(ctx, ui, app_id_data);
-                        }
-                    },
-                )
-                .item_response
-        };
-
-        ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
-        ctx.handle_select_focus_sync(&response, item.clone());
-
-        if response.clicked() {
-            re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
-        }
-    }
-
-    //
     // Loading receivers
     //
 
@@ -257,6 +225,48 @@ fn all_sections_ui(
 
     // Add space at the end of the recordings panel
     ui.add_space(8.0);
+}
+
+fn welcome_item_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    recording_panel_data: &RecordingPanelData<'_>,
+) {
+    let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
+    let selected = ctx.is_selected_or_loading(&item);
+    let active = matches!(
+        ctx.display_mode(),
+        DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+    );
+
+    let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
+
+    let list_item = ui.list_item().header().selected(selected).active(active);
+
+    let response = if recording_panel_data.example_apps.is_empty() {
+        list_item.show_flat(ui, title)
+    } else {
+        list_item
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new("example items"),
+                true,
+                title,
+                |ui| {
+                    for app_id_data in &recording_panel_data.example_apps {
+                        app_id_section_ui(ctx, ui, app_id_data);
+                    }
+                },
+            )
+            .item_response
+    };
+
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+    ctx.handle_select_focus_sync(&response, item);
+
+    if response.clicked() {
+        re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
+    }
 }
 
 // ---
@@ -574,7 +584,11 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     } = local_app_id;
 
     let item = local_app_id.item();
-    let list_item = ui.list_item().selected(*is_selected).active(*is_active);
+    let list_item = ui
+        .list_item()
+        .selected(*is_selected)
+        .active(*is_active)
+        .interactive(false);
 
     let mut list_item_content =
         re_ui::list_item::LabelContent::new(local_app_id.name()).with_icon(&icons::DATASET);
