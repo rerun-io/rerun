@@ -53,7 +53,11 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["uv", "sync"]
+        # It's important we use --inexact and --no-install-package here to avoid
+        # reinstalling rerun-sdk and potentially messing up the. Environment
+        # This script is sometimes used in CI where rerun-sdk is already installed
+        # from wheel, using the `--no-build` option above.
+        args = ["uv", "sync", "--inexact", "--no-install-package", "rerun-sdk"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
             args.extend(["--package", example])

@@ -8,5 +8,5 @@ set "CONFIG_FILE=%REPO_ROOT%\rerun_py\pyo3-build.cfg"
 
 if not exist "%CONFIG_FILE%" (
     echo Generating %CONFIG_FILE% …
-    call "%SCRIPT_DIR%uvpy.bat" "%REPO_ROOT%\scripts\generate_pyo3_config.py"
+    call "%SCRIPT_DIR%uvpy.cmd" "%REPO_ROOT%\scripts\generate_pyo3_config.py"
 )
