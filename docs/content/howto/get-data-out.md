@@ -5,7 +5,6 @@ order: 100
 
 Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
-
 ## Starting a server with recordings
 
 The first step to query data is to start a server and load it with a dataset containing your recording.
@@ -36,6 +35,42 @@ with rr.server.Server(datasets={
 
 When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
 
+You can also start a longer running server in a separate process and connect to it by its local address.
+In one file or terminal launch the server and print its address,
+
+```python
+server = rr.server.Server()
+print(server.address())
+```
+
+in a separate file or terminal connect to that address
+
+```python
+client = rr.catalog.CatalogClient(server_address)
+```
+
+## Adding new datasets
+
+New datasets can also be created or appended after the server is launched:
+
+```python
+dataset = client.create_dataset(
+    name="oss_demo",
+)
+dataset.register(Path("/path/to/recording/recording.rrd").resolve().as_uri()).wait()
+```
+
+## Viewing datasets
+
+Either specify the network location with the CLI at launch:
+
+```console
+rerun connect localhost:51234
+```
+
+or open the command palette in the viewer (`cmd/ctrl + P` or via the menu) and enter/select `Add Redap server`.
+Set the scheme to `http` and enter the hostname and port in the dialog.
+
 ## Inspecting the schema
 
 The content of a dataset can be inspected using the `schema()` method:
@@ -63,7 +98,6 @@ When calling `reader()`, an index column must be specified. It can be any of the
 By default, when performing a query on a dataset, data for all its segments is returned. An additional `"rerun_segment_id"` column is added to the dataframe to indicate which segment each row belongs to.
 
 An often used parameter of the `reader()` method is `fill_latest_at=True`. When used, all `null` data will be filled with a latest-at value, similarly to how the viewer works.
-
 
 ## Querying a subset of a dataset
 

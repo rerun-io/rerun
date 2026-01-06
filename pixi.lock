@@ -17070,7 +17070,7 @@ packages:
 - pypi: ./examples/python/face_tracking
   name: face-tracking
   version: 0.1.0
-  sha256: c3c2bf14ccceff0a35108ba309dceafe358a7d8e3dae2aeb7492b0fe36f149bf
+  sha256: e6b5e20114cb0ed8bc977bc706c4eb378be788b2cb70051a5fce68fff97d4fab
   requires_dist:
   - mediapipe==0.10.11 ; sys_platform != 'darwin'
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
@@ -17079,7 +17079,7 @@ packages:
   - requests
   - rerun-sdk
   - tqdm
-  requires_python: <3.12
+  requires_python: '>=3.10,<3.12'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/cb/a8/20d0723294217e47de6d9e2e40fd4a9d2f7c4b6ef974babd482a59743694/fastjsonschema-2.21.2-py3-none-any.whl
   name: fastjsonschema
@@ -35553,6 +35553,24 @@ packages:
   - rerun-sdk[datafusion] ; extra == 'all'
   - datafusion==50.1.0 ; extra == 'datafusion'
   - rerun-notebook==0.28.2rc1 ; extra == 'notebook'
+  - pytest==8.4.2 ; extra == 'tests'
+  - syrupy==5.0.0 ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
+- pypi: ./rerun_py
+  name: rerun-sdk
+  version: 0.28.1
+  sha256: abc479b8865139d494ed1427494aff68990f0eb7225baa98b855a44e9aca15d1
+  requires_dist:
+  - attrs>=23.1.0
+  - numpy>=2
+  - pillow>=8.0.0
+  - pyarrow>=18.0.0
+  - typing-extensions>=4.5
+  - rerun-sdk[notebook] ; extra == 'all'
+  - rerun-sdk[datafusion] ; extra == 'all'
+  - datafusion==50.1.0 ; extra == 'datafusion'
+  - rerun-notebook==0.28.1 ; extra == 'notebook'
   - pytest==8.4.2 ; extra == 'tests'
   - syrupy==5.0.0 ; extra == 'tests'
   requires_python: '>=3.10'
