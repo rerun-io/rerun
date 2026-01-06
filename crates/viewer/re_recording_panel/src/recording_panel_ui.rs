@@ -5,7 +5,7 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
-use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
+use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -187,15 +187,15 @@ fn all_sections_ui(
     // Local recordings and tables
     //
 
-    #[expect(clippy::collapsible_if)]
     if !recording_panel_data.local_apps.is_empty() || !recording_panel_data.local_tables.is_empty()
     {
+        let id = egui::Id::new("local items");
         if ui
             .list_item()
             .header()
             .show_hierarchical_with_children(
                 ui,
-                egui::Id::new("local items"),
+                id,
                 true,
                 list_item::LabelContent::header("Local"),
                 |ui| {
@@ -211,10 +211,13 @@ fn all_sections_ui(
             .item_response
             .clicked()
         {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    LOCAL_ORIGIN.clone(),
-                )));
+            let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                id,
+                true,
+            );
+            state.toggle(ui);
+            state.store(ui.ctx());
         }
     }
 
