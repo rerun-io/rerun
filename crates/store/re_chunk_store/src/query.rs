@@ -3,18 +3,16 @@ use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
-use saturating_cast::SaturatingCast as _;
-
 use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
+use saturating_cast::SaturatingCast as _;
 
 use crate::ChunkStore;
-use crate::store::ChunkIdSetPerTime;
-
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::store::ChunkIdSetPerTime;
 
 // ---
 
@@ -948,10 +946,14 @@ impl ChunkStore {
         let chunks = chunks
             .into_iter()
             .filter(|chunk| {
-                chunk
-                    .timelines()
-                    .get(query.timeline())
-                    .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
+                (chunk.is_static() && include_static) || {
+                    chunk
+                        .timelines()
+                        .get(query.timeline())
+                        .is_some_and(|time_column| {
+                            time_column.time_range().intersects(query.range())
+                        })
+                }
             })
             .collect_vec();
 
