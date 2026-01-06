@@ -193,7 +193,6 @@ fn all_sections_ui(
         if ui
             .list_item()
             .header()
-            .interactive(false) // prevent hover effect
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new("local items"),
@@ -586,11 +585,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     } = local_app_id;
 
     let item = local_app_id.item();
-    let list_item = ui
-        .list_item()
-        .selected(*is_selected)
-        .active(*is_active)
-        .interactive(false);
+    let list_item = ui.list_item().selected(*is_selected).active(*is_active);
 
     let mut list_item_content =
         re_ui::list_item::LabelContent::new(local_app_id.name()).with_icon(&icons::DATASET);
