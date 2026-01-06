@@ -75,6 +75,7 @@ examples = [
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   # Example packages from workspace
   "air_traffic_data",
+  "animated_urdf",
   "arkit_scenes",
   "blueprint",
   "blueprint_stocks",
@@ -143,6 +144,7 @@ rerun-notebook = { workspace = true }
 rerun-dev-fixup = { workspace = true }
 # Example packages
 air_traffic_data = { workspace = true }
+animated_urdf = { workspace = true }
 arkit_scenes = { workspace = true }
 blueprint = { workspace = true }
 blueprint_stocks = { workspace = true }
@@ -192,6 +194,7 @@ members = [
   "rerun_notebook",
   # Examples
   "examples/python/air_traffic_data",
+  "examples/python/animated_urdf",
   "examples/python/arkit_scenes",
   "examples/python/blueprint",
   "examples/python/blueprint_stocks",
