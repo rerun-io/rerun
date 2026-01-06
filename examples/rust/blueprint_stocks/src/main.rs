@@ -1,6 +1,5 @@
 use anyhow::Result;
-use chrono::{Datelike, Duration, NaiveDate, Weekday};
-use chrono_tz::America::New_York;
+use chrono::NaiveDate;
 use clap::Parser;
 use rerun::{
     blueprint::{
@@ -9,7 +8,26 @@ use rerun::{
     },
     external::re_sdk_types::blueprint::components::PanelState,
 };
-use yahoo_finance_api as yahoo;
+use serde::Deserialize;
+use std::collections::{BTreeSet, HashMap};
+
+/// Static JSON data
+const TICKER_INFO_JSON: &str = include_str!("data/ticker_info.json");
+const QUOTE_RANGE_JSON: &str = include_str!("data/quote_range.json");
+
+#[derive(Debug, Deserialize)]
+struct TickerInfo {
+    name: String,
+    industry: String,
+    market_cap: Option<u64>,
+    total_revenue: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct QuoteData {
+    timestamp: i64,
+    high: f64,
+}
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum BlueprintMode {
@@ -52,16 +70,26 @@ fn format_large_number(num: u64) -> String {
     }
 }
 
-/// Get the last N weekdays (excluding weekends) before the given date.
-fn get_last_weekdays(from_date: NaiveDate, count: usize) -> Vec<NaiveDate> {
-    (1..)
-        .map(|i| from_date - Duration::days(i))
-        .filter(|date| !matches!(date.weekday(), Weekday::Sat | Weekday::Sun))
-        .take(count)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect()
+/// Extract unique dates from quote timestamps.
+/// Returns dates sorted in ascending order.
+fn extract_dates_from_quotes(quotes: &[QuoteData]) -> Vec<NaiveDate> {
+    let dates: BTreeSet<NaiveDate> = quotes
+        .iter()
+        .filter_map(|q| chrono::DateTime::from_timestamp(q.timestamp, 0).map(|dt| dt.date_naive()))
+        .collect();
+    dates.into_iter().collect()
+}
+
+/// Group quotes by date.
+fn group_quotes_by_date(quotes: &[QuoteData]) -> HashMap<NaiveDate, Vec<&QuoteData>> {
+    let mut grouped: HashMap<NaiveDate, Vec<&QuoteData>> = HashMap::new();
+    for quote in quotes {
+        if let Some(dt) = chrono::DateTime::from_timestamp(quote.timestamp, 0) {
+            let date = dt.date_naive();
+            grouped.entry(date).or_default().push(quote);
+        }
+    }
+    grouped
 }
 
 /// Brand colors for each stock symbol.
@@ -166,17 +194,21 @@ fn hide_panels(viewport: ContainerLike) -> Blueprint {
         .with_selection_panel(SelectionPanel::from_state(PanelState::Collapsed))
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     let symbols = ["AAPL", "AMZN", "GOOGL", "META", "MSFT"];
 
-    // Get the last 7 weekdays from today (US Eastern Time)
-    // US stock markets operate on America/New_York timezone
-    let now = chrono::Utc::now();
-    let current_date = now.with_timezone(&New_York).date_naive();
-    let dates = get_last_weekdays(current_date, 7);
+    // Load static data
+    let ticker_info: HashMap<String, TickerInfo> = serde_json::from_str(TICKER_INFO_JSON)?;
+    let quote_range: HashMap<String, Vec<QuoteData>> = serde_json::from_str(QUOTE_RANGE_JSON)?;
+
+    // Extract dates from the first symbol's quotes
+    let dates = quote_range
+        .get("AAPL")
+        .map(|quotes| extract_dates_from_quotes(quotes))
+        .unwrap_or_default();
+
     let date_strings: Vec<String> = dates.iter().map(|d| d.to_string()).collect();
     let date_strs: Vec<&str> = date_strings.iter().map(|s| s.as_str()).collect();
 
@@ -241,60 +273,24 @@ async fn main() -> Result<()> {
         }
     }
 
-    let mut provider = yahoo::YahooConnector::new()?;
-
     for &symbol in &symbols {
-        // Fetch company information
-        let info_md = match provider.get_ticker_info(symbol).await {
-            Ok(quote_summary) => {
-                let mut name = symbol.to_string();
-                let mut industry = "N/A".to_string();
-                let mut market_cap = "N/A".to_string();
-                let mut revenue = "N/A".to_string();
+        // Log company information
+        let info_md = if let Some(info) = ticker_info.get(symbol) {
+            let market_cap = info
+                .market_cap
+                .map(format_large_number)
+                .unwrap_or_else(|| "N/A".to_string());
+            let revenue = info
+                .total_revenue
+                .map(format_large_number)
+                .unwrap_or_else(|| "N/A".to_string());
 
-                // Extract company data from nested structure
-                let data = quote_summary
-                    .quote_summary
-                    .and_then(|qs| qs.result)
-                    .and_then(|mut r| r.pop());
-
-                if let Some(data) = data {
-                    // Get company name
-                    name = data
-                        .quote_type
-                        .as_ref()
-                        .and_then(|qt| qt.short_name.clone())
-                        .unwrap_or(name);
-
-                    // Get industry
-                    industry = data
-                        .asset_profile
-                        .as_ref()
-                        .and_then(|ap| ap.industry.clone())
-                        .unwrap_or(industry);
-
-                    // Get market cap
-                    market_cap = data
-                        .summary_detail
-                        .as_ref()
-                        .and_then(|sd| sd.market_cap)
-                        .map(format_large_number)
-                        .unwrap_or(market_cap);
-
-                    // Get revenue
-                    revenue = data
-                        .financial_data
-                        .as_ref()
-                        .and_then(|fd| fd.total_revenue)
-                        .map(|r| format_large_number(r as u64))
-                        .unwrap_or(revenue);
-                }
-
-                format!(
-                    "- **Name**: {name}\n- **Industry**: {industry}\n- **Market cap**: ${market_cap}\n- **Total Revenue**: ${revenue}\n",
-                )
-            }
-            Err(_) => format!("# {symbol}\n\nCompany information unavailable"),
+            format!(
+                "- **Name**: {}\n- **Industry**: {}\n- **Market cap**: ${}\n- **Total Revenue**: ${}\n",
+                info.name, info.industry, market_cap, revenue
+            )
+        } else {
+            format!("# {symbol}\n\nCompany information unavailable")
         };
 
         rec.set_time_sequence("stable_time", 0);
@@ -303,56 +299,46 @@ async fn main() -> Result<()> {
             &rerun::TextDocument::new(info_md).with_media_type(rerun::MediaType::MARKDOWN),
         )?;
 
-        // Fetch 5-minute intraday data (5 days)
-        match provider.get_quote_range(symbol, "5m", "5d").await {
-            Ok(response) => {
-                let quotes = response.quotes()?;
+        // Log quote data
+        if let Some(quotes) = quote_range.get(symbol) {
+            let quotes_by_date = group_quotes_by_date(quotes);
 
-                if !quotes.is_empty() {
-                    // Distribute quotes across the weekdays for visualization
-                    let quotes_per_day = quotes.len() / dates.len().max(1);
+            for date in &dates {
+                let date_str = date.to_string();
 
-                    for (date_idx, &date_str) in date_strs.iter().enumerate() {
-                        let start = date_idx * quotes_per_day;
-                        let end = ((date_idx + 1) * quotes_per_day).min(quotes.len());
-                        let day_quotes = &quotes[start..end];
+                if let Some(day_quotes) = quotes_by_date.get(date) {
+                    if day_quotes.is_empty() {
+                        continue;
+                    }
 
-                        if day_quotes.is_empty() {
-                            continue;
-                        }
+                    // Find peak for this day
+                    let peak_idx = day_quotes
+                        .iter()
+                        .enumerate()
+                        .max_by(|(_, a), (_, b)| {
+                            a.high
+                                .partial_cmp(&b.high)
+                                .unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .map(|(idx, _)| idx);
 
-                        // Find peak for this day
-                        let peak_idx = day_quotes
-                            .iter()
-                            .enumerate()
-                            .max_by(|(_, a), (_, b)| {
-                                a.high
-                                    .partial_cmp(&b.high)
-                                    .unwrap_or(std::cmp::Ordering::Equal)
-                            })
-                            .map(|(idx, _)| idx);
+                    // Log time series data
+                    for (i, quote) in day_quotes.iter().enumerate() {
+                        rec.set_time_sequence("time", i as i64);
+                        rec.log(
+                            format!("stocks/{symbol}/{date_str}"),
+                            &rerun::Scalars::new([quote.high]),
+                        )?;
 
-                        // Log time series data
-                        for (i, quote) in day_quotes.iter().enumerate() {
-                            rec.set_time_sequence("time", i as i64);
+                        // Log peak
+                        if Some(i) == peak_idx {
                             rec.log(
-                                format!("stocks/{symbol}/{date_str}"),
+                                format!("stocks/{symbol}/peaks/{date_str}"),
                                 &rerun::Scalars::new([quote.high]),
                             )?;
-
-                            // Log peak
-                            if Some(i) == peak_idx {
-                                rec.log(
-                                    format!("stocks/{symbol}/peaks/{date_str}"),
-                                    &rerun::Scalars::new([quote.high]),
-                                )?;
-                            }
                         }
                     }
                 }
-            }
-            Err(err) => {
-                eprintln!("Failed to fetch data for {symbol}: {err}");
             }
         }
     }

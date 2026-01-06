@@ -11,8 +11,7 @@ publish = false
 rerun = { path = "../../../crates/top/rerun",  features = ["clap"] }
 
 anyhow.workspace = true
-chrono = { workspace = true, features = ["clock"] }
-chrono-tz = "0.10"
+chrono.workspace = true
 clap = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-yahoo_finance_api = "4.1"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

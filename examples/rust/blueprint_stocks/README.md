@@ -1,5 +1,4 @@
-This example fetches the last 5 days of stock data for a few different stocks.
-We show how Rerun blueprints can then be used to present many different views of the same data.
+This example logs stock data to show how Rerun blueprints can be used to present different views of the same data. Very similar to Python's `blueprint_stocks` example, but using static (not live) data. 
 
 ```bash
 # default grid layout
