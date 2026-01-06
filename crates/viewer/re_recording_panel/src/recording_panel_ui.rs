@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{Color32, RichText, Widget as _};
+use egui::{RichText, Widget as _};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
