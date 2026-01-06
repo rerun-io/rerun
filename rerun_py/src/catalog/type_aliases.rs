@@ -191,13 +191,13 @@ impl IndexValuesLike<'_> {
     eq
 )]
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct PyIndexValuesLike {
+pub struct PyIndexValuesLikeInternal {
     // Store the converted values instead of the lifetime-bound enum
     values: BTreeSet<re_chunk_store::TimeInt>,
 }
 
 #[pymethods]
-impl PyIndexValuesLike {
+impl PyIndexValuesLikeInternal {
     /// Create a new `IndexValuesLike` from a Python object.
     ///
     /// Parameters
