@@ -2385,7 +2385,7 @@ mod tests {
             ChildParentFrameChangesOverTimeTestMode::MultipleChunksInOrder => {
                 for row_idx in 0..chunk.num_rows() {
                     entity_db.add_chunk(&Arc::new(
-                        chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
+                        chunk.row_sliced_shallow(row_idx, 1).with_id(ChunkId::new()),
                     ))?;
                     apply_store_subscriber_events(&mut cache, &entity_db);
                 }
@@ -2393,7 +2393,7 @@ mod tests {
             ChildParentFrameChangesOverTimeTestMode::MultipleChunksReverseOrder => {
                 for row_idx in (0..chunk.num_rows()).rev() {
                     entity_db.add_chunk(&Arc::new(
-                        chunk.row_sliced(row_idx, 1).with_id(ChunkId::new()),
+                        chunk.row_sliced_shallow(row_idx, 1).with_id(ChunkId::new()),
                     ))?;
                     apply_store_subscriber_events(&mut cache, &entity_db);
                 }

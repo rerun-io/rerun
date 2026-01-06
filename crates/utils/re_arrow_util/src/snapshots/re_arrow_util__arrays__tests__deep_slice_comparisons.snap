@@ -1,0 +1,48 @@
+---
+source: crates/utils/re_arrow_util/src/arrays.rs
+expression: output
+---
+int32:
+array[0..]:          len=    100000 array_size=    400096 buf_size=    400000 data.len=    100000 data.array_size=    400160 data.buf_size=    400000 data.slice_size=    400000 / IPC=412872
+slice[25000..75000]: len=     50000 array_size=    400096 buf_size=    400000 data.len=     50000 data.array_size=    400160 data.buf_size=    400000 data.slice_size=    200000 / IPC=206600
+ deep[25000..75000]: len=     50000 array_size=    200096 buf_size=    200000 data.len=     50000 data.array_size=    200160 data.buf_size=    200000 data.slice_size=    200000 / IPC=206600
+
+list[int32]:
+array[0..]:          len=    100000 array_size=    800212 buf_size=    800004 data.len=    100000 data.array_size=    800324 data.buf_size=    800004 data.slice_size=    800000 / IPC=825544
+slice[25000..75000]: len=     50000 array_size=    800212 buf_size=    800004 data.len=     50000 data.array_size=    800324 data.buf_size=    800004 data.slice_size=    600000 / IPC=413000
+ deep[25000..75000]: len=     50000 array_size=    400272 buf_size=    400064 data.len=     50000 data.array_size=    400384 data.buf_size=    400064 data.slice_size=    400000 / IPC=413000
+
+list[list[int32]]:
+array[0..]:          len=    100000 array_size=   1200328 buf_size=   1200008 data.len=    100000 data.array_size=   1200488 data.buf_size=   1200008 data.slice_size=   1200000 / IPC=1238280
+slice[ 5000.. 5005]: len=         5 array_size=   1200328 buf_size=   1200008 data.len=         5 data.array_size=   1200488 data.buf_size=   1200008 data.slice_size=    800020 / IPC=   904
+ deep[ 5000.. 5005]: len=         5 array_size=       512 buf_size=       192 data.len=         5 data.array_size=       672 data.buf_size=       192 data.slice_size=        60 / IPC=   904
+
+struct{int32}:
+array[0..]:          len=    100000 array_size=    400200 buf_size=    400000 data.len=    100000 data.array_size=    400296 data.buf_size=    400000 data.slice_size=    400000 / IPC=425480
+slice[25000..75000]: len=     50000 array_size=    400200 buf_size=    400000 data.len=     50000 data.array_size=    400296 data.buf_size=    400000 data.slice_size=    200000 / IPC=212936
+ deep[25000..75000]: len=     50000 array_size=    200200 buf_size=    200000 data.len=     50000 data.array_size=    200296 data.buf_size=    200000 data.slice_size=    200000 / IPC=212936
+
+list[struct{int32}]:
+array[0..]:          len=    100000 array_size=    800316 buf_size=    800004 data.len=    100000 data.array_size=    800460 data.buf_size=    800004 data.slice_size=    800000 / IPC=838216
+slice[25000..75000]: len=     50000 array_size=    800316 buf_size=    800004 data.len=     50000 data.array_size=    800460 data.buf_size=    800004 data.slice_size=    600000 / IPC=419400
+ deep[25000..75000]: len=     50000 array_size=    400376 buf_size=    400064 data.len=     50000 data.array_size=    400520 data.buf_size=    400064 data.slice_size=    400000 / IPC=419400
+
+union#dense{{u8,f32,i64}}::
+array[0..]:          len=    100000 array_size=   1000392 buf_size=   1000008 data.len=    100000 data.array_size=   1000672 data.buf_size=   1000008 data.slice_size=   1000008 / IPC=1021832
+slice[25000..75000]: len=     50000 array_size=   1000392 buf_size=   1000008 data.len=     50000 data.array_size=   1000672 data.buf_size=   1000008 data.slice_size=    750008 / IPC=771848
+ deep[25000..75000]: len=     50000 array_size=    900480 buf_size=    900096 data.len=     50000 data.array_size=    900760 data.buf_size=    900096 data.slice_size=    466670 / IPC=473864
+
+union#sparse{{u8,f32,i64}}::
+array[0..]:          len=    100000 array_size=   1400384 buf_size=   1400000 data.len=    100000 data.array_size=   1400640 data.buf_size=   1400000 data.slice_size=   1400000 / IPC=1438408
+slice[25000..75000]: len=     50000 array_size=   1400384 buf_size=   1400000 data.len=     50000 data.array_size=   1400640 data.buf_size=   1400000 data.slice_size=    700000 / IPC=719624
+ deep[25000..75000]: len=     50000 array_size=    700480 buf_size=    700096 data.len=     50000 data.array_size=    700736 data.buf_size=    700096 data.slice_size=    700000 / IPC=719624
+
+union#dense{{list[u8],list[f32],list[i64]}}::
+array[0..]:          len=        20 array_size=    650916 buf_size=    650196 data.len=        20 data.array_size=    651340 data.buf_size=    650196 data.slice_size=    650184 / IPC=469832
+slice[    5..   15]: len=        10 array_size=    650916 buf_size=    650196 data.len=        10 data.array_size=    651340 data.buf_size=    650196 data.slice_size=    650134 / IPC=469768
+ deep[    5..   15]: len=        10 array_size=    261392 buf_size=    260672 data.len=        10 data.array_size=    261816 data.buf_size=    260672 data.slice_size=    235090 / IPC=242952
+
+union#sparse{{list[u8],list[f32],list[i64]}}::
+array[0..]:          len=        20 array_size=   1300992 buf_size=   1300272 data.len=        20 data.array_size=   1301392 data.buf_size=   1300272 data.slice_size=   1300260 / IPC=1339272
+slice[    5..   15]: len=        10 array_size=   1300992 buf_size=   1300272 data.len=        10 data.array_size=   1301392 data.buf_size=   1300272 data.slice_size=   1300130 / IPC=670280
+ deep[    5..   15]: len=        10 array_size=    651024 buf_size=    650304 data.len=        10 data.array_size=    651424 data.buf_size=    650304 data.slice_size=    650130 / IPC=670280
