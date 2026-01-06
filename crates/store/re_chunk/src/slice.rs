@@ -73,15 +73,15 @@ impl Chunk {
     ///
     /// ## When to use shallow vs. deep slicing?
     ///
-    /// This operation is deep and therefore always O(1).
+    /// This operation is deep and therefore always O(N).
     ///
     /// The underlying data, offsets, bitmaps and other buffers required will be reallocated, copied around,
     /// and patched as much as required so that the resulting physical data becomes as packed as possible for
     /// the desired slice.
     /// Similarly, the reported sizes would always match intuitive expectations.
     ///
-    /// These characteristics make deep slicing very useful for longer term data, whether it's
-    /// store in-memory (e.g. in a `ChunkStore`), or on disk.
+    /// These characteristics make deep slicing very useful for longer term data, whether it's stored
+    /// in-memory (e.g. in a `ChunkStore`), or on disk.
     /// When slicing data for short-term needs (e.g. slicing the results of a query), whether in-memory or on
     /// disk, prefer [`Self::row_sliced_shallow`] instead.
     #[must_use]
