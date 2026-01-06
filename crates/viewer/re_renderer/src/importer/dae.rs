@@ -1,11 +1,13 @@
 //! Collada (.dae) scene loader for Rerun
 //!
 //! ⚠️ The Collada spec is extremely broad, and this implementation only supports a small subset of it:
-//!   * `<triangles>` primitives, all other primitives are ignored.
-//!   * Transform stack made of `<matrix>`, `<translate>`, `<rotate>` and
+//!   - `<triangles>` primitives, all other primitives are ignored.
+//!   - Transform stack made of `<matrix>`, `<translate>`, `<rotate>` and
 //!     `<scale>`; unsupported transform tags are skipped with a warning.
-//!   * One set of positions, normals and optional tex‑coords per vertex.
-//!   * Material diffuse colors from Blinn, Phong, Lambert, and Constant shaders.
+//!   - One set of positions, normals and optional tex‑coords per vertex.
+//!   - Material diffuse colors from Blinn, Phong, Lambert, and Constant shaders.
+//!
+//! ⚠️ Texture support is not yet implemented. Only diffuse colors are loaded.
 
 use ahash::HashMap;
 use smallvec::smallvec;
@@ -46,6 +48,9 @@ pub fn load_dae_from_buffer(
 
     let document = Document::from_reader(buffer).map_err(DaeImportError::Parser)?;
     let maps = document.local_maps();
+
+    // Check for textures and warn if found
+    check_for_textures(&document);
 
     let mut model = CpuModel::default();
     let mut mesh_keys: HashMap<String, CpuModelMeshKey> = HashMap::default();
@@ -112,11 +117,13 @@ fn import_geometry(
 
     let mut pos_raw = Vec::new();
     let mut normals = Vec::new();
+    let mut texcoords = Vec::new();
     let mut tri_indices = Vec::<glam::UVec3>::new();
 
     for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
         pos_raw.push(v.position);
         normals.push(v.normal);
+        texcoords.push(v.texcoord);
 
         // Triangles are grouped in triplets
         if i % 3 == 2 {
@@ -156,13 +163,25 @@ fn import_geometry(
         vertex_positions,
         vertex_normals: bytemuck::cast_vec(normals),
         vertex_colors: vec![Rgba32Unmul::WHITE; num_vertices],
-        vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+        vertex_texcoords: bytemuck::cast_vec(texcoords),
         materials: smallvec![material],
         bbox,
     };
 
     cpu_mesh.sanity_check()?;
     Ok(cpu_mesh)
+}
+
+/// Check if the DAE document contains textures and emit a warning if so.
+fn check_for_textures(document: &Document) {
+    use dae_parser::Image;
+
+    let has_images = document.iter::<Image>().next().is_some();
+    if has_images {
+        re_log::warn_once!(
+            "DAE file contains texture images, but texture support is not yet implemented. Only diffuse colors will be loaded."
+        );
+    }
 }
 
 /// Extract the diffuse color from a material symbol by looking it up in the document.
@@ -268,6 +287,7 @@ fn gather_instances_recursive(
 struct Vertex {
     position: [f32; 3],
     normal: [f32; 3],
+    texcoord: [f32; 2],
 }
 
 impl<'a> VertexLoad<'a> for Vertex {
@@ -275,6 +295,7 @@ impl<'a> VertexLoad<'a> for Vertex {
         Self {
             position: reader.get(i as usize),
             normal: [0.0; 3],
+            texcoord: [0.0; 2],
         }
     }
 
@@ -282,7 +303,7 @@ impl<'a> VertexLoad<'a> for Vertex {
         self.normal = reader.get(i as usize);
     }
 
-    fn add_texcoord(&mut self, _: &(), _r: &SourceReader<'a, ST>, _i: u32, _set: Option<u32>) {
-        // TODO(gijsd): add texture coordinate support
+    fn add_texcoord(&mut self, _: &(), r: &SourceReader<'a, ST>, i: u32, _set: Option<u32>) {
+        self.texcoord = r.get(i as usize);
     }
 }
