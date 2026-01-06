@@ -61,8 +61,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: py-docs
 
       - name: Build via mkdocs
         run: |
-          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
+          pixi run uv run --group docs mkdocs build --strict -f rerun_py/mkdocs.yml

@@ -453,12 +453,22 @@ async fn stream_segment_from_server(
                 if tx
                     .send(DataSourceMessage::RrdManifest(
                         store_id.clone(),
-                        rrd_manifest.into(),
+                        rrd_manifest.clone().into(),
                     ))
                     .is_err()
                 {
                     re_log::debug!("Receiver disconnected");
-                    return Ok(ControlFlow::Break(())); // cancelled
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                if store_id.is_recording() {
+                    return load_chunks_on_demand(client, tx, &store_id, rrd_manifest).await;
+                } else {
+                    // Load all chunks in one go:
+                    let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                    })?;
+                    return load_chunks(client, tx, &store_id, batch).await;
                 }
             }
             Err(err) => {
@@ -470,6 +480,8 @@ async fn stream_segment_from_server(
             }
         }
     }
+
+    // Fallback for servers that does not support the RRD manifests:
 
     let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
 
@@ -589,13 +601,67 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
         .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
 }
 
+/// Load chunks on demand as requested by the viewer via `LoadCommand::LoadChunks`.
+async fn load_chunks_on_demand(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    rrd_manifest: re_log_encoding::RrdManifest,
+) -> ApiResult<ControlFlow<()>> {
+    {
+        // Pre-fetch everything static:
+        let col_chunk_is_static = rrd_manifest.col_chunk_is_static().map_err(|err| {
+            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
+        })?;
+
+        let mut indices = vec![];
+        for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
+            if chunk_is_static {
+                indices.push(row_idx as u32);
+            }
+        }
+        let static_chunks = arrow::compute::take_record_batch(
+            &rrd_manifest.data,
+            &arrow::array::UInt32Array::from(indices),
+        )
+        .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
+
+        re_log::debug!(
+            "Pre-fetching {} static chunks…",
+            re_format::format_uint(static_chunks.num_rows())
+        );
+        if load_chunks(client, tx, store_id, static_chunks)
+            .await?
+            .is_break()
+        {
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+
+    re_log::debug!("Waiting for viewer to tell me what to load…");
+    loop {
+        if let Ok(cmd) = tx.recv_cmd().await {
+            match cmd {
+                re_log_channel::LoadCommand::LoadChunks(batch) => {
+                    if load_chunks(client, tx, store_id, batch).await?.is_break() {
+                        return Ok(ControlFlow::Break(()));
+                    }
+                }
+            }
+        } else {
+            re_log::debug!("Receiver disconnected");
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+}
+
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
 async fn load_chunks(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     batch: RecordBatch,
-) -> Result<ControlFlow<()>, ApiError> {
+) -> ApiResult<ControlFlow<()>> {
     if batch.num_rows() == 0 {
         return Ok(ControlFlow::Continue(()));
     }
@@ -623,7 +689,7 @@ async fn load_chunks(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(())); // cancelled
+                return Ok(ControlFlow::Break(()));
             }
         }
     }

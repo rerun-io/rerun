@@ -67,8 +67,4 @@ impl Cache for ImageStatsCache {
         self.0
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }

@@ -1,3 +1,5 @@
+#![expect(clippy::fn_params_excessive_bools)] // We used named arguments, so this is fine
+
 use std::collections::BTreeSet;
 
 use pyo3::exceptions::{PyTypeError, PyValueError};

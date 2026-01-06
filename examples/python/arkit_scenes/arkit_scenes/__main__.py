@@ -210,9 +210,9 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     rr.log(
         "world/mesh",
         rr.Mesh3D(
-            vertex_positions=mesh.vertices,
-            vertex_colors=mesh.visual.vertex_colors,
-            triangle_indices=mesh.faces,
+            vertex_positions=mesh.vertices,  # type: ignore[attr-defined]
+            vertex_colors=mesh.visual.vertex_colors,  # type: ignore[attr-defined]
+            triangle_indices=mesh.faces,  # type: ignore[attr-defined]
         ),
         static=True,
     )

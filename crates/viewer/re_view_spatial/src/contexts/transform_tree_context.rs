@@ -366,10 +366,6 @@ impl ViewContextSystem for TransformTreeContext {
                     .map(|_pinhole_info| info.root)
             });
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 fn map_tree_transform_to_transform_info(

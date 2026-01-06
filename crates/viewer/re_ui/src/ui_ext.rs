@@ -519,6 +519,7 @@ pub trait UiExt {
     /// Display content under a header that is conditionally collapsible. If `collapsing` is `true`,
     /// this is equivalent to [`Self::collapsing_header`]. If `collapsing` is `false`, the content
     /// is displayed under a static, non-collapsible header.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn maybe_collapsing_header<R>(
         &mut self,
 
