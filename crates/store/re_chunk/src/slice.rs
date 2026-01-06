@@ -49,8 +49,8 @@ impl Chunk {
     /// ever modify the values of the offsets themselves.
     /// Since the offsets are left untouched, the original unsliced data must always be kept around
     /// too, _even if the sliced data were to be written to disk_.
-    /// Similarly, the sizes reported might not always make intuitive sense, and should be used
-    /// very carefully.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` might not always make intuitive
+    /// sense, and should be used very carefully.
     ///
     /// For these reasons, shallow slicing should only be used in the context of short-term, in-memory storage
     /// (e.g. when slicing the results of a query).
@@ -78,12 +78,11 @@ impl Chunk {
     /// The underlying data, offsets, bitmaps and other buffers required will be reallocated, copied around,
     /// and patched as much as required so that the resulting physical data becomes as packed as possible for
     /// the desired slice.
-    /// Similarly, the reported sizes would always match intuitive expectations.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` should always match intuitive expectations.
     ///
     /// These characteristics make deep slicing very useful for longer term data, whether it's stored
     /// in-memory (e.g. in a `ChunkStore`), or on disk.
-    /// When slicing data for short-term needs (e.g. slicing the results of a query), whether in-memory or on
-    /// disk, prefer [`Self::row_sliced_shallow`] instead.
+    /// When slicing data for short-term needs (e.g. slicing the results of a query) prefer [`Self::row_sliced_shallow`] instead.
     #[must_use]
     pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
         let deep = true;
