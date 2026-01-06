@@ -53,7 +53,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["uv", "sync", "--inexact", "--no-install-package", "rerun-sdk"]
+        args = ["uv", "sync"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
             args.extend(["--package", example])
