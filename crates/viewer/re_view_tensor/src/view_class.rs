@@ -11,8 +11,9 @@ use re_renderer::{
 use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
 use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
-    Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
+    Colormap, GammaCorrection, MagnificationFilter, TensorData, TensorDimensionIndexSelection,
 };
+use re_sdk_types::tensor_data::TensorDataType;
 use macaw;
 use re_sdk_types::external::glam;
 use re_sdk_types::{View as _, ViewClassIdentifier};
@@ -31,6 +32,304 @@ use crate::TensorDimension;
 use crate::dimension_mapping::TensorSliceSelection;
 use crate::tensor_dimension_mapper::dimension_mapping_ui;
 use crate::visualizer_system::{TensorSystem, TensorVisualization};
+
+// --- Helper functions for TensorView ---
+
+pub fn selected_tensor_slice<'a, T: Copy>(
+    slice_selection: &TensorSliceSelection,
+    tensor: &'a ndarray::ArrayViewD<'_, T>,
+) -> ndarray::ArrayViewD<'a, T> {
+    let TensorSliceSelection {
+        width,
+        height,
+        indices,
+        slider: _,
+    } = slice_selection;
+
+    let (dwidth, dheight) = if let (Some(width), Some(height)) = (width, height) {
+        (width.dimension, height.dimension)
+    } else if let Some(width) = width {
+        // If height is missing, create a 1D row.
+        (width.dimension, 1)
+    } else if let Some(height) = height {
+        // If width is missing, create a 1D column.
+        (1, height.dimension)
+    } else {
+        // If both are missing, give up.
+        return tensor.view();
+    };
+
+    let view = if tensor.shape().len() == 1 {
+        // We want 2D slices, so for "pure" 1D tensors add a dimension.
+        // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
+        tensor
+            .view()
+            .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
+            .expect("Tensor.shape.len() is not actually 1!")
+    } else {
+        tensor.view()
+    };
+
+    let axis = [dheight as usize, dwidth as usize]
+        .into_iter()
+        .chain(indices.iter().map(|s| s.dimension as usize))
+        .collect::<Vec<_>>();
+    let mut slice = view.permuted_axes(axis);
+
+    for index_selection in indices {
+        // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
+        // This call removes Axis(2), so the next iteration of the loop does the right thing again.
+        slice.index_axis_inplace(Axis(2), index_selection.index as usize);
+    }
+    if height.unwrap_or_default().invert {
+        slice.invert_axis(Axis(0));
+    }
+    if width.unwrap_or_default().invert {
+        slice.invert_axis(Axis(1));
+    }
+
+    slice
+}
+
+pub fn tensor_slice_shape(
+    tensor: &TensorData,
+    slice_selection: &TensorSliceSelection,
+) -> Option<(usize, usize)> {
+    macro_rules! get_shape {
+        ($T:ty) => {{
+            let view = ndarray::ArrayViewD::<$T>::try_from(&tensor.0).ok()?;
+            let slice = selected_tensor_slice(slice_selection, &view);
+            let shape = slice.shape();
+            if shape.len() >= 2 {
+                Some((shape[0], shape[1]))
+            } else {
+                None
+            }
+        }};
+    }
+
+    match tensor.dtype() {
+        TensorDataType::U8 => get_shape!(u8),
+        TensorDataType::U16 => get_shape!(u16),
+        TensorDataType::U32 => get_shape!(u32),
+        TensorDataType::U64 => get_shape!(u64),
+        TensorDataType::I8 => get_shape!(i8),
+        TensorDataType::I16 => get_shape!(i16),
+        TensorDataType::I32 => get_shape!(i32),
+        TensorDataType::I64 => get_shape!(i64),
+        TensorDataType::F16 => get_shape!(half::f16),
+        TensorDataType::F32 => get_shape!(f32),
+        TensorDataType::F64 => get_shape!(f64),
+    }
+}
+
+fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
+    let dim = &shape[dim_idx as usize];
+    dim.name.as_ref().map_or_else(
+        || format!("Dimension {dim_idx} (size={})", dim.size),
+        |name| format!("{name} (size={})", dim.size),
+    )
+}
+
+fn paint_axis_names(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    font_id: egui::FontId,
+    dimension_labels: [Option<(String, bool)>; 2],
+) {
+    let painter = ui.painter();
+    let tokens = ui.tokens();
+
+    let [width, height] = dimension_labels;
+    let (width_name, invert_width) =
+        width.map_or((None, false), |(label, invert)| (Some(label), invert));
+    let (height_name, invert_height) =
+        height.map_or((None, false), |(label, invert)| (Some(label), invert));
+
+    let text_color = ui.visuals().text_color();
+
+    let rounding = tokens.normal_corner_radius();
+    let inner_margin = rounding as f32;
+    let outer_margin = 8.0;
+
+    let rect = rect.shrink(outer_margin + inner_margin);
+
+    let paint_text_bg = |text_background, text_rect: egui::Rect| {
+        painter.set(
+            text_background,
+            egui::Shape::rect_filled(
+                text_rect.expand(inner_margin),
+                rounding,
+                ui.visuals().panel_fill,
+            ),
+        );
+    };
+
+    // Label for X axis:
+    if let Some(width_name) = width_name {
+        let text_background = painter.add(egui::Shape::Noop);
+        let text_rect = if invert_width {
+            // On left, pointing left:
+            let (pos, align) = if invert_height {
+                (rect.left_bottom(), Align2::LEFT_BOTTOM)
+            } else {
+                (rect.left_top(), Align2::LEFT_TOP)
+            };
+            painter.text(
+                pos,
+                align,
+                format!("{width_name} ⬅"),
+                font_id.clone(),
+                text_color,
+            )
+        } else {
+            // On right, pointing right:
+            let (pos, align) = if invert_height {
+                (rect.right_bottom(), Align2::RIGHT_BOTTOM)
+            } else {
+                (rect.right_top(), Align2::RIGHT_TOP)
+            };
+            painter.text(
+                pos,
+                align,
+                format!("➡ {width_name}"),
+                font_id.clone(),
+                text_color,
+            )
+        };
+        paint_text_bg(text_background, text_rect);
+    }
+
+    // Label for Y axis:
+    if let Some(height_name) = height_name {
+        let text_background = painter.add(egui::Shape::Noop);
+        let text_rect = if invert_height {
+            // On top, pointing up:
+            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+            let galley_size = galley.size();
+            let pos = if invert_width {
+                rect.right_top() + egui::vec2(-galley_size.y, galley_size.x)
+            } else {
+                rect.left_top() + egui::vec2(0.0, galley_size.x)
+            };
+            painter.add(
+                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
+            );
+            egui::Rect::from_min_size(
+                pos - galley_size.x * egui::Vec2::Y,
+                egui::vec2(galley_size.y, galley_size.x),
+            )
+        } else {
+            // On bottom, pointing down:
+            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+            let galley_size = galley.size();
+            let pos = if invert_width {
+                rect.right_bottom() - egui::vec2(galley_size.y, 0.0)
+            } else {
+                rect.left_bottom()
+            };
+            painter.add(
+                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
+            );
+            egui::Rect::from_min_size(
+                pos - galley_size.x * egui::Vec2::Y,
+                egui::vec2(galley_size.y, galley_size.x),
+            )
+        };
+        paint_text_bg(text_background, text_rect);
+    }
+}
+
+pub fn index_for_dimension_mut(
+    indices: &mut [TensorDimensionIndexSelection],
+    dimension: u32,
+) -> Option<&mut u64> {
+    indices
+        .iter_mut()
+        .find(|index| index.dimension == dimension)
+        .map(|index| &mut index.index)
+}
+
+fn selectors_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    shape: &[TensorDimension],
+    slice_selection: &TensorSliceSelection,
+    slice_property: &ViewProperty,
+) {
+    let Some(slider) = &slice_selection.slider else {
+        return;
+    };
+
+    let mut changed_indices = false;
+    let mut indices = slice_selection.indices.clone();
+
+    for index_slider in slider {
+        let dim = &shape[index_slider.dimension as usize];
+        let size = dim.size;
+        if size <= 1 {
+            continue;
+        }
+
+        let Some(selector_value) = index_for_dimension_mut(&mut indices, index_slider.dimension)
+        else {
+            // There should be an entry already via `load_tensor_slice_selection_and_make_valid`
+            continue;
+        };
+
+        ui.horizontal(|ui| {
+            let name = dim.name.clone().map_or_else(
+                || index_slider.dimension.to_string(),
+                |name| name.to_string(),
+            );
+
+            let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
+            ui.label(&name).on_hover_text(&slider_tooltip);
+
+            // If the range is big (say, 2048) then we would need
+            // a slider that is 2048 pixels wide to get the good precision.
+            // So we add a high-precision drag-value instead:
+            if ui
+                .add(
+                    egui::DragValue::new(selector_value)
+                        .range(0..=size - 1)
+                        .speed(0.5),
+                )
+                .on_hover_text(format!(
+                    "Drag to precisely control the slice index of the {name} dimension"
+                ))
+                .changed()
+            {
+                changed_indices = true;
+            }
+
+            // Make the slider as big as needed:
+            const MIN_SLIDER_WIDTH: f32 = 64.0;
+            if ui.available_width() >= MIN_SLIDER_WIDTH {
+                ui.spacing_mut().slider_width = ((size as f32) * 4.0)
+                    .at_least(MIN_SLIDER_WIDTH)
+                    .at_most(ui.available_width());
+                if ui
+                    .add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
+                    .on_hover_text(slider_tooltip)
+                    .changed()
+                {
+                    changed_indices = true;
+                }
+            }
+        });
+    }
+
+    if changed_indices {
+        slice_property.save_blueprint_component(
+            ctx,
+            &archetypes::TensorSliceSelection::descriptor_indices(),
+            &indices,
+        );
+    }
+}
+
+// --- Main TensorView impl ---
 
 #[derive(Default)]
 pub struct TensorView;
@@ -338,18 +637,26 @@ impl TensorView {
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, tensors, slice_selection)?;
+        let mag_filter = ViewProperty::from_archetype::<TensorScalarMapping>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            ctx.view_id,
+        )
+        .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
+
+        let (response, image_rect) = paint_tensor_slice(ctx, ui, tensors, slice_selection, mag_filter)?;
 
         if response.hovered() {
             if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 response.on_hover_ui_at_pointer(|ui| {
                     crate::tensor_slice_hover::show_tensor_hover_ui(
-                        ctx.viewer_ctx,
+                        ctx,
                         ui,
                         tensors,
                         slice_selection,
                         image_rect,
                         pointer_pos,
+                        mag_filter,
                     );
                 });
             }
@@ -360,472 +667,202 @@ impl TensorView {
 
         Ok(())
     }
-
-    fn paint_tensor_slice(
-        ctx: &ViewContext<'_>,
-        ui: &mut egui::Ui,
-        tensors: &[TensorVisualization],
-        slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
-        re_tracing::profile_function!();
-
-        if tensors.is_empty() {
-             anyhow::bail!("No tensor data available.");
-        }
-
-        // We use the first tensor to determine size and placement
-        let first_tensor_view = &tensors[0];
-        let TensorVisualization {
-            tensor_row_id: first_tensor_row_id,
-            tensor: first_tensor,
-            data_range: first_data_range,
-            annotations: first_annotations,
-            ..
-        } = first_tensor_view;
-
-        let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
-        let colormap: Colormap = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
-        let gamma: GammaCorrection = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
-        let mag_filter: MagnificationFilter = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
-
-        let first_colormap = ColormapWithRange {
-            colormap,
-            value_range: [first_data_range.start() as f32, first_data_range.end() as f32],
-        };
-        // We load the first texture just to get dimensions
-        let first_colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            ctx.render_ctx(),
-            *first_tensor_row_id,
-            first_tensor,
-            slice_selection,
-            first_annotations,
-            &first_colormap,
-            gamma,
-        )?;
-        let [width, height] = first_colormapped_texture.width_height();
-
-        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        )
-        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
-
-        let img_size = egui::vec2(width as _, height as _);
-        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-        let desired_size = match view_fit {
-            ViewFit::Original => img_size,
-            ViewFit::Fill => ui.available_size(),
-            ViewFit::FillKeepAspectRatio => {
-                let scale = (ui.available_size() / img_size).min_elem();
-                img_size * scale
-            }
-        };
-
-        let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-        let image_rect = egui::Rect::from_min_max(response.rect.min, response.rect.max);
-        
-        let texture_filter_magnification = match mag_filter {
-            MagnificationFilter::Nearest => re_renderer::renderer::TextureFilterMag::Nearest,
-            MagnificationFilter::Linear => re_renderer::renderer::TextureFilterMag::Linear,
-        };
-        // TODO(andreas): allow for mipmapping based filter
-        let texture_filter_minification = re_renderer::renderer::TextureFilterMin::Linear;
-
-        // Prepare all textured rects
-        let mut textured_rects = Vec::with_capacity(tensors.len());
-
-        let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_rect.size());
-
-        for (i, tensor_view) in tensors.iter().enumerate() {
-             let TensorVisualization {
-                tensor_row_id,
-                tensor,
-                data_range,
-                annotations,
-                opacity,
-                ..
-            } = tensor_view;
-
-            let colormap_with_range = ColormapWithRange {
-                colormap,
-                value_range: [data_range.start() as f32, data_range.end() as f32],
-            };
-
-            // Optimization: Reuse first texture if it's the first one
-            let colormapped_texture = if i == 0 {
-                first_colormapped_texture.clone()
-            } else {
-                super::tensor_slice_to_gpu::colormapped_texture(
-                    ctx.render_ctx(),
-                    *tensor_row_id,
-                    tensor,
-                    slice_selection,
-                    annotations,
-                    &colormap_with_range,
-                    gamma,
-                )?
-            };
-            
-            // TODO(andreas): Check if dimensions match. If not, maybe we should warn or try to center?
-            // For now, we assume they match as per user request context (MRI + Segmentation).
-            // We scale all subsequent tensors to the first one's destination rect.
-
-            let multiplicative_tint = egui::Rgba::from_white_alpha(*opacity);
-
-            textured_rects.push(TexturedRect {
-                top_left_corner_position: glam::vec3(space_rect.min.x, space_rect.min.y, 0.0),
-                extent_u: glam::Vec3::X * space_rect.width(),
-                extent_v: glam::Vec3::Y * space_rect.height(),
-                colormapped_texture,
-                options: RectangleOptions {
-                    texture_filter_magnification,
-                    texture_filter_minification,
-                    multiplicative_tint,
-                    ..Default::default()
-                },
-            });
-        }
-
-        // --- Render the batch ---
-        let viewport = painter.clip_rect().intersect(image_rect);
-        if viewport.is_positive() {
-            let pixels_per_point = painter.ctx().pixels_per_point();
-            let resolution_in_pixel = gpu_bridge::viewport_resolution_in_pixels(viewport, pixels_per_point);
-            
-            if resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0 {
-                let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect);
-                let space_from_ui = ui_from_space.inverse();
-                let space_from_points = space_from_ui.scale().y;
-                let points_from_pixels = 1.0 / pixels_per_point;
-                let space_from_pixel = space_from_points * points_from_pixels;
-
-                let camera_position_space = space_from_ui.transform_pos(viewport.min);
-                let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
-
-                let target_config = re_renderer::view_builder::TargetConfiguration {
-                    name: re_renderer::DebugLabel::from("tensor_slice_batch"),
-                    resolution_in_pixel,
-                    view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
-                    projection_from_view: re_renderer::view_builder::Projection::Orthographic {
-                        camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                        vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
-                        far_plane_distance: 1000.0,
-                    },
-                    viewport_transformation: re_renderer::RectTransform::IDENTITY,
-                    pixels_per_point,
-                    ..Default::default()
-                };
-
-                let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
-
-                view_builder.queue_draw(
-                    ctx.render_ctx(),
-                    re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx(), &textured_rects)?,
-                );
-
-                painter.add(gpu_bridge::new_renderer_callback(
-                    view_builder,
-                    viewport,
-                    re_renderer::Rgba::TRANSPARENT,
-                ));
-            }
-        }
-
-        Ok((response, image_rect))
-    }
 }
 
-
-// ... rest of file (selectors_ui, etc.)
-// ... (I'm cutting it short for brevity but the rest is unchanged)
-
-// ----------------------------------------------------------------------------
-
-pub fn selected_tensor_slice<'a, T: Copy>(
-    slice_selection: &TensorSliceSelection,
-    tensor: &'a ndarray::ArrayViewD<'_, T>,
-) -> ndarray::ArrayViewD<'a, T> {
-    let TensorSliceSelection {
-        width,
-        height,
-        indices,
-        slider: _,
-    } = slice_selection;
-
-    let (dwidth, dheight) = if let (Some(width), Some(height)) = (width, height) {
-        (width.dimension, height.dimension)
-    } else if let Some(width) = width {
-        // If height is missing, create a 1D row.
-        (width.dimension, 1)
-    } else if let Some(height) = height {
-        // If width is missing, create a 1D column.
-        (1, height.dimension)
-    } else {
-        // If both are missing, give up.
-        return tensor.view();
-    };
-
-    let view = if tensor.shape().len() == 1 {
-        // We want 2D slices, so for "pure" 1D tensors add a dimension.
-        // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
-        tensor
-            .view()
-            .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
-            .expect("Tensor.shape.len() is not actually 1!")
-    } else {
-        tensor.view()
-    };
-
-    let axis = [dheight as usize, dwidth as usize]
-        .into_iter()
-        .chain(indices.iter().map(|s| s.dimension as usize))
-        .collect::<Vec<_>>();
-    let mut slice = view.permuted_axes(axis);
-
-    for index_selection in indices {
-        // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
-        // This call removes Axis(2), so the next iteration of the loop does the right thing again.
-        slice.index_axis_inplace(Axis(2), index_selection.index as usize);
-    }
-    if height.unwrap_or_default().invert {
-        slice.invert_axis(Axis(0));
-    }
-    if width.unwrap_or_default().invert {
-        slice.invert_axis(Axis(1));
-    }
-
-    slice
-}
-
-fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
-    let dim = &shape[dim_idx as usize];
-    dim.name.as_ref().map_or_else(
-        || format!("Dimension {dim_idx} (size={})", dim.size),
-        |name| format!("{name} (size={})", dim.size),
-    )
-}
-
-fn paint_axis_names(
-    ui: &egui::Ui,
-    rect: egui::Rect,
-    font_id: egui::FontId,
-    dimension_labels: [Option<(String, bool)>; 2],
-) {
-    let painter = ui.painter();
-    let tokens = ui.tokens();
-
-    let [width, height] = dimension_labels;
-    let (width_name, invert_width) =
-        width.map_or((None, false), |(label, invert)| (Some(label), invert));
-    let (height_name, invert_height) =
-        height.map_or((None, false), |(label, invert)| (Some(label), invert));
-
-    let text_color = ui.visuals().text_color();
-
-    let rounding = tokens.normal_corner_radius();
-    let inner_margin = rounding as f32;
-    let outer_margin = 8.0;
-
-    let rect = rect.shrink(outer_margin + inner_margin);
-
-    // We make sure that the label for the X axis is always at Y=0,
-    // and that the label for the Y axis is always at X=0, no matter what inversions.
-    //
-    // For instance, with origin in the top right:
-    //
-    // foo ⬅
-    // ..........
-    // ..........
-    // ..........
-    // .......... ↓
-    // .......... b
-    // .......... a
-    // .......... r
-
-    // TODO(emilk): draw actual arrows behind the text instead of the ugly emoji arrows
-
-    let paint_text_bg = |text_background, text_rect: egui::Rect| {
-        painter.set(
-            text_background,
-            egui::Shape::rect_filled(
-                text_rect.expand(inner_margin),
-                rounding,
-                ui.visuals().panel_fill,
-            ),
-        );
-    };
-
-    // Label for X axis:
-    if let Some(width_name) = width_name {
-        let text_background = painter.add(egui::Shape::Noop);
-        let text_rect = if invert_width {
-            // On left, pointing left:
-            let (pos, align) = if invert_height {
-                (rect.left_bottom(), Align2::LEFT_BOTTOM)
-            } else {
-                (rect.left_top(), Align2::LEFT_TOP)
-            };
-            painter.text(
-                pos,
-                align,
-                format!("{width_name} ⬅"),
-                font_id.clone(),
-                text_color,
-            )
-        } else {
-            // On right, pointing right:
-            let (pos, align) = if invert_height {
-                (rect.right_bottom(), Align2::RIGHT_BOTTOM)
-            } else {
-                (rect.right_top(), Align2::RIGHT_TOP)
-            };
-            painter.text(
-                pos,
-                align,
-                format!("➡ {width_name}"),
-                font_id.clone(),
-                text_color,
-            )
-        };
-        paint_text_bg(text_background, text_rect);
-    }
-
-    // Label for Y axis:
-    if let Some(height_name) = height_name {
-        let text_background = painter.add(egui::Shape::Noop);
-        let text_rect = if invert_height {
-            // On top, pointing up:
-            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
-            let galley_size = galley.size();
-            let pos = if invert_width {
-                rect.right_top() + egui::vec2(-galley_size.y, galley_size.x)
-            } else {
-                rect.left_top() + egui::vec2(0.0, galley_size.x)
-            };
-            painter.add(
-                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
-            );
-            egui::Rect::from_min_size(
-                pos - galley_size.x * egui::Vec2::Y,
-                egui::vec2(galley_size.y, galley_size.x),
-            )
-        } else {
-            // On bottom, pointing down:
-            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-            let galley_size = galley.size();
-            let pos = if invert_width {
-                rect.right_bottom() - egui::vec2(galley_size.y, 0.0)
-            } else {
-                rect.left_bottom()
-            };
-            painter.add(
-                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
-            );
-            egui::Rect::from_min_size(
-                pos - galley_size.x * egui::Vec2::Y,
-                egui::vec2(galley_size.y, galley_size.x),
-            )
-        };
-        paint_text_bg(text_background, text_rect);
-    }
-}
-
-pub fn index_for_dimension_mut(
-    indices: &mut [TensorDimensionIndexSelection],
-    dimension: u32,
-) -> Option<&mut u64> {
-    indices
-        .iter_mut()
-        .find(|index| index.dimension == dimension)
-        .map(|index| &mut index.index)
-}
-
-fn selectors_ui(
-    ctx: &ViewerContext<'_>,
+#[allow(clippy::too_many_arguments)]
+pub fn paint_tensor_slice(
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    shape: &[TensorDimension],
+    tensors: &[TensorVisualization],
     slice_selection: &TensorSliceSelection,
-    slice_property: &ViewProperty,
-) {
-    let Some(slider) = &slice_selection.slider else {
-        return;
+    mag_filter: MagnificationFilter,
+) -> anyhow::Result<(egui::Response, egui::Rect)> {
+    re_tracing::profile_function!();
+
+    if tensors.is_empty() {
+        anyhow::bail!("No tensor data available.");
+    }
+
+    let first_tensor_view = &tensors[0];
+    let Some((height, width)) = tensor_slice_shape(&first_tensor_view.tensor, slice_selection)
+    else {
+        anyhow::bail!("Expected a 2D tensor slice.");
     };
 
-    let mut changed_indices = false;
-    let mut indices = slice_selection.indices.clone();
+    let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    )
+    .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
 
-    for index_slider in slider {
-        let dim = &shape[index_slider.dimension as usize];
-        let size = dim.size;
-        if size <= 1 {
-            continue;
+    let img_size = egui::vec2(width as _, height as _);
+    let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+    let desired_size = match view_fit {
+        ViewFit::Original => img_size,
+        ViewFit::Fill => ui.available_size(),
+        ViewFit::FillKeepAspectRatio => {
+            let scale = (ui.available_size() / img_size).min_elem();
+            img_size * scale
         }
+    };
 
-        let Some(selector_value) = index_for_dimension_mut(&mut indices, index_slider.dimension)
-        else {
-            // There should be an entry already via `load_tensor_slice_selection_and_make_valid`
-            continue;
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let image_rect = egui::Rect::from_min_max(response.rect.min, response.rect.max);
+
+    let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, img_size);
+
+    let (textured_rects, texture_filter_magnification) =
+        create_textured_rects_for_batch(ctx, tensors, slice_selection, mag_filter)?;
+
+    render_tensor_slice_batch(ctx, &painter, &textured_rects, image_rect, space_rect, texture_filter_magnification)?;
+
+    Ok((response, image_rect))
+}
+
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_textured_rects_for_batch(
+    ctx: &ViewContext<'_>,
+    tensors: &[TensorVisualization],
+    slice_selection: &TensorSliceSelection,
+    mag_filter: MagnificationFilter,
+) -> anyhow::Result<(Vec<TexturedRect>, re_renderer::renderer::TextureFilterMag)> {
+    let first_tensor_view = &tensors[0];
+    let TensorVisualization {
+        tensor: first_tensor,
+        ..
+    } = first_tensor_view;
+
+    let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    );
+    let colormap: Colormap =
+        scalar_mapping.component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
+    let gamma: GammaCorrection =
+        scalar_mapping.component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
+
+    let texture_filter_magnification = match mag_filter {
+        MagnificationFilter::Nearest => re_renderer::renderer::TextureFilterMag::Nearest,
+        MagnificationFilter::Linear => re_renderer::renderer::TextureFilterMag::Linear,
+    };
+    let texture_filter_minification = re_renderer::renderer::TextureFilterMin::Linear;
+
+    let mut textured_rects = Vec::with_capacity(tensors.len());
+
+    let Some((height, width)) = tensor_slice_shape(first_tensor, slice_selection) else {
+        anyhow::bail!("Expected a 2D tensor slice.");
+    };
+    let space_rect = egui::Rect::from_min_size(
+        egui::Pos2::ZERO,
+        egui::vec2(width as f32, height as f32),
+    );
+
+    for tensor_view in tensors {
+        let TensorVisualization {
+            tensor_row_id,
+            tensor,
+            data_range,
+            annotations,
+            opacity,
+            ..
+        } = tensor_view;
+
+        let colormap_with_range = ColormapWithRange {
+            colormap,
+            value_range: [data_range.start() as f32, data_range.end() as f32],
         };
 
-        ui.horizontal(|ui| {
-            let name = dim.name.clone().map_or_else(
-                || index_slider.dimension.to_string(),
-                |name| name.to_string(),
-            );
+        let colormapped_texture =
+            crate::tensor_slice_to_gpu::colormapped_texture(
+                ctx.render_ctx(),
+                *tensor_row_id,
+                tensor,
+                slice_selection,
+                annotations,
+                &colormap_with_range,
+                gamma,
+            )?;
 
-            let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
-            ui.label(&name).on_hover_text(&slider_tooltip);
+        let multiplicative_tint = egui::Rgba::from_white_alpha(*opacity);
 
-            // If the range is big (say, 2048) then we would need
-            // a slider that is 2048 pixels wide to get the good precision.
-            // So we add a high-precision drag-value instead:
-            if ui
-                .add(
-                    egui::DragValue::new(selector_value)
-                        .range(0..=size - 1)
-                        .speed(0.5),
-                )
-                .on_hover_text(format!(
-                    "Drag to precisely control the slice index of the {name} dimension"
-                ))
-                .changed()
-            {
-                changed_indices = true;
-            }
-
-            // Make the slider as big as needed:
-            const MIN_SLIDER_WIDTH: f32 = 64.0;
-            if ui.available_width() >= MIN_SLIDER_WIDTH {
-                ui.spacing_mut().slider_width = ((size as f32) * 4.0)
-                    .at_least(MIN_SLIDER_WIDTH)
-                    .at_most(ui.available_width());
-                if ui
-                    .add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
-                    .on_hover_text(slider_tooltip)
-                    .changed()
-                {
-                    changed_indices = true;
-                }
-            }
+        textured_rects.push(TexturedRect {
+            top_left_corner_position: glam::vec3(space_rect.min.x, space_rect.min.y, 0.0),
+            extent_u: glam::Vec3::X * space_rect.width(),
+            extent_v: glam::Vec3::Y * space_rect.height(),
+            colormapped_texture,
+            options: RectangleOptions {
+                texture_filter_magnification,
+                texture_filter_minification,
+                multiplicative_tint,
+                ..Default::default()
+            },
         });
     }
 
-    if changed_indices {
-        slice_property.save_blueprint_component(
-            ctx,
-            &archetypes::TensorSliceSelection::descriptor_indices(),
-            &indices,
-        );
-    }
+    Ok((textured_rects, texture_filter_magnification))
 }
+
+pub fn render_tensor_slice_batch(
+    ctx: &ViewContext<'_>,
+    painter: &egui::Painter,
+    textured_rects: &[TexturedRect],
+    image_rect: egui::Rect,
+    space_rect: egui::Rect,
+    _texture_filter_magnification: re_renderer::renderer::TextureFilterMag,
+) -> anyhow::Result<()> {
+    let viewport = painter.clip_rect().intersect(image_rect);
+    if viewport.is_positive() {
+        let pixels_per_point = painter.ctx().pixels_per_point();
+        let resolution_in_pixel =
+            gpu_bridge::viewport_resolution_in_pixels(viewport, pixels_per_point);
+
+        if resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0 {
+            let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect);
+            let space_from_ui = ui_from_space.inverse();
+            
+            let camera_position_space = space_from_ui.transform_pos(viewport.min);
+            let top_left_position =
+                glam::vec2(camera_position_space.x, camera_position_space.y);
+
+            let target_config = re_renderer::view_builder::TargetConfiguration {
+                name: "tensor_slice_batch".into(),
+                resolution_in_pixel,
+                view_from_world: macaw::IsoTransform::from_translation(
+                    -top_left_position.extend(0.0),
+                ),
+                projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                    camera_mode:
+                        re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                    vertical_world_size: space_rect.height(),
+                    far_plane_distance: 1000.0,
+                },
+                viewport_transformation: re_renderer::RectTransform::IDENTITY,
+                pixels_per_point,
+                ..Default::default()
+            };
+
+            let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+
+            view_builder.queue_draw(
+                ctx.render_ctx(),
+                re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx(), textured_rects)?,
+            );
+
+            painter.add(gpu_bridge::new_renderer_callback(
+                view_builder,
+                viewport,
+                re_renderer::Rgba::TRANSPARENT,
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
 
 #[test]
 fn test_help_view() {
