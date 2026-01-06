@@ -4,7 +4,7 @@ Deprecated dataframe module.
 .. deprecated::
     This module is deprecated. Use ``rerun.recording`` for loading recordings,
     ``rerun.catalog`` for schema types, and the catalog API for querying data.
-    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link
+    See: https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated
 """
 
 from __future__ import annotations
@@ -14,7 +14,9 @@ from typing import Any
 
 # TODO(RR-3130): this entire submodule is deprecated and will be removed in a future release
 
-_MIGRATION_GUIDE = "https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated?speculative-link"
+_MIGRATION_GUIDE = (
+    "https://rerun.io/docs/reference/migration/migration-0-28#recordingview-and-local-dataframe-api-deprecated"
+)
 
 _MOVED_TO_RECORDING = {"Recording", "RRDArchive", "load_archive", "load_recording"}
 _MOVED_TO_CATALOG = {

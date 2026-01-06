@@ -44,22 +44,22 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        "examples/python/minimal_options",
-        "examples/python/multithreading",
-        "examples/python/plots",
+        "minimal_options",
+        "multithreading",
+        "plots",
     ]
 
     if not parser.parse_args().no_install:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["pip", "install"]
+        args = ["uv", "sync", "--inexact", "--no-install-package", "rerun-sdk"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
-            args.extend(["-e", example])
+            args.extend(["--package", example])
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
-        print(f"pip install in {elapsed:.1f} seconds")
+        print(f"uv sync in {elapsed:.1f} seconds")
         print()
 
     for example in examples:

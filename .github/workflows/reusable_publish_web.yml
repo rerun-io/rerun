@@ -79,7 +79,10 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: wheel-test
+
+      - name: Bootstrap examples
+        run: |
+          pixi run uv sync --group examples --inexact --no-install-package rerun-sdk
 
       # built by `reusable_build_and_publish_wheels`
       - name: Download Wheel
@@ -90,32 +93,31 @@ jobs:
 
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
-          pixi list -e wheel-test | grep rerun_sdk
-          pixi run -e wheel-test python -m rerun --version
-          pixi run -e wheel-test which rerun
+          pixi run uv pip show rerun-sdk
+          pixi run uvpy -m rerun --version
 
       - name: Build web-viewer (release)
         run: |
-          pixi run -e wheel-test rerun-build-web-release
+          pixi run rerun-build-web-release
 
       - name: Build examples
         run: |
-          pixi run -e wheel-test build-examples rrd \
+          pixi run build-examples rrd --install \
             --channel "release" \
             crates/viewer/re_web_viewer_server/web_viewer/examples
 
       - name: Build & run snippets
         run: |
-          pixi run -e wheel-test build-examples snippets \
+          pixi run build-examples snippets \
             crates/viewer/re_web_viewer_server/web_viewer/examples/snippets
 
       - name: Build examples manifest
         run: |
-          pixi run -e wheel-test build-examples manifest \
+          pixi run build-examples manifest \
             --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
             --channel "release" \
             crates/viewer/re_web_viewer_server/web_viewer/examples_manifest.json

@@ -109,7 +109,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                     let colormap = None;
 
-                    if let Some(textured_rect) = textured_rect_from_image(
+                    match textured_rect_from_image(
                         ctx.viewer_ctx(),
                         entity_path,
                         spatial_ctx,
@@ -118,20 +118,26 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         multiplicative_tint,
                         SegmentationImage::name(),
                     ) {
-                        self.data.add_pickable_rect(
-                            PickableTexturedRect {
-                                ent_path: entity_path.clone(),
-                                textured_rect,
-                                source_data: PickableRectSourceData::Image {
-                                    image,
-                                    depth_meter: None,
+                        Ok(textured_rect) => {
+                            self.data.add_pickable_rect(
+                                PickableTexturedRect {
+                                    ent_path: entity_path.clone(),
+                                    textured_rect,
+                                    source_data: PickableRectSourceData::Image {
+                                        image,
+                                        depth_meter: None,
+                                    },
                                 },
-                            },
-                            spatial_ctx.view_class_identifier,
-                        );
+                                spatial_ctx.view_class_identifier,
+                            );
+                        }
+                        Err(err) => {
+                            spatial_ctx
+                                .output
+                                .report_error_for(entity_path.clone(), re_error::format(err));
+                        }
                     }
                 }
-
                 Ok(())
             },
         )?;
@@ -144,10 +150,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 

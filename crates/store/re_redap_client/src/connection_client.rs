@@ -700,7 +700,7 @@ where
         Ok(response.table_entry)
     }
 
-    #[expect(clippy::fn_params_excessive_bools)]
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
@@ -837,12 +837,11 @@ where
     pub async fn create_table_entry(
         &mut self,
         name: &str,
-        url: &Url,
+        url: Option<Url>,
         schema: SchemaRef,
     ) -> ApiResult<TableEntry> {
-        let provider_details = ProviderDetails::LanceTable(LanceTable {
-            table_url: url.clone(),
-        });
+        let provider_details =
+            url.map(|url| ProviderDetails::LanceTable(LanceTable { table_url: url }));
         let request = CreateTableEntryRequest {
             name: name.to_owned(),
             schema: schema.as_ref().clone(),

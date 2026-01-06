@@ -105,7 +105,7 @@ impl RouteCommand {
     }
 }
 
-#[expect(clippy::fn_params_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
 fn process_messages<W: std::io::Write>(
     recompute_manifests: bool,
     rewrites: &Rewrites,

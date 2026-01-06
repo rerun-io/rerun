@@ -80,7 +80,6 @@ def build_and_upload(
 
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
 
-    # Build into `dist`
     run(
         "maturin build "
         f"{compatibility} "

@@ -198,8 +198,4 @@ impl Cache for MeshCache {
         self.cache
             .retain(|row_id, _meshes| !row_ids_removed.contains(row_id));
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }

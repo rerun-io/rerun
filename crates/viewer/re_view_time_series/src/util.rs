@@ -43,10 +43,12 @@ pub fn determine_time_range(
     let visible_time_range = match query_range {
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
-            re_log::error_once!(
-                "Unexpected LatestAt query for time series data result at path {:?}",
-                data_result.entity_path
-            );
+            if cfg!(debug_assertions) {
+                re_log::error_once!(
+                    "[DEBUG] Unexpected LatestAt query for time series data result at path {:?}",
+                    data_result.entity_path
+                );
+            }
             TimeRange {
                 start: TimeRangeBoundary::AT_CURSOR,
                 end: TimeRangeBoundary::AT_CURSOR,
@@ -115,7 +117,10 @@ pub fn points_to_series(
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
         .entity_min_time(&query.timeline, &instance_path.entity_path)
-        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+        .map_or_else(
+            || points.first().map_or(0, |p| p.time),
+            |time| time.as_i64(),
+        );
 
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter

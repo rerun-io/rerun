@@ -475,11 +475,12 @@ impl<'a> DataQueryPropertyResolver<'a> {
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
     #[expect(clippy::too_many_arguments)]
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn update_overrides_recursive(
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         query_result: &mut DataQueryResult,
         handle: DataResultHandle,
         default_query_range: &QueryRange,
@@ -556,8 +557,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             == blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()
                                 .component
                         {
-                            if let Ok(visible_time_ranges) =
-                                blueprint_components::VisibleTimeRange::from_arrow(&component_data)
+                            if let Some(active_timeline) = active_timeline
+                                && let Ok(visible_time_ranges) =
+                                    blueprint_components::VisibleTimeRange::from_arrow(
+                                        &component_data,
+                                    )
                                 && let Some(time_range) = visible_time_ranges.iter().find(|range| {
                                     range.timeline.as_str() == active_timeline.name().as_str()
                                 })
@@ -618,7 +622,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
         view_state: &dyn ViewState,

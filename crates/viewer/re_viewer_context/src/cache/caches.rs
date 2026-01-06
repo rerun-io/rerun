@@ -1,4 +1,4 @@
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -80,12 +80,12 @@ impl Caches {
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        f(self
-            .caches
-            .lock()
+        let mut guard = self.caches.lock();
+        let cache = guard
             .entry(TypeId::of::<C>())
             .or_insert_with(|| Box::<C>::default())
-            .as_any_mut()
+            .as_mut();
+        f((cache as &mut dyn std::any::Any)
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
     }
@@ -131,7 +131,4 @@ pub trait Cache: std::any::Any + Send + Sync {
         _ = events;
         _ = entity_db;
     }
-
-    /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
 }

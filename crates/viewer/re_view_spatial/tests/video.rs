@@ -10,7 +10,7 @@ use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_video::{VideoCodec, VideoDataDescription};
 use re_viewer_context::{TimeControlCommand, ViewClass as _};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn workspace_dir() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -137,8 +137,8 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     // Use pixi ffmpeg install if available.
     let pixi_ffmpeg_path = pixi_ffmpeg_path();
     if pixi_ffmpeg_path.exists() {
-        test_context.app_options.video_decoder_ffmpeg_path =
-            pixi_ffmpeg_path.to_str().unwrap().to_owned();
+        test_context.app_options.video.override_ffmpeg_path = true;
+        test_context.app_options.video.ffmpeg_path = pixi_ffmpeg_path.to_str().unwrap().to_owned();
 
         re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
     } else {
@@ -266,10 +266,27 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         }
     }
 
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_spatial::SpatialView2D::identifier(),
-        ))
+        ));
+
+        // Set a background color other than black so we can see the effect of transparency on errors & lack thereof on the video.
+        let property = ViewProperty::from_archetype::<
+            re_sdk_types::blueprint::archetypes::Background,
+        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        property.save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::Background::descriptor_kind(),
+            &re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
+        );
+        property.save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::Background::descriptor_color(),
+            &re_sdk_types::components::Color::from_rgb(200, 100, 200),
+        );
+
+        view_id
     });
 
     // Decoding videos can take quite a while!

@@ -40,8 +40,4 @@ impl ViewContextSystem for AnnotationSceneContext {
             .0
             .clone();
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

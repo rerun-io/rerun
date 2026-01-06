@@ -15,6 +15,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::LanceTable;
 use re_protos::cloud::v1alpha1::ext::{
     self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
     CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
@@ -39,14 +40,28 @@ use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::OnError;
+use re_tuid::Tuid;
 
-#[derive(Debug, Default)]
-pub struct RerunCloudHandlerSettings {}
+#[derive(Debug)]
+pub struct RerunCloudHandlerSettings {
+    storage_dir: tempfile::TempDir,
+}
+
+impl Default for RerunCloudHandlerSettings {
+    fn default() -> Self {
+        Self {
+            storage_dir: create_data_dir().expect("Failed to create data directory"),
+        }
+    }
+}
+
+fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
+    Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
+}
 
 #[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
     settings: RerunCloudHandlerSettings,
-
     store: InMemoryStore,
 }
 
@@ -119,7 +134,6 @@ impl RerunCloudHandlerBuilder {
 const DUMMY_TASK_ID: &str = "task_00000000DEADBEEF";
 
 pub struct RerunCloudHandler {
-    #[expect(dead_code)]
     settings: RerunCloudHandlerSettings,
 
     store: tokio::sync::RwLock<InMemoryStore>,
@@ -1111,6 +1125,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
+                let mut chunk_byte_sizes = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
 
@@ -1166,6 +1181,12 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
+
+                    // Calculate chunk byte size for batching optimization
+                    let chunk_size_bytes =
+                        re_byte_size::SizeBytes::total_size_bytes(chunk.as_ref());
+                    chunk_byte_sizes.push(chunk_size_bytes);
+
                     chunk_keys.push(
                         ChunkKey {
                             chunk_id: chunk.id(),
@@ -1186,6 +1207,7 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_key_refs,
                     chunk_entity_path,
                     chunk_is_static,
+                    chunk_byte_sizes,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
@@ -1501,7 +1523,27 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        let table = match &request.provider_details {
+        let details = if let Some(details) = request.provider_details {
+            details
+        } else {
+            // Create a directory in the storage directory. We use a tuid to avoid collisions
+            // and avoid any sanitization issue with the provided table name.
+            let table_path = self
+                .settings
+                .storage_dir
+                .path()
+                .join(format!("lance-{}", Tuid::new()));
+            ProviderDetails::LanceTable(LanceTable {
+                table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
+                    Status::internal(format!(
+                        "Failed to create table directory in {:?}",
+                        self.settings.storage_dir.path()
+                    ))
+                })?,
+            })
+        };
+
+        let table = match details {
             ProviderDetails::LanceTable(table) => {
                 store
                     .create_table_entry(table_name, &table.table_url, schema)

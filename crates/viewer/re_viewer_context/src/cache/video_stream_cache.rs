@@ -696,10 +696,6 @@ impl Cache for VideoStreamCache {
             }
         }
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }
 
 /// Adjust GOPs for removed samples at the back of the sample list.
@@ -949,7 +945,9 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame_buildup_over_time() {
         let timeline = Timeline::new_sequence("frame");
 
-        for compaction_enabled in [true, false] {
+        // TODO(RR-3212): We disabled compaction on VideoStream for now. Details see https://github.com/rerun-io/rerun/pull/12270
+        //for compaction_enabled in [true, false] {
+        for compaction_enabled in [false] {
             println!("compaction enabled: {compaction_enabled}");
 
             let mut cache = VideoStreamCache::default();
