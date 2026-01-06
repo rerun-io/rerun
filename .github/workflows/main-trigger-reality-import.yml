@@ -1,7 +1,7 @@
-name: Main Trigger Universe Import
+name: Main Trigger Reality Import
 
-# Triggers sync-imports in universe when commits are merged to main.
-# This sends a repository_dispatch event to rerun-io/universe.
+# Triggers sync-imports in reality when commits are merged to main.
+# This sends a repository_dispatch event to rerun-io/reality.
 
 on:
   push:
@@ -21,12 +21,12 @@ jobs:
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
           owner: rerun-io
           repositories: |
-            universe
+            reality
 
-      - name: Trigger universe sync-imports workflow
+      - name: Trigger reality sync-imports workflow
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          gh api repos/rerun-io/universe/dispatches \
+          gh api repos/rerun-io/reality/dispatches \
             -f event_type=sync-import \
             -f "client_payload[repo]=rerun"
