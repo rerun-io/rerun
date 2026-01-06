@@ -2,6 +2,9 @@ use arrow::array::{Array, ArrayRef, ListArray, RecordBatch};
 use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields};
 
+#[expect(unused_imports)] // for docs
+use arrow::array::ArrayData;
+
 use super::SizeBytes;
 
 impl SizeBytes for dyn Array {
@@ -137,14 +140,14 @@ impl SizeBytes for UnionFields {
 // ---
 
 /// Returns the total number of the bytes of memory occupied by the buffers by this slice of
-/// `ArrayData` (See also diagram on `ArrayData`).
+/// [`ArrayData`] (See also diagram on [`ArrayData`]).
 ///
-/// This is approximately the number of bytes if a new `ArrayData` was formed by creating new
+/// This is approximately the number of bytes if a new [`ArrayData`] was formed by creating new
 /// `Buffer`s with exactly the data needed.
 ///
-/// For example, a [`DataType::Int64`] with `100` elements, [`Array::get_slice_memory_size`] would
+/// For example, a [`DataType::Int64`] with `100` elements, [`ArrayData::get_slice_memory_size`] would
 /// return `100 * 8 = 800`. If the [`ArrayData`] was then [`Array::slice`]ed to refer to its first
-/// `20` elements, then [`Array::get_slice_memory_size`] on the sliced [`ArrayData`] would return
+/// `20` elements, then [`ArrayData::get_slice_memory_size`] on the sliced [`ArrayData`] would return
 /// `20 * 8 = 160`.
 ///
 /// ## Important notes regarding deep vs. shallow slicing
@@ -153,7 +156,6 @@ impl SizeBytes for UnionFields {
 /// helpers from `re_arrow_util`) might report sizes that do not make any intuitive sense.
 /// Always prefer deep-slicing when you need to reliably measure the physical size of the sliced data.
 fn array_slice_memory_size(array: &dyn Array) -> u64 {
-    // Use Arrow's built-in slice memory sizing
     array
         .to_data()
         .get_slice_memory_size()
