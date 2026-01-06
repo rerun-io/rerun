@@ -81,10 +81,11 @@ impl DatasetSegmentUri {
             }
         };
 
-        let mut fragment = Fragment::default();
-        if let Some(string) = url.fragment() {
-            fragment = Fragment::parse_forgiving(string);
-        }
+        let fragment = if let Some(string) = url.fragment() {
+            Fragment::parse_forgiving(string)
+        } else {
+            Fragment::default()
+        };
 
         Ok(Self {
             origin,

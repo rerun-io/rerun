@@ -111,10 +111,6 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl GeoLineStringsVisualizer {

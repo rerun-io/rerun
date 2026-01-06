@@ -151,10 +151,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {

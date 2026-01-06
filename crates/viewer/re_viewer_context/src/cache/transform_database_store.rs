@@ -95,8 +95,4 @@ impl Cache for TransformDatabaseStoreCache {
             .write()
             .process_store_events(events.iter().copied());
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }
