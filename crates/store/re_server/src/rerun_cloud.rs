@@ -1153,7 +1153,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let chunks = if let Some(query) = &query {
                     let paths = if entity_paths.is_empty() {
-                        IntSet::from_iter([EntityPath::from("/**")])
+                        store_handle.read().all_entities()
                     } else {
                         entity_paths.clone()
                     };
