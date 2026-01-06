@@ -11,7 +11,7 @@ This can be achieved in three different ways, depending on your needs:
 * or simply by setting up [dataframe view](types/views/dataframe_view.md) manually in the UI.
 
 This page is meant as a reference to get you up and running with these different solutions as quickly as possible.
-For an in-depth introduction to the dataframe API and the possible workflows it enables, check out [our Getting Started guide](../getting-started/data-out) or one of the accompanying [How-Tos](../howto/dataframe-api.md).
+For an in-depth introduction to the dataframe API and the possible workflows it enables, check out [our Getting Started guide](../getting-started/data-out) or one of the accompanying [How-Tos](../cookbook/dataframe-api.md).
 
 
 > We'll need an RRD file to query. Either use one of yours, or grab some of the example ones, e.g.:

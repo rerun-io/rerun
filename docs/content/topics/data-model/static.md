@@ -45,7 +45,7 @@ Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context
 ### Memory savings
 
 When you store _temporal_ data in Rerun, it is always appended to the existing dataset: there is no such thing as overwriting temporal data. The dataset only grows, it never shrinks.
-To compensate for that, the Rerun viewer has a [garbage collection mechanism](../howto/visualization/limit-ram.md) that will drop the oldest data from the store when memory becomes scarce.
+To compensate for that, the Rerun viewer has a [garbage collection mechanism](../cookbook/visualization/limit-ram.md) that will drop the oldest data from the store when memory becomes scarce.
 
 For example, the following snippet stores 10 images at index `4` on the `frame` [timeline](timelines.md):
 

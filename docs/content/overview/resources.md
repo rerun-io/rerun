@@ -11,71 +11,85 @@ High-level introduction to Rerun:
 
 - **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun's data platform for Physical AI
 - **[Installing the Viewer](installing-viewer.md)** - Get Rerun installed on your system
+- **[Troubleshooting](troubleshooting.md)** - Solutions to common issues
+- **[Application Model](app-model.md)** - How Rerun applications are structured
 
 ## Getting started
 
 Step-by-step guides to get up and running quickly:
 
-- **[Quick Start](../getting-started/quick-start.md)** - Choose your language (Python, Rust, C++) and create your first visualization
-- **[Data In](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
-- **[Data Out](../getting-started/data-out.md)** - Query and export data from Rerun recordings
-- **[Configure the Viewer](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
-- **[Troubleshooting](../getting-started/troubleshooting.md)** - Solutions to common issues
+- **[Send Data](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
+- **[See Data](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
+- **[Query Data](../getting-started/data-out.md)** - Query and export data from Rerun recordings
+- **[Build Data Pipelines](../getting-started/build-data-pipeline.md)** - Production data infrastructure
 
-## Concepts
+## Topics
 
 Understanding the foundational concepts behind Rerun:
 
-- **[Application Model](../concepts/app-model.md)** - How Rerun applications are structured
-- **[Entity Component System](../concepts/entity-component.md)** - Rerun's data model
-- **[Entity Paths](../concepts/entity-path.md)** - Organizing your data hierarchically
-- **[Spaces and Transforms](../concepts/spaces-and-transforms.md)** - Working with coordinate systems
-- **[Timelines](../concepts/timelines.md)** - Managing temporal data
-- **[Blueprints](../concepts/blueprint.md)** - Configuring visualization layouts
-- **[Batches](../concepts/batches.md)** - Efficiently logging collections of data
-- **[Static Data](../concepts/static.md)** - Data that exists across all timelines
-- **[Query Semantics](../concepts/latest-at.md)** - How Rerun resolves data queries
-- **[Annotation Context](../concepts/annotation-context.md)** - Shared styling and labels
-- **[Apps and Recordings](../concepts/apps-and-recordings.md)** - Managing application and recording IDs
-- **[Visualizers and Overrides](../concepts/visualizers-and-overrides.md)** - Customizing rendering
-- **[Chunks](../concepts/chunks.md)** - Internal storage mechanism (advanced)
+### Data model
+- **[Entity Component System](../topics/data-model/entity-component.md)** - Rerun's data model
+- **[Entity Paths](../topics/data-model/entity-path.md)** - Organizing your data hierarchically
+- **[Transforms](../topics/data-model/transforms.md)** - Working with coordinate systems
+- **[Timelines](../topics/data-model/timelines.md)** - Managing temporal data
+- **[Batches](../topics/data-model/batches.md)** - Efficiently logging collections of data
+- **[Static Data](../topics/data-model/static.md)** - Data that exists across all timelines
+- **[Chunks](../topics/data-model/chunks.md)** - Internal storage mechanism (advanced)
+- **[Video](../topics/data-model/video.md)** - Video data handling
 
-## How-to guides
+### Building visualization
+- **[Blueprints](../topics/building-visualization/blueprints.md)** - Configuring visualization layouts
+- **[Visualizers and Overrides](../topics/building-visualization/visualizers-and-overrides.md)** - Customizing rendering
+- **[Annotation Context](../topics/building-visualization/annotation-context.md)** - Shared styling and labels
+
+### Storage
+- **[Apps and Recordings](../topics/storage/apps-and-recordings.md)** - Managing application and recording IDs
+- **[Sinks](../topics/storage/sinks.md)** - Where data can be sent
+- **[Data-loaders](../topics/storage/data-loaders.md)** - Loading data from external sources
+- **[MCAP](../topics/storage/mcap.md)** - MCAP file format support
+- **[RRD Format](../topics/storage/rrd-format.md)** - Rerun's native data format
+
+### Query semantics
+- **[Latest-at Semantics](../topics/query-semantics/latest-at.md)** - How Rerun resolves data queries
+- **[Entity Queries](../topics/query-semantics/entity-queries.md)** - Selecting entities for views
+- **[Dataframes](../topics/query-semantics/dataframes.md)** - Working with data as dataframes
+
+## Cookbook
 
 Practical guides for specific tasks and advanced features:
 
 ### Logging data
-- **[Logging](../howto/logging.md)** - Advanced logging techniques
-- **[Send Columns](../howto/send_columns.md)** - Efficiently log columnar data
-- **[Using Native Loggers](../howto/using-native-loggers.md)** - Integrate with existing logging systems
-- **[Short-lived Entities](../howto/short-lived-entities.md)** - Handling temporary data
+- **[Logging](../cookbook/logging.md)** - Advanced logging techniques
+- **[Send Columns](../cookbook/send_columns.md)** - Efficiently log columnar data
+- **[Using Native Loggers](../cookbook/using-native-loggers.md)** - Integrate with existing logging systems
+- **[Short-lived Entities](../cookbook/short-lived-entities.md)** - Handling temporary data
 
 ### Visualization
-- **[Visualization](../howto/visualization.md)** - Advanced visualization techniques
-- **[Configure Viewer Through Code](../howto/configure-viewer-through-code.md)** - Programmatic viewer configuration
-- **[Fixed Window Plots](../howto/fixed-window-plot.md)** - Creating time-windowed plots
+- **[Visualization](../cookbook/visualization.md)** - Advanced visualization techniques
+- **[Configure Viewer Through Code](../cookbook/configure-viewer-through-code.md)** - Programmatic viewer configuration
+- **[Fixed Window Plots](../cookbook/fixed-window-plot.md)** - Creating time-windowed plots
 
 ### Data management
-- **[DataFrame API](../howto/dataframe-api.md)** - Query recordings programmatically
-- **[Get Data Out](../howto/get-data-out.md)** - Export data from Rerun
-- **[MCAP Integration](../howto/mcap.md)** - Working with MCAP files
-- **[Shared Recordings](../howto/shared-recordings.md)** - Collaborate with recordings
+- **[DataFrame API](../cookbook/dataframe-api.md)** - Query recordings programmatically
+- **[Get Data Out](../cookbook/get-data-out.md)** - Export data from Rerun
+- **[MCAP Integration](../cookbook/mcap.md)** - Working with MCAP files
+- **[Shared Recordings](../cookbook/shared-recordings.md)** - Collaborate with recordings
 
 ### Integration & deployment
-- **[Integrations](../howto/integrations.md)** - Integrate Rerun with other tools
-- **[Embed Rerun Viewer](../howto/embed-rerun-viewer.md)** - Embed the viewer in your application
-- **[Jupyter Notebooks](../howto/notebook.md)** - Use Rerun in notebooks
-- **[Callbacks](../howto/callbacks.md)** - Respond to viewer events
+- **[Integrations](../cookbook/integrations.md)** - Integrate Rerun with other tools
+- **[Embed Rerun Viewer](../cookbook/embed-rerun-viewer.md)** - Embed the viewer in your application
+- **[Jupyter Notebooks](../cookbook/notebook.md)** - Use Rerun in notebooks
+- **[Callbacks](../cookbook/callbacks.md)** - Respond to viewer events
 
 ### Performance & optimization
-- **[Limit RAM Usage](../howto/limit-ram.md)** - Control memory consumption
-- **[Optimize Chunks](../howto/optimize-chunks.md)** - Fine-tune data storage
+- **[Limit RAM Usage](../cookbook/limit-ram.md)** - Control memory consumption
+- **[Optimize Chunks](../cookbook/optimize-chunks.md)** - Fine-tune data storage
 
 ### Extending Rerun
-- **[Extend](../howto/extend.md)** - Add custom types and visualizations
+- **[Extend](../cookbook/extend.md)** - Add custom types and visualizations
 
 ### Examples
-- **[ROS2 Nav Turtlebot](../howto/ros2-nav-turtlebot.md)** - Complete robotics example
+- **[ROS2 Nav Turtlebot](../cookbook/ros2-nav-turtlebot.md)** - Complete robotics example
 
 ## Reference
 

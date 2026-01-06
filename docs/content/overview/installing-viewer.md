@@ -43,7 +43,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
     -   `cargo install rerun-cli --locked` - build it from source (this requires Rust 1.88+)
 -   Via Snap (_community maintained_)
     -   `snap install rerun` - download the viewer from the [Store](https://snapcraft.io/rerun).
--   Together with the Rerun [Python SDK](../getting-started/quick-start/python.md):
+-   Together with the Rerun [Python SDK](../getting-started/data-in/quick-start/python.md):
     -   `pip3 install rerun-sdk` - download it via pip
     -   `conda install -c conda-forge rerun-sdk` - download via Conda
     -   `pixi global install rerun-sdk` - download it via [Pixi](https://pixi.sh/latest/)
@@ -58,6 +58,6 @@ The Rerun Viewer has built-in support for opening many kinds of files, and can b
 
 To start getting your own data streamed to the viewer, check one of the respective getting started guides:
 
--   [C++](../getting-started/quick-start/cpp.md)
--   [Python](../getting-started/quick-start/python.md)
--   [Rust](../getting-started/quick-start/rust.md)
+-   [C++](../getting-started/data-in/quick-start/cpp.md)
+-   [Python](../getting-started/data-in/quick-start/python.md)
+-   [Rust](../getting-started/data-in/quick-start/rust.md)
