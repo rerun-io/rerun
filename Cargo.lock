@@ -1319,6 +1319,7 @@ dependencies = [
  "rerun",
  "serde",
  "serde_json",
+ "strum",
 ]
 
 [[package]]

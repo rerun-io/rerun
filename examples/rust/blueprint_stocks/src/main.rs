@@ -10,10 +10,29 @@ use rerun::{
 };
 use serde::Deserialize;
 use std::collections::{BTreeSet, HashMap};
+use strum::{EnumIter, IntoEnumIterator};
 
-/// Static JSON data
-const TICKER_INFO_JSON: &str = include_str!("data/ticker_info.json");
-const QUOTE_RANGE_JSON: &str = include_str!("data/quote_range.json");
+#[derive(Debug, Clone, Copy, EnumIter)]
+#[allow(clippy::upper_case_acronyms)]
+enum Ticker {
+    AAPL,
+    AMZN,
+    GOOGL,
+    META,
+    MSFT,
+}
+
+impl Ticker {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Ticker::AAPL => "AAPL",
+            Ticker::AMZN => "AMZN",
+            Ticker::GOOGL => "GOOGL",
+            Ticker::META => "META",
+            Ticker::MSFT => "MSFT",
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct TickerInfo {
@@ -54,6 +73,28 @@ struct Args {
     show_panels: bool,
 }
 
+/// Get ticker info JSON string for a ticker symbol
+fn get_ticker_info_json(ticker: Ticker) -> &'static str {
+    match ticker {
+        Ticker::AAPL => include_str!("data/info/aapl.json"),
+        Ticker::AMZN => include_str!("data/info/amzn.json"),
+        Ticker::GOOGL => include_str!("data/info/googl.json"),
+        Ticker::META => include_str!("data/info/meta.json"),
+        Ticker::MSFT => include_str!("data/info/msft.json"),
+    }
+}
+
+/// Get quote data JSON string for a ticker symbol
+fn get_quote_data_json(ticker: Ticker) -> &'static str {
+    match ticker {
+        Ticker::AAPL => include_str!("data/quotes/aapl.json"),
+        Ticker::AMZN => include_str!("data/quotes/amzn.json"),
+        Ticker::GOOGL => include_str!("data/quotes/googl.json"),
+        Ticker::META => include_str!("data/quotes/meta.json"),
+        Ticker::MSFT => include_str!("data/quotes/msft.json"),
+    }
+}
+
 /// Format large numbers in a human-readable way (e.g., 2.8T, 394B, 1.2M)
 fn format_large_number(num: u64) -> String {
     let num_f = num as f64;
@@ -92,28 +133,28 @@ fn group_quotes_by_date(quotes: &[QuoteData]) -> HashMap<NaiveDate, Vec<&QuoteDa
     grouped
 }
 
-/// Brand colors for each stock symbol.
-fn brand_color(symbol: &str) -> u32 {
-    match symbol {
-        "AAPL" => 0xA2AAADFF,
-        "AMZN" => 0xFF9900FF,
-        "GOOGL" => 0x34A853FF,
-        "META" => 0x0081FBFF,
-        "MSFT" => 0xF14F21FF,
-        _ => 0xFFFFFFFF,
+/// Brand colors for each stock ticker.
+fn brand_color(ticker: Ticker) -> u32 {
+    match ticker {
+        Ticker::AAPL => 0xA2AAADFF,
+        Ticker::AMZN => 0xFF9900FF,
+        Ticker::GOOGL => 0x34A853FF,
+        Ticker::META => 0x0081FBFF,
+        Ticker::MSFT => 0xF14F21FF,
     }
 }
 
-fn style_plot(symbol: &str) -> rerun::SeriesLines {
+fn style_plot(ticker: Ticker) -> rerun::SeriesLines {
     rerun::SeriesLines::new()
-        .with_colors([brand_color(symbol)])
-        .with_names([symbol])
+        .with_colors([brand_color(ticker)])
+        .with_names([ticker.as_str()])
 }
 
-fn style_peak(symbol: &str) -> rerun::SeriesPoints {
+fn style_peak(ticker: Ticker) -> rerun::SeriesPoints {
+    let ticker_str = ticker.as_str();
     rerun::SeriesPoints::new()
         .with_colors([0xFF0000FF])
-        .with_names([format!("{symbol} (peak)")])
+        .with_names([format!("{ticker_str} (peak)")])
         .with_markers([rerun::components::MarkerShape::Up])
 }
 
@@ -123,20 +164,22 @@ fn auto_blueprint() -> Blueprint {
 }
 
 /// Create a blueprint showing a single stock.
-fn one_stock(symbol: &str) -> ContainerLike {
-    TimeSeriesView::new(symbol)
-        .with_origin(format!("/stocks/{symbol}"))
+fn one_stock(ticker: Ticker) -> ContainerLike {
+    let ticker_str = ticker.as_str();
+    TimeSeriesView::new(ticker_str)
+        .with_origin(format!("/stocks/{ticker_str}"))
         .into()
 }
 
 /// Create a blueprint showing a single stock with its info arranged vertically.
-fn one_stock_with_info(symbol: &str) -> ContainerLike {
+fn one_stock_with_info(ticker: Ticker) -> ContainerLike {
+    let ticker_str = ticker.as_str();
     Vertical::new(vec![
-        TextDocumentView::new(symbol)
-            .with_origin(format!("/stocks/{symbol}/info"))
+        TextDocumentView::new(ticker_str)
+            .with_origin(format!("/stocks/{ticker_str}/info"))
             .into(),
-        TimeSeriesView::new(symbol)
-            .with_origin(format!("/stocks/{symbol}"))
+        TimeSeriesView::new(ticker_str)
+            .with_origin(format!("/stocks/{ticker_str}"))
             .into(),
     ])
     .with_row_shares([1.0, 4.0])
@@ -144,43 +187,47 @@ fn one_stock_with_info(symbol: &str) -> ContainerLike {
 }
 
 /// Create a blueprint comparing 2 stocks for a single day.
-fn compare_two(symbol1: &str, symbol2: &str, day: &str) -> ContainerLike {
-    TimeSeriesView::new(format!("{symbol1} vs {symbol2} ({day})"))
+fn compare_two(ticker1: Ticker, ticker2: Ticker, day: &str) -> ContainerLike {
+    let ticker1_str = ticker1.as_str();
+    let ticker2_str = ticker2.as_str();
+    TimeSeriesView::new(format!("{ticker1_str} vs {ticker2_str} ({day})"))
         .with_contents([
-            format!("+ /stocks/{symbol1}/{day}"),
-            format!("+ /stocks/{symbol2}/{day}"),
+            format!("+ /stocks/{ticker1_str}/{day}"),
+            format!("+ /stocks/{ticker2_str}/{day}"),
         ])
         .into()
 }
 
 /// Create a blueprint showing a single stock without annotated peaks.
-fn one_stock_no_peaks(symbol: &str) -> ContainerLike {
-    TimeSeriesView::new(symbol)
-        .with_origin(format!("/stocks/{symbol}"))
+fn one_stock_no_peaks(ticker: Ticker) -> ContainerLike {
+    let ticker_str = ticker.as_str();
+    TimeSeriesView::new(ticker_str)
+        .with_origin(format!("/stocks/{ticker_str}"))
         .with_contents(["+ $origin/**", "- $origin/peaks/**"])
         .into()
 }
 
 /// Create a grid of stocks and their time series over all days.
-fn stock_grid(symbols: &[&str], dates: &[&str]) -> ContainerLike {
-    let rows: Vec<ContainerLike> = symbols
+fn stock_grid(tickers: &[Ticker], dates: &[&str]) -> ContainerLike {
+    let rows: Vec<ContainerLike> = tickers
         .iter()
-        .map(|&symbol| {
+        .map(|&ticker| {
+            let ticker_str = ticker.as_str();
             let mut views: Vec<ContainerLike> = vec![
-                TextDocumentView::new(symbol)
-                    .with_origin(format!("/stocks/{symbol}/info"))
+                TextDocumentView::new(ticker_str)
+                    .with_origin(format!("/stocks/{ticker_str}/info"))
                     .into(),
             ];
 
             for &day in dates {
                 views.push(
                     TimeSeriesView::new(day)
-                        .with_origin(format!("/stocks/{symbol}/{day}"))
+                        .with_origin(format!("/stocks/{ticker_str}/{day}"))
                         .into(),
                 );
             }
 
-            Horizontal::new(views).with_name(symbol).into()
+            Horizontal::new(views).with_name(ticker_str).into()
         })
         .collect();
 
@@ -197,15 +244,32 @@ fn hide_panels(viewport: ContainerLike) -> Blueprint {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let symbols = ["AAPL", "AMZN", "GOOGL", "META", "MSFT"];
+    let tickers: Vec<Ticker> = Ticker::iter().collect();
 
-    // Load static data
-    let ticker_info: HashMap<String, TickerInfo> = serde_json::from_str(TICKER_INFO_JSON)?;
-    let quote_range: HashMap<String, Vec<QuoteData>> = serde_json::from_str(QUOTE_RANGE_JSON)?;
+    // Load data from individual JSON files
+    let ticker_info: HashMap<String, TickerInfo> = tickers
+        .iter()
+        .map(|&ticker| {
+            (
+                ticker.as_str().to_owned(),
+                serde_json::from_str(get_ticker_info_json(ticker)).unwrap(),
+            )
+        })
+        .collect();
 
-    // Extract dates from the first symbol's quotes
+    let quote_range: HashMap<String, Vec<QuoteData>> = tickers
+        .iter()
+        .map(|&ticker| {
+            (
+                ticker.as_str().to_owned(),
+                serde_json::from_str(get_quote_data_json(ticker)).unwrap(),
+            )
+        })
+        .collect();
+
+    // Extract dates from the first tickers's quotes
     let dates = quote_range
-        .get("AAPL")
+        .get(Ticker::AAPL.as_str())
         .map(|quotes| extract_dates_from_quotes(quotes))
         .unwrap_or_default();
 
@@ -216,7 +280,7 @@ fn main() -> Result<()> {
     let blueprint = match args.blueprint {
         BlueprintMode::Auto => auto_blueprint(),
         BlueprintMode::OneStock => {
-            let viewport = one_stock("AAPL");
+            let viewport = one_stock(Ticker::AAPL);
             if args.show_panels {
                 Blueprint::new(viewport)
             } else {
@@ -224,7 +288,7 @@ fn main() -> Result<()> {
             }
         }
         BlueprintMode::OneStockWithInfo => {
-            let viewport = one_stock_with_info("AMZN");
+            let viewport = one_stock_with_info(Ticker::AMZN);
             if args.show_panels {
                 Blueprint::new(viewport)
             } else {
@@ -232,7 +296,7 @@ fn main() -> Result<()> {
             }
         }
         BlueprintMode::CompareTwo => {
-            let viewport = compare_two("META", "MSFT", date_strs.last().unwrap());
+            let viewport = compare_two(Ticker::META, Ticker::MSFT, date_strs.last().unwrap());
             if args.show_panels {
                 Blueprint::new(viewport)
             } else {
@@ -240,7 +304,7 @@ fn main() -> Result<()> {
             }
         }
         BlueprintMode::OneStockNoPeaks => {
-            let viewport = one_stock_no_peaks("GOOGL");
+            let viewport = one_stock_no_peaks(Ticker::GOOGL);
             if args.show_panels {
                 Blueprint::new(viewport)
             } else {
@@ -248,7 +312,7 @@ fn main() -> Result<()> {
             }
         }
         BlueprintMode::Grid => {
-            let viewport = stock_grid(&symbols, &date_strs);
+            let viewport = stock_grid(&tickers, &date_strs);
             if args.show_panels {
                 Blueprint::new(viewport)
             } else {
@@ -262,45 +326,50 @@ fn main() -> Result<()> {
         .init_with_blueprint("rerun_example_blueprint_stocks", blueprint)?;
 
     // Log styling for plots (static)
-    for &symbol in &symbols {
+    for &ticker in &tickers {
+        let ticker_str = ticker.as_str();
         for &date_str in &date_strs {
             rec.set_time_sequence("stable_time", 0);
-            rec.log_static(format!("stocks/{symbol}/{date_str}"), &style_plot(symbol))?;
             rec.log_static(
-                format!("stocks/{symbol}/peaks/{date_str}"),
-                &style_peak(symbol),
+                format!("stocks/{ticker_str}/{date_str}"),
+                &style_plot(ticker),
+            )?;
+            rec.log_static(
+                format!("stocks/{ticker_str}/peaks/{date_str}"),
+                &style_peak(ticker),
             )?;
         }
     }
 
-    for &symbol in &symbols {
+    for &ticker in &tickers {
+        let ticker_str = ticker.as_str();
         // Log company information
-        let info_md = if let Some(info) = ticker_info.get(symbol) {
+        let info_md = if let Some(info) = ticker_info.get(ticker_str) {
             let market_cap = info
                 .market_cap
                 .map(format_large_number)
-                .unwrap_or_else(|| "N/A".to_string());
+                .unwrap_or_else(|| "N/A".to_owned());
             let revenue = info
                 .total_revenue
                 .map(format_large_number)
-                .unwrap_or_else(|| "N/A".to_string());
+                .unwrap_or_else(|| "N/A".to_owned());
 
             format!(
                 "- **Name**: {}\n- **Industry**: {}\n- **Market cap**: ${}\n- **Total Revenue**: ${}\n",
                 info.name, info.industry, market_cap, revenue
             )
         } else {
-            format!("# {symbol}\n\nCompany information unavailable")
+            format!("# {ticker_str}\n\nCompany information unavailable")
         };
 
         rec.set_time_sequence("stable_time", 0);
         rec.log_static(
-            format!("stocks/{symbol}/info"),
+            format!("stocks/{ticker_str}/info"),
             &rerun::TextDocument::new(info_md).with_media_type(rerun::MediaType::MARKDOWN),
         )?;
 
         // Log quote data
-        if let Some(quotes) = quote_range.get(symbol) {
+        if let Some(quotes) = quote_range.get(ticker_str) {
             let quotes_by_date = group_quotes_by_date(quotes);
 
             for date in &dates {
@@ -326,14 +395,14 @@ fn main() -> Result<()> {
                     for (i, quote) in day_quotes.iter().enumerate() {
                         rec.set_time_sequence("time", i as i64);
                         rec.log(
-                            format!("stocks/{symbol}/{date_str}"),
+                            format!("stocks/{ticker_str}/{date_str}"),
                             &rerun::Scalars::new([quote.high]),
                         )?;
 
                         // Log peak
                         if Some(i) == peak_idx {
                             rec.log(
-                                format!("stocks/{symbol}/peaks/{date_str}"),
+                                format!("stocks/{ticker_str}/peaks/{date_str}"),
                                 &rerun::Scalars::new([quote.high]),
                             )?;
                         }
