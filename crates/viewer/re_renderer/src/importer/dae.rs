@@ -5,6 +5,7 @@
 //!   * Transform stack made of `<matrix>`, `<translate>`, `<rotate>` and
 //!     `<scale>`; unsupported transform tags are skipped with a warning.
 //!   * One set of positions, normals and optional tex‑coords per vertex.
+//!   * Material diffuse colors from Blinn, Phong, Lambert, and Constant shaders.
 
 use ahash::HashMap;
 use smallvec::smallvec;
@@ -16,7 +17,8 @@ use crate::{
 };
 
 use dae_parser::{
-    Document, Geometry, Instance, Node as DaeNode, Transform as DaeTransform, VisualScene,
+    Document, Effect, Geometry, Instance, Material as DaeMaterial, Node as DaeNode, Shader,
+    Transform as DaeTransform, VisualScene,
     geom::{Importer as DaeImporter, VertexImporter, VertexLoad},
     source::{ST, SourceReader, XYZ},
 };
@@ -50,15 +52,13 @@ pub fn load_dae_from_buffer(
 
     for geometry in document.iter::<Geometry>() {
         // Only meshes -> triangles
-        let mesh_element = match geometry.element.as_mesh() {
-            Some(m) => m,
-            None => continue,
+        let Some(mesh_element) = geometry.element.as_mesh() else {
+            continue;
         };
 
         // Skip geometries that *do not* contain a <triangles> primitive.
-        let triangles = match mesh_element.elements.iter().find_map(|p| p.as_triangles()) {
-            Some(t) => t,
-            None => continue,
+        let Some(triangles) = mesh_element.elements.iter().find_map(|p| p.as_triangles()) else {
+            continue;
         };
 
         let cpu_mesh = import_geometry(geometry, mesh_element, triangles, &maps, ctx)?;
@@ -66,9 +66,9 @@ pub fn load_dae_from_buffer(
         let geom_id = geometry
             .id
             .as_deref()
-            .or_else(|| geometry.name.as_deref())
+            .or(geometry.name.as_deref())
             .unwrap_or("<unnamed geometry>")
-            .to_string();
+            .to_owned();
         mesh_keys.insert(geom_id, key);
     }
 
@@ -100,10 +100,10 @@ fn import_geometry(
     let vertices = mesh.vertices.as_ref().ok_or(DaeImportError::NoTriangles)?;
     let vertex_importer: VertexImporter<'_> = vertices
         .importer(maps)
-        .map_err(|_| DaeImportError::NoTriangles)?;
+        .map_err(|_err| DaeImportError::NoTriangles)?;
     let dae_importer: DaeImporter<'_> = triangles
         .importer(maps, vertex_importer)
-        .map_err(|_| DaeImportError::NoTriangles)?;
+        .map_err(|_err| DaeImportError::NoTriangles)?;
 
     let prim_data = triangles
         .data
@@ -130,28 +130,76 @@ fn import_geometry(
         geo.name
             .clone()
             .or_else(|| geo.id.clone())
-            .unwrap_or_else(|| "".into()),
+            .unwrap_or_default(),
     );
+
+    // Extract material color from the triangles' material reference
+    let albedo_factor = triangles
+        .material
+        .as_ref()
+        .and_then(|mat_symbol| extract_material_color(mat_symbol, maps))
+        .unwrap_or(crate::Rgba::WHITE);
 
     let material = mesh::Material {
         label: label.clone(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
-        albedo_factor: crate::Rgba::WHITE,
+        albedo_factor,
     };
+
+    let vertex_positions = bytemuck::cast_vec(pos_raw.clone());
+    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
     let cpu_mesh = mesh::CpuMesh {
         label: label.clone(),
         triangle_indices: tri_indices,
-        vertex_positions: bytemuck::cast_vec(pos_raw),
+        vertex_positions,
         vertex_normals: bytemuck::cast_vec(normals),
         vertex_colors: vec![Rgba32Unmul::WHITE; num_vertices],
         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
         materials: smallvec![material],
+        bbox,
     };
 
     cpu_mesh.sanity_check()?;
     Ok(cpu_mesh)
+}
+
+/// Extract the diffuse color from a material symbol by looking it up in the document.
+fn extract_material_color(
+    material_symbol: &str,
+    maps: &dae_parser::LocalMaps<'_>,
+) -> Option<crate::Rgba> {
+    // we obtain the diffuse color by first looking up the material,
+    let material = maps.get_str::<DaeMaterial>(material_symbol)?;
+
+    // then the effect it references
+    let effect_url = &material.instance_effect.url.val;
+    let effect_id = match effect_url {
+        dae_parser::Url::Fragment(frag) => frag.trim_start_matches('#'),
+        dae_parser::Url::Other(_) => return None,
+    };
+    let effect = maps.get_str::<Effect>(effect_id)?;
+    let profile_common = effect.get_common_profile()?;
+
+    // and finally the shader inside the effect.
+    let shader = profile_common.technique.data.shaders.first()?;
+
+    let diffuse_color = match shader {
+        Shader::Blinn(blinn) => blinn.diffuse.as_ref()?.as_color(),
+        Shader::Phong(phong) => phong.diffuse.as_ref()?.as_color(),
+        Shader::Lambert(lambert) => lambert.diffuse.as_ref()?.as_color(),
+        Shader::Constant(constant) => constant.emission.as_ref()?.as_color(),
+    }?;
+
+    // This is not a hard-coded color.
+    #[expect(clippy::disallowed_methods)]
+    Some(crate::Rgba::from_rgba_unmultiplied(
+        diffuse_color[0],
+        diffuse_color[1],
+        diffuse_color[2],
+        diffuse_color[3],
+    ))
 }
 
 fn gather_instances_recursive(
@@ -166,20 +214,19 @@ fn gather_instances_recursive(
     for t in &node.transforms {
         match t {
             DaeTransform::Matrix(matrix) => {
-                local_mat = local_mat * Mat4::from_cols_array(&*matrix.0);
+                local_mat *= Mat4::from_cols_array(&matrix.0);
             }
             DaeTransform::Translate(translation) => {
-                local_mat = local_mat * Mat4::from_translation(Vec3::from_array(*translation.0));
+                local_mat *= Mat4::from_translation(Vec3::from_array(*translation.0));
             }
             DaeTransform::Scale(scale) => {
-                local_mat = local_mat * Mat4::from_scale(Vec3::from_array(*scale.0));
+                local_mat *= Mat4::from_scale(Vec3::from_array(*scale.0));
             }
             DaeTransform::Rotate(rotation) => {
                 let axis = Vec3::from_slice(&rotation.0[0..3]);
                 let angle = rotation.0[3];
 
-                local_mat =
-                    local_mat * Mat4::from_quat(Quat::from_axis_angle(axis, angle.to_radians()));
+                local_mat *= Mat4::from_quat(Quat::from_axis_angle(axis, angle.to_radians()));
             }
             _ => {
                 re_log::warn!("Ignoring unsupported Collada transform {t:?}");
@@ -192,7 +239,7 @@ fn gather_instances_recursive(
     for Instance::<Geometry> { url, .. } in &node.instance_geometry {
         let id = match url.val.clone() {
             // URI reference (e.g. "#Cube-mesh"), we need to strip the leading `#`.
-            dae_parser::Url::Fragment(frag) => frag.trim_start_matches("#").to_owned(),
+            dae_parser::Url::Fragment(frag) => frag.trim_start_matches('#').to_owned(),
             dae_parser::Url::Other(other) => {
                 // Non-fragment URL, we don't handle these
                 re_log::warn_once!(
@@ -236,6 +283,6 @@ impl<'a> VertexLoad<'a> for Vertex {
     }
 
     fn add_texcoord(&mut self, _: &(), _r: &SourceReader<'a, ST>, _i: u32, _set: Option<u32>) {
-        // TODO(gijsd): add texture/material support
+        // TODO(gijsd): add texture coordinate support
     }
 }
