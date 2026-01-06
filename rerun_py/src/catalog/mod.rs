@@ -37,7 +37,7 @@ pub use self::indexes::{
 };
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
-pub use self::table_entry::{PyTableEntryInternal, PyTableInsertMode};
+pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
 
@@ -50,7 +50,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntryDetails>()?;
     m.add_class::<PyDatasetEntryInternal>()?;
     m.add_class::<PyTableEntryInternal>()?;
-    m.add_class::<PyTableInsertMode>()?;
+    m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;

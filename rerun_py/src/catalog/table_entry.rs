@@ -118,7 +118,7 @@ impl PyTableEntryInternal {
         self_: Py<Self>,
         py: Python<'_>,
         batches: &Bound<'_, PyAny>,
-        insert_mode: PyTableInsertMode,
+        insert_mode: PyTableInsertModeInternal,
     ) -> PyResult<()> {
         let entry_id = self_.borrow(py).entry_details.id;
         let connection = self_
@@ -182,13 +182,13 @@ impl PyTableEntryInternal {
 }
 
 #[pyclass(
-    name = "TableInsertMode",
+    name = "TableInsertModeInternal",
     eq,
     eq_int,
     module = "rerun_bindings.rerun_bindings"
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
-pub enum PyTableInsertMode {
+pub enum PyTableInsertModeInternal {
     #[pyo3(name = "APPEND")]
     Append = 1,
 
@@ -199,12 +199,12 @@ pub enum PyTableInsertMode {
     Replace = 3,
 }
 
-impl From<PyTableInsertMode> for TableInsertMode {
-    fn from(value: PyTableInsertMode) -> Self {
+impl From<PyTableInsertModeInternal> for TableInsertMode {
+    fn from(value: PyTableInsertModeInternal) -> Self {
         match value {
-            PyTableInsertMode::Append => Self::Append,
-            PyTableInsertMode::Overwrite => Self::Overwrite,
-            PyTableInsertMode::Replace => Self::Replace,
+            PyTableInsertModeInternal::Append => Self::Append,
+            PyTableInsertModeInternal::Overwrite => Self::Overwrite,
+            PyTableInsertModeInternal::Replace => Self::Replace,
         }
     }
 }
