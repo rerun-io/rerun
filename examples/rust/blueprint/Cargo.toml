@@ -9,5 +9,4 @@ publish = false
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
-anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
