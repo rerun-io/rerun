@@ -1167,18 +1167,15 @@ impl RerunCloudService for RerunCloudHandler {
                     };
                     match (&query.latest_at, &query.range) {
                         (Some(latest_at), Some(range)) => {
-                            let latest_at = LatestAtQuery::new(
-                                latest_at
-                                    .index
-                                    .clone()
-                                    .ok_or_else(|| {
-                                        tonic::Status::invalid_argument(
-                                            "latest_at must specify time index",
-                                        )
-                                    })?
-                                    .into(),
-                                latest_at.at,
-                            );
+                            let latest_at = match &latest_at.index {
+                                Some(index) => {
+                                    LatestAtQuery::new(index.clone().into(), latest_at.at)
+                                }
+                                None => {
+                                    // Static only data
+                                    LatestAtQuery::new("".into(), re_log_types::TimeInt::MIN)
+                                }
+                            };
                             let range =
                                 RangeQuery::new(range.index.clone().into(), range.index_range);
                             paths
@@ -1206,18 +1203,16 @@ impl RerunCloudService for RerunCloudHandler {
                                 .collect::<Vec<_>>()
                         }
                         (Some(latest_at), None) => {
-                            let latest_at = LatestAtQuery::new(
-                                latest_at
-                                    .index
-                                    .clone()
-                                    .ok_or_else(|| {
-                                        tonic::Status::invalid_argument(
-                                            "latest_at must specify time index",
-                                        )
-                                    })?
-                                    .into(),
-                                latest_at.at,
-                            );
+                            let latest_at = match &latest_at.index {
+                                Some(index) => {
+                                    LatestAtQuery::new(index.clone().into(), latest_at.at)
+                                }
+                                None => {
+                                    // Static only data
+                                    LatestAtQuery::new("".into(), re_log_types::TimeInt::MIN)
+                                }
+                            };
+
                             paths
                                 .iter()
                                 .flat_map(|entity_path| {
