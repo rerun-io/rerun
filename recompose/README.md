@@ -21,7 +21,7 @@ def greet(*, name: str) -> recompose.Result[str]:
 # Call directly as a function:
 result = greet(name="World")
 assert result.ok
-print(result.value)  # "greeted World"
+print(result.value())  # "greeted World"
 ```
 
 ## Development
