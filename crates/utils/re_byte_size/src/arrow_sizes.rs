@@ -136,7 +136,22 @@ impl SizeBytes for UnionFields {
 
 // ---
 
-/// Returns the memory size of an Arrow array.
+/// Returns the total number of the bytes of memory occupied by the buffers by this slice of
+/// `ArrayData` (See also diagram on `ArrayData`).
+///
+/// This is approximately the number of bytes if a new `ArrayData` was formed by creating new
+/// `Buffer`s with exactly the data needed.
+///
+/// For example, a [`DataType::Int64`] with `100` elements, [`Array::get_slice_memory_size`] would
+/// return `100 * 8 = 800`. If the [`ArrayData`] was then [`Array::slice`]ed to refer to its first
+/// `20` elements, then [`Array::get_slice_memory_size`] on the sliced [`ArrayData`] would return
+/// `20 * 8 = 160`.
+///
+/// ## Important notes regarding deep vs. shallow slicing
+///
+/// Deeply nested data that was shallow-sliced (i.e. using [`Array::slice]` instead of the deep-slicing
+/// helpers from `re_arrow_util`) might report sizes that do not make any intuitive sense.
+/// Always prefer deep-slicing when you need to reliably measure the physical size of the sliced data.
 fn array_slice_memory_size(array: &dyn Array) -> u64 {
     // Use Arrow's built-in slice memory sizing
     array
