@@ -52,16 +52,25 @@ fn main() {
     }
 }
 
-/// Detect if we're in an isolated PEP 517 build environment.
+/// Detect if we're in a problematic isolated PEP 517 build environment.
 ///
 /// When pip or uv builds a package, they create an isolated virtual environment
 /// in a temporary directory. We can detect this by checking the `PYO3_PYTHON` path
 /// which maturin sets to the Python interpreter being used.
 ///
+/// However, if `PYO3_CONFIG_FILE` is set, pyo3 uses that config instead of querying
+/// `PYO3_PYTHON`, so the isolated environment is no longer problematic for caching.
+///
 /// Known patterns for isolated build environments:
 /// - uv: `~/.cache/uv/builds-v0/.tmp*/bin/python`
 /// - pip: `*/build-env-*/bin/python` or similar temp patterns
 fn is_isolated_build_environment() -> bool {
+    // If PYO3_CONFIG_FILE is set, pyo3 uses stable config regardless of PYO3_PYTHON,
+    // so isolated builds won't cause cache invalidation.
+    if re_build_tools::get_and_track_env_var("PYO3_CONFIG_FILE").is_ok() {
+        return false;
+    }
+
     let python_path =
         re_build_tools::get_and_track_env_var("PYO3_PYTHON").unwrap_or_else(|_| String::new());
 
