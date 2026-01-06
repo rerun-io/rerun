@@ -925,6 +925,8 @@ mod tests {
 
         let sliced = array.slice(offset, len);
         let deep_sliced = deep_slice_array_erased(&array, offset, len);
+        assert_eq!(&deep_sliced, &sliced);
+
         output += &format!("{descr}:\n");
         output += &format!(
             "array[0..]:          {} / IPC={:6}\n",
