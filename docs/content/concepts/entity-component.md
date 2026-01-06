@@ -1,5 +1,5 @@
 ---
 title: Entities and Components
 hidden: true
-redirect: logging/entity-component
+redirect: concepts/logging/entity-component
 ---

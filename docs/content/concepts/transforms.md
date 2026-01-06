@@ -1,5 +1,5 @@
 ---
 title: Transforms & Coordinate Frames
 hidden: true
-redirect: logging/transforms
+redirect: concepts/logging/transforms
 ---

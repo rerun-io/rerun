@@ -1,5 +1,5 @@
 ---
 title: Query semantics & partial updates
 hidden: true
-redirect: file_format/latest-at
+redirect: concepts/file_format/latest-at
 ---

@@ -1,5 +1,5 @@
 ---
 title: Static data
 hidden: true
-redirect: logging/static
+redirect: concepts/logging/static
 ---
