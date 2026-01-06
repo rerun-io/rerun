@@ -449,6 +449,10 @@ fn generate_code(
     // Remove orphaned files:
     for path in orphan_paths_opt_out {
         files.retain(|filepath, _| filepath.parent() != Some(path));
+        // If paths are specific files make sure we don't try to delete them
+        if path.is_file() {
+            files.insert(path.clone(), String::default());
+        }
     }
     crate::codegen::common::remove_orphaned_files(reporter, &files);
 }
@@ -570,6 +574,18 @@ pub fn generate_docs(
 
     let mut generator = DocsCodeGenerator::new(output_docs_dir.as_ref());
     let mut formatter = NoopCodeFormatter;
+    // We removed these components but left redirects to the replacements
+    let orphan_path_opt_out = BTreeSet::from([
+        output_docs_dir
+            .as_ref()
+            .join("components/pose_rotation_axis_angle.md"),
+        output_docs_dir
+            .as_ref()
+            .join("components/pose_rotation_quat.md"),
+        output_docs_dir
+            .as_ref()
+            .join("components/pose_translation3d.md"),
+    ]);
 
     generate_code(
         reporter,
@@ -577,7 +593,7 @@ pub fn generate_docs(
         type_registry,
         &mut generator,
         &mut formatter,
-        &Default::default(),
+        &orphan_path_opt_out,
         check,
     );
 }

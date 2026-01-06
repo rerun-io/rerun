@@ -67,7 +67,7 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
 ]
-snippets = ["av"]
+snippets = ["av", "pandas"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
