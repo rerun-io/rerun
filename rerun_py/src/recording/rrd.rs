@@ -1,11 +1,14 @@
 use std::collections::BTreeMap;
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
-use pyo3::{PyResult, pyclass, pyfunction, pymethods};
+use pyo3::prelude::PyAnyMethods as _;
+use pyo3::types::PyModule;
+use pyo3::{PyObject, PyResult, Python, pyclass, pyfunction, pymethods};
+
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::StoreId;
 
-use super::PyRecording;
+use crate::catalog::PySchemaInternal;
 
 /// An archive loaded from an RRD.
 ///
@@ -32,16 +35,50 @@ impl PyRRDArchive {
         self.datasets
             .iter()
             .filter(|(id, _)| id.is_recording())
-            .map(|(_, store)| {
-                let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
-                    store.clone(),
-                ));
-                PyRecording {
-                    store: store.clone(),
-                    cache,
-                }
+            .map(|(_, store)| PyRecording {
+                store: store.clone(),
             })
             .collect()
+    }
+}
+
+/// A single Rerun recording.
+///
+/// This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
+///
+/// A recording is a collection of data that was logged to Rerun. This data is organized
+/// as a column for each index (timeline) and each entity/component pair that was logged.
+///
+/// You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+/// what data is available.
+#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+pub struct PyRecording {
+    pub(crate) store: ChunkStoreHandle,
+}
+
+#[pymethods] // NOLINT: ignore[py-mthd-str]
+impl PyRecording {
+    /// The schema describing all the columns available in the recording.
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = PySchemaInternal {
+            columns: self.store.read().schema().into(),
+            metadata: Default::default(),
+        };
+
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
+    }
+
+    /// The recording ID of the recording.
+    fn recording_id(&self) -> String {
+        self.store.read().id().recording_id().to_string()
+    }
+
+    /// The application ID of the recording.
+    fn application_id(&self) -> String {
+        self.store.read().id().application_id().to_string()
     }
 }
 
