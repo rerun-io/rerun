@@ -11,7 +11,6 @@ import rerun as rr
 # ----------------------------------------------------------------------------------------------
 # Load and prepare the data
 
-# TODO(nick): find rrd and check in to repo
 repo_root = Path(__file__).parent.parent.parent.parent.parent
 example_rrd = repo_root / "tests" / "assets" / "rrd" / "examples" / "face_tracking.rrd"
 assert example_rrd.exists(), f"Example RRD not found at {example_rrd}"

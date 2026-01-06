@@ -17,7 +17,12 @@ The first step is thus to save the recording as RRD, which can be done from the 
 
 We can then load the recording in a Python script as follows:
 
+First perform the necessary imports,
+
 snippet: tutorials/data_out[imports]
+
+then launch the server to load the recording
+
 snippet: tutorials/data_out[launch_server]
 
 ## Query the data
