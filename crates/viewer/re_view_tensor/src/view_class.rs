@@ -618,10 +618,23 @@ impl TensorView {
             }),
         ];
 
-        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+        egui::ScrollArea::both()
+            .auto_shrink(false)
+            .scroll_source(
+                egui::scroll_area::ScrollSource::SCROLL_BAR
+                    | egui::scroll_area::ScrollSource::DRAG,
+            )
+            .show(ui, |ui| {
             let ctx = self.view_context(ctx, view_id, state, space_origin);
-            if let Err(err) =
-                Self::tensor_slice_ui(&ctx, ui, tensors, dimension_labels, &slice_selection)
+            if let Err(err) = Self::tensor_slice_ui(
+                &ctx,
+                ui,
+                tensors,
+                dimension_labels,
+                &slice_selection,
+                &slice_property,
+                tensor,
+            )
             {
                 ui.error_label(err.to_string());
             }
@@ -636,6 +649,8 @@ impl TensorView {
         tensors: &[TensorVisualization],
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
+        slice_property: &ViewProperty,
+        tensor: &TensorData,
     ) -> anyhow::Result<()> {
         let mag_filter = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
@@ -644,9 +659,36 @@ impl TensorView {
         )
         .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
-        let (response, image_rect) = paint_tensor_slice(ctx, ui, tensors, slice_selection, mag_filter)?;
+        let (response, image_rect) =
+            paint_tensor_slice(ctx, ui, tensors, slice_selection, mag_filter)?;
 
         if response.hovered() {
+            let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+            if scroll_delta.abs() > 0.0 {
+                if let Some(sliders) = &slice_selection.slider
+                    && let Some(first_slider) = sliders.first()
+                {
+                    let mut indices = slice_selection.indices.clone();
+                    if let Some(index) =
+                        index_for_dimension_mut(&mut indices, first_slider.dimension)
+                        && let Some(dim) =
+                            TensorDimension::from_tensor_data(tensor).get(first_slider.dimension as usize)
+                    {
+                        let max_index = dim.size.saturating_sub(1) as i64;
+                        let direction = if scroll_delta > 0.0 { 1_i64 } else { -1_i64 };
+                        let current = *index as i64;
+                        let new_index = (current + direction).clamp(0, max_index) as u64;
+                        if *index != new_index {
+                            *index = new_index;
+                            slice_property.save_blueprint_component(
+                                ctx.viewer_ctx,
+                                &archetypes::TensorSliceSelection::descriptor_indices(),
+                                &indices,
+                            );
+                        }
+                    }
+                }
+            }
             if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
                 response.on_hover_ui_at_pointer(|ui| {
                     crate::tensor_slice_hover::show_tensor_hover_ui(
