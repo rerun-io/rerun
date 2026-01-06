@@ -486,14 +486,15 @@ fn test_wrap_in_list_array() {
 
 // ---
 
-/// This implements a costly but always reliable deep-slicing operation for Arrow arrays.
+/// Deep-slicing operation for Arrow arrays.
 ///
-/// On one hand, this both allocates & copies data around, similar how `concat()` behaves when performing the
-/// inverse operation. On the other hand, this is guaranteed to always behave as you'd expect, both
-/// in memory and on disk, in all possible niche scenarios.
+/// The data, offsets, bitmaps and any other buffers required will be reallocated, copied around, and patched
+/// as much as required so that the resulting physical data becomes as packed as possible for the desired slice.
+///
+/// This is the erased version, see [`deep_slice_array`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
-pub fn deep_slice_array_ref(
+pub fn deep_slice_array_erased(
     array: &dyn arrow::array::Array,
     offset: usize,
     length: usize,
@@ -509,11 +510,12 @@ pub fn deep_slice_array_ref(
     arrow::array::make_array(data_sliced.freeze())
 }
 
-/// This implements a costly but always reliable deep-slicing operation for Arrow arrays.
+/// Deep-slicing operation for Arrow arrays.
 ///
-/// On one hand, this both allocates & copies data around, similar how `concat()` behaves when performing the
-/// inverse operation. On the other hand, this is guaranteed to always behave as you'd expect, both
-/// in memory and on disk, in all possible niche scenarios.
+/// The data, offsets, bitmaps and any other buffers required will be reallocated, copied around, and patched
+/// as much as required so that the resulting physical data becomes as packed as possible for the desired slice.
+///
+/// This is the erased version, see [`deep_slice_array_erased`] for a typed implementation.
 //
 // TODO(cmc): optimize from there; future results should always match this baseline.
 pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, offset: usize, length: usize) -> T {
@@ -922,7 +924,7 @@ mod tests {
         let to = offset + len;
 
         let sliced = array.slice(offset, len);
-        let deep_sliced = deep_slice_array_ref(&array, offset, len);
+        let deep_sliced = deep_slice_array_erased(&array, offset, len);
         output += &format!("{descr}:\n");
         output += &format!(
             "array[0..]:          {} / IPC={:6}\n",

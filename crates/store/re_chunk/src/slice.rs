@@ -33,7 +33,7 @@ impl Chunk {
         }
     }
 
-    /// Slices the [`Chunk`] vertically.
+    /// Shallow-slices the [`Chunk`] vertically.
     ///
     /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
     ///
@@ -42,12 +42,48 @@ impl Chunk {
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is shallow and therefore always O(1), which implicitly means that it cannot
+    /// ever modify the values of the offsets themselves.
+    /// Since the offsets are left untouched, the original unsliced data must always be kept around
+    /// too, _even if the sliced data were to be written to disk_.
+    /// Similarly, the sizes reported might not always make intuitive sense, and should be used
+    /// very carefully.
+    ///
+    /// For these reasons, shallow slicing should only be used in the context of short-term, in-memory storage
+    /// (e.g. when slicing the results of a query).
+    /// When slicing data for long-term storage, whether in-memory or on disk, see [`Self::row_sliced_deep`] instead.
     #[must_use]
     pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
         let deep = false;
         self.row_sliced_impl(index, len, deep)
     }
 
+    /// Deep-slices the [`Chunk`] vertically.
+    ///
+    /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
+    ///
+    /// This cannot fail nor panic: `index` and `len` will be capped so that they cannot
+    /// run out of bounds.
+    /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is deep and therefore always O(1).
+    ///
+    /// The underlying data, offsets, bitmaps and other buffers required will be reallocated, copied around,
+    /// and patched as much as required so that the resulting physical data becomes as packed as possible for
+    /// the desired slice.
+    /// Similarly, the reported sizes would always match intuitive expectations.
+    ///
+    /// These characteristics make deep slicing very useful for longer term data, whether it's
+    /// store in-memory (e.g. in a `ChunkStore`), or on disk.
+    /// When slicing data for short-term needs (e.g. slicing the results of a query), whether in-memory or on
+    /// disk, prefer [`Self::row_sliced_shallow`] instead.
     #[must_use]
     pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
         let deep = true;
