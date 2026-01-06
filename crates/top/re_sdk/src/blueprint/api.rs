@@ -152,7 +152,7 @@ impl Blueprint {
     pub fn send(
         &self,
         recording: &RecordingStream,
-        activiation: BlueprintActivation,
+        activation: BlueprintActivation,
     ) -> RecordingStreamResult<()> {
         let application_id = recording
             .store_info()
@@ -171,8 +171,8 @@ impl Blueprint {
 
         let activation_cmd = BlueprintActivationCommand {
             blueprint_id: blueprint_id.clone(),
-            make_active: activiation.make_active,
-            make_default: activiation.make_default,
+            make_active: activation.make_active,
+            make_default: activation.make_default,
         };
 
         recording.send_blueprint(msgs, activation_cmd);
