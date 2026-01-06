@@ -158,7 +158,9 @@ fn all_sections_ui(
     // Welcome and examples
     //
 
-    welcome_item_ui(ctx, ui, recording_panel_data);
+    if recording_panel_data.show_example_section {
+        welcome_item_ui(ctx, ui, recording_panel_data);
+    }
 
     //
     // Empty placeholder
