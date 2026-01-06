@@ -1,4 +1,3 @@
-use re_data_ui::item_ui;
 use re_sdk_types::{
     components::TensorData,
     tensor_data::{TensorDataType, TensorElement},
@@ -266,7 +265,7 @@ fn format_pixel_value(elements: Vec<TensorElement>) -> (String, String) {
 }
 
 fn tensor_hover_value_ui(
-    ctx: &ViewContext<'_>,
+    _ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     tensors: &[TensorVisualization],
     slice_selection: &TensorSliceSelection,
@@ -289,18 +288,24 @@ fn tensor_hover_value_ui(
                 } = tensor_view;
 
                 ui.separator();
-                ui.label("");
                 ui.end_row();
 
-                item_ui::entity_path_button(
-                    ctx.viewer_ctx,
-                    &ctx.current_query(),
-                    ctx.recording(),
-                    ui,
-                    Some(ctx.view_id),
-                    entity_path,
-                );
                 ui.label("");
+                ui.scope(|ui| {
+                    let small = ui
+                        .style()
+                        .text_styles
+                        .get(&egui::TextStyle::Small)
+                        .cloned()
+                        .unwrap_or_else(|| egui::FontId::proportional(10.0));
+                    ui.style_mut().text_styles.insert(egui::TextStyle::Body, small);
+                    let display_name = entity_path
+                        .last()
+                        .map(|part| part.ui_string())
+                        .unwrap_or_else(|| "/".to_owned());
+                    ui.label(display_name)
+                        .on_hover_text(entity_path.to_string());
+                });
                 ui.end_row();
 
                 if let Some((label, value_text)) =
