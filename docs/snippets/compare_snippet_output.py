@@ -122,10 +122,16 @@ def main() -> None:
 
     if args.no_py:
         pass  # No need to build the Python SDK
-    elif args.no_py_build:
-        print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
-        build_python_sdk(build_env)
+        if args.no_py_build:
+            print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
+        else:
+            build_python_sdk(build_env)
+        # Use uv to install the snippet dependencies
+        run(
+            ["uv", "sync", "--group", "snippets", "--inexact", "--no-install-package", "rerun-sdk"],
+            env=build_env,
+        )
 
     if args.no_cpp:
         pass  # No need to build the C++ SDK

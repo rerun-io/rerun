@@ -93,8 +93,4 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

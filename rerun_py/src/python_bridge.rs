@@ -1,3 +1,4 @@
+#![expect(clippy::fn_params_excessive_bools)] // We used named arguments, so this is fine
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 

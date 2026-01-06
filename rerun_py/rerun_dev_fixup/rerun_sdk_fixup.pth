@@ -1,0 +1,1 @@
+import sys; [sys.path.insert(0, p + "/rerun_sdk") for p in list(sys.path) if p.endswith("rerun_py") and p + "/rerun_sdk" not in sys.path]

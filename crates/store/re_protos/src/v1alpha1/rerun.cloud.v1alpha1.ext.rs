@@ -1343,7 +1343,6 @@ pub struct Query {
     pub latest_at: Option<QueryLatestAt>,
     pub range: Option<QueryRange>,
     pub columns_always_include_everything: bool,
-    pub columns_always_include_chunk_ids: bool,
     pub columns_always_include_byte_offsets: bool,
     pub columns_always_include_entity_paths: bool,
     pub columns_always_include_static_indexes: bool,
@@ -1416,7 +1415,6 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
             latest_at,
             range,
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,
@@ -1439,7 +1437,6 @@ impl From<Query> for crate::cloud::v1alpha1::Query {
                 index_range: Some(range.index_range.into()),
             }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,

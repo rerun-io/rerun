@@ -58,10 +58,10 @@ def setup_output_stream(width: int, height: int, codec: str = "h264") -> av.vide
 
     if codec == "h264":
         output_container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
-        output_stream = output_container.add_stream("libx264")
+        output_stream = output_container.add_stream("libx264")  # type: ignore[assignment]
     elif codec == "av1":
         output_container = av.open("/dev/null", "w", format="ivf")  # Use IVF container for AV1 stream.
-        output_stream = output_container.add_stream("libaom-av1")
+        output_stream = output_container.add_stream("libaom-av1")  # type: ignore[assignment]
     else:
         raise ValueError(f"Unsupported codec: {codec}")
 
