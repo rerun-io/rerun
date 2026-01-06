@@ -133,6 +133,7 @@ impl CommandPalette {
     }
 
     #[must_use = "Returns the command that was selected"]
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn alternatives_ui(
         &mut self,
         ui: &mut egui::Ui,

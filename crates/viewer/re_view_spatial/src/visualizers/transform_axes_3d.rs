@@ -233,10 +233,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 pub fn add_axis_arrows(
@@ -255,7 +251,7 @@ pub fn add_axis_arrows(
     let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder
-        .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
+        .batch(ent_path.map_or_else(|| "axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

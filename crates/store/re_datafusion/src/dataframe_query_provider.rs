@@ -404,7 +404,7 @@ async fn chunk_store_cpu_worker_thread(
                 }
             }
 
-            let current_stores = current_stores.get_or_insert({
+            let current_stores = current_stores.get_or_insert_with(|| {
                 let store_id = StoreId::random(
                     StoreKind::Recording,
                     ApplicationId::from(segment_id.as_str()),

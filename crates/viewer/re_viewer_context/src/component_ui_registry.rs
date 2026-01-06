@@ -526,6 +526,7 @@ impl ComponentUiRegistry {
     }
 
     /// Tries to lookup a ui callback with the given constraints.
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn untyped_component_ui_callback(
         &self,
         component_type: ComponentType,
