@@ -1,8 +1,11 @@
 //! Panel types for blueprint configuration.
 
+use std::ops::RangeInclusive;
+
+use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
 use re_sdk_types::blueprint::components::{
-    AbsoluteTimeRange, Fps, LoopMode, PanelState, PlayState, PlaybackSpeed, TimelineName,
+    Fps, LoopMode, PanelState, PlayState, PlaybackSpeed, TimelineName,
 };
 use re_sdk_types::datatypes::Float64;
 
@@ -89,7 +92,7 @@ pub struct TimePanel {
     fps: Option<f64>,
     play_state: Option<PlayState>,
     loop_mode: Option<LoopMode>,
-    time_selection: Option<(i64, i64)>,
+    time_selection: Option<AbsoluteTimeRange>,
 }
 
 impl TimePanel {
@@ -135,8 +138,9 @@ impl TimePanel {
     }
 
     /// Set the time selection range.
-    pub fn with_time_selection(mut self, start: i64, end: i64) -> Self {
-        self.time_selection = Some((start, end));
+    pub fn with_time_selection(mut self, range: impl Into<RangeInclusive<TimeInt>>) -> Self {
+        let range = range.into();
+        self.time_selection = Some(AbsoluteTimeRange::new(*range.start(), *range.end()));
         self
     }
 
@@ -165,13 +169,11 @@ impl TimePanel {
         if let Some(loop_mode) = self.loop_mode {
             arch = arch.with_loop_mode(loop_mode);
         }
-        if let Some((start, end)) = self.time_selection {
-            arch = arch.with_time_selection(AbsoluteTimeRange(
-                re_sdk_types::datatypes::AbsoluteTimeRange {
-                    min: start.into(),
-                    max: end.into(),
-                },
-            ));
+        if let Some(range) = self.time_selection {
+            arch = arch.with_time_selection(re_sdk_types::datatypes::AbsoluteTimeRange {
+                min: range.min.into(),
+                max: range.max.into(),
+            });
         }
 
         stream.log("time_panel", &arch)
