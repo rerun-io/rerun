@@ -102,10 +102,33 @@ Rerun is available as a package on PyPi and can be installed with `pip install r
 
 Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, you can do so easily in the Pixi environment:
-* Run `pixi run py-build --release` to build SDK & Viewer for Python (or `pixi run py-build` for a debug build)
-* Then you can run examples from the repository, either by making the Pixi shell active with  `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run Python examples/python/minimal/minimal.py`
 
+### Building from source
+If you want to build from source, you can do so easily in the Pixi environment:
+```sh
+pixi run py-build
+```
+
+Or to create a wheel:
+```sh
+pixi run py-build-wheel
+```
+
+You can run scripts that depend on rerun within the uv environment. For example:
+```sh
+pixi run uv run examples/python/minimal/minimal.py`
+```
+
+### Running the Python examples
+You can also install all rerun example and their dependencies into the same uv environment using:
+```sh
+pixi run py-build-examples
+```
+
+Each example is installed as a target within the uv environment. For example:
+```sh
+pixi run uv run plots
+```
 
 ### Tests & tooling
 

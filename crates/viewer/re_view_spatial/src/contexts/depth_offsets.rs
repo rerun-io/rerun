@@ -67,10 +67,6 @@ impl ViewContextSystem for EntityDepthOffsets {
             })
             .collect();
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 fn collect_draw_order_per_visualizer(

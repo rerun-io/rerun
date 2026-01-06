@@ -114,10 +114,6 @@ impl crate::sink::LogSink for WebViewerSink {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl Drop for WebViewerSink {

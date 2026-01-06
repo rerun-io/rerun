@@ -62,23 +62,29 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: wheel-test
 
-      - name: Download Wheel
+      - name: Download Rerun Wheel
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
+      - name: Download Rerun Notebook Wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: rerun_notebook_wheel
+          path: wheel
+
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-notebook --dir wheel --platform-independent
 
       - name: Print wheel version
         run: |
-          pixi list -e wheel-test | grep rerun_sdk
-          pixi run -e wheel-test python -m rerun --version
-          pixi run -e wheel-test which rerun
+          pixi run uv pip show rerun-sdk
+          pixi run uv pip show rerun-notebook
+          pixi run uvpy -m rerun --version
 
       - name: Get sha
         id: get-sha
@@ -88,18 +94,18 @@ jobs:
 
       - name: Build examples
         run: |
-          pixi run -e wheel-test build-examples rrd \
+          pixi run build-examples rrd --install \
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
       - name: Build notebooks
         run: |
-          pixi run -e wheel-test build-examples notebook \
+          pixi run build-examples notebook \
             --channel ${{ inputs.CHANNEL }}
 
       - name: Build & run snippets
         run: |
-          pixi run -e wheel-test build-examples snippets \
+          pixi run build-examples snippets \
             example_data/snippets
 
       - name: Upload assets

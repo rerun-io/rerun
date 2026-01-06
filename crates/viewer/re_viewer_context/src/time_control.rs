@@ -525,6 +525,7 @@ impl TimeControl {
 
     /// Create [`TimeControlCommand`]s to move the time forward (if playing), and perhaps pause if
     /// we've reached the end.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     pub fn update(
         &mut self,
         timeline_histograms: &TimeHistogramPerTimeline,
@@ -641,6 +642,7 @@ impl TimeControl {
     }
 
     /// Apply state diff to response if needed.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn apply_state_diff_if_needed(
         &mut self,
         response: TimeControlResponse,
