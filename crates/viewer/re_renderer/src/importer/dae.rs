@@ -52,8 +52,8 @@ pub fn load_dae_from_buffer(
     // Check for textures and warn if found
     check_for_textures(&document);
 
-    // Get the up-axis transformation to convert to Y-up coordinate system
-    let up_axis_transform = up_axis_to_y_up_transform(document.asset.up_axis);
+    // Get the up-axis transformation to convert to Z-up coordinate system
+    let up_axis_transform = up_axis_to_z_up_transform(document.asset.up_axis);
 
     let mut model = CpuModel::default();
     let mut mesh_keys: HashMap<String, CpuModelMeshKey> = HashMap::default();
@@ -69,7 +69,14 @@ pub fn load_dae_from_buffer(
             continue;
         };
 
-        let cpu_mesh = import_geometry(geometry, mesh_element, triangles, &maps, ctx, up_axis_transform)?;
+        let cpu_mesh = import_geometry(
+            geometry,
+            mesh_element,
+            triangles,
+            &maps,
+            ctx,
+            up_axis_transform,
+        )?;
         let key = model.meshes.insert(cpu_mesh);
         let geom_id = geometry
             .id
@@ -98,31 +105,31 @@ pub fn load_dae_from_buffer(
     Ok(model)
 }
 
-/// Returns a transformation matrix to convert from the given up-axis to Y-up coordinate system.
+/// Returns a transformation matrix to convert from the given up-axis to Z-up coordinate system.
 ///
 /// COLLADA files can specify different up-axis orientations (X, Y, or Z).
 /// This function returns a transformation matrix that converts from the source
-/// coordinate system to Y-up, which is the standard in many 3D applications.
-fn up_axis_to_y_up_transform(up_axis: UpAxis) -> glam::Affine3A {
+/// coordinate system to Z-up, which is the standard in our renderer.
+fn up_axis_to_z_up_transform(up_axis: UpAxis) -> glam::Affine3A {
     match up_axis {
         // X-up: Right: -y, Up: +x, In: +z
-        // Y-up: Right: +x, Up: +y, In: +z
-        // Rotate 90° around Z-axis: (x,y,z) -> (y,-x,z)
-        UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
-            glam::Vec3::new(0.0, 1.0, 0.0),   // new X from old Y
-            glam::Vec3::new(-1.0, 0.0, 0.0),  // new Y from old -X
-            glam::Vec3::new(0.0, 0.0, 1.0),   // new Z from old Z
-        )),
-        // Already Y-up, no transformation needed
-        UpAxis::YUp => glam::Affine3A::IDENTITY,
         // Z-up: Right: +x, Up: +z, In: -y
-        // Y-up: Right: +x, Up: +y, In: +z
-        // Rotate -90° around X-axis: (x,y,z) -> (x,z,-y)
-        UpAxis::ZUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
-            glam::Vec3::new(1.0, 0.0, 0.0),   // new X from old X
-            glam::Vec3::new(0.0, 0.0, 1.0),   // new Y from old Z
-            glam::Vec3::new(0.0, -1.0, 0.0),  // new Z from old -Y
+        // (x,y,z) -> (-y,z,-x)
+        UpAxis::XUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            -glam::Vec3::Z,
+            -glam::Vec3::X,
+            glam::Vec3::Y,
         )),
+        // Y-up: Right: +x, Up: +y, In: +z
+        // Z-up: Right: +x, Up: +z, In: -y
+        // (x,y,z) -> (x,-z,y)
+        UpAxis::YUp => glam::Affine3A::from_mat3(glam::Mat3::from_cols(
+            glam::Vec3::X,
+            glam::Vec3::Z,
+            -glam::Vec3::Y,
+        )),
+        // Already Z-up, no transformation needed
+        UpAxis::ZUp => glam::Affine3A::IDENTITY,
     }
 }
 
@@ -154,8 +161,10 @@ fn import_geometry(
 
     for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
         // Apply up-axis transformation to position and normal
-        let transformed_pos = up_axis_transform.transform_point3(glam::Vec3::from_array(v.position));
-        let transformed_normal = up_axis_transform.transform_vector3(glam::Vec3::from_array(v.normal));
+        let transformed_pos =
+            up_axis_transform.transform_point3(glam::Vec3::from_array(v.position));
+        let transformed_normal =
+            up_axis_transform.transform_vector3(glam::Vec3::from_array(v.normal));
 
         pos_raw.push(transformed_pos.to_array());
         normals.push(transformed_normal.to_array());
