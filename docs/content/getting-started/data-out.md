@@ -1,6 +1,6 @@
 ---
 title: Query data out of Rerun
-order: 450
+order: 300
 ---
 
 At its core, Rerun is a database. The OSS server is our small-scale in-memory parallel to our commercial cloud offering.

@@ -1,5 +1,5 @@
 ---
-title: MCAP files
-order: 850
-redirect: reference/mcap/message-formats
+title: MCAP Files
+hidden: true
+redirect: /docs/topics/storage/mcap
 ---

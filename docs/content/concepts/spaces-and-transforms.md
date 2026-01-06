@@ -1,5 +1,5 @@
 ---
 title: Spaces and Transforms
 hidden: true
-redirect: concepts/transforms
+redirect: /docs/topics/data-model/transforms
 ---

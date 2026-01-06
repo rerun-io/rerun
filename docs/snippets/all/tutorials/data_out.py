@@ -37,9 +37,7 @@ print(pd_df["/blendshapes/0/jawOpen:Scalars:scalars"][160:180])
 # convert the "jawOpen" column to a flat list of floats
 print(pd_df)
 # region: explode_jaw
-pd_df["jawOpen"] = (
-    pd_df["/blendshapes/0/jawOpen:Scalars:scalars"].explode().astype(float)
-)
+pd_df["jawOpen"] = pd_df["/blendshapes/0/jawOpen:Scalars:scalars"].explode().astype(float)
 print(pd_df["jawOpen"][160:180])
 # endregion: explode_jaw
 

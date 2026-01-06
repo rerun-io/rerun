@@ -1,6 +1,6 @@
 ---
 title: See data in the Rerun Viewer
-order: 425
+order: 200
 ---
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should be comfortable with the following topics:

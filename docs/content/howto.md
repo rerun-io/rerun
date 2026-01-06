@@ -1,6 +1,5 @@
 ---
 title: How-to
-order: 2
+hidden: true
+redirect: /docs/cookbook
 ---
-
-Guides for using Rerun in more advanced ways.

@@ -1,5 +1,5 @@
 ---
-title: 🌊 C++ example
-order: 100
-redirect: https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_data_loader
+title: C++
+hidden: true
+redirect: /docs/topics/storage/data-loaders/cpp
 ---
