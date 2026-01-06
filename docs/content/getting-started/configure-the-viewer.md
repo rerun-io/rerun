@@ -1,5 +1,5 @@
 ---
-title: See data in the Rerun Viewer
+title: See data
 order: 425
 ---
 
