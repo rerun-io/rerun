@@ -16,6 +16,7 @@ mod schema;
 mod table_entry;
 mod table_provider_adapter;
 mod trace_context;
+mod type_aliases;
 
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::prelude::*;
@@ -38,6 +39,7 @@ pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistration
 pub use self::schema::PySchemaInternal;
 pub use self::table_entry::{PyTableEntryInternal, PyTableInsertMode};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
+pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {

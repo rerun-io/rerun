@@ -17,9 +17,9 @@ use tracing::instrument;
 #[cfg(feature = "perf_telemetry")]
 use crate::catalog::trace_context::with_trace_span;
 use crate::catalog::{
-    PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal, to_py_err,
+    IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
+    to_py_err,
 };
-use crate::dataframe::IndexValuesLike;
 use crate::utils::wait_for_future;
 
 /// A view over a dataset with optional segment and content filters applied lazily.
