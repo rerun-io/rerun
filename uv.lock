@@ -13,6 +13,7 @@ resolution-markers = [
 [manifest]
 members = [
     "air-traffic-data",
+    "animated-urdf",
     "arkit-scenes",
     "blueprint",
     "blueprint-stocks",
@@ -106,6 +107,17 @@ requires-dist = [
     { name = "shapely" },
     { name = "tqdm" },
 ]
+
+[[package]]
+name = "animated-urdf"
+version = "0.1.0"
+source = { editable = "examples/python/animated_urdf" }
+dependencies = [
+    { name = "rerun-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "rerun-sdk", editable = "rerun_py" }]
 
 [[package]]
 name = "annotated-types"
@@ -4616,6 +4628,7 @@ docs = [
 ]
 examples = [
     { name = "air-traffic-data" },
+    { name = "animated-urdf" },
     { name = "arkit-scenes" },
     { name = "blueprint" },
     { name = "blueprint-stocks" },
@@ -4718,6 +4731,7 @@ docs = [
 ]
 examples = [
     { name = "air-traffic-data", editable = "examples/python/air_traffic_data" },
+    { name = "animated-urdf", editable = "examples/python/animated_urdf" },
     { name = "arkit-scenes", editable = "examples/python/arkit_scenes" },
     { name = "blueprint", editable = "examples/python/blueprint" },
     { name = "blueprint-stocks", editable = "examples/python/blueprint_stocks" },
