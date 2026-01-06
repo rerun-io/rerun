@@ -1,5 +1,5 @@
 ---
 title: Chunks
 hidden: true
-redirect: logging/entity-component
+redirect: concepts/logging/entity-component
 ---

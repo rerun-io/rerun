@@ -1,5 +1,5 @@
 ---
 title: Sinks
 hidden: true
-redirect: logging/sinks
+redirect: concepts/logging/sinks
 ---

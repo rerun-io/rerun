@@ -1,5 +1,5 @@
 ---
 title: Annotation Context
 hidden: true
-redirect: viewing/annotation-context
+redirect: concepts/viewing/annotation-context
 ---

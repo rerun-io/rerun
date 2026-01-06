@@ -1,5 +1,5 @@
 ---
 title: Component Batches
 hidden: true
-redirect: file_format/apps-and-recordings
+redirect: concepts/file_format/apps-and-recordings
 ---

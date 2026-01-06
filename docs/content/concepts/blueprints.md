@@ -1,5 +1,5 @@
 ---
 title: Blueprints
 hidden: true
-redirect: viewing/blueprints
+redirect: concepts/viewing/blueprints
 ---
