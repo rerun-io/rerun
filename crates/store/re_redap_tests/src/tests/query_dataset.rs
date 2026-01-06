@@ -1,3 +1,4 @@
+use arrow::array::{FixedSizeBinaryArray, RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
@@ -6,6 +7,7 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_types_core::ChunkId;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
@@ -19,6 +21,7 @@ pub async fn query_empty_dataset(service: impl RerunCloudService) {
     query_dataset_snapshot(
         &service,
         QueryDatasetRequest::default(),
+        &[],
         dataset_name,
         "empty_dataset",
     )
@@ -84,6 +87,7 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
         query_dataset_snapshot(
             &service,
             request,
+            &[],
             dataset_name,
             &format!("simple_dataset_{snapshot_name}"),
         )
@@ -112,6 +116,7 @@ pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
     query_dataset_snapshot(
         &service,
         QueryDatasetRequest::default(),
+        &[],
         dataset_name,
         "simple_with_layer",
     )
@@ -249,12 +254,10 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         )
         .await;
 
-    // TODO(RR-2613): we need considerably more use-cases here, but OSS server currently disregards the
-    // `query` parameter. So we're stuck with queries that should return all chunks. In the mean
-    // time, this test is useful to validate that the returned schema is correct.
+    // TODO(RR-2613): we need considerably more use-cases here.
     let queries = [
-        (None, "none"),
-        (Some(Query::default()), "default"),
+        (None, vec![], "none"),
+        (Some(Query::default()), vec![], "default"),
         (
             Some(Query {
                 latest_at: Some(QueryLatestAt {
@@ -264,6 +267,9 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 range: None,
                 ..Default::default()
             }),
+            vec![ChunkId::from_tuid(re_tuid::Tuid::from_nanos_and_inc(
+                100, 3,
+            ))],
             "latest_at_end",
         ),
         (
@@ -278,11 +284,14 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 }),
                 ..Default::default()
             }),
+            vec![ChunkId::from_tuid(re_tuid::Tuid::from_nanos_and_inc(
+                100, 3,
+            ))],
             "range_all",
         ),
     ];
 
-    for (query, snapshot_name) in queries {
+    for (query, chunk_ids_to_remove, snapshot_name) in queries {
         query_dataset_snapshot(
             &service,
             QueryDatasetRequest {
@@ -296,6 +305,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
                 scan_parameters: None,
                 query,
             },
+            &chunk_ids_to_remove,
             dataset_name,
             &format!("with_query_{snapshot_name}"),
         )
@@ -305,9 +315,11 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
 
 // ---
 
+// TODO(rerun-io/dataplatform#2228) remove the `chunk_ids_to_remove` parameter
 async fn query_dataset_snapshot(
     service: &impl RerunCloudService,
     query_dataset_request: QueryDatasetRequest,
+    chunk_ids_to_remove: &[ChunkId],
     dataset_name: &str,
     snapshot_name: &str,
 ) {
@@ -326,6 +338,7 @@ async fn query_dataset_snapshot(
         .await;
 
     let merged_chunk_info = concat_record_batches(&chunk_info);
+    let merged_chunk_info = remove_rows_containing_chunk_id(merged_chunk_info, chunk_ids_to_remove);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
     let required_field = QueryDatasetResponse::fields();
@@ -364,4 +377,42 @@ async fn query_dataset_snapshot(
         format!("{snapshot_name}_data"),
         filtered_chunk_info.format_snapshot(false)
     );
+}
+
+/// Utility function to removes specific rows from a record batch. Because
+/// correctness only requires that a minimal chunks are returned, it is
+/// acceptable for additional chunks to be included in query results. While
+/// not optimal, this function allows us to test for correctness while
+/// we make improvements in performance.
+fn remove_rows_containing_chunk_id(
+    rb: RecordBatch,
+    chunk_ids: &[re_types_core::ChunkId],
+) -> RecordBatch {
+    let chunk_id_col = rb
+        .column_by_name("chunk_id")
+        .expect("Missing column chunk_id");
+
+    let chunk_id_array = chunk_id_col
+        .as_any()
+        .downcast_ref::<FixedSizeBinaryArray>()
+        .expect("chunk_id is not FixedSizeBinary");
+    let chunk_id_slice = re_types_core::ChunkId::try_slice_from_arrow(chunk_id_array)
+        .expect("chunk_id column should be convertible to ChunkId slice");
+
+    let mut indices_to_keep = Vec::new();
+
+    for row_idx in 0..chunk_id_slice.len() {
+        let chunk_id = chunk_id_slice[row_idx];
+        if !chunk_ids.contains(&chunk_id) {
+            indices_to_keep.push(row_idx as u32);
+        }
+    }
+
+    let indices = UInt32Array::from(indices_to_keep);
+
+    let resultant_rows = arrow::compute::take_arrays(rb.columns(), &indices, None)
+        .expect("take_arrays should return arrays");
+
+    RecordBatch::try_new_with_options(rb.schema(), resultant_rows, &RecordBatchOptions::default())
+        .expect("should create record batch")
 }
