@@ -22,7 +22,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let dataset_name = "my_dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     let segment_id = SegmentId::new("my_segment".to_owned());

@@ -649,6 +649,18 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
+                if !rrd_path.exists() {
+                    return Err(tonic::Status::not_found(format!(
+                        "RRD file not found, file does not exists: {rrd_path:?}"
+                    )));
+                }
+
+                if !rrd_path.is_file() {
+                    return Err(tonic::Status::not_found(format!(
+                        "RRD file not found, path is not a file: {rrd_path:?}"
+                    )));
+                }
+
                 let new_segment_ids = dataset
                     .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
                     .await?;
@@ -661,6 +673,16 @@ impl RerunCloudService for RerunCloudHandler {
                     storage_urls.push(storage_url.to_string());
                     task_ids.push(DUMMY_TASK_ID.to_owned());
                 }
+            } else {
+                return if storage_url.scheme() == "file" && storage_url.host().is_some() {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
+                    )))
+                } else {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, could not load URI: {storage_url}"
+                    )))
+                };
             }
         }
 

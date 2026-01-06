@@ -125,6 +125,9 @@ exclude = [
   'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
+  'file:///does/not/exist.rrd',
+  'file://path/to/file.rrd',
+  'file://somehost/file/path.rrd',
 
   'https://redap.rerun.io',
   'http://wrong-scheme',
