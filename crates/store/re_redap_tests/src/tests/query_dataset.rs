@@ -235,7 +235,7 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(
+        .register_with_dataset_name_blocking(
             dataset_name,
             vec![
                 DataSource {
