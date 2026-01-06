@@ -121,7 +121,7 @@ def generate_config_file(output_path: Path) -> bool:
         f"executable={python_path}",
         f"pointer_width={config['pointer_width']}",
         f"build_flags={config['build_flags']}",
-        f"suppress_build_script_link_lines=false",
+        "suppress_build_script_link_lines=false",
     ]
 
     # Only include python_framework_prefix if non-empty (macOS)
