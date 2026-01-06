@@ -36,10 +36,17 @@ with rr.server.Server(datasets={
 When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
 
 You can also start a longer running server in a separate process and connect to it by its local address.
+In one file or terminal launch the server and print its address,
 
 ```python
 server = rr.server.Server()
-client = rr.catalog.CatalogClient(server.address())
+print(server.address())
+```
+
+in a separate file or terminal connect to that address
+
+```python
+client = rr.catalog.CatalogClient(server_address)
 ```
 
 ## Adding new datasets
