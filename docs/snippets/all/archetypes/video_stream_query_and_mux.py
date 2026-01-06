@@ -20,7 +20,7 @@ def read_h264_samples_from_rrd(rrd_path: str, video_entity: str, timeline: str) 
 
     # Make sure this is H.264 encoded.
     # For that we just read out the first codec value batch and check whether it's H.264.
-    first_codec_batch = df.select(f"{video_entity}:VideoStream:codec").execute_stream().next()
+    first_codec_batch = df.select(f"/{video_entity}:VideoStream:codec").execute_stream().next()
     if first_codec_batch is None:
         raise ValueError(f"There's no video stream codec specified at {video_entity} for timeline {timeline}.")
     codec_value = first_codec_batch.to_pyarrow().column(0)[0][0].as_py()
@@ -33,7 +33,7 @@ def read_h264_samples_from_rrd(rrd_path: str, video_entity: str, timeline: str) 
         print(f"Video stream codec is H.264 at {video_entity} for timeline {timeline}.")
 
     # Get the video stream
-    timestamps_and_samples = df.select(timeline, f"{video_entity}:VideoStream:sample").to_arrow_table()
+    timestamps_and_samples = df.select(timeline, f"/{video_entity}:VideoStream:sample").to_arrow_table()
     times = timestamps_and_samples[0]
     samples = timestamps_and_samples[1]
 
