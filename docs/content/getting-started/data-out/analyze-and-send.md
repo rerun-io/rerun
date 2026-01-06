@@ -35,7 +35,7 @@ Here is how to send the data as a scalar:
 
 snippet: tutorials/data_out[send_columns]
 
-We use the [`rr.send_column()`](../../howto/logging-and-ingestion/send-columns.md) API to efficiently send the entire column of data in a single batch.
+We use the [`rr.send_column()`](../../howto/send_columns.md) API to efficiently send the entire column of data in a single batch.
 
 Next, let's send the same data as `Text` component:
 
