@@ -24,6 +24,7 @@ mod catalog;
 mod dataframe;
 mod python_bridge;
 mod server;
+mod urdf;
 mod utils;
 mod video;
 mod viewer;

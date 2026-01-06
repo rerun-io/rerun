@@ -262,6 +262,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // server
     crate::server::register(py, m)?;
 
+    // urdf
+    crate::urdf::register(py, m)?;
+
     Ok(())
 }
 
