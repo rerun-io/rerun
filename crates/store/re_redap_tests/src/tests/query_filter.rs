@@ -1,8 +1,3 @@
-use crate::RecordBatchTestExt as _;
-use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
-};
-use crate::utils::client::create_test_client;
 use arrow::array::RecordBatch;
 use datafusion::datasource::TableProvider as _;
 use datafusion::execution::SessionState;
@@ -12,6 +7,12 @@ use futures::{StreamExt as _, TryStreamExt as _};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::EntityPath;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+
+use crate::RecordBatchTestExt as _;
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+};
+use crate::utils::client::create_test_client;
 
 pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
     #![expect(unsafe_code)]
@@ -39,7 +40,7 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
     let dataset_name = "dataset";
     let dataset_entry = service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     let client = create_test_client(service).await;
