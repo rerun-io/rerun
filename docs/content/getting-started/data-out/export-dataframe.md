@@ -29,7 +29,7 @@ snippet: tutorials/data_out[query_data]
 A lot is happening here, let's go step by step:
 
 1. We first create a _view_ into the recording. The view specifies which content we want to use (in this case the `"/blendshapes/0/jawOpen"` entity). The view defines a subset of all the data contained in the recording where each row has a unique value for the index.
-2. In order to perform queries a view must become a dataframe. We use the reader call to specify this transformation where we specify our index (timeline) of interest.
+2. In order to perform queries a view must become a dataframe. We use the `reader()` call to specify this transformation where we specify our index (timeline) of interest.
 3. The object returned by `reader()` is a [`datafusion.Dataframe`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame).
 
 [DataFusion](https://datafusion.apache.org/python/) provides a pythonic dataframe interface to your data as well as [SQL](https://datafusion.apache.org/python/user-guide/sql.html) querying.
