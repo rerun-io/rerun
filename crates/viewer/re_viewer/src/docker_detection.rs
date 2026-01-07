@@ -20,10 +20,10 @@ fn is_docker_impl() -> bool {
         let cgroup_paths = ["/proc/1/cgroup", "/proc/self/cgroup"];
 
         for path in &cgroup_paths {
-            if let Ok(contents) = std::fs::read_to_string(path) {
-                if contents.contains("docker") {
-                    return true;
-                }
+            if let Ok(contents) = std::fs::read_to_string(path)
+                && contents.contains("docker")
+            {
+                return true;
             }
         }
         false
