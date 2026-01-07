@@ -13,6 +13,8 @@ use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 use crate::sorted_range_map::SortedRangeMap;
 
+mod time_range_merger;
+
 /// Errors that can occur during prefetching.
 #[derive(thiserror::Error, Debug)]
 pub enum PrefetchError {
@@ -437,130 +439,12 @@ impl RrdManifestIndex {
         &self,
         timeline: &Timeline,
     ) -> impl Iterator<Item = AbsoluteTimeRange> {
-        fn merge_ranges(
-            ranges: &mut Vec<(bool, AbsoluteTimeRange)>,
-        ) -> Vec<(bool, AbsoluteTimeRange)> {
-            /// Wrapper struct for custom ordering in binary heap.
-            struct DelayedRange {
-                range: AbsoluteTimeRange,
-                loaded: bool,
-            }
-
-            impl PartialEq for DelayedRange {
-                fn eq(&self, other: &Self) -> bool {
-                    self.range.min == other.range.min
-                }
-            }
-
-            impl Eq for DelayedRange {}
-
-            impl PartialOrd for DelayedRange {
-                fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                    Some(self.cmp(other))
-                }
-            }
-
-            impl Ord for DelayedRange {
-                fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                    self.range.min.cmp(&other.range.min).reverse()
-                }
-            }
-            ranges.sort_by_key(|(_, r)| r.min);
-            let mut new_ranges = Vec::new();
-            let mut delayed_ranges = std::collections::BinaryHeap::<DelayedRange>::new();
-            let mut add_range =
-                |loaded: bool, mut range: AbsoluteTimeRange| -> Option<DelayedRange> {
-                    let Some((last_loaded, last_range)) = new_ranges.last_mut() else {
-                        new_ranges.push((loaded, range));
-                        return None;
-                    };
-
-                    match (*last_loaded).cmp(&loaded) {
-                        // Equal states for both ranges, combine them.
-                        std::cmp::Ordering::Equal => {
-                            last_range.max = last_range.max.max(range.max);
-                            None
-                        }
-                        // The last state should be prioritized
-                        std::cmp::Ordering::Less => {
-                            if last_range.max <= range.min {
-                                // To not leave any gaps between states, expand the prioritized last state
-                                last_range.max = range.min;
-                                new_ranges.push((loaded, range));
-                                None
-                            } else if last_range.max < range.max {
-                                // To not have overlapping states, start the current state at the end of the prioritized last state
-                                range.min = last_range.max;
-                                Some(DelayedRange { range, loaded })
-                            } else {
-                                None
-                            }
-                        }
-                        // The current state should be prioritized
-                        std::cmp::Ordering::Greater => {
-                            if range.min <= last_range.max {
-                                // To not have overlapping states, start the last state at the end of the prioritized current state
-                                let delayed_range = if range.max < last_range.max {
-                                    Some(DelayedRange {
-                                        range: AbsoluteTimeRange::new(range.max, last_range.max),
-                                        loaded: *last_loaded,
-                                    })
-                                } else {
-                                    None
-                                };
-
-                                if last_range.min == range.min {
-                                    // We can replace the last here since we don't want overlapping states
-                                    *last_range = range;
-                                    *last_loaded = loaded;
-                                } else {
-                                    last_range.max = range.min;
-
-                                    new_ranges.push((loaded, range));
-                                }
-
-                                delayed_range
-                            } else {
-                                // To not leave any gaps between states, expand the prioritized current state
-                                // to start at the end of the last state
-                                range.min = last_range.max;
-                                new_ranges.push((loaded, range));
-
-                                None
-                            }
-                        }
-                    }
-                };
-
-            for (loaded, range) in ranges {
-                debug_assert!(range.min <= range.max, "Negative time-range");
-
-                while delayed_ranges
-                    .peek()
-                    .is_some_and(|r| r.range.min <= range.min)
-                    && let Some(r) = delayed_ranges.pop()
-                {
-                    if let Some(delayed_range) = add_range(r.loaded, r.range) {
-                        delayed_ranges.push(delayed_range);
-                    }
-                }
-                if let Some(delayed_range) = add_range(*loaded, *range) {
-                    delayed_ranges.push(delayed_range);
-                }
-            }
-
-            while let Some(r) = delayed_ranges.pop() {
-                if let Some(delayed_range) = add_range(r.loaded, r.range) {
-                    delayed_ranges.push(delayed_range);
-                }
-            }
-
-            new_ranges
-        }
-
         let mut scratch = Vec::new();
         let mut ranges = Vec::new();
 
+        // First we merge ranges for individual components, since chunks' time ranges
+        // often have gaps which we don't want to display other components' chunks
+        // loaded state in.
         for timelines in self.native_temporal_map.values() {
             let Some(data) = timelines.get(timeline) else {
                 continue;
@@ -570,19 +454,22 @@ impl RrdManifestIndex {
                 scratch.extend(chunks.iter().filter_map(|(c, range)| {
                     let state = self.remote_chunk_info(c)?.state;
 
-                    Some((state.is_loaded(), range.time_range))
+                    Some(time_range_merger::TimeRange {
+                        range: range.time_range,
+                        loaded: state.is_loaded(),
+                    })
                 }));
 
-                ranges.extend(merge_ranges(&mut scratch));
+                ranges.extend(time_range_merger::merge_ranges(&mut scratch));
 
                 scratch.clear();
             }
         }
 
-        merge_ranges(&mut ranges)
+        time_range_merger::merge_ranges(&mut ranges)
             .into_iter()
-            .filter(|(loaded, _)| *loaded)
-            .map(|(_, range)| range)
+            .filter(|r| r.loaded)
+            .map(|r| r.range)
     }
 
     /// If `component` is some, this returns all unloaded temporal entries for that specific
