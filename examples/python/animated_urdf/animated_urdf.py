@@ -29,6 +29,8 @@ def main() -> None:
     # Log the URDF file once, as a static resource
     rec.log_file_from_path(urdf_path, static=True)
 
+    rec.flush()
+
     # Load the URDF tree structure into memory
     urdf_tree = rr.urdf.UrdfTree.from_file_path(urdf_path)
 
