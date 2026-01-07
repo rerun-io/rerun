@@ -597,6 +597,7 @@ debug = true # enable debug symbols for build scripts
 
 
 [workspace.lints.rust]
+unknown_lints = "deny"
 unsafe_code = "deny"
 
 absolute_paths_not_starting_with_crate = "warn"
