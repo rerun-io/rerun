@@ -1,11 +1,12 @@
 use re_chunk_store::RowId;
-use re_renderer::renderer::ColormappedTexture;
-use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError};
-use re_sdk_types::components::GammaCorrection;
+use re_renderer::renderer::{ColorMapper, ColormappedTexture};
+use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc, SourceImageDataFormat, TextureManager2DError};
+use re_sdk_types::components::{ClassId, GammaCorrection};
 use re_sdk_types::datatypes::TensorData;
 use re_sdk_types::tensor_data::{TensorCastError, TensorDataType};
-use re_viewer_context::ColormapWithRange;
+use re_viewer_context::{Annotations, ColormapWithRange};
 use re_viewer_context::gpu_bridge::{self, colormap_to_re_renderer};
+use wgpu::TextureFormat;
 
 use crate::dimension_mapping::TensorSliceSelection;
 use crate::view_class::selected_tensor_slice;
@@ -24,10 +25,73 @@ pub fn colormapped_texture(
     tensor_data_row_id: RowId,
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
+    annotations: &Annotations,
     colormap: &ColormapWithRange,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
+
+    if tensor.dtype().is_integer() {
+        // If it's an integer tensor, check if we have annotations for it.
+        // We check if any of the values in the tensor (approximated by checking if the class map is non-empty)
+        // has a description.
+        // Note: This is a bit of a heuristic. Ideally we'd check if the values in the tensor
+        // actually match the annotations, or if the user explicitly requested segmentation.
+        // For now, we assume if there's *any* annotation info, we want to treat it as segmentation.
+        // This mirrors how `segmentation_image_to_gpu` works implicitly via `ImageKind::Segmentation`.
+        
+        // We use the row_id of the tensor for the texture cache key.
+        // And the row_id of the annotations for the colormap cache key.
+        
+        // Note: We should probably look at the actual values in the slice to determine the range
+        // for the colormap, similar to how segmentation images work.
+        // For now, we just support u8 and u16.
+        
+        let should_use_segmentation = annotations.row_id() != RowId::ZERO;
+
+        if should_use_segmentation {
+             let colormap_key = egui::util::hash((annotations.row_id(), "tensor_segmentation_colormap"));
+
+             // We only support u8 and u16 class ids for now.
+             // Any values greater than this will be unmapped.
+             let max_class_id = 65535;
+             let num_colors = (max_class_id + 1) as usize;
+             let colormap_width = 256;
+             let colormap_height = num_colors.div_ceil(colormap_width);
+
+             let colormap_texture_handle = gpu_bridge::try_get_or_create_texture(render_ctx, colormap_key, || {
+                let data: Vec<u8> = (0..(colormap_width * colormap_height))
+                    .flat_map(|id| {
+                        let color = annotations
+                            .resolved_class_description(Some(ClassId::from(id as u16)))
+                            .annotation_info()
+                            .color()
+                            .unwrap_or(re_renderer::Color32::TRANSPARENT);
+                        color.to_array() // premultiplied!
+                    })
+                    .collect();
+
+                Ok::<_, TensorUploadError>(ImageDataDesc {
+                    label: "class_id_colormap".into(),
+                    data: data.into(),
+                    format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
+                    width_height: [colormap_width as u32, colormap_height as u32],
+                })
+             })?;
+
+            let texture = upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
+
+            return Ok(ColormappedTexture {
+                texture,
+                range: [0.0, (colormap_width * colormap_height) as f32],
+                decode_srgb: false,
+                texture_alpha: re_renderer::renderer::TextureAlpha::AlreadyPremultiplied,
+                gamma: 1.0,
+                color_mapper: ColorMapper::Texture(colormap_texture_handle),
+                shader_decoding: None,
+            });
+        }
+    }
 
     let texture =
         upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;

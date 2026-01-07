@@ -2,7 +2,9 @@ use egui::{Response, Ui};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
+use re_sdk_types::View as _;
 use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::views::TensorView;
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -126,14 +128,13 @@ fn create_view_for_selected_entities(
         .filter_map(|(item, _)| item.entity_path().cloned())
         .collect::<IntSet<_>>();
 
-    let origin = ctx
+    let view_class = ctx
         .viewer_context
         .view_class_registry()
-        .get_class_or_log_error(identifier)
+        .get_class_or_log_error(identifier);
+    let origin = view_class
         .recommended_origin_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
-
-    let mut query_filter = EntityPathFilter::default();
 
     let target_container_id = ctx
         .clicked_item_enclosing_container_id_and_position()
@@ -143,25 +144,48 @@ fn create_view_for_selected_entities(
     // relative to the origin. This makes sense since if you create a view and
     // then change the origin you likely wanted those entities to still be there.
 
-    #[expect(clippy::iter_over_hash_type)] // Order of rule insertion does not matter here
-    for path in entities_of_interest {
-        query_filter.insert_rule(
-            RuleEffect::Include,
-            EntityPathRule::including_entity_subtree(&path),
-        );
-    }
-    let recommended = RecommendedView {
-        origin,
-        query_filter,
-    };
+    if identifier == TensorView::identifier() && entities_of_interest.len() > 1 {
+        let mut entities = entities_of_interest.into_iter().collect::<Vec<_>>();
+        entities.sort();
 
-    let view = ViewBlueprint::new(identifier, recommended);
-    let view_id = view.id;
-    ctx.viewport_blueprint
-        .add_views(std::iter::once(view), target_container_id, None);
-    ctx.viewer_context
-        .command_sender()
-        .send_system(SystemCommand::set_selection(Item::View(view_id)));
+        let mut views = Vec::with_capacity(entities.len());
+        for entity_path in entities {
+            views.push(ViewBlueprint::new(
+                identifier,
+                RecommendedView::new_single_entity(entity_path),
+            ));
+        }
+
+        if let Some(view_id) = views.first().map(|view| view.id) {
+            ctx.viewport_blueprint
+                .add_views(views.into_iter(), target_container_id, None);
+            ctx.viewer_context
+                .command_sender()
+                .send_system(SystemCommand::set_selection(Item::View(view_id)));
+        }
+    } else {
+        let mut query_filter = EntityPathFilter::default();
+
+        #[expect(clippy::iter_over_hash_type)] // Order of rule insertion does not matter here
+        for path in entities_of_interest {
+            query_filter.insert_rule(
+                RuleEffect::Include,
+                EntityPathRule::including_entity_subtree(&path),
+            );
+        }
+        let recommended = RecommendedView {
+            origin,
+            query_filter,
+        };
+
+        let view = ViewBlueprint::new(identifier, recommended);
+        let view_id = view.id;
+        ctx.viewport_blueprint
+            .add_views(std::iter::once(view), target_container_id, None);
+        ctx.viewer_context
+            .command_sender()
+            .send_system(SystemCommand::set_selection(Item::View(view_id)));
+    }
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }
