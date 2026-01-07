@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Fix some telemetry, depth images, and logging
+## [0.28.1](https://github.com/rerun-io/rerun/compare/0.28.0...0.28.1) - 2025-12-18 - Fix some telemetry, depth images, and logging
 
 #### 🪵 Log API
 - Ensure that `flush` waits for all data loaders to finish [#12281](https://github.com/rerun-io/rerun/pull/12281)
