@@ -1,5 +1,5 @@
 ---
 title: Static Data
 hidden: true
-redirect: /docs/topics/data-model/static
+redirect: /docs/concepts/data-model/static
 ---

@@ -1,5 +1,5 @@
 ---
 title: Annotation Context
 hidden: true
-redirect: /docs/topics/building-visualization/annotation-context
+redirect: /docs/concepts/building-visualization/annotation-context
 ---

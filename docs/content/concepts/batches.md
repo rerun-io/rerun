@@ -1,5 +1,5 @@
 ---
 title: Batches
 hidden: true
-redirect: /docs/topics/data-model/batches
+redirect: /docs/concepts/data-model/batches
 ---

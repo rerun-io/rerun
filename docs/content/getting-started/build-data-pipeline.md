@@ -22,4 +22,4 @@ More information about Rerun Dataplatform will be available soon. In the meantim
 
 - Learn how to [send data to Rerun](data-in.md)
 - Explore how to [query data](data-out.md)
-- Understand Rerun's [storage concepts](../topics/storage.md)
+- Understand Rerun's [storage concepts](../concepts/storage.md)

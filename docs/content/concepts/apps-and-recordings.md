@@ -1,5 +1,5 @@
 ---
 title: Apps and Recordings
 hidden: true
-redirect: /docs/topics/storage/apps-and-recordings
+redirect: /docs/concepts/storage/apps-and-recordings
 ---

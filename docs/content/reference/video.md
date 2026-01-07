@@ -1,5 +1,5 @@
 ---
 title: Video
 hidden: true
-redirect: /docs/topics/data-model/video
+redirect: /docs/concepts/data-model/video
 ---

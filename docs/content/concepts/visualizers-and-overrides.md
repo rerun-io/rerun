@@ -1,5 +1,5 @@
 ---
 title: Visualizers and Overrides
 hidden: true
-redirect: /docs/topics/building-visualization/visualizers-and-overrides
+redirect: /docs/concepts/building-visualization/visualizers-and-overrides
 ---

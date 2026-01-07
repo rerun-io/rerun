@@ -1,5 +1,5 @@
 ---
 title: C++
 hidden: true
-redirect: /docs/topics/storage/data-loaders/cpp
+redirect: /docs/concepts/storage/data-loaders/cpp
 ---

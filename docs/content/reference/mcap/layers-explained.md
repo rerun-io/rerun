@@ -1,5 +1,5 @@
 ---
 title: Layers explained
 hidden: true
-redirect: /docs/topics/storage/mcap/layers-explained
+redirect: /docs/concepts/storage/mcap/layers-explained
 ---

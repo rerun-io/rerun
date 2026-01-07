@@ -1,5 +1,5 @@
 ---
 title: Data-loaders
 hidden: true
-redirect: /docs/topics/storage/data-loaders
+redirect: /docs/concepts/storage/data-loaders
 ---

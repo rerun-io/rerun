@@ -1,5 +1,5 @@
 ---
 title: Dataframes
 hidden: true
-redirect: /docs/topics/query-semantics/dataframes
+redirect: /docs/concepts/query-semantics/dataframes
 ---

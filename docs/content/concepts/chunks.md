@@ -1,5 +1,5 @@
 ---
 title: Chunks
 hidden: true
-redirect: /docs/topics/data-model/chunks
+redirect: /docs/concepts/data-model/chunks
 ---

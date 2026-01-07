@@ -1,5 +1,5 @@
 ---
 title: Events and Timelines
 hidden: true
-redirect: /docs/topics/data-model/timelines
+redirect: /docs/concepts/data-model/timelines
 ---

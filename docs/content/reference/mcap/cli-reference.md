@@ -1,5 +1,5 @@
 ---
 title: CLI Reference
 hidden: true
-redirect: /docs/topics/storage/mcap/cli-reference
+redirect: /docs/concepts/storage/mcap/cli-reference
 ---

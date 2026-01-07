@@ -1,5 +1,5 @@
 ---
 title: Python
 hidden: true
-redirect: /docs/topics/storage/data-loaders/python
+redirect: /docs/concepts/storage/data-loaders/python
 ---

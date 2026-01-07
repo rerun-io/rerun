@@ -1,5 +1,5 @@
 ---
 title: Entity Path
 hidden: true
-redirect: /docs/topics/data-model/entity-path
+redirect: /docs/concepts/data-model/entity-path
 ---

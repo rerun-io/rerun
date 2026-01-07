@@ -23,36 +23,36 @@ Step-by-step guides to get up and running quickly:
 - **[Query Data](../getting-started/data-out.md)** - Query and export data from Rerun recordings
 - **[Build Data Pipelines](../getting-started/build-data-pipeline.md)** - Production data infrastructure
 
-## Topics
+## Concepts
 
 Understanding the foundational concepts behind Rerun:
 
 ### Data model
-- **[Entity Component System](../topics/data-model/entity-component.md)** - Rerun's data model
-- **[Entity Paths](../topics/data-model/entity-path.md)** - Organizing your data hierarchically
-- **[Transforms](../topics/data-model/transforms.md)** - Working with coordinate systems
-- **[Timelines](../topics/data-model/timelines.md)** - Managing temporal data
-- **[Batches](../topics/data-model/batches.md)** - Efficiently logging collections of data
-- **[Static Data](../topics/data-model/static.md)** - Data that exists across all timelines
-- **[Chunks](../topics/data-model/chunks.md)** - Internal storage mechanism (advanced)
-- **[Video](../topics/data-model/video.md)** - Video data handling
+- **[Entity Component System](../concepts/data-model/entity-component.md)** - Rerun's data model
+- **[Entity Paths](../concepts/data-model/entity-path.md)** - Organizing your data hierarchically
+- **[Transforms](../concepts/data-model/transforms.md)** - Working with coordinate systems
+- **[Timelines](../concepts/data-model/timelines.md)** - Managing temporal data
+- **[Batches](../concepts/data-model/batches.md)** - Efficiently logging collections of data
+- **[Static Data](../concepts/data-model/static.md)** - Data that exists across all timelines
+- **[Chunks](../concepts/data-model/chunks.md)** - Internal storage mechanism (advanced)
+- **[Video](../concepts/data-model/video.md)** - Video data handling
 
 ### Building visualization
-- **[Blueprints](../topics/building-visualization/blueprints.md)** - Configuring visualization layouts
-- **[Visualizers and Overrides](../topics/building-visualization/visualizers-and-overrides.md)** - Customizing rendering
-- **[Annotation Context](../topics/building-visualization/annotation-context.md)** - Shared styling and labels
+- **[Blueprints](../concepts/building-visualization/blueprints.md)** - Configuring visualization layouts
+- **[Visualizers and Overrides](../concepts/building-visualization/visualizers-and-overrides.md)** - Customizing rendering
+- **[Annotation Context](../concepts/building-visualization/annotation-context.md)** - Shared styling and labels
 
 ### Storage
-- **[Apps and Recordings](../topics/storage/apps-and-recordings.md)** - Managing application and recording IDs
-- **[Sinks](../topics/storage/sinks.md)** - Where data can be sent
-- **[Data-loaders](../topics/storage/data-loaders.md)** - Loading data from external sources
-- **[MCAP](../topics/storage/mcap.md)** - MCAP file format support
-- **[RRD Format](../topics/storage/rrd-format.md)** - Rerun's native data format
+- **[Apps and Recordings](../concepts/storage/apps-and-recordings.md)** - Managing application and recording IDs
+- **[Sinks](../concepts/storage/sinks.md)** - Where data can be sent
+- **[Data-loaders](../concepts/storage/data-loaders.md)** - Loading data from external sources
+- **[MCAP](../concepts/storage/mcap.md)** - MCAP file format support
+- **[RRD Format](../concepts/storage/rrd-format.md)** - Rerun's native data format
 
 ### Query semantics
-- **[Latest-at Semantics](../topics/query-semantics/latest-at.md)** - How Rerun resolves data queries
-- **[Entity Queries](../topics/query-semantics/entity-queries.md)** - Selecting entities for views
-- **[Dataframes](../topics/query-semantics/dataframes.md)** - Working with data as dataframes
+- **[Latest-at Semantics](../concepts/query-semantics/latest-at.md)** - How Rerun resolves data queries
+- **[Entity Queries](../concepts/query-semantics/entity-queries.md)** - Selecting entities for views
+- **[Dataframes](../concepts/query-semantics/dataframes.md)** - Working with data as dataframes
 
 ## Cookbook
 

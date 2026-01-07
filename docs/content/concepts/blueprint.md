@@ -1,5 +1,5 @@
 ---
 title: Blueprint
 hidden: true
-redirect: /docs/topics/building-visualization/blueprints
+redirect: /docs/concepts/building-visualization/blueprints
 ---
