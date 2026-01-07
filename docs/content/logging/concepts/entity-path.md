@@ -10,7 +10,7 @@ The first argument to the `log()` function is this path. Each time you log to a 
 
 It is possible to log multiple types of archetypes on the same entity path, but you should generally avoid mixing different kinds of geometric primitive. For example, logging a [`Points3D`](../reference/types/archetypes/points3d.md) point cloud on an entity path where a [`Mesh3D`](../reference/types/archetypes/mesh3d.md) was previously logged would overwrite the mesh's [`Position3D`](../reference/types/components/position3d.md) component with the point cloud's, but would leave the `triangle_indices` component untouched. The Rerun Viewer would likely be unable to display the result. See the [Entity Component](entity-component.md) section for more information.
 
-There _are_ valid reasons to logs different kinds of archetypes to the same entity path, though. For example, it's common to log a [`Transform3D`](../reference/types/archetypes/transform3d.md) along with some geometry it relates to (see the [Spaces and Transforms](spaces-and-transforms.md) for more info).
+There _are_ valid reasons to logs different kinds of archetypes to the same entity path, though. For example, it's common to log a [`Transform3D`](../reference/types/archetypes/transform3d.md) along with some geometry it relates to (see the [Spaces and Transforms](../../concepts/spaces-and-transforms.md) for more info).
 
 Rerun treats entity paths as being arranged in a hierarchy with the `/` character acting as a separator between path
 elements. The conventional path semantics including concepts of *root* and *parent*/*child* generally apply.
@@ -52,10 +52,10 @@ So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the es
 ### Path hierarchy functions
 Path hierarchy plays an important role in a number of different functions within Rerun:
 
- * With the [Transform System](spaces-and-transforms.md) the `transform` component logged to any entity always describes
+ * With the [Transform System](../../concepts/spaces-and-transforms.md) the `transform` component logged to any entity always describes
 the relationship between that entity and its direct parent.
- * When resolving the meaning of [`ClassId`](../reference/types/components/class_id.md) and [`KeypointId`](../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](annotation-context.md) from the nearest ancestor in the hierarchy.
- * When adding data to [Blueprints](../reference/viewer/blueprints.md), it is common to add a path and all of its descendants.
+ * When resolving the meaning of [`ClassId`](../reference/types/components/class_id.md) and [`KeypointId`](../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](../../concepts/annotation-context.md) from the nearest ancestor in the hierarchy.
+ * When adding data to [Blueprints](../../reference/viewer/blueprints.md), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
    ([#1158](https://github.com/rerun-io/rerun/issues/1158)).

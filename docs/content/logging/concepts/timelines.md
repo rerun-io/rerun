@@ -38,7 +38,7 @@ snippet: concepts/different_data_per_timeline
 On one timeline the points will appear blue, on the other they appear red.
 
 ### Sending many time points at once
-To get full control over the logged timelines you can use [`send_columns`](../howto/send_columns.md).
+To get full control over the logged timelines you can use [`send_columns`](../../howto/send_columns.md).
 This is often a lot more efficient when you already have a chunk of temporal data, e.g. some sensor value over time.
 
 
@@ -63,6 +63,6 @@ If `static=True` is used instead, the data logged becomes *static*. Static data 
 This is useful for data that isn't part of normal data capture, but sets the scene for how it should be shown.
 For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
 
-Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically static.
+Similarly, [coordinate systems](../../concepts/spaces-and-transforms.md) or [annotation context](../../concepts/annotation-context.md) are typically static.
 
 You can read more about static data in the [dedicated section](static.md).

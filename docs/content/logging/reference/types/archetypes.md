@@ -6,7 +6,7 @@ order: 1
 
 Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../concepts/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
+[Visualizers and Overrides](../../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.
 

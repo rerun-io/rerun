@@ -30,8 +30,8 @@ All of the code for this guide can be found on GitHub in
 
 Other relevant tutorials:
 
--   [Python SDK Tutorial](../../getting-started/data-in/python.md)
--   [Viewer Walkthrough](../../getting-started/configure-the-viewer/navigating-the-viewer.md)
+-   [Python SDK Tutorial](../../../getting-started/data-in/python.md)
+-   [Viewer Walkthrough](../../../getting-started/configure-the-viewer/navigating-the-viewer.md)
 
 ### ROS 2 & navigation
 
@@ -156,7 +156,7 @@ again.
 ### TF to rr.Transform3D
 
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the
-corresponding [Rerun Transforms](../../concepts/spaces-and-transforms.md#space-transformations).
+corresponding [Rerun Transforms](../../../concepts/spaces-and-transforms.md#space-transformations).
 
 In Rerun, each path represents a coordinate frame, so we need to decide which TF frame each path will
 correspond to. In general, this is the frame_id of the sensor data that will be logged to that

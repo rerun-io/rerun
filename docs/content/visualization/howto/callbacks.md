@@ -5,8 +5,8 @@ order: 50
 
 We support registering callbacks to Viewer events in these environments:
 
-- Web browsers, through our [JS package](./integrations/embed-web.md#callbacks)
-- Jupyter notebooks, through our [Notebook API](./integrations/embed-notebooks.md#reacting-to-events-in-the-viewer)
+- Web browsers, through our [JS package](../../howto/embed-rerun-viewer.md#callbacks)
+- Jupyter notebooks, through our [Notebook API](../../howto/integrations/embed-notebooks.md#reacting-to-events-in-the-viewer)
 
 For users extending the Viewer through the Rust [`re_viewer`](https://docs.rs/re_viewer/latest/re_viewer/) crate, there are two options:
 

@@ -51,7 +51,7 @@ This is useful to specify "default" transforms without yet knowing what timeline
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../concepts/visualizers-and-overrides.md))
+* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../concepts/../../concepts/visualizers-and-overrides.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 

@@ -50,7 +50,7 @@ Viewer-side compaction is more expensive than SDK-side micro-batching but has ac
 
 Constraints:
 * Runs: server-side, in the Viewer
-* Data access: the full in-memory dataset (although older data may have been [garbage collected](./visualization/limit-ram.md))
+* Data access: the full in-memory dataset (although older data may have been [garbage collected](../../howto/limit-ram.md))
 * Operational limits: must remain lightweight and responsive, as it shares CPU with other real-time viewer workloads. Runs as a streaming process — compaction happens as data arrives.
 
 
@@ -58,7 +58,7 @@ Constraints:
 
 Rerun offers CLI tools to inspect and optimize .rrd recordings or streamed data files.
 
-Use [`rerun rrd stats`](../reference/cli.md#rerun-rrd-stats) to view stats like chunk counts, sizes, and row distributions. This helps you determine if compaction is needed. For example:
+Use [`rerun rrd stats`](../../reference/cli.md#rerun-rrd-stats) to view stats like chunk counts, sizes, and row distributions. This helps you determine if compaction is needed. For example:
 ```sh
 $ rerun rrd stats <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 
@@ -94,7 +94,7 @@ ipc_size_bytes_p999 = 568 KiB
 # … truncated …
 ```
 
-If a file contains many small chunks, run [`rerun rrd compact`](../reference/cli.md#rerun-rrd-compact) to rewrite it with fewer, larger chunks. For example:
+If a file contains many small chunks, run [`rerun rrd compact`](../../reference/cli.md#rerun-rrd-compact) to rewrite it with fewer, larger chunks. For example:
 ```sh
 $ rerun rrd compact --max-rows 4096 --max-bytes 1048576 -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 merge/compaction finished srcs=["/dev/fd/63"] time=2.51217062s num_chunks_before=576 num_chunks_after=217 num_chunks_reduction="-62.326%" srcs_size_bytes=90.0 MiB dst_size_bytes=89.6 MiB size_reduction="-0.474%"

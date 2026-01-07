@@ -5,7 +5,7 @@ order: 1
 
 The Blueprint Panel shows the hierarchical structure of your current blueprint and provides controls for modifying the Viewer layout.
 
-For a complete understanding of blueprints, see [Blueprints](../../concepts/blueprints.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../../getting-started/configure-the-viewer.md).
+For a complete understanding of blueprints, see [Blueprints](../../concepts/blueprints.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../../../getting-started/configure-the-viewer.md).
 
 <picture>
   <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="Blueprint panel showing view hierarchy">
@@ -40,7 +40,7 @@ Hovering over any item reveals controls for:
 - **Eye icon**: Show or hide the item
 - **"-" button**: Remove the item from the blueprint
 
-Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer.md#interactive-configuration) for details on all interactive operations.
+Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../../getting-started/configure-the-viewer.md#interactive-configuration) for details on all interactive operations.
 
 ### Data blueprints
 
@@ -48,7 +48,7 @@ Entities shown in the blueprint panel refer to their *data blueprints*—the ent
 
 ### Groups
 
-When entities are added to a view (manually or automatically), hierarchical groupings are created based on [Entity Paths](../../concepts/entity-path.md). These groups help organize large views and enable hierarchical manipulation of blueprints. Groups are independent of logged data and exist purely for blueprint organization.
+When entities are added to a view (manually or automatically), hierarchical groupings are created based on [Entity Paths](../../../concepts/entity-path.md). These groups help organize large views and enable hierarchical manipulation of blueprints. Groups are independent of logged data and exist purely for blueprint organization.
 
 ## Adding entities to views
 
@@ -59,4 +59,4 @@ To add or re-add an entity to a view:
 
 See [Entity Queries](../../reference/entity-queries.md) for information on how view content is determined.
 
-For more information about configuring the viewer, see [Configure the Viewer](../../getting-started/configure-the-viewer.md).
+For more information about configuring the viewer, see [Configure the Viewer](../../../getting-started/configure-the-viewer.md).

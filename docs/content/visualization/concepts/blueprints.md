@@ -32,7 +32,7 @@ In general, if you can modify an aspect of how something looks through the Viewe
 
 ## Application IDs: binding blueprints to data
 
-The [Application ID](apps-and-recordings.md) is how blueprints connect to your data. This is a critical concept:
+The [Application ID](../../concepts/apps-and-recordings.md) is how blueprints connect to your data. This is a critical concept:
 
 **All recordings that share the same Application ID will use the same blueprint.**
 
@@ -81,7 +81,7 @@ Modify blueprints directly in the Viewer UI:
 -   Rename views and containers
 -   Show, hide, or remove elements
 
-This is the fastest way to experiment with layouts. See [Configure the Viewer](../getting-started/configure-the-viewer.md) for a complete guide.
+This is the fastest way to experiment with layouts. See [Configure the Viewer](../../getting-started/configure-the-viewer.md) for a complete guide.
 
 ### 2. Save and load files
 Save your blueprint configuration to `.rbl` files:
@@ -115,7 +115,7 @@ if robot_error:
     rr.send_blueprint(blueprint, make_active=True)
 ```
 
-See [Configure the Viewer](../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples and our guide on how to [build a blueprint programmatically](../howto/build-a-blueprint-programmatically.md).
+See [Configure the Viewer](../../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples and our guide on how to [build a blueprint programmatically](../howto/build-a-blueprint-programmatically.md).
 
 ## Common use cases
 
@@ -140,7 +140,7 @@ Generate blueprints programmatically based on runtime conditions. For instance, 
 
 ## Blueprint architecture
 
-Under the hood, blueprints are just data. They are structured using the same [Entity Component System](./entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
+Under the hood, blueprints are just data. They are structured using the same [Entity Component System](../../concepts/entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
@@ -161,7 +161,7 @@ This means the Viewer output is a deterministic function of the blueprint and th
 
 ## Next steps
 
--   **Learn to use blueprints**: See [Configure the Viewer](../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
+-   **Learn to use blueprints**: See [Configure the Viewer](../../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
 -   **Understand the UI**: Check the [Blueprint Panel Reference](../reference/viewer/blueprints.md) for details on UI controls
 -   **Customize visualizations**: Learn about [Visualizers and Overrides](visualizers-and-overrides.md) for advanced per-entity customization
 -   **Explore the API**: Browse the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control (Python)

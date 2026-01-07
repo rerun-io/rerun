@@ -53,7 +53,7 @@ Practical guides for specific tasks and advanced features:
 
 ### Visualization
 
--   **[Visualization](../viewing/howto.md)** - Advanced visualization techniques
+-   **[Visualization](../howto.md)** - Advanced visualization techniques
 -   **[Configure Viewer Through Code](../howto/configure-viewer-through-code.md)** - Programmatic viewer configuration
 -   **[Fixed Window Plots](../howto/fixed-window-plot.md)** - Creating time-windowed plots
 

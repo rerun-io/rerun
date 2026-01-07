@@ -24,22 +24,22 @@ This is determined by the [entity query](../reference/entity-queries.md), which 
 The query is run against the data store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities.
-For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
-and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLines` visualizer to display time series line plots.
+For example, [3D views](../../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
+and [time series views](../../reference/types/views/time_series_view.md) use the `SeriesLines` visualizer to display time series line plots.
 Which visualizers are available is highly dependent on the specific kind of view.
 For example, the `SeriesLines` visualizer only exist for time series views—not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
-By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
-For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
-This happens because the components of an [archetype](../reference/types/archetypes.md) are tagged with the
+By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).
+For example, in a 3D view, an entity logged with the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
+This happens because the components of an [archetype](../../reference/types/archetypes.md) are tagged with the
 archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer.
 
-Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
+Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../../reference/types/components/position3d.md), [`Radius`](../../reference/types/components/radius.md), and [`Color`](../../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
  depends on the actual type of visualizer and view.
 
-For an illustration, let's consider a simple example with just two [`Boxes2D`](../reference/types/archetypes/boxes2d.md):
+For an illustration, let's consider a simple example with just two [`Boxes2D`](../../reference/types/archetypes/boxes2d.md):
 
 snippet: concepts/viscomp-base
 
@@ -51,7 +51,7 @@ Here is how the user interface represents the `Boxes2D` visualizers in the selec
 </picture>
 
 
-All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
+All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
 
 
 
