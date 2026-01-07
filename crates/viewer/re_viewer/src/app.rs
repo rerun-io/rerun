@@ -3233,20 +3233,19 @@ impl eframe::App for App {
             force_store_info,
             promise,
         }) = &self.open_files_promise
+            && let Some(files) = promise.ready()
         {
-            if let Some(files) = promise.ready() {
-                for file in files {
-                    self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
-                            FileSource::FileDialog {
-                                recommended_store_id: recommended_store_id.clone(),
-                                force_store_info: *force_store_info,
-                            },
-                            file.clone(),
-                        )));
-                }
-                self.open_files_promise = None;
+            for file in files {
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
+                        FileSource::FileDialog {
+                            recommended_store_id: recommended_store_id.clone(),
+                            force_store_info: *force_store_info,
+                        },
+                        file.clone(),
+                    )));
             }
+            self.open_files_promise = None;
         }
 
         // NOTE: GPU resource stats are cheap to compute so we always do.
