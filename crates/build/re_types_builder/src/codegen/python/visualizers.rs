@@ -1,6 +1,11 @@
+use itertools::Itertools as _;
+
 use crate::codegen::autogen_warning;
 use crate::codegen::common::StringExt as _;
-use crate::{ATTR_RERUN_VISUALIZER, ATTR_RERUN_VISUALIZER_NONE, ObjectKind, Objects, Reporter};
+use crate::codegen::python::quote_init_parameter_from_field;
+use crate::{
+    ATTR_RERUN_VISUALIZER, ATTR_RERUN_VISUALIZER_NONE, Object, ObjectKind, Objects, Reporter,
+};
 
 /// Generate the `visualizers.py` file containing constants for visualizer identifiers.
 ///
@@ -22,13 +27,9 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
 
     code.push_indented(0, "from typing import Any, Iterable", 2);
     code.push_indented(0, "from ._base import Visualizer", 2);
-    code.push_indented(
-        0,
-        "from ..._baseclasses import DescribedComponentBatch, AsComponents",
-        2,
-    );
+    code.push_indented(0, "from ... import components, datatypes", 2);
 
-    let mut visualizers: Vec<(String, String)> = Vec::new();
+    let mut visualizers: Vec<(&Object, String)> = Vec::new();
     let mut archetypes_without_attr = Vec::new();
 
     for obj in objects
@@ -45,7 +46,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         }
 
         if let Some(visualizer_name) = obj.try_get_attr::<String>(ATTR_RERUN_VISUALIZER) {
-            visualizers.push((obj.name.clone(), visualizer_name));
+            visualizers.push((obj, visualizer_name));
         } else {
             archetypes_without_attr.push(obj.name.clone());
         }
@@ -64,20 +65,52 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         );
     }
 
-    visualizers.sort_by(|a, b| a.0.cmp(&b.0));
+    visualizers.sort_by(|a, b| a.0.cmp(b.0));
 
     // Generated visualizer classes
-    for (archetype_name, visualizer_id) in &visualizers {
-        code.push_indented(0, format!("class {archetype_name}(Visualizer):"), 1);
+    for (archetype, visualizer_id) in &visualizers {
+        let parameters = archetype
+            .fields
+            .iter()
+            .map(|field| {
+                let mut field = field.clone();
+                field.is_nullable = true;
+                quote_init_parameter_from_field(&field, objects, &archetype.fqname)
+            })
+            .collect_vec()
+            .join(",\n");
+
+        code.push_indented(0, format!("class {}(Visualizer):", archetype.name), 1);
         code.push_indented(
             1,
-            "def __init__(self, *, overrides: AsComponents | Iterable[DescribedComponentBatch] = None, mappings: Any = None) -> None:",
+            format!("def __init__(self, *, {parameters}) -> None:"),
+            1,
+        );
+
+        code.push_indented(
+            2,
+            format!("from ...archetypes import {}", archetype.name),
             1,
         );
         code.push_indented(
             2,
             format!(
-                "super().__init__(\"{visualizer_id}\", overrides=overrides, mappings=mappings)",
+                "overrides = {}.from_fields({})",
+                archetype.name,
+                archetype
+                    .fields
+                    .iter()
+                    .map(|field| format!("{}={}", field.name, field.name))
+                    .collect_vec()
+                    .join(", ")
+            ),
+            1,
+        );
+
+        code.push_indented(
+            2,
+            format!(
+                "super().__init__(\"{visualizer_id}\", overrides=overrides, mappings=None)", // TODO(RR-3254): Support mappings
             ),
             2,
         );

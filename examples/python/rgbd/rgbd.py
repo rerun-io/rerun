@@ -190,9 +190,7 @@ def main() -> None:
                 rrb.Spatial2DView(
                     name="RGB & Depth",
                     origin="world/camera/image",
-                    visualizer_overrides={
-                        "world/camera/image/rgb": rrb.visualizers.Image(overrides=rr.Image.from_fields(opacity=0.5))
-                    },
+                    visualizer_overrides={"world/camera/image/rgb": rrb.visualizers.Image(opacity=0.5)},
                 ),
                 rrb.Tabs(
                     rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),

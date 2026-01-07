@@ -319,9 +319,7 @@ def main() -> None:
             name=sensor_name,
             origin=f"world/ego_vehicle/{sensor_name}",
             contents=["$origin/**", "world/anns"],
-            visualizer_overrides={
-                "world/anns": rrb.visualizers.Boxes3D(overrides=rr.Boxes3D.from_fields(fill_mode="majorwireframe"))
-            },
+            visualizer_overrides={"world/anns": rrb.visualizers.Boxes3D(fill_mode="majorwireframe")},
         )
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
@@ -333,9 +331,7 @@ def main() -> None:
                     origin="world",
                     # Set the image plane distance to 5m for all camera visualizations.
                     defaults=[rr.Pinhole.from_fields(image_plane_distance=5.0)],
-                    visualizer_overrides={
-                        "world/anns": rrb.visualizers.Boxes3D(overrides=rr.Boxes3D.from_fields(fill_mode="solid"))
-                    },
+                    visualizer_overrides={"world/anns": rrb.visualizers.Boxes3D(fill_mode="solid")},
                 ),
                 rrb.Vertical(
                     rrb.TextDocumentView(origin="description", name="Description"),

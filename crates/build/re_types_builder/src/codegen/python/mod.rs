@@ -2502,7 +2502,7 @@ fn quote_parameter_type_alias(
     }
 }
 
-fn quote_init_parameter_from_field(
+pub fn quote_init_parameter_from_field(
     field: &ObjectField,
     objects: &Objects,
     current_obj_fqname: &str,
