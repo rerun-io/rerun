@@ -47,6 +47,11 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/model/stl>
     pub const STL: &'static str = "model/stl";
 
+    /// [COLLADA `.dae`](https://en.wikipedia.org/wiki/COLLADA): `model/collada+xml`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/model/vnd.collada+xml>
+    pub const DAE: &'static str = "model/vnd.collada+xml";
+
     // -------------------------------------------------------
     // Compressed Depth Data:
 
@@ -118,6 +123,12 @@ impl MediaType {
     #[inline]
     pub fn stl() -> Self {
         Self(Self::STL.into())
+    }
+
+    /// `model/vnd.collada+xml`
+    #[inline]
+    pub fn dae() -> Self {
+        Self(Self::DAE.into())
     }
 
     // -------------------------------------------------------
@@ -193,6 +204,11 @@ impl MediaType {
             // https://en.wikipedia.org/wiki/STL_(file_format)#Binary
         }
 
+        fn dae_matcher(buf: &[u8]) -> bool {
+            // COLLADA .dae files are XML, so we can look for the <COLLADA> tag.
+            buf.starts_with(b"<COLLADA>")
+        }
+
         fn rvl_matcher(buf: &[u8]) -> bool {
             const MAX_REASONABLE_DIMENSION: u32 = 65_536;
 
@@ -225,6 +241,7 @@ impl MediaType {
         let mut inferer = infer::Infer::new();
         inferer.add(Self::GLB, "glb", glb_matcher);
         inferer.add(Self::STL, "stl", stl_matcher);
+        inferer.add(Self::DAE, "dae", dae_matcher);
         inferer.add(Self::RVL, "rvl", rvl_matcher);
 
         inferer
@@ -257,6 +274,7 @@ impl MediaType {
             Self::MARKDOWN => Some("md"),
             Self::RVL => Some("rvl"),
             Self::STL => Some("stl"),
+            Self::DAE => Some("dae"),
             Self::TEXT => Some("txt"),
 
             _ => {
