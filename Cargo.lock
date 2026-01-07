@@ -9977,7 +9977,6 @@ dependencies = [
  "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
- "getrandom 0.3.3",
  "h264-reader",
  "indicatif",
  "itertools 0.14.0",
