@@ -1,6 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RrdManifest, ToApplication as _};
 use re_log_types::EntryId;
