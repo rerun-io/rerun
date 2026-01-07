@@ -84,10 +84,13 @@ def run_cargo(
             f"{os.getcwd()}/{clippy_conf}"
         )
 
+    # TODO(#11359): We don't capture output on mac runners to help debug random hangs.
+    capture = sys.platform != "darwin"
+
     env = os.environ.copy()
     env.update(additional_env_vars)
 
-    result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
+    result = subprocess.run(args, env=env, check=False, capture_output=capture, text=True)
     success = result.returncode == 0
 
     if success:
