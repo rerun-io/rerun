@@ -1,0 +1,10 @@
+namespace rerun.blueprint.components;
+
+/// The type of the visualizer.
+table VisualizerType (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default"
+) {
+  /// The type of the visualizer.
+  visualizer_type: rerun.datatypes.Utf8 (order: 100);
+}

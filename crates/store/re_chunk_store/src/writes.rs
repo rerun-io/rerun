@@ -1294,6 +1294,8 @@ mod tests {
 
     #[test]
     fn compaction_blobs() -> anyhow::Result<()> {
+        #![expect(clippy::cloned_ref_to_slice_refs)]
+
         re_log::setup_logging();
 
         // Create a store with a specific byte limit for testing

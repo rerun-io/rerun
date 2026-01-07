@@ -7,7 +7,7 @@
 //! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points (no vertex buffer!).
 //!
 //! Like with the `super::lines::LineRenderer`, we're rendering as all quads in a single triangle list draw call.
-//! (Rationale for this can be found in the [`lines.rs`]'s documentation)
+//! (Rationale for this can be found in the [`crate::renderer::lines`]'s documentation)
 //!
 //! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
 //! that srgb->linear conversion happens on texture load.
