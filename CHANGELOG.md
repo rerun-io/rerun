@@ -1,48 +1,44 @@
 # Rerun changelog
 
-## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Easier use with ROS style data
+## [0.28.1](https://github.com/rerun-io/rerun/compare/0.28.0...0.28.1) - 2025-12-18 - Fix some telemetry, depth images, and logging
+
+#### 🪵 Log API
+- Ensure that `flush` waits for all data loaders to finish [#12281](https://github.com/rerun-io/rerun/pull/12281)
+
+#### 🪳 Bug fixes
+- Fix video errors having black rectangle around them [#12284](https://github.com/rerun-io/rerun/pull/12284)
+- Fix RVL depth decoding for non-quantized images [#12289](https://github.com/rerun-io/rerun/pull/12289)
+
+#### 🌁 Viewer improvements
+- Fix image planes not working correctly in some named-transform frame scenarios [#12276](https://github.com/rerun-io/rerun/pull/12276)
+- Fix auto-size for 2d views with RVL encoded depth image not working [#12288](https://github.com/rerun-io/rerun/pull/12288)
+- Restore depth image visualizers to 2D view kind (fix heuristic) [#12290](https://github.com/rerun-io/rerun/pull/12290)
+- Add dataloader for encoded depth image (to allow `log_from_file` & dragdrop) [#12287](https://github.com/rerun-io/rerun/pull/12287)
+
+#### 🤷‍ Other
+- Improved error message when `rrd compare --unordered` fails [#12282](https://github.com/rerun-io/rerun/pull/12282)
+
+## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Transforms, URDF, LeRobotV3, and Catalog API improvements
 
 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-28)
 
 ### ✨ Overview & highlights
 
-#### 🦾 Transform system overhaul
-
-This release brings significant improvements to how transforms are handled, especially from ROS or MCAP-based systems. You can now decouple spatial relationships from entity paths by using `CoordinateFrame` to associate entities with named frames, and `Transform3D` with `child_frame`/`parent_frame` parameters to define relationships between frames—similar to ROS tf2. Pinhole cameras also support this system. Additionally, axis visualization has moved to its own `TransformAxes3D` archetype.
+**Transform system overhaul.** This release brings significant improvements to how transforms are handled, especially from ROS or MCAP-based systems. You can now decouple spatial relationships from entity paths by using `CoordinateFrame` to associate entities with named frames, and `Transform3D` with `child_frame`/`parent_frame` parameters to define relationships between frames—similar to ROS tf2. Pinhole cameras also support this system. Additionally, axis visualization has moved to its own `TransformAxes3D` archetype.
 
 Much more can be found at our revamped docs page [here](https://rerun.io/docs/concepts/transforms).
 
+**Improved URDF and MCAP Transform support.** Parent and child frame components are now available in the `Transform3D` archetype, meaning you can send transforms to a single entity instead of using the entity path to inform the structure (note, for URDFs this is required). Additionally, ROS2’s `tf2_msgs/TFMessage` and `PoseStamped` messages are automatically parsed as `Transform3D` and `InstancePoses3D` , respectively, from MCAP files.
 
-#### 🤖 Improved URDF and MCAP transform support
+**AV1 video codec support.** `VideoStream` now supports the AV1 codec alongside existing formats.
 
-Parent and child frame components are now available in the `Transform3D` archetype, meaning you can send transforms to a single entity instead of using the entity path to inform the structure (note, for URDFs this is required). Additionally, ROS2’s `tf2_msgs/TFMessage` and `PoseStamped` messages are automatically parsed as `Transform3D` and `InstancePoses3D` , respectively, from MCAP files.
+**Catalog API refinements (Python).** The Python catalog API has been substantially reworked: "partition" terminology is now "segment," table operations have moved to `TableEntry` objects, and the query interface has been simplified with methods like `filter_segments()`, `filter_contents()`, and `reader()`.
 
-We also added a new documentation page for URDF [here](https://rerun.io/docs/howto/urdf).
+**Viewer usability improvements.** New keyboard shortcuts let you switch between recordings (`cmd` + `option` + `↑/↓`) and navigate the timeline (`←/→` to move by 0.1s. Add `shift` for 1s. `home/end` to jump to beginning or end).
 
-https://github.com/user-attachments/assets/638e9a47-cabe-4543-9201-acc3350b3659
+Forward/back navigation is now available on native viewers as well.
 
-#### 📹 AV1 video codec support for streaming
-
-`VideoStream` now supports the AV1 codec alongside existing formats.
-
-#### 📚 Catalog API refinements (Python)
-
-The Python catalog API has been substantially reworked: "partition" terminology is now "segment," table operations have moved to `TableEntry` objects, and the query interface has been simplified with methods like `filter_segments()`, `filter_contents()`, and `reader()`.
-
-#### ⌚ Viewer usability improvements
-
-New keyboard shortcuts let you switch between recordings (`cmd` + `option` + `↑/↓`) and navigate the timeline (`←/→` to move by 0.1s. Add `shift` for 1s. `home/end` to jump to beginning or end).
-
-https://github.com/user-attachments/assets/e64f4079-2be2-404f-b543-40736004f44e
-
-Forward/back navigation was previously exclusive to the web viewer and is now available on native viewers as well!
-
-<img width="303" height="113" alt="image" src="https://github.com/user-attachments/assets/548bf301-9032-49fc-b411-c1421ebc029e" />
-
-
-#### 📂 Added a LeRobot v3 dataloader support
-
-We previously supported LeRobot v2 and updated our dataloader now to work with the latest version as well!
+**New dataloaders.** Added LeRobot v3 dataloader support.
 
 ## ⚠️ Breaking changes
 
@@ -126,8 +122,6 @@ MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`mes
 - Catalog API update 8: search indexes [#12198](https://github.com/rerun-io/rerun/pull/12198)
 - Remove items marked as deprecated before 0.27 [#12204](https://github.com/rerun-io/rerun/pull/12204)
 - [python] Automatically disconnected recordings when they go fully out of scope [#12220](https://github.com/rerun-io/rerun/pull/12220)
-- Add timeout_sec argument to flush [f69d249e5c6bc5225d8f2f0be384243ab9dacf03](https://github.com/rerun-io/rerun/commit/f69d249e5c6bc5225d8f2f0be384243ab9dacf03)
-
 
 #### 🦀 Rust API
 - Make `RecordingStream::disabled()` a `const fn` [#11829](https://github.com/rerun-io/rerun/pull/11829) (thanks [@kpreid](https://github.com/kpreid)!)
@@ -148,7 +142,6 @@ MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`mes
 - Fix links to time points [#12163](https://github.com/rerun-io/rerun/pull/12163)
 - Fix timepanel size being rounded down [#12208](https://github.com/rerun-io/rerun/pull/12208)
 - Fix missing data after saving a time slice as .rrd [#12239](https://github.com/rerun-io/rerun/pull/12239)
-- Fix compaction of recordings containing video streams [35810c74187c250925e958a8f095756915313ce7](https://github.com/rerun-io/rerun/commit/35810c74187c250925e958a8f095756915313ce7)
 
 #### 🌁 Viewer improvements
 - Add `av1` support to `VideoStream` [#11849](https://github.com/rerun-io/rerun/pull/11849)
@@ -175,9 +168,6 @@ MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`mes
 - Allow specifying widths of `BarChart` bars [#12090](https://github.com/rerun-io/rerun/pull/12090) (thanks [@bilsen](https://github.com/bilsen)!)
 - Support `png` & `rvl` depth images via new `EncodedDepthImage` archetype + integration with viewer and `re_mcap` [#11877](https://github.com/rerun-io/rerun/pull/11877) (thanks [@makeecat](https://github.com/makeecat)!)
 - Show `TransformAxes3D` for out-of-hierarchy `Transform`s [#12262](https://github.com/rerun-io/rerun/pull/12262)
-- Add partition table context menu and row selection [#11908](https://github.com/rerun-io/rerun/pull/11908)
-- Add `MapProvider::MapboxLight` [#12083](https://github.com/rerun-io/rerun/pull/12083) (thanks [@sectore](https://github.com/sectore)!)
-- Add rerun cloud section to welcome page [#12051](https://github.com/rerun-io/rerun/pull/12051)
 
 #### 🗄️ OSS server
 - Add static/temporal chunk query filtering to OSS server [#11984](https://github.com/rerun-io/rerun/pull/11984)
@@ -229,9 +219,15 @@ MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`mes
 
 #### 🤷‍ Other
 - DPF: create_index: deprecate num_partitions [#11920](https://github.com/rerun-io/rerun/pull/11920)
+- Add partition table context menu and row selection [#11908](https://github.com/rerun-io/rerun/pull/11908)
 - Implement the search service [#11954](https://github.com/rerun-io/rerun/pull/11954)
+- Add `MapProvider::MapboxLight` [#12083](https://github.com/rerun-io/rerun/pull/12083) (thanks [@sectore](https://github.com/sectore)!)
 - Implement streaming for datafusion table [#12162](https://github.com/rerun-io/rerun/pull/12162)
+- Add rerun cloud section to welcome page [#12051](https://github.com/rerun-io/rerun/pull/12051)
 - Add support for server side filtering of DataFusion DataFrames [#12147](https://github.com/rerun-io/rerun/pull/12147)
+- Fix compaction of recordings containing video streams [35810c74187c250925e958a8f095756915313ce7](https://github.com/rerun-io/rerun/commit/35810c74187c250925e958a8f095756915313ce7)
+- Python SDK: Add timeout_sec argument to flush [f69d249e5c6bc5225d8f2f0be384243ab9dacf03](https://github.com/rerun-io/rerun/commit/f69d249e5c6bc5225d8f2f0be384243ab9dacf03)
+
 
 ## [0.27.2](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatibility with dependency
 
