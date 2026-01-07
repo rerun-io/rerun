@@ -414,6 +414,11 @@ fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
 
 // ----------------------------------------------------------------------------
 
+/// Draws a one point thick line in the given range, indicating which sections
+/// on the time panel have only loaded chunks.
+///
+/// If the time cursor is over unloaded chunks, this draws a dashed line as a
+/// loading indicator.
 pub fn paint_loaded_indicator_bar(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
@@ -461,11 +466,11 @@ pub fn paint_loaded_indicator_bar(
         && let Some(end) = time_ranges_ui.x_from_time(full_range.max.into())
     {
         let range = x_range.intersection(Rangef::new(start as f32, end as f32));
-        // How many pixels the gap is in the dashed line
+        // How many points the gap is in the dashed line
         let gap = 5.0;
-        // How many pixels each line is in the dashed line
+        // How many points each line is in the dashed line
         let line = 3.0;
-        // Animation speed of the loading in pixels per second
+        // Animation speed of the loading in points per second
         let speed = 20.0;
 
         if range.span() > 0.0 {
