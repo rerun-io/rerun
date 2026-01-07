@@ -577,5 +577,4 @@ AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
 EntryKind = _catalog.EntryKind
 NotFoundError = _catalog.NotFoundError
-TableInsertMode = _catalog.TableInsertMode
 VectorDistanceMetric = _catalog.VectorDistanceMetric
