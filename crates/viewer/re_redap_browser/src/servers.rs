@@ -406,7 +406,7 @@ impl RedapServers {
                 self.command_sender
                     .send(Command::RefreshCollection(server.origin.clone()))
                     .ok();
-            };
+            }
         }
     }
 
