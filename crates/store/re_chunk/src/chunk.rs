@@ -492,8 +492,6 @@ impl Chunk {
         &self,
         timeline: &TimelineName,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         if self.is_static() {
             return vec![(TimeInt::STATIC, self.num_events_cumulative())];
         }
@@ -527,8 +525,6 @@ impl Chunk {
         &self,
         time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         debug_assert!(time_column.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
@@ -578,8 +574,6 @@ impl Chunk {
         &self,
         time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         debug_assert!(!time_column.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).

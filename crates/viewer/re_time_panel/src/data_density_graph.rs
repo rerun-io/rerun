@@ -552,12 +552,15 @@ pub fn build_density_graph<'a>(
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
-    for entry in db.rrd_manifest_index().unloaded_temporal_entries_for(
-        timeline,
-        &item.entity_path,
-        item.component,
-    ) {
-        data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
+    {
+        re_tracing::profile_scope!("unloaded chunks");
+        for entry in db.rrd_manifest_index().unloaded_temporal_entries_for(
+            timeline,
+            &item.entity_path,
+            item.component,
+        ) {
+            data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
+        }
     }
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
