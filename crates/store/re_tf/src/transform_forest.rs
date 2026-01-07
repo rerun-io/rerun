@@ -716,6 +716,8 @@ fn transforms_at(
     id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> ParentChildTransforms {
+    #![expect(clippy::useless_let_if_seq)]
+
     let mut parent_from_child;
     let pinhole_projection;
 
