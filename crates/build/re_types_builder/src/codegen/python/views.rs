@@ -48,7 +48,10 @@ from ..visualizers._base import Visualizer
 }
 
 fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
-    // TODO: `visualizer_overrides` has a mostly undocumented special case for `EntityBehavior` & `VisibleTimeRanges` right now. Would be nice to separate this out?
+    // TODO(andreas): `visualizer_overrides` has a special case for
+    // * `EntityBehavior`
+    // * `VisibleTimeRanges`
+    // Would be nice to separate this out?
     let mut code = r#"def __init__(
     self, *,
     origin: EntityPathLike = "/",
