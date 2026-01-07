@@ -1,5 +1,5 @@
 ---
-title: Send data to Rerun
+title: Send data
 order: 100
 ---
 
