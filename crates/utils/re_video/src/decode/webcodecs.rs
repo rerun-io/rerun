@@ -99,6 +99,7 @@ pub enum WebError {
 //         in a way that could result in a data race.
 
 #[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)] // false positive
 unsafe impl Send for WebVideoDecoder {}
 
 #[expect(unsafe_code)]
