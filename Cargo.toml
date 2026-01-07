@@ -30,7 +30,7 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.88"
+rust-version = "1.92"
 version = "0.29.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
@@ -879,6 +879,6 @@ unnecessary_debug_formatting = "allow"
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
-# walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.88" } # https://github.com/podusowski/walkers/pull/394
+# walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.92" } # https://github.com/podusowski/walkers/pull/394
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
