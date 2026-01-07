@@ -129,7 +129,7 @@ def main() -> None:
             build_python_sdk(build_env)
         # Use uv to install the snippet dependencies
         run(
-            ["uv", "sync", "--group", "snippets", "--inexact", "--no-install-package", "rerun-sdk"],
+            ["uv", "sync", "--group", "snippets"],
             env=build_env,
         )
 

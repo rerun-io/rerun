@@ -1,0 +1,875 @@
+"""GitHub Actions workflow generation for recompose.
+
+This module provides:
+- Dataclasses for representing GHA workflow structure
+- Functions to generate workflow YAML from automations and dispatchables
+- Validation via actionlint
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+from dataclasses import dataclass, field
+from io import StringIO
+from pathlib import Path
+from typing import Any
+
+from ruamel.yaml import YAML
+
+from .result import Ok, Result
+
+
+def _to_kebab_case(name: str) -> str:
+    """Convert a snake_case name to kebab-case for CLI commands."""
+    return name.replace("_", "-")
+
+
+# =============================================================================
+# Workflow Spec Dataclasses
+# =============================================================================
+
+
+@dataclass
+class StepSpec:
+    """A step within a GHA job."""
+
+    name: str
+    run: str | None = None
+    uses: str | None = None
+    with_: dict[str, Any] | None = None
+    env: dict[str, str] | None = None
+    id: str | None = None
+    if_condition: str | None = None  # GHA `if:` expression
+    comment: str | None = None  # Comment to add above the step (for run_if conditions)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict for YAML serialization."""
+        from ruamel.yaml.comments import CommentedMap
+
+        d: CommentedMap = CommentedMap()
+        d["name"] = self.name
+        if self.id:
+            d["id"] = self.id
+        if self.if_condition:
+            d["if"] = self.if_condition
+        if self.uses:
+            d["uses"] = self.uses
+        if self.with_:
+            d["with"] = self.with_
+        if self.run:
+            d["run"] = self.run
+        if self.env:
+            d["env"] = self.env
+
+        # Add comment before the 'run' key if specified
+        if self.comment and self.run:
+            # indent=6 aligns with step keys when nested under jobs.<name>.steps list
+            d.yaml_set_comment_before_after_key("run", before=self.comment, indent=6)
+
+        return d
+
+
+@dataclass
+class GHAJobSpec:
+    """A job within a GHA workflow (multi-job model).
+
+    This class represents the YAML structure of a GHA job, supporting:
+    - needs: job dependencies
+    - outputs: job outputs (for passing data between jobs)
+    - if_condition: job-level condition
+    - matrix: parallel matrix execution
+    """
+
+    name: str
+    runs_on: str = "ubuntu-latest"
+    steps: list[StepSpec] = field(default_factory=list)
+    env: dict[str, str] | None = None
+    timeout_minutes: int | None = None
+    working_directory: str | None = None
+    needs: list[str] | None = None
+    outputs: dict[str, str] | None = None
+    if_condition: str | None = None
+    matrix: dict[str, list[Any]] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict for YAML serialization."""
+        d: dict[str, Any] = {"runs-on": self.runs_on}
+
+        # Add needs (dependencies)
+        if self.needs:
+            d["needs"] = self.needs
+
+        # Add job-level if condition
+        if self.if_condition:
+            d["if"] = self.if_condition
+
+        # Add outputs
+        if self.outputs:
+            d["outputs"] = self.outputs
+
+        # Add matrix strategy
+        if self.matrix:
+            d["strategy"] = {"matrix": self.matrix}
+            # For matrix jobs, runs-on often uses matrix variable
+            if "${{ matrix." in self.runs_on:
+                pass  # Already set correctly
+
+        if self.working_directory:
+            d["defaults"] = {"run": {"working-directory": self.working_directory}}
+        if self.env:
+            d["env"] = self.env
+        if self.timeout_minutes:
+            d["timeout-minutes"] = self.timeout_minutes
+        d["steps"] = [s.to_dict() for s in self.steps]
+        return d
+
+
+# Backwards compatibility alias
+JobSpec = GHAJobSpec
+
+
+@dataclass
+class WorkflowDispatchInput:
+    """An input for workflow_dispatch trigger."""
+
+    name: str
+    description: str
+    required: bool = False
+    default: str | bool | int | float | None = None
+    type: str = "string"  # string, boolean, choice, number
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict for YAML serialization."""
+        d: dict[str, Any] = {
+            "description": self.description,
+            "required": self.required,
+            "type": self.type,
+        }
+        if self.default is not None:
+            d["default"] = self.default
+        return d
+
+
+def generate_workflow_header(source: str | None = None) -> str:
+    """
+    Generate a header comment for generated workflow files.
+
+    Args:
+        source: Optional description of what generated this workflow
+                (e.g., "automation: ci" or "dispatchable: lint")
+
+    Returns:
+        Header comment string to prepend to YAML content.
+
+    """
+    lines = [
+        "# ============================================================================",
+        "# GENERATED FILE - DO NOT EDIT MANUALLY",
+        "#",
+        "# This workflow is generated by recompose. To modify:",
+        "#   1. Edit the source automation/task definition",
+        "#   2. Run: ./run generate_gha",
+        "#   3. Commit the regenerated file",
+        "#",
+    ]
+    if source:
+        lines.append(f"# Source: {source}")
+    lines.extend(
+        [
+            "# ============================================================================",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+@dataclass
+class WorkflowSpec:
+    """A complete GHA workflow."""
+
+    name: str
+    on: dict[str, Any]
+    jobs: dict[str, JobSpec]
+    path: Path | None = None  # Output file path, if known
+
+    def __str__(self) -> str:
+        """User-friendly string representation."""
+        num_jobs = len(self.jobs)
+        total_steps = sum(len(job.steps) for job in self.jobs.values())
+        triggers = ", ".join(self.on.keys())
+        path_str = f" -> {self.path}" if self.path else ""
+        return f"WorkflowSpec({self.name}) - {num_jobs} job(s), {total_steps} step(s), on: {triggers}{path_str}"
+
+    __repr__ = __str__
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict for YAML serialization."""
+        return {
+            "name": self.name,
+            "on": self.on,
+            "jobs": {name: job.to_dict() for name, job in self.jobs.items()},
+        }
+
+    def to_yaml(self, *, include_header: bool = False, source: str | None = None) -> str:
+        """
+        Render as YAML string.
+
+        Args:
+            include_header: If True, prepend generated-file header comment.
+            source: Source description for header (e.g., "automation: ci").
+                    If not provided and include_header=True, uses workflow name.
+
+        Returns:
+            YAML string, optionally with header.
+
+        """
+        yaml = YAML()
+        yaml.default_flow_style = False
+        # Disable YAML anchors/aliases - makes output more readable
+        yaml.representer.ignore_aliases = lambda *args: True
+
+        stream = StringIO()
+        yaml.dump(self.to_dict(), stream)
+        yaml_content = stream.getvalue()
+
+        if include_header:
+            header_source = source if source else f"workflow: {self.name}"
+            return generate_workflow_header(header_source) + yaml_content
+
+        return yaml_content
+
+
+def validate_workflow(yaml_content: str, filepath: Path | None = None) -> tuple[bool, str]:
+    """
+    Validate workflow YAML using actionlint.
+
+    Args:
+        yaml_content: The YAML content to validate.
+        filepath: Optional filepath for error messages.
+
+    Returns:
+        Tuple of (success, message). If success is False, message contains errors.
+
+    """
+    # Check if actionlint is installed
+    actionlint_path = shutil.which("actionlint")
+    if actionlint_path is None:
+        return False, (
+            "actionlint not found. Install with:\n"
+            "  brew install actionlint\n"
+            "  # or\n"
+            "  go install github.com/rhysd/actionlint/cmd/actionlint@latest"
+        )
+
+    # Write to temp file if no filepath provided
+    import tempfile
+
+    if filepath is None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            f.write(yaml_content)
+            temp_path = Path(f.name)
+        try:
+            result = subprocess.run(
+                [actionlint_path, str(temp_path)],
+                capture_output=True,
+                text=True,
+            )
+        finally:
+            temp_path.unlink()
+    else:
+        # Validate existing file
+        result = subprocess.run(
+            [actionlint_path, str(filepath)],
+            capture_output=True,
+            text=True,
+        )
+
+    if result.returncode == 0:
+        return True, "Validation passed"
+    else:
+        return False, result.stdout + result.stderr
+
+
+# =============================================================================
+# GHA Actions - Virtual tasks that map to `uses:` steps
+# =============================================================================
+
+
+class GHAAction:
+    """
+    A virtual task that represents a GitHub Actions `uses:` step.
+
+    GHA actions are no-ops when run locally but generate `uses:` steps
+    in workflow YAML. They can be used as setup steps in automations.
+
+    Example:
+        from recompose.gha import setup_python, checkout
+
+        # Use as setup steps
+        @task(setup=[checkout, setup_python("3.12")])
+        def my_task() -> Result[None]:
+            ...
+
+    """
+
+    def __init__(
+        self,
+        name: str,
+        uses: str,
+        *,
+        with_params: dict[str, str] | None = None,
+        doc: str | None = None,
+    ):
+        """
+        Create a GHA action.
+
+        Args:
+            name: Display name for the action (e.g., "checkout", "setup_python")
+            uses: The action reference (e.g., "actions/checkout@v4")
+            with_params: Default `with:` parameters for the action
+            doc: Documentation string
+
+        """
+        self.name = name
+        self.uses = uses
+        self.default_with_params = with_params or {}
+        self.doc = doc
+
+    def __call__(self, **kwargs: Any) -> Result[None]:
+        """
+        Execute the action (no-op locally).
+
+        When run locally, GHA actions are no-ops since they only make sense
+        in the context of GitHub Actions runners.
+
+        Returns:
+            Result[None] - always Ok(None) locally.
+
+        """
+        # GHA actions are no-ops when run locally
+        return Ok(None)
+
+
+def _gha_action(
+    name: str,
+    uses: str,
+    **default_params: str,
+) -> GHAAction:
+    """Helper to create a GHA action with default parameters."""
+    return GHAAction(name, uses, with_params=default_params if default_params else None)
+
+
+# =============================================================================
+# Pre-defined GHA Actions
+# =============================================================================
+
+# Checkout repository
+checkout = _gha_action(
+    "checkout",
+    "actions/checkout@v4",
+)
+
+
+# Setup Python
+def setup_python(version: str = "3.11", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-python action with the specified version.
+
+    Args:
+        version: Python version to install (default: "3.11")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used as a setup step
+
+    """
+    return GHAAction(
+        "setup_python",
+        "actions/setup-python@v5",
+        with_params={"python-version": version, **kwargs},
+    )
+
+
+# Setup uv
+def setup_uv(version: str = "latest", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-uv action.
+
+    Args:
+        version: uv version to install (default: "latest")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used as a setup step
+
+    """
+    params = {**kwargs}
+    if version != "latest":
+        params["version"] = version
+    return GHAAction(
+        "setup_uv",
+        "astral-sh/setup-uv@v4",
+        with_params=params if params else None,
+    )
+
+
+# Setup Rust
+def setup_rust(toolchain: str = "stable", **kwargs: Any) -> GHAAction:
+    """
+    Create a setup-rust action.
+
+    Args:
+        toolchain: Rust toolchain to install (default: "stable")
+        **kwargs: Additional parameters for the action
+
+    Returns:
+        GHAAction that can be used as a setup step
+
+    """
+    return GHAAction(
+        "setup_rust",
+        "dtolnay/rust-toolchain@master",
+        with_params={"toolchain": toolchain, **kwargs},
+    )
+
+
+# Cache
+def cache(path: str, key: str, **kwargs: Any) -> GHAAction:
+    """
+    Create a cache action.
+
+    Args:
+        path: Path(s) to cache
+        key: Cache key
+        **kwargs: Additional parameters (e.g., restore-keys)
+
+    Returns:
+        GHAAction that can be used as a setup step
+
+    """
+    return GHAAction(
+        "cache",
+        "actions/cache@v4",
+        with_params={"path": path, "key": key, **kwargs},
+    )
+
+
+# =============================================================================
+# P14: Multi-Job Workflow Generation from Automations
+# =============================================================================
+
+
+@dataclass
+class SetupStep:
+    """A setup step configuration for workflow generation.
+
+    Represents a GHA action to run as part of job setup (checkout, python, etc.).
+    """
+
+    name: str
+    uses: str
+    with_params: dict[str, Any] | None = None
+
+    def to_step_spec(self) -> StepSpec:
+        """Convert to StepSpec."""
+        return StepSpec(
+            name=self.name,
+            uses=self.uses,
+            with_=self.with_params,
+        )
+
+
+# Default setup steps for most jobs
+DEFAULT_SETUP_STEPS: list[SetupStep] = [
+    SetupStep("Checkout", "actions/checkout@v4"),
+    SetupStep("Setup Python", "actions/setup-python@v5", {"python-version": "3.12"}),
+    SetupStep("Setup uv", "astral-sh/setup-uv@v4"),
+]
+
+
+def _build_artifact_upload_step(artifact_name: str, job_id: str) -> StepSpec:
+    """Build upload-artifact step for a job's artifact."""
+    return StepSpec(
+        name=f"Upload artifact: {artifact_name}",
+        uses="actions/upload-artifact@v4",
+        with_={
+            "name": f"{job_id}-{artifact_name}",
+            "path": f"${{{{ steps.run.outputs.artifact_{artifact_name}_path }}}}",
+        },
+    )
+
+
+def _build_artifact_download_step(
+    artifact_ref: Any,  # ArtifactRef from jobs.py
+) -> StepSpec:
+    """Build download-artifact step for consuming an artifact."""
+    return StepSpec(
+        name=f"Download artifact: {artifact_ref.artifact_name}",
+        uses="actions/download-artifact@v4",
+        with_={
+            "name": f"{artifact_ref.job_id}-{artifact_ref.artifact_name}",
+            "path": f"artifacts/{artifact_ref.artifact_name}",
+        },
+    )
+
+
+def _build_task_run_step(
+    entry_point: str,
+    task_name: str,
+    inputs: dict[str, Any],
+    has_outputs: bool = False,
+    has_artifacts: bool = False,
+) -> StepSpec:
+    """Build the step that runs the task via CLI.
+
+    Args:
+        entry_point: CLI entry point (e.g., "./run")
+        task_name: Name of the task to run
+        inputs: Input values/references for the task
+        has_outputs: If True, add step ID for output capture
+        has_artifacts: If True, add step ID for artifact path capture
+
+    """
+    from .jobs import ArtifactRef, InputParamRef, JobOutputRef
+
+    # Build CLI arguments from inputs
+    args: list[str] = []
+    for name, value in inputs.items():
+        if isinstance(value, JobOutputRef):
+            # Reference to another job's output
+            args.append(f"--{name}={value.to_gha_expr()}")
+        elif isinstance(value, ArtifactRef):
+            # Reference to downloaded artifact path
+            args.append(f"--{name}=artifacts/{value.artifact_name}")
+        elif isinstance(value, InputParamRef):
+            # Reference to workflow input
+            args.append(f"--{name}={value.to_gha_expr()}")
+        else:
+            # Literal value
+            args.append(f"--{name}={value}")
+
+    # Build command
+    cmd_parts = [entry_point, task_name] + args
+    run_cmd = " ".join(cmd_parts)
+
+    return StepSpec(
+        name=task_name,
+        id="run" if (has_outputs or has_artifacts) else None,
+        run=run_cmd,
+    )
+
+
+def _build_job_outputs(task_outputs: list[str], task_artifacts: list[str]) -> dict[str, str] | None:
+    """Build job outputs dict for declared outputs and artifacts.
+
+    Outputs are exposed via the step's GITHUB_OUTPUT.
+    Artifact paths are also exposed as outputs for reference.
+    """
+    if not task_outputs and not task_artifacts:
+        return None
+
+    outputs: dict[str, str] = {}
+
+    # Regular outputs from set_output()
+    for out_name in task_outputs:
+        outputs[out_name] = f"${{{{ steps.run.outputs.{out_name} }}}}"
+
+    # Artifact paths (for jobs that need to know where artifacts are)
+    for artifact_name in task_artifacts:
+        outputs[f"artifact_{artifact_name}_path"] = f"${{{{ steps.run.outputs.artifact_{artifact_name}_path }}}}"
+
+    return outputs
+
+
+def _build_secrets_env(secrets: list[str]) -> dict[str, str] | None:
+    """Build env dict for secrets."""
+    if not secrets:
+        return None
+    return {name: f"${{{{ secrets.{name} }}}}" for name in secrets}
+
+
+def render_automation_jobs(
+    automation_wrapper: Any,  # AutomationWrapper from jobs.py
+    entry_point: str = "./run",
+    default_setup: list[SetupStep] | None = None,
+    working_directory: str | None = None,
+) -> WorkflowSpec:
+    """
+    Generate a multi-job WorkflowSpec from an automation.
+
+    This implements the P14 "tasks as jobs" model where each task in the
+    automation becomes its own GHA job.
+
+    Args:
+        automation_wrapper: The automation wrapper (from @automation decorator)
+        entry_point: CLI entry point for running tasks (e.g., "./run")
+        default_setup: Default setup steps for jobs (uses DEFAULT_SETUP_STEPS if None)
+        working_directory: Working directory for all jobs (relative to repo root)
+
+    Returns:
+        A WorkflowSpec representing the multi-job workflow.
+
+    Example:
+        @automation(trigger=on_push(branches=["main"]))
+        def ci() -> None:
+            lint_job = job(lint)
+            build_job = job(build_wheel)
+            test_job = job(test, inputs={"wheel": build_job.artifact("wheel")})
+
+        spec = render_automation_jobs(ci, entry_point="./run")
+        print(spec.to_yaml())
+
+    """
+    from .jobs import ArtifactRef
+    from .jobs import JobSpec as AutomationJobSpec
+
+    info = automation_wrapper.info
+    setup_steps = default_setup or DEFAULT_SETUP_STEPS
+
+    # Build the automation plan to get job list
+    job_specs: list[AutomationJobSpec] = automation_wrapper.plan()
+
+    # Build trigger config
+    on_config: dict[str, Any]
+    if info.trigger:
+        on_config = info.trigger.to_gha_dict()
+    else:
+        # Default to workflow_dispatch if no trigger specified
+        on_config = {"workflow_dispatch": None}
+
+    # Add workflow_dispatch inputs from InputParam parameters
+    if info.input_params:
+        inputs_dict: dict[str, dict[str, Any]] = {}
+        for param_name, param in info.input_params.items():
+            input_def: dict[str, Any] = {
+                "description": param._description or f"Input: {param_name}",
+                "required": param._required,
+            }
+            if param._default is not None:
+                input_def["default"] = param._default
+            if param._choices:
+                input_def["type"] = "choice"
+                input_def["options"] = param._choices
+            else:
+                # Infer type from default
+                if isinstance(param._default, bool):
+                    input_def["type"] = "boolean"
+                else:
+                    input_def["type"] = "string"
+            inputs_dict[param_name] = input_def
+
+        # Merge with existing workflow_dispatch config
+        if "workflow_dispatch" not in on_config:
+            on_config["workflow_dispatch"] = {}
+        if on_config["workflow_dispatch"] is None:
+            on_config["workflow_dispatch"] = {}
+        on_config["workflow_dispatch"]["inputs"] = inputs_dict
+
+    # Convert each automation JobSpec to a GHA job
+    gha_jobs: dict[str, GHAJobSpec] = {}
+
+    for job_spec in job_specs:
+        task_info = job_spec.task_info
+
+        # Determine setup steps (task-specific or default)
+        if task_info.setup is not None:
+            job_setup = task_info.setup
+        else:
+            job_setup = setup_steps
+
+        # Build step list
+        steps: list[StepSpec] = []
+
+        # 1. Setup steps
+        for setup in job_setup:
+            if isinstance(setup, SetupStep):
+                steps.append(setup.to_step_spec())
+            elif isinstance(setup, GHAAction):
+                steps.append(
+                    StepSpec(
+                        name=setup.name,
+                        uses=setup.uses,
+                        with_=setup.default_with_params if setup.default_with_params else None,
+                    )
+                )
+            else:
+                # Assume it's a StepSpec or dict-like
+                steps.append(setup)
+
+        # 2. Download artifact steps (for inputs that reference artifacts)
+        for input_value in job_spec.inputs.values():
+            if isinstance(input_value, ArtifactRef):
+                steps.append(_build_artifact_download_step(input_value))
+
+        # 3. Task run step
+        has_outputs = bool(task_info.outputs)
+        has_artifacts = bool(task_info.artifacts)
+        steps.append(
+            _build_task_run_step(
+                entry_point=entry_point,
+                task_name=_to_kebab_case(task_info.name),
+                inputs=job_spec.inputs,
+                has_outputs=has_outputs,
+                has_artifacts=has_artifacts,
+            )
+        )
+
+        # 4. Upload artifact steps (for tasks that produce artifacts)
+        for artifact_name in task_info.artifacts:
+            steps.append(_build_artifact_upload_step(artifact_name, job_spec.job_id))
+
+        # Build job dependencies
+        all_deps = job_spec.get_all_dependencies()
+        needs = [dep.job_id for dep in all_deps] if all_deps else None
+
+        # Build job condition
+        if_condition = None
+        if job_spec.condition is not None:
+            if_condition = f"${{{{ {job_spec.condition.to_gha_expr()} }}}}"
+
+        # Build job outputs
+        outputs = _build_job_outputs(task_info.outputs, task_info.artifacts)
+
+        # Build secrets env
+        env = _build_secrets_env(task_info.secrets)
+
+        # Create the GHA job
+        gha_job = GHAJobSpec(
+            name=job_spec.job_id,
+            runs_on=job_spec.runs_on,
+            steps=steps,
+            env=env,
+            needs=needs,
+            outputs=outputs,
+            if_condition=if_condition,
+            matrix=job_spec.matrix,
+            working_directory=working_directory,
+        )
+
+        gha_jobs[job_spec.job_id] = gha_job
+
+    return WorkflowSpec(
+        name=info.name,
+        on=on_config,
+        jobs=gha_jobs,
+    )
+
+
+# =============================================================================
+# P14 Phase 5: render_dispatchable - Single-Job Workflow from Dispatchable
+# =============================================================================
+
+
+def render_dispatchable(
+    dispatchable: Any,  # Dispatchable from jobs.py, avoid circular import
+    entry_point: str = "./run",
+    default_setup: list[SetupStep] | None = None,
+    working_directory: str | None = None,
+) -> WorkflowSpec:
+    """
+    Generate a single-job WorkflowSpec from a Dispatchable.
+
+    This creates a simple workflow with:
+    - workflow_dispatch trigger with inputs derived from dispatchable.inputs
+    - A single job that runs the task via the entry point CLI
+
+    Args:
+        dispatchable: The Dispatchable wrapper (from make_dispatchable())
+        entry_point: CLI entry point for running the task (e.g., "./run")
+        default_setup: Default setup steps for the job (uses DEFAULT_SETUP_STEPS if None)
+        working_directory: Working directory for the job (relative to repo root)
+
+    Returns:
+        A WorkflowSpec representing the single-job workflow.
+
+    Example:
+        lint_workflow = make_dispatchable(lint)
+        spec = render_dispatchable(lint_workflow, entry_point="./run")
+        print(spec.to_yaml())
+
+    """
+    info = dispatchable.info
+    task_info = info.task_info
+    setup_steps = default_setup or DEFAULT_SETUP_STEPS
+
+    # Build workflow_dispatch trigger with inputs
+    dispatch_inputs: dict[str, dict[str, Any]] = {}
+    for input_name, input_spec in info.inputs.items():
+        dispatch_inputs[input_name] = input_spec.to_gha_dict()
+
+    on_config: dict[str, Any] = {"workflow_dispatch": {}}
+    if dispatch_inputs:
+        on_config["workflow_dispatch"]["inputs"] = dispatch_inputs
+
+    # Determine setup steps (task-specific or default)
+    if task_info.setup is not None:
+        job_setup = task_info.setup
+    else:
+        job_setup = setup_steps
+
+    # Build step list
+    steps: list[StepSpec] = []
+
+    # 1. Setup steps
+    for setup in job_setup:
+        if isinstance(setup, SetupStep):
+            steps.append(setup.to_step_spec())
+        elif isinstance(setup, GHAAction):
+            steps.append(
+                StepSpec(
+                    name=setup.name,
+                    uses=setup.uses,
+                    with_=setup.default_with_params if setup.default_with_params else None,
+                )
+            )
+        else:
+            # Assume it's a StepSpec or dict-like
+            steps.append(setup)
+
+    # 2. Task run step
+    # Build CLI arguments from inputs
+    args: list[str] = []
+    for input_name in info.inputs:
+        args.append(f"--{input_name}=${{{{ inputs.{input_name} }}}}")
+
+    cli_task_name = _to_kebab_case(task_info.name)
+    cmd_parts = [entry_point, cli_task_name] + args
+    run_cmd = " ".join(cmd_parts)
+
+    has_outputs = bool(task_info.outputs)
+    has_artifacts = bool(task_info.artifacts)
+
+    steps.append(
+        StepSpec(
+            name=cli_task_name,
+            id="run" if (has_outputs or has_artifacts) else None,
+            run=run_cmd,
+        )
+    )
+
+    # 3. Upload artifact steps (for tasks that produce artifacts)
+    for artifact_name in task_info.artifacts:
+        steps.append(_build_artifact_upload_step(artifact_name, info.name))
+
+    # Build job outputs
+    outputs = _build_job_outputs(task_info.outputs, task_info.artifacts)
+
+    # Build secrets env
+    env = _build_secrets_env(task_info.secrets)
+
+    # Create the GHA job
+    gha_job = GHAJobSpec(
+        name=info.name,
+        runs_on="ubuntu-latest",
+        steps=steps,
+        env=env,
+        outputs=outputs,
+        working_directory=working_directory,
+    )
+
+    return WorkflowSpec(
+        name=info.name,
+        on=on_config,
+        jobs={info.name: gha_job},
+    )
