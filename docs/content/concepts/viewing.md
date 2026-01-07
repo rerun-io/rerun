@@ -1,4 +1,4 @@
 ---
-title: Viewing
+title: Visualization
 order: 3
 ---
