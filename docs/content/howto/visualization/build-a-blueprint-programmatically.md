@@ -3,7 +3,7 @@ title: Building blueprints programmatically
 order: 400
 ---
 
-For maximum control and automation, you can define [Blueprints](../concepts/blueprints.md) in code using the Python Blueprint API. This is ideal for:
+For maximum control and automation, you can define [Blueprints](../../concepts/blueprints.md) in code using the Python Blueprint API. This is ideal for:
 
 -   Creating layouts dynamically based on your data
 -   Ensuring consistent views for specific debugging scenarios
@@ -288,7 +288,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_no_peaks/d53c5294e3ee118c5037d1b3480176ef49cb2071/1200w.png">
 </picture>
 
-See [Entity Queries](../reference/entity-queries.md) for complete expression syntax.
+See [Entity Queries](../../reference/entity-queries.md) for complete expression syntax.
 
 ### Programmatic layout generation
 
@@ -393,7 +393,7 @@ rrb.TimeSeriesView(
 )
 ```
 
-See [Visualizers and Overrides](../concepts/visualizers-and-overrides.md) for information on overriding component values and controlling visualizers from code.
+See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for information on overriding component values and controlling visualizers from code.
 
 ---
 
