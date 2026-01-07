@@ -21,9 +21,8 @@ def main() -> None:
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
-    rec = rr.script_setup(args, "rerun_example_animated_urdf")
 
-    rec.spawn()
+    rec = rr.script_setup(args, "rerun_example_animated_urdf")
     urdf_path = Path(__file__).parent.parent.parent / "rust" / "animated_urdf" / "data" / "so100.urdf"
 
     # Log the URDF file once, as a static resource
@@ -49,6 +48,8 @@ def main() -> None:
                 # of setting the frame names and calculating the full transform from the joint angle.
                 transform = joint.compute_transform(dynamic_angle)
                 rec.log("transforms", transform)
+
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

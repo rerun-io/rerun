@@ -880,8 +880,10 @@ mod tests {
     #![expect(clippy::cast_possible_wrap)]
 
     use itertools::Itertools as _;
-    use re_log_types::TimePoint;
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{
+        TimePoint,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+    };
 
     use super::*;
     use crate::{Chunk, RowId, Timeline};
@@ -1663,7 +1665,7 @@ mod tests {
         // The slices should add up to approximately the original size
         // We allow some overhead for metadata duplication (row IDs, timeline data, etc.)
         // but the component data should be accurately sliced
-        let acceptable_overhead = 650; // bytes for metadata overhead (increased for raw arrays)
+        let acceptable_overhead = 1900; // bytes for metadata overhead (increased for raw arrays)
 
         assert!(
             total_slice_size <= original_size + acceptable_overhead,

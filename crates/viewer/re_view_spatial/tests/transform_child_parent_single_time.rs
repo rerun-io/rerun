@@ -234,7 +234,10 @@ fn test_transform_axes_for_explicit_transforms() {
         );
         ctx.save_blueprint_archetype(
             transforms_override_path.clone(),
-            &blueprint::archetypes::VisualizerOverrides::new(["TransformAxes3D"]),
+            &blueprint::archetypes::VisualizerOverrides::new([
+                // TODO(RR-3153): remove the `as_str()`.
+                archetypes::TransformAxes3D::visualizer().as_str(),
+            ]),
         );
         ctx.save_blueprint_archetype(
             transforms_override_path,
