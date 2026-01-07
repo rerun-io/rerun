@@ -168,6 +168,7 @@ examples = [
 examples = [
   "_empty_rerun_sdk",
   "all_examples",
+  "blueprint", # Not very pretty
   "custom_callback",
   "custom_collection_adapter",
   "custom_data_loader",
