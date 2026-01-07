@@ -20,26 +20,26 @@ This section explains the process by which logged data is used to produce a visu
 In the Rerun Viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprints.md).
 
 The first step for a view to display its content is to determine which entities are involved.
-This is determined by the [entity query](../reference/entity-queries.md), which is part of the view blueprint.
+This is determined by the [entity query](../../reference/entity-queries.md), which is part of the view blueprint.
 The query is run against the data store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities.
-For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
-and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLines` visualizer to display time series line plots.
+For example, [3D views](../../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
+and [time series views](../../reference/types/views/time_series_view.md) use the `SeriesLines` visualizer to display time series line plots.
 Which visualizers are available is highly dependent on the specific kind of view.
 For example, the `SeriesLines` visualizer only exist for time series views—not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
-By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
-For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
-This happens because the components of an [archetype](../reference/types/archetypes.md) are tagged with the
+By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).
+For example, in a 3D view, an entity logged with the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
+This happens because the components of an [archetype](../../reference/types/archetypes.md) are tagged with the
 archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer.
 
-Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
- depends on the actual type of visualizer and view.
+Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../../reference/types/components/position3d.md), [`Radius`](../../reference/types/components/radius.md), and [`Color`](../../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
+depends on the actual type of visualizer and view.
 
-For an illustration, let's consider a simple example with just two [`Boxes2D`](../reference/types/archetypes/boxes2d.md):
+For an illustration, let's consider a simple example with just two [`Boxes2D`](../../reference/types/archetypes/boxes2d.md):
 
 snippet: concepts/viscomp-base
 
@@ -50,10 +50,7 @@ Here is how the user interface represents the `Boxes2D` visualizers in the selec
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-base-screenshot/80f168067b49d2a40aed41b0f3512117314c6a9d/480w.png">
 </picture>
 
-
-All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
-
-
+All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
 
 ## Per-entity component override
 
@@ -81,7 +78,6 @@ The color of `/boxes/1` is overridden to green. Here is how the user interface r
 </picture>
 
 The override is listed above the store and fallback value since it has precedence. It can also be edited or removed from the user interface.
-
 
 ## Per-view component default
 
@@ -120,7 +116,6 @@ All component default values are displayed in the selection panel when selecting
 
 Again, it is possible to manually add, edit, and remove component defaults from the user interface.
 
-
 ## Component value resolution order
 
 The previous sections showed that visualizers use a variety of sources to determine the values of the components they are interested in. Here is a summary of the priority order:
@@ -137,7 +132,6 @@ As an illustration, all four values are available for the `/boxes/1` entity of t
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-resolution-screenshot/a547f66e3116849ab10de2c329e1a8e63790e912/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-resolution-screenshot/a547f66e3116849ab10de2c329e1a8e63790e912/768w.png">
 </picture>
-
 
 ## Visualizer override
 

@@ -14,15 +14,16 @@ This page details how the [different archetypes](https://rerun.io/docs/reference
 
 The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
-The simplest way to use transforms is through [entity path hierarchies](../concepts/entity-path.md), where each transform describes the relationship between an entity and its parent path.
+The simplest way to use transforms is through [entity path hierarchies](../entity-path.md), where each transform describes the relationship between an entity and its parent path.
 Note that by default, all entities are connected via identity transforms.
 
 snippet: concepts/transform3d_hierarchy_simple
 
 In this hierarchy:
-- The `sun` entity exists at the origin of its own coordinate system
-- The `sun/planet` transform places the planet 6 units from the sun, along the x-axis
-- The `sun/planet/moon` transform places the moon 3 units along x away from the planet
+
+-   The `sun` entity exists at the origin of its own coordinate system
+-   The `sun/planet` transform places the planet 6 units from the sun, along the x-axis
+-   The `sun/planet/moon` transform places the moon 3 units along x away from the planet
 
 This creates a transform hierarchy where transforms propagate down the entity tree. The moon's final position in the sun's coordinate system is 9 units away (6 + 3),
 because the transforms are applied sequentially.
@@ -45,15 +46,15 @@ snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
 **Note:** A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
-An exception to this rule is [static data](../concepts/static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
+An exception to this rule is [static data](../static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
 This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
 
-
 Named transform frames have several advantages over entity path based hierarchies:
-* topology may change over time
-* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../concepts/visualizers-and-overrides.md))
-* several entities may be associated with the same frame
-* frees up entity paths for semantic rather than geometric organization
+
+-   topology may change over time
+-   association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../visualizers-and-overrides.md))
+-   several entities may be associated with the same frame
+-   frees up entity paths for semantic rather than geometric organization
 
 ### Entity hierarchy based transforms under the hood
 
@@ -63,9 +64,10 @@ for example, an entity `/world/robot` gets frame `tf#/world/robot`.
 
 Path based hierarchies are then established by defaults the Viewer uses (also referred to as fallbacks):
 Given an entity `/world/robot`:
-* if no `CoordinateFrame::frame` is specified, it automatically defaults to `tf#/world/robot`
-* if no `Transform3D::child_frame` is specified, it automatically defaults to `tf#/world/robot`
-* if no `Transform3D::parent_frame` is specified, it automatically defaults to the parent's implicit frame, `tf#/world`
+
+-   if no `CoordinateFrame::frame` is specified, it automatically defaults to `tf#/world/robot`
+-   if no `Transform3D::child_frame` is specified, it automatically defaults to `tf#/world/robot`
+-   if no `Transform3D::parent_frame` is specified, it automatically defaults to the parent's implicit frame, `tf#/world`
 
 The only special properties these implicit frames have over their named counterparts is that they
 have implicit identity relationships.
@@ -73,6 +75,7 @@ have implicit identity relationships.
 #### Example
 
 Given these entities:
+
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
 rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]))
@@ -114,6 +117,7 @@ We generally do not recommend mixing named and implicit transform frames since i
 but doing so works seamlessly and can be useful if necessary.
 
 Example:
+
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
 rr.log("arm",
@@ -139,10 +143,11 @@ The [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) archet
 Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 
 With the right setup, pinholes allow a bunch of powerful visualizations:
-* the pinhole glyph itself in 3D views
-* 2D in 3D: all 2D content that is part of the pinhole's transform subtree
-* 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
-    * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
+
+-   the pinhole glyph itself in 3D views
+-   2D in 3D: all 2D content that is part of the pinhole's transform subtree
+-   3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
+    -   Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
 
 If a transform frame relationship has both a pinhole projection & regular transforms (in this context often regarded as the camera extrinsics),
 the regular transform is applied first.
@@ -165,7 +170,6 @@ snippet: archetypes/pinhole_projections
   <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png">
 </picture>
 
-
 ### View coordinates
 
 You can use the [`ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) archetype to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
@@ -176,7 +180,7 @@ Note that in this example the archetype is logged at the root path, this will ma
 [Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
 The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
->  ⚠️ Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
+> ⚠️ Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 

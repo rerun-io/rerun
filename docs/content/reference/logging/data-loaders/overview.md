@@ -22,7 +22,7 @@ The easiest way to create your own `DataLoader` is by implementing what we call 
 
 This executable takes a file path as a command line argument and outputs Rerun logs on `stdout`.
 It will be called by the Rerun Viewer/SDK when the user opens a file, and be passed the path to that file.
-From there, it can log data as usual, using the [`stdout` logging sink](../../reference/sdk/operating-modes.md#standard-inputoutput).
+From there, it can log data as usual, using the [`stdout` logging sink](../../sdk-operating-modes.md#standard-inputoutput).
 
 The Rerun Viewer/SDK will then automatically load the data streamed to the external loader's standard output.
 
@@ -39,44 +39,44 @@ To indicate that it does not support a given file, the loader has to exit with a
 
 When the Viewer and/or SDK executes an external loader, it will pass to it a set of recommended settings in the form of CLI parameters (in addition to the file path to be loaded, which is passed as the one and only positional argument):
 
-* `--application-id <application_id>`
+-   `--application-id <application_id>`
 
     The recommended `ApplicationId` to log the data to.
 
-* `--opened-application-id <opened_application_id>` (optional)
+-   `--opened-application-id <opened_application_id>` (optional)
 
     The `ApplicationId` that is currently opened in the viewer, if any.
 
-* `--recording-id <store_id>`
+-   `--recording-id <store_id>`
 
     The recommended `RecordingId` to log the data to.
 
     Log data to this recording if you want it to appear in a new recording shared by all
     data-loaders for the current loading session.
 
-* `--opened-recording-id <opened_store_id>` (optional)
+-   `--opened-recording-id <opened_store_id>` (optional)
 
     The `RecordingId` that is currently opened in the viewer, if any.
 
-* `--entity-path-prefix <entity_path_prefix>` (optional)
+-   `--entity-path-prefix <entity_path_prefix>` (optional)
 
     Recommended prefix to prepend to all entity paths.
 
-* `--static` (optional)
+-   `--static` (optional)
 
     The data is expected to be logged as static.
 
-* `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
+-   `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
 
     The data is expected to be logged at these specific sequence times.
 
-* `--time_duration_nanos <timeline1>=<duration1> <timeline2>=<duration2> …` (optional)
+-   `--time_duration_nanos <timeline1>=<duration1> <timeline2>=<duration2> …` (optional)
 
     The data is expected to be logged at these specific duration times.
 
     The timestamps are expected to be in nanoseconds: use `rr.set_time_duration_nanos` (Python) / `RecordingStream::set_time_duration_nanos` (C++, Rust) appropriately.
 
-* `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
+-   `--time_timestamp_nanos <timeline1>=<timestamp1> <timeline2>=<timestamp2> …` (optional)
 
     The data is expected to be logged at these specific timestamp times.
 

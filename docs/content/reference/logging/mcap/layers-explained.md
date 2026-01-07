@@ -13,9 +13,9 @@ When multiple layers are enabled, they each process the same messages independen
 
 Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/robot/camera/image_raw` with ROS2 `sensor_msgs/msg/Image` messages:
 
-- With only the `ros2msg` layer: Creates an [Image](../../reference/types/archetypes/image.md) archetype for direct visualization in Rerun's viewer
-- With only the `raw` layer: Creates an [McapMessage](../../reference/types/archetypes/mcap_message.md) containing the original CDR-encoded message bytes
-- With both layers enabled: All representations coexist on the same entity path `/robot/camera/image_raw`
+-   With only the `ros2msg` layer: Creates an [Image](../../types/archetypes/image.md) archetype for direct visualization in Rerun's viewer
+-   With only the `raw` layer: Creates an [McapMessage](../../types/archetypes/mcap_message.md) containing the original CDR-encoded message bytes
+-   With both layers enabled: All representations coexist on the same entity path `/robot/camera/image_raw`
 
 ## Schema and statistics layers
 
@@ -27,7 +27,7 @@ The `stats` layer computes file-level metrics and statistics, creating entities 
 
 ### ROS2 semantic interpretation
 
-The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from data. Unlike the `protobuf` layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become [Image](../../reference/types/archetypes/image.md), point clouds become [Points3D](../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
+The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from data. Unlike the `protobuf` layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become [Image](../../types/archetypes/image.md), point clouds become [Points3D](../../types/archetypes/points3d.md), IMU messages become [SeriesLines](../../types/archetypes/series_lines.md) with the data plotted over time, and so on.
 
 This layer supports standard ROS2 packages including `sensor_msgs`, `geometry_msgs`, `std_msgs`, and `builtin_interfaces`. This layer provides visualization of sensor data like cameras and LiDAR with minimal setup required.
 
@@ -65,14 +65,14 @@ rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 
 Each layer creates different types of components on entity paths (derived from MCAP channel topics) that can be accessed through Rerun's SDK:
 
-- Data from the `protobuf` layer appears as structured components that can be queried by field name
-- Data from the `ros2msg` layer appears as native Rerun visualization components ([Image](../../reference/types/archetypes/image.md), [Points3D](../../reference/types/archetypes/points3d.md), etc.)
-- Data from the `raw` layer appears as blob components containing the original message bytes
-- Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
+-   Data from the `protobuf` layer appears as structured components that can be queried by field name
+-   Data from the `ros2msg` layer appears as native Rerun visualization components ([Image](../../types/archetypes/image.md), [Points3D](../../types/archetypes/points3d.md), etc.)
+-   Data from the `raw` layer appears as blob components containing the original message bytes
+-   Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
 
-For more information on querying data and working with archetypes, see the [Data Queries documentation](../../howto/get-data-out.md).
+For more information on querying data and working with archetypes, see the [Data Queries documentation](../../../howto/get-data-out.md).
 
-Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data.
+Each of these layers contributes their own [chunks](../../../concepts/chunks.md) to the Rerun-native data.
 Below is a table showing the mapping between MCAP data and Rerun components:
 
 | MCAP Data        | Rerun component                 | Description                                                                   |

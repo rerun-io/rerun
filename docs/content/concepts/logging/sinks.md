@@ -31,15 +31,15 @@ snippet: howto/set_sinks
 
 This pattern is useful when:
 
-- You want to monitor a long-running process while archiving the data
-- You're debugging and want both live feedback and a recording to analyze later
-- You need to stream to multiple viewers or save to multiple files
+-   You want to monitor a long-running process while archiving the data
+-   You're debugging and want both live feedback and a recording to analyze later
+-   You need to stream to multiple viewers or save to multiple files
 
 ## See also
 
-- [Recordings](apps-and-recordings.md): Understand how recordings relate to sinks
-- [Blueprints](blueprints.md): Learn how to configure the viewer's layout
-- API References:
-  - [🐍 Python sinks API](https://ref.rerun.io/docs/python/stable/common/initialization_functions/)
-  - [🦀 Rust RecordingStream](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html)
-  - [🌊 C++ RecordingStream](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html)
+-   [Recordings](apps-and-recordings.md): Understand how recordings relate to sinks
+-   [Blueprints](../blueprints.md): Learn how to configure the viewer's layout
+-   API References:
+    -   [🐍 Python sinks API](https://ref.rerun.io/docs/python/stable/common/initialization_functions/)
+    -   [🦀 Rust RecordingStream](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html)
+    -   [🌊 C++ RecordingStream](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html)

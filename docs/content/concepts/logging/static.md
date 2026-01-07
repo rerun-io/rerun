@@ -3,11 +3,9 @@ title: Static data
 order: 450
 ---
 
-
 The Rerun SDK allows you to store data as _static_. Static data belongs to all timelines (existing ones, and ones not yet created) and shadows any temporal data of the same type on the same entity.
 
 That is, any time you log static data to an entity path, all past, present and future temporal data on that same entity path and component is _semantically_ discarded in favor of the static one (which doesn't necessarily mean that it is _physically_ discarded, more on that below).
-
 
 ## How to store static data?
 
@@ -24,11 +22,9 @@ snippet: concepts/static/send_static
 
 (Using `send_columns` that way is rarely useful in practice, but is just a logical continuation of the data model.)
 
-
 ## When should I use static data?
 
 There are two broad categories of situations where you'd want to use static data: scene setting and memory savings.
-
 
 ### Scene setting
 
@@ -39,13 +35,12 @@ snippet: concepts/static/log_static
 
 The alternative would be to log that data at the beginning of every relevant timeline, which can be very problematic as the set of timelines might not even be known before runtime.
 
-Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically stored as static.
-
+Similarly, [coordinate systems](../spaces-and-transforms.md) or [annotation context](../annotation-context.md) are typically stored as static.
 
 ### Memory savings
 
 When you store _temporal_ data in Rerun, it is always appended to the existing dataset: there is no such thing as overwriting temporal data. The dataset only grows, it never shrinks.
-To compensate for that, the Rerun viewer has a [garbage collection mechanism](../howto/visualization/limit-ram.md) that will drop the oldest data from the store when memory becomes scarce.
+To compensate for that, the Rerun viewer has a [garbage collection mechanism](../../howto/limit-ram.md) that will drop the oldest data from the store when memory becomes scarce.
 
 For example, the following snippet stores 10 images at index `4` on the `frame` [timeline](timelines.md):
 
@@ -62,7 +57,6 @@ snippet: concepts/static/log_static_10x
 
 In practice, the Rerun datastore will rely on these semantics to physically drop the superfluous static data where possible, therefore drastically reducing memory costs. See ["Understanding storage costs"](#understanding-storage-costs) for more information.
 
-
 ## Understanding storage costs
 
 In ["Memory savings"](#memory-savings), we mentioned that the following snippet _semantically_ stores a single image:
@@ -71,7 +65,6 @@ snippet: concepts/static/log_static_10x
 
 How these semantics actually translate to physical storage depends on the context.
 
-
 ### In recordings
 
 Rerun recordings (`.rrd` files) are just streams of binary messages: they have no semantics whatsoever, therefore they don't know what static means and can't do anything about it.
@@ -79,9 +72,9 @@ Rerun recordings (`.rrd` files) are just streams of binary messages: they have n
 If you were to log the snippet above to a file (using e.g. `rr.save()`), you'd find that the recording does in fact contains your 10 images.
 
 If you wanted the recording file itself to only contain a single static value, you would need to either:
-* Stream the data to the viewer, and then save the recording directly out of the viewer using `Menu > Save recording` (or the equivalent palette command).
-* Manually recompact your recording using the [Rerun CLI](../reference/cli.md#rerun-rrd-compact) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd compact -o compacted.rrd myrecording.rrd`.
 
+-   Stream the data to the viewer, and then save the recording directly out of the viewer using `Menu > Save recording` (or the equivalent palette command).
+-   Manually recompact your recording using the [Rerun CLI](../../reference/cli.md#rerun-rrd-compact) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd compact -o compacted.rrd myrecording.rrd`.
 
 ### In the viewer
 

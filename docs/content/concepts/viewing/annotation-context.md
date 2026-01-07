@@ -43,7 +43,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 
 ### Logging an annotation context
 
-Annotation Context is typically logged as [static](timelines.md#static-data) data, but can change over time if needed.
+Annotation Context is typically logged as [static](../timelines.md#static-data) data, but can change over time if needed.
 
 The Annotation Context is defined as a list of Class Descriptions that define how classes are styled
 (as well as optional keypoint style and connection).
@@ -58,7 +58,7 @@ snippet: tutorials/annotation_context
 ## Affected entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
-the nearest ancestor that in the [entity path hierarchy](entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
+the nearest ancestor that in the [entity path hierarchy](../entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
 
 ## Segmentation images
 

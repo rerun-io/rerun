@@ -5,10 +5,10 @@ order: 400
 
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:
 
--   Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
--   Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
--   Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
--   Compressed as a series of encoded video samples using [`VideoStream`](../reference/types/archetypes/video_stream.md), using e.g. H.264 encoded frames.
+-   Uncompressed, as many [`Image`](../types/archetypes/image.md)s
+-   Compressed as many [`EncodedImage`](../types/archetypes/encoded_image.md)s, using e.g. JPEG.
+-   Compressed as a single [`AssetVideo`](../types/archetypes/asset_video.md), using e.g. MP4.
+-   Compressed as a series of encoded video samples using [`VideoStream`](../types/archetypes/video_stream.md), using e.g. H.264 encoded frames.
 
 These alternatives range on a scale of "simple, lossless, and big" to "complex, lossy, and small".
 
@@ -22,8 +22,8 @@ This is also very simple to do, and the Python logging SDK has built-in support 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
 
--   Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md)
--   Video files using [`AssetVideo`](../reference/types/archetypes/asset_video.md)
+-   Raw video frames [`VideoStream`](../types/archetypes/video_stream.md)
+-   Video files using [`AssetVideo`](../types/archetypes/asset_video.md)
 
 ⚠️ Do not use compressed video if you need accurate pixel replication:
 this is not only due to the obvious detail loss on encoding,
@@ -32,14 +32,14 @@ but also since the exact _display_ of the same video is not consistent across pl
 ## Streaming video / raw encoded video frames
 
 The following example illustrates how to encode uncompressed video frames (represented by `numpy` arrays)
-using [`pyAV`](https://github.com/PyAV-Org/PyAV) into H.264 and directly log them to Rerun using [`VideoStream`](../reference/types/archetypes/video_stream.md).
+using [`pyAV`](https://github.com/PyAV-Org/PyAV) into H.264 and directly log them to Rerun using [`VideoStream`](../types/archetypes/video_stream.md).
 
 snippet: archetypes/video_stream_synthetic
 
-Using [`VideoStream`](../reference/types/archetypes/video_stream.md) requires deeper knowledge of the encoding process
-but unlike [`AssetVideo`](../reference/types/archetypes/asset_video.md),
+Using [`VideoStream`](../types/archetypes/video_stream.md) requires deeper knowledge of the encoding process
+but unlike [`AssetVideo`](../types/archetypes/asset_video.md),
 allows the Rerun Viewer to show incomplete or open ended video streams.
-In contrast, [`AssetVideo`](../reference/types/archetypes/asset_video.md) requires the entire
+In contrast, [`AssetVideo`](../types/archetypes/asset_video.md) requires the entire
 video asset file to be in Viewer memory before decoding can begin.
 
 Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to stream live video to Rerun.
@@ -48,9 +48,9 @@ Current limitations of `VideoStream`:
 
 -   [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
     This can cause increased latency and in some cases may even stop video playback.
--   [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264, H.265, AV1 at this point.
--   [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
--   [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
+-   [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../types/archetypes/video_stream.md) only supports H.264, H.265, AV1 at this point.
+-   [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../types/archetypes/video_stream.md).
+-   [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../types/archetypes/video_stream.md).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
@@ -62,16 +62,16 @@ TODO(#10422): fix above if ticket is outdated.
 
 ### Export MP4 from RRD (remuxing)
 
-Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
+Sample data from [`VideoStream`](../types/archetypes/video_stream.md) can be queried
 and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py).
 
-Check the [doc page on retrieving data](../howto/dataframe-api.md) to learn more about dataframe queries in general.
+Check the [doc page on retrieving data](../../howto/dataframe-api.md) to learn more about dataframe queries in general.
 
 ## Video files
 
-You can use [`AssetVideo`](../reference/types/archetypes/asset_video.md) to log readily encoded video files.
+You can use [`AssetVideo`](../types/archetypes/asset_video.md) to log readily encoded video files.
 Rerun ignores the timestamp at which the video asset itself is logged and requires you
-to log [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) to establish a
+to log [`VideoFrameReference`](../types/archetypes/video_frame_reference.md) to establish a
 correlation of video time to the Rerun timeline.
 To ease this, the SDK's `read_frame_timestamps_nanos` utility allows to read out timestamps from in-memory video assets:
 

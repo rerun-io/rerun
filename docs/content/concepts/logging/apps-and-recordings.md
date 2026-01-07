@@ -11,14 +11,14 @@ Recordings are a _logical abstraction_, not a physical one: a recording is not c
 Similarly, there is no such thing as "closing" a recording: as long as there exists or will exist a system somewhere that is capable of producing _chunks_ of data, and tagging these chunks with the appropriate _Recording ID_, then that recording is effectively still growing. Whether that happens today, tomorrow, or in some distant future.
 
 This design naturally allows for both the production and the storage of recordings to be horizontally distributed:
-* Production can be handled by multiple producers that all log data to the same _Recording ID_, independently.
-* Storage can be sharded over multiple independent files (or any other storage medium).
 
-You can learn more about sharding in the [dedicated documentation page](../howto/logging/shared-recordings.md).
+-   Production can be handled by multiple producers that all log data to the same _Recording ID_, independently.
+-   Storage can be sharded over multiple independent files (or any other storage medium).
+
+You can learn more about sharding in the [dedicated documentation page](../../howto/shared-recordings.md).
 
 In practice, most Rerun recordings are encoded in binary files with the `.rrd` extension by default. This is our basic storage solution for recordings, which is specifically designed for streaming use cases (i.e. `.rrd` files do not offer random-access to the data within).
-Note that [blueprints](blueprints.md) are recordings too, and by convention are stored in binary `.rbl` files.
-
+Note that [blueprints](../blueprints.md) are recordings too, and by convention are stored in binary `.rbl` files.
 
 ## Application IDs
 
@@ -34,10 +34,10 @@ This means that you can run your app and set up the viewer to your liking, and t
 Different recordings (i.e. different _Recording IDs_) will share the same blueprint as long as they share the same _Application ID_.
 
 Check out the API to learn more about SDK initialization:
-* [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
-* [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new)
-* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abda6202900fa439fe5c27f7aa0d1105a)
 
+-   [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
+-   [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new)
+-   [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abda6202900fa439fe5c27f7aa0d1105a)
 
 ## Recording IDs in practice
 
