@@ -68,7 +68,7 @@ impl VideoDataDescription {
                     duration: Some(duration),
                     // There's only a single buffer, which is the raw mp4 video data.
                     buffer: buffer.clone(),
-                    chunk_id: re_chunk::ChunkId::ZERO,
+                    chunk_id: re_types_core::ChunkId::ZERO,
                     byte_span,
                 }));
             }

@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use bit_vec::BitVec;
 use itertools::Itertools as _;
 use re_span::Span;
+use re_types_core::ChunkId;
 use web_time::Instant;
 
 use super::{Time, Timescale};
@@ -857,10 +858,10 @@ pub enum SampleMetadataState {
 
     /// Sample is marked as skip, this can happen if a chunk has null rows for
     /// the sample component.
-    Skip(re_chunk::ChunkId),
+    Skip(ChunkId),
 
     /// The source chunk for this sample hasn't arrived yet.
-    Unloaded(re_chunk::ChunkId),
+    Unloaded(ChunkId),
 }
 
 impl SampleMetadataState {
@@ -882,7 +883,7 @@ impl SampleMetadataState {
         *self = Self::Unloaded(self.source_chunk());
     }
 
-    pub fn source_chunk(&self) -> re_chunk::ChunkId {
+    pub fn source_chunk(&self) -> ChunkId {
         match self {
             Self::Present(sample) => sample.chunk_id,
             Self::Skip(chunk_id) | Self::Unloaded(chunk_id) => *chunk_id,
@@ -957,7 +958,7 @@ pub struct SampleMetadata {
     pub buffer: arrow::buffer::Buffer,
 
     /// The chunk this sample comes from.
-    pub chunk_id: re_chunk::ChunkId,
+    pub chunk_id: ChunkId,
 
     /// Offset and length within [`SampleMetadata::buffer`].
     pub byte_span: Span<u32>,
@@ -1095,7 +1096,7 @@ mod tests {
                     presentation_timestamp: Time(pts),
                     duration: Some(Time(1)),
                     buffer: arrow::buffer::Buffer::default(),
-                    chunk_id: re_chunk::ChunkId::new(),
+                    chunk_id: ChunkId::new(),
                     byte_span: Default::default(),
                 })
             })
