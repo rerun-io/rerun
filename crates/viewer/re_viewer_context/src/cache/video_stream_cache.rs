@@ -941,7 +941,7 @@ impl Cache for VideoStreamCache {
     }
 
     fn on_rrd_manifest(&mut self, _ctx: &ViewerContext<'_>, _entity_db: &EntityDb) {
-        // Reset everything when we recieve an rrd manifest.
+        // Reset everything when we receive an rrd manifest.
         self.0.clear();
     }
 

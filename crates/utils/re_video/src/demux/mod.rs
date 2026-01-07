@@ -1,6 +1,6 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
+//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of keyframes.
 //!
 //! The entry point is [`VideoDataDescription::load_from_bytes`]
 //! which produces an instance of [`VideoDataDescription`] from any supported video container.
@@ -852,11 +852,17 @@ impl VideoDataDescription {
     }
 }
 
-// TODO: docs
+/// The state of the current sample.
+///
+/// When the source chunk is loaded, all of its samples will be either `Present` or `Skip`.
 #[derive(Debug, Clone)]
 pub enum SampleMetadataState {
+    /// Sample is present and contains video data.
     Present(SampleMetadata),
+    /// Sample is marked as skip, this can happen if a chunk has null rows for
+    /// the sample component.
     Skip(re_chunk::ChunkId),
+    /// The source chunk for this sample hasn't arrived yet.
     Unloaded(re_chunk::ChunkId),
 }
 
@@ -913,7 +919,7 @@ impl re_byte_size::SizeBytes for SampleMetadataState {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct SampleMetadata {
-    /// Is this the start of a new (closed) [`GroupOfPictures`]?
+    /// Is this the start of a new (closed) group of pictures?
     ///
     /// What this means in detail is dependent on the codec but they are generally
     /// at least I(DR)-frames and often have additional metadata such that

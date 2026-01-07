@@ -134,7 +134,7 @@ pub trait Cache: std::any::Any + Send + Sync {
         _ = entity_db;
     }
 
-    /// React to recieving an rrd manifest, if needed.
+    /// React to receiving an rrd manifest, if needed.
     ///
     /// Useful for creating data that may be based on the information we get in the rrd manifest.
     fn on_rrd_manifest(&mut self, ctx: &ViewerContext<'_>, entity_db: &EntityDb) {

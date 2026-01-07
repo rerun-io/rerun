@@ -147,7 +147,7 @@ impl<T> StableIndexDeque<T> {
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &mut 1)]);
+    /// assert_eq!(v.iter_indexed_mut().collect::<Vec<_>>(), vec![(1usize, &mut 1i32)]);
     /// ```
     pub fn iter_indexed_mut(&mut self) -> impl Iterator<Item = (usize, &mut T)> {
         self.vec

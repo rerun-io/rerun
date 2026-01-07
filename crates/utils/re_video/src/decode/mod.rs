@@ -265,7 +265,7 @@ pub fn new_decoder(
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -362,7 +362,7 @@ impl FrameContent {
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
