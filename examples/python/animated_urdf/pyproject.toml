@@ -5,7 +5,7 @@ readme = "README.md"
 dependencies = ["rerun-sdk"]
 
 [project.scripts]
-animated_urdf = "main:main"
+animated_urdf = "animated_urdf:main"
 
 [build-system]
 requires = ["hatchling"]

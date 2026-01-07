@@ -35,4 +35,5 @@ view_contents.py linguist-generated=true
 viewport_blueprint.py linguist-generated=true
 visible_time_ranges.py linguist-generated=true
 visual_bounds2d.py linguist-generated=true
+visualizer_instruction.py linguist-generated=true
 visualizer_overrides.py linguist-generated=true

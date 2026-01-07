@@ -39,7 +39,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
-use crate::dataframe::PyRecording;
+use crate::recording::PyRecording;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -251,8 +251,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
-    // dataframes
-    crate::dataframe::register(m)?;
+    // recording
+    crate::recording::register(m)?;
 
     // catalog
     crate::catalog::register(py, m)?;

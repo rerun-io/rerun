@@ -199,6 +199,7 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.svg");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.svg");
+pub const HOME: Icon = icon_from_path!("../data/icons/home.svg");
 pub const TABLE: Icon = icon_from_path!("../data/icons/table.svg");
 pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");

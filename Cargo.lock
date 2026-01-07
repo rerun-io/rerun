@@ -1301,6 +1301,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "blueprint"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "clap",
+ "rerun",
+]
+
+[[package]]
+name = "blueprint_stocks"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "rerun",
+ "serde",
+ "serde_json",
+ "strum",
+]
+
+[[package]]
 name = "bon"
 version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2278,6 +2299,18 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "rerun",
+]
+
+[[package]]
+name = "dae-parser"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee4253e35714fabaf4bd442b81ba903b3be71833e3fd885adf114127b81c89c"
+dependencies = [
+ "chrono",
+ "minidom-14",
+ "percent-encoding",
+ "ref-cast",
 ]
 
 [[package]]
@@ -6253,6 +6286,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "minidom-14"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0233972f8e82ae98ec4e9fd6daa3f6e29c2732c55b3626e9a3bde856e986345c"
+dependencies = [
+ "quick-xml 0.36.2",
+]
+
+[[package]]
 name = "minimal"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
@@ -9420,6 +9462,7 @@ dependencies = [
  "cfg_aliases",
  "clean-path",
  "crossbeam",
+ "dae-parser",
  "document-features",
  "ecolor",
  "enumset",
@@ -9537,6 +9580,7 @@ dependencies = [
  "similar-asserts",
  "thiserror 2.0.17",
  "tokio",
+ "uuid",
  "vec1",
  "webbrowser",
 ]
@@ -10527,6 +10571,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref-cast"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a0ae411dbe946a674d89546582cea4ba2bb8defac896622d6496f14c23ba5cf"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1165225c21bff1f3bbce98f5a1f889949bc902d3575308cc7b0de30b4f6d27c7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "reflink-copy"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10780,7 +10844,6 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
- "re_dataframe",
  "re_datafusion",
  "re_grpc_client",
  "re_grpc_server",

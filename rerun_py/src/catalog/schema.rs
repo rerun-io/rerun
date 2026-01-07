@@ -11,8 +11,7 @@ use re_sorbet::{BatchType, ComponentColumnSelector, SorbetColumnDescriptors};
 
 use super::component_columns::PyComponentColumnDescriptor;
 use super::index_columns::PyIndexColumnDescriptor;
-use crate::catalog::to_py_err;
-use crate::dataframe::AnyComponentColumn;
+use crate::catalog::{AnyComponentColumn, to_py_err};
 
 #[pyclass(
     frozen,

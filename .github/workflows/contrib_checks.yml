@@ -189,7 +189,7 @@ jobs:
         run: pixi run check-large-files
 
   check-example-thumbnails:
-    name: Check Python example thumbnails
+    name: Check example thumbnails
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
@@ -199,7 +199,7 @@ jobs:
         with:
           pixi-version: v0.55.0
 
-      - name: Check Python example thumbnails
+      - name: Check example thumbnails
         run: pixi run uvpy ./scripts/ci/thumbnails.py check
 
   spell-check:

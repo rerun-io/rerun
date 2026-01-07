@@ -10,3 +10,4 @@ tensor_dimension_index_slider.rs linguist-generated=true
 text_log_column.rs linguist-generated=true
 text_log_column_kind.rs linguist-generated=true
 timeline_column.rs linguist-generated=true
+visualizer_component_mapping.rs linguist-generated=true

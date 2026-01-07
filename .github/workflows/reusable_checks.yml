@@ -146,7 +146,7 @@ jobs:
         run: pixi run check-publish-flags
 
   check-example-thumbnails:
-    name: Check Python example thumbnails
+    name: Check example thumbnails
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -157,7 +157,7 @@ jobs:
         with:
           pixi-version: v0.55.0
 
-      - name: Check Python example thumbnails
+      - name: Check example thumbnails
         run: pixi run uvpy ./scripts/ci/thumbnails.py check
 
   check-example-manifest-coverage:

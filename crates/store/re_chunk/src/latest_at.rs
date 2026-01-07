@@ -174,6 +174,6 @@ impl Chunk {
             }
         }
 
-        index.map_or_else(|| self.emptied(), |i| self.row_sliced(i, 1))
+        index.map_or_else(|| self.emptied(), |i| self.row_sliced_shallow(i, 1))
     }
 }
