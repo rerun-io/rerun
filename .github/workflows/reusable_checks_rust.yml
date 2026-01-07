@@ -148,7 +148,7 @@ jobs:
 
   # Run tests on Mac and Windows (main channel)
   mac-windows-tests-main:
-    name: Test on ${{ matrix.name }}
+    name: Tests only (main)
     timeout-minutes: 100 # Windows is very slow
     strategy:
       matrix:
