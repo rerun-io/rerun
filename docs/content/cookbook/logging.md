@@ -1,5 +1,5 @@
 ---
-title: Send data to Rerun
+title: Log and ingest
 order: 0
-redirect: howto/logging/send-columns
+redirect: logging/send-columns
 ---

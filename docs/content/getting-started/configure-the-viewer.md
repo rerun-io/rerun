@@ -1,5 +1,5 @@
 ---
-title: See data
+title: View data
 order: 200
 ---
 

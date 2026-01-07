@@ -1,5 +1,5 @@
 ---
-title: Send data
+title: Log and ingest
 order: 100
 ---
 
