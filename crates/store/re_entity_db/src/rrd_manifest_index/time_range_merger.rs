@@ -14,12 +14,14 @@ pub struct TimeRange {
 impl Deref for TimeRange {
     type Target = AbsoluteTimeRange;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.range
     }
 }
 
 impl DerefMut for TimeRange {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.range
     }
@@ -31,12 +33,14 @@ struct DelayedRange(TimeRange);
 impl Deref for DelayedRange {
     type Target = TimeRange;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl PartialEq for DelayedRange {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.range.min == other.range.min
     }
@@ -45,12 +49,14 @@ impl PartialEq for DelayedRange {
 impl Eq for DelayedRange {}
 
 impl PartialOrd for DelayedRange {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for DelayedRange {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.range.min.cmp(&other.range.min).reverse()
     }
