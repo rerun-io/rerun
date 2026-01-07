@@ -978,7 +978,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_rrd_manifest(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
-    ) -> std::result::Result<tonic::Response<Self::GetRrdManifestStream>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<Self::GetRrdManifestStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 

@@ -1,5 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use itertools::Itertools;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RrdManifest, ToApplication as _};
 use re_log_types::EntryId;
@@ -374,7 +375,7 @@ where
     ) -> ApiResult<RrdManifest> {
         // TODO(cmc): at some point we should probably continue the stream all the way down, but
         // for now we simplify downstream's life by concatenating everything in here.
-        let mut rrd_manifest: Option<RrdManifest> = None;
+        let mut rrd_manifest_parts = Vec::new();
 
         let responses = self
             .inner()
@@ -405,26 +406,24 @@ where
                     ApiError::serialization(err, "failed parsing /GetRrdManifest response")
                 })?;
 
-            if let Some(mut temp) = rrd_manifest.take() {
-                temp.data =
-                    re_arrow_util::concat_polymorphic_batches(&[temp.data, rrd_manifest_part.data])
-                        .map_err(|err| {
-                            ApiError::serialization(
-                                err,
-                                "failed concatenating /GetRrdManifest response part",
-                            )
-                        })?;
-                rrd_manifest = Some(temp);
-            } else {
-                rrd_manifest = Some(rrd_manifest_part);
-            }
+            rrd_manifest_parts.push(rrd_manifest_part);
         }
 
-        rrd_manifest.ok_or_else(|| ApiError {
-            message: "failed parsing /GetRrdManifest response (no data)".to_owned(),
-            kind: crate::ApiErrorKind::Serialization,
-            source: None,
-        })
+        let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
+            return Err(ApiError {
+                message: "failed parsing /GetRrdManifest response (no data)".to_owned(),
+                kind: crate::ApiErrorKind::Serialization,
+                source: None,
+            });
+        };
+
+        let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
+        rrd_manifest.data =
+            re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
+                ApiError::serialization(err, "failed concatenating /GetRrdManifest response parts")
+            })?;
+
+        Ok(rrd_manifest)
     }
 
     /// Fetches all chunks ids for a specified segment.
