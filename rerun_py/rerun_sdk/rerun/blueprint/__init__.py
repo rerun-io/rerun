@@ -70,3 +70,4 @@ from .views import (
     TextLogView as TextLogView,
     TimeSeriesView as TimeSeriesView,
 )
+from .visualizers import Visualizer as Visualizer

@@ -17,9 +17,10 @@ for t in range(int(tau * 2 * 10.0)):
 # Use the SeriesPoints visualizer for the sin series.
 rr.send_blueprint(
     rrb.TimeSeriesView(
-        overrides={
+        visualizer_overrides={
             "trig/sin": [
-                rrb.VisualizerOverrides([rrb.visualizers.SeriesLines, rrb.visualizers.SeriesPoints]),
+                rrb.visualizers.SeriesLines(),
+                rrb.visualizers.SeriesPoints(),
             ],
         },
     ),

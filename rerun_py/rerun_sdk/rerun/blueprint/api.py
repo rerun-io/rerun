@@ -12,13 +12,17 @@ from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLik
 from ..recording_stream import RecordingStream
 from .archetypes import (
     ContainerBlueprint,
+    EntityBehavior,
     PanelBlueprint,
     TimePanelBlueprint,
     ViewBlueprint,
     ViewContents,
     ViewportBlueprint,
+    VisibleTimeRanges,
+    VisualizerOverrides,
 )
 from .components import PanelState, PanelStateLike
+from .visualizers import Visualizer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,9 +63,9 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
+        visualizer_overrides: Mapping[
             EntityPathLike,
-            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
+            EntityBehavior | VisibleTimeRanges | Visualizer | Iterable[EntityBehavior | VisibleTimeRanges | Visualizer],
         ]
         | None = None,
     ) -> None:
@@ -94,11 +98,13 @@ class View:
 
             Note that an archetype's required components typically don't have any effect.
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
-        overrides:
-            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+        visualizer_overrides:
+            Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
+            should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
 
-            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
+            Each visualizer can be configured with arbitrary overrides and mappings.
+
+            For any entity mentioned in this map, visualizers are no longer added automatically based on the entity's components.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
@@ -113,7 +119,7 @@ class View:
         self.visible = visible
         self.properties = properties if properties is not None else {}
         self.defaults = list(defaults) if defaults is not None else []
-        self.overrides = dict(overrides.items()) if overrides is not None else {}
+        self.visualizer_overrides = dict(visualizer_overrides.items()) if visualizer_overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
@@ -165,18 +171,32 @@ class View:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
-        for path, components in self.overrides.items():
+        # TODO(RR-3153): Use new visualizer type aware override datamodel.
+        for path, visualizer in self.visualizer_overrides.items():
             log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
-            if isinstance(components, Iterable):
-                components_list = list(components)
 
-                for component in components_list:
-                    if isinstance(component, DescribedComponentBatch):
-                        stream.log(log_path, [component])
-                    else:
-                        stream.log(log_path, component)
+            visualizer_types = []
+
+            if isinstance(visualizer, Iterable):
+                visualizer_list = list(visualizer)
+
+                for visualizer in visualizer_list:
+                    if isinstance(visualizer, Visualizer):
+                        visualizer_types.append(visualizer.visualizer_type)
+                        if visualizer.overrides is not None:
+                            stream.log(log_path, visualizer.overrides)
+                    else:  # has to be AsComponents
+                        stream.log(log_path, visualizer)
             else:  # has to be AsComponents
-                stream.log(log_path, components)
+                if isinstance(visualizer, Visualizer):
+                    visualizer_types.append(visualizer.visualizer_type)
+                    if visualizer.overrides is not None:
+                        stream.log(log_path, visualizer.overrides)
+                else:  # has to be AsComponents
+                    stream.log(log_path, visualizer)
+
+            if len(visualizer_types) > 0:
+                stream.log(log_path, VisualizerOverrides(visualizer_types))
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer

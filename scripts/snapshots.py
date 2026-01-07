@@ -60,8 +60,8 @@ def blueprint(path: Path) -> rrb.Blueprint:
                     rrb.Spatial2DView(
                         contents=["/original", "/new"],
                         name="Overlay (opacity)",
-                        overrides={
-                            "/new": rr.Image.from_fields(opacity=0.5),
+                        visualizer_overrides={
+                            "/new": rrb.visualizers.Image(overrides=rr.Image.from_fields(opacity=0.5)),
                         },
                     ),
                     name='NOTE: Select the "new" entity visualizer and play with the "Opacity" component',

@@ -16,3 +16,11 @@ Please refer to the [0.28 migration guide section on `RecordingView` and local d
 The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have now been fully removed. If you were using any of these deprecated methods, you must update your code to use the new APIs.
 
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
+
+## TODO: write about override breaking change
+
+TODO: regular overrides
+TODO: visualizer overrides
+
+TODO MAYBE: entitybehavior
+TODO MAYBE: visibleTimeRanges

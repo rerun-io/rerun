@@ -20,8 +20,13 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
     );
     code.push_unindented("from __future__ import annotations\n\n", 1);
 
-    code.push_indented(0, "from typing import Any", 2);
+    code.push_indented(0, "from typing import Any, Iterable", 2);
     code.push_indented(0, "from ._base import Visualizer", 2);
+    code.push_indented(
+        0,
+        "from ..._baseclasses import DescribedComponentBatch, AsComponents",
+        2,
+    );
 
     let mut visualizers: Vec<(String, String)> = Vec::new();
     let mut archetypes_without_attr = Vec::new();
@@ -61,23 +66,16 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
 
     visualizers.sort_by(|a, b| a.0.cmp(&b.0));
 
-    // Generate string constants
-    for (archetype_name, visualizer_id) in &visualizers {
-        code.push_indented(0, format!("{archetype_name} = {visualizer_id:?}"), 1);
-    }
-
-    code.push_indented(0, "class _GeneratedVisualizerClasses:", 1);
-
     // Generated visualizer classes
     for (archetype_name, visualizer_id) in &visualizers {
-        code.push_indented(1, format!("class {archetype_name}(Visualizer):"), 1);
+        code.push_indented(0, format!("class {archetype_name}(Visualizer):"), 1);
         code.push_indented(
-            2,
-            "def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:",
+            1,
+            "def __init__(self, *, overrides: AsComponents | Iterable[DescribedComponentBatch] = None, mappings: Any = None) -> None:",
             1,
         );
         code.push_indented(
-            3,
+            2,
             format!(
                 "super().__init__(\"{visualizer_id}\", overrides=overrides, mappings=mappings)",
             ),

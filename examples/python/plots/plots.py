@@ -136,25 +136,35 @@ def main() -> None:
                     rrb.TimeSeriesView(
                         name="Trig",
                         origin="/trig",
-                        overrides={
-                            "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
-                            "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
+                        visualizer_overrides={
+                            "/trig/sin": rrb.visualizers.SeriesLines(
+                                overrides=rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)")
+                            ),
+                            "/trig/cos": rrb.visualizers.SeriesLines(
+                                overrides=rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)")
+                            ),
                         },
                     ),
                     rrb.TimeSeriesView(
                         name="Classification",
                         origin="/classification",
-                        overrides={
-                            "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
+                        visualizer_overrides={
+                            "classification/line": rrb.visualizers.SeriesLines(
+                                overrides=rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0)
+                            ),
                             # This ensures that the `SeriesPoints` visualizers is used for this entity.
-                            "classification/samples": rrb.VisualizerOverrides("SeriesPoints"),
+                            "classification/samples": rrb.visualizers.SeriesPoints(),
                         },
                     ),
                 ),
                 rrb.TimeSeriesView(
                     name="Spiral",
                     origin="/spiral",
-                    overrides={"spiral": rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
+                    visualizer_overrides={
+                        "spiral": rrb.visualizers.SeriesLines(
+                            overrides=rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])
+                        )
+                    },  # type: ignore[arg-type]
                 ),
                 row_shares=[2, 1],
             ),

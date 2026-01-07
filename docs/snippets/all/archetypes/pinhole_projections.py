@@ -36,9 +36,9 @@ blueprint = rrb.Blueprint(
             origin="world",
             name="3D Scene",
             contents=["/**"],
-            overrides={
+            visualizer_overrides={
                 # Adjust visual size of camera frustum in 3D view for better visibility.
-                "camera": rr.Pinhole.from_fields(image_plane_distance=1.0)
+                "camera": rrb.visualizers.Pinhole(overrides=rr.Pinhole.from_fields(image_plane_distance=1.0))
             },
         ),
         # 2D projection from angled camera

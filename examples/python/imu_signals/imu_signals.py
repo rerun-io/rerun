@@ -40,15 +40,19 @@ def main() -> None:
             rrb.TimeSeriesView(
                 origin="gyroscope",
                 name="Gyroscope",
-                overrides={
-                    "/gyroscope": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                visualizer_overrides={
+                    "/gyroscope": rrb.visualizers.SeriesLines(
+                        overrides=rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS)
+                    ),
                 },
             ),
             rrb.TimeSeriesView(
                 origin="accelerometer",
                 name="Accelerometer",
-                overrides={
-                    "/accelerometer": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                visualizer_overrides={
+                    "/accelerometer": rrb.visualizers.SeriesLines(
+                        overrides=rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS)
+                    ),
                 },
             ),
         ),

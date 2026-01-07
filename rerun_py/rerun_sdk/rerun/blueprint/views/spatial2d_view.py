@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
+    from ..visualizers._base import Visualizer
 
 
 class Spatial2DView(View):
@@ -84,9 +85,12 @@ class Spatial2DView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
+        visualizer_overrides: Mapping[
             EntityPathLike,
-            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
+            blueprint_archetypes.EntityBehavior
+            | blueprint_archetypes.VisibleTimeRanges
+            | Visualizer
+            | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer],
         ]
         | None = None,
         background: blueprint_archetypes.Background
@@ -124,11 +128,13 @@ class Spatial2DView(View):
 
             Note that an archetype's required components typically don't have any effect.
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
-        overrides:
-            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+        visualizer_overrides:
+            Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
+            should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
 
-            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
+            Each visualizer can be configured with arbitrary overrides and mappings.
+
+            For any entity mentioned in this map, visualizers are no longer added automatically based on the entity's components.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
@@ -173,5 +179,5 @@ class Spatial2DView(View):
             visible=visible,
             properties=properties,
             defaults=defaults,
-            overrides=overrides,
+            visualizer_overrides=visualizer_overrides,
         )
