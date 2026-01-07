@@ -35,6 +35,7 @@ impl std::fmt::Display for Fragment {
             time_selection,
         } = self;
 
+        #[expect(clippy::useless_let_if_seq)]
         let mut did_write = false;
 
         if let Some(selection) = selection {

@@ -201,28 +201,29 @@ impl BlobUi {
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Self {
-        let mut image = None;
-        let mut video = None;
+        let (image, video) = if let Some(blob_row_id) = blob_row_id {
+            (
+                ImageUi::from_blob(
+                    ctx,
+                    blob_row_id,
+                    blob_component_descriptor,
+                    &blob,
+                    media_type,
+                ),
+                VideoUi::from_blob(
+                    ctx,
+                    entity_path,
+                    blob_row_id,
+                    blob_component_descriptor,
+                    &blob,
+                    media_type,
+                    video_timestamp,
+                ),
+            )
+        } else {
+            (None, None)
+        };
 
-        if let Some(blob_row_id) = blob_row_id {
-            image = ImageUi::from_blob(
-                ctx,
-                blob_row_id,
-                blob_component_descriptor,
-                &blob,
-                media_type,
-            );
-
-            video = VideoUi::from_blob(
-                ctx,
-                entity_path,
-                blob_row_id,
-                blob_component_descriptor,
-                &blob,
-                media_type,
-                video_timestamp,
-            );
-        }
         Self {
             image,
             video,
