@@ -37,7 +37,6 @@ pub fn test_dae_mesh_import() {
 
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-
         view_id
     });
 
