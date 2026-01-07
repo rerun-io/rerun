@@ -1083,21 +1083,15 @@ class TableEntryInternal:
     def write_batches(
         self,
         batches: pa.RecordBatchReader,
-        insert_mode: TableInsertMode,
+        insert_mode: TableInsertModeInternal,
     ) -> None: ...
 
-class TableInsertMode:
+class TableInsertModeInternal:
     """The modes of operation when writing tables."""
 
-    APPEND: TableInsertMode
-    OVERWRITE: TableInsertMode
-    REPLACE: TableInsertMode
-
-    def __str__(self, /) -> str:
-        """Return str(self)."""
-
-    def __int__(self) -> int:
-        """int(self)"""  # noqa: D400
+    APPEND: TableInsertModeInternal
+    OVERWRITE: TableInsertModeInternal
+    REPLACE: TableInsertModeInternal
 
 class _UrdfTreeInternal:
     """Internal Rust implementation of a parsed URDF tree."""
