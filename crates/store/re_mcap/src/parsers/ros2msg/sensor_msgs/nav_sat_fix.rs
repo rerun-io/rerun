@@ -11,10 +11,6 @@ use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
 use crate::parsers::util::fixed_size_list_builder;
 
-/// Plugin that parses `sensor_msgs/msg/NavSatFix` messages.
-#[derive(Default)]
-pub struct NavSatFixSchemaPlugin;
-
 pub struct NavSatFixMessageParser {
     geo_points: Vec<LatLon>,
     altitude: FixedSizeListBuilder<Float64Builder>,

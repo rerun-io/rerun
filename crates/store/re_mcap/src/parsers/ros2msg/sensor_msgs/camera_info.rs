@@ -8,10 +8,6 @@ use crate::Error;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 
-/// Plugin that parses `sensor_msgs/msg/CameraInfo` messages.
-#[derive(Default)]
-pub struct CameraInfoSchemaPlugin;
-
 pub struct CameraInfoMessageParser {
     image_from_cameras: Vec<[f32; 9]>,
     resolutions: Vec<(f32, f32)>,

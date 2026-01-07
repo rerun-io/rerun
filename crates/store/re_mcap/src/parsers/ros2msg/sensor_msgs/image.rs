@@ -9,10 +9,6 @@ use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
 
-/// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
-#[derive(Default)]
-pub struct ImageSchemaPlugin;
-
 pub struct ImageMessageParser {
     /// The raw image data blobs.
     ///
