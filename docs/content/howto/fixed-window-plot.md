@@ -1,5 +1,5 @@
 ---
 title: Create a fixed-window plot
 hidden: true
-redirect: howto/visualization/fixed-window-plot
+redirect: viewing/howto/fixed-window-plot
 ---

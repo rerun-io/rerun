@@ -1,5 +1,5 @@
 ---
 title: 🦀 Rust example
 hidden: true
-redirect: reference/logging/data-loaders/rust
+redirect: logging/reference/data-loaders/rust
 ---

@@ -1,5 +1,5 @@
 ---
 title: Dataframes
 hidden: true
-redirect: reference/query/dataframes
+redirect: query/reference/dataframes
 ---

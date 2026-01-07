@@ -5,7 +5,6 @@ order: 988
 
 ## Major changes to the logging APIs
 
-
 ### Partial updates
 
 These new APIs make it possible to send partial updates of your data over time, i.e. you can think of this as a sort of diffs or delta encodings.
@@ -14,12 +13,12 @@ This was already possible before, but only by relying on semi-private APIs that 
 In particular, these APIs had no way of keeping track of the surrounding context in which these logging calls were made (e.g. which archetype?), which created a lot of data modeling related issues.\
 Internally, these new APIs make it possible to implement many long awaited Rerun features, in the long term.
 
-The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](../../howto/logging/send-partial-updates.md).
-
+The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](../../logging/howto/send-partial-updates.md).
 
 #### Python
 
-*Before*:
+_Before_:
+
 ```python
 positions = [[i, 0, 0] for i in range(0, 10)]
 
@@ -40,7 +39,8 @@ rr.log("points", rr.Clear.flat())
 rr.log("points", [rr.components.Position3DBatch(positions), rr.components.RadiusBatch(0.3)])
 ```
 
-*After*:
+_After_:
+
 ```python
 positions = [[i, 0, 0] for i in range(0, 10)]
 
@@ -61,13 +61,14 @@ rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, 
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.py)
-* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.py)
 
+-   [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.py)
+-   [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.py)
 
 #### Rust
 
-*Before*:
+_Before_:
+
 ```rust
 let positions = || (0..10).map(|i| (i as f32, 0.0, 0.0)).map(Into::into).collect::<Vec<rerun::components::Position3D>>();
 
@@ -95,8 +96,8 @@ rec.log("points", &rerun::Clear::flat())?;
 rec.log("points", &[&positions() as &dyn rerun::ComponentBatch, &radii])?;
 ```
 
+_After_:
 
-*After*:
 ```rust
 let positions = || (0..10).map(|i| (i as f32, 0.0, 0.0));
 
@@ -118,13 +119,14 @@ rec.log("points", &rerun::Points3D::clear_fields().with_positions(positions()).w
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.rs)
-* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.rs)
 
+-   [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.rs)
+-   [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.rs)
 
 #### C++
 
-*Before*:
+_Before_:
+
 ```cpp
 std::vector<rerun::Position3D> positions;
 for (int i = 0; i < 10; ++i) {
@@ -159,8 +161,8 @@ rec.log("points", rerun::Clear::FLAT);
 rec.log("points", positions, radii);
 ```
 
+_After_:
 
-*After*:
 ```cpp
 std::vector<rerun::Position3D> positions;
 for (int i = 0; i < 10; ++i) positions.emplace_back(static_cast<float>(i), 0.0f, 0.0f);
@@ -193,9 +195,9 @@ rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with
 ```
 
 See also:
-* [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.cpp)
-* [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.cpp)
 
+-   [Example: Partial updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_partial_updates.cpp)
+-   [Example: Partial updates of a `Mesh3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/mesh3d_partial_updates.cpp)
 
 ### Columnar updates
 
@@ -205,16 +207,18 @@ This was already possible before, although with pretty severe limitations.\
 In particular, these APIs had no way of keeping track of the surrounding context in which these logging calls were made (e.g. which archetype?), which created a lot of data modeling related issues.\
 Internally, these new APIs make it possible to implement many long awaited Rerun features, in the long term.
 
-The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](http://rerun.io/docs/howto/logging/send-columns).
+The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](http://rerun.io/docs/logging/howto/send-columns).
 
 See also the API reference:
-* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
-* [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
-* [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
+
+-   [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
+-   [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+-   [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 #### Python
 
-*Before*:
+_Before_:
+
 ```python
 # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)
@@ -243,7 +247,8 @@ rr.send_columns(
 )
 ```
 
-*After*:
+_After_:
+
 ```python
 # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)
@@ -272,16 +277,17 @@ rr.send_columns(
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.py)
-* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.py)
-* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.py)
 
+-   [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.py)
+-   [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.py)
+-   [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.py)
 
 #### Rust
 
-*Before*: N/A. This was not previously possible using the Rust API.
+_Before_: N/A. This was not previously possible using the Rust API.
 
-*After*:
+_After_:
+
 ```rust
 let times = rerun::TimeColumn::new_seconds("time", 10..15);
 
@@ -307,14 +313,15 @@ rec.send_columns("points", [times], position.chain(color_and_radius))?;
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.rs)
-* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.rs)
-* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.rs)
 
+-   [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.rs)
+-   [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.rs)
+-   [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.rs)
 
 #### C++
 
-*Before*:
+_Before_:
+
 ```cpp
 // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 std::vector<std::array<float, 3>> positions = {
@@ -360,7 +367,8 @@ rec.send_columns(
 );
 ```
 
-*After*:
+_After_:
+
 ```cpp
 // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 std::vector<std::array<float, 3>> positions = {
@@ -389,11 +397,10 @@ rec.send_columns("points", time_column, position, color_and_radius);
 ```
 
 See also:
-* [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.cpp)
-* [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.cpp)
-* [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.cpp)
 
-
+-   [Example: Columnar updates of a `Scalar` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/scalar_column_updates.cpp)
+-   [Example: Columnar updates of a `Transform3D` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/transform3d_column_updates.cpp)
+-   [Example: Columnar updates of an `Image` archetype](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/all/archetypes/image_column_updates.cpp)
 
 ## Rust API changes
 
@@ -402,7 +409,6 @@ See also:
 As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer constants for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
 
 Instead, there's now methods with the same name, i.e. `ViewCoordinates::RUB()`.
-
 
 ### `Tensor` archetype can no longer access tensor data as `ndarray` view directly
 
@@ -416,14 +422,12 @@ With the addition of the notification center, the default log level in `re_log` 
 
 Logs at the `info` level will appear in the notification center.
 
-
 ## C++ API changes
 
 ### `RecordingStream::log`/`send_column` no longer takes raw component collections
 
 Previously, both `RecordingStream::log` and `RecordingStream::send_column` were able to
 handle raw component collections which then would be serialized to arrow on the fly.
-
 
 #### `log`
 
@@ -447,13 +451,14 @@ a `Collection<ComponentColumn>` can be constructed is accepted.
 The preferred way to create `rerun::ComponentColumn`s is to use the new `columns` method on archetypes.
 
 For instance in order to send a column of scalars, you can now do this.
+
 ```cpp
 rec.send_columns("scalars", time_column,
     rerun::Scalar().with_many_scalar(scalar_data).columns()
 );
 ```
-All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) have been updated accordingly.
 
+All [example snippets](https://github.com/rerun-io/rerun/blob/0.22.0/docs/snippets/INDEX.md) have been updated accordingly.
 
 ## `AsComponents::serialize` is now called `AsComponents::as_batches` and returns `rerun::Collection<ComponentBatch>`
 
@@ -483,17 +488,17 @@ It was no longer used for several releases, so we removed it.
 Although `rr.log_components()` was technically a public API, it was undocumented and we now deprecated its use.
 For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
 
-
 ## Other
 
 ### Previously deprecated `DisconnectedSpace` archetype/component have been removed
 
 The deprecated `DisconnectedSpace` archetype and `DisconnectedSpace` component have been removed.
 To achieve the same effect, you can log any of the following "invalid" transforms:
-* zeroed 3x3 matrix
-* zero scale
-* zeroed quaternion
-* zero axis on axis-angle rotation
+
+-   zeroed 3x3 matrix
+-   zero scale
+-   zeroed quaternion
+-   zero axis on axis-angle rotation
 
 Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
 This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).

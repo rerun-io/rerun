@@ -1,5 +1,5 @@
 ---
 title: Optimize chunk count
 hidden: true
-redirect: howto/logging/optimize-chunks
+redirect: logging/howto/optimize-chunks
 ---

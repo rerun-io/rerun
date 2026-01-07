@@ -1,5 +1,5 @@
 ---
 title: The Entity Path Hierarchy
 hidden: true
-redirect: concepts/logging/entity-path
+redirect: logging/concepts/entity-path
 ---

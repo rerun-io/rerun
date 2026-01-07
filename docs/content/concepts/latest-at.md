@@ -1,5 +1,5 @@
 ---
 title: Query semantics & partial updates
 hidden: true
-redirect: concepts/logging/latest-at
+redirect: logging/concepts/latest-at
 ---

@@ -1,5 +1,5 @@
 ---
 title: Datastore compaction
 hidden: true
-redirect: reference/logging/store-compaction
+redirect: logging/reference/store-compaction
 ---

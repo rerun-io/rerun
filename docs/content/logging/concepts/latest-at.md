@@ -21,7 +21,6 @@ Point positions are e.g. represented as a batch of `Position3D` component instan
 Components can have different values for different times, and do not have to be updated all at once.
 Rerun supports multiple timelines (sequences of times), so that you can explore your data organized according to e.g. the camera's frame index or the time it was logged.
 
-
 ## Core queries
 
 All data that gets sent to the Rerun viewer is stored in an in-memory database, and there are two core types of queries against the database that visualizers in the viewer run.
@@ -51,8 +50,7 @@ These queries drive any visualization where data from more than one time is show
 The obvious example is time series plots,
 but it can also be used to e.g. show lidar point clouds from the last 10 frames together.
 
-The queried range is typically configurable, see for instance [this how-to guide on fixed windows plots](../howto/visualization/fixed-window-plot.md) for more information.
-
+The queried range is typically configurable, see for instance [this how-to guide on fixed windows plots](../viewing/howto/fixed-window-plot.md) for more information.
 
 ## Partial updates
 
@@ -62,4 +60,4 @@ Here's an example of updating only some specific properties of a point cloud, ov
 
 snippet: archetypes/points3d_partial_updates
 
-To learn more about how to use our partial updates APIs, refer to [this page](../howto/logging/send-partial-updates.md).
+To learn more about how to use our partial updates APIs, refer to [this page](../logging/howto/send-partial-updates.md).

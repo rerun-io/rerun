@@ -1,5 +1,5 @@
 ---
 title: Overview
 hidden: true
-redirect: reference/logging/data-loaders/overview
+redirect: logging/reference/data-loaders/overview
 ---

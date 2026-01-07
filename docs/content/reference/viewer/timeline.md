@@ -1,5 +1,5 @@
 ---
 title: Timeline
 hidden: true
-redirect: reference/visualization/viewer/timeline
+redirect: visualization/reference/viewer/timeline
 ---

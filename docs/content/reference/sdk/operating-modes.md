@@ -1,5 +1,5 @@
 ---
 title: Operating Modes
 hidden: true
-redirect: reference/logging/sdk/operating-modes
+redirect: logging/reference/sdk/operating-modes
 ---

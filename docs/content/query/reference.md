@@ -1,0 +1,6 @@
+---
+title: Reference
+order: 5
+---
+
+The reference docs provide more detail on query components.

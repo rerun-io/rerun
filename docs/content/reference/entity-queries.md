@@ -1,5 +1,5 @@
 ---
 title: Entity Queries
 hidden: true
-redirect: reference/visualization/entity-queries
+redirect: visualization/reference/entity-queries
 ---

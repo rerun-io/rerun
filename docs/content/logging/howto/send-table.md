@@ -12,23 +12,23 @@ Rerun now supports sending tabular data to the Rerun Viewer! This feature allows
 
 The `send_table` API provides a straightforward way to send tabular data to the Rerun Viewer. This is particularly useful for:
 
-- Inspecting dataframes alongside other visualizations
-- Debugging data processing pipelines
-- Presenting structured data in a readable format
+-   Inspecting dataframes alongside other visualizations
+-   Debugging data processing pipelines
+-   Presenting structured data in a readable format
 
 ## References
 
 For complete examples of using `send_table`, please refer to:
 
-- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook/send_table.ipynb)
-- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
+-   [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook/send_table.ipynb)
+-   [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
 
 ## Prerequisites
 
-- Rerun SDK (Python)
-- PyArrow library
-- Pandas
-- NumPy
+-   Rerun SDK (Python)
+-   PyArrow library
+-   Pandas
+-   NumPy
 
 Which can be installed via:
 
@@ -81,7 +81,7 @@ client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
 
 ## Using in Jupyter notebooks
 
-Rerun provides special support for Jupyter notebooks, you can find more information here: [https://rerun.io/docs/howto/integrations/embed-notebooks]
+Rerun provides special support for Jupyter notebooks, you can find more information here: [https://rerun.io/docs/logging/howto/integrations/embed-notebooks]
 Note that this API makes use of `rr.notebook.Viewer`:
 
 ```python
@@ -115,11 +115,11 @@ client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
 
 As this is an experimental API, there are several limitations to be aware of:
 
-- Only a single record batch is supported per table
-- Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
-- Integration with the rest of the Rerun API is still in progress
-- Rust and C++ support will be added after the API stabilizes
-- The API may undergo significant changes as we iterate based on user feedback
+-   Only a single record batch is supported per table
+-   Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
+-   Integration with the rest of the Rerun API is still in progress
+-   Rust and C++ support will be added after the API stabilizes
+-   The API may undergo significant changes as we iterate based on user feedback
 
 ## What's next
 

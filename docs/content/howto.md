@@ -1,6 +1,6 @@
 ---
 title: How-to
-order: 2
+hidden: true
 ---
 
-Guides for using Rerun in more advanced ways.
+<!-- TODO(nick) Maybe add a note here about where to find the new concepts. This page never had much detail anyway. -->

@@ -1,5 +1,5 @@
 ---
 title: Selection
 hidden: true
-redirect: reference/visualization/viewer/selection
+redirect: visualization/reference/viewer/selection
 ---

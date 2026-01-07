@@ -1,5 +1,5 @@
 ---
 title: Logging Controls
 hidden: true
-redirect: reference/logging/sdk/logging-controls
+redirect: logging/reference/sdk/logging-controls
 ---

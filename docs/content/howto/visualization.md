@@ -1,5 +1,5 @@
 ---
 title: Visualization
 order: 200
-redirect: howto/visualization/limit-ram
+redirect: viewing/howto/limit-ram
 ---

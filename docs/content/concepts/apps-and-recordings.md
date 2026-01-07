@@ -1,5 +1,5 @@
 ---
 title: Recordings
 hidden: true
-redirect: concepts/logging/apps-and-recordings
+redirect: logging/concepts/apps-and-recordings
 ---

@@ -1,5 +1,5 @@
 ---
 title: Integrate Rerun with native loggers
 hidden: true
-redirect: howto/integrations/integrate-host-loggers
+redirect: logging/howto/integrations/integrate-host-loggers
 ---

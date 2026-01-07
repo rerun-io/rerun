@@ -1,5 +1,5 @@
 ---
 title: 🌊 C++ example
 hidden: true
-redirect: reference/logging/data-loaders/cpp
+redirect: logging/reference/data-loaders/cpp
 ---

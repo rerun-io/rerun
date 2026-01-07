@@ -1,5 +1,5 @@
 ---
 title: Visualizers and Overrides
 hidden: true
-redirect: concepts/viewing/visualizers-and-overrides
+redirect: viewing/concepts/visualizers-and-overrides
 ---
