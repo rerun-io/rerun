@@ -27,7 +27,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
 
     code.push_indented(0, "from typing import Any, Iterable", 2);
     code.push_indented(0, "from ._base import Visualizer", 2);
-    code.push_indented(0, "from ... import components, datatypes", 2);
+    code.push_indented(0, "from ... import components, datatypes", 2); // NOLINT: these are not dots we can make …
 
     let mut visualizers: Vec<(&Object, String)> = Vec::new();
     let mut archetypes_without_attr = Vec::new();
