@@ -198,9 +198,11 @@ impl VideoStreamCache {
                     }
 
                     if let Some(first_sample_with_chunk) = video_data.samples.position(|sample| {
-                        sample
-                            .sample()
-                            .is_some_and(|s| compaction.srcs.contains_key(&s.chunk_id))
+                        sample.sample().is_some_and(|s| {
+                            compaction
+                                .srcs
+                                .contains_key(&ChunkId::from_tuid(s.source_id))
+                        })
                     }) {
                         // Remove all samples that are in this and future buffers.
                         video_data
@@ -254,7 +256,7 @@ impl VideoStreamCache {
                     for (_idx, sample) in video_data.samples.iter_index_range_clamped_mut(
                         &(known_offset.first_sample..video_data.samples.next_index()),
                     ) {
-                        if sample.source_chunk() == event.chunk.id() {
+                        if sample.source_id() == event.chunk.id().as_tuid() {
                             sample.unload();
                         }
                     }
@@ -276,7 +278,7 @@ impl VideoStreamCache {
                 else if let Some(last_invalid_sample_idx) = {
                     let iter = video_data.samples.iter_indexed();
                     iter.rev()
-                        .find(|(_, s)| s.source_chunk() == event.chunk.id())
+                        .find(|(_, s)| s.source_id() == event.chunk.id().as_tuid())
                         .map(|(idx, _)| idx)
                 } {
                     video_data
@@ -502,7 +504,7 @@ fn read_samples_from_known_chunk(
     let range = known_offset.first_sample..known_offset.last_sample + 1;
     let mut samples_iter = samples
         .iter_index_range_clamped_mut(&range)
-        .filter(|(_, c)| c.source_chunk() == chunk.id())
+        .filter(|(_, c)| c.source_id() == chunk.id().as_tuid())
         .peekable();
 
     for (component_offset, (time, _row_id)) in chunk
@@ -600,14 +602,14 @@ fn read_samples_from_known_chunk(
 
             // We're using offsets directly into this chunk data.
             buffer: values.clone(),
-            chunk_id: chunk.id(),
+            source_id: chunk.id().as_tuid(),
             byte_span,
         });
     }
 
     // Mark the remaining ones as skipped.
     for (_idx, sample) in samples_iter {
-        *sample = re_video::SampleMetadataState::Skip(chunk.id());
+        *sample = re_video::SampleMetadataState::Skip(chunk.id().as_tuid());
     }
 
     let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= known_offset.last_sample);
@@ -868,7 +870,7 @@ fn read_samples_from_new_chunk(
 
                     // We're using offsets directly into the chunk data.
                     buffer: values.clone(),
-                    chunk_id,
+                    source_id: chunk_id.as_tuid(),
                     byte_span
                 }))
             }),
@@ -1061,7 +1063,7 @@ fn load_known_chunk_offsets(
 
             data_descr
                 .samples
-                .push_back(re_video::SampleMetadataState::Unloaded(chunk_id));
+                .push_back(re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid()));
         }
 
         if let Some((chunk, rrd_entry)) = next_chunk {
@@ -1076,7 +1078,7 @@ fn load_known_chunk_offsets(
                     },
                 );
                 data_descr.samples.extend(std::iter::repeat_n(
-                    re_video::SampleMetadataState::Unloaded(*chunk),
+                    re_video::SampleMetadataState::Unloaded(chunk.as_tuid()),
                     rrd_entry.num_rows as usize,
                 ));
             }
@@ -1405,7 +1407,14 @@ mod tests {
         data_descr.sanity_check().unwrap();
 
         // Only one frame got removed, BUT the entire first GOP since the first frame was a keyframe!
-        assert_eq!(data_descr.samples.num_elements(), NUM_FRAMES - 1);
+        assert_eq!(
+            data_descr
+                .samples
+                .iter()
+                .filter(|s| !matches!(s, re_video::SampleMetadataState::Unloaded(_)))
+                .count(),
+            NUM_FRAMES - 1
+        );
         assert_eq!(data_descr.keyframe_indices.first(), Some(&10));
     }
 }

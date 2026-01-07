@@ -9990,7 +9990,7 @@ dependencies = [
  "re_rav1d",
  "re_span",
  "re_tracing",
- "re_types_core",
+ "re_tuid",
  "saturating_cast",
  "scuffle-av1",
  "scuffle-bytes-util",

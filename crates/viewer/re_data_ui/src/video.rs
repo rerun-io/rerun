@@ -244,7 +244,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         presentation_timestamp,
                         duration,
                         buffer: _,
-                        chunk_id: _,
+                        source_id: _,
                         byte_span,
                     } = *sample;
 

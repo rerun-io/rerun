@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use bit_vec::BitVec;
 use itertools::Itertools as _;
 use re_span::Span;
-use re_types_core::ChunkId;
+use re_tuid::Tuid;
 use web_time::Instant;
 
 use super::{Time, Timescale};
@@ -850,18 +850,18 @@ impl VideoDataDescription {
 
 /// The state of the current sample.
 ///
-/// When the source chunk is loaded, all of its samples will be either `Present` or `Skip`.
+/// When the source is loaded, all of its samples will be either `Present` or `Skip`.
 #[derive(Debug, Clone)]
 pub enum SampleMetadataState {
     /// Sample is present and contains video data.
     Present(SampleMetadata),
 
-    /// Sample is marked as skip, this can happen if a chunk has null rows for
+    /// Sample is marked as skip, this can happen if a source chunk has null rows for
     /// the sample component.
-    Skip(ChunkId),
+    Skip(Tuid),
 
-    /// The source chunk for this sample hasn't arrived yet.
-    Unloaded(ChunkId),
+    /// The source for this sample hasn't arrived yet.
+    Unloaded(Tuid),
 }
 
 impl SampleMetadataState {
@@ -880,13 +880,13 @@ impl SampleMetadataState {
     }
 
     pub fn unload(&mut self) {
-        *self = Self::Unloaded(self.source_chunk());
+        *self = Self::Unloaded(self.source_id());
     }
 
-    pub fn source_chunk(&self) -> ChunkId {
+    pub fn source_id(&self) -> Tuid {
         match self {
-            Self::Present(sample) => sample.chunk_id,
-            Self::Skip(chunk_id) | Self::Unloaded(chunk_id) => *chunk_id,
+            Self::Present(sample) => sample.source_id,
+            Self::Skip(id) | Self::Unloaded(id) => *id,
         }
     }
 }
@@ -958,7 +958,7 @@ pub struct SampleMetadata {
     pub buffer: arrow::buffer::Buffer,
 
     /// The chunk this sample comes from.
-    pub chunk_id: ChunkId,
+    pub source_id: Tuid,
 
     /// Offset and length within [`SampleMetadata::buffer`].
     pub byte_span: Span<u32>,
@@ -1096,7 +1096,7 @@ mod tests {
                     presentation_timestamp: Time(pts),
                     duration: Some(Time(1)),
                     buffer: arrow::buffer::Buffer::default(),
-                    chunk_id: ChunkId::new(),
+                    source_id: Tuid::new(),
                     byte_span: Default::default(),
                 })
             })
