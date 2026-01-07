@@ -450,6 +450,198 @@ impl RrdManifestIndex {
         time_ranges_all_chunks
     }
 
+    pub fn loaded_ranges_on_timeline(
+        &self,
+        timeline: &Timeline,
+    ) -> impl Iterator<Item = AbsoluteTimeRange> {
+        fn merge_ranges(
+            ranges: &mut Vec<(bool, AbsoluteTimeRange)>,
+        ) -> Vec<(bool, AbsoluteTimeRange)> {
+            ranges.sort_by_key(|(_, r)| r.min);
+            let mut new_ranges = Vec::new();
+            let mut delayed_ranges = Vec::<(bool, AbsoluteTimeRange)>::new();
+            let mut add_range =
+                |loaded: bool,
+                 mut range: AbsoluteTimeRange,
+                 delayed_ranges: &mut Vec<(bool, AbsoluteTimeRange)>| {
+                    let Some((last_loaded, last_range)) = new_ranges.last_mut() else {
+                        new_ranges.push((loaded, range));
+                        return;
+                    };
+
+                    match (*last_loaded).cmp(&loaded) {
+                        // Equal states for both ranges, combine them.
+                        std::cmp::Ordering::Equal => {
+                            last_range.max = last_range.max.max(range.max);
+                        }
+                        // The last state should be prioritized
+                        std::cmp::Ordering::Less => {
+                            if last_range.max <= range.min {
+                                // To not leave any gaps between states, expand the prioritized last state
+                                last_range.max = range.min;
+                                new_ranges.push((loaded, range));
+                            } else if last_range.max < range.max {
+                                // To not have overlapping states, start the current state at the end of the prioritized last state
+                                range.min = last_range.max;
+                                delayed_ranges.push((loaded, range));
+                            }
+                        }
+                        // The current state should be prioritized
+                        std::cmp::Ordering::Greater => {
+                            if range.min <= last_range.max {
+                                // To not have overlapping states, start the last state at the end of the prioritized current state
+                                if range.max < last_range.max {
+                                    delayed_ranges.push((
+                                        *last_loaded,
+                                        AbsoluteTimeRange::new(range.max, last_range.max),
+                                    ));
+                                }
+
+                                if last_range.min == range.min {
+                                    // We can replace the last here since we don't want overlapping states
+                                    *last_range = range;
+                                    *last_loaded = loaded;
+                                } else {
+                                    last_range.max = range.min;
+
+                                    new_ranges.push((loaded, range));
+                                }
+                            } else {
+                                // To not leave any gaps between states, expand the prioritized current state
+                                // to start at the end of the last state
+                                range.min = last_range.max;
+                                new_ranges.push((loaded, range));
+                            }
+                        }
+                    }
+                };
+
+            let rev_cmp = |(_, r): &(bool, AbsoluteTimeRange)| -r.min.as_i64();
+
+            for (loaded, range) in ranges {
+                debug_assert!(range.min <= range.max, "Negative time-range");
+
+                while delayed_ranges
+                    .last()
+                    .is_some_and(|(_, r)| r.min <= range.min)
+                    && let Some((state, range)) = delayed_ranges.pop()
+                {
+                    add_range(state, range, &mut delayed_ranges);
+                    delayed_ranges.sort_by_key(rev_cmp);
+                }
+                add_range(*loaded, *range, &mut delayed_ranges);
+                delayed_ranges.sort_by_key(rev_cmp);
+            }
+
+            while let Some((loaded, range)) = delayed_ranges.pop() {
+                add_range(loaded, range, &mut delayed_ranges);
+                delayed_ranges.sort_by_key(rev_cmp);
+            }
+
+            new_ranges
+        }
+
+        let mut scratch = Vec::new();
+        let mut ranges = Vec::new();
+
+        for timelines in self.native_temporal_map.values() {
+            let Some(data) = timelines.get(timeline) else {
+                continue;
+            };
+
+            for chunks in data.values() {
+                scratch.extend(chunks.iter().filter_map(|(c, range)| {
+                    let state = self.remote_chunk_info(c)?.state;
+                    let loaded = match state {
+                        LoadState::Unloaded | LoadState::InTransit => false,
+                        LoadState::Loaded => true,
+                    };
+
+                    Some((loaded, range.time_range))
+                }));
+
+                ranges.extend(merge_ranges(&mut scratch));
+
+                scratch.clear();
+            }
+        }
+
+        merge_ranges(&mut ranges)
+            .into_iter()
+            .filter(|(loaded, _)| *loaded)
+            .map(|(_, range)| range)
+    }
+
+    pub fn unloaded_time_ranges_for(
+        &self,
+        timeline: &re_chunk::Timeline,
+        entity: &re_chunk::EntityPath,
+        component: Option<re_chunk::ComponentIdentifier>,
+    ) -> Vec<(AbsoluteTimeRange, u64)> {
+        re_tracing::profile_function!();
+
+        if let Some(component) = component {
+            let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
+                return Vec::new();
+            };
+
+            let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
+                return Vec::new();
+            };
+
+            let Some(component_ranges) = entity_ranges.get(&component) else {
+                return Vec::new();
+            };
+
+            component_ranges
+                .iter()
+                .filter(|(chunk, _)| {
+                    self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
+                        LoadState::InTransit | LoadState::Unloaded => true,
+                        LoadState::Loaded => false,
+                    })
+                })
+                .map(|(_, entry)| (entry.time_range, entry.num_rows))
+                .collect()
+        } else {
+            // If we don't have a specific component we want to include the entity's children
+            let mut res = Vec::new();
+
+            if let Some(tree) = self.entity_tree.subtree(entity) {
+                tree.visit_children_recursively(|child| {
+                    self.unloaded_time_ranges_for_entity(&mut res, timeline, child);
+                });
+            } else {
+                re_log::warn_once!("Missing tree for {entity}");
+                self.unloaded_time_ranges_for_entity(&mut res, timeline, entity);
+            }
+
+            res
+        }
+    }
+
+    fn unloaded_time_ranges_for_entity(
+        &self,
+        ranges: &mut Vec<(AbsoluteTimeRange, u64)>,
+        timeline: &re_chunk::Timeline,
+        entity: &re_chunk::EntityPath,
+    ) {
+        re_tracing::profile_function!();
+
+        if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
+            && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
+        {
+            for (_, entry) in entity_ranges.values().flatten().filter(|(chunk, _)| {
+                self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
+                    LoadState::InTransit | LoadState::Unloaded => true,
+                    LoadState::Loaded => false,
+                })
+            }) {
+                ranges.push((entry.time_range, entry.num_rows));
+            }
+        }
+    }
+
     pub fn full_uncompressed_size(&self) -> Option<u64> {
         re_tracing::profile_function!();
         Some(
