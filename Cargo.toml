@@ -224,6 +224,7 @@ convert_case = "0.6.0"
 criterion = "0.5.0"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.0"
+dae-parser = "0.11.0"
 datafusion = { version = "50.1.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
