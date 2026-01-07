@@ -17,6 +17,7 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import tomlkit
 
@@ -141,6 +142,57 @@ def get_added_lines_with_links(
     return {filename: lines for filename, lines in lines_by_file.items() if lines}
 
 
+def extract_links_from_line(line: str) -> list[str]:
+    """Extract all links from a line of text."""
+    links = []
+
+    # Find markdown-style links [text](url)
+    markdown_links = re.findall(r'\[.+?\]\((.+?)\)', line)
+    links.extend(markdown_links)
+
+    # Find bare URLs
+    url_pattern = r'https?://[^\s<>"\[\]{}|\\^`]+|ftp://[^\s<>"\[\]{}|\\^`]+|file://[^\s<>"\[\]{}|\\^`]+'
+    bare_urls = re.findall(url_pattern, line)
+    links.extend(bare_urls)
+
+    return links
+
+
+def resolve_relative_link(link: str, source_file_path: str) -> str:
+    """Resolve a relative link to an absolute path or return unchanged if already absolute."""
+    # Parse the URL to check if it's already absolute
+    parsed = urlparse(link)
+    if parsed.scheme:  # Already has a scheme (http, https, ftp, file, etc.)
+        return link
+
+    # Handle relative paths
+    source_dir = Path(source_file_path).parent
+
+    # Remove any URL fragments or query parameters for path resolution
+    link_path = link.split('#')[0].split('?')[0]
+
+    try:
+        # Resolve the relative path
+        resolved_path = (source_dir / link_path).resolve()
+
+        # Check if the resolved file exists
+        if resolved_path.exists():
+            # Convert to file:// URL, preserving any fragments
+            file_url = resolved_path.as_uri()
+            if '#' in link:
+                file_url += '#' + link.split('#', 1)[1]
+            return file_url
+        else:
+            # File doesn't exist, but keep the resolved absolute path for lychee to report
+            abs_path = str(resolved_path)
+            if '#' in link:
+                abs_path += '#' + link.split('#', 1)[1]
+            return abs_path
+    except (OSError, ValueError):
+        # If path resolution fails, return the original link
+        return link
+
+
 class TempLinkFile:
     def __init__(self, path: str, source_file: str) -> None:
         self.path = path
@@ -149,7 +201,7 @@ class TempLinkFile:
 
 def create_temp_files(lines_by_file: dict[str, list[str]]) -> list[TempLinkFile]:
     """
-    Create temporary files with the lines that contain links.
+    Create temporary files with resolved links from the lines that contain links.
 
     Returns a list of temporary file paths.
     """
@@ -166,7 +218,16 @@ def create_temp_files(lines_by_file: dict[str, list[str]]) -> list[TempLinkFile]
         try:
             with os.fdopen(fd, "w") as f:
                 for line in lines:
-                    f.write(line + "\n")
+                    # Extract and resolve all links in this line
+                    links = extract_links_from_line(line)
+                    resolved_line = line
+
+                    for link in links:
+                        resolved_link = resolve_relative_link(link, file)
+                        # Replace the original link with the resolved one in the line
+                        resolved_line = resolved_line.replace(link, resolved_link)
+
+                    f.write(resolved_line + "\n")
 
             # TODO(lycheeverse/lychee#972): Windows absolute paths don't work.
             # But looks like UNC paths work!
@@ -193,8 +254,8 @@ def run_lychee(temp_files: list[TempLinkFile]) -> int:
 
     failed = False
 
-    # Since each temp file may contain relative links, we have to run lychee once per file
-    # and set the right base url for each.
+    # Now that relative links have been resolved to absolute paths,
+    # we can run lychee on each temp file without needing base-url
     for temp_file in temp_files:
         # Build lychee command
         cmd = [
@@ -203,8 +264,6 @@ def run_lychee(temp_files: list[TempLinkFile]) -> int:
             "--cache",
             "--max-cache-age",
             "1d",
-            "--base-url",
-            "file:" + str(Path(temp_file.source_file).parent.resolve()) + "/",
             temp_file.path,
         ]
 
