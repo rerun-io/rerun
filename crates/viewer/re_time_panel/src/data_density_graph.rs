@@ -554,10 +554,11 @@ pub fn build_density_graph<'a>(
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
-    for entry in
-        db.rrd_manifest_index()
-            .temporal_entries_for(timeline, &item.entity_path, item.component)
-    {
+    for entry in db.rrd_manifest_index().unloaded_temporal_entries_for(
+        timeline,
+        &item.entity_path,
+        item.component,
+    ) {
         data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
     }
 
@@ -752,12 +753,6 @@ pub fn show_row_ids_tooltip(
         re_entity_db::InstancePath::entity_all(entity_path.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
     }
-}
-
-#[derive(Debug)]
-pub struct UnloadedRange {
-    pub num_events: u64,
-    pub range: Rangef,
 }
 
 #[derive(Clone, Copy)]
