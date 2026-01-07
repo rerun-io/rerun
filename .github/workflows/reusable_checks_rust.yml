@@ -234,9 +234,9 @@ jobs:
           - name: "tests"
             checks: "tests"
             label: " (tests)"
-          - name: "tests-alt-features"
+          - name: "tests-default-features"
             checks: "tests_without_all_features"
-            label: " (tests alt features)"
+            label: " (tests default features)"
 
     if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.platform.runs_on }}
