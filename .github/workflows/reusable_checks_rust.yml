@@ -212,14 +212,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Platform dimension
         platform:
           - runs_on: "macos-15-xlarge"
             name: "macos"
           - runs_on: "windows-latest-32-cores"
             name: "windows"
 
-        # Checks dimension - splits all checks into balanced groups
         checks_group:
           - name: "base-and-deny"
             checks: "base_checks sdk_variations cargo_deny denied_sdk_deps"
