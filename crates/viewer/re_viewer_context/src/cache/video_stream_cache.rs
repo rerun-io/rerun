@@ -421,6 +421,7 @@ fn timescale_for_timeline(
 #[derive(Debug)]
 struct ChunkSamples {
     first_sample: re_video::SampleIndex,
+
     /// Last sample (inclusive).
     last_sample: re_video::SampleIndex,
 }

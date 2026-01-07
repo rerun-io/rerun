@@ -732,10 +732,6 @@ impl VideoDataDescription {
             presentation_timestamp,
         );
 
-        if decode_sample_idx.is_none() {
-            re_log::warn!("no latest at sample found for pts {presentation_timestamp:?}");
-        }
-
         let decode_sample_idx = decode_sample_idx?;
 
         // It's very common that dts==pts in which case we're done!
@@ -779,7 +775,6 @@ impl VideoDataDescription {
             }
         }
 
-        re_log::warn!("no pts found for {decode_sample_idx}");
         None
     }
 
@@ -859,9 +854,11 @@ impl VideoDataDescription {
 pub enum SampleMetadataState {
     /// Sample is present and contains video data.
     Present(SampleMetadata),
+
     /// Sample is marked as skip, this can happen if a chunk has null rows for
     /// the sample component.
     Skip(re_chunk::ChunkId),
+
     /// The source chunk for this sample hasn't arrived yet.
     Unloaded(re_chunk::ChunkId),
 }
