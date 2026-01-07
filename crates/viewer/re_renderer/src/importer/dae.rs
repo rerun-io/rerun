@@ -58,11 +58,15 @@ pub fn load_dae_from_buffer(
     for geometry in document.iter::<Geometry>() {
         // Only meshes -> triangles
         let Some(mesh_element) = geometry.element.as_mesh() else {
+            re_log::debug_once!("Skipping non-mesh geometry element (e.g., camera or light)");
             continue;
         };
 
         // Skip geometries that *do not* contain a <triangles> primitive.
         let Some(triangles) = mesh_element.elements.iter().find_map(|p| p.as_triangles()) else {
+            re_log::debug_once!(
+                "Skipping geometry without <triangles> primitive (only <triangles> are supported)"
+            );
             continue;
         };
 
