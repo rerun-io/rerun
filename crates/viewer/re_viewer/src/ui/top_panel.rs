@@ -492,10 +492,13 @@ fn panel_buttons_r2l(
     }
 }
 
-fn user_icon(email: &str, rect: Rect, ui: &mut egui::Ui, corner_radius: f32, tint: u8) {
+fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u8) {
+    // The color should not change based on theme, so it's fine to hard-code here
+    #[expect(clippy::disallowed_methods)]
+    let text_color = Color32::from_gray(tint);
     Image::new(include_image!("user_image.jpg"))
         .corner_radius(corner_radius)
-        .tint(Color32::from_gray(tint))
+        .tint(text_color)
         .paint_at(ui, rect);
     let initial = email.chars().next().unwrap_or('?').to_ascii_uppercase();
     ui.painter().text(
