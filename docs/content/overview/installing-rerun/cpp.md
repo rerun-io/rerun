@@ -1,5 +1,5 @@
 ---
-title: C++
+title: C++ SDK
 order: 300
 ---
 

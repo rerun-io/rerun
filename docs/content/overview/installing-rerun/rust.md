@@ -1,5 +1,5 @@
 ---
-title: Rust
+title: Rust SDK
 order: 200
 ---
 
