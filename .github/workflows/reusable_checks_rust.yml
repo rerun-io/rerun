@@ -146,9 +146,9 @@ jobs:
           name: test-results-ubuntu
           path: "**/tests/snapshots"
 
-  # Run some basics tests on Mac and Windows
-  mac-windows-tests:
-    name: Test on ${{ matrix.name }}
+  # Run tests on Mac and Windows (main channel)
+  mac-windows-tests-main:
+    name: Tests only (main)
     timeout-minutes: 100 # Windows is very slow
     strategy:
       matrix:
@@ -158,8 +158,7 @@ jobs:
           - runs_on: "windows-latest-32-cores"
             name: "windows"
 
-    # Note: we can't use `matrix.runs_on` here because its evaluated before the matrix stuff.
-    if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
+    if: ${{ inputs.CHANNEL == 'main' }}
     runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: actions/checkout@v4
@@ -193,20 +192,92 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Rust tests (`main` channel)
-        if: ${{ inputs.CHANNEL == 'main' }}
+      - name: Rust tests
         # We've seen some jobs fail on macOS because of a rendering adapter.
         # Unfortunately, just retrying it using e.g. https://github.com/nick-fields/retry does NOT help
         # TODO(#11359): fix the Mac snapshot tests
         run: pixi run rs-check --only tests
-
-      - name: Rust all checks & tests (`nightly` channel)
-        if: ${{ inputs.CHANNEL == 'nightly' }}
-        run: pixi run rs-check
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ matrix.name }}
+          path: "**/tests/snapshots"
+
+  # Run all checks on Mac and Windows (nightly channel, split across multiple jobs)
+  mac-windows-checks-nightly:
+    name: ${{ matrix.platform.name }}${{ matrix.checks_group.label }}
+    timeout-minutes: 100 # Windows is very slow
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runs_on: "macos-15-xlarge"
+            name: "macos"
+          - runs_on: "windows-latest-32-cores"
+            name: "windows"
+
+        checks_group:
+          - name: "base-and-deny"
+            checks: "base_checks sdk_variations cargo_deny denied_sdk_deps"
+            label: " (base & deny)"
+          - name: "wasm-and-examples"
+            checks: "wasm individual_examples"
+            label: " (wasm & examples)"
+          - name: "individual-crates"
+            checks: "individual_crates"
+            label: " (individual crates)"
+          - name: "docs"
+            checks: "docs docs_slow"
+            label: " (docs)"
+          - name: "tests"
+            checks: "tests"
+            label: " (tests)"
+          - name: "tests-default-features"
+            checks: "tests_without_all_features"
+            label: " (tests default features)"
+
+    if: ${{ inputs.CHANNEL == 'nightly' }}
+    runs-on: ${{ matrix.platform.runs_on }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}"
+          save_cache: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      # Building with `--all-features` requires extra build tools like `nasm`.
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      # Install the Vulkan SDK, so we can use the software rasterizer.
+      # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
+      - name: Install Vulkan SDK
+        if: ${{ matrix.platform.name != 'macos' }}
+        uses: rerun-io/install-vulkan-sdk-action@v1.1.0
+        with:
+          vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
+          install_runtime: true
+          cache: true
+          stripdown: true
+
+      - name: Setup software rasterizer
+        run: pixi run python ./scripts/ci/setup_software_rasterizer.py
+
+      - name: Rust checks
+        run: pixi run rs-check --only ${{ matrix.checks_group.checks }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}
           path: "**/tests/snapshots"

@@ -85,7 +85,8 @@ def run_cargo(
         )
 
     # TODO(#11359): We don't capture output on mac runners to help debug random hangs.
-    capture = sys.platform != "darwin"
+    # However, if output_checks is provided, we need to capture output even on macOS.
+    capture = sys.platform != "darwin" or output_checks is not None
 
     env = os.environ.copy()
     env.update(additional_env_vars)
@@ -132,6 +133,8 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
+    # On CI, we split these checks into groups to reduce the time it takes to run all of this.
+    # Make sure the `reusable_checks_rust` workflow stays up-to-date with this list.
     checks = [
         ("base_checks", base_checks),
         ("sdk_variations", sdk_variations),
