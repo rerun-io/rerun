@@ -450,6 +450,9 @@ impl RrdManifestIndex {
         time_ranges_all_chunks
     }
 
+    /// Creates an iterator of time ranges which are loaded on a specific timeline.
+    ///
+    /// The ranges are guaranteed to be ordered and non-overlapping.
     pub fn loaded_ranges_on_timeline(
         &self,
         timeline: &Timeline,
@@ -572,12 +575,17 @@ impl RrdManifestIndex {
             .map(|(_, range)| range)
     }
 
-    pub fn unloaded_time_ranges_for(
+    /// If `component` is some, this returns all temporal entries for that specific
+    /// component on the given timeline.
+    ///
+    /// If not, this returns all temporal entries for `entity`'s components and its
+    /// descendants' temporal entries.
+    pub fn temporal_entries_for(
         &self,
         timeline: &re_chunk::Timeline,
         entity: &re_chunk::EntityPath,
         component: Option<re_chunk::ComponentIdentifier>,
-    ) -> Vec<(AbsoluteTimeRange, u64)> {
+    ) -> Vec<RrdManifestTemporalMapEntry> {
         re_tracing::profile_function!();
 
         if let Some(component) = component {
@@ -601,7 +609,7 @@ impl RrdManifestIndex {
                         LoadState::Loaded => false,
                     })
                 })
-                .map(|(_, entry)| (entry.time_range, entry.num_rows))
+                .map(|(_, entry)| *entry)
                 .collect()
         } else {
             // If we don't have a specific component we want to include the entity's children
@@ -609,20 +617,23 @@ impl RrdManifestIndex {
 
             if let Some(tree) = self.entity_tree.subtree(entity) {
                 tree.visit_children_recursively(|child| {
-                    self.unloaded_time_ranges_for_entity(&mut res, timeline, child);
+                    self.temporal_entries_for_entity(&mut res, timeline, child);
                 });
             } else {
-                re_log::warn_once!("Missing tree for {entity}");
-                self.unloaded_time_ranges_for_entity(&mut res, timeline, entity);
+                re_log::warn_once!(
+                    "Missing entity tree for {entity} while fetching temporal entities"
+                );
+                self.temporal_entries_for_entity(&mut res, timeline, entity);
             }
 
             res
         }
     }
 
-    fn unloaded_time_ranges_for_entity(
+    /// Fills `ranges` with temporal entries for this exact entity (descendants aren't included).
+    fn temporal_entries_for_entity(
         &self,
-        ranges: &mut Vec<(AbsoluteTimeRange, u64)>,
+        ranges: &mut Vec<RrdManifestTemporalMapEntry>,
         timeline: &re_chunk::Timeline,
         entity: &re_chunk::EntityPath,
     ) {
@@ -637,7 +648,7 @@ impl RrdManifestIndex {
                     LoadState::Loaded => false,
                 })
             }) {
-                ranges.push((entry.time_range, entry.num_rows));
+                ranges.push(*entry);
             }
         }
     }

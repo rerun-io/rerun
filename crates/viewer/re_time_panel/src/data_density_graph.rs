@@ -85,7 +85,7 @@ impl DataDensityGraphPainter {
 #[derive(Clone, Copy)]
 struct Bucket {
     density: f32,
-    loaded: bool,
+    loaded: LoadState,
 }
 
 pub struct DensityGraph {
@@ -105,7 +105,7 @@ impl DensityGraph {
             buckets: vec![
                 Bucket {
                     density: 0.0,
-                    loaded: true
+                    loaded: LoadState::Loaded,
                 };
                 n
             ],
@@ -131,7 +131,7 @@ impl DensityGraph {
         )
     }
 
-    pub fn add_point(&mut self, x: f32, count: f32, loaded: bool) {
+    pub fn add_point(&mut self, x: f32, count: f32, loaded: LoadState) {
         debug_assert!(0.0 <= count);
 
         let i = self.bucket_index_from_x(x);
@@ -145,17 +145,17 @@ impl DensityGraph {
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += (1.0 - fract) * count;
-            bucket.loaded &= loaded;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
         if let Ok(i) = usize::try_from(i + 1)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += fract * count;
-            bucket.loaded &= loaded;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
     }
 
-    pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32, loaded: bool) {
+    pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32, loaded: LoadState) {
         #![expect(clippy::cast_possible_wrap)] // usize -> i64 is fine
 
         debug_assert!(min_x <= max_x);
@@ -197,7 +197,7 @@ impl DensityGraph {
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += first_bucket_factor * count_per_bucket;
-            bucket.loaded &= loaded;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
 
         // full buckets:
@@ -208,7 +208,7 @@ impl DensityGraph {
                 (max_full_bucket as i64).clamp(0, self.buckets.len() as i64 - 1) as usize;
             for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
                 bucket.density += count_per_bucket;
-                bucket.loaded &= loaded;
+                bucket.loaded = bucket.loaded.and(loaded);
             }
         }
 
@@ -217,7 +217,7 @@ impl DensityGraph {
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += last_bucket_factor * count_per_bucket;
-            bucket.loaded &= loaded;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
     }
 
@@ -286,10 +286,9 @@ impl DensityGraph {
                 let inner_radius =
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
-                let color = if bucket.loaded {
-                    loaded_color
-                } else {
-                    unloaded_color
+                let color = match bucket.loaded {
+                    LoadState::Loaded => loaded_color,
+                    LoadState::Unloaded => unloaded_color,
                 };
 
                 // Color different if we're outside of a segment.
@@ -395,12 +394,12 @@ fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
     (0..buckets.len())
         .map(|i| {
             let mut sum = 0.0;
-            let mut loaded = true;
+            let mut loaded = LoadState::Loaded;
             for (j, &k) in kernel.iter().enumerate() {
                 if let Some(bucket) = buckets.get((i + j).saturating_sub(2)) {
                     debug_assert!(bucket.density >= 0.0);
                     sum += k * bucket.density;
-                    loaded &= bucket.loaded;
+                    loaded = loaded.and(bucket.loaded);
                 }
             }
             debug_assert!(sum.is_finite() && 0.0 <= sum);
@@ -555,12 +554,11 @@ pub fn build_density_graph<'a>(
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
-    for (range, count) in db.rrd_manifest_index().unloaded_time_ranges_for(
-        timeline,
-        &item.entity_path,
-        item.component,
-    ) {
-        data.add_chunk_range(range, count, false);
+    for entry in
+        db.rrd_manifest_index()
+            .temporal_entries_for(timeline, &item.entity_path, item.component)
+    {
+        data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
     }
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
@@ -660,10 +658,10 @@ pub fn build_density_graph<'a>(
                 for (time, num_events) in
                     chunk.num_events_cumulative_per_unique_time(timeline.name())
                 {
-                    data.add_chunk_point(time, num_events as usize, true);
+                    data.add_chunk_point(time, num_events as usize, LoadState::Loaded);
                 }
             } else {
-                data.add_chunk_range(time_range, num_events_in_chunk, true);
+                data.add_chunk_range(time_range, num_events_in_chunk, LoadState::Loaded);
             }
         }
     }
@@ -762,6 +760,21 @@ pub struct UnloadedRange {
     pub range: Rangef,
 }
 
+#[derive(Clone, Copy)]
+pub enum LoadState {
+    Loaded,
+    Unloaded,
+}
+
+impl LoadState {
+    fn and(&self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Loaded, Self::Loaded) => Self::Loaded,
+            _ => Self::Unloaded,
+        }
+    }
+}
+
 pub struct DensityGraphBuilder<'a> {
     time_ranges_ui: &'a TimeRangesUi,
     row_rect: Rect,
@@ -794,7 +807,7 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize, loaded: bool) {
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize, loaded: LoadState) {
         let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
             return;
         };
@@ -814,7 +827,12 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64, loaded: bool) {
+    fn add_chunk_range(
+        &mut self,
+        time_range: AbsoluteTimeRange,
+        num_events: u64,
+        loaded: LoadState,
+    ) {
         if num_events == 0 {
             return;
         }
