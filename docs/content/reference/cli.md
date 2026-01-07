@@ -1,6 +1,6 @@
 ---
-title: CLI manual
-order: 250
+title: ⌨️ CLI manual
+order: 1150
 ---
 
 ## rerun

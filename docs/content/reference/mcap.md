@@ -1,5 +1,5 @@
 ---
 title: MCAP files
-order: 850
+hidden: true
 redirect: reference/mcap/message-formats
 ---

@@ -1,5 +1,5 @@
 ---
 title: Data-loaders
-order: 800
+hidden: true
 redirect: reference/data-loaders/overview
 ---

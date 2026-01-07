@@ -1,5 +1,5 @@
 ---
 title: SDK configuration
-order: 700
+hidden: true
 redirect: reference/sdk/logging-controls
 ---
