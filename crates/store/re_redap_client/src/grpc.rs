@@ -67,7 +67,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         Err(original_error) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
-                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {

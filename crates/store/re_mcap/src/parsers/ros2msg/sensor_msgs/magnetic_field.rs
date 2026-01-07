@@ -7,10 +7,6 @@ use crate::Error;
 use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::{MessageParser, ParserContext, cdr};
 
-/// Plugin that parses `sensor_msgs/msg/MagneticField` messages.
-#[derive(Default)]
-pub struct MagneticFieldSchemaPlugin;
-
 pub struct MagneticFieldMessageParser {
     vectors: Vec<Vec3D>,
     frame_ids: Vec<String>,

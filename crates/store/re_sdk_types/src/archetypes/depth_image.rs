@@ -204,6 +204,12 @@ impl DepthImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
+
+    /// Returns the visualizer type name that corresponds to this archetype.
+    #[inline]
+    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
+        crate::blueprint::components::VisualizerType("DepthImage".into())
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =

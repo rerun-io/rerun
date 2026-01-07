@@ -12,10 +12,6 @@ use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::ros2msg::definitions::rcl_interfaces::{self, LogLevel};
 use crate::parsers::util::fixed_size_list_builder;
 
-/// Plugin that parses `rcl_interfaces/msg/Log` messages.
-#[derive(Default)]
-pub struct LogSchemaPlugin;
-
 pub struct LogMessageParser {
     text_entries: Vec<String>,
     levels: Vec<String>,
