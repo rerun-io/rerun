@@ -479,7 +479,7 @@ fn panel_buttons_r2l(
                     let user_icon_size = 32.0;
                     let (rect, _) =
                         ui.allocate_exact_size(Vec2::splat(user_icon_size), Sense::hover());
-                    user_icon("l", rect, ui, 8.0, 255);
+                    user_icon(&auth.email, rect, ui, 8.0, 255);
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 2.0;
                         ui.label(&auth.email);
