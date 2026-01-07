@@ -482,8 +482,11 @@ fn panel_buttons_r2l(
                     user_icon(&auth.email, rect, ui, 8.0, 255);
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 2.0;
-                        ui.label(&auth.email);
-                        if ui.link(RichText::new("Logout").weak()).clicked() {
+                        ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
+                        if ui
+                            .link(RichText::new("Logout").color(ui.tokens().text_subdued))
+                            .clicked()
+                        {
                             app.command_sender.send_system(SystemCommand::Logout);
                         }
                     })
