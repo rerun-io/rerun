@@ -48,6 +48,19 @@ pub enum LoadState {
     Loaded,
 }
 
+impl LoadState {
+    pub fn is_loaded(&self) -> bool {
+        !self.is_unloaded()
+    }
+
+    pub fn is_unloaded(&self) -> bool {
+        match self {
+            Self::Unloaded | Self::InTransit => true,
+            Self::Loaded => false,
+        }
+    }
+}
+
 /// How to calculate which chunks to prefetch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkPrefetchOptions {
@@ -417,39 +430,6 @@ impl RrdManifestIndex {
         )?)
     }
 
-    #[must_use]
-    pub fn time_ranges_all_chunks(
-        &self,
-        timeline: &Timeline,
-    ) -> Vec<(LoadState, AbsoluteTimeRange)> {
-        re_tracing::profile_function!();
-
-        let mut time_ranges_all_chunks = Vec::new();
-
-        for timelines in self.native_temporal_map.values() {
-            let Some(entity_component_chunks) = timelines.get(timeline) else {
-                continue;
-            };
-
-            for chunks in entity_component_chunks.values() {
-                for (chunk_id, entry) in chunks {
-                    let RrdManifestTemporalMapEntry { time_range, .. } = entry;
-
-                    let Some(info) = self.remote_chunks.get(chunk_id) else {
-                        continue;
-                    };
-                    debug_assert!(
-                        time_range.min <= time_range.max,
-                        "Unexpected negative time range in RRD manifest"
-                    );
-                    time_ranges_all_chunks.push((info.state, *time_range));
-                }
-            }
-        }
-
-        time_ranges_all_chunks
-    }
-
     /// Creates an iterator of time ranges which are loaded on a specific timeline.
     ///
     /// The ranges are guaranteed to be ordered and non-overlapping.
@@ -589,12 +569,8 @@ impl RrdManifestIndex {
             for chunks in data.values() {
                 scratch.extend(chunks.iter().filter_map(|(c, range)| {
                     let state = self.remote_chunk_info(c)?.state;
-                    let loaded = match state {
-                        LoadState::Unloaded | LoadState::InTransit => false,
-                        LoadState::Loaded => true,
-                    };
 
-                    Some((loaded, range.time_range))
+                    Some((state.is_loaded(), range.time_range))
                 }));
 
                 ranges.extend(merge_ranges(&mut scratch));
@@ -612,8 +588,8 @@ impl RrdManifestIndex {
     /// If `component` is some, this returns all unloaded temporal entries for that specific
     /// component on the given timeline.
     ///
-    /// If not, this returns all temporal entries for `entity`'s components and its
-    /// descendants' temporal entries.
+    /// If not, this returns all unloaded temporal entries for `entity`'s components and its
+    /// descendants' unloaded temporal entries.
     pub fn unloaded_temporal_entries_for(
         &self,
         timeline: &re_chunk::Timeline,
@@ -637,12 +613,7 @@ impl RrdManifestIndex {
 
             component_ranges
                 .iter()
-                .filter(|(chunk, _)| {
-                    self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
-                        LoadState::InTransit | LoadState::Unloaded => true,
-                        LoadState::Loaded => false,
-                    })
-                })
+                .filter(|(chunk, _)| self.is_chunk_unloaded(chunk))
                 .map(|(_, entry)| *entry)
                 .collect()
         } else {
@@ -678,15 +649,20 @@ impl RrdManifestIndex {
         if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
             && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
         {
-            for (_, entry) in entity_ranges.values().flatten().filter(|(chunk, _)| {
-                self.remote_chunks.get(chunk).is_none_or(|c| match c.state {
-                    LoadState::InTransit | LoadState::Unloaded => true,
-                    LoadState::Loaded => false,
-                })
-            }) {
+            for (_, entry) in entity_ranges
+                .values()
+                .flatten()
+                .filter(|(chunk, _)| self.is_chunk_unloaded(chunk))
+            {
                 ranges.push(*entry);
             }
         }
+    }
+
+    fn is_chunk_unloaded(&self, chunk_id: &ChunkId) -> bool {
+        self.remote_chunks
+            .get(chunk_id)
+            .is_none_or(|c| c.state.is_unloaded())
     }
 
     pub fn full_uncompressed_size(&self) -> Option<u64> {

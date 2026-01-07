@@ -431,14 +431,10 @@ pub fn paint_loaded_indicator_bar(
 
     re_tracing::profile_function!();
 
-    let mut ranges = db.rrd_manifest_index().time_ranges_all_chunks(timeline);
-
     let full_range = db
         .rrd_manifest_index()
         .timeline_range(time_ctrl.timeline_name())
         .unwrap_or(AbsoluteTimeRange::EMPTY);
-
-    ranges.sort_by_key(|(_, r)| r.min);
 
     let current_time = time_ctrl.time_int();
     let mut should_load = current_time.is_some_and(|time| full_range.contains(time));
@@ -465,9 +461,11 @@ pub fn paint_loaded_indicator_bar(
         && let Some(end) = time_ranges_ui.x_from_time(full_range.max.into())
     {
         let range = x_range.intersection(Rangef::new(start as f32, end as f32));
+        // How many pixels the gap is in the dashed line
         let gap = 5.0;
+        // How many pixels each line is in the dashed line
         let line = 3.0;
-        // In pixels per second
+        // Animation speed of the loading in pixels per second
         let speed = 20.0;
 
         if range.span() > 0.0 {
