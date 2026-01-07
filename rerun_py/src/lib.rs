@@ -21,8 +21,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod arrow;
 mod catalog;
-mod dataframe;
 mod python_bridge;
+mod recording;
 mod server;
 mod urdf;
 mod utils;

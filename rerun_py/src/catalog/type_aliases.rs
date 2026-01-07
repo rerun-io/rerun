@@ -8,49 +8,9 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_sorbet::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
+use re_sorbet::ComponentColumnSelector;
 
-use crate::catalog::{
-    PyComponentColumnDescriptor, PyComponentColumnSelector, PyIndexColumnDescriptor,
-    PyIndexColumnSelector,
-};
-
-/// A type alias for any component-column-like object.
-#[derive(FromPyObject)]
-pub enum AnyColumn {
-    #[pyo3(transparent, annotation = "name")]
-    Name(String),
-    #[pyo3(transparent, annotation = "index_descriptor")]
-    IndexDescriptor(PyIndexColumnDescriptor),
-    #[pyo3(transparent, annotation = "index_selector")]
-    IndexSelector(PyIndexColumnSelector),
-    #[pyo3(transparent, annotation = "component_descriptor")]
-    ComponentDescriptor(PyComponentColumnDescriptor),
-    #[pyo3(transparent, annotation = "component_selector")]
-    ComponentSelector(PyComponentColumnSelector),
-}
-
-impl AnyColumn {
-    pub fn into_selector(self) -> PyResult<ColumnSelector> {
-        match self {
-            Self::Name(name) => {
-                if !name.contains(':') && !name.contains('/') {
-                    Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
-                } else {
-                    let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                        PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
-                    })?;
-
-                    Ok(ColumnSelector::Component(sel))
-                }
-            }
-            Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
-            Self::IndexSelector(selector) => Ok(selector.0.into()),
-            Self::ComponentDescriptor(desc) => Ok(ColumnDescriptor::Component(desc.0).into()),
-            Self::ComponentSelector(selector) => Ok(ColumnSelector::Component(selector.0)),
-        }
-    }
-}
+use crate::catalog::{PyComponentColumnDescriptor, PyComponentColumnSelector};
 
 /// A type alias for any component-column-like object.
 //TODO(#9853): rename to `ComponentColumnLike`
@@ -231,13 +191,13 @@ impl IndexValuesLike<'_> {
     eq
 )]
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct PyIndexValuesLike {
+pub struct PyIndexValuesLikeInternal {
     // Store the converted values instead of the lifetime-bound enum
     values: BTreeSet<re_chunk_store::TimeInt>,
 }
 
 #[pymethods]
-impl PyIndexValuesLike {
+impl PyIndexValuesLikeInternal {
     /// Create a new `IndexValuesLike` from a Python object.
     ///
     /// Parameters

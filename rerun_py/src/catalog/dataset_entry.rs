@@ -30,8 +30,8 @@ use super::{
     PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
-use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
-use crate::dataframe::{AnyComponentColumn, PyRecording};
+use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
+use crate::recording::PyRecording;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -429,13 +429,7 @@ impl PyDatasetEntryInternal {
 
         let handle = ChunkStoreHandle::new(store?);
 
-        let cache =
-            re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(handle.clone()));
-
-        Ok(PyRecording {
-            store: handle,
-            cache,
-        })
+        Ok(PyRecording { store: handle })
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`

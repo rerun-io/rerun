@@ -59,7 +59,6 @@ re_auth.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
-re_dataframe.workspace = true
 re_datafusion.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true

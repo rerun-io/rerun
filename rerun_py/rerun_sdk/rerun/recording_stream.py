@@ -668,7 +668,7 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
-    def send_recording(self, recording: rr.dataframe.Recording) -> None:
+    def send_recording(self, recording: rr.recording.Recording) -> None:
         """
         Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
