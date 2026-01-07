@@ -20,6 +20,9 @@ use crate::{
     ChunkStoreStats,
 };
 
+// TODO: what is the expected behavior GC wise? i figure we never delete anything ever. and so we
+// just massively simplify this code... although ofc that's gonna be very messy test-wise...
+
 // ---
 
 #[derive(Debug, Clone, Copy)]
@@ -378,6 +381,7 @@ impl ChunkStore {
             per_column_metadata: _, // column metadata is additive only
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
+            chunks_lineage: _, // lineage metadata must never be GC'd
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_chunks_stats: _,

@@ -35,6 +35,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_sorbet.workspace = true
+re_span.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 

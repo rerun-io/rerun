@@ -2,13 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
+use ahash::HashMap;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
-use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
+use crate::{ChunkLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
@@ -420,11 +421,20 @@ pub struct ChunkStore {
         IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
+    // TODO: maybe this can just be replaced by the lineage datastructure actually, right?
+    // -> i dont think so, since this is the only datastructure that we specifically empty today.
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
+
+    // TODO: docs
+    // TODO: note that this is never garbage collected under any circumstances.
+    pub(crate) chunks_lineage: BTreeMap<ChunkId, ChunkLineage>,
 
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
+    //
+    // TODO: why does this still exist? didn't we ship the new distance based GC?
+    // -> ha, I see, it's the fallback.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
@@ -494,6 +504,7 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            chunks_lineage: self.chunks_lineage.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
@@ -518,6 +529,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
+            chunks_lineage, // TODO: i'd like to print something actually, i think
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
@@ -579,6 +591,7 @@ impl ChunkStore {
             type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
+            chunks_lineage: Default::default(),
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
@@ -623,6 +636,8 @@ impl ChunkStore {
         &self.config
     }
 
+    // TODO: well, all _physical_ chunks, to be exact... .iter_physical_chunks?
+    //
     /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
     pub fn iter_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {

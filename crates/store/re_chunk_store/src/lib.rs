@@ -18,14 +18,15 @@ mod dataframe;
 mod drop_time_range;
 mod events;
 mod gc;
+mod lineage;
 mod properties;
 mod query;
 mod stats;
 mod store;
 mod subscribers;
+mod virt;
 mod writes;
 
-pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 // Re-exports
 #[doc(no_inline)]
 pub use {
@@ -34,6 +35,7 @@ pub use {
         UnitChunkShared,
     },
     re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
+    re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
 pub use self::dataframe::{
@@ -44,15 +46,17 @@ pub use self::events::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::lineage::ChunkLineage;
 pub use self::properties::ExtractPropertiesError;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub(crate) use self::store::ColumnMetadataState;
 pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
 };
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+pub(crate) use self::store::ColumnMetadataState;
 
 pub mod external {
     pub use {arrow, re_chunk};

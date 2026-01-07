@@ -136,13 +136,12 @@ pub struct ChunkStoreDiff {
     // deallocated.
     pub chunk: Arc<Chunk>,
 
-    /// If the an added chunk is a smaller piece of a split chunk,
-    /// then this is the original chunk.
+    /// If the added chunk is a smaller piece of a split chunk, then this is the original chunk.
     ///
     /// In other words, this is the chunk that someone called [`ChunkStore::insert_chunk`] on,
     /// but that never made it into the store as is, but got split into multiple pieces,
     /// out of which [`Self::chunk`] is one.
-    pub split_source: Option<ChunkId>, // TODO(#11971): Better lineage tracking
+    pub split_source: Option<ChunkId>, // TODO: Better lineage tracking
 
     /// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
     ///

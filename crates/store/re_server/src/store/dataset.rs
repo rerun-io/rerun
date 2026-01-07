@@ -353,6 +353,7 @@ impl Dataset {
             .map_err(Error::failed_to_extract_properties)
     }
 
+    // TODO: what becomes of this in a world where a virtual ChunkStore can also compute that information?
     pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RrdManifest, Error> {
         let partition = self.segment(segment_id)?;
 

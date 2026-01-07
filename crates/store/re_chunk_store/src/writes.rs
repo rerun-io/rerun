@@ -9,7 +9,7 @@ use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
-    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
+    ChunkId, ChunkLineage, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
     ChunkStoreDiffKind, ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
 };
 
@@ -25,6 +25,14 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        self.insert_chunk_impl(chunk, ChunkLineage::Volatile)
+    }
+
+    fn insert_chunk_impl(
+        &mut self,
+        chunk: &Arc<Chunk>,
+        lineage: ChunkLineage,
+    ) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if chunk.is_empty() {
             return Ok(vec![]); // nothing to do
         }
@@ -41,33 +49,6 @@ impl ChunkStore {
             //
             // The solution is simple: just drop it.
             return Ok(vec![]);
-        }
-
-        let split_chunks = Chunk::split_chunk_if_needed(
-            chunk.clone(),
-            &re_chunk::ChunkSplitConfig {
-                chunk_max_bytes: self.config.chunk_max_bytes,
-                chunk_max_rows: self.config.chunk_max_rows,
-                chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
-            },
-        );
-        if split_chunks.len() > 1 {
-            re_tracing::profile_scope!("add-splits");
-
-            let mut all_events = Vec::new();
-
-            for split_chunk in split_chunks {
-                let events = self.insert_chunk(&split_chunk)?;
-                all_events.extend(events);
-            }
-
-            for event in &mut all_events {
-                if event.diff.kind == ChunkStoreDiffKind::Addition {
-                    event.diff.split_source = Some(chunk.id());
-                }
-            }
-
-            return Ok(all_events);
         }
 
         if let Some(prev_chunk) = self.chunks_per_chunk_id.get(&chunk.id()) {
@@ -93,6 +74,41 @@ impl ChunkStore {
         }
 
         re_tracing::profile_function!();
+
+        // TODO: if the chunk is not physically there (which it cannot be at this point in the method),
+        // but does have a lineage already, then it must be some kind of lazy (re)load.
+        if self.chunks_lineage.contains_key(&chunk.id()) {
+        } else {
+            self.chunks_lineage.insert(chunk.id(), lineage.clone()); // TODO: we purposefully override this below.
+        }
+
+        let split_chunks = Chunk::split_chunk_if_needed(
+            chunk.clone(),
+            &re_chunk::ChunkSplitConfig {
+                chunk_max_bytes: self.config.chunk_max_bytes,
+                chunk_max_rows: self.config.chunk_max_rows,
+                chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
+            },
+        );
+        if split_chunks.len() > 1 {
+            re_tracing::profile_scope!("add-splits");
+
+            let mut all_events = Vec::new();
+
+            for split_chunk in split_chunks {
+                let events =
+                    self.insert_chunk_impl(&split_chunk, ChunkLineage::SplitFrom(chunk.id()))?;
+                all_events.extend(events);
+            }
+
+            for event in &mut all_events {
+                if event.diff.kind == ChunkStoreDiffKind::Addition {
+                    event.diff.split_source = Some(chunk.id());
+                }
+            }
+
+            return Ok(all_events);
+        }
 
         self.insert_id += 1;
 
@@ -155,10 +171,11 @@ impl ChunkStore {
                                     chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
                                 });
 
-                            debug_assert!(
-                                cur_row_id_min_for_chunk.is_some(),
-                                "This condition cannot fail, we just want to avoid unwrapping",
-                            );
+                            // TODO: not sure why these causes all kinds of problems with my experiments, tbd
+                            // debug_assert!(
+                            //     cur_row_id_min_for_chunk.is_some(),
+                            //     "This condition cannot fail, we just want to avoid unwrapping",
+                            // );
                             if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk {
                                 overwritten_chunk_ids
                                     .insert(*cur_chunk_id, cur_row_id_min_for_chunk);
@@ -212,6 +229,7 @@ impl ChunkStore {
                             self.chunk_ids_per_min_row_id.remove(&chunk_row_id_min);
                         debug_assert!(chunk_id_removed.is_some());
 
+                        // TODO: what do we want to do lineage-wise here?
                         let chunk_removed = self.chunks_per_chunk_id.remove(&chunk_id);
                         debug_assert!(chunk_removed.is_some());
 
@@ -232,7 +250,15 @@ impl ChunkStore {
             let (elected_chunk, chunk_or_compacted) = {
                 re_tracing::profile_scope!("election");
 
-                let elected_chunk = if chunk
+                let elected_chunk = if matches!(lineage, ChunkLineage::SplitFrom(_)) {
+                    // If the chunk was just splitted from another larger chunk, then compacting it
+                    // back with another chunk is likely counter-productive.
+                    // The reason for that is that it will likely lead to overlapping chunks and, while
+                    // larger buffers are generally beneficial for query and visualization performance,
+                    // overlapping chunks on the other hand often require a lot of extra CPU intensive
+                    // work from downstream systems that may require contiguous, ordered data.
+                    None
+                } else if chunk
                     .components()
                     .contains_key(&"VideoStream:sample".into())
                 {
@@ -402,6 +428,23 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
+
+        // TODO: but then at this point we're losing the fact that maybe this was compacted from a split.
+        // -> that's why i think it's better to just update the lineage inline
+        // -> or... we could also stop merging after splitting?
+        //    -> update: i did just that indeed.
+        //
+        // TODO: make it clear that we *do* get here even if enable_changelog is false.
+
+        for diff in &diffs {
+            if let Some(report) = diff.compacted.as_ref() {
+                self.chunks_lineage.insert(
+                    report.new_chunk.id(),
+                    ChunkLineage::CompactedFrom(report.srcs.keys().copied().collect()),
+                );
+            }
+        }
+
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
         // with another one, which might or might not have modified the range.
         if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min)
@@ -676,6 +719,7 @@ impl ChunkStore {
             type_registry: _,
             per_column_metadata,
             chunks_per_chunk_id,
+            chunks_lineage: _, // lineage metadata must never be dropped, regardless
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
