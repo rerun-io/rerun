@@ -141,7 +141,6 @@ impl VideoPlayer {
         if let Some(details) = description.encoding_details.as_ref()
             && let Some(bit_depth) = details.bit_depth
         {
-            #[expect(clippy::comparison_chain)]
             if bit_depth < 8 {
                 re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
             } else if 8 < bit_depth {

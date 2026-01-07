@@ -3702,7 +3702,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`
 #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
-#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // cannot return error on web
+#[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
     #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
     rrd_version: CrateVersion,
