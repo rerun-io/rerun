@@ -49,6 +49,8 @@ pub fn load_dae_from_buffer(
     let document = Document::from_reader(buffer).map_err(DaeImportError::Parser)?;
     let maps = document.local_maps();
 
+    // TODO(#12335): Respect up_axis from DAE file via ViewCoordinates.
+
     // Check for textures and warn if found
     check_for_textures(&document);
 
@@ -158,7 +160,7 @@ fn import_geometry(
         albedo_factor,
     };
 
-    let vertex_positions = bytemuck::cast_vec(pos_raw.clone());
+    let vertex_positions = bytemuck::cast_vec(pos_raw);
     let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
     let cpu_mesh = mesh::CpuMesh {
