@@ -345,7 +345,7 @@ pub struct TimeControl {
     playing: bool,
 
     /// If true, we are in "follow" mode (see [`PlayState::Following`]).
-    /// Ignored when [`Self.playing`] is `false`.
+    /// Ignored when [`Self::playing`] is `false`.
     following: bool,
 
     speed: f32,
