@@ -124,8 +124,9 @@ fn settings_screen_ui_impl(
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
     separator_with_some_space(ui);
-    ui.strong("Timestamp format");
-    time_format_section_ui(ui, timestamp_format);
+    ui.collapsing_header("Timestamp format", false, |ui| {
+        time_format_section_ui(ui, timestamp_format);
+    });
 
     separator_with_some_space(ui);
     ui.strong("Map view");
