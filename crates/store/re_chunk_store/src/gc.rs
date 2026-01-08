@@ -322,7 +322,7 @@ impl ChunkStore {
                 vec![]
             };
 
-            let chunks_in_min_row_id_order = {
+            let chunks_in_min_row_id_order = || {
                 // NOTE: latest-at protection only applies for RowID-based collection
                 let protected_chunk_ids =
                     self.find_all_protected_physical_chunk_ids(options.protect_latest);
@@ -336,7 +336,10 @@ impl ChunkStore {
 
             let chunks_in_priority_order = chunks_furthest_away
                 .into_iter()
-                .chain(chunks_in_min_row_id_order)
+                // `find_all_protected_physical_chunk_ids` is rather expensive so make sure we only
+                // compute it if we couldn't find enough chunks to remove already.
+                // Do note that `chunks_in_min_row_id_order` is a callback!
+                .chain(std::iter::once_with(chunks_in_min_row_id_order).flatten())
                 .filter(|chunk| !options.is_chunk_temporally_protected(chunk));
 
             let mut chunks_to_be_removed = Vec::new();
