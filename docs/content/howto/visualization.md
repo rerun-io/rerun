@@ -1,5 +1,8 @@
 ---
 title: Visualization
 order: 200
-redirect: howto/visualization/limit-ram
 ---
+
+How-to guides for visualizing data in the Rerun Viewer.
+
+<!-- TODO(ab): it would be nice to auto-generate a TOC here -->

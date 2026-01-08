@@ -1,5 +1,5 @@
 ---
 title: Send data to Rerun
-order: 0
-redirect: howto/logging/send-columns
+hidden: true
+redirect: howto/logging-and-ingestion/send-columns
 ---

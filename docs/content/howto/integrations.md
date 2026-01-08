@@ -1,5 +1,5 @@
 ---
 title: Integrations
-order: 900
+order: 400
 redirect: howto/integrations/embed-notebooks
 ---
