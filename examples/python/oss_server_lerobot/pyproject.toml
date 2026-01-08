@@ -1,0 +1,12 @@
+[project]
+name = "oss_server_lerobot"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["numpy", "pandas", "rerun-sdk", "scipy", "tqdm", "lerobot"]
+
+[project.scripts]
+oss_server_lerobot = "oss_server_lerobot.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

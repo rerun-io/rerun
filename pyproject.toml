@@ -76,6 +76,9 @@ examples = [
   "polars>=0.12.0",
   "opencv-python>=4.6",
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
+  "torch>=2.5.1", # require at least 2.5.1 for some examples
+  "torchvision>=0.20.1", # require at least 0.20.1 for some examples
+  "lerobot==0.4.2", # locking this at 0.4.2, to avoid surprises
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -108,6 +111,7 @@ examples = [
   "objectron",
   "open_photogrammetry_format",
   "openstreetmap_data",
+  "oss_server_lerobot",
   "plots",
   "raw_mesh",
   "rgbd",
@@ -140,6 +144,9 @@ docs = [
 
 [tool.uv]
 package = false
+
+# Override lerobot's dependency on rerun-sdk to use the workspace version
+override-dependencies = ["rerun-sdk"]
 
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
@@ -180,6 +187,7 @@ nv12 = { workspace = true }
 objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
+oss_server_lerobot = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -233,6 +241,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
+  "examples/python/oss_server_lerobot",
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
