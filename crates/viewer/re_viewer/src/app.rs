@@ -2434,7 +2434,7 @@ impl App {
         }
 
         let was_empty = entity_db.is_empty();
-        let entity_db_add_result = entity_db.add(msg);
+        let entity_db_add_result = entity_db.add_log_msg(msg);
 
         // Downgrade to read-only, so we can access caches.
         let entity_db = store_hub
