@@ -33,6 +33,9 @@ version = 2
 ignore = [
   "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
   "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
+  "RUSTSEC-2025-0141", # https://rustsec.org/advisories/RUSTSEC-2025-0141 - bincode is unmaintained - https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md
+  # TODO(quickwit-oss/tantivy#2796): Remove when changes trickle down to `lance`.
+  "RUSTSEC-2026-0002", # https://rustsec.org/advisories/RUSTSEC-2026-0002 - lance uses an old version of `lru`
 ]
 
 
