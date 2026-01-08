@@ -268,11 +268,16 @@ impl ChunkStore {
                                             .copied(),
                                     )
                                     .filter(|chunk_id| {
-                                        self.chunks_per_chunk_id.contains_key(chunk_id)
+                                        self.chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
                                     })
-                                    .collect::<BTreeSet<_>>()
-                                    .into_iter()
-                                    .rev()
+                                    // We might get unlucky and not hit the target count because `per_end_time`
+                                    // ended up yielding the same chunks as `per_start_time`, which will get
+                                    // deduplicated afterwards.
+                                    // This is fine for now, for two reasons:
+                                    // 1. In practice, we never use anything other than a `target_count` of 1, which
+                                    //    makes this whole thing irrelevant.
+                                    // 2. The whole concept of "protecting latest" only makes sense in the context
+                                    //    of the legacy data paths, which are on their way out anyhow.
                                     .take(target_count)
                             },
                         )
