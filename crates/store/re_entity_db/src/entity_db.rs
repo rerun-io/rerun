@@ -547,40 +547,44 @@ impl EntityDb {
         }
     }
 
+    /// Insert new data into the store.
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
-        re_tracing::profile_function!();
-
         debug_assert_eq!(msg.store_id(), self.store_id());
 
-        let store_events = match &msg {
+        match &msg {
             LogMsg::SetStoreInfo(msg) => {
                 self.set_store_info(msg.clone());
-                vec![]
+                Ok(vec![]) // no events
             }
 
-            LogMsg::ArrowMsg(_, arrow_msg) => {
-                self.last_modified_at = web_time::Instant::now();
-
-                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
-                    .map_err(re_chunk::ChunkError::from)?;
-                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
-                chunk.sort_if_unsorted();
-                self.add_chunk_with_timestamp_metadata(
-                    &Arc::new(chunk),
-                    &chunk_batch.sorbet_schema().timestamps,
-                )?
-            }
+            LogMsg::ArrowMsg(_, arrow_msg) => self.add_record_batch(&arrow_msg.batch),
 
             LogMsg::BlueprintActivationCommand(_) => {
                 // Not for us to handle
-                vec![]
+                Ok(vec![]) // no events
             }
-        };
-
-        Ok(store_events)
+        }
     }
 
-    /// Used mostly for tests
+    /// Insert a chunk (encoded as a record batch) into the store.
+    pub fn add_record_batch(
+        &mut self,
+        record_batch: &arrow::array::RecordBatch,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
+
+        self.last_modified_at = web_time::Instant::now();
+        let chunk_batch =
+            re_sorbet::ChunkBatch::try_from(record_batch).map_err(re_chunk::ChunkError::from)?;
+        let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
+        chunk.sort_if_unsorted();
+        self.add_chunk_with_timestamp_metadata(
+            &Arc::new(chunk),
+            &chunk_batch.sorbet_schema().timestamps,
+        )
+    }
+
+    /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
