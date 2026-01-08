@@ -130,6 +130,9 @@ pub struct ChunkPrefetchOptions {
     /// Only consider chunks overlapping this range on [`Self::timeline`].
     pub desired_range: AbsoluteTimeRange,
 
+    /// Batch together requests until we reach this size.
+    pub max_bytes_per_request: u64,
+
     /// Total budget for all loaded chunks.
     pub total_byte_budget: u64,
 
@@ -449,6 +452,7 @@ impl RrdManifestIndex {
         let ChunkPrefetchOptions {
             timeline,
             desired_range,
+            max_bytes_per_request,
             mut total_byte_budget,
             mut delta_byte_budget,
         } = *options;
@@ -463,6 +467,9 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
+
+        let mut bytes_in_current_request: u64 = 0;
+        let mut indices = vec![];
 
         for (_, chunk_id) in chunks.query(desired_range.into()) {
             let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
@@ -482,9 +489,17 @@ impl RrdManifestIndex {
                 remote_chunk.state = LoadState::InTransit;
 
                 if let Ok(row_idx) = i32::try_from(row_idx) {
-                    let rb = take_record_batch(&manifest.data, &Int32Array::from(vec![row_idx]))?;
-                    let promise = load_chunk(rb);
-                    self.chunk_promises.add(promise);
+                    indices.push(row_idx);
+                    bytes_in_current_request += chunk_size;
+
+                    if max_bytes_per_request < bytes_in_current_request {
+                        let rb = take_record_batch(
+                            &manifest.data,
+                            &Int32Array::from(std::mem::take(&mut indices)),
+                        )?;
+                        self.chunk_promises.add(load_chunk(rb));
+                        bytes_in_current_request = 0;
+                    }
                 } else {
                     // Improbable
                     return Err(PrefetchError::BadIndex(row_idx));
@@ -495,6 +510,11 @@ impl RrdManifestIndex {
                     break; // We aren't allowed to prefetch more than this in one go.
                 }
             }
+        }
+
+        if !indices.is_empty() {
+            let rb = take_record_batch(&manifest.data, &Int32Array::from(indices))?;
+            self.chunk_promises.add(load_chunk(rb));
         }
 
         Ok(())

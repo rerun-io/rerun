@@ -42,12 +42,12 @@ pub fn prefetch_chunks(
         desired_range,
         total_byte_budget,
 
-        // TODO(RR-3204): what is a reasonable cap here?
-        // We don't request more until this much has been received.
-        // Small number = low latency, low throughput.
-        // High number = high latency, high throughput.
-        // Ideally it should depend on the actual channel bandwidth and latency.
-        delta_byte_budget: 500_000,
+        // Batch small chunks together.
+        max_bytes_per_request: 1_000_000,
+
+        // TODO(RR-3204): what is a reasonable size here?
+        // A high value -> better theoretical bandwidth
+        delta_byte_budget: 10_000_000,
     };
 
     let rrd_manifest = &mut recording.rrd_manifest_index;
