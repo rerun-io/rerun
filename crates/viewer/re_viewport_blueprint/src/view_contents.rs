@@ -526,7 +526,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
                     .map(|instruction_id| {
-                        let instruction_id = instruction_id.0.into();
+                        let instruction_id = re_viewer_context::VisualizerInstructionId::from_uuid(
+                            instruction_id.0.into(),
+                        );
 
                         let visualizer_override_path = VisualizerInstruction::override_path_for(
                             &node.data_result.override_base_path,
@@ -579,10 +581,13 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .0 // TODO
                     .into_iter()
                     .enumerate()
-                    .map(|(i, (visualizer_type, component_mappings))| {
+                    .map(|(index, (visualizer_type, component_mappings))| {
                         VisualizerInstruction::new(
                             // i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
-                            re_viewer_context::VisualizerInstructionId::new_v4(), // TODO: shouldn't this be a placeholder?
+                            re_viewer_context::VisualizerInstructionId::new_deterministic(
+                                &node.data_result.entity_path,
+                                index,
+                            ),
                             visualizer_type,
                             &node.data_result.override_base_path,
                             component_mappings,

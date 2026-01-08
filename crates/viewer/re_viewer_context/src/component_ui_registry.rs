@@ -799,11 +799,11 @@ impl ComponentUiRegistry {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx(),
             ui,
-            EditTarget {
+            Some(EditTarget {
                 store_id: ctx.store_ctx().blueprint.store_id().clone(),
                 timepoint: ctx.store_ctx().blueprint_timepoint_for_writes(),
                 entity_path: blueprint_write_path,
-            },
+            }),
             component_raw,
             component_descr.clone(),
             allow_multiline,
@@ -831,17 +831,12 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        target: EditTarget,
+        target: Option<EditTarget>, // TODO: find a way to serialize all temp vis ids, probably not here
         raw_current_value: &dyn arrow::array::Array,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
     ) -> bool {
         re_tracing::profile_function!(component_descr.display_name());
-        let EditTarget {
-            store_id,
-            timepoint,
-            entity_path,
-        } = target;
 
         // We use the component type to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
@@ -863,13 +858,25 @@ impl ComponentUiRegistry {
                 raw_current_value,
                 EditOrView::Edit,
             ) {
-                ctx.append_array_to_store(
-                    store_id,
-                    timepoint,
-                    entity_path,
-                    component_descr,
-                    updated,
-                );
+                if let Some(target) = target {
+                    let EditTarget {
+                        store_id,
+                        timepoint,
+                        entity_path,
+                    } = target;
+
+                    ctx.append_array_to_store(
+                        store_id,
+                        timepoint,
+                        entity_path,
+                        component_descr,
+                        updated,
+                    );
+                } else {
+                    unimplemented!(
+                        "Saving edits to a temporary visualizer instruction is not supported yet."
+                    ); // TODO
+                }
             }
             return true;
         }

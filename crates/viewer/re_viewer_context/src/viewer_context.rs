@@ -74,6 +74,10 @@ pub struct ViewerContext<'a> {
     pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
     pub store_context: &'a StoreContext<'a>,
+
+    // /// Visualizer instructions that come from heuristics but were edited by the user.
+    // /// These need to be saved back to the blueprint store.
+    // pub edited_default_visualizers: parking_lot::Mutex<Vec<usize>>,
 }
 
 // Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a

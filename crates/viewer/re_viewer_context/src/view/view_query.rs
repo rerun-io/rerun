@@ -16,7 +16,29 @@ use crate::{
 // TODO: That can probably go away?
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
-pub type VisualizerInstructionId = uuid::Uuid;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VisualizerInstructionId(pub uuid::Uuid);
+
+impl VisualizerInstructionId {
+    pub fn invalid() -> Self {
+        Self(uuid::Uuid::nil())
+    }
+
+    pub fn new_random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn new_deterministic(entity_path: &EntityPath, index: usize) -> Self {
+        Self(uuid::Uuid::from_u64_pair(
+            entity_path.hash64(),
+            index as u64,
+        ))
+    }
+
+    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
+        Self(uuid)
+    }
+}
 
 /// A single component mapping for a visualizer instruction.
 #[derive(Clone, Debug, Hash)]
@@ -34,7 +56,6 @@ pub struct VisualizerInstruction {
 
     pub visualizer_type: ViewSystemIdentifier,
     pub override_path: EntityPath,
-
     /// List of components that have overrides for this visualizer instruction.
     ///
     /// Note that this does *not* take into account tree propagation of any special components
@@ -61,11 +82,12 @@ impl VisualizerInstruction {
         }
     }
 
+    // TODO(aedm): only generate this path if the instruction has to be saved to the blueprint store.
     pub fn override_path_for(
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,
     ) -> EntityPath {
-        override_base_path.join(&EntityPath::from_single_string(id.to_string()))
+        override_base_path.join(&EntityPath::from_single_string(id.0.to_string()))
     }
 
     /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
@@ -73,10 +95,10 @@ impl VisualizerInstruction {
     /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
     pub fn placeholder(data_result: &DataResult) -> Self {
         Self {
-            id: uuid::Uuid::nil(),
+            id: VisualizerInstructionId::invalid(),
             visualizer_type: "___PLACEHOLDER___".into(),
             component_overrides: IntSet::default(),
-            override_path: data_result.override_base_path.clone(),
+            override_path: data_result.override_base_path.clone(), // TODO(aedm): create a clearly invalid one.
             component_mappings: VisualizerComponentMappings::default(),
         }
     }

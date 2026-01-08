@@ -4,7 +4,6 @@ use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
-use re_sdk_types::external::uuid;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -109,7 +108,7 @@ pub fn visualizer_ui_impl(
                     active_visualizers
                         .iter()
                         .filter(|v| &v.id != visualizer_id)
-                        .map(|v| v.id),
+                        .map(|v| v.id.0),
                 );
 
                 ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
@@ -126,10 +125,10 @@ pub fn visualizer_ui_impl(
             );
         }
 
-        for visualizer_instruction in active_visualizers {
+        for (index, visualizer_instruction) in active_visualizers.iter().enumerate() {
             let visualizer_type = visualizer_instruction.visualizer_type;
 
-            ui.push_id(&visualizer_instruction.id, |ui| {
+            ui.push_id(index, |ui| {
                 // List all components that the visualizer may consume.
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
@@ -297,11 +296,11 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    re_viewer_context::EditTarget {
+                    Some(re_viewer_context::EditTarget {
                         store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
                         timepoint: ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
                         entity_path: override_path.clone(),
-                    },
+                    }),
                     raw_current_value.as_ref(),
                     component_descr.clone(),
                     multiline,
@@ -715,13 +714,13 @@ fn menu_add_new_visualizer(
             // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
 
-            let new_id = uuid::Uuid::new_v4(); // TODO: figure out a better id scheme.
+            // let new_id = uuid::Uuid::new_v4(); // TODO: figure out a better id scheme.
 
             // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
             let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
 
             let new_instruction = VisualizerInstruction::new(
-                new_id,
+                re_viewer_context::VisualizerInstructionId::new_random(),
                 *visualizer_type,
                 override_base_path,
                 component_mappings,
@@ -732,9 +731,7 @@ fn menu_add_new_visualizer(
                     .iter()
                     .map(|v| &v.id)
                     .chain(std::iter::once(&new_instruction.id))
-                    .map(|v| {
-                        re_sdk_types::blueprint::components::VisualizerInstructionId::from(*v)
-                    }),
+                    .map(|v| v.0),
             );
             ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
 
