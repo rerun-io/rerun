@@ -206,6 +206,13 @@ impl<T: Into<crate::ItemCollection>> From<T> for SetSelection {
     }
 }
 
+impl SystemCommand {
+    /// A short debug name for this command.
+    pub fn debug_name(&self) -> &'static str {
+        self.into()
+    }
+}
+
 impl std::fmt::Debug for SystemCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // not all variant contents can be made `Debug`, so we only output the variant name

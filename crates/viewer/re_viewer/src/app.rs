@@ -669,6 +669,7 @@ impl App {
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+        re_tracing::profile_function!();
         while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
             self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
@@ -813,6 +814,8 @@ impl App {
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
     ) {
+        re_tracing::profile_function!(cmd.debug_name());
+
         match cmd {
             SystemCommand::TimeControlCommands {
                 store_id,
@@ -1302,6 +1305,8 @@ impl App {
         egui_ctx: &egui::Context,
         data_source: &LogDataSource,
     ) {
+        re_tracing::profile_function!();
+
         // Check if we've already loaded this data source and should just switch to it.
         //
         // Go through all sources that are still loading and those that are already in the store_hub.
