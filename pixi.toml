@@ -766,6 +766,7 @@ segment-anything = { git = "https://github.com/facebookresearch/segment-anything
 
 air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
+animated_urdf = { path = "examples/python/animated_urdf", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
 camera_video_stream = { path = "examples/python/camera_video_stream", editable = true }
