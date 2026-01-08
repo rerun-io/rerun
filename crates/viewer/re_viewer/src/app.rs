@@ -3062,10 +3062,11 @@ impl App {
         let recording = store_hub.active_recording_mut()?;
         let time_ctrl = self.state.time_controls.get(recording.store_id())?;
         crate::prefetch_chunks::prefetch_chunks(
+            &self.egui_ctx,
             &self.startup_options,
-            &self.rx_log,
             recording,
             time_ctrl,
+            self.connection_registry(),
         )
     }
 }
