@@ -32,6 +32,10 @@ This patch adds native support for Collada (`.dae`) meshes, a common format used
 
 #### 🌁 Viewer improvements
 - Collada (`.dae`) mesh loader [#10288](https://github.com/rerun-io/rerun/pull/10288)
+- Add option to hide all notification popups/toasts [#12354](https://github.com/rerun-io/rerun/pull/12354)
+
+#### 📚 Docs
+- docs: Fix parameter name from 'color' to 'colors' [#12294](https://github.com/rerun-io/rerun/pull/12294) (thanks [@Ivan-Zhong](https://github.com/Ivan-Zhong)!)
 
 ## [0.28.1](https://github.com/rerun-io/rerun/compare/0.28.0...0.28.1) - 2025-12-18 - Fix some telemetry, depth images, and logging
 
