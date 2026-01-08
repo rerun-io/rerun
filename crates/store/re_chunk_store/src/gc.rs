@@ -348,12 +348,12 @@ impl ChunkStore {
                 // and would count as amortized (i.e. 0 bytes).
                 num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
 
+                chunks_to_be_removed.push(chunk);
+
                 // We divide the time budget equally between the mark and sweep phases.
                 if start_time.elapsed() >= options.time_budget / 2 || num_bytes_to_drop <= 0.0 {
                     break;
                 }
-
-                chunks_to_be_removed.push(chunk);
             }
 
             chunks_to_be_removed
