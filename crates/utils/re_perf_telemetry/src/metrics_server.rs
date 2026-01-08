@@ -45,7 +45,7 @@ pub(crate) async fn start_metrics_server(
     // Spawn the server task to run asynchronously
     tokio::spawn(async move {
         if let Err(err) = axum::serve(listener, app).await {
-            error!("Metrics server error: {}", err);
+            error!("Metrics server error: {err}");
         }
     });
 
@@ -84,7 +84,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
                     buffer,
                 ),
                 Err(err) => {
-                    error!("Failed to encode metrics: {}", err);
+                    error!("Failed to encode metrics: {err}");
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         [(header::CONTENT_TYPE, "text/plain")],
@@ -94,7 +94,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
             }
         }
         Err(err) => {
-            error!("Failed to collect metrics from ManualReader: {}", err);
+            error!("Failed to collect metrics from ManualReader: {err}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::CONTENT_TYPE, "text/plain")],
