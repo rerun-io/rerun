@@ -55,9 +55,7 @@ def main() -> None:
         assert isinstance(user, NamedUser), f"Expected NamedUser, got {type(user)}"
 
         can_user_approve_workflows = (
-            repo.owner.login == user.login
-            or repo.organization.has_in_members(user)
-            or repo.has_in_collaborators(user)
+            repo.owner.login == user.login or repo.organization.has_in_members(user) or repo.has_in_collaborators(user)
         )
         if not can_user_approve_workflows:
             continue

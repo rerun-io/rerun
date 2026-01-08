@@ -115,13 +115,9 @@ else:  # remote widget
     ESM_MOD = ASSET_ENV
     # note that the JS expects the Wasm binary to exist at the same path as itself
     if not (ASSET_ENV.startswith(("http://", "https://"))):
-        raise ValueError(
-            f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}"
-        )
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
     if not (ASSET_ENV.endswith("widget.js")):
-        raise ValueError(
-            f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}"
-        )
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
     ASSET_IS_URL = True
 
 
@@ -137,9 +133,7 @@ class ErrorWidget:
         )
         js_base64 = base64.b64encode(js.encode()).decode()
         onload = f"eval(atob('{js_base64}'))"
-        self._html = HTML(
-            value=f'<div id="{widget_id}"><style onload="{onload}"></style></div>'
-        )
+        self._html = HTML(value=f'<div id="{widget_id}"><style onload="{onload}"></style></div>')
 
     def _ipython_display_(self) -> None:
         from IPython.display import display
@@ -254,12 +248,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
                 poll(1)
                 time.sleep(0.1)
 
-    def update_panel_states(
-        self, panel_states: Mapping[Panel, PanelState | Literal["default"]]
-    ) -> None:
-        new_panel_states = (
-            dict(self._panel_states.items()) if self._panel_states else {}
-        )
+    def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
+        new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
         for panel, state in panel_states.items():
             if state == "default":
                 new_panel_states.pop(panel, None)
@@ -268,9 +258,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._panel_states = new_panel_states
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
-        self.send(
-            {"type": "time_ctrl", "timeline": timeline, "time": time, "play": play}
-        )
+        self.send({"type": "time_ctrl", "timeline": timeline, "time": time, "play": play})
 
     def set_active_recording(self, recording_id: str) -> None:
         self.send({"type": "recording_id", "recording_id": recording_id})
@@ -282,13 +270,11 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self.send({"type": "close_url", "url": url})
 
     def set_credentials(self, access_token: str, email: str) -> None:
-        self.send(
-            {
-                "type": "set_credentials",
-                "access_token": access_token,
-                "email": email,
-            }
-        )
+        self.send({
+            "type": "set_credentials",
+            "access_token": access_token,
+            "email": email,
+        })
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
