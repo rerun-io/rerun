@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "MCAP"
 tags = ["MCAP", "RRD", "ROS", "ROS 2", "Rosbag", "Tutorial"]
-source = "https://github.com/rerun-io/mcap_example
+source = "https://github.com/rerun-io/mcap_example"
 thumbnail = "https://static.rerun.io/mcap_example/7a3207652fa411979a96d5c5a25a43be29f1fdfb/480w.png"
 thumbnail_dimensions = [480, 305]
 -->
@@ -86,7 +86,7 @@ You can also load an MCAP file from code, for example in Python you initialize R
 ```python
 import rerun as rr
 
-rr.init("mcap_example/load_mcap", spawn=True)
+rr.init("rerun_example_mcap/load_mcap", spawn=True)
 rr.log_file_from_path("recording.mcap")
 ```
 
@@ -94,7 +94,7 @@ rr.log_file_from_path("recording.mcap")
 
 If you have older ROS (1) bags or ROS 2 SQLite3 (`.db`) bags, you can convert them to MCAP using available libraries.
 
-### Option 1: using Rosbag2 (requires ROS 2 installation)
+### Option 1: using Rosbag2 (requires ROS 2 installation) <!-- NOLINT -->
 
 Convert ROS 2 SQLite3 (`.db`) bags using the [Rosbag2](https://github.com/ros2/rosbag2?tab=readme-ov-file#convert) `ros2 bag convert` command:
 
@@ -112,7 +112,7 @@ output_bags:
   all_services: true
 ```
 
-### Option 2: using Rosbags (pure Python library)
+### Option 2: using Rosbags (pure Python library) <!-- NOLINT -->
 
 [Rosbags](https://ternaris.gitlab.io/rosbags/) is a pure Python solution for converting, reading, and writing ROS 1 and ROS 2 bags without requiring a full ROS installation. To install:
 
@@ -209,7 +209,7 @@ wget https://laesze-my.sharepoint.com/:u:/g/personal/herno_o365_sze_hu/EVlk6YgDt
 
 This dataset includes camera images, LiDAR point clouds, poses, IMU, and GPS.
 
-### 3. Convert to MCAP (via Rosbags)
+### 3. Convert to MCAP (via Rosbags) <!-- NOLINT -->
 
 Use [Rosbags's](https://ternaris.gitlab.io/rosbags/) `rosbags-convert` tool within the Pixi environment to convert the ROS 1 bag to MCAP:
 
@@ -257,7 +257,7 @@ with rr.server.Server(datasets={'dataset': [path_to_rrd]}) as server:
 
     log_gps(dataset)
     log_imu(dataset)
-    # ... and so on for all entities
+    # … and so on for all entities
 ```
 
 #### GPS data (`log_gps`)
@@ -701,7 +701,7 @@ The core of this example is demonstrating how Rerun can efficiently handle compl
 * **Semantic Interpretation**: MCAP files store data as opaque, pre-serialized blobs corresponding to specific ROS message types (e.g., [sensor_msgs/msg/PointCloud2](https://docs.ros.org/en/jazzy/p/sensor_msgs/msg/PointCloud2.html)). When Rerun's `mcap convert` utility processes this, it semantically interprets these blobs. It understands that a `PointCloud2` message should be converted into the native Rerun `Points3D` archetype. This process lifts the data out of the ROS ecosystem and into a Rerun-native, high-level format.
 * **Time Synchronization and Timelines**: ROS messages often contain timestamps in a [std_msgs/msg/Header](https://docs.ros.org/en/jazzy/p/std_msgs/msg/Header.html) field that represent when the data was captured (sensor time). The MCAP container itself has separate timestamps for when the data was logged (`message_log_time`) and published (`message_publish_time`). During RRD conversion, Rerun automatically extracts the `Header` timestamp and logs it to either the `ros2_timestamp` or `ros2_duration` timeline ([read more on the timelines here](https://rerun.io/docs/reference/mcap/message-formats#timelines)). This is essential for accurate visualization, allowing you to easily view data across multiple sensors based on the moment of capture, not just the moment of logging.
 
-### 2. The Python data query and processing (RRD -> Rerun)
+### 2. The Python data query and processing (RRD -> Rerun) <!-- NOLINT -->
 
 The `log_dataset` function showcases Rerun's flexibility by mixing automatically converted data with manually processed data.
 
