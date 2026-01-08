@@ -87,7 +87,7 @@ impl Ranges {
             // ```text
             // case 1:
             //     last_range: |-unloaded-|
-            //          range:    |---unloaded---|
+            //          range:     |---unloaded---|
             // result:
             // new last_range: |-----unloaded-----|
             //
@@ -96,7 +96,7 @@ impl Ranges {
             //          range:                    |-loaded-|
             //
             // result:
-            // new last_range: |---------unloaded----------|
+            // new last_range: |---------loaded----------|
             //
             // ```
             std::cmp::Ordering::Equal => {
