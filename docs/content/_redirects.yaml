@@ -1,0 +1,106 @@
+# Redirect Table for Moved Resources
+# ==================================
+#
+# This file defines redirects for URLs that have been moved or renamed.
+# These are "hidden" redirects - they don't appear in the navigation sidebar
+# and exist purely for backwards compatibility (e.g., old bookmarks, external links).
+#
+# Format:
+#   old-path: new-path
+#
+# Paths are relative to /docs/. Examples:
+#   - "old-page: new-page" redirects /docs/old-page to /docs/new-page
+#   - "old-page: https://example.com" redirects to an external URL
+#
+# IMPORTANT: Do NOT add redirects here for pages that:
+#   - Should appear in the navigation (use markdown files with frontmatter instead)
+#   - Are intentional link targets from other documentation
+#   - Need to be validated by the link checker
+#
+# For those cases, create a markdown file with redirect frontmatter:
+#   ---
+#   title: Page Title
+#   order: 100
+#   redirect: target-path
+#   ---
+
+# Overview section (old paths)
+overview/installing-viewer: overview/installing-rerun
+
+# Getting Started section (old paths)
+getting-started/what-is-rerun: overview/what-is-rerun
+getting-started/navigating-the-viewer: getting-started/configure-the-viewer/navigating-the-viewer
+getting-started/troubleshooting: overview/installing-rerun/troubleshooting
+getting-started/installing-viewer: overview/installing-rerun/viewer
+getting-started/data-out/analyze-and-log: getting-started/data-out/analyze-and-send
+getting-started/data-out/query-data: getting-started/data-out
+
+# Concepts section (old paths moved to subfolders)
+concepts/apps-and-recordings: concepts/logging-and-ingestion/apps-and-recordings
+concepts/annotation-context: concepts/visualization/annotation-context
+concepts/batches: concepts/logging-and-ingestion/batches
+concepts/blueprint: concepts/visualization/blueprints
+concepts/blueprints: concepts/visualization/blueprints
+concepts/chunks: concepts/logging-and-ingestion/chunks
+concepts/entity-component: concepts/logging-and-ingestion/entity-component
+concepts/entity-path: concepts/logging-and-ingestion/entity-path
+concepts/latest-at: concepts/logging-and-ingestion/latest-at
+concepts/sinks: concepts/logging-and-ingestion/sinks
+concepts/spaces-and-transforms: concepts/logging-and-ingestion/transforms
+concepts/static: concepts/logging-and-ingestion/static
+concepts/timelines: concepts/logging-and-ingestion/timelines
+concepts/transforms: concepts/logging-and-ingestion/transforms
+concepts/visualizers-and-overrides: concepts/visualization/visualizers-and-overrides
+
+# Reference section (old paths)
+reference/dataframes: concepts/query-and-transform/dataframes
+reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
+reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
+reference/data-loaders/overview: concepts/logging-and-ingestion/data-loaders/overview
+reference/data-loaders/python: concepts/logging-and-ingestion/data-loaders/python
+reference/data-loaders/rust: concepts/logging-and-ingestion/data-loaders/rust
+reference/entity-queries: concepts/visualization/entity-queries
+reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
+reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference
+reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/layers-explained
+reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
+reference/migration: reference/migration/migration-0-29
+reference/migration-0-9: reference/migration/migration-0-9
+reference/sdk: reference/sdk/logging-controls
+reference/sdk-micro-batching: reference/sdk/micro-batching
+reference/sdk-operating-modes: reference/sdk/operating-modes
+reference/video: concepts/logging-and-ingestion/video
+reference/viewer: reference/viewer/overview
+
+# Howto section (old paths)
+howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
+howto/callbacks: howto/visualization/callbacks
+howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
+howto/dataframe-api: howto/get-data-out
+howto/embed-rerun-viewer: howto/integrations/embed-web
+howto/fixed-window-plot: howto/visualization/fixed-window-plot
+howto/get-data-out: howto/query-and-transform/get-data-out
+howto/integrations: howto/integrations/embed-notebooks
+howto/limit-ram: howto/visualization/limit-ram
+howto/logging: howto/logging-and-ingestion/send-columns
+howto/mcap: howto/logging-and-ingestion/mcap
+howto/notebook: howto/integrations/embed-notebooks
+howto/optimize-chunks: howto/logging-and-ingestion/optimize-chunks
+howto/ros2-nav-turtlebot: howto/integrations/ros2-nav-turtlebot
+howto/send_columns: howto/logging/send-columns
+howto/shared-recordings: howto/logging/shared-recordings
+howto/short-lived-entities: howto/logging/clears
+howto/urdf: howto/logging-and-ingestion/urdf
+howto/using-native-loggers: howto/integrations/integrate-host-loggers
+
+# Howto - logging subfolder (old paths)
+howto/logging/clears: howto/logging-and-ingestion/clears
+howto/logging/custom-data: howto/logging-and-ingestion/custom-data
+howto/logging/send-columns: howto/logging-and-ingestion/send-columns
+howto/logging/send-partial-updates: howto/logging-and-ingestion/send-partial-updates
+howto/logging/send-table: howto/logging-and-ingestion/send-table
+howto/logging/shared-recordings: howto/logging-and-ingestion/shared-recordings
+
+# Howto - extend subfolder (old paths)
+howto/extend/custom-data: howto/logging/custom-data
+howto/extend/extend-ui: howto/visualization/extend-ui
