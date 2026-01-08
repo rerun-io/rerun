@@ -405,6 +405,34 @@ impl TransformTreeContext {
         self.transform_forest.pinhole_tree_root_info(frame)
     }
 
+    /// Returns the transform from a pinhole root to the target frame if any.
+    ///
+    /// This is effectively the extrinsic portion or the pinhole's transform to the view's target frame.
+    /// Note that this may otherwise not be accessible since we allow both extrinsics and intrinsics to be
+    /// on a transform between two frames, with no transform frame representing just the extrinsics.
+    ///
+    /// Returns `None` if the pinhole root is not connected to the target frame or the target frame does not exist in the forest (i.e. is invalid).
+    #[inline]
+    pub fn target_from_pinhole_root(
+        &self,
+        pinhole_root_info: &re_tf::PinholeTreeRoot,
+    ) -> Option<glam::DAffine3> {
+        let Some(root_from_target) = self.transform_forest.root_from_frame(self.target_frame)
+        else {
+            // This means our target doesn't exist in the forest.
+            return None;
+        };
+        if pinhole_root_info.parent_tree_root != root_from_target.root {
+            // The pinhole root is not connected to the target frame.
+            return None;
+        }
+
+        let root_from_target = root_from_target.target_from_source;
+        let target_from_root = root_from_target.inverse();
+
+        Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
+    }
+
     /// Returns the target frame, also known as the space origin.
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {

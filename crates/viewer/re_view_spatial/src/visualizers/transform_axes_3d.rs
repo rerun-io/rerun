@@ -1,4 +1,3 @@
-use glam::Affine3A;
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::Archetype as _;
@@ -6,7 +5,6 @@ use re_sdk_types::archetypes::{
     CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
 };
 use re_sdk_types::components::{AxisLength, ShowLabels};
-use re_tf::TransformFrameIdHash;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
@@ -75,7 +73,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             // the additional transform data (the user usually knows which entity they are on).
             // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
             // for varying behavior.
-            let mut transforms_to_draw = if let Some(transform_info) =
+            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = if let Some(transform_info) =
                 transform_info_for_entity_or_report_error(
                     transforms,
                     &data_result.entity_path,
@@ -98,17 +96,22 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         {
                             // We're _at_ that pinhole.
                             // Don't apply the from-2D transform, stick with the last known 3D.
-                            smallvec::smallvec![(
-                                frame_id_hash,
-                                pinhole_tree_root_info
-                                    .parent_root_from_pinhole_root
-                                    .as_affine3a()
-                            )]
+                            if let Some(world_from_camera) =
+                                transforms.target_from_pinhole_root(pinhole_tree_root_info)
+                            {
+                                smallvec::smallvec![(
+                                    frame_id_hash,
+                                    world_from_camera.as_affine3a()
+                                )]
+                            } else {
+                                // Looks like this pinhole isn't connected to the target frame.
+                                Default::default()
+                            }
                         } else {
                             // We're inside a 2D space. But this is a 3D transform.
                             // Something is wrong here and this is not the right place to report it.
                             // Better just don't draw the axis!
-                            smallvec::SmallVec::<[(TransformFrameIdHash, Affine3A); 1]>::new()
+                            Default::default()
                         }
                     } else {
                         transform_info
