@@ -38,7 +38,7 @@ impl StoreBundle {
 
         for msg in decoder {
             let msg = msg?;
-            slf.entry(msg.store_id()).add(&msg)?;
+            slf.entry(msg.store_id()).add_log_msg(&msg)?;
         }
         Ok(slf)
     }

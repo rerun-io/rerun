@@ -548,7 +548,7 @@ impl EntityDb {
     }
 
     /// Insert new data into the store.
-    pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
+    pub fn add_log_msg(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
