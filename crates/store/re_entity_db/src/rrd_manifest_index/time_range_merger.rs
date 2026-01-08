@@ -86,14 +86,14 @@ impl Ranges {
             // examples:
             // ```text
             // case 1:
-            //     last_range: |--loaded--|
-            //          range:    |----loaded----|
+            //     last_range: |-unloaded-|
+            //          range:    |---unloaded---|
             // result:
-            // new last_range: |------loaded------|
+            // new last_range: |-----unloaded-----|
             //
             // case 2:
-            //     last_range: |--unloaded--|
-            //          range:                  |-unloaded-|
+            //     last_range: |--loaded--|
+            //          range:                    |-loaded-|
             //
             // result:
             // new last_range: |---------unloaded----------|
