@@ -1,10 +1,11 @@
 use std::str::FromStr as _;
 
-use egui::{OpenUrl, RichText};
+use egui::{Direction, Layout, OpenUrl, RichText};
+use egui_extras::{Size, StripBuilder};
 use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
-use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
+use re_ui::{ReButton, UiExt as _};
 use re_uri::Scheme;
 use re_viewer_context::{
     DisplayMode, EditRedapServerModalCommand, GlobalContext, SystemCommand,
@@ -36,11 +37,15 @@ impl ServerModalMode {
     }
 }
 
+enum AuthKind {
+    None,
+    Token(String),
+    Stored(Option<LoginFlow>),
+}
+
 /// Authentication state for the server modal.
 struct Authentication {
-    token: String,
-    show_token_input: bool,
-    login_flow: Option<LoginFlow>,
+    kind: AuthKind,
     error: Option<String>,
 }
 
@@ -53,30 +58,22 @@ impl Authentication {
     ///
     /// Optionally, this can be given a token, which takes
     /// precedence over stored credentials.
-    fn new(token: Option<String>) -> Self {
-        let (token, show_token_input) = match token {
-            Some(token) => (token, true),
-            None => (String::new(), false),
-        };
-
-        Self {
-            token,
-            show_token_input,
-            login_flow: None,
-            error: None,
-        }
+    fn new(kind: AuthKind) -> Self {
+        Self { kind, error: None }
     }
 
     /// This cleans up the login flow's resources, such as
     /// closing popup windows.
     fn reset_login_flow(&mut self) {
-        self.login_flow = None;
+        if let AuthKind::Stored(flow) = &mut self.kind {
+            *flow = None;
+        }
     }
 
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
         match LoginFlow::open(ui) {
             Ok(flow) => {
-                self.login_flow = Some(flow);
+                self.kind = AuthKind::Stored(Some(flow));
                 self.error = None;
             }
             Err(err) => {
@@ -103,7 +100,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(None),
+            auth: Authentication::new(AuthKind::Stored(None)),
             port: 443,
         }
     }
@@ -113,7 +110,7 @@ impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(None);
+                let auth = Authentication::new(AuthKind::Stored(None));
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -127,9 +124,12 @@ impl ServerModal {
                 let credentials = connection_registry.credentials(&edit.origin);
                 let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
-                        Authentication::new(Some(token.to_string()))
+                        Authentication::new(AuthKind::Token(token.to_string()))
                     }
-                    Some(re_redap_client::Credentials::Stored) | None => Authentication::new(None),
+                    Some(re_redap_client::Credentials::Stored) => {
+                        Authentication::new(AuthKind::Stored(None))
+                    }
+                    None => Authentication::new(AuthKind::None),
                 };
 
                 Self {
@@ -178,37 +178,52 @@ impl ServerModal {
                     );
                 }
 
-                let label = ui.label("URL:");
+                let label = ui.label("Address:");
 
-                ui.horizontal(|ui| {
-                    egui::ComboBox::new("scheme", "")
-                        .selected_text(if self.scheme == Scheme::RerunHttp {
-                            "http"
-                        } else {
-                            "https"
-                        })
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.scheme, Scheme::RerunHttps, "https");
-                            ui.selectable_value(&mut self.scheme, Scheme::RerunHttp, "http");
-                        });
+                egui::Sides::new()
+                    .shrink_left()
+                    .height(ui.spacing().interact_size.y)
+                    .show(
+                        ui,
+                        |ui| {
+                            egui::ComboBox::new("scheme", "")
+                                .selected_text(if self.scheme == Scheme::RerunHttp {
+                                    "http"
+                                } else {
+                                    "https"
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.scheme,
+                                        Scheme::RerunHttps,
+                                        "https",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.scheme,
+                                        Scheme::RerunHttp,
+                                        "http",
+                                    );
+                                });
 
-                    ui.scope(|ui| {
-                        // make field red if host is invalid
-                        if url::Host::parse(&self.host).is_err() {
-                            ui.style_invalid_field();
-                        }
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.host)
-                                .lock_focus(false)
-                                .hint_text("Host name")
-                                .desired_width(200.0),
-                        )
-                        .labelled_by(label.id);
-                        self.host = self.host.trim().to_owned();
-                    });
-
-                    ui.add(egui::DragValue::new(&mut self.port));
-                });
+                            ui.scope(|ui| {
+                                // make field red if host is invalid
+                                if url::Host::parse(&self.host).is_err() {
+                                    ui.style_invalid_field();
+                                }
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.host)
+                                        .lock_focus(false)
+                                        .hint_text("Host name")
+                                        .desired_width(ui.available_width()),
+                                )
+                                .labelled_by(label.id);
+                                self.host = self.host.trim().to_owned();
+                            });
+                        },
+                        |ui| {
+                            ui.add(egui::DragValue::new(&mut self.port));
+                        },
+                    );
 
                 let mut host = url::Host::parse(&self.host);
                 if host.is_err()
@@ -240,10 +255,51 @@ impl ServerModal {
                 ui.add_space(14.0);
 
                 ui.label("Authenticate:");
-                ui.scope(|ui| {
-                    ui.shrink_width_to_current();
-                    auth_ui(ui, global_ctx, &mut self.auth);
+
+                ui.selectable_toggle(|ui| {
+                    StripBuilder::new(ui)
+                        .sizes(Size::relative(1.0 / 3.0), 3)
+                        .cell_layout(Layout::centered_and_justified(Direction::TopDown))
+                        .horizontal(|mut strip| {
+                            strip.cell(|ui| {
+                                if ui
+                                    .selectable_label(
+                                        matches!(self.auth.kind, AuthKind::Stored(_)),
+                                        "Rerun account",
+                                    )
+                                    .clicked()
+                                {
+                                    self.auth.kind = AuthKind::Stored(None);
+                                };
+                            });
+
+                            strip.cell(|ui| {
+                                if ui
+                                    .selectable_label(
+                                        matches!(self.auth.kind, AuthKind::Token(_)),
+                                        "With a token",
+                                    )
+                                    .clicked()
+                                {
+                                    self.auth.kind = AuthKind::Token(String::new());
+                                };
+                            });
+
+                            strip.cell(|ui| {
+                                if ui
+                                    .selectable_label(
+                                        matches!(self.auth.kind, AuthKind::None),
+                                        "No authentication",
+                                    )
+                                    .clicked()
+                                {
+                                    self.auth.kind = AuthKind::None;
+                                };
+                            });
+                        });
                 });
+
+                auth_ui(ui, global_ctx, &mut self.auth);
 
                 ui.add_space(24.0);
 
@@ -258,76 +314,75 @@ impl ServerModal {
                     port: self.port,
                 });
 
-                let credentials = if !self.auth.token.is_empty() {
-                    Jwt::try_from(self.auth.token.clone())
+                let credentials = match &self.auth.kind {
+                    AuthKind::Token(token) => Jwt::try_from(token.clone())
                         .map(re_redap_client::Credentials::Token)
                         .map(Some)
-                        // error is reported in the UI above
-                        .map_err(|_err| ())
-                } else if global_ctx.logged_in() {
-                    Ok(Some(re_redap_client::Credentials::Stored))
-                } else {
-                    Ok(None)
+                        .map_err(|_err| ()),
+                    AuthKind::Stored(_) => {
+                        if global_ctx.logged_in() {
+                            Ok(Some(re_redap_client::Credentials::Stored))
+                        } else {
+                            Err(())
+                        }
+                    }
+                    AuthKind::None => Ok(None),
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
                     let button_width = ui.tokens().modal_button_width;
 
-                    if let (Ok(origin), Ok(credentials)) = (origin, credentials) {
-                        let save_button_response = ui.add(
-                            egui::Button::new(save_text).min_size(egui::vec2(button_width, 0.0)),
-                        );
-                        if save_button_response.clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::Enter))
-                        {
-                            self.auth.reset_login_flow();
-                            ui.close();
+                    let enabled = origin.is_ok() && credentials.is_ok();
+                    let save_button_response =
+                        ui.add_enabled(enabled, ReButton::new(save_text).primary().small());
 
-                            if let ServerModalMode::Edit(edit) = &self.mode {
-                                ctx.command_sender
-                                    .send(Command::RemoveServer(edit.origin.clone()))
-                                    .ok();
-                            }
+                    if let Ok(origin) = origin
+                        && let Ok(credentials) = credentials
+                        && (save_button_response.clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                    {
+                        self.auth.reset_login_flow();
+                        ui.close();
 
-                            let on_add: Box<dyn FnOnce() + Send> =
-                                if let ServerModalMode::Edit(EditRedapServerModalCommand {
-                                    open_on_success: Some(url),
-                                    ..
-                                }) = &self.mode
-                                {
-                                    let egui_ctx = ui.ctx().clone();
-                                    let url = url.clone();
-                                    Box::new(move || {
-                                        egui_ctx.open_url(OpenUrl::same_tab(url));
-                                    })
-                                } else {
-                                    let command_sender = global_ctx.command_sender.clone();
-                                    let origin = origin.clone();
-                                    Box::new(move || {
-                                        command_sender.send_system(
-                                            SystemCommand::ChangeDisplayMode(
-                                                DisplayMode::RedapServer(origin),
-                                            ),
-                                        );
-                                    })
-                                };
-
+                        if let ServerModalMode::Edit(edit) = &self.mode {
                             ctx.command_sender
-                                .send(Command::AddServer {
-                                    origin: origin.clone(),
-                                    credentials,
-                                    on_add: Some(on_add),
-                                })
+                                .send(Command::RemoveServer(edit.origin.clone()))
                                 .ok();
                         }
-                    } else {
-                        ui.add_enabled(false, egui::Button::new(save_text));
+
+                        let on_add: Box<dyn FnOnce() + Send> =
+                            if let ServerModalMode::Edit(EditRedapServerModalCommand {
+                                open_on_success: Some(url),
+                                ..
+                            }) = &self.mode
+                            {
+                                let egui_ctx = ui.ctx().clone();
+                                let url = url.clone();
+                                Box::new(move || {
+                                    egui_ctx.open_url(OpenUrl::same_tab(url));
+                                })
+                            } else {
+                                let command_sender = global_ctx.command_sender.clone();
+                                let origin = origin.clone();
+                                Box::new(move || {
+                                    command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                                        DisplayMode::RedapServer(origin),
+                                    ));
+                                })
+                            };
+
+                        ctx.command_sender
+                            .send(Command::AddServer {
+                                origin: origin.clone(),
+                                credentials,
+                                on_add: Some(on_add),
+                            })
+                            .ok();
                     }
 
-                    let cancel_button_response =
-                        ui.add(egui::Button::new("Cancel").min_size(egui::vec2(button_width, 0.0)));
+                    let cancel_button_response = ui.add(ReButton::new("Cancel").small());
                     if cancel_button_response.clicked() {
-                        self.auth.show_token_input = false;
+                        self.auth = Authentication::new(AuthKind::Stored(None));
                         self.auth.reset_login_flow();
                         ui.close();
                     }
@@ -344,98 +399,62 @@ impl ServerModal {
 }
 
 fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
-    ui.horizontal(|ui| {
-        ui.scope(|ui| {
-            if auth.show_token_input {
-                let jwt = (!auth.token.is_empty())
-                    .then(|| re_auth::Jwt::try_from(auth.token.clone()))
+    match &mut auth.kind {
+        AuthKind::Stored(login_flow) => {
+            ui.label("Rerun account:");
+
+            if let Some(flow) = login_flow {
+                // Login flow is in progress - show login buttons or spinner
+                if let Some(result) = flow.ui(ui, ctx.command_sender) {
+                    match result {
+                        LoginFlowResult::Success => {
+                            auth.error = None;
+                            auth.reset_login_flow();
+                        }
+                        LoginFlowResult::Failure(err) => {
+                            auth.error = Some(err);
+                            auth.reset_login_flow();
+                        }
+                    }
+                }
+            } else if let Some(logged_in) = &ctx.auth_context {
+                // User is logged in
+                ui.horizontal(|ui| {
+                    ui.label("Continue as");
+                    ui.label(RichText::new(&logged_in.email).strong());
+                });
+            } else {
+                // User is not logged in - start the login flow to show buttons
+                auth.start_login_flow(ui);
+            }
+
+            if let Some(error) = &auth.error {
+                ui.error_label(error.clone());
+            }
+        }
+
+        AuthKind::Token(token) => {
+            ui.label("Access token (will be stored in plain text):");
+
+            ui.scope(|ui| {
+                let jwt = (!token.is_empty())
+                    .then(|| Jwt::try_from(token.clone()))
                     .transpose();
 
                 if jwt.is_err() {
                     ui.style_invalid_field();
                 }
 
-                ui.horizontal(|ui| {
-                    ui.set_min_width(300.0);
-                    ui.set_width(300.0);
-                    ui.add(
-                        egui::TextEdit::singleline(&mut auth.token)
-                            .hint_text("Token (will be stored in plain text)")
-                            .code_editor()
-                            .desired_width(300.0),
-                    );
-                });
-
-                if ui
-                    .small_icon_button(&re_ui::icons::CLOSE, "Go back")
-                    .on_hover_text("Go back")
-                    .clicked()
-                {
-                    auth.show_token_input = false;
-                    auth.error = None;
-                }
-            } else {
-                if let Some(flow) = &mut auth.login_flow {
-                    if let Some(result) = flow.ui(ui, ctx.command_sender) {
-                        match result {
-                            LoginFlowResult::Success => {
-                                auth.error = None;
-                                // Clear login flow to close popup window
-                                auth.reset_login_flow();
-                            }
-                            LoginFlowResult::Failure(err) => {
-                                auth.error = Some(err);
-                                // Clear login flow so user can retry
-                                auth.reset_login_flow();
-                            }
-                        }
-                    }
-                } else if let Some(logged_in) = &ctx.auth_context {
-                    ui.label("Continue as ");
-                    ui.label(RichText::new(&logged_in.email).strong().underline());
-
-                    if ui
-                        .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
-                        .on_hover_text("Clear login status")
-                        .clicked()
-                    {
-                        auth.error = None;
-                        auth.start_login_flow(ui);
-                    }
-                } else if auth.error.is_some() {
-                    if ui
-                        .link(RichText::new("Login again").strong().underline())
-                        .clicked()
-                    {
-                        auth.error = None;
-                    }
-                } else {
-                    auth.start_login_flow(ui);
-                }
-
-                ui.add_space(6.0);
-                ui.label("or");
-                ui.add_space(6.0);
-
-                if ui
-                    .link(RichText::new("Add a token").strong().underline())
-                    .clicked()
-                {
-                    auth.show_token_input = true;
-                    auth.error = None;
-                }
-            }
-        });
-    });
-
-    ui.horizontal(|ui| {
-        ui.set_min_width(300.0);
-        ui.set_width(300.0);
-        if !auth.show_token_input
-            && !ctx.logged_in()
-            && let Some(error) = &auth.error
-        {
-            ui.error_label(error.clone());
+                ui.add(
+                    egui::TextEdit::singleline(token)
+                        .code_editor()
+                        .desired_width(f32::INFINITY),
+                );
+            });
         }
-    });
+
+        AuthKind::None => {
+            // No UI needed for "No authentication"
+        }
+    }
 }

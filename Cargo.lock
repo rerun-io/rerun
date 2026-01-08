@@ -9371,6 +9371,7 @@ dependencies = [
  "ahash",
  "datafusion",
  "egui",
+ "egui_extras",
  "futures",
  "itertools 0.14.0",
  "js-sys",
