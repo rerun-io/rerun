@@ -52,7 +52,7 @@ Below you will find a collection of useful Rerun resources for this example:
 
 In the table below, the mapping between some ROS messages types and some Rerun archetypes is presented. In a RRD file, you may find the fields of a Rerun archetype spread across multiple columns. So you could have, e.g., a `Points3D:positions` column in the RRD file. This would then correspond to the positions field of the [Points3D](https://rerun.io/docs/reference/types/archetypes/points3d) archetype.
 
-| ROS message                                                                                                   | Rerun archtype                                                                       | Rerun fields                                                |
+| ROS message                                                                                                   | Rerun archetype                                                                      | Rerun fields                                                |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | [geometry_msgs/msg/PoseStamped](https://docs.ros.org/en/jazzy/p/geometry_msgs/msg/PoseStamped.html)           | [InstancePoses3D](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) | translations, quaternions                                   |
 | [geometry_msgs/msg/TransformStamped](https://docs.ros.org/en/jazzy/p/geometry_msgs/msg/TransformStamped.html) | [Transform3D](https://rerun.io/docs/reference/types/archetypes/transform3d)          | child_frame, parent_frame, quaternion, translation          |
@@ -294,7 +294,7 @@ Since everything had been converted already to the format we wanted, we can simp
 
 #### IMU data (`log_imu`)
 
-The IMU data are logged as [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars). Simular to the GPS data, Rerun also has support for the IMU ROS messsage type, [sensor_msgs/msg/Imu](https://docs.ros.org/en/jazzy/p/sensor_msgs/msg/Imu.html). This makes it easy to log this data as well:
+The IMU data are logged as [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars). Similar to the GPS data, Rerun also has support for the IMU ROS message type, [sensor_msgs/msg/Imu](https://docs.ros.org/en/jazzy/p/sensor_msgs/msg/Imu.html). This makes it easy to log this data as well:
 
 ```python
 entity = '/gps/duro/imu'
@@ -394,7 +394,7 @@ rr.send_columns(
 )
 ```
 
-We separate the translation from rotation for a fixed-orientation top-down view in the Rerun viewer, as you will see later. We also subtract all the positions with the intial position, to start the run from the origin.
+We separate the translation from rotation for a fixed-orientation top-down view in the Rerun viewer, as you will see later. We also subtract all the positions with the initial position, to start the run from the origin.
 
 #### Camera sensor (`log_camera`)
 
@@ -434,7 +434,7 @@ rr.log(
 )
 ```
 
-For simplicity, we set the camera 1 meter above the center of the ego vehicle in this case. As an excersice you can try reading the data from the ROS `/tf` topic to apply the correct transformations.
+For simplicity, we set the camera 1 meter above the center of the ego vehicle in this case. As an exercise you can try reading the data from the ROS `/tf` topic to apply the correct transformations.
 
 #### Camera data (`log_images`)
 
