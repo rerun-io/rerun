@@ -1,4 +1,5 @@
 #![cfg(feature = "testing")]
+#![expect(clippy::unwrap_used)] // Fine for tests
 
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{LatestAtQuery, RowId};
@@ -270,8 +271,6 @@ fn with_unloaded_chunks() {
     );
 }
 
-// This is a test utility.
-#[expect(clippy::unwrp_used)]
 fn build_manifest_with_unloaded_chunks(store_id: StoreId) -> re_log_encoding::RrdManifest {
     let mut builder = RrdManifestBuilder::default();
     let mut byte_offset = 0u64;
