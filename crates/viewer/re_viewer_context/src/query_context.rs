@@ -98,6 +98,7 @@ impl Default for DataQueryResult {
                 query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
                 compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
                 components: Default::default(),
+                missing_chunk_ids: Vec::new(),
             },
         }
     }

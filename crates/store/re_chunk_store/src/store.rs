@@ -1,10 +1,14 @@
+#![expect(unused_variables)] // TODO
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
+
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
+use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
@@ -806,5 +810,105 @@ impl ChunkStore {
             .into_iter()
             .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
             .collect())
+    }
+
+    // TODO: ye im not aiming for quality nor performance here
+    //
+    // TODO: we should probably not allow insert_chunk() on that thing...
+    // TODO: can this even fail?
+    pub fn from_rrd_manifest(rrd_manifest: &RrdManifest) -> anyhow::Result<Self> {
+        let mut store = Self::new(
+            rrd_manifest.store_id.clone(),
+            // TODO: very important because we dont do linage tracking atm
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        // TODO: okay well, let's see what's the minimum we can get away with i guess
+        let Self {
+            id: _,
+            config: _,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunks_per_chunk_id: _, // TODO: by definition, we never fill that one!
+            chunk_ids_per_min_row_id: _, // TODO: what do we do with this one, remind me?
+            temporal_chunk_ids_per_entity_per_component,
+            temporal_chunk_ids_per_entity,
+            temporal_chunks_stats: _, // TODO: and we're lacking some info in footers
+            static_chunk_ids_per_entity,
+            static_chunks_stats: _, // TODO: and we're lacking some info in footers
+            insert_id: _,
+            gc_id: _,
+            event_id: _,
+        } = &mut store;
+
+        // TODO: well we need a col_arbitrary_component thing?
+
+        *static_chunk_ids_per_entity = rrd_manifest.get_static_data_as_a_map()?;
+
+        let xxx = rrd_manifest.get_temporal_data_as_a_map()?;
+
+        // TODO: just return flat vecs rather than this mess.
+        for (entity_path, per_timeline) in xxx {
+            for (timeline, per_component) in per_timeline {
+                for (component, per_chunk) in per_component {
+                    for (chunk_id, entry) in per_chunk {
+                        let RrdManifestTemporalMapEntry {
+                            time_range,
+                            num_rows: _,
+                        } = entry;
+
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity_per_component
+                                .entry(entity_path.clone())
+                                .or_default();
+                            let per_component = per_timeline.entry(*timeline.name()).or_default();
+
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_component.entry(component).or_default();
+
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity
+                                .entry(entity_path.clone())
+                                .or_default();
+
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_timeline.entry(*timeline.name()).or_default();
+
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(store)
     }
 }
