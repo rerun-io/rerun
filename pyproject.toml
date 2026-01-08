@@ -245,6 +245,8 @@ members = [
 ]
 
 [tool.ruff]
+line-length = 120
+preview = true
 src = ["rerun_py", "rerun_py/rerun_sdk", "rerun_notebook"]
 extend-exclude = [
   "crates",
