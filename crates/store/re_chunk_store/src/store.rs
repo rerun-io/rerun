@@ -495,7 +495,7 @@ pub struct ChunkStore {
     ///
     /// *This exclusively covers physical/loaded chunks*. During GC, these statistics are decremented
     /// as you'd expect.
-    pub(crate) temporal_chunks_stats: ChunkStoreChunkStats,
+    pub(crate) temporal_physical_chunks_stats: ChunkStoreChunkStats,
 
     /// Static data. Never garbage collected.
     ///
@@ -549,7 +549,7 @@ impl Clone for ChunkStore {
                 .temporal_chunk_ids_per_entity_per_component
                 .clone(),
             temporal_chunk_ids_per_entity: self.temporal_chunk_ids_per_entity.clone(),
-            temporal_chunks_stats: self.temporal_chunks_stats,
+            temporal_physical_chunks_stats: self.temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
             insert_id: Default::default(),
@@ -571,7 +571,7 @@ impl std::fmt::Display for ChunkStore {
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
-            temporal_chunks_stats,
+            temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
             insert_id: _,
@@ -587,7 +587,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "stats: {\n"))?;
         f.write_str(&indent::indent_all_by(
             8,
-            format!("{}", *static_chunks_stats + *temporal_chunks_stats),
+            format!("{}", *static_chunks_stats + *temporal_physical_chunks_stats),
         ))?;
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
@@ -632,7 +632,7 @@ impl ChunkStore {
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
-            temporal_chunks_stats: Default::default(),
+            temporal_physical_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
             insert_id: 0,

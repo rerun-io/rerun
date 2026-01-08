@@ -5,9 +5,6 @@ use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 
-// TODO: oh god what is all of this 😭
-// TODO: we need to both communicate and make really that everything in here is physical.
-
 // ---
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -68,11 +65,14 @@ impl std::ops::Sub for ChunkStoreStats {
 }
 
 impl ChunkStore {
+    /// Returns the *physical* stats for this store.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     #[inline]
     pub fn stats(&self) -> ChunkStoreStats {
         ChunkStoreStats {
             static_chunks: self.static_chunks_stats,
-            temporal_chunks: self.temporal_chunks_stats,
+            temporal_chunks: self.temporal_physical_chunks_stats,
         }
     }
 }
@@ -215,7 +215,9 @@ impl ChunkStoreChunkStats {
 
 /// ## Entity stats
 impl ChunkStore {
-    /// Stats about all chunks with static data for an entity.
+    /// *Physical* stats about all chunks with static data for an entity.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
@@ -236,7 +238,9 @@ impl ChunkStore {
             )
     }
 
-    /// Stats about all the chunks that has data for an entity on a specific timeline.
+    /// *Physical* stats about all the chunks that has data for an entity on a specific timeline.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// Does NOT include static data.
     pub fn entity_stats_on_timeline(
@@ -270,6 +274,8 @@ impl ChunkStore {
 impl ChunkStore {
     /// Returns the number of static events logged for an entity for a specific component.
     ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
+    ///
     /// This ignores temporal events.
     pub fn num_static_events_for_component(
         &self,
@@ -287,6 +293,8 @@ impl ChunkStore {
     }
 
     /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores static events.
     pub fn num_temporal_events_for_component_on_timeline(
@@ -317,6 +325,8 @@ impl ChunkStore {
     }
 
     /// Returns the number of temporal events logged for an entity for a specific component on all timelines.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores static events.
     pub fn num_temporal_events_for_component_on_all_timelines(

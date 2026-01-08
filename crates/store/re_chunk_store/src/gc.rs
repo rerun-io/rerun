@@ -329,6 +329,7 @@ impl ChunkStore {
                     .values()
                     .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
                     .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
+                    .filter(|chunk| !chunk.is_static()) // cannot gc static data
             };
 
             let chunks_in_priority_order = chunks_furthest_away
@@ -387,7 +388,7 @@ impl ChunkStore {
             chunk_ids_per_min_row_id: _, // purely additive: virtual index
             temporal_chunk_ids_per_entity_per_component: _, // purely additive: virtual index
             temporal_chunk_ids_per_entity: _, // purely additive: virtual index
-            temporal_chunks_stats,
+            temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
             insert_id: _,
@@ -413,7 +414,7 @@ impl ChunkStore {
             // performance benefit, since we expect the chunks to have similar interval
             // lengths on the happy path.
 
-            *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
+            *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
             diffs.push(ChunkStoreDiff::deletion(chunk));
         }
