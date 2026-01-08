@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 
+use re_arrow_util::RecordBatchExt as _;
 use re_arrow_util::{RecordBatchTestExt as _, SchemaTestExt as _};
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::GetRrdManifestRequest;
@@ -29,16 +30,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let rrd_manifest_batch_result =
         dataset_rrd_manifest_snapshot(&service, segment_id, dataset_name).await;
 
-    let rrd_manifest = match rrd_manifest_batch_result {
-        Ok(rrd_manifest) => rrd_manifest,
-        Err(status) => {
-            if status.code() == tonic::Code::Unimplemented {
-                return; // TODO(RR-3110): implemented this endpoint on Rerun Cloud
-            } else {
-                panic!("tonic error: {status}");
-            }
-        }
-    };
+    let rrd_manifest = rrd_manifest_batch_result.unwrap();
 
     use futures::StreamExt as _;
     let mut chunks = service
@@ -64,6 +56,24 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     insta::assert_snapshot!("fetch_chunks_from_rrd_manifest", printed);
 }
 
+pub async fn segment_id_not_found(service: impl RerunCloudService) {
+    let dataset_name = "my_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let segment_id = SegmentId::new("my_segment".to_owned());
+    let res = service
+        .get_rrd_manifest(
+            tonic::Request::new(GetRrdManifestRequest {
+                segment_id: Some(segment_id.into()),
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await;
+
+    assert_eq!(tonic::Code::NotFound, res.err().unwrap().code());
+}
+
 // ---
 
 async fn dataset_rrd_manifest_snapshot(
@@ -71,7 +81,7 @@ async fn dataset_rrd_manifest_snapshot(
     segment_id: SegmentId,
     dataset_name: &str,
 ) -> tonic::Result<RrdManifest> {
-    let rrd_manifest = service
+    let responses = service
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
@@ -80,13 +90,54 @@ async fn dataset_rrd_manifest_snapshot(
             .unwrap(),
         )
         .await?
-        .into_inner()
-        .rrd_manifest
-        .unwrap()
-        .to_application(())
-        .unwrap();
+        .into_inner();
 
-    insta::assert_snapshot!("rrd_manifest", rrd_manifest.data.format_snapshot(true));
+    let mut rrd_manifest: Option<RrdManifest> = None;
+
+    use futures::{StreamExt as _, pin_mut};
+    pin_mut!(responses);
+    while let Some(resp) = responses.next().await {
+        let rrd_manifest_part = resp
+            .unwrap()
+            .rrd_manifest
+            .unwrap()
+            .to_application(())
+            .unwrap();
+
+        if let Some(mut temp) = rrd_manifest.take() {
+            temp.data =
+                re_arrow_util::concat_polymorphic_batches(&[temp.data, rrd_manifest_part.data])
+                    .unwrap();
+            rrd_manifest = Some(temp);
+        } else {
+            rrd_manifest = Some(rrd_manifest_part);
+        }
+    }
+
+    let rrd_manifest = rrd_manifest.unwrap();
+
+    insta::assert_snapshot!(
+        "rrd_manifest",
+        rrd_manifest
+            .data
+            // Chunk offsets and sizes cannot possibly align across different implementations that
+            // store data differently.
+            // The actual values don't matter in any case, as long as we're able to use the
+            // returned data to fetch the associated chunks, which we check above.
+            .redact(&[
+                RrdManifest::FIELD_CHUNK_KEY,
+                RrdManifest::FIELD_CHUNK_BYTE_OFFSET,
+                RrdManifest::FIELD_CHUNK_BYTE_SIZE,
+                RrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,
+            ])
+            // Implementation-specific fields shouldn't be compared at all.
+            .filter_columns_by(
+                |f| !RrdManifest::COMMON_IMPL_SPECIFIC_FIELDS.contains(&f.name().as_str())
+            )
+            .unwrap()
+            .horizontally_sorted()
+            .format_snapshot(true)
+    );
     insta::assert_snapshot!(
         "rrd_manifest_sorbet_schema",
         rrd_manifest.sorbet_schema.format_snapshot(),

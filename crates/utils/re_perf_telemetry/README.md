@@ -118,7 +118,8 @@ The integration only really works with in-process profiling, and even then with 
 #### Limitations
 
 * `puffin` spans are not forwarded to the perf telemetry tools
-  While this is technically do-able (would require adding a `tracing` integration to the `puffin` crate itself), our `puffin` spans were not implemented with the kind of overhead that the `tracing` involves in mind anyway.
+  While this is technically do-able (for instance by replacing `puffin` calls with [the `profiling` crate](https://crates.io/crates/profiling)),
+  our `puffin` spans were not implemented with the kind of overhead that the `tracing` involves in mind anyway.
   A possible future approach would be a native Tracy integration for the Viewer, see `Future work` below.
 
 * The viewer will crash during shutdown when perf telemetry is enabled

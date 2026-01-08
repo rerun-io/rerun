@@ -7,10 +7,6 @@ use super::super::definitions::sensor_msgs;
 use crate::Error;
 use crate::parsers::{MessageParser, ParserContext, cdr};
 
-/// Plugin that parses `sensor_msgs/msg/JointState` messages.
-#[derive(Default)]
-pub struct JointStateSchemaPlugin;
-
 pub struct JointStateMessageParser {
     joint_names: ListBuilder<StringBuilder>,
     positions: ListBuilder<Float64Builder>,

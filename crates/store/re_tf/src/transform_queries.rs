@@ -255,6 +255,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
 
     let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
 
+    #[expect(clippy::useless_let_if_seq)]
     let mut transform = DAffine3::IDENTITY;
 
     // The order of the components here is important.
@@ -451,7 +452,9 @@ pub fn query_and_resolve_instance_poses_at_entity(
     (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order.
+            #[expect(clippy::useless_let_if_seq)]
             let mut transform = DAffine3::IDENTITY;
+
             if let Some(translation) = iter_translation.next() {
                 transform = convert::translation_3d_to_daffine3(translation);
             }

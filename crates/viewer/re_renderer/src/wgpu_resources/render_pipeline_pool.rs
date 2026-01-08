@@ -232,7 +232,7 @@ impl GpuRenderPipelinePool {
                     Some(sm)
                 }
                 Err(err) => {
-                    re_log::error!("Failed to compile render pipeline: {}", err);
+                    re_log::error!("Failed to compile render pipeline: {err}");
                     None
                 }
             }

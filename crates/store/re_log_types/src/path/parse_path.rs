@@ -326,7 +326,7 @@ pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
         bytes = &bytes[i..];
     }
 
-    // Safety: we split at proper character boundaries
+    // unwrap: we split at proper character boundaries
     tokens
         .iter()
         .map(|token| std::str::from_utf8(token).unwrap())

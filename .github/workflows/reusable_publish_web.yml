@@ -82,7 +82,7 @@ jobs:
 
       - name: Bootstrap examples
         run: |
-          pixi run uv sync --group examples --inexact --no-install-package rerun-sdk
+          pixi run py-sync-examples
 
       # built by `reusable_build_and_publish_wheels`
       - name: Download Wheel
