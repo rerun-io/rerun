@@ -295,8 +295,10 @@ impl ChunkStore {
         re_tracing::profile_function!(re_format::format_bytes(num_bytes_to_drop));
 
         let start_time = Instant::now();
-        let chunks_to_be_removed = {
+        let chunks_to_be_removed = 'find_chunks: {
             re_tracing::profile_scope!("mark");
+
+            let mut chunks_to_be_removed = Vec::new();
 
             // These are all physical/loaded chunks by definition, since we need to access their data in
             // order to sort them in the first place.
@@ -305,9 +307,7 @@ impl ChunkStore {
             // some way, so that it doesn't eat away all of the mark phase's time budget for no
             // reason, but that requires making things much more complicated, so let's see how far
             // we get with a simple "sort and collect everything" approach first.
-            let chunks_furthest_away = if let Some((timeline, time)) =
-                options.furthest_from.as_ref()
-            {
+            if let Some((timeline, time)) = options.furthest_from.as_ref() {
                 let chunks = self.find_temporal_chunks_furthest_from(timeline, *time);
 
                 // This will only apply for tests run from this crate's src/ directory, which is good
@@ -317,40 +317,51 @@ impl ChunkStore {
                     assert_eq!(chunks_slow, chunks);
                 }
 
-                chunks
-            } else {
-                vec![]
-            };
+                for chunk in chunks
+                    .into_iter()
+                    .filter(|chunk| !options.is_chunk_temporally_protected(chunk))
+                {
+                    // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
+                    // and would count as amortized (i.e. 0 bytes).
+                    num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
 
-            let chunks_in_min_row_id_order = {
-                // NOTE: latest-at protection only applies for RowID-based collection
-                let protected_chunk_ids =
-                    self.find_all_protected_physical_chunk_ids(options.protect_latest);
+                    chunks_to_be_removed.push(chunk);
 
-                self.chunk_ids_per_min_row_id
-                    .values()
-                    .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
-                    .filter(|chunk| !chunk.is_static()) // cannot gc static data
-            };
-
-            let chunks_in_priority_order = chunks_furthest_away
-                .into_iter()
-                .chain(chunks_in_min_row_id_order)
-                .filter(|chunk| !options.is_chunk_temporally_protected(chunk));
-
-            let mut chunks_to_be_removed = Vec::new();
-            for chunk in chunks_in_priority_order {
-                // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
-                // and would count as amortized (i.e. 0 bytes).
-                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
-
-                // We divide the time budget equally between the mark and sweep phases.
-                if start_time.elapsed() >= options.time_budget / 2 || num_bytes_to_drop <= 0.0 {
-                    break;
+                    // We divide the time budget equally between the mark and sweep phases.
+                    if start_time.elapsed() >= options.time_budget / 2 || num_bytes_to_drop <= 0.0 {
+                        break 'find_chunks chunks_to_be_removed;
+                    }
                 }
+            }
 
-                chunks_to_be_removed.push(chunk);
+            // `find_all_protected_physical_chunk_ids` is rather expensive so make sure we only
+            // compute it if we couldn't find enough chunks to remove already.
+            {
+                let chunks_in_min_row_id_order = {
+                    // NOTE: latest-at protection only applies for RowID-based collection
+                    let protected_chunk_ids =
+                        self.find_all_protected_physical_chunk_ids(options.protect_latest);
+
+                    self.chunk_ids_per_min_row_id
+                        .values()
+                        .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
+                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
+                        .filter(|chunk| !chunk.is_static()) // cannot gc static data
+                        .filter(|chunk| !options.is_chunk_temporally_protected(chunk))
+                };
+
+                for chunk in chunks_in_min_row_id_order {
+                    // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
+                    // and would count as amortized (i.e. 0 bytes).
+                    num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+
+                    chunks_to_be_removed.push(chunk);
+
+                    // We divide the time budget equally between the mark and sweep phases.
+                    if start_time.elapsed() >= options.time_budget / 2 || num_bytes_to_drop <= 0.0 {
+                        break 'find_chunks chunks_to_be_removed;
+                    }
+                }
             }
 
             chunks_to_be_removed
