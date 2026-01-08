@@ -2,11 +2,10 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
-use crate::{Channel, LoadCommand, LogSource, SmartMessage, TryRecvError};
+use crate::{Channel, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
     rx: crossbeam::channel::Receiver<SmartMessage>,
-    tx: async_channel::Sender<LoadCommand>,
     channel: Arc<Channel>,
     source: Arc<LogSource>,
     connected: AtomicBool,
@@ -15,13 +14,11 @@ pub struct LogReceiver {
 impl LogReceiver {
     pub(crate) fn new(
         rx: crossbeam::channel::Receiver<SmartMessage>,
-        tx: async_channel::Sender<LoadCommand>,
         channel: Arc<Channel>,
         source: Arc<LogSource>,
     ) -> Self {
         Self {
             rx,
-            tx,
             channel,
             source,
             connected: AtomicBool::new(true),
@@ -113,38 +110,4 @@ impl LogReceiver {
     pub fn len(&self) -> usize {
         self.rx.len()
     }
-
-    /// Returns true if there is a [`crate::LogSender`] that is waiting
-    /// to receive commands to load chunks.
-    ///
-    /// Can be used to debounce load requests.
-    pub fn has_waiting_command_receivers(&self) -> bool {
-        0 < self.channel.num_waiting_receivers.load(Relaxed)
-    }
-
-    /// Send a command to the other end.
-    ///
-    /// You should probably check `has_waiting_command_receivers` before using this method (debounce).
-    pub fn send_command(&self, rb: LoadCommand) {
-        let tx = self.tx.clone();
-        spawn_future(async move {
-            tx.send(rb).await.ok();
-        });
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    wasm_bindgen_futures::spawn_local(future);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static + Send,
-{
-    tokio::spawn(future);
 }
