@@ -101,6 +101,7 @@ fn settings_screen_ui_impl(
         experimental,
         warn_e2e_latency: _, // not yet exposed
         show_metrics,
+        show_notification_toasts,
         include_rerun_examples_button_in_recordings_panel,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
@@ -123,9 +124,13 @@ fn settings_screen_ui_impl(
     ui.re_checkbox(show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
+    ui.re_checkbox(show_notification_toasts, "Show notification toasts")
+        .on_hover_text("Show toasts for log messages and other notifications");
+
     separator_with_some_space(ui);
-    ui.strong("Timestamp format");
-    time_format_section_ui(ui, timestamp_format);
+    ui.collapsing_header("Timestamp format", false, |ui| {
+        time_format_section_ui(ui, timestamp_format);
+    });
 
     separator_with_some_space(ui);
     ui.strong("Map view");
