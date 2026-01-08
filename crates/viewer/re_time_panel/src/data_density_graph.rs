@@ -105,7 +105,7 @@ impl DensityGraph {
             buckets: vec![
                 Bucket {
                     density: 0.0,
-                    loaded: LoadState::None,
+                    loaded: LoadState::Loaded,
                 };
                 n
             ],
@@ -288,7 +288,7 @@ impl DensityGraph {
 
                 let color = match bucket.loaded {
                     LoadState::Loaded => loaded_color,
-                    LoadState::Unloaded | LoadState::None => unloaded_color,
+                    LoadState::Unloaded => unloaded_color,
                 };
 
                 // Color different if we're outside of a segment.
@@ -394,14 +394,12 @@ fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
     (0..buckets.len())
         .map(|i| {
             let mut sum = 0.0;
-            let mut loaded = LoadState::None;
+            let mut loaded = LoadState::Loaded;
             for (j, &k) in kernel.iter().enumerate() {
                 if let Some(bucket) = buckets.get((i + j).saturating_sub(2)) {
                     debug_assert!(bucket.density >= 0.0);
                     sum += k * bucket.density;
-                    if loaded == LoadState::None {
-                        loaded = bucket.loaded;
-                    }
+                    loaded = loaded.and(bucket.loaded);
                 }
             }
             debug_assert!(sum.is_finite() && 0.0 <= sum);
@@ -763,17 +761,18 @@ pub fn show_row_ids_tooltip(
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy)]
 pub enum LoadState {
-    #[default]
-    None,
     Loaded,
     Unloaded,
 }
 
 impl LoadState {
     fn and(&self, other: Self) -> Self {
-        *self.max(&other)
+        match (self, other) {
+            (Self::Loaded, Self::Loaded) => Self::Loaded,
+            _ => Self::Unloaded,
+        }
     }
 }
 
