@@ -1,5 +1,5 @@
 ---
 title: Installing the Viewer
 hidden: true
-redirect: overview/installing-viewer#installing-the-viewer
+redirect: overview/installing-rerun/viewer
 ---
