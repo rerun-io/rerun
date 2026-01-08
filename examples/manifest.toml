@@ -132,6 +132,7 @@ examples = [
   "blueprint_stocks",
   "arflow",
   "air_traffic_data",
+  "mcap",
 ]
 
 [categories.feature-showcase]
