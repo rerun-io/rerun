@@ -797,7 +797,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Done => {
                 // This happens on `pkill ffmpeg`, for instance.
-                re_log::debug!("{debug_name}'s ffmpeg is Done");
+                re_log::trace!("{debug_name}'s ffmpeg is Done");
                 return None;
             }
 
