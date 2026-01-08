@@ -6,7 +6,7 @@ description: How to use the Rerun SDK to send partial data updates over time
 
 Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../../concepts/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
 
-This is a natural consequence of how Rerun [ingests, stores](../../concepts/chunks.md) and finally [queries](../../reference/entity-queries.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
+This is a natural consequence of how Rerun [ingests, stores](../../concepts/chunks.md) and finally [queries](../../concepts/visualization/entity-queries.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
 
 snippet: archetypes/points3d_simple
 

@@ -288,7 +288,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_no_peaks/d53c5294e3ee118c5037d1b3480176ef49cb2071/1200w.png">
 </picture>
 
-See [Entity Queries](../reference/entity-queries.md) for complete expression syntax.
+See [Entity Queries](../../concepts/visualization/entity-queries.md) for complete expression syntax.
 
 ### Programmatic layout generation
 
