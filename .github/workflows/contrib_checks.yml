@@ -200,7 +200,7 @@ jobs:
           pixi-version: v0.55.0
 
       - name: Check example thumbnails
-        run: pixi run uvpy ./scripts/ci/thumbnails.py check
+        run: pixi run python ./scripts/ci/thumbnails.py check
 
   spell-check:
     name: Spell Check
