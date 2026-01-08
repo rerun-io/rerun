@@ -47,6 +47,7 @@ examples = [
   "rgbd",
   "nv12",
   "imu_signals",
+  "mcap",
 ]
 
 [categories.generative-vision]
