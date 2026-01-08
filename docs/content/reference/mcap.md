@@ -1,5 +1,5 @@
 ---
 title: MCAP files
-order: 850
-redirect: reference/mcap/message-formats
+hidden: true
+redirect: concepts/logging-and-ingestion/mcap/message-formats
 ---

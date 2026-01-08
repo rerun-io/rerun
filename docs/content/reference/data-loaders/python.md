@@ -1,5 +1,5 @@
 ---
-title: 🐍 Python example
-order: 100
-redirect: https://github.com/rerun-io/rerun/tree/main/examples/python/external_data_loader
+title: Python example
+hidden: true
+redirect: concepts/logging-and-ingestion/data-loaders/python
 ---

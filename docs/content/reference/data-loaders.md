@@ -1,5 +1,5 @@
 ---
 title: Data-loaders
-order: 800
-redirect: reference/data-loaders/overview
+hidden: true
+redirect: concepts/logging-and-ingestion/data-loaders/overview
 ---

@@ -1,5 +1,5 @@
 ---
-title: 🌊 C++ example
-order: 100
-redirect: https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_data_loader
+title: C++ example
+hidden: true
+redirect: concepts/logging-and-ingestion/data-loaders/cpp
 ---
