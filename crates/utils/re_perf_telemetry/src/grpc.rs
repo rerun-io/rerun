@@ -743,6 +743,8 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 // we ultimately can add all the same things that we have on the server as we need them.
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
     let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
+        // Note: we're actually disabling all DEBUG level logs for `tower` in re_log, so if you want to enable it
+        // you'll need to adjust that as well. See crates/utils/re_log/src/lib.rs
         .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG))
         .make_span_with(GrpcMakeSpan::new());
 
