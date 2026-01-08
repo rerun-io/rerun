@@ -237,6 +237,8 @@ pub struct ChunkIdSetPerTime {
     /// latest-at queries.
     ///
     /// See [`ChunkStore::latest_at`] implementation comments for more details.
+    //
+    // TODO: yeah this needs some information about what happens wrt GC
     pub(crate) max_interval_length: u64,
 
     /// [`ChunkId`]s organized by their _most specific_ start time.
@@ -393,6 +395,9 @@ impl ChunkStoreHandle {
 /// garbage collection. It is completely oblivious to individual rows.
 ///
 /// Use the `Display` implementation for a detailed view of the internals.
+//
+// TODO: we should update these field-level docs a bit, in particular regarding to what is expected
+// to survive GC and what isn't.
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
@@ -420,11 +425,14 @@ pub struct ChunkStore {
         IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
+    // TODO: bump docs
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
+    //
+    // TODO: bump docs
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
@@ -432,6 +440,8 @@ pub struct ChunkStore {
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
+    //
+    // TODO: bump docs
     pub(crate) temporal_chunk_ids_per_entity_per_component:
         ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
 
@@ -440,11 +450,18 @@ pub struct ChunkStore {
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
     /// * [`Self::static_chunk_ids_per_entity`].
+    //
+    // TODO: bump docs
     pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerTimelinePerEntity,
 
     /// Accumulated size statitistics for all temporal [`Chunk`]s currently present in the store.
     ///
     /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
+    //
+    // TODO: bump docs
+    // TODO: i dont like the sound "and is required by e.g. the GC" -- if that's true we're gonna
+    // have a problem here.
+    // -> as expected, it's updated appropriately by the GC, but certainly not required to function.
     pub(crate) temporal_chunks_stats: ChunkStoreChunkStats,
 
     /// Static data. Never garbage collected.
@@ -457,6 +474,9 @@ pub struct ChunkStore {
     /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
     ///
     /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
+    //
+    // TODO: bump docs
+    // TODO: well that's most definitely not used by the GC, considered static data is never GC'd??
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
     /// Monotonically increasing ID for insertions.

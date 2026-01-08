@@ -22,6 +22,9 @@ use crate::{
 
 // ---
 
+// TODO: are we effectively just... dropping the mark phase entirely? I think that's really what
+// we're doing here, right?
+
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
     /// Try to drop _at least_ the given fraction.
@@ -56,6 +59,9 @@ pub struct GarbageCollectionOptions {
     pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
 
     /// Remove chunks giving priority to those that are the furthest away from this timestamp.
+    //
+    // TODO: a few words regarding how this behaves with `protect_latest` & `protected_time_ranges`
+    // would be nice.
     pub furthest_from: Option<(TimelineName, TimeInt)>,
 }
 
@@ -123,6 +129,8 @@ impl ChunkStore {
     /// component on each timeline. The only practical guarantee this gives is that a latest-at query
     /// with a value of max-int will be unchanged. However, latest-at queries from other arbitrary
     /// points in time may provide different results pre- and post- GC.
+    //
+    // TODO: maybe we should give a lifting to the docs above.
     pub fn gc(
         &mut self,
         options: &GarbageCollectionOptions,
@@ -137,6 +145,10 @@ impl ChunkStore {
         let total_num_chunks_before = stats_before.total().num_chunks;
         let total_num_rows_before = stats_before.total().num_rows;
 
+        // TODO: this definitely does not make sense when using distance-based GC, but I guess
+        // that's taken care of at the call site?
+        // -> actually it's fine to allow us either way, but again this should also be taken into
+        // account by the row-id driven GC.
         let protected_chunk_ids = self.find_all_protected_chunk_ids(options.protect_latest);
 
         let diffs = match options.target {
@@ -290,6 +302,9 @@ impl ChunkStore {
             // some way, so that it doesn't eat away all of the mark phase's time budget for no
             // reason, but that requires making things much more complicated, so let's see how far
             // we get with a simple "sort and collect everything" approach first.
+            //
+            // TODO: this comment still has its place, although the "dangling" terminology will not
+            // make sense anymore.
             let chunks_furthest_away = if let Some((timeline, time)) =
                 options.furthest_from.as_ref()
             {
@@ -314,6 +329,8 @@ impl ChunkStore {
                         if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
                             Some(chunk.clone())
                         } else {
+                            // TODO: right, dangling in that sense.
+                            // -> yeah that goes away entirely.
                             chunk_ids_dangling.insert(*chunk_id);
                             None
                         }
@@ -324,8 +341,14 @@ impl ChunkStore {
                 .chain(chunks_in_min_row_id_order);
 
             for chunk in
-                chunks_in_priority_order.filter(|chunk| !protected_chunk_ids.contains(&chunk.id()))
+                // TODO: yeah that does not make sense as far as im aware
+                // -> this should only affect the row-id driven GC
+                chunks_in_priority_order
+                    .filter(|chunk| !protected_chunk_ids.contains(&chunk.id()))
             {
+                // TODO: it seems weird to me that this is somehow still a thing? surely it should
+                // only be a thing in the specific case where we're doing min_row_id-based
+                // shenanigans, right?
                 if options.is_chunk_temporally_protected(&chunk) {
                     continue;
                 }
@@ -336,6 +359,8 @@ impl ChunkStore {
 
                 // NOTE: We cannot blindly `retain` across all temporal tables, it's way too costly
                 // and slow. Rather we need to surgically remove the superfluous chunks.
+                //
+                // TODO: well that's simply not true anymore, right?
                 let entity_path = chunk.entity_path();
                 let per_timeline = chunk_ids_to_be_removed
                     .entry(entity_path.clone())
@@ -364,6 +389,11 @@ impl ChunkStore {
                 // NOTE: There is no point in spending more than a fourth of the time budget on the
                 // mark phase or there is no way the sweep phase will have any time to do anything
                 // with the results anyhow.
+                //
+                // TODO: Interestingly, the sweep phase is gonna become much, much cheaper if we
+                // stop touching all the indices.
+                // -> so much cheaper in fact that the split between mark and sweep might not even
+                // make sense anymore?
                 if start_time.elapsed() >= options.time_budget / 4 || num_bytes_to_drop <= 0.0 {
                     break;
                 }
@@ -393,6 +423,10 @@ impl ChunkStore {
 
             let mut diffs = Vec::new();
 
+            // TODO: the entire notion of dangling goes away, obviously.
+            // -> or does it? what did dangling exactly mean in this context? i.e. dangling in
+            //    which _direction_?
+            //
             // NOTE: Dangling chunks should never happen: it is the job of the GC to ensure that.
             //
             // In release builds, we still want to do the nice thing and clean them up as best as we
@@ -425,6 +459,10 @@ impl ChunkStore {
                         // In practice, this adds a lot of complexity for likely very little
                         // performance benefit, since we expect the chunks to have similar
                         // interval lengths on the happy path.
+                        //
+                        // TODO: some version of that comment still applies, but this piece of code
+                        // will disappear.
+                        // -> Document this on the field itself if that's not already the case.
 
                         for chunk_ids in per_start_time.values_mut() {
                             chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
@@ -456,6 +494,8 @@ impl ChunkStore {
                             // In practice, this adds a lot of complexity for likely very little
                             // performance benefit, since we expect the chunks to have similar
                             // interval lengths on the happy path.
+                            //
+                            // TODO: ditto
 
                             for chunk_ids in per_start_time.values_mut() {
                                 chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
@@ -493,6 +533,8 @@ impl ChunkStore {
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices.
     ///
     /// See also [`ChunkStore::remove_chunks`].
+    //
+    // TODO: pretty sure this all mark phase and therefore disappears entirely.
     pub(crate) fn remove_chunk(&mut self, chunk_id: ChunkId) -> Vec<ChunkStoreDiff> {
         re_tracing::profile_function!();
 
@@ -536,6 +578,8 @@ impl ChunkStore {
     /// when you already know where these chunks live.
     ///
     /// See also [`ChunkStore::remove_chunk`].
+    //
+    // TODO: pretty sure this all mark phase and therefore disappears entirely.
     pub(crate) fn remove_chunks(
         &mut self,
         chunk_ids_to_be_removed: RemovableChunkIdPerTimePerComponentPerTimelinePerEntity,
@@ -592,6 +636,8 @@ impl ChunkStore {
                     // In practice, this adds a lot of complexity for likely very little
                     // performance benefit, since we expect the chunks to have similar
                     // interval lengths on the happy path.
+                    //
+                    // TODO: ditto
 
                     for chunk_ids_to_be_removed in chunk_ids_to_be_removed.values() {
                         for (&time, chunk_ids) in chunk_ids_to_be_removed {
@@ -663,6 +709,8 @@ impl ChunkStore {
                     // In practice, this adds a lot of complexity for likely very little
                     // performance benefit, since we expect the chunks to have similar
                     // interval lengths on the happy path.
+                    //
+                    // TODO: ditto
 
                     for (time, chunk_ids) in chunk_ids_to_be_removed {
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) =
@@ -728,6 +776,7 @@ impl ChunkStore {
             }
         }
 
+        // TODO: literally the only thing left, right?
         {
             re_tracing::profile_scope!("last collect");
             chunk_ids_removed
@@ -792,6 +841,8 @@ mod tests {
                 furthest_from: Some((TimelineName::log_tick(), TimeInt::new_temporal(pivot))),
                 ..GarbageCollectionOptions::gc_everything()
             });
+            // TODO: call store.gc() more than once just to make sure nothing weird happens with
+            // all the shadow indices left by the first call.
             assert_eq!(0, store.num_chunks());
         }
     }

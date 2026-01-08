@@ -674,6 +674,10 @@ impl EntityDb {
             // To be perfect it would need margins (because of latest-at), i.e. we would need to know
             // exactly how far back the latest-at is of each component at the current time…
             // …but maybe it doesn't have to be perfect.
+            //
+            // TODO: we should probably update this doc. This really doesn't make much sense when
+            // using a distance-based GC.
+            // -> oh wait, that's protected*_time_ranges*, it's yet another thing lul
             protected_time_ranges: Default::default(),
 
             furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),
