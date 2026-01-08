@@ -7725,6 +7725,7 @@ checksum = "5f6a58fecbf9da8965bcdb20ce4fd29788d1acee68ddbb64f0ba1b81bccdb7df"
 dependencies = [
  "document-features",
  "static_assertions",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -8922,6 +8923,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
+ "poll-promise",
  "re_arrow_util",
  "re_build_info",
  "re_byte_size",
@@ -8941,6 +8943,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "similar-asserts",
+ "static_assertions",
  "thiserror 2.0.17",
  "web-time",
 ]
@@ -10383,6 +10386,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
+ "tokio-stream",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",

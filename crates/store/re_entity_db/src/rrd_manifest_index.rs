@@ -6,7 +6,8 @@ use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
-use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
+use parking_lot::Mutex;
+use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
@@ -14,6 +15,64 @@ use re_log_types::{AbsoluteTimeRange, StoreKind};
 use crate::sorted_range_map::SortedRangeMap;
 
 mod time_range_merger;
+
+/// Some chunks being loaded in the background.
+type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
+
+/// In-progress downloads of chunks.
+#[derive(Default)]
+struct ChunkPromises {
+    // The poll_promise API is a bit unergonomic.
+    // For one, it is not `Sync`.
+    // For another, it is not `Clone`.
+    // There is room for something better here at some point.
+    promises: Vec<Mutex<Option<ChunkPromise>>>,
+}
+
+static_assertions::assert_impl_all!(ChunkPromises: Sync);
+
+impl Clone for ChunkPromises {
+    fn clone(&self) -> Self {
+        // This is fine: the clone will just have to start its own loading.
+        Self {
+            promises: Vec::new(),
+        }
+    }
+}
+
+impl ChunkPromises {
+    /// See if we have received any new chunks since last call.
+    pub fn resolve_pending_promises(&mut self) -> Vec<Chunk> {
+        re_tracing::profile_function!();
+
+        let mut all_chunks = Vec::new();
+
+        self.promises.retain_mut(|promise_opt| {
+            let mut promise_opt = promise_opt.lock();
+            if let Some(promise) = promise_opt.take() {
+                match promise.try_take() {
+                    Ok(Ok(chunks)) => {
+                        all_chunks.extend(chunks);
+                        false
+                    }
+                    Ok(Err(())) => false,
+                    Err(promise) => {
+                        *promise_opt = Some(promise);
+                        true
+                    }
+                }
+            } else {
+                false
+            }
+        });
+
+        all_chunks
+    }
+
+    fn add(&mut self, promise: ChunkPromise) {
+        self.promises.push(Mutex::new(Some(promise)));
+    }
+}
 
 /// Errors that can occur during prefetching.
 #[derive(thiserror::Error, Debug)]
@@ -105,7 +164,7 @@ pub struct TemporalChunkInfo {
 ///
 /// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Clone)]
 pub struct RrdManifestIndex {
     /// The raw manifest.
     ///
@@ -117,6 +176,8 @@ pub struct RrdManifestIndex {
     /// The chunk store may split large chunks and merge (compact) small ones,
     /// so what's in the chunk store can differ significantally.
     remote_chunks: HashMap<ChunkId, ChunkInfo>,
+
+    chunk_promises: ChunkPromises,
 
     /// The chunk store may split large chunks and merge (compact) small ones.
     /// When we later drop a chunk, we need to know which other chunks to invalidate.
@@ -135,6 +196,12 @@ pub struct RrdManifestIndex {
     chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
     manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
+}
+
+impl std::fmt::Debug for RrdManifestIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RrdManifestIndex").finish_non_exhaustive()
+    }
 }
 
 impl RrdManifestIndex {
@@ -362,11 +429,21 @@ impl RrdManifestIndex {
         self.timelines.get(timeline).copied()
     }
 
+    /// See if we have received any new chunks since last call.
+    pub fn resolve_pending_promises(&mut self) -> Vec<Chunk> {
+        self.chunk_promises.resolve_pending_promises()
+    }
+
+    pub fn has_pending_promises(&self) -> bool {
+        !self.chunk_promises.promises.is_empty()
+    }
+
     /// Find the next candidates for prefetching.
     pub fn prefetch_chunks(
         &mut self,
         options: &ChunkPrefetchOptions,
-    ) -> Result<RecordBatch, PrefetchError> {
+        load_chunk: &dyn Fn(RecordBatch) -> ChunkPromise,
+    ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
 
         let ChunkPrefetchOptions {
@@ -386,7 +463,6 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
-        let mut indices: Vec<i32> = vec![];
 
         for (_, chunk_id) in chunks.query(desired_range.into()) {
             let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
@@ -406,7 +482,9 @@ impl RrdManifestIndex {
                 remote_chunk.state = LoadState::InTransit;
 
                 if let Ok(row_idx) = i32::try_from(row_idx) {
-                    indices.push(row_idx);
+                    let rb = take_record_batch(&manifest.data, &Int32Array::from(vec![row_idx]))?;
+                    let promise = load_chunk(rb);
+                    self.chunk_promises.add(promise);
                 } else {
                     // Improbable
                     return Err(PrefetchError::BadIndex(row_idx));
@@ -419,10 +497,7 @@ impl RrdManifestIndex {
             }
         }
 
-        Ok(take_record_batch(
-            &manifest.data,
-            &Int32Array::from(indices),
-        )?)
+        Ok(())
     }
 
     /// Creates an iterator of time ranges which are loaded on a specific timeline.
