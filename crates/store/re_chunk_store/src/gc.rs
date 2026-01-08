@@ -239,6 +239,8 @@ impl ChunkStore {
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
+    //
+    // TODO: this probably needs a bit more information wrt how this behaves with virtual chunks.
     fn find_all_protected_chunk_ids(&self, target_count: usize) -> BTreeSet<ChunkId> {
         re_tracing::profile_function!();
 
@@ -403,9 +405,9 @@ impl ChunkStore {
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,
-            type_registry: _,
-            per_column_metadata: _, // column metadata is additive only
+            time_type_registry: _,  // purely additive
+            type_registry: _,       // purely additive
+            per_column_metadata: _, // purely additive only
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
@@ -763,6 +765,9 @@ impl ChunkStore {
             }
         }
 
+        // TODO: we still need that guy too, otherwise the row-id driven GC will be non-sensical...
+        // unless we just add a check for physicality in the mark loop instead, which seems like a
+        // much better alternative indeed.
         let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
             let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
             chunk.row_id_range().map(|(min, _)| min)
@@ -837,12 +842,14 @@ mod tests {
             let mut store = setup_store();
 
             assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
-            store.gc(&GarbageCollectionOptions {
-                furthest_from: Some((TimelineName::log_tick(), TimeInt::new_temporal(pivot))),
-                ..GarbageCollectionOptions::gc_everything()
-            });
-            // TODO: call store.gc() more than once just to make sure nothing weird happens with
-            // all the shadow indices left by the first call.
+            for _ in 0..3 {
+                // Call `store.gc()` more than once just to make sure nothing weird happens with
+                // all the shadow indices left by the first call.
+                store.gc(&GarbageCollectionOptions {
+                    furthest_from: Some((TimelineName::log_tick(), TimeInt::new_temporal(pivot))),
+                    ..GarbageCollectionOptions::gc_everything()
+                });
+            }
             assert_eq!(0, store.num_chunks());
         }
     }

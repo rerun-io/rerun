@@ -407,11 +407,15 @@ pub struct ChunkStore {
 
     /// Keeps track of the _latest_ datatype for each time column.
     ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    ///
     /// See also [`Self::time_column_type`].
     pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
 
     /// Keeps track of the _latest_ datatype information for all component types that have been written
     /// to the store so far.
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
     ///
     /// See also [`Self::lookup_datatype`].
     //
@@ -425,43 +429,65 @@ pub struct ChunkStore {
         IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
-    // TODO: bump docs
+    /// All the *physical* chunks currently loaded in the store, mapped by their respective IDs.
+    ///
+    /// Physical chunks are chunks that are actively loaded into the store's volatile memory.
+    ///
+    /// During garbage collection, physical chunks are offloaded from memory and become virtual
+    /// chunks instead. At the same time, their IDs are removed from this set, which is how we
+    /// distinguish virtual from physical chunks.
+    ///
+    /// Virtual chunks are still indexed by the store, but querying for them will not yield any data,
+    /// just hints that some data is missing and must first be re-inserted by the caller.
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
-    /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
+    /// All *physical & virtual* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`]
+    /// in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
-    //
-    // TODO: bump docs
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    /// This implies that the chunk IDs present in this set might be either physical/loaded or
+    /// virtual/offloaded.
+    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
+    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
+    /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, further
+    /// indexed by [`ComponentIdentifier`].
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    /// This implies that the chunk IDs present in this set might be either physical/loaded or
+    /// virtual/offloaded.
+    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
+    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
-    //
-    // TODO: bump docs
     pub(crate) temporal_chunk_ids_per_entity_per_component:
         ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
+    /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, without the
+    /// [`ComponentType`] index.
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    /// This implies that the chunk IDs present in this set might be either physical/loaded or
+    /// virtual/offloaded.
+    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
+    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
     /// * [`Self::static_chunk_ids_per_entity`].
-    //
-    // TODO: bump docs
     pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerTimelinePerEntity,
 
-    /// Accumulated size statitistics for all temporal [`Chunk`]s currently present in the store.
+    /// Accumulated size statitistics for all *physical* temporal [`Chunk`]s currently present in the store.
     ///
-    /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
-    //
-    // TODO: bump docs
-    // TODO: i dont like the sound "and is required by e.g. the GC" -- if that's true we're gonna
-    // have a problem here.
-    // -> as expected, it's updated appropriately by the GC, but certainly not required to function.
+    /// This is too costly to be computed from scratch every frame, and therefore materialized here.
+    ///
+    /// *This exclusively covers physical/loaded chunks*. During GC, these statistics are decremented
+    /// as you'd expect.
     pub(crate) temporal_chunks_stats: ChunkStoreChunkStats,
 
     /// Static data. Never garbage collected.
@@ -471,12 +497,9 @@ pub struct ChunkStore {
     /// Existing temporal will not be removed. Events won't be fired.
     pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentPerEntity,
 
-    /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
+    /// Accumulated size statitistics for all *physical* static [`Chunk`]s currently present in the store.
     ///
-    /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
-    //
-    // TODO: bump docs
-    // TODO: well that's most definitely not used by the GC, considered static data is never GC'd??
+    /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
     /// Monotonically increasing ID for insertions.
