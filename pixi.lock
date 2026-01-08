@@ -17072,7 +17072,7 @@ packages:
 - pypi: ./examples/python/face_tracking
   name: face-tracking
   version: 0.1.0
-  sha256: e6b5e20114cb0ed8bc977bc706c4eb378be788b2cb70051a5fce68fff97d4fab
+  sha256: c3c2bf14ccceff0a35108ba309dceafe358a7d8e3dae2aeb7492b0fe36f149bf
   requires_dist:
   - mediapipe==0.10.11 ; sys_platform != 'darwin'
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
@@ -17081,7 +17081,7 @@ packages:
   - requests
   - rerun-sdk
   - tqdm
-  requires_python: '>=3.10,<3.12'
+  requires_python: <3.12
   editable: true
 - pypi: https://files.pythonhosted.org/packages/cb/a8/20d0723294217e47de6d9e2e40fd4a9d2f7c4b6ef974babd482a59743694/fastjsonschema-2.21.2-py3-none-any.whl
   name: fastjsonschema
