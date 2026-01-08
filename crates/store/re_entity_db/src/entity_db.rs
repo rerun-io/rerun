@@ -666,8 +666,11 @@ impl EntityDb {
 
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
-            protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
+
+            // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
+            // otherwise timestamp-based collection will ignore it.
+            protect_latest: 1,
 
             // TODO(emilk): we could protect the data that is currently being viewed
             // (e.g. when paused in the live camera example).
@@ -675,9 +678,8 @@ impl EntityDb {
             // exactly how far back the latest-at is of each component at the current time…
             // …but maybe it doesn't have to be perfect.
             //
-            // TODO: we should probably update this doc. This really doesn't make much sense when
-            // using a distance-based GC.
-            // -> oh wait, that's protected*_time_ranges*, it's yet another thing lul
+            // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
+            // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
 
             furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),

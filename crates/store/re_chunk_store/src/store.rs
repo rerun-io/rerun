@@ -236,12 +236,13 @@ pub struct ChunkIdSetPerTime {
     /// This is used to bound the backwards linear walk when looking for overlapping chunks in
     /// latest-at queries.
     ///
+    /// This is purely additive: this value is never decremented for any reason, whether it's GC,
+    /// chunk splitting, or whatever else.
+    ///
     /// See [`ChunkStore::latest_at`] implementation comments for more details.
-    //
-    // TODO: yeah this needs some information about what happens wrt GC
     pub(crate) max_interval_length: u64,
 
-    /// [`ChunkId`]s organized by their _most specific_ start time.
+    /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ start time.
     ///
     /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
     /// was instantiated, e.g.:
@@ -250,9 +251,12 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
+    ///
+    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
+    /// will never remove values from this set.
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
 
-    /// [`ChunkId`]s organized by their _most specific_ end time.
+    /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ end time.
     ///
     /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
     /// was instantiated, e.g.:
@@ -261,6 +265,9 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
+    ///
+    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
+    /// will never remove values from this set.
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 

@@ -385,7 +385,7 @@ impl ChunkStore {
                 // NOTE: The chunk that we've just added has been compacted already!
                 let srcs = std::iter::once((non_compacted_chunk.id(), non_compacted_chunk))
                     .chain(
-                        self.remove_chunk(elected_chunk.id())
+                        self.remove_chunks(vec![elected_chunk.clone()], None)
                             .into_iter()
                             .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
                             .map(|diff| (diff.chunk.id(), diff.chunk)),

@@ -5,6 +5,9 @@ use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 
+// TODO: oh god what is all of this 😭
+// TODO: we need to both communicate and make really that everything in here is physical.
+
 // ---
 
 #[derive(Default, Debug, Clone, Copy)]
