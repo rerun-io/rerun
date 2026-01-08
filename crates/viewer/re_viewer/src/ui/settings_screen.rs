@@ -106,9 +106,16 @@ fn settings_screen_ui_impl(
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
+    ui.re_checkbox(
+        &mut app_options.show_notification_toasts,
+        "Show notification toasts",
+    )
+    .on_hover_text("Show toasts for log messages and other notifications");
+
     separator_with_some_space(ui);
-    ui.strong("Timestamp format");
-    time_format_section_ui(ui, app_options);
+    ui.collapsing_header("Timestamp format", false, |ui| {
+        time_format_section_ui(ui, app_options);
+    });
 
     separator_with_some_space(ui);
     ui.strong("Map view");
