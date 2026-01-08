@@ -1223,11 +1223,6 @@ mod tests {
             store: &ChunkStore,
             chunks: impl IntoIterator<Item = (RowId, ChunkId)>,
         ) {
-            let chunks = chunks.into_iter().collect_vec();
-            dbg!((
-                chunks.clone().into_iter().collect::<BTreeMap<_, _>>(),
-                &store.chunk_ids_per_min_row_id,
-            ));
             assert_eq!(
                 chunks.into_iter().collect::<BTreeMap<_, _>>(),
                 store.chunk_ids_per_min_row_id

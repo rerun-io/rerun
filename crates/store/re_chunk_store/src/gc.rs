@@ -364,8 +364,6 @@ impl ChunkStore {
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    ///
-    /// See also [`ChunkStore::remove_chunk`].
     pub(crate) fn remove_chunks(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
