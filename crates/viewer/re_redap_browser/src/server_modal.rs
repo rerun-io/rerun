@@ -37,10 +37,11 @@ impl ServerModalMode {
     }
 }
 
+#[expect(clippy::large_enum_variant)]
 enum AuthKind {
     None,
     Token(String),
-    Stored(Option<LoginFlow>),
+    RerunAccount(Option<LoginFlow>),
 }
 
 /// Authentication state for the server modal.
@@ -65,7 +66,7 @@ impl Authentication {
     /// This cleans up the login flow's resources, such as
     /// closing popup windows.
     fn reset_login_flow(&mut self) {
-        if let AuthKind::Stored(flow) = &mut self.kind {
+        if let AuthKind::RerunAccount(flow) = &mut self.kind {
             *flow = None;
         }
     }
@@ -73,7 +74,7 @@ impl Authentication {
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
         match LoginFlow::open(ui) {
             Ok(flow) => {
-                self.kind = AuthKind::Stored(Some(flow));
+                self.kind = AuthKind::RerunAccount(Some(flow));
                 self.error = None;
             }
             Err(err) => {
@@ -100,7 +101,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(AuthKind::Stored(None)),
+            auth: Authentication::new(AuthKind::RerunAccount(None)),
             port: 443,
         }
     }
@@ -110,7 +111,7 @@ impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(AuthKind::Stored(None));
+                let auth = Authentication::new(AuthKind::RerunAccount(None));
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -127,7 +128,7 @@ impl ServerModal {
                         Authentication::new(AuthKind::Token(token.to_string()))
                     }
                     Some(re_redap_client::Credentials::Stored) => {
-                        Authentication::new(AuthKind::Stored(None))
+                        Authentication::new(AuthKind::RerunAccount(None))
                     }
                     None => Authentication::new(AuthKind::None),
                 };
@@ -264,13 +265,13 @@ impl ServerModal {
                             strip.cell(|ui| {
                                 if ui
                                     .selectable_label(
-                                        matches!(self.auth.kind, AuthKind::Stored(_)),
+                                        matches!(self.auth.kind, AuthKind::RerunAccount(_)),
                                         "Rerun account",
                                     )
                                     .clicked()
                                 {
-                                    self.auth.kind = AuthKind::Stored(None);
-                                };
+                                    self.auth.kind = AuthKind::RerunAccount(None);
+                                }
                             });
 
                             strip.cell(|ui| {
@@ -282,7 +283,7 @@ impl ServerModal {
                                     .clicked()
                                 {
                                     self.auth.kind = AuthKind::Token(String::new());
-                                };
+                                }
                             });
 
                             strip.cell(|ui| {
@@ -294,7 +295,7 @@ impl ServerModal {
                                     .clicked()
                                 {
                                     self.auth.kind = AuthKind::None;
-                                };
+                                }
                             });
                         });
                 });
@@ -319,7 +320,7 @@ impl ServerModal {
                         .map(re_redap_client::Credentials::Token)
                         .map(Some)
                         .map_err(|_err| ()),
-                    AuthKind::Stored(_) => {
+                    AuthKind::RerunAccount(_) => {
                         if global_ctx.logged_in() {
                             Ok(Some(re_redap_client::Credentials::Stored))
                         } else {
@@ -330,8 +331,6 @@ impl ServerModal {
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
-                    let button_width = ui.tokens().modal_button_width;
-
                     let enabled = origin.is_ok() && credentials.is_ok();
                     let save_button_response =
                         ui.add_enabled(enabled, ReButton::new(save_text).primary().small());
@@ -382,7 +381,7 @@ impl ServerModal {
 
                     let cancel_button_response = ui.add(ReButton::new("Cancel").small());
                     if cancel_button_response.clicked() {
-                        self.auth = Authentication::new(AuthKind::Stored(None));
+                        self.auth = Authentication::new(AuthKind::RerunAccount(None));
                         self.auth.reset_login_flow();
                         ui.close();
                     }
@@ -400,7 +399,7 @@ impl ServerModal {
 
 fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
-        AuthKind::Stored(login_flow) => {
+        AuthKind::RerunAccount(login_flow) => {
             ui.label("Rerun account:");
 
             if let Some(flow) = login_flow {
