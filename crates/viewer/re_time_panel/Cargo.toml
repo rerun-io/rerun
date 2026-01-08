@@ -45,6 +45,10 @@ smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
+re_chunk.workspace = true
+re_log_encoding.workspace = true
+re_sorbet.workspace = true
+re_span.workspace = true
 re_test_context.workspace = true
 
 anyhow.workspace = true

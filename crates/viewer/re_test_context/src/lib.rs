@@ -462,6 +462,12 @@ impl TestContext {
             .expect("chunk should be successfully added");
     }
 
+    pub fn add_rrd_manifest(&mut self, rrd_manifest: re_log_encoding::RrdManifest) {
+        let store_hub = self.store_hub.get_mut();
+        let active_recording = store_hub.active_recording_mut().unwrap();
+        active_recording.add_rrd_manifest_message(rrd_manifest);
+    }
+
     /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
         self.view_class_registry
