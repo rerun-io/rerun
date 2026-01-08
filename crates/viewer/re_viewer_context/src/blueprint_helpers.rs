@@ -53,7 +53,7 @@ pub trait BlueprintContext {
         {
             Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
                 return;
             }
         };
@@ -106,7 +106,7 @@ pub trait BlueprintContext {
         {
             Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
                 return;
             }
         };
@@ -132,7 +132,7 @@ pub trait BlueprintContext {
         {
             Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
                 return;
             }
         };
@@ -284,7 +284,7 @@ pub trait BlueprintContext {
                     vec![chunk],
                 )),
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint component: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }
         }
     }
@@ -328,7 +328,7 @@ pub trait BlueprintContext {
                     vec![chunk],
                 )),
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint component: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }
         }
     }
