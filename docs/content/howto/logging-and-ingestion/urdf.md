@@ -20,7 +20,7 @@ This will automatically invoke the data-loader, which will take care of:
 * loading meshes and shapes as Rerun entities
 * loading the joint transforms and associated frame IDs of links
 
-Once that is done, the joints can be updated by sending [`Transform3D`](../reference/types/archetypes/transform3d.md)s, where you have to set the `parent_frame` and `child_frame` fields explicitly to each joint's specific frame IDs.
+Once that is done, the joints can be updated by sending [`Transform3D`](../../reference/types/archetypes/transform3d.md)s, where you have to set the `parent_frame` and `child_frame` fields explicitly to each joint's specific frame IDs.
 
 > ⚠️ Note: previous versions (< 0.28) required you to send transforms with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
 > This was dropped in favor of _named_ frame IDs, which is more in line with ROS and allows you to send all transform updates on one entity (e.g. a `transforms` entity like in the example below).
@@ -68,7 +68,7 @@ Each joint exposes properties from the URDF file:
 * `axis`, `origin_xyz`, `origin_rpy`
 * `limit_lower`, `limit_upper`, `limit_effort`, `limit_velocity`
 
-Use `compute_transform()` to get a [`Transform3D`](../reference/types/archetypes/transform3d.md) with the correct `parent_frame` and `child_frame` already set:
+Use `compute_transform()` to get a [`Transform3D`](../../reference/types/archetypes/transform3d.md) with the correct `parent_frame` and `child_frame` already set:
 
 ```python
 # For revolute/continuous joints: pass angle in radians
@@ -81,7 +81,7 @@ rec.log("transforms", transform)
 
 If you already have a recording with transforms loaded in Rerun and want to add an URDF to it, you can do so via drag-and-drop or the menu ("Import into current recording").
 
-In this video, we load an ROS 2 `.mcap` file with TF messages that automatically get translated into Rerun [`Transform3D`](../reference/types/archetypes/transform3d.md).
+In this video, we load an ROS 2 `.mcap` file with TF messages that automatically get translated into Rerun [`Transform3D`](../../reference/types/archetypes/transform3d.md).
 As indicated by the errors displayed in the viewer, there are some connections missing in the transform tree of this example MCAP.
 In our case, these missing transforms are static links that are stored in URDF models separate from the MCAP file.
 

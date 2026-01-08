@@ -6,7 +6,7 @@ order: 800
 
 ## Understanding chunks and their impact on performance
 
-Rerun stores all its data in Chunks — Arrow-encoded tables of data. A basic understanding of chunks is key to understanding how Rerun works and why performance behaves the way it does. See the [chunk concept documentation](../concepts/chunks.md) for more details.
+Rerun stores all its data in Chunks — Arrow-encoded tables of data. A basic understanding of chunks is key to understanding how Rerun works and why performance behaves the way it does. See the [chunk concept documentation](../../concepts/logging-and-ingestion/chunks.md) for more details.
 
 Chunks are the atomic unit of work in Rerun: the performance cost of logging, ingesting, storing, querying, and visualizing data (including memory overhead to some extent) scales roughly linearly with the number of chunks in the system (ignoring caching and indexing optimizations). Many small chunks cause significantly more overhead than fewer, larger ones. Larger chunks reduce index pressure and per-chunk overhead, improving write and query throughput.
 
@@ -29,7 +29,7 @@ This reduces metadata overhead (fewer chunks), which improves network and CPU ef
 * every ~8 ms when logging to the Rerun Viewer directly, or
 * when the batch reaches ~1 MiB.
 
-These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../reference/sdk/micro-batching.md).
+These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../../reference/sdk/micro-batching.md).
 
 Micro-batching trades a bit of latency for significantly fewer chunks, improving ingestion throughput and downstream performance. While lightweight to compute, it operates with minimal context — all it sees is a small rolling window of logs — so compaction is far from optimal.
 
@@ -44,13 +44,13 @@ Constraints:
 On the server side, the Rerun Viewer performs continuous, online compaction in the Chunk Store. As data arrives, smaller chunks are merged until they reach target sizes, preventing an explosion of tiny chunks. Triggers are based on row count and byte thresholds, similar to SDK micro-batching.
 
 By default, chunks compact up to ~384 KiB, or ~4096 rows (or 1024 for unsorted time chunks).
-These settings balance ingestion speed, query performance, and memory use. You can configure them using environment variables such as `RERUN_CHUNK_MAX_BYTES` and `RERUN_CHUNK_MAX_ROWS`. See the [store compaction docs](../reference/store-compaction.md) for more.
+These settings balance ingestion speed, query performance, and memory use. You can configure them using environment variables such as `RERUN_CHUNK_MAX_BYTES` and `RERUN_CHUNK_MAX_ROWS`. See the [store compaction docs](../../reference/store-compaction.md) for more.
 
 Viewer-side compaction is more expensive than SDK-side micro-batching but has access to full context, enabling much more effective decisions. Fortunately, the cost is kept low thanks to micro-batching upstream: the better the batching in the SDK, the less work needed in the Viewer (as we'll see below, the CLI can even make that work disappear entirely!).
 
 Constraints:
 * Runs: server-side, in the Viewer
-* Data access: the full in-memory dataset (although older data may have been [garbage collected](./visualization/limit-ram.md))
+* Data access: the full in-memory dataset (although older data may have been [garbage collected](../visualization/limit-ram.md))
 * Operational limits: must remain lightweight and responsive, as it shares CPU with other real-time viewer workloads. Runs as a streaming process — compaction happens as data arrives.
 
 
@@ -58,7 +58,7 @@ Constraints:
 
 Rerun offers CLI tools to inspect and optimize .rrd recordings or streamed data files.
 
-Use [`rerun rrd stats`](../reference/cli.md#rerun-rrd-stats) to view stats like chunk counts, sizes, and row distributions. This helps you determine if compaction is needed. For example:
+Use [`rerun rrd stats`](../../reference/cli.md#rerun-rrd-stats) to view stats like chunk counts, sizes, and row distributions. This helps you determine if compaction is needed. For example:
 ```sh
 $ rerun rrd stats <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 
@@ -94,7 +94,7 @@ ipc_size_bytes_p999 = 568 KiB
 # … truncated …
 ```
 
-If a file contains many small chunks, run [`rerun rrd compact`](../reference/cli.md#rerun-rrd-compact) to rewrite it with fewer, larger chunks. For example:
+If a file contains many small chunks, run [`rerun rrd compact`](../../reference/cli.md#rerun-rrd-compact) to rewrite it with fewer, larger chunks. For example:
 ```sh
 $ rerun rrd compact --max-rows 4096 --max-bytes 1048576 -o nuscenes_compacted.rrd <(curl 'https://app.rerun.io/version/latest/examples/nuscenes_dataset.rrd')
 merge/compaction finished srcs=["/dev/fd/63"] time=2.51217062s num_chunks_before=576 num_chunks_after=217 num_chunks_reduction="-62.326%" srcs_size_bytes=90.0 MiB dst_size_bytes=89.6 MiB size_reduction="-0.474%"

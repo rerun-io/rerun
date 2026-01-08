@@ -36,13 +36,13 @@ rerun output.rrd
 
 ## Data model
 
-Rerun's data model is based on an [entity component system (ECS)](../concepts/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
+Rerun's data model is based on an [entity component system (ECS)](../../concepts/logging-and-ingestion/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
 To map MCAP messages to Rerun entities we make the following assumptions:
 
 * MCAP topics corresponds to Rerun entities.
-* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](../concepts/chunks.md).
+* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](../../concepts/logging-and-ingestion/chunks.md).
 * The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
-* `message_log_time` and `message_publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../concepts/timelines.md).
+* `message_log_time` and `message_publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../../concepts/logging-and-ingestion/timelines.md).
 
 ### Layered architecture
 
@@ -71,7 +71,7 @@ rerun mcap convert input.mcap -l protobuf -l stats -o output.rrd
 rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 ```
 
-For a detailed explanation of how each layer works and when to use them, see [Layers Explained](../reference/mcap/layers-explained.md).
+For a detailed explanation of how each layer works and when to use them, see [Layers Explained](../../concepts/logging-and-ingestion/mcap/layers-explained.md).
 
 ## Supported message formats
 
@@ -88,8 +88,8 @@ The following is a screenshot of the selection panel and shows a Protobuf-encode
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/1024w.png">
 </picture>
 
-For more details about all supported message types, see [Message Formats](../reference/mcap/message-formats.md).
+For more details about all supported message types, see [Message Formats](../../concepts/logging-and-ingestion/mcap/message-formats.md).
 
 ## Advanced usage
 
-For advanced command-line options and automation workflows, see the [CLI Reference](../reference/mcap/cli-reference.md) for complete documentation of all available commands and flags.
+For advanced command-line options and automation workflows, see the [CLI Reference](../../concepts/logging-and-ingestion/mcap/cli-reference.md) for complete documentation of all available commands and flags.
