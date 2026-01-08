@@ -561,7 +561,7 @@ impl RedapServers {
         let result = self.command_sender.send(command);
 
         if let Err(err) = result {
-            re_log::warn_once!("Failed to send command: {}", err);
+            re_log::warn_once!("Failed to send command: {err}");
         }
     }
 

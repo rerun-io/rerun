@@ -924,7 +924,7 @@ fn resolve_batcher_config(
     } else {
         let default_config = sink.default_batcher_config();
         default_config.apply_env().unwrap_or_else(|err| {
-            re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
+            re_log::error!("Failed to parse ChunkBatcherConfig from env: {err}");
             default_config
         })
     }

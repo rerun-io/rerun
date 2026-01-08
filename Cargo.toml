@@ -809,6 +809,7 @@ ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situ
 
 # TODO(emilk): enable more of these lints:
 cast_possible_truncation = "allow" # Moo much noise, sadly
+clone_on_ref_ptr = "allow" # Might be too much with this enabled
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
