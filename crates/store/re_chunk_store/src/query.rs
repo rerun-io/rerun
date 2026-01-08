@@ -16,12 +16,6 @@ use crate::store::ChunkIdSetPerTime;
 #[expect(unused_imports)]
 use crate::RowId;
 
-// TODO: we still have to live in a world where not all paths go through a Redap server yet, and
-// therefore virtual indices are problematic in these instances... I think that corresponds to the
-// larger-than-RAM feature flag and/or the rrdmanifest detection, basically.
-// -> but then again if the data was GC'd, then it won't be in the time panel, and therefore the
-// viewer won't even try to query it anyway, right?
-
 // ---
 
 // These APIs often have `temporal` and `static` variants.

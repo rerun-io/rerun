@@ -20,9 +20,6 @@ use crate::RowId;
 
 // ---
 
-// TODO: are we effectively just... dropping the mark phase entirely? I think that's really what
-// we're doing here, right?
-
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
     /// Try to drop _at least_ the given fraction.
@@ -369,8 +366,6 @@ impl ChunkStore {
     /// when you already know where these chunks live.
     ///
     /// See also [`ChunkStore::remove_chunk`].
-    //
-    // TODO: pretty sure this all mark phase and therefore disappears entirely.
     pub(crate) fn remove_chunks(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
@@ -385,9 +380,9 @@ impl ChunkStore {
             type_registry: _,       // purely additive
             per_column_metadata: _, // purely additive only
             chunks_per_chunk_id,
-            chunk_ids_per_min_row_id: _, // purely additive: virtual index
+            chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _, // purely additive: virtual index
-            temporal_chunk_ids_per_entity: _, // purely additive: virtual index
+            temporal_chunk_ids_per_entity: _,               // purely additive: virtual index
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
@@ -404,6 +399,9 @@ impl ChunkStore {
                 break;
             }
 
+            if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
+                chunk_ids_per_min_row_id.remove(&row_id_min);
+            }
             let Some(chunk) = chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;
             };

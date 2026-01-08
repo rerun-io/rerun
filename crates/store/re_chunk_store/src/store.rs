@@ -402,9 +402,6 @@ impl ChunkStoreHandle {
 /// garbage collection. It is completely oblivious to individual rows.
 ///
 /// Use the `Display` implementation for a detailed view of the internals.
-//
-// TODO: we should update these field-level docs a bit, in particular regarding to what is expected
-// to survive GC and what isn't.
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
@@ -448,16 +445,14 @@ pub struct ChunkStore {
     /// just hints that some data is missing and must first be re-inserted by the caller.
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
-    /// All *physical & virtual* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`]
-    /// in each of them.
+    /// All *physical* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in
+    /// each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
     ///
-    /// This index is purely additive: it is never affected by garbage collection in any way.
-    /// This implies that the chunk IDs present in this set might be either physical/loaded or
-    /// virtual/offloaded.
-    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
-    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
+    /// During garbage collection, physical chunks are offloaded from memory and become virtual
+    /// chunks instead. At the same time, their IDs are removed from this set, which is how we
+    /// distinguish virtual from physical chunks.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, further
@@ -568,7 +563,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
-            chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
+            chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
             temporal_physical_chunks_stats,
@@ -592,7 +587,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
-        for chunk_id in chunk_id_per_min_row_id.values() {
+        for chunk_id in chunk_ids_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
