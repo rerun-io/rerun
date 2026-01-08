@@ -269,6 +269,15 @@ impl EntityDb {
         &self.store_id
     }
 
+    /// What redap URI does this thing live on?
+    pub fn redap_uri(&self) -> Option<&re_uri::DatasetSegmentUri> {
+        if let Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) = &self.data_source {
+            Some(uri)
+        } else {
+            None
+        }
+    }
+
     /// Returns the [`EntityDbClass`] of this entity db.
     pub fn store_class(&self) -> EntityDbClass<'_> {
         match self.store_kind() {
