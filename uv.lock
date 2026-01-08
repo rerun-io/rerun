@@ -4686,7 +4686,7 @@ dev = [
     { name = "colorama", specifier = ">=0.4" },
     { name = "datafusion", specifier = ">=50.0" },
     { name = "gitpython", specifier = ">=3.1" },
-    { name = "google-cloud-storage", specifier = ">=2.9.0" },
+    { name = "google-cloud-storage", specifier = ">=3.4.1" },
     { name = "huggingface-hub", specifier = "<1.0" },
     { name = "inline-snapshot", specifier = ">=0.31" },
     { name = "ipywidgets", specifier = ">=8.0" },

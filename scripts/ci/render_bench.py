@@ -7,7 +7,7 @@ To use this script, you must be authenticated with GCS,
 see <https://cloud.google.com/docs/authentication/client-libraries> for more information.
 
 Install dependencies:
-    google-cloud-storage==2.9.0
+    google-cloud-storage==3.4.1
 
 Use the script:
     python3 scripts/ci/render_bench.py --help

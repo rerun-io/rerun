@@ -60,7 +60,7 @@ dev = [
   # Example dependencies (needed for linting examples)
   "platformdirs>=4.0",
   # Script dependencies (needed for linting scripts)
-  "google-cloud-storage>=2.9.0",
+  "google-cloud-storage>=3.4.1",
   # Needed by lerobot dataloader example
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)

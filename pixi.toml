@@ -537,7 +537,7 @@ wheel = ">=0.38,<0.39"
 
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
-google-cloud-storage = "==2.9.0" # For `upload_image.py`
+google-cloud-storage = "==3.4.1" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.1.0,<13" # For `upload_image.py`
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.

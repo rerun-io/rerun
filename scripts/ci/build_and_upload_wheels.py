@@ -4,7 +4,7 @@
 Build and upload wheels to GCS.
 
 Install dependencies:
-    python3 -m pip install google-cloud-storage==2.9.0
+    python3 -m pip install google-cloud-storage==3.4.1
 
 Use the script:
     python3 scripts/ci/release.py --help
