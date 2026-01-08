@@ -9073,8 +9073,6 @@ dependencies = [
 name = "re_log_channel"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
- "arrow",
- "async-channel",
  "crossbeam",
  "parking_lot",
  "re_log_encoding",
@@ -9083,8 +9081,6 @@ dependencies = [
  "re_uri",
  "serde",
  "thiserror 2.0.17",
- "tokio",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
