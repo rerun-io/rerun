@@ -499,6 +499,7 @@ jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities 
 lychee = "0.20.1.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
+pyyaml = ">=6.0" # For `check_doc_redirects.py`
 nbstripout = "*"
 ninja = "1.11.1.*"
 libprotobuf = "6.*" # Provides `protoc` compiler needed by lance and prost-build

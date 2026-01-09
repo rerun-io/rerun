@@ -3,6 +3,6 @@ title: Visualize
 order: 200
 ---
 
-How-to guides for visualizing data in the Rerun Viewer.
+This section covers how data is visualized in the Rerun Viewer.
 
 <!-- TODO(ab): it would be nice to auto-generate a TOC here -->
