@@ -18,6 +18,7 @@ from typing import Any
 
 import git
 from ci.frontmatter import load_frontmatter
+from ci.validate_attrs_init_calls import AttrsInitValidator
 from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
@@ -1180,6 +1181,32 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
 # -----------------------------------------------------------------------------
 
 
+def lint_attrs_init_completeness(filepath: str) -> list[str]:
+    """Check that __attrs_init__ calls in extension files include all available arguments."""
+
+    try:
+        # Use the validator directly instead of subprocess
+        root_path = Path(filepath).parent.parent.parent.parent  # Go up to rerun root
+        validator = AttrsInitValidator(root_path)
+
+        results = validator.validate_file(Path(filepath))
+
+        errors = []
+        for result in results:
+            if result.missing_args:
+                missing_args = ", ".join(sorted(result.missing_args))
+                errors.append(f"__attrs_init__ call on line {result.line_number} missing arguments: {missing_args}")
+
+            if result.extra_args:
+                extra_args = ", ".join(sorted(result.extra_args))
+                errors.append(f"__attrs_init__ call on line {result.line_number} has extra arguments: {extra_args}")
+
+        return errors
+
+    except Exception as e:
+        return [f"Failed to run attrs validation: {e}"]
+
+
 def _index_to_line_nr(content: str, index: int) -> int:
     """Converts a 0-based index into a 0-based line number."""
     return content[:index].count("\n")
@@ -1322,6 +1349,13 @@ def lint_file(filepath: str, args: Any) -> int:
         if not any(line.startswith("#pragma once") for line in source.lines):
             print(source.error("Missing `#pragma once` in C++ header file"))
             num_errors += 1
+
+    # Check attrs_init completeness in extension files
+    if filepath.endswith("_ext.py"):
+        attrs_errors = lint_attrs_init_completeness(filepath)
+        for error in attrs_errors:
+            print(source.error(error))
+        num_errors += len(attrs_errors)
 
     if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
