@@ -453,13 +453,13 @@ impl RrdManifestIndex {
                     })
                 }));
 
-                ranges.extend(time_range_merger::merge_ranges(&mut scratch));
+                ranges.extend(time_range_merger::merge_ranges(&scratch));
 
                 scratch.clear();
             }
         }
 
-        time_range_merger::merge_ranges(&mut ranges)
+        time_range_merger::merge_ranges(&ranges)
             .into_iter()
             .filter(|r| r.loaded)
             .map(|r| r.range)
