@@ -90,7 +90,7 @@ jobs:
               bin_name="rerun"
               ;;
             windows-x64)
-              runner="windows-latest-16-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
               target="x86_64-pc-windows-msvc"
               container="null"
               bin_name="rerun.exe"

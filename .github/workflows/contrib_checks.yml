@@ -227,8 +227,12 @@ jobs:
   cpp-tests:
     name: C++ tests
     timeout-minutes: 60
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
 
       - uses: prefix-dev/setup-pixi@v0.9.1

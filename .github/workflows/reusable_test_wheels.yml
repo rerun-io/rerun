@@ -52,7 +52,7 @@ jobs:
 
   set-config:
     name: Set Config (${{ inputs.PLATFORM }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
@@ -83,7 +83,7 @@ jobs:
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               ;;
             windows-x64)
-              runner="windows-latest-16-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;

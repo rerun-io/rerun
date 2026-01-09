@@ -36,7 +36,7 @@ permissions:
 jobs:
   build-wheels:
     name: Build Wheels
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     timeout-minutes: 60
     container:
       image: ghcr.io/rerun-io/ci_docker:0.16.0
@@ -44,6 +44,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
         with:
           lfs: true

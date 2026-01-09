@@ -124,7 +124,7 @@ jobs:
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
-              runner="windows-latest-32-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
               target="x86_64-pc-windows-msvc"
               container="null"
               compat="manylinux_2_28"

@@ -59,9 +59,15 @@ jobs:
     strategy:
       matrix:
         runs_on:
-          [ubuntu-latest-16-cores, macos-15-large, windows-latest-8-cores]
+          - runs-on=${{ github.run_id }}/runner=x64-ubuntu-large
+          - runs-on=${{ github.run_id }}/runner=x64-windows-large
+          - macos-15-large
     runs-on: ${{ matrix.runs_on }}
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(matrix.runs_on, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:

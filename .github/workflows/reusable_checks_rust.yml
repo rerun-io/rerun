@@ -138,12 +138,17 @@ jobs:
         include:
           - runs_on: "macos-15-xlarge"
             name: "macos"
-          - runs_on: "windows-latest-32-cores"
+          - runs_on: "runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
             name: "windows"
 
     if: ${{ inputs.CHANNEL == 'main' }}
     runs-on: ${{ matrix.runs_on }}
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(matrix.runs_on, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -195,7 +200,7 @@ jobs:
         platform:
           - runs_on: "macos-15-xlarge"
             name: "macos"
-          - runs_on: "windows-latest-32-cores"
+          - runs_on: "runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
             name: "windows"
 
         checks_group:
@@ -221,6 +226,11 @@ jobs:
     if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.platform.runs_on }}
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(matrix.runs_on, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
         with:
           lfs: true
