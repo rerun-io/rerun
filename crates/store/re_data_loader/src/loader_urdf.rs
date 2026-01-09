@@ -742,7 +742,7 @@ fn log_geometry(
                     store_id,
                     entity_path.clone(),
                     timepoint,
-                    &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
+                    &InstancePoses3D::update_fields().with_scales([(x as f32, y as f32, z as f32)]),
                 )?;
             }
 

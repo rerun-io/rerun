@@ -92,7 +92,9 @@ def run_cargo(
     env.update(additional_env_vars)
 
     # Use encoding='utf-8' with errors='replace' to handle binary data in cargo/linker output on Windows
-    result = subprocess.run(args, env=env, check=False, capture_output=capture, text=True, encoding="utf-8", errors="replace")
+    result = subprocess.run(
+        args, env=env, check=False, capture_output=capture, text=True, encoding="utf-8", errors="replace"
+    )
     success = result.returncode == 0
 
     if success:

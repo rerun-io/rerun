@@ -4458,6 +4458,8 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash 0.2.0",
 ]
 
@@ -6007,11 +6009,11 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.16.1"
+version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfe949189f46fabb938b3a9a0be30fdd93fd8a09260da863399a8cf3db756ec8"
+checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 dependencies = [
- "hashbrown 0.15.5",
+ "hashbrown 0.16.0",
 ]
 
 [[package]]
@@ -9835,6 +9837,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "rand 0.9.2",
+ "re_chunk",
  "re_chunk_store",
  "re_context_menu",
  "re_data_ui",
@@ -9842,8 +9845,11 @@ dependencies = [
  "re_format",
  "re_int_histogram",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_sdk_types",
+ "re_sorbet",
+ "re_span",
  "re_test_context",
  "re_tracing",
  "re_ui",
@@ -13085,7 +13091,7 @@ dependencies = [
  "http-cache-reqwest",
  "image",
  "log",
- "lru 0.16.1",
+ "lru 0.16.3",
  "reqwest",
  "reqwest-middleware",
  "thiserror 2.0.17",

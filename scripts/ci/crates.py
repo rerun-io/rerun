@@ -521,6 +521,11 @@ def publish_unpublished_crates_in_parallel(
         else:
             unpublished_crates[name] = crate
 
+    if len(unpublished_crates) == 0:
+        # Building the DAG with an empty set of unpublished crates fails, so we exit early if no work needs to be done.
+        print("All crates have already been published.")
+        return
+
     # collect dependency graph (adjacency list of `crate -> dependencies`)
     print("Building dependency graph…")
     dependency_graph: dict[str, list[str]] = {}

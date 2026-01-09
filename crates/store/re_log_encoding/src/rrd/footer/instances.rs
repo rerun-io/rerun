@@ -1413,7 +1413,10 @@ impl RrdManifest {
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+        Ok(self
+            .col_chunk_byte_size_uncompressed_raw()?
+            .iter()
+            .flatten())
     }
 
     /// Returns the raw Arrow data for chunk-key column, if present.

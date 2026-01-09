@@ -3,7 +3,6 @@ use std::collections::hash_map::Entry;
 use std::error::Error as _;
 use std::sync::Arc;
 
-use itertools::Itertools as _;
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
@@ -81,29 +80,20 @@ impl ConnectionRegistry {
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
-    #[error("error when refreshing credentials\nDetails:{0}")]
+    #[error("error when refreshing credentials\nDetails: {0}")]
     RefreshError(TonicStatusError),
 
     #[error("the credentials are expired")]
     SessionExpired,
 
-    #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
+    #[error("the server requires an authentication token but none was provided\nDetails: {0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
-    #[error("the server rejected the provided authentication token\nDetails:{0}")]
-    UnauthenticatedBadToken(TonicStatusError),
-}
-
-impl ClientCredentialsError {
-    #[inline]
-    pub fn is_missing_token(&self) -> bool {
-        matches!(self, Self::UnauthenticatedMissingToken(_))
-    }
-
-    #[inline]
-    pub fn is_wrong_token(&self) -> bool {
-        matches!(self, Self::UnauthenticatedBadToken(_))
-    }
+    #[error("the server rejected the provided authentication token\nDetails: {status}")]
+    UnauthenticatedBadToken {
+        status: TonicStatusError,
+        credentials: SourcedCredentials,
+    },
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -114,13 +104,26 @@ pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Credentials {
     /// Explicit token
     Token(Jwt),
 
     /// Credentials from local storage
     Stored,
+}
+
+#[derive(Clone, Debug)]
+pub enum CredentialSource {
+    PerOrigin,
+    Fallback,
+    EnvVar,
+}
+
+#[derive(Clone, Debug)]
+pub struct SourcedCredentials {
+    pub source: CredentialSource,
+    pub credentials: Credentials,
 }
 
 impl ConnectionRegistryHandle {
@@ -193,17 +196,39 @@ impl ConnectionRegistryHandle {
             )
         };
 
-        let credentials_to_try = [
-            saved_credentials.clone(),
-            fallback_token.map(Credentials::Token),
-            get_token_from_env().map(Credentials::Token),
+        let mut credentials_to_try = vec![];
+
+        let add_cred = |creds: &mut Vec<SourcedCredentials>, cred: SourcedCredentials| {
+            if !creds.iter().any(|c| c.credentials == cred.credentials) {
+                creds.push(cred);
+            }
+        };
+
+        for cred in [
+            saved_credentials
+                .clone()
+                .map(|credentials| SourcedCredentials {
+                    source: CredentialSource::PerOrigin,
+                    credentials,
+                }),
+            fallback_token.clone().map(|token| SourcedCredentials {
+                source: CredentialSource::Fallback,
+                credentials: Credentials::Token(token),
+            }),
+            get_token_from_env().map(|token| SourcedCredentials {
+                source: CredentialSource::EnvVar,
+                credentials: Credentials::Token(token),
+            }),
         ]
         .into_iter()
         .flatten()
-        .unique();
+        {
+            add_cred(&mut credentials_to_try, cred);
+        }
 
-        let (raw_client, successful_token) =
-            match Self::try_create_raw_client(origin.clone(), credentials_to_try).await {
+        let (raw_client, successful_credentials) =
+            match Self::try_create_raw_client(origin.clone(), credentials_to_try.into_iter()).await
+            {
                 Ok(res) => res,
                 Err(err) => {
                     // if we had a saved token, it doesn't work, so we forget about it
@@ -232,8 +257,10 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.write().await;
             inner.clients.insert(origin.clone(), raw_client.clone());
 
-            if successful_token != saved_credentials {
-                if let Some(successful_token) = successful_token {
+            let successful_credentials = successful_credentials.map(|c| c.credentials);
+
+            if successful_credentials != saved_credentials {
+                if let Some(successful_token) = successful_credentials {
                     inner
                         .saved_credentials
                         .insert(origin.clone(), successful_token);
@@ -251,8 +278,8 @@ impl ConnectionRegistryHandle {
     /// If successful, returns both the client and the working token.
     async fn try_create_raw_client(
         origin: re_uri::Origin,
-        possible_credentials: impl Iterator<Item = Credentials>,
-    ) -> ApiResult<(RedapClient, Option<Credentials>)> {
+        possible_credentials: impl Iterator<Item = SourcedCredentials>,
+    ) -> ApiResult<(RedapClient, Option<SourcedCredentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
@@ -296,10 +323,10 @@ impl ConnectionRegistryHandle {
 
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
-        credentials: Option<Credentials>,
+        credentials: Option<SourcedCredentials>,
     ) -> ApiResult<RedapClient> {
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
-            match &credentials {
+            match credentials.as_ref().map(|c| &c.credentials) {
                 Some(Credentials::Token(token)) => Some(Arc::new(
                     re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
                 )),
@@ -349,14 +376,17 @@ impl ConnectionRegistryHandle {
         match request_result {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
-                if credentials.is_none() {
+                if let Some(credentials) = credentials {
                     Err(ApiError::credentials(
-                        ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
+                        ClientCredentialsError::UnauthenticatedBadToken {
+                            status: err.into(),
+                            credentials,
+                        },
                         "verifying connection to server",
                     ))
                 } else {
                     Err(ApiError::credentials(
-                        ClientCredentialsError::UnauthenticatedBadToken(err.into()),
+                        ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
                         "verifying connection to server",
                     ))
                 }

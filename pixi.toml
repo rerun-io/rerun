@@ -276,12 +276,11 @@ nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ t
 nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
 
 
-# TODO(jleibs): tests/ scripts/ examples/ docs/ should be included in our format code
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format {{ files }}", args = [
-  { arg = "files", default = "rerun_py rerun_notebook" },
+  { arg = "files", default = "." },
 ] }
-py-fmt-check = "uv run ruff check rerun_py rerun_notebook && uv run ruff format --check rerun_py rerun_notebook"
+py-fmt-check = "uv run ruff check . && uv run ruff format --check ."
 # Get non-internal things that are ok to not check rerun on
 py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
@@ -529,6 +528,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.37.2"
+urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
 gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
@@ -540,6 +540,7 @@ wheel = ">=0.38,<0.39"
 cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
+pillow = ">=12.1.0,<13" # For `upload_image.py`
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 uv = "==0.9.17"

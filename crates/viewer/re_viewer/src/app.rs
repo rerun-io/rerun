@@ -2339,7 +2339,9 @@ impl App {
                 }
             });
 
-        self.notifications.show_toasts(egui_ctx);
+        if self.app_options().show_notification_toasts {
+            self.notifications.show_toasts(egui_ctx);
+        }
     }
 
     /// Show recent text log messages to the user as toast notifications.

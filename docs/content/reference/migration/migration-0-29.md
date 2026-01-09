@@ -51,3 +51,17 @@ Internally, passing such a `VisualizableArchetype` is a shorthand for calling `.
 
 <!-- TODO(RR-3153): While we're here, illustrate the other motivation a bit. Something like:
 Note that this now allows to specify overrides for multiple instances of the same visualizer: EXAMPLE HERE. -->
+
+## `Entry.update()` is deprecated in favor of `Entry.set_name()`
+
+The `Entry.update()` method has been deprecated. Use `Entry.set_name()` instead for renaming entries.
+
+```python
+# Before (deprecated)
+entry.update(name="new_name")
+
+# After
+entry.set_name("new_name")
+```
+
+The deprecated method will emit a `DeprecationWarning` and will be removed in a future release.
