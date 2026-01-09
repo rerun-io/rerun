@@ -51,8 +51,9 @@ libc = "2.28"
 # Global
 
 [activation]
-# Ensure pyo3-build.cfg exists before any cargo build.
-scripts = ["scripts/pixi/ensure_pyo3_build_cfg.sh"]
+# Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
+# Note: On first activation before package install, this is a no-op.
+scripts = ["scripts/pixi/activate.sh"]
 
 [activation.env]
 RERUN_DEV_ENVIRONMENT = "true"
@@ -64,9 +65,10 @@ EXECUTABLE_EXTENSION = ""
 PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
 [target.win-64.activation]
-# Ensure pyo3-build.cfg exists before any cargo build.
+# Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
 # This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
-scripts = ["scripts/pixi/ensure_pyo3_build_cfg.bat"]
+# Note: On first activation before package install, this is a no-op.
+scripts = ["scripts/pixi/activate.bat"]
 
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
@@ -544,6 +546,7 @@ hatch = "*" # For `rerun_notebook`
 pillow = ">=12.1.0,<13" # For `upload_image.py`
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
+rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
