@@ -11,6 +11,8 @@ use re_log_types::{AbsoluteTimeRange, EntityPath};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 
+// TODO: test partial stuff
+
 // --- Public API ---
 
 impl QueryCache {
@@ -56,7 +58,8 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component);
+            let (cached, missing) = cache.range(&store, query, entity_path, component);
+            results.missing.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -79,20 +82,45 @@ pub struct RangeResults {
     /// The query that yielded these results.
     pub query: RangeQuery,
 
+    /// The relevant *virtual* chunks that were found for this query.
+    ///
+    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
+    /// results of this query cannot accurately be computed.
+    pub missing: Vec<ChunkId>,
+
     /// Results for each individual component.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 }
 
 impl RangeResults {
-    #[inline]
-    pub fn new(query: RangeQuery) -> Self {
-        Self {
-            query,
-            components: Default::default(),
-        }
+    /// Returns true if these are partial results.
+    ///
+    /// Partial results happen when some of the chunks required to accurately compute the query are
+    /// currently missing/offloaded.
+    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// [missing chunk IDs]: `Self::missing`
+    pub fn is_partial(&self) -> bool {
+        !self.missing.is_empty()
+    }
+
+    /// Returns true if the results are *completely* empty.
+    ///
+    /// I.e. neither physical/loaded nor virtual/offloaded chunks could be found.
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            query: _,
+            missing,
+            components,
+        } = self;
+        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`Chunk`]s for the specified component.
+    //
+    // TODO: hmmm, what should happen to this tho? should we break it on purpose, so that we know
+    // which places need to handle partial results?
     #[inline]
     pub fn get(&self, component: ComponentIdentifier) -> Option<&[Chunk]> {
         self.components
@@ -103,6 +131,9 @@ impl RangeResults {
     /// Returns the [`Chunk`]s for the specified component.
     ///
     /// Returns an error if the component is not present.
+    //
+    // TODO: hmmm, what should happen to this tho? should we break it on purpose, so that we know
+    // which places need to handle partial results?
     #[inline]
     pub fn get_required(&self, component: ComponentIdentifier) -> crate::Result<&[Chunk]> {
         self.components.get(&component).map_or_else(
@@ -113,9 +144,17 @@ impl RangeResults {
 }
 
 impl RangeResults {
-    #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component: ComponentIdentifier, chunks: Vec<Chunk>) {
+    fn new(query: RangeQuery) -> Self {
+        Self {
+            query,
+            missing: Default::default(),
+            components: Default::default(),
+        }
+    }
+
+    #[inline]
+    fn add(&mut self, component: ComponentIdentifier, chunks: Vec<Chunk>) {
         self.components.insert(component, chunks);
     }
 }
@@ -243,13 +282,20 @@ impl SizeBytes for RangeCache {
 
 impl RangeCache {
     /// Queries cached range data for a single component.
-    pub fn range(
+    ///
+    /// This returns the cached physical chunks that were found for this query, as well as any
+    /// virtual chunks that need to be fetched and loaded.
+    /// It is then the responsibility of the caller to look into these missing chunk IDs, fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// Returns `(cached_chunks, missing_chunk_ids)`.
+    fn range(
         &mut self,
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
-    ) -> Vec<Chunk> {
+    ) -> (Vec<Chunk>, Vec<ChunkId>) {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
@@ -262,9 +308,11 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, component);
-        // TODO(RR-3295): what should we do with virtual chunks here? (verbose iteration below)
-        for raw_chunk in &raw_chunks.chunks {
+        let results = store.range_relevant_chunks(query, entity_path, component);
+        // It is perfectly safe to cache partial range results, since missing data (if any), cannot
+        // possibly affect what's already cached, it can only augment it.
+        // Therefore, we do not even check for partial results here.
+        for raw_chunk in &results.chunks {
             self.chunks
                 .entry(raw_chunk.id())
                 .or_insert_with(|| RangeCachedChunk {
@@ -275,6 +323,9 @@ impl RangeCache {
                         .densified(component)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+
+                    // TODO: this isn't good enough: if the chunk was indeed densified, then we
+                    // need to account for it in the memory stats, whether it was resorted or not.
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
                 });
         }
@@ -284,9 +335,12 @@ impl RangeCache {
         // Since these `Chunk`s have already been pre-processed adequately, running a range filter
         // on them will be quite cheap.
 
-        raw_chunks
-            // TODO(RR-3295): what should we do with virtual chunks here?
-            .into_iter_verbose()
+        // It is perfectly fine to return partial range results, as they are always valid on their own,
+        // as long as we also advertise that some chunks were missing (which we do).
+        // Therefore, we do not even check for partial results here.
+        let chunks = results
+            .chunks
+            .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
                 debug_assert!(
@@ -300,7 +354,9 @@ impl RangeCache {
                 chunk.range(query, component)
             })
             .filter(|chunk| !chunk.is_empty())
-            .collect()
+            .collect();
+
+        (chunks, results.missing)
     }
 
     #[inline]

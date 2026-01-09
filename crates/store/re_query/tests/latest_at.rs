@@ -175,6 +175,7 @@ fn invalidation() {
 
         let store = ChunkStore::new_handle(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            // re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED, // TODO: why on earth does this fix the problem?
             Default::default(),
         );
         let mut caches = QueryCache::new(store.clone());
@@ -438,7 +439,8 @@ fn invalidation() {
 fn invalidation_of_future_optionals() {
     let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-        Default::default(),
+        re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED, // TODO: why on earth does this fix the problem?
+                                                               // Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
 
@@ -644,6 +646,7 @@ fn static_invalidation() {
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
+    eprintln!("{store}");
 }
 
 fn query_and_compare(

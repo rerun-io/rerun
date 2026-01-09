@@ -5,7 +5,7 @@ use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
@@ -13,6 +13,9 @@ use re_types_core::external::arrow::array::ArrayRef;
 use re_types_core::{Component, archetypes};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
+
+// TODO: test partial stuff
+// -> and i guess we're gonna have to test clears in particular 😒
 
 // --- Public API ---
 
@@ -75,6 +78,9 @@ impl QueryCache {
         // both a _data time_ lesser or equal to the _query time_ and an index greater or equal
         // than the indexed of the returned data, then we know for sure that the `Clear` shadows
         // the data.
+        //
+        // TODO: I guess that, since we have to deal with clear semantics on the latest-at path,
+        // we just cannot cache nor return any result at all in case of partial data.
         let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
         {
             let potential_clears = self.might_require_clearing.read();
@@ -106,8 +112,18 @@ impl QueryCache {
 
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
-                if let Some(cached) = cache.latest_at(&store, query, &clear_entity_path, component)
-                {
+
+                let (cached, missing) =
+                    cache.latest_at(&store, query, &clear_entity_path, component);
+                if cfg!(debug_assertions) && !missing.is_empty() {
+                    debug_assert!(
+                        cached.is_none(),
+                        "should never have partial latest-at results"
+                    );
+                }
+                results.missing.extend(missing);
+
+                if let Some(cached) = cached {
                     // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
                         .component_mono::<ClearIsRecursive>(component)
@@ -146,7 +162,17 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, component) {
+
+            let (cached, missing) = cache.latest_at(&store, query, entity_path, component);
+            if cfg!(debug_assertions) && !missing.is_empty() {
+                debug_assert!(
+                    cached.is_none(),
+                    "should never have partial latest-at results"
+                );
+            }
+            results.missing.extend(missing);
+
+            if let Some(cached) = cached {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
@@ -199,6 +225,9 @@ pub struct LatestAtResults {
     /// The query that yielded these results.
     pub query: LatestAtQuery,
 
+    // TODO: i guess we gotta redo all the same logic right?
+    pub missing: Vec<ChunkId>,
+
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
@@ -218,6 +247,7 @@ impl LatestAtResults {
         Self {
             entity_path,
             query,
+            missing: Default::default(),
             compound_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
         }
@@ -250,7 +280,7 @@ impl LatestAtResults {
 }
 
 impl LatestAtResults {
-    #[doc(hidden)]
+    #[doc(hidden)] // used by the visualizer overrides sub-system
     #[inline]
     pub fn add(
         &mut self,
@@ -276,6 +306,9 @@ impl LatestAtResults {
 // Helpers for UI and other high-level/user-facing code.
 //
 // In particular, these replace all error handling with logs instead.
+
+// TODO: yeah these are gonna make things awkward im sure... but then again we can address that at
+// a later time, since it all falls in the realm of caller responsibility anyhow... or does it
 
 impl LatestAtResults {
     // --- Batch ---
@@ -612,13 +645,15 @@ impl SizeBytes for LatestAtCache {
 
 impl LatestAtCache {
     /// Queries cached latest-at data for a single component.
-    pub fn latest_at(
+    ///
+    /// Returns `(cached_unit_chunk, missing_chunk_ids)`.
+    fn latest_at(
         &mut self,
         store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
-    ) -> Option<UnitChunkShared> {
+    ) -> (Option<UnitChunkShared>, Vec<ChunkId>) {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
@@ -631,18 +666,26 @@ impl LatestAtCache {
         } = self;
 
         if let Some(cached) = per_query_time.get(&query.at()) {
-            return Some(cached.unit.clone());
+            return (Some(cached.unit.clone()), vec![]);
         }
 
-        let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, component)
-            // TODO(RR-3295): what should we do with virtual chunks here?
-            .into_iter_verbose()
+        let results = store.latest_at_relevant_chunks(query, entity_path, component);
+        if results.is_partial() {
+            // Contrary to range results, partial latest-at results cannot ever be correct on their own,
+            // therefore we must give up the current query entirely.
+            return (None, results.missing);
+        }
+        let Some(((data_time, _row_id), unit)) = results
+            .chunks
+            .into_iter()
             .filter_map(|chunk| {
                 let chunk = chunk.latest_at(query, component).into_unit()?;
                 chunk.index(&query.timeline()).map(|index| (index, chunk))
             })
-            .max_by_key(|(index, _chunk)| *index)?;
+            .max_by_key(|(index, _chunk)| *index)
+        else {
+            return (None, vec![]);
+        };
 
         let cached = per_query_time
             .entry(data_time)
@@ -663,7 +706,7 @@ impl LatestAtCache {
                 });
         }
 
-        Some(cached.unit)
+        (Some(cached.unit), vec![])
     }
 
     pub fn handle_pending_invalidation(&mut self) {
