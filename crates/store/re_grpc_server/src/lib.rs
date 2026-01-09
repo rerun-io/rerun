@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
-use re_log_channel::DataSourceMessage;
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -16,8 +16,8 @@ use re_protos::common::v1alpha1::{
 use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 use re_protos::sdk_comms::v1alpha1::{
     ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
-    WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
-    message_proxy_service_server,
+    SaveScreenshotRequest, SaveScreenshotResponse, WriteMessagesRequest, WriteMessagesResponse,
+    WriteTableRequest, WriteTableResponse, message_proxy_service_server,
 };
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc, oneshot};
@@ -413,6 +413,8 @@ pub fn spawn_with_recv(
                     }
                 },
 
+                Ok(LogOrTableMsgProto::UiCommand(cmd)) => Ok(DataSourceMessage::UiCommand(cmd)),
+
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
                     channel_log_tx.quit(None).ok();
@@ -470,13 +472,13 @@ struct TableMsgProto {
     id: TableIdProto,
     data: DataframePartProto,
 }
-
 // -----------------------------------------------------------------------------------
 
 #[derive(Clone)]
 enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
+    UiCommand(DataSourceUiCommand),
 }
 
 impl LogOrTableMsgProto {
@@ -484,6 +486,7 @@ impl LogOrTableMsgProto {
         match self {
             Self::LogMsg(log_msg) => log_msg.total_size_bytes(),
             Self::Table(table) => table.total_size_bytes(),
+            Self::UiCommand(cmd) => cmd.total_size_bytes(),
         }
     }
 }
@@ -497,6 +500,12 @@ impl From<LogMsgProto> for LogOrTableMsgProto {
 impl From<TableMsgProto> for LogOrTableMsgProto {
     fn from(value: TableMsgProto) -> Self {
         Self::Table(value)
+    }
+}
+
+impl From<DataSourceUiCommand> for LogOrTableMsgProto {
+    fn from(value: DataSourceUiCommand) -> Self {
+        Self::UiCommand(value)
     }
 }
 
@@ -605,6 +614,10 @@ impl MessageBuffer {
         match msg {
             LogOrTableMsgProto::LogMsg(msg) => self.add_log_msg(msg),
             LogOrTableMsgProto::Table(msg) => {
+                self.disposable.push_back(msg.into());
+            }
+            LogOrTableMsgProto::UiCommand(msg) => {
+                // TODO: should never buffer ui commands?
                 self.disposable.push_back(msg.into());
             }
         }
@@ -822,6 +835,10 @@ impl MessageProxy {
         self.event_tx.send(Event::Message(table.into())).await.ok();
     }
 
+    async fn push_ui_command(&self, cmd: DataSourceUiCommand) {
+        self.event_tx.send(Event::Message(cmd.into())).await.ok();
+    }
+
     async fn new_client_message_stream(&self) -> ReadMsgStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
@@ -865,6 +882,10 @@ impl MessageProxy {
                         re_log::warn_once!("A log stream got a TableMsg");
                         None
                     }
+                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
+                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                        None
+                    }
                     Err(err) => Some(Err(err)),
                 }),
         )
@@ -880,15 +901,25 @@ impl MessageProxy {
                         None
                     }
                     Ok(ReadLogOrTableMsgResponse::TableMsg(msg)) => Some(Ok(msg)),
+                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
+                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                        None
+                    }
                     Err(err) => Some(Err(err)),
                 }),
         )
     }
 }
 
+// enum UiCommandMessageResponse {
+//     ScreenshotMessage(SaveScreenshotResponse),
+//     UnknownUiCommand, // TODO?
+// }
+
 enum ReadLogOrTableMsgResponse {
     LogMsg(ReadMessagesResponse),
     TableMsg(ReadTablesResponse),
+    UiCommand,
 }
 
 impl From<LogOrTableMsgProto> for ReadLogOrTableMsgResponse {
@@ -901,6 +932,16 @@ impl From<LogOrTableMsgProto> for ReadLogOrTableMsgResponse {
                 id: Some(table_msg.id),
                 data: Some(table_msg.data),
             }),
+
+            // LogOrTableMsgProto::UiCommand(ui_command) => Self::UiCommand(match ui_command {
+            //     DataSourceUiCommand::SaveScreenshot { .. } => {
+            //         UiCommandMessageResponse::ScreenshotMessage(SaveScreenshotResponse {})
+            //     }
+            //     DataSourceUiCommand::SetUrlFragment { .. } => {
+            //         UiCommandMessageResponse::UnknownUiCommand
+            //     }
+            // }),
+            LogOrTableMsgProto::UiCommand(_ui_command) => Self::UiCommand,
         }
     }
 }
@@ -977,6 +1018,17 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         _: tonic::Request<ReadTablesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadTablesStream>> {
         Ok(tonic::Response::new(self.new_client_table_stream().await))
+    }
+
+    async fn save_screenshot(
+        &self,
+        request: tonic::Request<SaveScreenshotRequest>,
+    ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
+        let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
+        self.push_ui_command(DataSourceUiCommand::SaveScreenshot { file_path, view_id })
+            .await;
+
+        Ok(tonic::Response::new(SaveScreenshotResponse {}))
     }
 }
 
