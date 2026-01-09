@@ -3,11 +3,11 @@ mod native;
 #[cfg(target_arch = "wasm32")]
 mod web;
 
-use egui::{IntoAtoms as _, vec2};
+use egui::IntoAtoms as _;
 #[cfg(not(target_arch = "wasm32"))]
 use native::State;
-use re_ui::UiExt as _;
 use re_ui::notifications::{Notification, NotificationLevel};
+use re_ui::{ReButton, Size, UiExt as _};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 #[cfg(target_arch = "wasm32")]
 use web::State;
@@ -37,7 +37,8 @@ impl LoginFlow {
         {
             if !self.started {
                 // Show button to start the flow
-                if ActionButton::primary(&re_ui::icons::EXTERNAL_LINK, "Login", "Login")
+                if ActionButton::new(&re_ui::icons::EXTERNAL_LINK, "Login", "Login")
+                    .variant(re_ui::Variant::Outlined)
                     .show(ui, &mut false)
                     .clicked()
                 {
@@ -81,90 +82,40 @@ impl LoginFlow {
     }
 }
 
-#[derive(Clone, Copy)]
-enum ActionButtonStyle {
-    Primary,
-    Secondary,
-}
-
 pub struct ActionButton<'a> {
     icon: &'a re_ui::Icon,
     action_text: &'a str,
     feedback_text: &'a str,
-    style: ActionButtonStyle,
+    variant: re_ui::Variant,
 }
 
 impl<'a> ActionButton<'a> {
-    pub fn primary(icon: &'a re_ui::Icon, action_text: &'a str, feedback_text: &'a str) -> Self {
+    pub fn new(icon: &'a re_ui::Icon, action_text: &'a str, feedback_text: &'a str) -> Self {
         Self {
             icon,
             action_text,
             feedback_text,
-            style: ActionButtonStyle::Primary,
+            variant: re_ui::Variant::default(),
         }
     }
 
-    #[cfg_attr(target_arch = "wasm32", expect(dead_code))] // only used on native
-    pub fn secondary(icon: &'a re_ui::Icon, action_text: &'a str, feedback_text: &'a str) -> Self {
-        Self {
-            icon,
-            action_text,
-            feedback_text,
-            style: ActionButtonStyle::Secondary,
-        }
+    pub fn variant(mut self, style: re_ui::Variant) -> Self {
+        self.variant = style;
+        self
     }
 
     pub fn show(&self, ui: &mut egui::Ui, show_feedback: &mut bool) -> egui::Response {
-        let response = ui
-            .scope(|ui| {
-                let tokens = ui.tokens();
-                let visuals = &mut ui.style_mut().visuals;
+        let label = if *show_feedback {
+            self.feedback_text
+        } else {
+            self.action_text
+        };
 
-                if matches!(self.style, ActionButtonStyle::Primary) {
-                    visuals.override_text_color = Some(tokens.text_inverse);
-                }
-
-                let spacing = &mut ui.style_mut().spacing;
-                spacing.button_padding = vec2(5.0, 4.0);
-
-                let response = ui.ctx().read_response(ui.next_auto_id());
-                let fill_color = match self.style {
-                    ActionButtonStyle::Primary => {
-                        if response.is_some_and(|r| r.hovered()) {
-                            tokens.bg_fill_inverse_hover
-                        } else {
-                            tokens.bg_fill_inverse
-                        }
-                    }
-                    ActionButtonStyle::Secondary => {
-                        if response.is_some_and(|r| r.hovered()) {
-                            tokens.widget_active_bg_fill
-                        } else {
-                            tokens.widget_noninteractive_bg_stroke
-                        }
-                    }
-                };
-
-                let label = if *show_feedback {
-                    self.feedback_text
-                } else {
-                    self.action_text
-                };
-
-                let icon_tint = match self.style {
-                    ActionButtonStyle::Primary => tokens.icon_inverse,
-                    ActionButtonStyle::Secondary => tokens.list_item_default_icon,
-                };
-                let icon = self
-                    .icon
-                    .as_image()
-                    .tint(icon_tint)
-                    .fit_to_exact_size(vec2(16.0, 16.0));
-                let atoms = (egui::Atom::grow(), label, icon, egui::Atom::grow()).into_atoms();
-
-                ui.add(egui::Button::new(atoms).fill(fill_color).corner_radius(3.0))
-            })
-            .inner;
+        let response = ui.add(
+            ReButton::new((label, self.icon))
+                .variant(self.variant)
+                .small(),
+        );
 
         if response.clicked() {
             *show_feedback = true;
