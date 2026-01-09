@@ -63,7 +63,7 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        visualizer_overrides: Mapping[
+        overrides: Mapping[
             EntityPathLike,
             EntityBehavior | VisibleTimeRanges | Visualizer | Iterable[EntityBehavior | VisibleTimeRanges | Visualizer],
         ]
@@ -98,7 +98,7 @@ class View:
 
             Note that an archetype's required components typically don't have any effect.
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
-        visualizer_overrides:
+        overrides:
             Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
             should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
 
@@ -119,7 +119,7 @@ class View:
         self.visible = visible
         self.properties = properties if properties is not None else {}
         self.defaults = list(defaults) if defaults is not None else []
-        self.visualizer_overrides = dict(visualizer_overrides.items()) if visualizer_overrides is not None else {}
+        self.visualizer_overrides = dict(overrides.items()) if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """

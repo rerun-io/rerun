@@ -36,7 +36,7 @@ blueprint = rrb.Blueprint(
             origin="world",
             name="3D Scene",
             contents=["/**"],
-            visualizer_overrides={
+            overrides={
                 # Adjust visual size of camera frustum in 3D view for better visibility.
                 "camera": rrb.visualizers.Pinhole(image_plane_distance=1.0)
             },

@@ -12,7 +12,7 @@ rr.log("boxes/2", rr.Boxes2D(centers=[2, 0], sizes=[1, 1], colors=[255, 0, 0]))
 rr.send_blueprint(
     rrb.Spatial2DView(
         # Override the values from the data store for the first box.
-        visualizer_overrides={
+        overrides={
             "boxes/1": rrb.visualizers.Boxes2D(colors=[0, 255, 0]),
         },
     ),

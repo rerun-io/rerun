@@ -76,7 +76,7 @@ def main() -> None:
         blueprint = rrb.Blueprint(
             rrb.Spatial3DView(
                 origin="/",
-                visualizer_overrides={
+                overrides={
                     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
                         timeline="stable_time",
                         start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),

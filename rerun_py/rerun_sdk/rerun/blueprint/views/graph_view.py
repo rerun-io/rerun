@@ -81,7 +81,7 @@ class GraphView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        visualizer_overrides: Mapping[
+        overrides: Mapping[
             EntityPathLike,
             blueprint_archetypes.EntityBehavior
             | blueprint_archetypes.VisibleTimeRanges
@@ -122,7 +122,7 @@ class GraphView(View):
 
             Note that an archetype's required components typically don't have any effect.
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
-        visualizer_overrides:
+        overrides:
             Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
             should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
 
@@ -197,5 +197,5 @@ class GraphView(View):
             visible=visible,
             properties=properties,
             defaults=defaults,
-            visualizer_overrides=visualizer_overrides,
+            overrides=overrides,
         )

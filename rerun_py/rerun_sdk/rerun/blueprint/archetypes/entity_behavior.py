@@ -37,7 +37,7 @@ class EntityBehavior(Archetype):
     # Use `EntityBehavior` to override visibility & interactivity of entities in the blueprint.
     rr.send_blueprint(
         rrb.Spatial2DView(
-            visualizer_overrides={
+            overrides={
                 "hidden_subtree": rrb.EntityBehavior(visible=False),
                 "hidden_subtree/not_hidden": rrb.EntityBehavior(visible=True),
                 "non_interactive_subtree": rrb.EntityBehavior(interactive=False),
