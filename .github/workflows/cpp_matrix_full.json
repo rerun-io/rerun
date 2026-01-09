@@ -3,7 +3,7 @@
         {
             "name": "Linux x64, C++17",
             "uid": "linux-x64-cpp17",
-            "runs_on": "runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache",
+            "runs_on": "runs-on=${{RUN_ID}}/runner=x64-ubuntu-large/extras=s3-cache",
             "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=17 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp",
             "additional_commands": "pixi run -e cpp cpp-docs",
             "pr_ci": true
@@ -11,21 +11,21 @@
         {
             "name": "Linux x64, C++20 (skipped on PRs)",
             "uid": "linux-x64-cpp20",
-            "runs_on": "runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache",
+            "runs_on": "runs-on=${{RUN_ID}}/runner=x64-ubuntu-large/extras=s3-cache",
             "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=20 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp",
             "pr_ci": false
         },
         {
             "name": "Windows x64, C++17",
             "uid": "windows-x64-cpp17",
-            "runs_on": "windows-latest-8-cores",
+            "runs_on": "runs-on=${{RUN_ID}}/runner=x64-windows-large/extras=s3-cache",
             "extra_env_vars": "RERUN_SET_CXX_VERSION=17",
             "pr_ci": true
         },
         {
             "name": "Windows x64, C++20 (skipped on PRs)",
             "uid": "windows-x64-cpp20",
-            "runs_on": "windows-latest-8-cores",
+            "runs_on": "runs-on=${{RUN_ID}}/runner=x64-windows-large/extras=s3-cache",
             "extra_env_vars": "RERUN_SET_CXX_VERSION=20",
             "pr_ci": false
         },
