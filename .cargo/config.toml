@@ -25,7 +25,7 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # The `relative = true` makes cargo expand this to an absolute path.
 #
 # NOTE: This file must be generated before any cargo build involving pyo3.
-# Run `pixi run py-build-pyo3-cfg`
+# Run `pixi run ensure-pyo3-build-cfg `
 #
 # If you need to build outside of pixi, you may run `python scripts/generate_pyo3_config.py`
 # manually. But, mixing this with any pixi invocations will result in spurious rebuilds.

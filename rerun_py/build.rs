@@ -12,7 +12,7 @@ fn main() {
     // The repository is configured to automatically generate pyo3-build.cfg via
     // pixi activation scripts. If you see this error, either:
     // 1. Run any `pixi run` command first (generates the config automatically)
-    // 2. Run `pixi run py-build-pyo3-cfg` to generate it manually
+    // 2. Run `pixi run ensure-pyo3-build-cfg ` to generate it manually
     if re_build_tools::is_tracked_env_var_set("RERUN_BUILDING_WHEEL")
         && is_isolated_build_environment()
     {
@@ -28,7 +28,7 @@ fn main() {
         eprintln!();
         eprintln!("       Or generate the config manually:");
         eprintln!();
-        eprintln!("           pixi run py-build-pyo3-cfg");
+        eprintln!("           pixi run ensure-pyo3-build-cfg ");
         eprintln!();
         std::process::exit(1);
     }

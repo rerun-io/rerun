@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Install a wheel from a folder in the specified pixi environment.
+Install a wheel from a folder in the current uv environment.
 
 Example:
 -------
@@ -78,7 +78,7 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
     wheel = Path(dir) / wheels[0]
 
     # Bootstrap the uv environment if it's missing
-    cmd = ["pixi", "run", "uv", "sync", "--inexact"]
+    cmd = ["uv", "sync", "--inexact"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
@@ -94,7 +94,7 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Find and install a wheel from a folder in the specified pixi environment",
+        description="Find and install a wheel from a folder in the current uv environment",
     )
     parser.add_argument("--dir", required=True, help="Directory to search")
     parser.add_argument("--package", required=True, help="The package to install")
