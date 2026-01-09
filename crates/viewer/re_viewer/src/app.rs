@@ -3058,16 +3058,36 @@ impl App {
     }
 
     /// Prefetch chunks for the open recording (stream from server)
-    fn prefetch_chunks(&self, store_hub: &mut StoreHub) -> Option<()> {
-        let recording = store_hub.active_recording_mut()?;
-        let time_ctrl = self.state.time_controls.get(recording.store_id())?;
-        crate::prefetch_chunks::prefetch_chunks(
-            &self.egui_ctx,
-            &self.startup_options,
-            recording,
-            time_ctrl,
-            self.connection_registry(),
-        )
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+        re_tracing::profile_function!();
+
+        // Receive in-transit chunks (previously prefetched):
+        for db in store_hub.store_bundle_mut().recordings_mut() {
+            if db.rrd_manifest_index.has_manifest() {
+                for chunk in db.rrd_manifest_index.resolve_pending_promises() {
+                    if let Err(err) = db.add_chunk(&std::sync::Arc::new(chunk)) {
+                        re_log::warn_once!("add_chunk failed: {err}");
+                    }
+                }
+
+                if db.rrd_manifest_index.has_pending_promises() {
+                    self.egui_ctx.request_repaint(); // check back for more
+                }
+            }
+        }
+
+        // Prefetch new chunks for the active recording (if any):
+        if let Some(recording) = store_hub.active_recording_mut()
+            && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
+        {
+            crate::prefetch_chunks::prefetch_chunks(
+                &self.egui_ctx,
+                &self.startup_options,
+                recording,
+                time_ctrl,
+                self.connection_registry(),
+            );
+        }
     }
 }
 

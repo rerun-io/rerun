@@ -56,19 +56,6 @@ pub fn prefetch_chunks(
         return None;
     }
 
-    // Receive completed promises:
-    for chunk in rrd_manifest.resolve_pending_promises() {
-        if let Err(err) = recording.add_chunk(&std::sync::Arc::new(chunk)) {
-            re_log::warn_once!("add_chunk failed: {err}");
-        }
-    }
-
-    let rrd_manifest = &mut recording.rrd_manifest_index;
-
-    if rrd_manifest.has_pending_promises() {
-        egui_ctx.request_repaint();
-    }
-
     if let Err(err) = rrd_manifest.prefetch_chunks(&options, &|rb| {
         egui_ctx.request_repaint();
         let connection_registry = connection_registry.clone();
@@ -77,13 +64,9 @@ pub fn prefetch_chunks(
             let mut client = connection_registry.client(origin).await.map_err(|err| {
                 re_log::warn_once!("Failed to connect to remote: {err}");
             })?;
-            match load_chunks(&mut client, &rb).await {
-                Ok(chunks) => Ok(chunks),
-                Err(err) => {
-                    re_log::warn_once!("load_chunks failed: {err}");
-                    Err(())
-                }
-            }
+            load_chunks(&mut client, &rb).await.map_err(|err| {
+                re_log::warn_once!("{err}");
+            })
         })
     }) {
         re_log::warn_once!("prefetch_chunks failed: {err}");
