@@ -47,7 +47,7 @@ jobs:
     name: Rust lints (fmt, check, clippy, doc)
     timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
-    runs-on: ubuntu-22.04-large
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/image=ubuntu22-full-x64/extras=s3-cache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -92,7 +92,7 @@ jobs:
     name: Test on Linux
     timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
-    runs-on: ubuntu-22.04-large
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/image=ubuntu22-full-x64/extras=s3-cache
     env:
       RUSTDOCFLAGS: ""
     steps:
@@ -121,7 +121,7 @@ jobs:
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: true
+          cache: false
           stripdown: true
 
       - name: Setup software rasterizer
@@ -184,7 +184,6 @@ jobs:
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        id: install-vulkan
         if: ${{ matrix.name != 'macos' }}
         uses: rerun-io/install-vulkan-sdk-action@v1.1.0
         with:
@@ -192,14 +191,6 @@ jobs:
           install_runtime: true
           cache: false
           stripdown: true
-
-      - name: Inspect Vulkan SDK
-        if: ${{ matrix.name != 'macos' }}
-        run: |
-          VULKAN_SDK=${{ steps.install-vulkan.outputs.VULKAN_VERSION }}
-          echo ${{ steps.install-vulkan.outputs.VULKAN_VERSION }}
-          echo $VULKAN_SDK
-          ls -a $VULKAN_SDK
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
@@ -287,7 +278,7 @@ jobs:
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: true
+          cache: false
           stripdown: true
 
       - name: Setup software rasterizer
