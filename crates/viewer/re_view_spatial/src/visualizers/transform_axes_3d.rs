@@ -86,23 +86,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     let frame_id_hash =
                         transforms.transform_frame_id_for(data_result.entity_path.hash());
 
-                    if let Some(world_from_camera) =
+                    if let Some(target_from_camera) =
                         transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
-                        if transform_info.tree_root()
-                            == re_tf::TransformFrameIdHash::from_entity_path(
-                                &data_result.entity_path,
-                            )
-                        {
-                            // We're _at_ that pinhole.
-                            // Don't apply the from-2D transform, stick with the last known 3D.
-                            smallvec::smallvec![(frame_id_hash, world_from_camera.as_affine3a())]
-                        } else {
-                            // We're inside a 2D space. But this is a 3D transform.
-                            // Something is wrong here and this is not the right place to report it.
-                            // Better just don't draw the axis!
-                            Default::default()
-                        }
+                        // Don't apply the from-2D transform, stick with the last known 3D.
+                        smallvec::smallvec![(frame_id_hash, target_from_camera.as_affine3a())]
                     } else {
                         transform_info
                             .target_from_instances()
