@@ -27,7 +27,7 @@
 //!    visual feedback. This includes:
 //!    - Calling [`DragAndDropManager::set_feedback`] with the appropriate feedback.
 //!    - Drawing a frame around the target container with
-//!      [`tokens.drop_target_container_stroke`].
+//!      [`re_ui::DesignTokens::drop_target_container_stroke`].
 //!    - Optionally provide more feedback, e.g., where exactly the payload will be inserted within
 //!      the container.
 //!

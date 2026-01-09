@@ -367,7 +367,8 @@ impl ChunkStore {
                 }
             }
 
-            self.temporal_chunks_stats += ChunkStoreChunkStats::from_chunk(&chunk_or_compacted);
+            self.temporal_physical_chunks_stats +=
+                ChunkStoreChunkStats::from_chunk(&chunk_or_compacted);
 
             let mut diff = ChunkStoreDiff::addition(
                 // NOTE: We are advertising only the non-compacted chunk as "added", i.e. only the new data.
@@ -385,7 +386,7 @@ impl ChunkStore {
                 // NOTE: The chunk that we've just added has been compacted already!
                 let srcs = std::iter::once((non_compacted_chunk.id(), non_compacted_chunk))
                     .chain(
-                        self.remove_chunk(elected_chunk.id())
+                        self.remove_chunks(vec![elected_chunk.clone()], None)
                             .into_iter()
                             .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
@@ -679,7 +680,7 @@ impl ChunkStore {
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
-            temporal_chunks_stats,
+            temporal_physical_chunks_stats,
             static_chunk_ids_per_entity,
             static_chunks_stats,
             insert_id: _,
@@ -751,7 +752,7 @@ impl ChunkStore {
         let dropped_temporal_chunks = dropped_temporal_chunks
             .filter_map(|chunk_id| chunks_per_chunk_id.remove(&chunk_id))
             .inspect(|chunk| {
-                *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
+                *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
         if self.config.enable_changelog {
@@ -1294,6 +1295,8 @@ mod tests {
 
     #[test]
     fn compaction_blobs() -> anyhow::Result<()> {
+        #![expect(clippy::cloned_ref_to_slice_refs)]
+
         re_log::setup_logging();
 
         // Create a store with a specific byte limit for testing

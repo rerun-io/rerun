@@ -17,11 +17,12 @@ requires-python = ">=3.10,<3.13"
 
 [dependency-groups]
 dev = [
-  # We can't include `rerun-sdk` in dev dependencies because the isolation of
-  # uv build interacts poorly with maturin, causing spurious rebuilds.
-  # Instead, `pixi run py-build` uses `maturin develop` to install into .venv.
-  # This fixup package installs a .pth file that allows `maturin develop` to work
-  # without needing the fix_rerun_pth.py post-processing script.
+  # NOTE: we leave `rerun-sdk` and `rerun-notebook` out of the basic dev dependency list.
+  # This is because they can be slow to build in a clean environment and it's useful to
+  # be able to run tools like linting, etc. without having built all the bindings.
+  #
+  # This fixup package installs a .pth file that makes `import rerun` work
+  # with editable installs by adding rerun_py/rerun_sdk to the Python path.
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
@@ -67,7 +68,7 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
 ]
-snippets = ["av", "pandas"]
+snippets = ["rerun-sdk", "av", "pandas"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -244,6 +245,8 @@ members = [
 ]
 
 [tool.ruff]
+line-length = 120
+preview = true
 src = ["rerun_py", "rerun_py/rerun_sdk", "rerun_notebook"]
 extend-exclude = [
   "crates",

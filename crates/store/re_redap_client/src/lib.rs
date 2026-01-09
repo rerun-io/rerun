@@ -7,7 +7,7 @@ mod grpc;
 pub use self::connection_client::{GenericConnectionClient, SegmentQueryParams};
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    Credentials,
+    CredentialSource, Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
     RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,

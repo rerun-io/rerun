@@ -122,7 +122,7 @@ pub trait UiExt {
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
         let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);

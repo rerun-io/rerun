@@ -180,3 +180,14 @@ impl Blueprint {
         Ok(())
     }
 }
+
+impl BlueprintOpts {
+    /// Send the blueprint to the given recording stream.
+    pub fn send(self, recording: &RecordingStream) -> RecordingStreamResult<()> {
+        let Self {
+            blueprint,
+            activation,
+        } = self;
+        blueprint.send(recording, activation)
+    }
+}

@@ -369,7 +369,7 @@ fn add_new_default(
                 ));
         }
         Err(err) => {
-            re_log::warn!("Failed to create Chunk for blueprint component: {}", err);
+            re_log::warn!("Failed to create Chunk for blueprint component: {err}");
         }
     }
 }

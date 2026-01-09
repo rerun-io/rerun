@@ -236,6 +236,10 @@ locked = true
 name = "rerun_bindings"
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]
 
+# Use debug profile for editable installs (uv sync, pip install -e) to match
+# `pixi run py-build` and share the cargo cache.
+editable-profile = "dev"
+
 # Setting this to 1 causes lets the build.rs script know we are building a wheel,
 # which will cause it to check for the existence of the `rerun` binary.
 config = ["env.RERUN_BUILDING_WHEEL=\"1\""]

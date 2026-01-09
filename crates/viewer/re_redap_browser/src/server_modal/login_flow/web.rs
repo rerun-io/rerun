@@ -43,15 +43,15 @@ impl Drop for State {
         if let Some(child_window) = &self.child_window {
             child_window.close().ok();
         }
-        if let Some(window) = web_sys::window() {
-            if let Some(on_storage_event) = &self.on_storage_event {
-                window
-                    .remove_event_listener_with_callback(
-                        "storage",
-                        on_storage_event.as_ref().unchecked_ref(),
-                    )
-                    .ok();
-            }
+        if let Some(window) = web_sys::window()
+            && let Some(on_storage_event) = &self.on_storage_event
+        {
+            window
+                .remove_event_listener_with_callback(
+                    "storage",
+                    on_storage_event.as_ref().unchecked_ref(),
+                )
+                .ok();
         }
     }
 }

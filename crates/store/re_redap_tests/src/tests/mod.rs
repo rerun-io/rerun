@@ -78,6 +78,7 @@ define_redap_tests! {
     register_segment::register_bad_file_uri_should_error,
     register_segment::register_segment_bumps_timestamp,
     register_segment::register_with_prefix,
+    rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     update_entry::update_entry_bumps_timestamp,
     update_entry::update_entry_tests,

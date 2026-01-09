@@ -337,20 +337,9 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
-        let sink = crate::log_sink::BufferedSink::new();
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-        if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(sink),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to buffered() ignored");
-            Ok(RecordingStream::disabled())
-        }
+        self.create_recording_stream("buffered", || {
+            Ok(Box::new(crate::log_sink::BufferedSink::new()))
+        })
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -372,19 +361,9 @@ impl RecordingStreamBuilder {
     pub fn memory(
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-        let rec = if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(crate::log_sink::BufferedSink::new()),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to memory() ignored");
-            Ok(RecordingStream::disabled())
-        }?;
+        let rec = self.create_recording_stream("memory", || {
+            Ok(Box::new(crate::log_sink::BufferedSink::new()))
+        })?;
 
         let sink = crate::log_sink::MemorySink::new(rec.clone());
         let storage = sink.buffer();
@@ -411,19 +390,7 @@ impl RecordingStreamBuilder {
         self,
         sinks: impl crate::sink::IntoMultiSink,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-        if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(sinks.into_multi_sink()),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to set_sinks() ignored");
-            Ok(RecordingStream::disabled())
-        }
+        self.create_recording_stream("set_sinks", || Ok(Box::new(sinks.into_multi_sink())))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -458,24 +425,13 @@ impl RecordingStreamBuilder {
         self,
         url: impl Into<String>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-        if enabled {
+        self.create_recording_stream("connect_grpc", || {
             let url: String = url.into();
             let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
                 return Err(RecordingStreamError::NotAProxyEndpoint);
             };
-
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(crate::log_sink::GrpcSink::new(uri)),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to connect() ignored");
-            Ok(RecordingStream::disabled())
-        }
+            Ok(Box::new(crate::log_sink::GrpcSink::new(uri)))
+        })
     }
 
     #[cfg(feature = "server")]
@@ -534,23 +490,13 @@ impl RecordingStreamBuilder {
         port: u16,
         server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-        if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(crate::grpc_server::GrpcServerSink::new(
-                    bind_ip.as_ref(),
-                    port,
-                    server_options,
-                )?),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to serve_grpc() ignored");
-            Ok(RecordingStream::disabled())
-        }
+        self.create_recording_stream("serve_grpc", || {
+            Ok(Box::new(crate::grpc_server::GrpcServerSink::new(
+                bind_ip.as_ref(),
+                port,
+                server_options,
+            )?))
+        })
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to an
@@ -571,20 +517,7 @@ impl RecordingStreamBuilder {
         self,
         path: impl Into<std::path::PathBuf>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-
-        if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(crate::sink::FileSink::new(path)?),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to save() ignored");
-            Ok(RecordingStream::disabled())
-        }
+        self.create_recording_stream("save", || Ok(Box::new(crate::sink::FileSink::new(path)?)))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to stdout.
@@ -605,20 +538,7 @@ impl RecordingStreamBuilder {
             return self.buffered();
         }
 
-        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
-
-        if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                batcher_hooks,
-                Box::new(crate::sink::FileSink::stdout()?),
-            )
-        } else {
-            re_log::debug!("Rerun disabled - call to stdout() ignored");
-            Ok(RecordingStream::disabled())
-        }
+        self.create_recording_stream("stdout", || Ok(Box::new(crate::sink::FileSink::stdout()?)))
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
@@ -660,10 +580,7 @@ impl RecordingStreamBuilder {
     ///     .spawn_opts(&re_sdk::SpawnOptions::default())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn_opts(
-        mut self,
-        opts: &crate::SpawnOptions,
-    ) -> RecordingStreamResult<RecordingStream> {
+    pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(RecordingStream::disabled());
@@ -680,22 +597,11 @@ impl RecordingStreamBuilder {
         // Spawn viewer and connect normally
         crate::spawn(opts)?;
 
-        let blueprint_opts = self.blueprint.take();
-        let rec = self.connect_grpc_opts(url)?;
-
-        if let Some(crate::blueprint::BlueprintOpts {
-            blueprint,
-            activation,
-        }) = blueprint_opts
-        {
-            blueprint.send(&rec, activation)?;
-        }
-
-        Ok(rec)
+        self.connect_grpc_opts(url)
     }
 
-    /// Returns whether or not logging is enabled, a [`StoreInfo`] and the associated batcher
-    /// configuration.
+    /// Returns whether or not logging is enabled, a [`StoreInfo`], the associated batcher
+    /// configuration, and the blueprint.
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
@@ -707,6 +613,7 @@ impl RecordingStreamBuilder {
         Option<RecordingInfo>,
         Option<ChunkBatcherConfig>,
         BatcherHooks,
+        Option<crate::blueprint::BlueprintOpts>,
     ) {
         let enabled = self.is_enabled();
 
@@ -721,7 +628,7 @@ impl RecordingStreamBuilder {
             batcher_hooks,
             should_send_properties,
             recording_info,
-            blueprint: _,
+            blueprint,
         } = self;
 
         let store_id = StoreId::new(
@@ -742,7 +649,33 @@ impl RecordingStreamBuilder {
             should_send_properties.then_some(recording_info),
             batcher_config,
             batcher_hooks,
+            blueprint,
         )
+    }
+
+    fn create_recording_stream(
+        self,
+        function_name: &'static str,
+        sink_factory: impl FnOnce() -> RecordingStreamResult<Box<dyn LogSink>>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, properties, batcher_config, batcher_hooks, blueprint_opts) =
+            self.into_args();
+        if enabled {
+            let stream = RecordingStream::new(
+                store_info,
+                properties,
+                batcher_config,
+                batcher_hooks,
+                sink_factory()?,
+            )?;
+            if let Some(blueprint_opts) = blueprint_opts {
+                blueprint_opts.send(&stream)?;
+            }
+            Ok(stream)
+        } else {
+            re_log::debug!("Rerun disabled - call to {function_name}() ignored");
+            Ok(RecordingStream::disabled())
+        }
     }
 
     /// Internal check for whether or not logging is enabled using explicit/default settings & env var.
@@ -924,7 +857,7 @@ fn resolve_batcher_config(
     } else {
         let default_config = sink.default_batcher_config();
         default_config.apply_env().unwrap_or_else(|err| {
-            re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
+            re_log::error!("Failed to parse ChunkBatcherConfig from env: {err}");
             default_config
         })
     }

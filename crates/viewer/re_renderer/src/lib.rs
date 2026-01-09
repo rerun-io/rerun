@@ -114,9 +114,12 @@ pub use self::file_resolver::{
     new_recommended as new_recommended_file_resolver,
 };
 pub use self::file_server::FileServer;
-pub use self::file_system::{FileSystem, get_filesystem};
 #[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
-use self::file_system::{MemFileSystem, OsFileSystem};
+use self::file_system::MemFileSystem;
+pub use self::file_system::{FileSystem, get_filesystem};
+
+#[cfg(load_shaders_from_disk)]
+use self::file_system::OsFileSystem;
 
 pub mod external {
     pub use {anyhow, bytemuck, re_video, smallvec, wgpu};

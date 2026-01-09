@@ -10,7 +10,7 @@ Let's try it out in a brand-new Rust project:
 cargo init cube && cd cube && cargo add rerun
 ```
 
-Note that the Rerun SDK requires a working installation of Rust 1.88+.
+Note that the Rerun SDK requires a working installation of Rust 1.90+.
 
 ## Logging your own data
 

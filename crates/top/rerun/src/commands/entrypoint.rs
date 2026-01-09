@@ -907,7 +907,7 @@ fn start_native_viewer(
                             egui_ctx.request_repaint();
                         }
                         Err(err) => {
-                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                            re_log::error!("Failed to listen for ctrl-c signal: {err}");
                         }
                     }
                 });
