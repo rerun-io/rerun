@@ -1,5 +1,5 @@
 ---
-title: Send data to Rerun
+title: Logging and ingestion
 order: 400
 ---
 
