@@ -36,6 +36,120 @@ class ValidationResult:
     all_args_provided: bool
 
 
+class AttrsInitCallVisitor(ast.NodeVisitor):
+    """AST visitor to find __attrs_init__ method calls."""
+
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
+        self.calls: List[MethodCall] = []
+
+    def visit_Call(self, node: ast.Call) -> None:
+        # Look for self.__attrs_init__(...) calls
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "__attrs_init__"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "self"
+        ):
+            # Extract keyword arguments
+            kwargs = set()
+            for keyword in node.keywords:
+                if keyword.arg:  # Skip **kwargs
+                    kwargs.add(keyword.arg)
+
+            self.calls.append(
+                MethodCall(
+                    method_name="__attrs_init__",
+                    arguments=kwargs,
+                    line_number=node.lineno,
+                    file_path=str(self.file_path),
+                )
+            )
+
+        self.generic_visit(node)
+
+
+class DelegationVisitor(ast.NodeVisitor):
+    """AST visitor to detect class delegation patterns."""
+
+    def __init__(self, target_class_name: str):
+        self.target_class_name = target_class_name
+        self.delegates_to: Optional[Tuple[str, str]] = None
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        if node.name == self.target_class_name:
+            # First check base classes for datatype inheritance
+            for base in node.bases:
+                if (
+                    isinstance(base, ast.Attribute)
+                    and isinstance(base.value, ast.Name)
+                    and base.value.id == "datatypes"
+                ):
+                    self.delegates_to = ("datatypes", base.attr)
+                    return
+
+            # Also look for comments indicating delegation
+            for child in ast.walk(node):
+                if (
+                    isinstance(child, ast.Expr)
+                    and isinstance(child.value, ast.Constant)
+                    and isinstance(child.value.value, str)
+                    and "delegates to" in child.value.value
+                ):
+                    # Extract the delegated class name from comment
+                    comment = child.value.value
+                    if "delegates to datatypes." in comment:
+                        # Extract class name after "datatypes."
+                        import re
+
+                        match = re.search(r"delegates to datatypes\.(\w+)", comment)
+                        if match:
+                            self.delegates_to = ("datatypes", match.group(1))
+                            return
+
+        self.generic_visit(node)
+
+
+class AttrsFieldVisitor(ast.NodeVisitor):
+    """AST visitor to extract attrs field definitions from a class."""
+
+    def __init__(self, target_class_name: str):
+        self.target_class_name = target_class_name
+        self.attrs_params: Set[str] = set()
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        if node.name == self.target_class_name:
+            # Look for field assignments and __attrs_clear__ method
+            for item in node.body:
+                if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                    # Look for field definitions like: field_name: SomeType = field(...)
+                    if (
+                        isinstance(item.value, ast.Call)
+                        and isinstance(item.value.func, ast.Name)
+                        and item.value.func.id == "field"
+                    ):
+                        self.attrs_params.add(item.target.id)
+                elif isinstance(item, ast.FunctionDef) and item.name == "__attrs_clear__":
+                    # Extract parameters from __attrs_clear__ call
+                    self._extract_from_attrs_clear(item)
+
+        self.generic_visit(node)
+
+    def _extract_from_attrs_clear(self, func_node: ast.FunctionDef) -> None:
+        """Extract parameters from __attrs_clear__ method."""
+        for stmt in func_node.body:
+            if (
+                isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Call)
+                and isinstance(stmt.value.func, ast.Attribute)
+                and stmt.value.func.attr == "__attrs_init__"
+            ):
+                # Found self.__attrs_init__(...) call
+                for keyword in stmt.value.keywords:
+                    if keyword.arg:
+                        self.attrs_params.add(keyword.arg)
+
+
 class AttrsInitValidator:
     """Validates __attrs_init__ calls against actual class definitions."""
 
@@ -45,50 +159,17 @@ class AttrsInitValidator:
 
     def find_attrs_init_calls(self, file_path: Path) -> List[MethodCall]:
         """Find all __attrs_init__ calls in a Python file."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                source = f.read()
-        except Exception as e:
-            print(f"Warning: Could not read {file_path}: {e}")
+        source_code = self._read_file(file_path)
+        if not source_code:
             return []
 
-        try:
-            tree = ast.parse(source)
-        except SyntaxError as e:
-            print(f"Warning: Syntax error in {file_path}: {e}")
+        tree = self._parse_file(file_path, source_code)
+        if not tree:
             return []
 
-        calls = []
-
-        class CallVisitor(ast.NodeVisitor):
-            def visit_Call(self, node):
-                # Look for self.__attrs_init__(...) calls
-                if (
-                    isinstance(node.func, ast.Attribute)
-                    and node.func.attr == "__attrs_init__"
-                    and isinstance(node.func.value, ast.Name)
-                    and node.func.value.id == "self"
-                ):
-                    # Extract keyword arguments
-                    kwargs = set()
-                    for keyword in node.keywords:
-                        if keyword.arg:  # Skip **kwargs
-                            kwargs.add(keyword.arg)
-
-                    calls.append(
-                        MethodCall(
-                            method_name="__attrs_init__",
-                            arguments=kwargs,
-                            line_number=node.lineno,
-                            file_path=str(file_path),
-                        )
-                    )
-
-                self.generic_visit(node)
-
-        visitor = CallVisitor()
+        visitor = AttrsInitCallVisitor(file_path)
         visitor.visit(tree)
-        return calls
+        return visitor.calls
 
     def get_attrs_init_signature(self, cls: type) -> Optional[Set[str]]:
         """Get the parameter names of a class's __attrs_init__ method."""
@@ -141,56 +222,15 @@ class AttrsInitValidator:
         Check if a class delegates to another class (e.g., component -> datatype).
         Returns the delegated class info if found.
         """
-        try:
-            with open(class_file, "r", encoding="utf-8") as f:
-                source = f.read()
-        except Exception:
+        source_code = self._read_file(class_file)
+        if not source_code:
             return None
 
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
+        tree = self._parse_file(class_file, source_code)
+        if not tree:
             return None
 
-        class DelegationVisitor(ast.NodeVisitor):
-            def __init__(self):
-                self.delegates_to = None
-                self.target_class_name = class_name
-
-            def visit_ClassDef(self, node):
-                if node.name == self.target_class_name:
-                    # First check base classes for datatype inheritance
-                    for base in node.bases:
-                        if (
-                            isinstance(base, ast.Attribute)
-                            and isinstance(base.value, ast.Name)
-                            and base.value.id == "datatypes"
-                        ):
-                            self.delegates_to = ("datatypes", base.attr)
-                            return
-
-                    # Also look for comments indicating delegation
-                    for child in ast.walk(node):
-                        if (
-                            isinstance(child, ast.Expr)
-                            and isinstance(child.value, ast.Constant)
-                            and isinstance(child.value.value, str)
-                            and "delegates to" in child.value.value
-                        ):
-                            # Extract the delegated class name from comment
-                            comment = child.value.value
-                            if "delegates to datatypes." in comment:
-                                # Extract class name after "datatypes."
-                                import re
-
-                                match = re.search(r"delegates to datatypes\.(\w+)", comment)
-                                if match:
-                                    self.delegates_to = ("datatypes", match.group(1))
-                                    return
-
-                self.generic_visit(node)
-
-        visitor = DelegationVisitor()
+        visitor = DelegationVisitor(class_name)
         visitor.visit(tree)
 
         if visitor.delegates_to:
@@ -208,6 +248,25 @@ class AttrsInitValidator:
                     return (datatype_file, delegated_class_name)
                 else:
                     print(f"Warning: Could not find datatype file for {delegated_class_name} in {datatypes_dir}")
+
+        return None
+
+    def _read_file(self, file_path: Path) -> Optional[str]:
+        """Helper method to read file contents."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            print(f"Warning: Could not read {file_path}: {e}")
+            return None
+
+    def _parse_file(self, file_path: Path, source_code: str) -> Optional[ast.AST]:
+        """Helper method to parse Python source code."""
+        try:
+            return ast.parse(source_code)
+        except SyntaxError as e:
+            print(f"Warning: Syntax error in {file_path}: {e}")
+            return None
 
         return None
 
@@ -240,8 +299,6 @@ class AttrsInitValidator:
             class_name.lower(),
             # CamelCase to snake_case
             self.camel_to_snake(class_name),
-            # Handle specific cases like Range2D -> range2d
-            class_name.lower().replace("2d", "2d").replace("3d", "3d"),
         ]
 
         for pattern in patterns_to_try:
@@ -262,65 +319,19 @@ class AttrsInitValidator:
         # Handle cases like Range2D -> range2d, not range_2_d
         s1 = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
         s2 = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1)
-        return s2.lower().replace("_2_d", "2d").replace("_3_d", "3d")
+        return s2.lower().replace("_2_d", "2d").replace("_3_d", "3d")  # NOLINT: 2d/3d ok for filenames
 
     def get_attrs_init_signature_from_ast(self, file_path: Path, class_name: str) -> Optional[Set[str]]:
         """Extract __attrs_init__ signature from AST without importing."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                source = f.read()
-        except Exception as e:
-            print(f"Warning: Could not read {file_path}: {e}")
+        source_code = self._read_file(file_path)
+        if not source_code:
             return None
 
-        try:
-            tree = ast.parse(source)
-        except SyntaxError as e:
-            print(f"Warning: Syntax error in {file_path}: {e}")
+        tree = self._parse_file(file_path, source_code)
+        if not tree:
             return None
 
-        # Look for __attrs_clear__ method which typically has all parameters
-        # or look at field definitions with @field decorators
-        class ClassVisitor(ast.NodeVisitor):
-            def __init__(self):
-                self.attrs_params = set()
-                self.in_target_class = False
-                self.class_name = class_name
-
-            def visit_ClassDef(self, node):
-                if node.name == self.class_name:
-                    self.in_target_class = True
-                    # Look for field assignments
-                    for item in node.body:
-                        if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
-                            # Look for field definitions like: field_name: SomeType = field(...)
-                            if (
-                                isinstance(item.value, ast.Call)
-                                and isinstance(item.value.func, ast.Name)
-                                and item.value.func.id == "field"
-                            ):
-                                self.attrs_params.add(item.target.id)
-                        elif isinstance(item, ast.FunctionDef) and item.name == "__attrs_clear__":
-                            # Extract parameters from __attrs_clear__ call
-                            self.extract_from_attrs_clear(item)
-                    self.in_target_class = False
-                self.generic_visit(node)
-
-            def extract_from_attrs_clear(self, func_node):
-                """Extract parameters from __attrs_clear__ method."""
-                for stmt in func_node.body:
-                    if (
-                        isinstance(stmt, ast.Expr)
-                        and isinstance(stmt.value, ast.Call)
-                        and isinstance(stmt.value.func, ast.Attribute)
-                        and stmt.value.func.attr == "__attrs_init__"
-                    ):
-                        # Found self.__attrs_init__(...) call
-                        for keyword in stmt.value.keywords:
-                            if keyword.arg:
-                                self.attrs_params.add(keyword.arg)
-
-        visitor = ClassVisitor()
+        visitor = AttrsFieldVisitor(class_name)
         visitor.visit(tree)
         return visitor.attrs_params if visitor.attrs_params else None
 
@@ -362,7 +373,7 @@ class AttrsInitValidator:
 
     def scan_directory(self, directory: Path, pattern: str = "*_ext.py") -> List[ValidationResult]:
         """Scan all matching files in a directory."""
-        all_results = []
+        all_results: List[ValidationResult] = []
 
         # Find all matching files
         matching_files = list(directory.rglob(pattern))
@@ -375,7 +386,7 @@ class AttrsInitValidator:
 
         for ext_file in sorted(matching_files):
             rel_path = ext_file.relative_to(self.source_root)
-            print(f"  Analyzing {rel_path}...")
+            print(f"  Analyzing {rel_path}…")
             results = self.validate_file(ext_file)
             all_results.extend(results)
 
@@ -433,7 +444,7 @@ class AttrsInitValidator:
             sys.exit(0)
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     import argparse
 
@@ -477,7 +488,7 @@ Examples:
             print(f"Error: File {args.file} does not exist")
             sys.exit(1)
         if not args.ci:
-            print(f"Validating {args.file.relative_to(Path.cwd()) if args.file.is_absolute() else args.file}...")
+            print(f"Validating {args.file.relative_to(Path.cwd()) if args.file.is_absolute() else args.file}…")
         results = validator.validate_file(args.file)
     else:
         if not args.path.exists():
