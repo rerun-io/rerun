@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .series_points_ext import SeriesPointsExt
 
@@ -21,7 +22,7 @@ __all__ = ["SeriesPoints"]
 
 
 @define(str=False, repr=False, init=False)
-class SeriesPoints(SeriesPointsExt, Archetype):
+class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: Define the style properties for one or more point series (scatter plot) in a chart.
 
@@ -332,3 +333,7 @@ class SeriesPoints(SeriesPointsExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("SeriesPoints", overrides=self.as_component_batches(), mappings=None)

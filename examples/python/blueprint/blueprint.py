@@ -35,7 +35,7 @@ def main() -> None:
                     contents=["/**"],
                     defaults=[rr.Boxes2D.from_fields(radii=2)],  # Default all rectangles to have a radius of 2
                     overrides={
-                        "rect/0": rrb.visualizers.Boxes2D(radii=1)
+                        "rect/0": rr.Boxes2D.from_fields(radii=1)
                     },  # Override the radius of rect/0 to be 1
                 ),
             ),

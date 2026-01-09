@@ -9,7 +9,7 @@ __all__ = ["DataframeView"]
 
 
 from .. import archetypes as blueprint_archetypes
-from ..api import View, ViewContentsLike
+from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
-    from ..visualizers._base import Visualizer
 
 
 class DataframeView(View):
@@ -87,14 +86,7 @@ class DataframeView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            blueprint_archetypes.EntityBehavior
-            | blueprint_archetypes.VisibleTimeRanges
-            | Visualizer
-            | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         query: blueprint_archetypes.DataframeQuery | None = None,
     ) -> None:
         """

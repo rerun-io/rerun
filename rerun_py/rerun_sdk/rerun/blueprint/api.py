@@ -22,7 +22,7 @@ from .archetypes import (
     VisualizerOverrides,
 )
 from .components import PanelState, PanelStateLike
-from .visualizers import Visualizer
+from .visualizers import VisualizableArchetype, Visualizer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from .components.play_state import PlayStateLike
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
+
+VisualizerLike = EntityBehavior | VisibleTimeRanges | Visualizer | VisualizableArchetype
 
 
 class View:
@@ -63,11 +65,7 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            EntityBehavior | VisibleTimeRanges | Visualizer | Iterable[EntityBehavior | VisibleTimeRanges | Visualizer],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     ) -> None:
         """
         Construct a blueprint for a new view.
@@ -100,7 +98,7 @@ class View:
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
         overrides:
             Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
+            should be applied. The value is a list of visualizers (or visualizable archetypes) which should be enabled for that entity, or a single visualizer.
 
             Each visualizer can be configured with arbitrary overrides and mappings.
 
@@ -175,28 +173,32 @@ class View:
         for path, visualizer in self.visualizer_overrides.items():
             log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
 
-            visualizer_types = []
-
             if isinstance(visualizer, Iterable):
-                visualizer_list = list(visualizer)
+                visualizer_list = visualizer
+            else:
+                visualizer_list = [visualizer]
 
-                for visualizer in visualizer_list:
-                    if isinstance(visualizer, Visualizer):
-                        visualizer_types.append(visualizer.visualizer_type)
-                        if visualizer.overrides is not None:
-                            stream.log(log_path, visualizer.overrides)
-                    else:  # has to be AsComponents
-                        stream.log(log_path, visualizer)
-            else:  # has to be AsComponents
-                if isinstance(visualizer, Visualizer):
-                    visualizer_types.append(visualizer.visualizer_type)
-                    if visualizer.overrides is not None:
-                        stream.log(log_path, visualizer.overrides)
-                else:  # has to be AsComponents
-                    stream.log(log_path, visualizer)
+            visualizer_types = []
+            for visualizer in visualizer_list:
+                visualizer_type = self._log_visualizer_override(stream, log_path, visualizer)
+                if visualizer_type is not None:
+                    visualizer_types.append(visualizer_type)
 
             if len(visualizer_types) > 0:
                 stream.log(log_path, VisualizerOverrides(visualizer_types))
+
+    def _log_visualizer_override(
+        self, stream: RecordingStream, log_path: str, visualizer: VisualizerLike
+    ) -> str | None:
+        if isinstance(visualizer, VisualizableArchetype):
+            visualizer = visualizer.visualizer()
+
+        if isinstance(visualizer, Visualizer):
+            stream.log(log_path, visualizer.overrides)
+            return visualizer.visualizer_type
+        else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
+            stream.log(log_path, visualizer)
+            return None
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer

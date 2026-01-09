@@ -18,10 +18,7 @@ for t in range(int(tau * 2 * 10.0)):
 rr.send_blueprint(
     rrb.TimeSeriesView(
         overrides={
-            "trig/sin": [
-                rrb.visualizers.SeriesLines(),
-                rrb.visualizers.SeriesPoints(),
-            ],
+            "trig/sin": [rr.SeriesLines(), rr.SeriesPoints()],
         },
     ),
 )

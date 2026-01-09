@@ -1,7 +1,6 @@
 //! Implements the Python codegen pass.
 
 mod views;
-mod visualizers;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::iter;
@@ -141,16 +140,6 @@ impl CodeGenerator for PythonCodeGenerator {
             );
             */
         }
-
-        // Generate visualizers.py
-        let visualizers_code = visualizers::generate_visualizers_file(reporter, objects);
-        files_to_write.insert(
-            self.pkg_path
-                .join("blueprint")
-                .join("visualizers")
-                .join("mapping.py"),
-            visualizers_code,
-        );
 
         files_to_write
     }
@@ -512,6 +501,16 @@ impl PythonCodeGenerator {
                 );
             }
 
+            if obj
+                .try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER)
+                .is_some()
+            {
+                code.push_unindented(
+                    format!("from {rerun_path}blueprint import Visualizer, VisualizableArchetype"),
+                    1,
+                );
+            }
+
             let import_clauses: HashSet<_> = obj
                 .fields
                 .iter()
@@ -696,6 +695,11 @@ fn code_for_struct(
         superclasses.push("Archetype".to_owned());
     }
 
+    let visualizer_name = obj.try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER);
+    if visualizer_name.is_some() {
+        superclasses.push("VisualizableArchetype".to_owned());
+    }
+
     // Delegating component inheritance comes after the `ExtensionClass`
     // This way if a component needs to override `__init__` it still can.
     if obj.is_delegating_component() {
@@ -870,6 +874,14 @@ fn code_for_struct(
                 "__repr__ = Archetype.__repr__ # type: ignore[assignment] ",
                 1,
             );
+
+            if let Some(visualizer_name) = visualizer_name {
+                code.push_indented(1, "", 1);
+                code.push_indented(1, "def visualizer(self) -> Visualizer:", 1);
+                code.push_indented(2, r#""""Creates a visualizer for this archetype.""""#, 1);
+                // TODO(RR-3254): Add options for mapping here
+                code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=None)"#), 1);
+            }
         }
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
@@ -938,7 +950,6 @@ fn code_for_enum(
     if let Some(deprecation_summary) = obj.deprecation_summary() {
         code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
-
     let superclasses = {
         let mut superclasses = vec![];
         if ext_class.found {

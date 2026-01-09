@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .mesh3d_ext import Mesh3DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Mesh3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Mesh3D(Mesh3DExt, Archetype):
+class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
@@ -429,3 +430,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Mesh3D", overrides=self.as_component_batches(), mappings=None)

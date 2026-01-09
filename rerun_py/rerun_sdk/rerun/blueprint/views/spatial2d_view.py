@@ -9,7 +9,7 @@ __all__ = ["Spatial2DView"]
 
 
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
-from ..api import View, ViewContentsLike
+from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
-    from ..visualizers._base import Visualizer
 
 
 class Spatial2DView(View):
@@ -85,14 +84,7 @@ class Spatial2DView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            blueprint_archetypes.EntityBehavior
-            | blueprint_archetypes.VisibleTimeRanges
-            | Visualizer
-            | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike

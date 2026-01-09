@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 __all__ = ["TextDocumentView"]
 
 
-from ..api import View, ViewContentsLike
+from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
-    from .. import archetypes as blueprint_archetypes
-    from ..visualizers._base import Visualizer
 
 
 class TextDocumentView(View):
@@ -105,14 +103,7 @@ class TextDocumentView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            blueprint_archetypes.EntityBehavior
-            | blueprint_archetypes.VisibleTimeRanges
-            | Visualizer
-            | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TextDocumentView view.

@@ -23,8 +23,7 @@ from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import View, ViewContentsLike
-from ..visualizers._base import Visualizer
+from ..api import View, ViewContentsLike, VisualizerLike
 ",
         1,
     );
@@ -48,10 +47,6 @@ from ..visualizers._base import Visualizer
 }
 
 fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
-    // TODO(andreas): `visualizer_overrides` has a special case for
-    // * `EntityBehavior`
-    // * `VisibleTimeRanges`
-    // Would be nice to separate this out?
     let mut code = r#"def __init__(
     self, *,
     origin: EntityPathLike = "/",
@@ -59,7 +54,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
     defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-    overrides: Mapping[EntityPathLike, blueprint_archetypes.EntityBehavior| blueprint_archetypes.VisibleTimeRanges | Visualizer | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer]] | None = None,
+    overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     "#
     .to_owned();
 

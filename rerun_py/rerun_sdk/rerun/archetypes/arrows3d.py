@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .arrows3d_ext import Arrows3DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Arrows3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Arrows3D(Arrows3DExt, Archetype):
+class Arrows3D(Arrows3DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: 3D arrows with optional colors, radii, labels, etc.
 
@@ -337,3 +338,7 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Arrows3D", overrides=self.as_component_batches(), mappings=None)

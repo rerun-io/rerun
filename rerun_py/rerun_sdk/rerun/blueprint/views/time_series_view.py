@@ -9,7 +9,7 @@ __all__ = ["TimeSeriesView"]
 
 
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
-from ..api import View, ViewContentsLike
+from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
-    from ..visualizers._base import Visualizer
 
 
 class TimeSeriesView(View):
@@ -110,14 +109,7 @@ class TimeSeriesView(View):
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            blueprint_archetypes.EntityBehavior
-            | blueprint_archetypes.VisibleTimeRanges
-            | Visualizer
-            | Iterable[blueprint_archetypes.EntityBehavior | blueprint_archetypes.VisibleTimeRanges | Visualizer],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
         axis_x: blueprint_archetypes.TimeAxis | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
