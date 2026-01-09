@@ -262,35 +262,6 @@ impl<T> StableIndexDeque<T> {
         self.vec.get(index.checked_sub(self.index_offset)?)
     }
 
-    /// See [`VecDeque::range`].
-    #[inline]
-    pub fn partition_point_in_range(
-        &self,
-        range: std::ops::Range<usize>,
-        mut f: impl FnMut(&T) -> bool,
-    ) -> Option<usize> {
-        let range = range.start.checked_sub(self.index_offset)?
-            ..range.end.checked_sub(self.index_offset)?;
-        let (a, b) = self.vec.as_slices();
-        if range.end < a.len() {
-            Some(a.get(range.clone())?.partition_point(f) + range.start + self.index_offset)
-        } else if range.start >= a.len() {
-            let range = range.start - a.len()..range.end - a.len();
-            Some(
-                b.get(range.clone())?.partition_point(f)
-                    + range.start
-                    + a.len()
-                    + self.index_offset,
-            )
-        } else if a.last().is_none_or(&mut f) {
-            let range = 0..range.end - a.len();
-            Some(b.get(range.clone())?.partition_point(f) + a.len() + self.index_offset)
-        } else {
-            let range = range.start..range.end.min(a.len());
-            Some(a.get(range.clone())?.partition_point(f) + range.start + self.index_offset)
-        }
-    }
-
     /// Retrieves a mutable element by index.
     #[inline]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {

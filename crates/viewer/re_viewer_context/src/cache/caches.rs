@@ -6,8 +6,6 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 
-use crate::ViewerContext;
-
 /// Does memoization of different objects for the immediate mode UI.
 pub struct Caches {
     caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
@@ -55,6 +53,22 @@ impl Caches {
         #[expect(clippy::iter_over_hash_type)]
         for cache in self.caches.lock().values_mut() {
             cache.purge_memory();
+        }
+    }
+
+    /// React to the chunk store's changelog, if needed.
+    ///
+    /// Useful to e.g. invalidate unreachable data.
+    pub fn on_rrd_manifest(&self, entity_db: &EntityDb) {
+        re_tracing::profile_function!();
+
+        if self.store_id != *entity_db.store_id() {
+            return;
+        }
+
+        #[expect(clippy::iter_over_hash_type)]
+        for cache in self.caches.lock().values_mut() {
+            cache.on_rrd_manifest(entity_db);
         }
     }
 
@@ -137,8 +151,7 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// React to receiving an rrd manifest, if needed.
     ///
     /// Useful for creating data that may be based on the information we get in the rrd manifest.
-    fn on_rrd_manifest(&mut self, ctx: &ViewerContext<'_>, entity_db: &EntityDb) {
-        _ = ctx;
+    fn on_rrd_manifest(&mut self, entity_db: &EntityDb) {
         _ = entity_db;
     }
 }

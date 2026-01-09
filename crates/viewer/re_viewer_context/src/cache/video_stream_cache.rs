@@ -16,7 +16,7 @@ use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
 use re_video::{DecodeSettings, StableIndexDeque};
 
-use crate::{Cache, CacheMemoryReport, ViewerContext};
+use crate::{Cache, CacheMemoryReport};
 
 /// Video stream from the store, ready for playback.
 ///
@@ -47,7 +47,7 @@ impl PlayableVideoStream {
 struct VideoStreamCacheEntry {
     used_this_frame: AtomicBool,
     video_stream: Arc<RwLock<PlayableVideoStream>>,
-    known_chunk_offsets: BTreeMap<ChunkId, ChunkSamples>,
+    known_chunk_offsets: BTreeMap<ChunkId, ChunkSampleRange>,
 }
 
 impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
@@ -303,7 +303,7 @@ impl VideoStreamCache {
 struct VideoData {
     video_descr: re_video::VideoDataDescription,
 
-    known_chunk_offsets: BTreeMap<ChunkId, ChunkSamples>,
+    known_chunk_offsets: BTreeMap<ChunkId, ChunkSampleRange>,
 }
 
 fn load_video_data_from_chunks(
@@ -385,9 +385,9 @@ fn load_video_data_from_chunks(
     );
 
     for chunk in &sorted_samples {
-        let known_offset = known_chunk_offsets
-            .get(&chunk.id())
-            .expect("We just added these.");
+        let Some(known_offset) = known_chunk_offsets.get(&chunk.id()) else {
+            continue;
+        };
 
         if let Err(err) =
             read_samples_from_known_chunk(timeline, chunk, known_offset, &mut video_descr)
@@ -420,15 +420,17 @@ fn timescale_for_timeline(
     }
 }
 
+/// This is the range all samples of the chunk is in. But there
+/// may also be samples from other chunks in this range.
 #[derive(Debug)]
-struct ChunkSamples {
+struct ChunkSampleRange {
     first_sample: re_video::SampleIndex,
 
     /// Last sample (inclusive).
     last_sample: re_video::SampleIndex,
 }
 
-impl re_byte_size::SizeBytes for ChunkSamples {
+impl re_byte_size::SizeBytes for ChunkSampleRange {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
@@ -437,7 +439,7 @@ impl re_byte_size::SizeBytes for ChunkSamples {
 fn read_samples_from_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
-    known_offsets: &BTreeMap<ChunkId, ChunkSamples>,
+    known_offsets: &BTreeMap<ChunkId, ChunkSampleRange>,
     video_descr: &mut re_video::VideoDataDescription,
 ) -> Result<(), VideoStreamProcessingError> {
     if let Some(known_offset) = known_offsets.get(&chunk.id()) {
@@ -447,10 +449,15 @@ fn read_samples_from_chunk(
     }
 }
 
+/// Reads all video samples from a chunk that previously wasn't mention into an existing video
+/// description.
+///
+/// Encoding details are automatically updated whenever detected.
+/// Changes of encoding details over time will trigger a warning.
 fn read_samples_from_known_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
-    known_offset: &ChunkSamples,
+    known_offset: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
 ) -> Result<(), VideoStreamProcessingError> {
     let re_video::VideoDataDescription {
@@ -585,7 +592,7 @@ fn read_samples_from_known_chunk(
         };
 
         let Some((sample_idx, sample)) = samples_iter.next() else {
-            re_log::error!("Failed to add all video stream samples from chunk");
+            re_log::error_once!("Failed to add all video stream samples from chunk");
             break;
         };
 
@@ -637,7 +644,7 @@ fn read_samples_from_known_chunk(
 /// Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
 /// (We set the duration for the last sample to `None` since we don't know how long it will last.)
 fn update_sample_durations(
-    known_offset: &ChunkSamples,
+    known_offset: &ChunkSampleRange,
     samples: &mut StableIndexDeque<re_video::SampleMetadataState>,
 ) -> Result<(), VideoStreamProcessingError> {
     let mut start = known_offset.first_sample.at_least(samples.min_index());
@@ -664,7 +671,7 @@ fn update_sample_durations(
             break;
         }
     }
-    let mut last = None;
+    let mut last_present_sample = None;
 
     // (Note that we can't use tuple_windows here because it can't handle mutable references)
     for sample_idx in start..=end {
@@ -674,14 +681,14 @@ fn update_sample_durations(
                 continue;
             }
             re_video::SampleMetadataState::Unloaded(_) => {
-                last = None;
+                last_present_sample = None;
                 continue;
             }
         };
 
         let current = sample.presentation_timestamp;
 
-        if let Some((last_sample_idx, timestamp)) = last
+        if let Some((last_sample_idx, timestamp)) = last_present_sample
             && let Some(last_sample) = samples[last_sample_idx].sample_mut()
         {
             let duration = current - timestamp;
@@ -691,13 +698,14 @@ fn update_sample_durations(
             last_sample.duration = Some(duration);
         }
 
-        last = Some((sample_idx, current));
+        last_present_sample = Some((sample_idx, current));
     }
 
     Ok(())
 }
 
-/// Reads all video samples from a chunk into an existing video description.
+/// Reads all video samples from a chunk that previously wasn't mention into an existing video
+/// description.
 ///
 /// Rejects out of order samples - new samples must have a higher timestamp than the previous ones.
 /// Since samples within a chunk are guaranteed to be ordered, this can only happen if a new chunk
@@ -882,7 +890,7 @@ fn read_samples_from_new_chunk(
     }
 
     update_sample_durations(
-        &ChunkSamples {
+        &ChunkSampleRange {
             first_sample: sample_base_idx,
             last_sample: samples.next_index().saturating_sub(1),
         },
@@ -943,7 +951,7 @@ impl Cache for VideoStreamCache {
         "Video Streams"
     }
 
-    fn on_rrd_manifest(&mut self, _ctx: &ViewerContext<'_>, _entity_db: &EntityDb) {
+    fn on_rrd_manifest(&mut self, _entity_db: &EntityDb) {
         // Reset everything when we receive an rrd manifest.
         self.0.clear();
     }
@@ -978,43 +986,52 @@ impl Cache for VideoStreamCache {
     }
 }
 
+/// `loaded_chunks` should be sorted by start time, and internally sorted on `timeline`.
 fn load_known_chunk_offsets(
     data_descr: &mut re_video::VideoDataDescription,
-    known_offsets: &mut BTreeMap<ChunkId, ChunkSamples>,
-    chunks: &BTreeMap<ChunkId, re_log_encoding::RrdManifestTemporalMapEntry>,
-    mut extra_chunks: &[re_chunk::Chunk],
+    known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
+    chunks_from_manifest: &BTreeMap<ChunkId, re_log_encoding::RrdManifestTemporalMapEntry>,
+    mut loaded_chunks: &[re_chunk::Chunk],
     timeline: &TimelineName,
 ) {
-    let mut unloaded_chunk_timepoints = chunks.iter().sorted_by_key(|(_, e)| e.time_range.min);
-    let mut loaded_chunk_timepoints = Vec::new();
+    re_tracing::profile_function!();
+
+    // If we also added loaded chunks into this we could optimize the case where
+    // we have a lot of chunks that the rrd manifest doesn't track.
+    let chunk_timepoints = chunks_from_manifest
+        .iter()
+        .sorted_by_key(|(_, e)| e.time_range.min);
+    let mut loaded_samples_timepoint_iterators = Vec::new();
 
     let sample_component = VideoStream::descriptor_sample().component;
     let all_loaded_chunks: ahash::HashSet<re_chunk::ChunkId> =
-        extra_chunks.iter().map(|c| c.id()).collect();
-    loop {
-        let next_chunk = unloaded_chunk_timepoints.next();
-
+        loaded_chunks.iter().map(|c| c.id()).collect();
+    for next_chunk in chunk_timepoints.map(Some).chain(std::iter::once(None)) {
         let next_timepoint = next_chunk
             .map(|(_, e)| e.time_range.min)
             .unwrap_or(re_chunk::TimeInt::MAX);
 
-        let partition_point = extra_chunks
-            .iter()
-            .position(|c| {
-                c.iter_component_timepoints(sample_component)
-                    .find_map(|t| {
-                        t.get(timeline)
-                            .map(|t| re_chunk::TimeInt::new_temporal(t.get()) > next_timepoint)
-                    })
-                    .unwrap_or(false)
-            })
-            .unwrap_or(extra_chunks.len());
+        let partition_point = loaded_chunks.partition_point(|c| {
+            c.iter_component_timepoints(sample_component)
+                .find_map(|t| {
+                    t.get(timeline)
+                        .map(|t| re_chunk::TimeInt::new_temporal(t.get()) <= next_timepoint)
+                })
+                // This shouldn't happen.
+                .unwrap_or_else(|| {
+                    debug_assert!(
+                        false,
+                        "Chunk with no samples on '{timeline}' should've already been filtered out"
+                    );
+                    false
+                })
+        });
 
-        let (included, rest) = extra_chunks.split_at(partition_point);
+        let (included, rest) = loaded_chunks.split_at(partition_point);
 
-        extra_chunks = rest;
+        loaded_chunks = rest;
 
-        loaded_chunk_timepoints.extend(included.iter().map(|chunk| {
+        loaded_samples_timepoint_iterators.extend(included.iter().map(|chunk| {
             (
                 chunk.id(),
                 chunk
@@ -1024,68 +1041,63 @@ fn load_known_chunk_offsets(
             )
         }));
 
-        while let Some(chunk_id) = {
-            let mut min_index = None;
-            let mut i = 0;
-            loaded_chunk_timepoints.retain_mut(|(_, timepoints)| {
-                if let Some(time) = timepoints.peek() {
-                    let time = re_chunk::TimeInt::from(*time);
-                    if min_index
-                        .as_ref()
-                        .is_none_or(|(_, min_time)| time < *min_time)
-                    {
-                        min_index = Some((i, time));
-                    }
+        let mut chunk_id_for_for_next_sample = || {
+            loaded_samples_timepoint_iterators
+                .retain_mut(|(_, timepoints)| timepoints.peek().is_some());
 
-                    i += 1;
-                    true
-                } else {
-                    false
-                }
-            });
+            let (chunk_id, timepoints) = loaded_samples_timepoint_iterators
+                .iter_mut()
+                // There won't be any nones here since we retained above.
+                .reduce(|a, b| if a.1.peek() < b.1.peek() { a } else { b })?;
 
-            min_index
-                .and_then(|(i, _)| loaded_chunk_timepoints.get_mut(i))
-                .map(|(chunk_id, timepoints)| {
-                    timepoints.next();
-                    *chunk_id
-                })
-        } {
+            let timepoint = timepoints.peek()?;
+
+            if re_chunk::TimeInt::from(*timepoint) <= next_timepoint {
+                timepoints.next();
+
+                Some(*chunk_id)
+            } else {
+                None
+            }
+        };
+
+        while let Some(chunk_id) = chunk_id_for_for_next_sample() {
             let idx = data_descr.samples.next_index();
 
-            known_offsets
+            known_chunk_ranges
                 .entry(chunk_id)
-                .or_insert(ChunkSamples {
+                .or_insert(ChunkSampleRange {
                     first_sample: idx,
                     last_sample: idx,
                 })
                 .last_sample = idx;
 
+            // This is loaded, but will be populated later.
             data_descr
                 .samples
                 .push_back(re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid()));
         }
 
-        if let Some((chunk, rrd_entry)) = next_chunk {
-            if !all_loaded_chunks.contains(chunk) {
-                let idx = data_descr.samples.next_index();
-                // `num_rows` gives us the maximal amount of frames in this chunk.
-                known_offsets.insert(
-                    *chunk,
-                    ChunkSamples {
-                        first_sample: idx,
-                        last_sample: idx + rrd_entry.num_rows as usize,
-                    },
-                );
-                data_descr.samples.extend(std::iter::repeat_n(
-                    re_video::SampleMetadataState::Unloaded(chunk.as_tuid()),
-                    rrd_entry.num_rows as usize,
-                ));
-            }
-        } else if extra_chunks.is_empty() && loaded_chunk_timepoints.is_empty() {
-            break;
+        if let Some((chunk, rrd_entry)) = next_chunk
+            && !all_loaded_chunks.contains(chunk)
+        {
+            let idx = data_descr.samples.next_index();
+            // `num_rows` gives us the maximal amount of frames in this chunk.
+            known_chunk_ranges.insert(
+                *chunk,
+                ChunkSampleRange {
+                    first_sample: idx,
+                    last_sample: idx + rrd_entry.num_rows as usize,
+                },
+            );
+            data_descr.samples.extend(std::iter::repeat_n(
+                re_video::SampleMetadataState::Unloaded(chunk.as_tuid()),
+                rrd_entry.num_rows as usize,
+            ));
         }
     }
+
+    debug_assert!(loaded_samples_timepoint_iterators.is_empty());
 }
 
 /// Adjust keyframes for removed samples.

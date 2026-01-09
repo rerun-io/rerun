@@ -676,6 +676,9 @@ impl VideoDataDescription {
         decode_time: Time,
     ) -> Option<SampleIndex> {
         // First find what keyframe this decode timestamp is in.
+        //
+        // Keyframes will always always be [`SampleMetadataState::Present`] and
+        // have a decode timestamp we can compare against.
         let keyframe_idx = keyframes
             .partition_point(|p| {
                 samples
@@ -696,23 +699,24 @@ impl VideoDataDescription {
             .unwrap_or_else(|| samples.next_index());
 
         // Within that keyframe's range, find the most suitable frame for the given decode time.
-        let sample_idx = samples.partition_point_in_range(start..end, |s| {
-            s.sample()
-                .is_some_and(|s| s.decode_timestamp <= decode_time)
-        })?;
+        let range = start..end;
 
-        let shown_idx = sample_idx.saturating_sub(1);
+        let mut found_sample_idx = None;
+        for (idx, sample) in samples.iter_index_range_clamped(&range) {
+            let Some(s) = sample.sample() else {
+                continue;
+            };
 
-        // Make sure that frame is good.
-        if samples
-            .get(shown_idx)
-            .and_then(|s| s.sample())
-            .is_none_or(|s| s.decode_timestamp > decode_time)
-        {
-            return None;
+            if s.decode_timestamp <= decode_time {
+                found_sample_idx = Some(idx);
+            } else {
+                break;
+            }
         }
 
-        Some(shown_idx)
+        let sample_idx = found_sample_idx?;
+
+        Some(sample_idx)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
