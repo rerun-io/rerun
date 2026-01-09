@@ -1,10 +1,12 @@
 """Development helper for rerun-sdk editable installs."""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
 
-def init():
+def init() -> None:
     """
     Sitecustomize entrypoint that sets RERUN_CLI_PATH.
 
