@@ -1,9 +1,14 @@
 #![cfg(feature = "testing")]
+#![expect(clippy::unwrap_used)] // Fine for tests
 
+use re_chunk::Chunk;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
+use re_log_encoding::RrdManifestBuilder;
 use re_log_types::example_components::{MyPoint, MyPoints};
-use re_log_types::{EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr};
+use re_log_types::{
+    EntityPath, StoreId, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr,
+};
 use re_sdk_types::archetypes::Points2D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
@@ -236,6 +241,132 @@ pub fn test_focused_item_is_focused() {
     );
 }
 
+#[test]
+fn with_unloaded_chunks() {
+    TimePanel::ensure_registered_subscribers();
+
+    let mut test_context = TestContext::new();
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
+    );
+
+    let mut chunks = create_chunks();
+
+    // Add manifest with unloaded chunks (chunks that exist in manifest but not in the store)
+    let rrd_manifest = build_manifest_with_unloaded_chunks(test_context.active_store_id(), &chunks);
+    test_context.add_rrd_manifest(rrd_manifest);
+
+    let height = 250.0;
+    let mut snapshot_results = SnapshotResults::new();
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        height,
+        false,
+        "time_panel_only_unloaded_chunks",
+        &mut snapshot_results,
+    );
+
+    // Load some chunks in the list.
+    test_context.add_chunks(chunks.drain(..6));
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        height,
+        false,
+        "time_panel_partially_unloaded_chunks",
+        &mut snapshot_results,
+    );
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTime(TimeReal::from(5))],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        height,
+        false,
+        "time_panel_loading_unloaded_chunks",
+        &mut snapshot_results,
+    );
+}
+
+fn create_chunk(
+    entity_path: impl Into<EntityPath>,
+    timeline: Timeline,
+    row_times: impl IntoIterator<Item = i64>,
+) -> Chunk {
+    let mut builder = Chunk::builder(entity_path);
+
+    for time in row_times {
+        builder = builder.with_archetype(
+            RowId::new(),
+            [(
+                timeline,
+                TimeInt::try_from(time).expect("time must be valid"),
+            )],
+            &Points2D::new([[0.0, 0.0]]),
+        );
+    }
+
+    builder.build().unwrap()
+}
+
+fn create_chunks() -> Vec<Chunk> {
+    let timeline_a = Timeline::new("timeline_a", TimeType::Sequence);
+    let timeline_b = Timeline::new("timeline_b", TimeType::Sequence);
+
+    vec![
+        // will be loaded
+        create_chunk("/parent_with_data/of/unloaded0", timeline_a, [0]),
+        create_chunk("/some_entity", timeline_a, [1, 2]),
+        create_chunk("/parent_with_data/of/unloaded1", timeline_a, 2..=10),
+        create_chunk("/parent_with_data/of/unloaded3", timeline_a, [5]),
+        create_chunk("/timeline_a_only", timeline_a, [5, 8]),
+        create_chunk("/some_entity", timeline_a, [5, 6]),
+        // will stay unloaded
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, 4..=6),
+        create_chunk("/parent_with_data/of/unloaded4", timeline_a, [10]),
+        create_chunk("/timeline_b_only", timeline_b, [5, 8]),
+        create_chunk("/some_entity", timeline_a, [9, 10]),
+    ]
+}
+
+fn build_manifest_with_unloaded_chunks(
+    store_id: StoreId,
+    chunks: &[Chunk],
+) -> re_log_encoding::RrdManifest {
+    let mut builder = RrdManifestBuilder::default();
+    let mut byte_offset = 0u64;
+
+    for chunk in chunks {
+        let arrow_msg = chunk.to_arrow_msg().unwrap();
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
+
+        // Use mock byte sizes for testing (actual values only matter for file-based loading)
+        let chunk_byte_size = 1000u64;
+        let chunk_byte_size_uncompressed = 2000u64;
+
+        let byte_span = re_span::Span {
+            start: byte_offset,
+            len: chunk_byte_size,
+        };
+
+        builder
+            .append(&chunk_batch, byte_span, chunk_byte_size_uncompressed)
+            .unwrap();
+
+        byte_offset += chunk_byte_size;
+    }
+
+    builder.build(store_id).unwrap()
+}
+
 pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {
     let timeline_a = "timeline_a";
     let timeline_b = "timeline_b";
@@ -278,7 +409,8 @@ pub fn log_data(
     timeline: &str,
     time: i64,
 ) {
-    test_context.log_entity(entity_path.into(), |builder| {
+    let entity_path = entity_path.into();
+    test_context.log_entity(entity_path, |builder| {
         builder.with_archetype(
             RowId::new(),
             [(

@@ -242,6 +242,7 @@ pub fn loop_selection_ui(
         time_ctrl,
         time_ranges_ui,
         ui,
+        time_area_painter,
         timeline_rect.y_range(),
         Rangef::new(timeline_rect.top(), time_area_painter.clip_rect().bottom()),
         time_commands,
@@ -252,6 +253,7 @@ fn paint_loop_selection(
     time_ctrl: &TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
+    time_area_painter: &egui::Painter,
     top_y_range: Rangef,
     full_y_range: Rangef,
     time_commands: &[TimeControlCommand],
@@ -298,13 +300,11 @@ fn paint_loop_selection(
 
     let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
     if is_active {
-        ui.painter()
-            .rect_filled(full_rect, corner_radius, full_color);
+        time_area_painter.rect_filled(full_rect, corner_radius, full_color);
     } else {
-        ui.painter()
-            .rect_filled(top_rect, corner_radius, full_color);
+        time_area_painter.rect_filled(top_rect, corner_radius, full_color);
 
-        ui.painter().rect_filled(bottom_rect, 0.0, inactive_color);
+        time_area_painter.rect_filled(bottom_rect, 0.0, inactive_color);
     }
 
     None
