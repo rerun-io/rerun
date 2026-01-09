@@ -39,6 +39,9 @@ pub async fn dataset_ui_test() {
         .type_text(&format!("rerun+http://localhost:{}", server.port()));
     harness.run_ok();
 
+    harness.get_by_label("No authentication").click();
+    harness.run_ok();
+
     harness.get_by_label("Add").click();
     harness.run_ok();
 
