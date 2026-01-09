@@ -232,28 +232,7 @@ impl ChunkStore {
             let (elected_chunk, chunk_or_compacted) = {
                 re_tracing::profile_scope!("election");
 
-                let elected_chunk = if chunk
-                    .components()
-                    .contains_key(&"VideoStream:sample".into())
-                {
-                    // TODO(RR-3212):
-                    //
-                    // The video decoder does not support overlapping chunks yet, and the
-                    // combination of chunk splitting and chunk merging during compaction can
-                    // easily lead to chunks that end up overlapping (hint: think about what
-                    // happens when you split a bunch of chunks multiple times, and then later on
-                    // the compaction system realizes that it can merges those back into one bigger
-                    // chunk while still staying under max_rows/max_size budget).
-                    //
-                    // To prevent that situation from happening, and until we implement support for
-                    // overlapping chunks in the decoder itself, we simply disable compaction for
-                    // video samples.
-                    // Because video samples are already large by nature, we still want to do splitting,
-                    // but we can live with the lack of merge for a while.
-                    None
-                } else {
-                    self.find_and_elect_compaction_candidate(chunk)
-                };
+                let elected_chunk = self.find_and_elect_compaction_candidate(chunk);
 
                 let chunk_or_compacted = if let Some(elected_chunk) = &elected_chunk {
                     let chunk_rowid_min = chunk.row_id_range().map(|(min, _)| min);
