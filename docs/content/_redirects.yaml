@@ -73,7 +73,6 @@ howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
 howto/get-data-out: howto/query-and-transform/get-data-out
-howto/integrations: howto/integrations/embed-notebooks
 howto/limit-ram: howto/visualization/limit-ram
 howto/logging: howto/logging-and-ingestion/send-columns
 howto/mcap: howto/logging-and-ingestion/mcap
