@@ -54,7 +54,7 @@ Then, we install the official [URDF dataloader](https://github.com/rerun-io/reru
 
 ```rust
 // Rerun will find the dataloader in the `PATH` and use it to log `arm.urdf`.
-rec.log_file_from_path("arm.urdf", None, false).unwrap();
+rec.log_file_from_path("arm.urdf", None, None, false).unwrap();
 
 // Sets the position of the arm and rotates it 180 degrees.
 rec.log(

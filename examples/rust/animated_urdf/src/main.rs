@@ -30,7 +30,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     let urdf_path = "examples/rust/animated_urdf/data/so100.urdf";
 
     // Log the URDF file one, as a static resource:
-    rec.log_file_from_path(urdf_path, None, true)?;
+    rec.log_file_from_path(urdf_path, None, None, true)?;
 
     // Load the URDF tree structure into memory:
     let urdf = UrdfTree::from_file_path(urdf_path)?;

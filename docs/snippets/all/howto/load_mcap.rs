@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_load_mcap").spawn()?;
 
     // Load the MCAP file
-    rec.log_file_from_path(path_to_mcap, None, false)?;
+    rec.log_file_from_path(path_to_mcap, None, None, false)?;
 
     Ok(())
 }
