@@ -50,7 +50,7 @@ jobs:
         id: set-matrix
         run: |
           # replace "${{RUN_ID}}" with ${{ github.run_id }}, and parse as json
-          echo "matrix=$(sed 's/\${{RUN_ID}}/${{ github.run_id }}/g' ./.github/workflows/cpp_matrix_full.json | jq -c .)" >> $GITHUB_OUTPUT
+          echo "matrix=$(sed 's/\_RUN_ID_/${{ github.run_id }}/g' ./.github/workflows/cpp_matrix_full.json | jq -c .)" >> $GITHUB_OUTPUT
 
   cpp-tests:
     name: C++ build & test - ${{ matrix.name }}
