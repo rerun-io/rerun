@@ -150,7 +150,7 @@ jobs:
         include:
           - runs_on: "macos-15-xlarge"
             name: "macos"
-          - runs_on: "runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
+          - runs_on: "runs-on=${{ github.run_id }}/runner=x64-windows-large/image=windows22-full-x64/extras=s3-cache"
             name: "windows"
 
     if: ${{ inputs.CHANNEL == 'main' }}
