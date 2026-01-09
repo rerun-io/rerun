@@ -614,7 +614,7 @@ impl ChunkStore {
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
 /// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct QueryResults {
     /// The relevant *physical* chunks that were found for this query.
     ///
@@ -1085,4 +1085,199 @@ impl ChunkStore {
     }
 }
 
-// TODO: can we at least get some basic tests going for missing chunks?
+#[test]
+fn partial_data_basics() {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::external::re_tuid::Tuid;
+    use re_log_types::{EntityPath, TimePoint, Timeline};
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        crate::ChunkStoreConfig::ALL_DISABLED,
+    );
+
+    let entity_path: EntityPath = "some_entity".into();
+
+    let timeline_frame = Timeline::new_sequence("frame");
+    let timepoint1 = TimePoint::from_iter([(timeline_frame, 1)]);
+    let timepoint2 = TimePoint::from_iter([(timeline_frame, 2)]);
+    let timepoint3 = TimePoint::from_iter([(timeline_frame, 3)]);
+
+    let point1 = MyPoint::new(1.0, 1.0);
+    let point2 = MyPoint::new(2.0, 2.0);
+    let point3 = MyPoint::new(3.0, 3.0);
+
+    fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {
+        let mut chunk_id = re_chunk::ChunkId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+        move || {
+            chunk_id = chunk_id.next();
+            chunk_id
+        }
+    }
+
+    let mut next_chunk_id = next_chunk_id_generator(0x1337);
+
+    let chunk1 = Arc::new(
+        Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                timepoint1.clone(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
+            .build()
+            .unwrap(),
+    );
+    let chunk2 = Arc::new(
+        Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                timepoint2.clone(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
+            .build()
+            .unwrap(),
+    );
+    let chunk3 = Arc::new(
+        Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                timepoint3.clone(),
+                (MyPoints::descriptor_points(), &[point3]),
+            )
+            .build()
+            .unwrap(),
+    );
+
+    {
+        let results = store.latest_at_relevant_chunks(
+            &LatestAtQuery::new(*timeline_frame.name(), 3),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        assert!(results.is_empty());
+
+        let results = store.range_relevant_chunks(
+            &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        assert!(results.is_empty());
+    }
+
+    store.insert_chunk(&chunk1).unwrap();
+    store.insert_chunk(&chunk2).unwrap();
+    store.insert_chunk(&chunk3).unwrap();
+
+    {
+        let results = store.latest_at_relevant_chunks(
+            &LatestAtQuery::new(*timeline_frame.name(), 3),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk3.clone()],
+            missing: vec![],
+        };
+        assert_eq!(expected, results);
+
+        let results = store.range_relevant_chunks(
+            &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
+            missing: vec![],
+        };
+        assert_eq!(expected, results);
+    }
+
+    store.gc(&crate::GarbageCollectionOptions {
+        target: crate::GarbageCollectionTarget::Everything,
+        time_budget: std::time::Duration::MAX,
+        protect_latest: 1,
+        protected_time_ranges: Default::default(),
+        furthest_from: None,
+    });
+
+    {
+        let results = store.latest_at_relevant_chunks(
+            &LatestAtQuery::new(*timeline_frame.name(), 3),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk3.clone()],
+            missing: vec![],
+        };
+        assert_eq!(expected, results);
+
+        let results = store.range_relevant_chunks(
+            &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk3.clone()],
+            missing: vec![chunk1.id(), chunk2.id()],
+        };
+        assert_eq!(expected, results);
+    }
+
+    store.gc(&crate::GarbageCollectionOptions::gc_everything());
+
+    {
+        let results = store.latest_at_relevant_chunks(
+            &LatestAtQuery::new(*timeline_frame.name(), 3),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![],
+            missing: vec![chunk3.id()],
+        };
+        assert_eq!(expected, results);
+
+        let results = store.range_relevant_chunks(
+            &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![],
+            missing: vec![chunk1.id(), chunk2.id(), chunk3.id()],
+        };
+        assert_eq!(expected, results);
+    }
+
+    store.insert_chunk(&chunk1).unwrap();
+    store.insert_chunk(&chunk2).unwrap();
+    store.insert_chunk(&chunk3).unwrap();
+
+    {
+        let results = store.latest_at_relevant_chunks(
+            &LatestAtQuery::new(*timeline_frame.name(), 3),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk3.clone()],
+            missing: vec![],
+        };
+        assert_eq!(expected, results);
+
+        let results = store.range_relevant_chunks(
+            &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
+            &entity_path,
+            MyPoints::descriptor_points().component,
+        );
+        let expected = QueryResults {
+            chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
+            missing: vec![],
+        };
+        assert_eq!(expected, results);
+    }
+}
