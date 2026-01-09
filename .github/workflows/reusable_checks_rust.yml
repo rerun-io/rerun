@@ -190,7 +190,7 @@ jobs:
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: true
+          cache: false
           stripdown: true
 
       - name: Inspect Vulkan SDK
