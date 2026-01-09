@@ -1,3 +1,7 @@
+//! The goal of this utility is to create non-overlapping ranges without gaps that are loaded/unloaded
+//! from the perspective of a latest-at query from a list of chunk time ranges. While also prioritizing
+//! unloaded chunks.
+
 use std::{
     collections::BinaryHeap,
     ops::{Deref, DerefMut},
@@ -75,12 +79,11 @@ impl Ranges {
             return;
         };
 
-        // We handle merging ranges differently depending on their state. Which we use to
-        // prioritize showing loaded ranges.
+        // We handle merging ranges differently depending on their state.
         //
         // The goal here is to both prioritize showing unloaded ranges, and have no gaps
-        // between ranges.
-        match last_range.loaded.cmp(&range.loaded) {
+        // between ranges. For gaps we extend the last state since we want it to represent what ranges a latest at query has available.
+        match (last_range.loaded, range.loaded) {
             // Equal states for both ranges, combine them.
             //
             // examples:
@@ -99,7 +102,7 @@ impl Ranges {
             // new last_range: |---------loaded----------|
             //
             // ```
-            std::cmp::Ordering::Equal => {
+            (true, true) | (false, false) => {
                 last_range.max = last_range.max.max(range.max);
             }
             // The last state should be prioritized
@@ -129,9 +132,9 @@ impl Ranges {
             // new last range: |--unloaded--|
             //      new range:              |loaded|
             // ```
-            std::cmp::Ordering::Less => {
+            (false, true) => {
                 if last_range.max <= range.min {
-                    // To not leave any gaps between states, expand the prioritized last state
+                    // To not leave any gaps between states, expand the last state
                     last_range.max = range.min;
                     self.new.push(range);
                 } else if last_range.max < range.max {
@@ -168,10 +171,10 @@ impl Ranges {
             //          range:              |unloaded|
             //
             // result:
-            // new last_range: |loaded|
-            //      new range:        |---unloaded---|
+            // new last_range: |---loaded---|
+            //      new range:              |unloaded|
             // ```
-            std::cmp::Ordering::Greater => {
+            (true, false) => {
                 if range.min <= last_range.max {
                     // To not have overlapping states, start the last state at the end of the prioritized new state
                     if range.max < last_range.max {
@@ -190,9 +193,9 @@ impl Ranges {
                         self.new.push(range);
                     }
                 } else {
-                    // To not leave any gaps between states, expand the prioritized new state
-                    // to start at the end of the last state
-                    range.min = last_range.max;
+                    // To not leave any gaps between states, expand the last
+                    // state to end at the start of the current state
+                    last_range.max = range.max;
                     self.new.push(range);
                 }
             }

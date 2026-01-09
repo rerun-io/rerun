@@ -1,13 +1,14 @@
 #![cfg(feature = "testing")]
 #![expect(clippy::unwrap_used)] // Fine for tests
 
-use re_chunk::{Chunk, ChunkId};
+use re_chunk::Chunk;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_encoding::RrdManifestBuilder;
 use re_log_types::example_components::{MyPoint, MyPoints};
-use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr};
+use re_log_types::{
+    EntityPath, StoreId, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr,
+};
 use re_sdk_types::archetypes::Points2D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
@@ -251,154 +252,99 @@ fn with_unloaded_chunks() {
         [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
     );
 
+    let mut chunks = create_chunks();
+
     // Add manifest with unloaded chunks (chunks that exist in manifest but not in the store)
-    let rrd_manifest = build_manifest_with_unloaded_chunks(test_context.active_store_id());
+    let rrd_manifest = build_manifest_with_unloaded_chunks(test_context.active_store_id(), &chunks);
     test_context.add_rrd_manifest(rrd_manifest);
 
-    // Also log some loaded data for comparison
-    log_data_for_various_entity_kinds_tests(&mut test_context);
-
-    let time_panel = TimePanel::default();
-
+    let height = 250.0;
     let mut snapshot_results = SnapshotResults::new();
     run_time_panel_and_save_snapshot(
         &test_context,
-        time_panel,
-        450.0,
+        TimePanel::default(),
+        height,
         false,
-        "time_panel_unloaded_chunks",
+        "time_panel_only_unloaded_chunks",
+        &mut snapshot_results,
+    );
+
+    // Load some chunks in the list.
+    test_context.add_chunks(chunks.drain(..6));
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        height,
+        false,
+        "time_panel_partially_unloaded_chunks",
+        &mut snapshot_results,
+    );
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetTime(TimeReal::from(5))],
+    );
+
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        height,
+        false,
+        "time_panel_loading_unloaded_chunks",
         &mut snapshot_results,
     );
 }
 
-fn build_manifest_with_unloaded_chunks(store_id: StoreId) -> re_log_encoding::RrdManifest {
-    let mut builder = RrdManifestBuilder::default();
-    let mut byte_offset = 0u64;
+fn create_chunk(
+    entity_path: impl Into<EntityPath>,
+    timeline: Timeline,
+    row_times: impl IntoIterator<Item = i64>,
+) -> Chunk {
+    let mut builder = Chunk::builder(entity_path);
 
-    // Helper to generate sequential chunk IDs
-    let mut next_chunk_id = {
-        let mut chunk_id = ChunkId::from_tuid(Tuid::from_nanos_and_inc(999, 0));
-        move || {
-            chunk_id = chunk_id.next();
-            chunk_id
-        }
-    };
+    for time in row_times {
+        builder = builder.with_archetype(
+            RowId::new(),
+            [(
+                timeline,
+                TimeInt::try_from(time).expect("time must be valid"),
+            )],
+            &Points2D::new([[0.0, 0.0]]),
+        );
+    }
 
-    let mut next_row_id = {
-        let mut row_id = RowId::from_tuid(Tuid::from_nanos_and_inc(999, 0));
-        move || {
-            row_id = row_id.next();
-            row_id
-        }
-    };
+    builder.build().unwrap()
+}
 
+fn create_chunks() -> Vec<Chunk> {
     let timeline_a = Timeline::new("timeline_a", TimeType::Sequence);
     let timeline_b = Timeline::new("timeline_b", TimeType::Sequence);
 
-    // Create chunks that will be in the manifest but NOT loaded into the store
-    let unloaded_chunks = [
-        Chunk::builder_with_id(next_chunk_id(), "/parent_with_data/of/unloaded1")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(2))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(10))],
-                &Points2D::new([[1.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/parent_with_data/of/unloaded2")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(4))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(6))],
-                &Points2D::new([[1.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/parent_with_data/of/unloaded3")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(5))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/timeline_a_only")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(5))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(8))],
-                &Points2D::new([[1.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/timeline_b_only")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_b, TimeInt::new_temporal(5))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_b, TimeInt::new_temporal(8))],
-                &Points2D::new([[1.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/unloaded_entity")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(2))],
-                &Points2D::new([[0.0, 1.0]; 10]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(3))],
-                &Points2D::new([[1.0, 0.0]; 10]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/unloaded_entity")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(5))],
-                &Points2D::new([[0.0, 1.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(6))],
-                &Points2D::new([[1.0, 1.0]]),
-            )
-            .build()
-            .unwrap(),
-        Chunk::builder_with_id(next_chunk_id(), "/unloaded_entity")
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(9))],
-                &Points2D::new([[1.0, 2.0]]),
-            )
-            .with_archetype(
-                next_row_id(),
-                [(timeline_a, TimeInt::new_temporal(10))],
-                &Points2D::new([[2.0, 2.0]]),
-            )
-            .build()
-            .unwrap(),
-    ];
+    vec![
+        // will be loaded
+        create_chunk("/parent_with_data/of/unloaded0", timeline_a, [0]),
+        create_chunk("/some_entity", timeline_a, [1, 2]),
+        create_chunk("/parent_with_data/of/unloaded1", timeline_a, 2..=10),
+        create_chunk("/parent_with_data/of/unloaded3", timeline_a, [5]),
+        create_chunk("/timeline_a_only", timeline_a, [5, 8]),
+        create_chunk("/some_entity", timeline_a, [5, 6]),
+        // will stay unloaded
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, 4..=6),
+        create_chunk("/parent_with_data/of/unloaded4", timeline_a, [10]),
+        create_chunk("/timeline_b_only", timeline_b, [5, 8]),
+        create_chunk("/some_entity", timeline_a, [9, 10]),
+    ]
+}
 
-    for chunk in &unloaded_chunks {
+fn build_manifest_with_unloaded_chunks(
+    store_id: StoreId,
+    chunks: &[Chunk],
+) -> re_log_encoding::RrdManifest {
+    let mut builder = RrdManifestBuilder::default();
+    let mut byte_offset = 0u64;
+
+    for chunk in chunks {
         let arrow_msg = chunk.to_arrow_msg().unwrap();
         let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
 
@@ -463,7 +409,8 @@ pub fn log_data(
     timeline: &str,
     time: i64,
 ) {
-    test_context.log_entity(entity_path.into(), |builder| {
+    let entity_path = entity_path.into();
+    test_context.log_entity(entity_path, |builder| {
         builder.with_archetype(
             RowId::new(),
             [(

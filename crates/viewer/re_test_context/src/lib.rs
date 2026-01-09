@@ -462,6 +462,14 @@ impl TestContext {
             .expect("chunk should be successfully added");
     }
 
+    pub fn add_chunks(&mut self, chunks: impl Iterator<Item = Chunk>) {
+        let store_hub = self.store_hub.get_mut();
+        let active_recording = store_hub.active_recording_mut().unwrap();
+        for chunk in chunks {
+            active_recording.add_chunk(&Arc::new(chunk)).unwrap();
+        }
+    }
+
     pub fn add_rrd_manifest(&mut self, rrd_manifest: re_log_encoding::RrdManifest) {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.active_recording_mut().unwrap();
