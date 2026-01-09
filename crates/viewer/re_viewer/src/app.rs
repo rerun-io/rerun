@@ -3080,7 +3080,7 @@ impl App {
         if let Some(recording) = store_hub.active_recording_mut()
             && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
         {
-            crate::prefetch_chunks::prefetch_chunks(
+            crate::prefetch_chunks::prefetch_chunks_for_active_recording(
                 &self.egui_ctx,
                 &self.startup_options,
                 recording,
