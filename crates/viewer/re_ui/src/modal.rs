@@ -1,4 +1,4 @@
-use eframe::emath::NumExt as _;
+use eframe::emath::{NumExt as _, Vec2};
 use egui::{Frame, ModalResponse};
 
 use crate::context_ext::ContextExt as _;
@@ -382,7 +382,15 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     // The Uis response at this point will conveniently contain last frame's rect
     let last_rect = ui.response().rect;
 
-    let screen_size = ui.ctx().content_rect().size();
+    #[expect(clippy::useless_let_if_seq)]
+    let mut screen_size = ui.ctx().content_rect().size();
+    if ui.is_sizing_pass() {
+        // On the very first frame, there will be a sizing pass and the max_rect that frame might
+        // be bigger than necessary. We don't want to lock to that size, so we need to ignore it.
+        // To ignore, we can't just return here, but we need to skip the next frame as well.
+        // The easiest way to do this is force a reset next frame, by changing the screen size:
+        screen_size = Vec2::ZERO;
+    }
 
     let id = ui.id().with("prevent_shrinking");
     let screen_size_changed = ui.data_mut(|d| {

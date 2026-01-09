@@ -2,10 +2,13 @@ use crate::{DesignTokens, UiExt as _};
 use egui::style::WidgetVisuals;
 use egui::{Button, CornerRadius, IntoAtoms, Style};
 
+#[derive(Default, Clone, Copy)]
 pub enum Variant {
     Primary,
     Secondary,
+    #[default]
     Ghost,
+    Outlined,
 }
 
 pub enum Size {
@@ -63,6 +66,12 @@ impl Variant {
             Self::Ghost => {
                 // The default button
             }
+            Self::Outlined => {
+                all_visuals(style, |vis| {
+                    vis.bg_stroke.color = tokens.text_default;
+                    vis.bg_stroke.width = 1.0;
+                });
+            }
         }
     }
 }
@@ -75,7 +84,7 @@ pub struct ReButton<'a> {
 
 impl<'a> ReButton<'a> {
     pub fn new(atoms: impl IntoAtoms<'a>) -> Self {
-        Self::from_button(Button::new(atoms))
+        Self::from_button(Button::new(atoms).image_tint_follows_text_color(true))
     }
 
     pub fn from_button(button: Button<'a>) -> Self {
@@ -101,6 +110,16 @@ impl<'a> ReButton<'a> {
         self
     }
 
+    pub fn outlined(mut self) -> Self {
+        self.variant = Variant::Outlined;
+        self
+    }
+
+    pub fn variant(mut self, variant: Variant) -> Self {
+        self.variant = variant;
+        self
+    }
+
     pub fn small(mut self) -> Self {
         self.size = Size::Small;
         self
@@ -108,6 +127,11 @@ impl<'a> ReButton<'a> {
 
     pub fn normal(mut self) -> Self {
         self.size = Size::Normal;
+        self
+    }
+
+    pub fn size(mut self, size: Size) -> Self {
+        self.size = size;
         self
     }
 }

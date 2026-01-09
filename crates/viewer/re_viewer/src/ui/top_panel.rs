@@ -484,7 +484,7 @@ fn panel_buttons_r2l(
                         ui.spacing_mut().item_spacing.y = 2.0;
                         ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
                         if ui
-                            .link(RichText::new("Logout").color(ui.tokens().text_subdued))
+                            .link(RichText::new("Log out").color(ui.tokens().text_subdued))
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);

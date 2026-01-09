@@ -203,23 +203,8 @@ impl ConnectionRegistryHandle {
         .unique();
 
         let (raw_client, successful_token) =
-            match Self::try_create_raw_client(origin.clone(), credentials_to_try).await {
-                Ok(res) => res,
-                Err(err) => {
-                    // if we had a saved token, it doesn't work, so we forget about it
-                    if err.is_client_credentials_error() {
-                        let mut inner = self.inner.write().await;
+            Self::try_create_raw_client(origin.clone(), credentials_to_try).await?;
 
-                        // make sure that we're not deleting some token that another thread might
-                        // have just set
-                        if inner.saved_credentials.get(&origin) == saved_credentials.as_ref() {
-                            inner.saved_credentials.remove(&origin);
-                        }
-                    }
-
-                    return Err(err);
-                }
-            };
         let client = ConnectionClient::new(raw_client.clone());
 
         // We have a successful client, so we cache it and remember about the successful token.
