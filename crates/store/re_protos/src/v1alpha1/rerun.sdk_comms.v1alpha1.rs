@@ -111,6 +111,36 @@ impl ::prost::Name for ReadTablesResponse {
         "/rerun.sdk_comms.v1alpha1.ReadTablesResponse".into()
     }
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SaveScreenshotRequest {
+    /// Optional view ID to screenshot. If omitted, screenshots the entire viewer.
+    #[prost(string, optional, tag = "1")]
+    pub view_id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, tag = "2")]
+    pub file_path: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SaveScreenshotRequest {
+    const NAME: &'static str = "SaveScreenshotRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SaveScreenshotRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SaveScreenshotResponse {}
+impl ::prost::Name for SaveScreenshotResponse {
+    const NAME: &'static str = "SaveScreenshotResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.SaveScreenshotResponse".into()
+    }
+}
 /// Generated client implementations.
 pub mod message_proxy_service_client {
     #![allow(
@@ -281,6 +311,25 @@ pub mod message_proxy_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn save_screenshot(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SaveScreenshotRequest>,
+        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/SaveScreenshot",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.MessageProxyService",
+                "SaveScreenshot",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -324,6 +373,10 @@ pub mod message_proxy_service_server {
             &self,
             request: tonic::Request<super::ReadTablesRequest>,
         ) -> std::result::Result<tonic::Response<Self::ReadTablesStream>, tonic::Status>;
+        async fn save_screenshot(
+            &self,
+            request: tonic::Request<super::SaveScreenshotRequest>,
+        ) -> std::result::Result<tonic::Response<super::SaveScreenshotResponse>, tonic::Status>;
     }
     /// Simple buffer for messages between SDKs and viewers.
     ///
@@ -574,6 +627,48 @@ pub mod message_proxy_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/SaveScreenshot" => {
+                    #[allow(non_camel_case_types)]
+                    struct SaveScreenshotSvc<T: MessageProxyService>(pub Arc<T>);
+                    impl<T: MessageProxyService>
+                        tonic::server::UnaryService<super::SaveScreenshotRequest>
+                        for SaveScreenshotSvc<T>
+                    {
+                        type Response = super::SaveScreenshotResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SaveScreenshotRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MessageProxyService>::save_screenshot(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SaveScreenshotSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

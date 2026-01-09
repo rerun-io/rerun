@@ -47,6 +47,21 @@ impl PyViewerClient {
 
         conn.send_table(py, id, table)
     }
+
+    /// Saves a screenshot to a file.
+    ///
+    /// If `view_id` is provided, screenshots that specific view.
+    /// If `view_id` is None, screenshots the entire viewer.
+    fn save_screenshot(
+        self_: Py<Self>,
+        file_path: String,
+        view_id: Option<String>,
+        py: Python<'_>,
+    ) -> PyResult<()> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        conn.save_screenshot(py, file_path, view_id)
+    }
 }
 
 /// Connection handle to the message proxy service.
@@ -80,6 +95,25 @@ impl ViewerConnectionHandle {
                 .write_table(re_protos::sdk_comms::v1alpha1::WriteTableRequest {
                     id: Some(re_protos::common::v1alpha1::TableId { id }),
                     data: Some(table.0.into()),
+                }),
+        )
+        .map_err(to_py_err)?;
+
+        Ok(())
+    }
+
+    fn save_screenshot(
+        &mut self,
+        py: Python<'_>,
+        file_path: String,
+        view_id: Option<String>,
+    ) -> PyResult<()> {
+        wait_for_future(
+            py,
+            self.client
+                .save_screenshot(re_protos::sdk_comms::v1alpha1::SaveScreenshotRequest {
+                    view_id,
+                    file_path,
                 }),
         )
         .map_err(to_py_err)?;

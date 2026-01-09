@@ -1266,6 +1266,19 @@ class ViewerClient:
         A table is represented as a dataframe defined by an Arrow record batch.
         """
 
+    def save_screenshot(self, file_path: str, view_id: str | None = None) -> None:
+        """
+        Saves a screenshot to a file.
+
+        Parameters
+        ----------
+        file_path : str
+            The path where the screenshot will be saved.
+        view_id : str | None
+            Optional view ID to screenshot. If None, screenshots the entire viewer.
+
+        """
+
 class NotFoundError(Exception):
     """Raised when the requested resource is not found."""
 
