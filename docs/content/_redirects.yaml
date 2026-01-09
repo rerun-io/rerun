@@ -69,7 +69,7 @@ reference/viewer: reference/viewer/overview
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
 howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
-howto/dataframe-api: howto/get-data-out
+howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
 howto/get-data-out: howto/query-and-transform/get-data-out
@@ -80,9 +80,9 @@ howto/mcap: howto/logging-and-ingestion/mcap
 howto/notebook: howto/integrations/embed-notebooks
 howto/optimize-chunks: howto/logging-and-ingestion/optimize-chunks
 howto/ros2-nav-turtlebot: howto/integrations/ros2-nav-turtlebot
-howto/send_columns: howto/logging/send-columns
-howto/shared-recordings: howto/logging/shared-recordings
-howto/short-lived-entities: howto/logging/clears
+howto/send_columns: howto/logging-and-ingestion/send-columns
+howto/shared-recordings: howto/logging-and-ingestion/shared-recordings
+howto/short-lived-entities: howto/logging-and-ingestion/clears
 howto/urdf: howto/logging-and-ingestion/urdf
 howto/using-native-loggers: howto/integrations/integrate-host-loggers
 
@@ -95,5 +95,5 @@ howto/logging/send-table: howto/logging-and-ingestion/send-table
 howto/logging/shared-recordings: howto/logging-and-ingestion/shared-recordings
 
 # Howto - extend subfolder
-howto/extend/custom-data: howto/logging/custom-data
+howto/extend/custom-data: howto/logging-and-ingestion/custom-data
 howto/extend/extend-ui: howto/visualization/extend-ui
