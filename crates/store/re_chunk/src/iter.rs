@@ -16,6 +16,7 @@ use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
 use re_types_core::{ArrowString, Component, ComponentIdentifier};
 
+use crate::cast::error_on_downcast_failure;
 use crate::{Chunk, RowId, TimeColumn};
 
 // ---
@@ -932,22 +933,6 @@ impl Chunk {
             values: Arc::new(values),
             offsets: Either::Right(self.iter_component_offsets(component)),
         }
-    }
-}
-
-fn error_on_downcast_failure(
-    component: ComponentIdentifier,
-    target: &str,
-    actual: &arrow::datatypes::DataType,
-) {
-    if cfg!(debug_assertions) {
-        panic!(
-            "[DEBUG ASSERT] downcast failed to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
-        );
-    } else {
-        re_log::error_once!(
-            "downcast failed to {target} for {component}. Array data type was {actual:?}. data discarded"
-        );
     }
 }
 

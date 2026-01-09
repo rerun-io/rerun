@@ -239,3 +239,6 @@ pub const OPTION: Icon = icon_from_path!("../data/icons/option.svg");
 // Action buttons:
 pub const COPY: Icon = icon_from_path!("../data/icons/copy.svg");
 pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");
+
+// Other non-icon-sized images:
+pub const DROPDOWN_ARROW: Icon = icon_from_path!("../data/icons/dropdown_arrow.svg");
