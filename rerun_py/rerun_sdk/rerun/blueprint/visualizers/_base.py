@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, overload, runtime_checkable
 
 from ..._baseclasses import DescribedComponentBatch
 
@@ -38,6 +38,8 @@ class Visualizer:
 class VisualizableArchetype(Protocol):
     """Protocol for archetypes that can be visualized."""
 
-    def visualizer(self) -> Visualizer:
+    # Note that we allow arbitrary args and kwargs so that implementors
+    # can extend this method for setting up component mappings.
+    def visualizer(self, *args: Any, **kwargs: Any) -> Visualizer:
         """Creates a visualizer from this archetype."""
         ...
