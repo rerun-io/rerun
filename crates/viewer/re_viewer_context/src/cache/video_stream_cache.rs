@@ -135,10 +135,8 @@ impl VideoStreamCache {
                 occupied_entry.into_mut()
             }
             std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-                let VideoData {
-                    video_descr,
-                    known_chunk_offsets,
-                } = load_video_data_from_chunks(store, entity_path, timeline)?;
+                let (video_descr, known_chunk_offsets) =
+                    load_video_data_from_chunks(store, entity_path, timeline)?;
 
                 let video = re_renderer::video::Video::load(
                     entity_path.to_string(),
@@ -300,17 +298,17 @@ impl VideoStreamCache {
     }
 }
 
-struct VideoData {
-    video_descr: re_video::VideoDataDescription,
-
-    known_chunk_offsets: BTreeMap<ChunkId, ChunkSampleRange>,
-}
-
 fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
-) -> Result<VideoData, VideoStreamProcessingError> {
+) -> Result<
+    (
+        re_video::VideoDataDescription,
+        BTreeMap<ChunkId, ChunkSampleRange>,
+    ),
+    VideoStreamProcessingError,
+> {
     re_tracing::profile_function!();
 
     let sample_component = VideoStream::descriptor_sample().component;
@@ -403,10 +401,7 @@ fn load_video_data_from_chunks(
         }
     }
 
-    Ok(VideoData {
-        video_descr,
-        known_chunk_offsets,
-    })
+    Ok((video_descr, known_chunk_offsets))
 }
 
 fn timescale_for_timeline(

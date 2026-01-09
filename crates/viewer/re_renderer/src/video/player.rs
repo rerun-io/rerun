@@ -401,8 +401,11 @@ impl VideoPlayer {
             }
             // If not, enqueue its remaining samples. This happens regularly in live video streams.
             else {
-                let range = (last_enqueued + 1)
-                    ..next_keyframe.unwrap_or_else(|| video_description.samples.next_index());
+                let keyframe_range = video_description
+                    .get_keyframe_sample_range(keyframe_idx)
+                    .ok_or(VideoPlayerError::BadData)?;
+
+                let range = (last_enqueued + 1)..keyframe_range.end;
                 self.enqueue_sample_range(video_description, &range, get_video_buffer)?;
             }
         }
@@ -523,12 +526,9 @@ impl VideoPlayer {
         keyframe_idx: KeyframeIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
-        let sample_range = video_description.keyframe_indices[keyframe_idx]
-            ..video_description
-                .keyframe_indices
-                .get(keyframe_idx + 1)
-                .copied()
-                .unwrap_or_else(|| video_description.samples.next_index());
+        let sample_range = video_description
+            .get_keyframe_sample_range(keyframe_idx)
+            .ok_or(VideoPlayerError::BadData)?;
 
         self.enqueue_sample_range(video_description, &sample_range, get_video_buffer)
     }

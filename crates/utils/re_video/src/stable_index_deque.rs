@@ -180,11 +180,6 @@ impl<T> StableIndexDeque<T> {
         self.vec.front_mut()
     }
 
-    /// See [`VecDeque::clear`].
-    pub fn clear(&mut self) {
-        self.vec.clear();
-    }
-
     /// Removes all elements with an index larger than or equal to the given index.
     ///
     /// Truncates to the deque starting to only contain data prior (!) to the given index.
@@ -339,7 +334,17 @@ impl<T> StableIndexDeque<T> {
         self.iter_indexed().skip(range_start).take(num_elements)
     }
 
-    /// Mutable version of [`Self::iter_index_range_clamped`].
+    /// Mutably iterates over an index range which is truncated to a valid range in
+    /// the list.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(0..5)).collect::<Vec<_>>(), vec![(1, &mut 1), (2, &mut 2), (3, &mut 3), (4, &mut 4)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(2..4)).collect::<Vec<_>>(), vec![(2, &mut 2), (3, &mut 3)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(3..5)).collect::<Vec<_>>(), vec![(3, &mut 3), (4, &mut 4)]);
+    /// ```
     #[inline]
     pub fn iter_index_range_clamped_mut(
         &mut self,

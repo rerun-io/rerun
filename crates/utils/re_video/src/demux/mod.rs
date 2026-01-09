@@ -221,6 +221,17 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
 }
 
 impl VideoDataDescription {
+    /// Get the range of samples which use a keyframe, including the keyframe sample itself.
+    pub fn get_keyframe_sample_range(&self, keyframe_idx: usize) -> Option<std::ops::Range<usize>> {
+        Some(
+            *self.keyframe_indices.get(keyframe_idx)?
+                ..self
+                    .keyframe_indices
+                    .get(keyframe_idx + 1)
+                    .copied()
+                    .unwrap_or_else(|| self.samples.next_index()),
+        )
+    }
     /// Checks various invariants that the video description should always uphold.
     ///
     /// Violation of any of these variants is **not** a user(-data) error, but instead an
@@ -598,7 +609,7 @@ impl VideoDataDescription {
     /// Returns `None` iff the video has no timescale.
     /// Other special cases like zero samples or single sample with unknown duration will return a zero duration.
     ///
-    /// Since this is only about present samples and not historical or future data,
+    /// Since this is only about present samples and not historical, future or missing data,
     /// the duration may shrink as samples are dropped and grow as new samples are added.
     // TODO(andreas): This makes it somewhat unsuitable for various usecases in the viewer. We should probably accumulate the max duration somewhere.
     pub fn duration(&self) -> Option<std::time::Duration> {
@@ -653,7 +664,8 @@ impl VideoDataDescription {
         })
     }
 
-    /// Determines the video timestamps of all frames inside a video, returning raw time values.
+    /// Determines the video timestamps of all present frames inside a video, returning raw time values.
+    /// Reserved sample has no timestamp information and are thus ignored.
     ///
     /// Returns None if the video has no timescale.
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
@@ -672,11 +684,12 @@ impl VideoDataDescription {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        keyframes: &[usize],
+        keyframes: &[KeyframeIndex],
         samples: &StableIndexDeque<SampleMetadataState>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
-        // First find what keyframe this decode timestamp is in.
+        // First find what keyframe this decode timestamp is in, as an optimization since
+        // we can't efficiently binary search the sample list with possible gaps.
         //
         // Keyframes will always always be [`SampleMetadataState::Present`] and
         // have a decode timestamp we can compare against.
@@ -686,7 +699,7 @@ impl VideoDataDescription {
                     .get(*p)
                     .map(|s| s.sample())
                     .inspect(|_s| {
-                        debug_assert!(_s.is_some(), "Keyframes should always be loaded");
+                        debug_assert!(_s.is_some(), "Keyframes mentioned in the keyframe lookup list should always be loaded");
                     })
                     .flatten()
                     .is_some_and(|s| s.decode_timestamp <= decode_time)
@@ -722,7 +735,7 @@ impl VideoDataDescription {
     ///
     /// The returned sample index is guaranteed to be [`SampleMetadataState::Present`].
     fn latest_sample_index_at_presentation_timestamp_internal(
-        keyframes: &[usize],
+        keyframes: &[KeyframeIndex],
         samples: &StableIndexDeque<SampleMetadataState>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
@@ -817,6 +830,7 @@ impl VideoDataDescription {
         }
     }
 
+    /// Returns the index of the keyframe for a specific sample.
     pub fn sample_keyframe_idx(&self, sample_idx: SampleIndex) -> Option<KeyframeIndex> {
         self.keyframe_indices
             .partition_point(|idx| *idx <= sample_idx)
@@ -960,7 +974,7 @@ pub struct SampleMetadata {
     /// The chunk this sample comes from.
     pub source_id: Tuid,
 
-    /// Offset and length within [`SampleMetadata::buffer`].
+    /// Offset and length within a data buffer indicated by [`SampleMetadata::source_id`].
     pub byte_span: Span<u32>,
 }
 

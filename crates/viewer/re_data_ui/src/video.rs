@@ -522,14 +522,9 @@ fn frame_info_ui(
         )
         .on_hover_text("The index of the keyframe that this sample belongs to.");
 
-        if let Some(start_sample_idx) = video_descr.keyframe_indices.get(keyframe_idx) {
-            let end_sample_idx = video_descr
-                .keyframe_indices
-                .get(keyframe_idx + 1)
-                .copied()
-                .unwrap_or_else(|| video_descr.num_samples());
-            let first_sample = video_descr.samples.get(*start_sample_idx);
-            let last_sample = video_descr.samples.get(end_sample_idx.saturating_sub(1));
+        if let Some(sample_range) = video_descr.get_keyframe_sample_range(keyframe_idx) {
+            let first_sample = video_descr.samples.get(sample_range.start);
+            let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
 
             if let Some((first_sample, last_sample)) = first_sample
                 .and_then(|s| s.sample())

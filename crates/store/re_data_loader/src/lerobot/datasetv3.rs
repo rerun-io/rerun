@@ -472,7 +472,7 @@ impl LeRobotDatasetV3 {
         let end_video_time = re_video::Time::from_secs(end_time, timescale);
 
         // Find the GOPs that contain our time range
-        let start_gop = video
+        let start_keyframe = video
             .presentation_time_keyframe_index(start_video_time)
             .unwrap_or(0);
 
@@ -482,12 +482,14 @@ impl LeRobotDatasetV3 {
             .unwrap_or_else(|| video.keyframe_indices.len());
 
         // Determine the sample range to extract from the video
-        let start_sample = video.keyframe_indices[start_gop];
+        let start_sample = video
+            .get_keyframe_sample_range(start_keyframe)
+            .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
+            .start;
         let end_sample = video
-            .keyframe_indices
-            .get(end_keyframe)
-            .copied()
-            .unwrap_or_else(|| video.samples.next_index());
+            .get_keyframe_sample_range(end_keyframe)
+            .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
+            .end;
 
         let sample_range = start_sample..end_sample;
 
