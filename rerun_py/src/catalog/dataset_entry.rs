@@ -29,7 +29,7 @@ use super::{
     PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
     PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
-use crate::catalog::entry::update_entry;
+use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
 use crate::recording::PyRecording;
 use crate::utils::wait_for_future;
@@ -85,9 +85,8 @@ impl PyDatasetEntryInternal {
         connection.delete_entry(py, self.entry_details.id)
     }
 
-    #[pyo3(signature = (*, name=None))]
-    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
-        update_entry(py, name, &mut self.entry_details, &self.client)
+    fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
+        set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
     //
