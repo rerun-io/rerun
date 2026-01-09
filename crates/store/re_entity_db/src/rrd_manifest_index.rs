@@ -13,6 +13,8 @@ use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 use crate::sorted_range_map::SortedRangeMap;
 
+mod time_range_merger;
+
 /// Errors that can occur during prefetching.
 #[derive(thiserror::Error, Debug)]
 pub enum PrefetchError {
@@ -46,6 +48,19 @@ pub enum LoadState {
 
     /// We have the chole chunk in memory.
     Loaded,
+}
+
+impl LoadState {
+    pub fn is_loaded(&self) -> bool {
+        !self.is_unloaded()
+    }
+
+    pub fn is_unloaded(&self) -> bool {
+        match self {
+            Self::Unloaded | Self::InTransit => true,
+            Self::Loaded => false,
+        }
+    }
 }
 
 /// How to calculate which chunks to prefetch.
@@ -410,37 +425,124 @@ impl RrdManifestIndex {
         )?)
     }
 
-    #[must_use]
-    pub fn time_ranges_all_chunks(
+    /// Creates an iterator of time ranges which are loaded on a specific timeline.
+    ///
+    /// The ranges are guaranteed to be ordered and non-overlapping.
+    pub fn loaded_ranges_on_timeline(
         &self,
         timeline: &Timeline,
-    ) -> Vec<(LoadState, AbsoluteTimeRange)> {
-        re_tracing::profile_function!();
+    ) -> impl Iterator<Item = AbsoluteTimeRange> {
+        let mut scratch = Vec::new();
+        let mut ranges = Vec::new();
 
-        let mut time_ranges_all_chunks = Vec::new();
-
+        // First we merge ranges for individual components, since chunks' time ranges
+        // often have gaps which we don't want to display other components' chunks
+        // loaded state in.
         for timelines in self.native_temporal_map.values() {
-            let Some(entity_component_chunks) = timelines.get(timeline) else {
+            let Some(data) = timelines.get(timeline) else {
                 continue;
             };
 
-            for chunks in entity_component_chunks.values() {
-                for (chunk_id, entry) in chunks {
-                    let RrdManifestTemporalMapEntry { time_range, .. } = entry;
+            for chunks in data.values() {
+                scratch.extend(chunks.iter().filter_map(|(c, range)| {
+                    let state = self.remote_chunk_info(c)?.state;
 
-                    let Some(info) = self.remote_chunks.get(chunk_id) else {
-                        continue;
-                    };
-                    debug_assert!(
-                        time_range.min <= time_range.max,
-                        "Unexpected negative time range in RRD manifest"
-                    );
-                    time_ranges_all_chunks.push((info.state, *time_range));
-                }
+                    Some(time_range_merger::TimeRange {
+                        range: range.time_range,
+                        loaded: state.is_loaded(),
+                    })
+                }));
+
+                ranges.extend(time_range_merger::merge_ranges(&scratch));
+
+                scratch.clear();
             }
         }
 
-        time_ranges_all_chunks
+        time_range_merger::merge_ranges(&ranges)
+            .into_iter()
+            .filter(|r| r.loaded)
+            .map(|r| r.range)
+    }
+
+    /// If `component` is some, this returns all unloaded temporal entries for that specific
+    /// component on the given timeline.
+    ///
+    /// If not, this returns all unloaded temporal entries for `entity`'s components and its
+    /// descendants' unloaded temporal entries.
+    pub fn unloaded_temporal_entries_for(
+        &self,
+        timeline: &re_chunk::Timeline,
+        entity: &re_chunk::EntityPath,
+        component: Option<re_chunk::ComponentIdentifier>,
+    ) -> Vec<RrdManifestTemporalMapEntry> {
+        re_tracing::profile_function!();
+
+        if let Some(component) = component {
+            let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
+                return Vec::new();
+            };
+
+            let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
+                return Vec::new();
+            };
+
+            let Some(component_ranges) = entity_ranges.get(&component) else {
+                return Vec::new();
+            };
+
+            component_ranges
+                .iter()
+                .filter(|(chunk, _)| self.is_chunk_unloaded(chunk))
+                .map(|(_, entry)| *entry)
+                .collect()
+        } else {
+            // If we don't have a specific component we want to include the entity's children
+            let mut res = Vec::new();
+
+            if let Some(tree) = self.entity_tree.subtree(entity) {
+                tree.visit_children_recursively(|child| {
+                    self.unloaded_temporal_entries_for_entity(&mut res, timeline, child);
+                });
+            } else {
+                #[cfg(debug_assertions)]
+                re_log::warn_once!(
+                    "[DEBUG] Missing entity tree for {entity} while fetching temporal entities"
+                );
+
+                self.unloaded_temporal_entries_for_entity(&mut res, timeline, entity);
+            }
+
+            res
+        }
+    }
+
+    /// Fills `ranges` with unloaded temporal entries for this exact entity (descendants aren't included).
+    fn unloaded_temporal_entries_for_entity(
+        &self,
+        ranges: &mut Vec<RrdManifestTemporalMapEntry>,
+        timeline: &re_chunk::Timeline,
+        entity: &re_chunk::EntityPath,
+    ) {
+        re_tracing::profile_function!();
+
+        if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
+            && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
+        {
+            for (_, entry) in entity_ranges
+                .values()
+                .flatten()
+                .filter(|(chunk, _)| self.is_chunk_unloaded(chunk))
+            {
+                ranges.push(*entry);
+            }
+        }
+    }
+
+    fn is_chunk_unloaded(&self, chunk_id: &ChunkId) -> bool {
+        self.remote_chunks
+            .get(chunk_id)
+            .is_none_or(|c| c.state.is_unloaded())
     }
 
     pub fn full_uncompressed_size(&self) -> Option<u64> {
