@@ -232,6 +232,7 @@ impl VideoDataDescription {
                     .unwrap_or_else(|| self.samples.next_index()),
         )
     }
+
     /// Checks various invariants that the video description should always uphold.
     ///
     /// Violation of any of these variants is **not** a user(-data) error, but instead an

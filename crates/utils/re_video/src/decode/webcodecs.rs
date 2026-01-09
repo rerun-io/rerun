@@ -167,6 +167,7 @@ impl WebVideoDecoder {
 
         let first_frame_pts = video_descr
             .samples
+            .iter()
             .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
