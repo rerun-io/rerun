@@ -119,10 +119,9 @@ pub fn process_depth_image_data(
     if is_3d_view {
         // In 3D views we should show depth images as a depth cloud and no textured rect.
         // For that we need a pinhole at or above that entity in the transform tree.
-        if let Some(pinhole_tree_root_info) =
-            transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
-            && let Some(world_from_view) =
-                transforms.target_from_pinhole_root(pinhole_tree_root_info)
+        let tree_root_frame = ent_context.transform_info.tree_root();
+        if let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(tree_root_frame)
+            && let Some(world_from_view) = transforms.target_from_pinhole_root(tree_root_frame)
         {
             let fill_ratio = fill_ratio.unwrap_or_default();
 

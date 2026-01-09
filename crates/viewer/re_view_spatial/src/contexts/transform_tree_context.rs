@@ -411,12 +411,16 @@ impl TransformTreeContext {
     /// Note that this may otherwise not be accessible since we allow both extrinsics and intrinsics to be
     /// on a transform between two frames, with no transform frame representing just the extrinsics.
     ///
-    /// Returns `None` if the pinhole root is not connected to the target frame or the target frame does not exist in the forest (i.e. is invalid).
+    /// Returns `None` if the path is not a pinhole root, or is not connected to the target frame or the target frame does not exist in the forest (i.e. is invalid).
     #[inline]
-    pub fn target_from_pinhole_root(
-        &self,
-        pinhole_root_info: &re_tf::PinholeTreeRoot,
-    ) -> Option<glam::DAffine3> {
+    pub fn target_from_pinhole_root(&self, frame: TransformFrameIdHash) -> Option<glam::DAffine3> {
+        let pinhole_root_info = self.pinhole_tree_root_info(frame)?;
+
+        // Special case: The pinhole _is_ the target frame
+        if self.target_frame == frame {
+            return Some(glam::DAffine3::IDENTITY);
+        }
+
         let Some(root_from_target) = self.transform_forest.root_from_frame(self.target_frame)
         else {
             // This means our target doesn't exist in the forest.
