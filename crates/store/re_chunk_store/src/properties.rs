@@ -12,7 +12,7 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sorbet::ComponentColumnDescriptor;
 use re_types_core::ComponentDescriptor;
 
-use crate::ChunkStore;
+use crate::{ChunkStore, QueryResults};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExtractPropertiesError {
@@ -21,6 +21,11 @@ pub enum ExtractPropertiesError {
 
     #[error("{0}")]
     Internal(String),
+
+    #[error(
+        "partially loaded store: properties cannot reliably be computed, fetch the missing chunks first"
+    )]
+    MissingData(Vec<re_chunk::ChunkId>),
 }
 
 impl ChunkStore {
@@ -41,7 +46,7 @@ impl ChunkStore {
             .into_iter()
             .filter(EntityPath::is_property)
         {
-            let latest_chunks = self
+            let QueryResults { chunks, missing } = self
                 // TODO(zehiko) we should be able to get static chunks without specifying the timeline
                 .latest_at_relevant_chunks_for_all_components(
                     &LatestAtQuery::new(
@@ -52,7 +57,11 @@ impl ChunkStore {
                     true, /* yes, we want static chunks */
                 );
 
-            for chunk in latest_chunks {
+            if !missing.is_empty() {
+                return Err(ExtractPropertiesError::MissingData(missing));
+            }
+
+            for chunk in chunks {
                 for component_desc in chunk.component_descriptors() {
                     let component = component_desc.component;
 

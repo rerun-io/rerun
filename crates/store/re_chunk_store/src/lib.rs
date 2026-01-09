@@ -45,14 +45,16 @@ pub use self::events::{
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::properties::ExtractPropertiesError;
+pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub(crate) use self::store::ColumnMetadataState;
 pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
 };
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+pub(crate) use self::store::ColumnMetadataState;
 
 pub mod external {
     pub use {arrow, re_chunk};
