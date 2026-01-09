@@ -407,7 +407,7 @@ impl TransformTreeContext {
 
     /// Returns the transform from a pinhole root to the target frame if any.
     ///
-    /// This is effectively the extrinsic portion or the pinhole's transform to the view's target frame.
+    /// This is effectively the extrinsic portion of the pinhole's transform to the view's target frame.
     /// Note that this may otherwise not be accessible since we allow both extrinsics and intrinsics to be
     /// on a transform between two frames, with no transform frame representing just the extrinsics.
     ///
