@@ -52,7 +52,6 @@ libc = "2.28"
 
 [activation]
 # Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
-# Note: On first activation before package install, this is a no-op.
 scripts = ["scripts/pixi/activate.sh"]
 
 [activation.env]
@@ -67,7 +66,6 @@ PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 [target.win-64.activation]
 # Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
 # This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
-# Note: On first activation before package install, this is a no-op.
 scripts = ["scripts/pixi/activate.bat"]
 
 [target.win-64.activation.env]
