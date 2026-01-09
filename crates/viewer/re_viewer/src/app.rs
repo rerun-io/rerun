@@ -774,7 +774,7 @@ impl App {
             return;
         };
 
-        re_log::debug!("Updating navigation bar");
+        re_log::trace!("Updating navigation bar");
 
         use crate::web_history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
