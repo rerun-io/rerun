@@ -111,7 +111,7 @@ pub fn open_recording(
         let store_version_preprocessed = if let Some(store_version) = store_version {
             store_version.to_string()
         } else {
-            re_log::debug_once!("store version is undefined for this recording, this is a bug");
+            re_log::trace_once!("store version is undefined for this recording, this is a bug");
             "undefined".to_owned()
         };
 

@@ -1276,7 +1276,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                                             }),
                                     };
 
-                                mut_db.add(&msg)?;
+                                mut_db.add_log_msg(&msg)?;
                             }
 
                             DataSourceMessage::TableMsg(_) => {

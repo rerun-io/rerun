@@ -4,6 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod chunk_promise;
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;

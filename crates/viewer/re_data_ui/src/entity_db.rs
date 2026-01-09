@@ -73,7 +73,7 @@ impl crate::DataUi for EntityDb {
                     ui.label(store_version.to_string());
                     ui.end_row();
                 } else {
-                    re_log::debug_once!(
+                    re_log::trace_once!(
                         "store version is undefined for this recording, this is a bug"
                     );
                 }

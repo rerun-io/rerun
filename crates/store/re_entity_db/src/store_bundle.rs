@@ -38,7 +38,7 @@ impl StoreBundle {
 
         for msg in decoder {
             let msg = msg?;
-            slf.entry(msg.store_id()).add(&msg)?;
+            slf.entry(msg.store_id()).add_log_msg(&msg)?;
         }
         Ok(slf)
     }
@@ -116,6 +116,13 @@ impl StoreBundle {
     pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
         self.recording_store
             .values()
+            .filter(|log| log.store_kind() == StoreKind::Recording)
+    }
+
+    /// In insertion order.
+    pub fn recordings_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
+        self.recording_store
+            .values_mut()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 

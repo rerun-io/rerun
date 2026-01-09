@@ -52,8 +52,10 @@ indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
+poll-promise.workspace = true
 saturating_cast.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
+static_assertions.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

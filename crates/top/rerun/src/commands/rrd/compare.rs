@@ -189,7 +189,7 @@ fn load_chunks(
                     re_chunk_store::ChunkStoreConfig::ALL_DISABLED,
                 )
             })
-            .add(&msg)
+            .add_log_msg(&msg)
             .context("decode rrd file contents")?;
     }
 

@@ -199,7 +199,7 @@ fn merge_and_compact(
                             store_config.clone(),
                         )
                     })
-                    .add(&msg)
+                    .add_log_msg(&msg)
                 {
                     re_log::error!(%err, "couldn't index corrupt chunk");
                     is_success = false;
