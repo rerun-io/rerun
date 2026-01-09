@@ -7,7 +7,7 @@ use re_viewer_context::TimeControl;
 
 use crate::StartupOptions;
 
-pub fn prefetch_chunks(
+pub fn prefetch_chunks_for_active_recording(
     egui_ctx: &egui::Context,
     startup_options: &StartupOptions,
     recording: &mut EntityDb,
@@ -16,14 +16,14 @@ pub fn prefetch_chunks(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
+    let current_time = time_ctrl.time_i64()?;
+    let timeline = *time_ctrl.timeline()?;
+
     let redap_uri = recording.redap_uri()?.clone();
     let origin = redap_uri.origin.clone();
 
     let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
     let total_byte_budget = (0.8 * (memory_limit as f64)) as u64; // Don't completely fill it - we want some headroom for caches etc.
-
-    let current_time = time_ctrl.time_i64()?;
-    let timeline = *time_ctrl.timeline()?;
 
     // Load data from slightly before the current time to give some room for latest-at.
     // This is a bit hacky, but works for now.
@@ -43,11 +43,11 @@ pub fn prefetch_chunks(
         total_byte_budget,
 
         // Batch small chunks together.
-        max_bytes_per_request: 1_000_000,
+        max_bytes_per_batch: 1_000_000,
 
         // TODO(RR-3204): what is a reasonable size here?
         // A high value -> better theoretical bandwidth
-        delta_byte_budget: 10_000_000,
+        max_bytes_in_transit: 10_000_000,
     };
 
     let rrd_manifest = &mut recording.rrd_manifest_index;
