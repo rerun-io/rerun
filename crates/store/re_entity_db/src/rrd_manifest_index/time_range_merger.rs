@@ -32,9 +32,9 @@ impl DerefMut for TimeRange {
 }
 
 /// Wrapper struct for custom ordering in binary heap.
-struct DelayedRange(TimeRange);
+struct IncomingRange(TimeRange);
 
-impl Deref for DelayedRange {
+impl Deref for IncomingRange {
     type Target = TimeRange;
 
     #[inline]
@@ -43,33 +43,32 @@ impl Deref for DelayedRange {
     }
 }
 
-impl PartialEq for DelayedRange {
+impl PartialEq for IncomingRange {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.range.min == other.range.min
     }
 }
 
-impl Eq for DelayedRange {}
+impl Eq for IncomingRange {}
 
-impl PartialOrd for DelayedRange {
+impl PartialOrd for IncomingRange {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for DelayedRange {
+impl Ord for IncomingRange {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.range.min.cmp(&other.range.min).reverse()
     }
 }
 
-#[derive(Default)]
 struct Ranges {
     new: Vec<TimeRange>,
-    delayed: BinaryHeap<DelayedRange>,
+    incoming: BinaryHeap<IncomingRange>,
 }
 
 impl Ranges {
@@ -141,7 +140,7 @@ impl Ranges {
                     // To not have overlapping states, start the new state at the end of the prioritized last state
                     range.min = last_range.max;
                     if range.min < range.max {
-                        self.delayed.push(DelayedRange(range));
+                        self.incoming.push(IncomingRange(range));
                     }
                 }
             }
@@ -178,7 +177,7 @@ impl Ranges {
                 if range.min <= last_range.max {
                     // To not have overlapping states, start the last state at the end of the prioritized new state
                     if range.max < last_range.max {
-                        self.delayed.push(DelayedRange(TimeRange {
+                        self.incoming.push(IncomingRange(TimeRange {
                             range: AbsoluteTimeRange::new(range.max, last_range.max),
                             loaded: last_range.loaded,
                         }));
@@ -206,27 +205,13 @@ impl Ranges {
 /// Utility to merge multiple ranges of loaded/unloaded ranges into a list of
 /// sorted ranges with no gaps or overlaps while also prioritizing unloaded
 /// ranges over loaded ones.
-pub fn merge_ranges(source: &mut [TimeRange]) -> Vec<TimeRange> {
-    // Make sure the ranges are sorted by start time
-    source.sort_by_key(|r| r.range.min);
+pub fn merge_ranges(ranges: &[TimeRange]) -> Vec<TimeRange> {
+    let mut ranges = Ranges {
+        new: Vec::new(),
+        incoming: ranges.iter().map(|t| IncomingRange(*t)).collect(),
+    };
 
-    let mut ranges = Ranges::default();
-
-    for range in source {
-        debug_assert!(range.min <= range.max, "Negative time-range");
-
-        while ranges
-            .delayed
-            .peek()
-            .is_some_and(|r| r.range.min <= range.min)
-            && let Some(r) = ranges.delayed.pop()
-        {
-            ranges.push(r.0);
-        }
-        ranges.push(*range);
-    }
-
-    while let Some(r) = ranges.delayed.pop() {
+    while let Some(r) = ranges.incoming.pop() {
         ranges.push(r.0);
     }
 
