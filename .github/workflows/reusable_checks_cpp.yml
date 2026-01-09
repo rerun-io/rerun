@@ -49,7 +49,7 @@ jobs:
       - name: Load C++ test matrix
         id: set-matrix
         run: |
-          # replace "${{RUN_ID}}" with ${{ github.run_id }}, and parse as json
+          # replace "_RUN_ID_" with ${{ github.run_id }}, and parse as json
           echo "matrix=$(sed 's/\_RUN_ID_/${{ github.run_id }}/g' ./.github/workflows/cpp_matrix_full.json | jq -c .)" >> $GITHUB_OUTPUT
 
   cpp-tests:
