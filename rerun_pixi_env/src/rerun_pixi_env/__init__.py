@@ -61,13 +61,13 @@ def ensure_pyo3_build_cfg() -> None:
 
     Uses python from PATH to match what PYO3_PYTHON="python" resolves to.
     """
+    from .pyo3_config import generate_config_file
+
     pixi_root = get_pixi_project_root()
     config_file = pixi_root / "rerun_py" / "pyo3-build.cfg"
 
-    if not config_file.exists():
-        print(f"Generating {config_file}")
-        script = pixi_root / "scripts" / "generate_pyo3_config.py"
-        subprocess.run([sys.executable, str(script)], check=True)
+    generate_config_file(config_file)
+    print(f"Generated {config_file}")
 
 
 def main() -> None:

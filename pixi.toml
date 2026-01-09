@@ -364,12 +364,7 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
 
-# Generate pyo3-build.cfg for stable cargo caching across build environments.
-py-build-pyo3-cfg = "uvpy scripts/generate_pyo3_config.py"
-# Build the `rerun-sdk` package.
-py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" }, depends-on = [
-  "py-build-pyo3-cfg",
-] }
+py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
 py-build-notebook = { cmd = "uv sync --package rerun-notebook", depends-on = ["js-build-base"] }
 py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook" }

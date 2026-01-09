@@ -39,7 +39,7 @@ caused by:
   - 1: No such file or directory (os error 2)
 ```
 
-**Run `pixi run py-build-pyo3-cfg` to generate the config file:**
+**Run `pixi run ensure-pyo3-build-cfg ` to generate the config file:**
 
 This file is normally generated automatically by pixi activation scripts, but if you're running
 `cargo` directly outside of pixi, you'll need to generate it first. The configuration is
@@ -310,7 +310,7 @@ PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
 If you need to regenerate this file (e.g., after changing Python versions), run:
 ```sh
-pixi run py-build-pyo3-cfg
+pixi run ensure-pyo3-cfg
 ```
 
 To inspect what configuration pyo3 is using, you can run:
