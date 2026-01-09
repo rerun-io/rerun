@@ -742,8 +742,11 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 // TODO(cmc): at the moment there's little value to have anything beyond traces on the client, but
 // we ultimately can add all the same things that we have on the server as we need them.
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
-    let trace_layer =
-        tower_http::trace::TraceLayer::new_for_grpc().make_span_with(GrpcMakeSpan::new());
+    let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
+        // Note: we're actually disabling all DEBUG level logs for `tower` in re_log, so if you want to enable it
+        // you'll need to adjust that as well. See crates/utils/re_log/src/lib.rs
+        .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG))
+        .make_span_with(GrpcMakeSpan::new());
 
     tower::ServiceBuilder::new()
         .layer(trace_layer)
@@ -802,6 +805,7 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 // ---
 
 use opentelemetry::trace::TraceContextExt as _;
+use tower_http::trace::DefaultOnFailure;
 use tracing::span::Id;
 use tracing::{Span, Subscriber};
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
