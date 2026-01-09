@@ -36,7 +36,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==8.4.2", "syrupy==5.0.0"]
-notebook = ["rerun-notebook==0.28.2"]
+notebook = ["rerun-notebook==0.29.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
