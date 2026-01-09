@@ -16,7 +16,7 @@ class Visualizer:
     """
 
     def __init__(
-        self, visualizer_type: str, *, overrides: list[DescribedComponentBatch] = None, mappings: Any = None
+        self, visualizer_type: str, *, overrides: list[DescribedComponentBatch] | None = None, mappings: Any = None
     ) -> None:
         """
         Create a visualizer from an archetype instance.
