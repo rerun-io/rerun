@@ -107,11 +107,6 @@ pub struct RrdManifestIndex {
     /// When we later drop a chunk, we need to know which other chunks to invalidate.
     parents: HashMap<ChunkId, HashSet<ChunkId>>,
 
-    /// Have we ever deleted a chunk?
-    ///
-    /// If so, we have run some GC and should not show progress bar.
-    has_deleted: bool,
-
     /// Full time range per timeline
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
@@ -324,8 +319,6 @@ impl RrdManifestIndex {
     }
 
     fn mark_deleted(&mut self, store_kind: StoreKind, chunk_id: &ChunkId) {
-        self.has_deleted = true;
-
         if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
             chunk_info.state = LoadState::Unloaded;
         } else if let Some(parents) = self.parents.remove(chunk_id) {

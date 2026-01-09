@@ -2302,6 +2302,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dae-parser"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee4253e35714fabaf4bd442b81ba903b3be71833e3fd885adf114127b81c89c"
+dependencies = [
+ "chrono",
+ "minidom-14",
+ "percent-encoding",
+ "ref-cast",
+]
+
+[[package]]
 name = "darling"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4446,6 +4458,8 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
 dependencies = [
+ "allocator-api2",
+ "equivalent",
  "foldhash 0.2.0",
 ]
 
@@ -5995,11 +6009,11 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.16.1"
+version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfe949189f46fabb938b3a9a0be30fdd93fd8a09260da863399a8cf3db756ec8"
+checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 dependencies = [
- "hashbrown 0.15.5",
+ "hashbrown 0.16.0",
 ]
 
 [[package]]
@@ -6271,6 +6285,15 @@ dependencies = [
  "phf 0.11.3",
  "phf_shared 0.11.3",
  "unicase",
+]
+
+[[package]]
+name = "minidom-14"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0233972f8e82ae98ec4e9fd6daa3f6e29c2732c55b3626e9a3bde856e986345c"
+dependencies = [
+ "quick-xml 0.36.2",
 ]
 
 [[package]]
@@ -9379,6 +9402,7 @@ dependencies = [
  "ahash",
  "arrow",
  "ehttp",
+ "futures",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",
@@ -9441,6 +9465,7 @@ dependencies = [
  "cfg_aliases",
  "clean-path",
  "crossbeam",
+ "dae-parser",
  "document-features",
  "ecolor",
  "enumset",
@@ -10548,6 +10573,26 @@ dependencies = [
  "getrandom 0.2.16",
  "libredox",
  "thiserror 2.0.17",
+]
+
+[[package]]
+name = "ref-cast"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a0ae411dbe946a674d89546582cea4ba2bb8defac896622d6496f14c23ba5cf"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1165225c21bff1f3bbce98f5a1f889949bc902d3575308cc7b0de30b4f6d27c7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]
@@ -13044,7 +13089,7 @@ dependencies = [
  "http-cache-reqwest",
  "image",
  "log",
- "lru 0.16.1",
+ "lru 0.16.3",
  "reqwest",
  "reqwest-middleware",
  "thiserror 2.0.17",

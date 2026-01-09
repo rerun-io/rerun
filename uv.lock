@@ -4674,6 +4674,7 @@ examples = [
 snippets = [
     { name = "av" },
     { name = "pandas" },
+    { name = "rerun-sdk" },
 ]
 
 [package.metadata]
@@ -4777,6 +4778,7 @@ examples = [
 snippets = [
     { name = "av" },
     { name = "pandas" },
+    { name = "rerun-sdk", editable = "rerun_py" },
 ]
 
 [[package]]

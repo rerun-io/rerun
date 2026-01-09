@@ -11,10 +11,6 @@ use super::super::definitions::sensor_msgs;
 use crate::Error;
 use crate::parsers::{MessageParser, ParserContext, cdr};
 
-/// Plugin that parses `sensor_msgs/msg/Imu` messages.
-#[derive(Default)]
-pub struct ImuSchemaPlugin;
-
 fn fixed_size_list_builder(
     value_length: i32,
     capacity: usize,

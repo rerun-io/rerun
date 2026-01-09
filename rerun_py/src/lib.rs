@@ -7,6 +7,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![expect(clippy::doc_markdown)] // We write Python-style docstrings as Rust docstrings.
+#![allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)] // same
+
 // NOTE: The SDK currently allocates *a lot*, so much in fact that adding accounting around
 // allocations yields a lot of overhead.
 //

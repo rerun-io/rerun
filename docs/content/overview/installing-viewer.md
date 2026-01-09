@@ -40,7 +40,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
 -   Download `rerun-cli` for your platform from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/).
 -   Via Cargo
     -   `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
-    -   `cargo install rerun-cli --locked` - build it from source (this requires Rust 1.88+)
+    -   `cargo install rerun-cli --locked` - build it from source (this requires Rust 1.90+)
 -   Via Snap (_community maintained_)
     -   `snap install rerun` - download the viewer from the [Store](https://snapcraft.io/rerun).
 -   Together with the Rerun [Python SDK](../getting-started/quick-start/python.md):

@@ -12,6 +12,7 @@ mod text_log_column_kind;
 mod text_log_column_kind_ext;
 mod timeline_column;
 mod timeline_column_ext;
+mod visualizer_component_mapping;
 
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::filter_by_range::FilterByRange;
@@ -21,3 +22,4 @@ pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
 pub use self::text_log_column::TextLogColumn;
 pub use self::text_log_column_kind::TextLogColumnKind;
 pub use self::timeline_column::TimelineColumn;
+pub use self::visualizer_component_mapping::VisualizerComponentMapping;

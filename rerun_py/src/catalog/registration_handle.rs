@@ -39,7 +39,7 @@ pub struct PyRegistrationHandleInternal {
     client: Py<PyCatalogClientInternal>,
     descriptors: Vec<RegisterWithDatasetTaskDescriptor>,
 
-    /// Map task_id -> indices in descriptors (multiple descriptors can share a task_id)
+    /// Map `task_id` -> indices in descriptors (multiple descriptors can share a `task_id`)
     ///
     /// Note: using vec index here is ok because this struct is essentially immutable, so
     /// out-of-bound errors are unlikely.
@@ -145,7 +145,7 @@ impl PyRegistrationHandleInternal {
         }
     }
 
-    /// Wait for all tasks to complete and return segment_ids in descriptor order.
+    /// Wait for all tasks to complete and return `segment_ids` in descriptor order.
     /// Raises an error if any registration fails.
     #[pyo3(signature = (timeout_secs=None))]
     fn wait(&self, py: Python<'_>, timeout_secs: Option<u64>) -> PyResult<Vec<String>> {

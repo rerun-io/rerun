@@ -30,7 +30,7 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.88"
+rust-version = "1.90"
 version = "0.29.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
@@ -224,6 +224,7 @@ convert_case = "0.6.0"
 criterion = "0.5.0"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.0"
+dae-parser = "0.11.0"
 datafusion = { version = "50.1.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
@@ -597,6 +598,7 @@ debug = true # enable debug symbols for build scripts
 
 
 [workspace.lints.rust]
+unknown_lints = "deny"
 unsafe_code = "deny"
 
 absolute_paths_not_starting_with_crate = "warn"
@@ -636,6 +638,7 @@ char_lit_as_u8 = "warn"
 checked_conversions = "warn"
 clear_with_drain = "warn"
 cloned_instead_of_copied = "warn"
+coerce_container_to_any = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
 default_union_representation = "warn"
@@ -645,6 +648,7 @@ disallowed_methods = "warn" # See clippy.toml
 disallowed_names = "warn" # See clippy.toml
 disallowed_script_idents = "warn" # See clippy.toml
 disallowed_types = "warn" # See clippy.toml
+doc_broken_link = "warn"
 doc_comment_double_space_linebreaks = "warn"
 doc_include_without_cfg = "warn"
 doc_link_with_quotes = "warn"
@@ -652,6 +656,7 @@ doc_markdown = "warn"
 elidable_lifetime_names = "warn"
 empty_enum = "warn"
 empty_enum_variants_with_brackets = "warn"
+empty_line_after_outer_attr = "warn"
 enum_glob_use = "warn"
 equatable_if_let = "warn"
 exit = "warn"
@@ -667,6 +672,7 @@ fn_params_excessive_bools = "warn"
 fn_to_numeric_cast_any = "warn"
 from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
+if_let_mutex = "warn"
 ignore_without_reason = "warn"
 implicit_clone = "warn"
 implied_bounds_in_impls = "warn"
@@ -677,6 +683,7 @@ inefficient_to_string = "warn"
 infinite_loop = "warn"
 into_iter_without_iter = "warn"
 invalid_upcast_comparisons = "warn"
+ip_constant = "warn"
 iter_filter_is_ok = "warn"
 iter_filter_is_some = "warn"
 iter_not_returning_iterator = "warn"
@@ -726,6 +733,7 @@ negative_feature_names = "warn"
 non_std_lazy_statics = "warn"
 non_zero_suggestions = "warn"
 nonstandard_macro_braces = "warn"
+only_used_in_recursion = "warn"
 option_as_ref_cloned = "warn"
 option_option = "warn"
 or_fun_call = "warn"
@@ -756,7 +764,6 @@ string_add = "warn"
 string_add_assign = "warn"
 string_lit_as_bytes = "warn"
 string_lit_chars_any = "warn"
-string_to_string = "warn"
 suspicious_command_arg_space = "warn"
 suspicious_xor_used_as_pow = "warn"
 todo = "warn"
@@ -802,6 +809,7 @@ ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situ
 
 # TODO(emilk): enable more of these lints:
 cast_possible_truncation = "allow" # Moo much noise, sadly
+clone_on_ref_ptr = "allow" # Might be too much with this enabled
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
@@ -879,6 +887,6 @@ unnecessary_debug_formatting = "allow"
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
-# walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.88" } # https://github.com/podusowski/walkers/pull/394
+# walkers = { git = "https://github.com/rerun-io/walkers", branch = "emilk/rust-1.90" } # https://github.com/podusowski/walkers/pull/394
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }

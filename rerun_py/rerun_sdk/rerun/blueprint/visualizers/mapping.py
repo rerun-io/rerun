@@ -38,7 +38,7 @@ SeriesPoints = "SeriesPoints"
 Tensor = "Tensor"
 TextDocument = "TextDocument"
 TextLog = "TextLog"
-TransformAxes3D = "Transform3DArrows"
+TransformAxes3D = "TransformAxes3D"
 VideoFrameReference = "VideoFrameReference"
 VideoStream = "VideoStream"
 
@@ -162,7 +162,7 @@ class _GeneratedVisualizerClasses:
 
     class TransformAxes3D(Visualizer):
         def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:
-            super().__init__("Transform3DArrows", overrides=overrides, mappings=mappings)
+            super().__init__("TransformAxes3D", overrides=overrides, mappings=mappings)
 
     class VideoFrameReference(Visualizer):
         def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:

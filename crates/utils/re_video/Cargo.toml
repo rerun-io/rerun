@@ -93,10 +93,12 @@ web-sys = { workspace = true, features = [
   "EncodedVideoChunkInit",
   "EncodedVideoChunkType",
   "HardwareAcceleration",
+  "Navigator",
   "VideoDecoder",
   "VideoDecoderConfig",
   "VideoDecoderInit",
   "VideoFrame",
+  "Window",
 ] }
 
 [dev-dependencies]

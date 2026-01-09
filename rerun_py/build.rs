@@ -4,29 +4,32 @@ fn main() {
 
     re_build_tools::export_build_info_vars_for_crate("rerun_py");
 
-    // Prevent accidental slow builds via `uv pip install` or `uv sync`.
-    // These use isolated build environments which are very slow.
-    // Direct `maturin develop` or `maturin build` invocations are fast and allowed.
+    // Prevent builds without PYO3_CONFIG_FILE in isolated environments.
+    // When uv or pip builds a package, they create an isolated virtual environment
+    // with a temporary Python path. Without PYO3_CONFIG_FILE, this causes cargo
+    // cache invalidation on every build.
     //
-    // We detect isolated builds by checking `PYO3_PYTHON` - in an isolated build,
-    // it points to a temp directory like ~/.cache/uv/builds-v0/.tmp*/
-    // or a pip build-env directory.
+    // The repository is configured to automatically generate pyo3-build.cfg via
+    // pixi activation scripts. If you see this error, either:
+    // 1. Run any `pixi run` command first (generates the config automatically)
+    // 2. Run `pixi run py-build-pyo3-cfg` to generate it manually
     if re_build_tools::is_tracked_env_var_set("RERUN_BUILDING_WHEEL")
         && is_isolated_build_environment()
     {
         eprintln!();
-        eprintln!("ERROR: rerun-sdk should not be built via `uv pip install` or `uv sync`.");
-        eprintln!("       This uses an isolated build environment which is very slow.");
+        eprintln!("ERROR: Missing PYO3_CONFIG_FILE for isolated build environment.");
         eprintln!();
-        eprintln!("       Instead, use `pixi run py-build` or `maturin develop`:");
+        eprintln!("       The pyo3-build.cfg file is required for stable cargo caching.");
+        eprintln!("       This file is normally generated automatically by pixi activation.");
         eprintln!();
-        eprintln!(
-            "           RERUN_ALLOW_MISSING_BIN=1 maturin develop --uv --manifest-path rerun_py/Cargo.toml"
-        );
+        eprintln!("       To fix this, run any pixi command first:");
         eprintln!();
-        eprintln!(
-            "       Then use `uv sync --inexact --no-install-package rerun-sdk` to install other dependencies."
-        );
+        eprintln!("           pixi run py-build");
+        eprintln!();
+        eprintln!("       Or generate the config manually:");
+        eprintln!();
+        eprintln!("           pixi run py-build-pyo3-cfg");
+        eprintln!();
         std::process::exit(1);
     }
 
@@ -52,16 +55,25 @@ fn main() {
     }
 }
 
-/// Detect if we're in an isolated PEP 517 build environment.
+/// Detect if we're in a problematic isolated PEP 517 build environment.
 ///
 /// When pip or uv builds a package, they create an isolated virtual environment
 /// in a temporary directory. We can detect this by checking the `PYO3_PYTHON` path
 /// which maturin sets to the Python interpreter being used.
 ///
+/// However, if `PYO3_CONFIG_FILE` is set, pyo3 uses that config instead of querying
+/// `PYO3_PYTHON`, so the isolated environment is no longer problematic for caching.
+///
 /// Known patterns for isolated build environments:
 /// - uv: `~/.cache/uv/builds-v0/.tmp*/bin/python`
 /// - pip: `*/build-env-*/bin/python` or similar temp patterns
 fn is_isolated_build_environment() -> bool {
+    // If PYO3_CONFIG_FILE is set, pyo3 uses stable config regardless of PYO3_PYTHON,
+    // so isolated builds won't cause cache invalidation.
+    if re_build_tools::get_and_track_env_var("PYO3_CONFIG_FILE").is_ok() {
+        return false;
+    }
+
     let python_path =
         re_build_tools::get_and_track_env_var("PYO3_PYTHON").unwrap_or_else(|_| String::new());
 

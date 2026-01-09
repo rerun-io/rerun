@@ -175,7 +175,6 @@ impl TensorStats {
             };
 
             // If we didn't find a finite range, set it to None.
-            #[expect(clippy::return_and_then)] // false positive
             finite_range.and_then(|r| {
                 if r.0.is_finite() && r.1.is_finite() {
                     Some(r)

@@ -99,8 +99,7 @@ pub enum WebError {
 //         in a way that could result in a data race.
 
 #[expect(unsafe_code)]
-// Clippy did not recognize a safety comment on these impls no matter what I tried:
-#[expect(clippy::undocumented_unsafe_blocks)]
+#[expect(clippy::undocumented_unsafe_blocks)] // false positive
 unsafe impl Send for WebVideoDecoder {}
 
 #[expect(unsafe_code)]
@@ -136,12 +135,12 @@ impl Drop for WebVideoDecoder {
         }
 
         if let Err(err) = self.decoder.close() {
-            if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
-                if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR {
-                    // Invalid state error after a decode error may happen, ignore it!
-                    // TODO(andreas): we used to do so only if there was a non-flushed error. Are we ignoring this too eagerly?
-                    return;
-                }
+            if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
+                && dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
+            {
+                // Invalid state error after a decode error may happen, ignore it!
+                // TODO(andreas): we used to do so only if there was a non-flushed error. Are we ignoring this too eagerly?
+                return;
             }
 
             re_log::warn!(
@@ -327,11 +326,11 @@ impl AsyncDecoder for WebVideoDecoder {
         wasm_bindgen_futures::spawn_local(async move {
             let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
             if let Err(flush_error) = flush_result {
-                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>() {
-                    if dom_exception.code() == web_sys::DomException::ABORT_ERR {
-                        // Video decoder got closed, that's fine.
-                        return;
-                    }
+                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>()
+                    && dom_exception.code() == web_sys::DomException::ABORT_ERR
+                {
+                    // Video decoder got closed, that's fine.
+                    return;
                 }
 
                 re_log::debug!(
@@ -539,7 +538,7 @@ fn js_error_to_string(v: &wasm_bindgen::JsValue) -> String {
         let error = std::string::ToString::to_string(&v.to_string());
         return error
             .strip_prefix("EncodingError: ")
-            .map_or(error.clone(), |s| s.to_owned());
+            .map_or_else(|| error.clone(), |s| s.to_owned());
     }
 
     format!("{v:#?}")

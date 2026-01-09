@@ -8,7 +8,7 @@ async fn main() -> anyhow::Result<()> {
 
     serve(
         SocketAddr::V4(SocketAddrV4::new(
-            Ipv4Addr::new(0, 0, 0, 0),
+            Ipv4Addr::UNSPECIFIED,
             DEFAULT_SERVER_PORT,
         )),
         Default::default(),

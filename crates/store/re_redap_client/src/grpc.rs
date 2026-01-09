@@ -67,7 +67,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         Err(original_error) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
-                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {
@@ -464,7 +464,7 @@ async fn stream_segment_from_server(
                 if store_id.is_recording() {
                     return load_chunks_on_demand(client, tx, &store_id, rrd_manifest).await;
                 } else {
-                    // Load all chunks in one go:
+                    // Load all chunks in one go; most important first:
                     let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
                         ApiError::invalid_arguments(err, "Failed to sort chunk index")
                     })?;

@@ -260,7 +260,7 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
         bytes = &bytes[i..];
     }
 
-    // Safety: we split at proper character boundaries
+    // unwrap: we split at proper character boundaries
     tokens
         .iter()
         .map(|token| std::str::from_utf8(token).unwrap())

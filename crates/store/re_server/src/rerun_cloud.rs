@@ -284,12 +284,13 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
+decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
-decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
-decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
-decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
-decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
+decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
+decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
+decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
+decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 
 impl RerunCloudHandler {
     async fn find_datasets(
@@ -972,10 +973,12 @@ impl RerunCloudService for RerunCloudHandler {
         }))
     }
 
+    type GetRrdManifestStream = GetRrdManifestResponseStream;
+
     async fn get_rrd_manifest(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetRrdManifestResponse>> {
+    ) -> tonic::Result<tonic::Response<Self::GetRrdManifestStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -993,11 +996,16 @@ impl RerunCloudService for RerunCloudHandler {
         let dataset = store.dataset(entry_id)?;
         let rrd_manifest = dataset.rrd_manifest(&segment_id)?;
 
-        Ok(tonic::Response::new(GetRrdManifestResponse {
-            rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
-                tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
-            })?),
-        }))
+        let rrd_manifest_stream =
+            futures::stream::once(futures::future::ok(GetRrdManifestResponse {
+                rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
+                    tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
+                })?),
+            }));
+
+        Ok(tonic::Response::new(
+            Box::pin(rrd_manifest_stream) as Self::GetRrdManifestStream
+        ))
     }
 
     /* Indexing */

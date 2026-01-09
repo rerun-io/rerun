@@ -36,13 +36,16 @@ ignored = [
 
 
 [features]
-default = ["import-obj", "import-gltf", "import-stl"]
+default = ["import-dae", "import-gltf", "import-obj", "import-stl"]
 
-## Support importing .obj files
-import-obj = ["dep:tobj"]
+## Support importing .dae files
+import-dae = ["dep:dae-parser"]
 
 ## Support importing .gltf and .glb files
 import-gltf = ["dep:gltf"]
+
+## Support importing .obj files
+import-obj = ["dep:tobj"]
 
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
@@ -63,6 +66,7 @@ bitflags.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true
 crossbeam.workspace = true
+dae-parser = { workspace = true, optional = true }
 document-features.workspace = true
 ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
