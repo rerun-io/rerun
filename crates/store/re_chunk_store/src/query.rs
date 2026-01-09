@@ -652,6 +652,18 @@ impl QueryResults {
 }
 
 impl QueryResults {
+    /// Returns true if these are partial results.
+    ///
+    /// Partial results happen when some of the chunks required to accurately compute the query are
+    /// currently missing/offloaded.
+    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// [missing chunk IDs]: `Self::missing`
+    pub fn is_partial(&self) -> bool {
+        !self.missing.is_empty()
+    }
+
     /// Returns true if the results are *completely* empty.
     ///
     /// I.e. neither physical/loaded nor virtual/offloaded chunks could be found.
@@ -1086,6 +1098,7 @@ impl ChunkStore {
 }
 
 #[test]
+#[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
 fn partial_data_basics() {
     use std::sync::Arc;
 
@@ -1181,6 +1194,7 @@ fn partial_data_basics() {
             chunks: vec![chunk3.clone()],
             missing: vec![],
         };
+        assert_eq!(false, results.is_partial());
         assert_eq!(expected, results);
 
         let results = store.range_relevant_chunks(
@@ -1192,6 +1206,7 @@ fn partial_data_basics() {
             chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
             missing: vec![],
         };
+        assert_eq!(false, results.is_partial());
         assert_eq!(expected, results);
     }
 
@@ -1213,6 +1228,7 @@ fn partial_data_basics() {
             chunks: vec![chunk3.clone()],
             missing: vec![],
         };
+        assert_eq!(false, results.is_partial());
         assert_eq!(expected, results);
 
         let results = store.range_relevant_chunks(
@@ -1224,6 +1240,7 @@ fn partial_data_basics() {
             chunks: vec![chunk3.clone()],
             missing: vec![chunk1.id(), chunk2.id()],
         };
+        assert_eq!(true, results.is_partial());
         assert_eq!(expected, results);
     }
 
@@ -1239,6 +1256,7 @@ fn partial_data_basics() {
             chunks: vec![],
             missing: vec![chunk3.id()],
         };
+        assert_eq!(true, results.is_partial());
         assert_eq!(expected, results);
 
         let results = store.range_relevant_chunks(
@@ -1250,6 +1268,7 @@ fn partial_data_basics() {
             chunks: vec![],
             missing: vec![chunk1.id(), chunk2.id(), chunk3.id()],
         };
+        assert_eq!(true, results.is_partial());
         assert_eq!(expected, results);
     }
 
@@ -1267,6 +1286,7 @@ fn partial_data_basics() {
             chunks: vec![chunk3.clone()],
             missing: vec![],
         };
+        assert_eq!(false, results.is_partial());
         assert_eq!(expected, results);
 
         let results = store.range_relevant_chunks(
@@ -1278,6 +1298,7 @@ fn partial_data_basics() {
             chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
             missing: vec![],
         };
+        assert_eq!(false, results.is_partial());
         assert_eq!(expected, results);
     }
 }

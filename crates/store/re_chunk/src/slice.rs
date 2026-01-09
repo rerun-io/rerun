@@ -310,14 +310,14 @@ impl Chunk {
         chunk
     }
 
-    /// Densifies the [`Chunk`] vertically based on the `componentiptor` column.
+    /// Densifies the [`Chunk`] vertically based on the `component_pov` column.
     ///
-    /// Densifying here means dropping all rows where the associated value in the `componentiptor`
+    /// Densifying here means dropping all rows where the associated value in the `component_pov`
     /// column is null.
     ///
-    /// The result is a new [`Chunk`] where the `componentiptor` column is guaranteed to be dense.
+    /// The result is a new [`Chunk`] where the `component_pov` column is guaranteed to be dense.
     ///
-    /// If `componentiptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
+    /// If `component_pov` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].

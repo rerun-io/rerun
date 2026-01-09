@@ -75,7 +75,8 @@ fn atomic_latest_at_query(
 
     let query_time = query.at().as_i64();
 
-    for chunk in chunks {
+    // TODO
+    for chunk in chunks.chunks {
         // Make sure the chunk is sorted (they usually are) in order to ensure we're getting the last relevant row.
         let chunk = if chunk.is_sorted() {
             chunk

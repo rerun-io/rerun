@@ -149,6 +149,15 @@ pub struct QueryCache {
     /// This is used to optimized read-time clears, so that we don't unnecessarily pay for the fixed
     /// overhead of all the query layers when we know for a fact that there won't be any data there.
     /// This is a huge performance improvement in practice, especially in recordings with many entities.
+    //
+    // TODO: somehow:
+    // * `insert_rrd_manifest` will need propagate this information that there are virtual chunks
+    //   waiting to be fetched that contain clears (maybe by adding a new and/or augmenting an
+    //   existing store event?).
+    // * the GC will need to _NOT_ inform the query cache that the clears were removed, since the
+    //   query cache must always know about them...
+    //   -> for this one, the answer might simply be: ignore GC events for clears.
+    //
     pub(crate) might_require_clearing: RwLock<IntSet<EntityPath>>,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
@@ -387,6 +396,10 @@ impl ChunkStoreSubscriber for QueryCache {
                 }
             }
         }
+
+        // TODO: do we ever GC clears themselves? put another way, can clear ever be virtual?
+        // -> well obviously they can, since they might just be referenced via an RRD manifest
+        // -> this is gonna be very fucked...
 
         let mut might_require_clearing = self.might_require_clearing.write();
         let caches_latest_at = self.latest_at_per_cache_key.write();
