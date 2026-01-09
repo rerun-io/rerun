@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use egui::NumExt as _;
 use egui_extras::Column;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_format::time::format_relative_timestamp_secs;
+use re_log_types::external::arrow;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::resource_managers::SourceImageDataFormat;
 use re_renderer::video::VideoFrameTexture;
@@ -243,7 +245,6 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
-                        buffer: _,
                         source_id: _,
                         byte_span,
                     } = *sample;
@@ -307,17 +308,23 @@ fn timestamp_ui(
     }
 }
 
-fn decoded_frame_ui(
+fn decoded_frame_ui<'a>(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
+    get_video_buffer: &dyn Fn(re_log_types::external::re_tuid::Tuid) -> &'a [u8],
 ) {
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time) {
+    match video.frame_at(
+        ctx.render_ctx(),
+        player_stream_id,
+        video_time,
+        get_video_buffer,
+    ) {
         Ok(VideoFrameTexture {
             texture,
             decoder_delay_state,
@@ -585,6 +592,7 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
+        re_sdk_types::datatypes::Blob,
     ),
 }
 
@@ -627,7 +635,7 @@ impl VideoUi {
             return None;
         }
 
-        Some(Self::Asset(result, video_timestamp))
+        Some(Self::Asset(result, video_timestamp, blob.clone()))
     }
 
     pub fn from_components(
@@ -663,13 +671,44 @@ impl VideoUi {
             Self::Stream(video_stream_result) => {
                 video_stream_result_ui(ui, ui_layout, video_stream_result);
 
+                let storage_engine = ctx.store_context.recording.storage_engine();
+                let get_chunk_array = |id| {
+                    let chunk = storage_engine.store().chunk(&id)?;
+
+                    let sample_component = archetypes::VideoStream::descriptor_sample().component;
+                    let raw_array = chunk.raw_component_array(sample_component)?;
+                    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
+                    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
+                    // (each VideoStream has exactly one VideoSample instance per time)`.
+                    //
+                    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
+                    // what you call values below (could use a better name btw).
+                    //
+                    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
+                    // i.e. get out a Vec<ByteRange>.
+                    let inner_list_array =
+                        raw_array.downcast_array_ref::<arrow::array::ListArray>()?;
+
+                    let values = inner_list_array
+                                .values()
+                                .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?;
+
+                    let values = values.values().inner();
+
+                    Some(values)
+                };
+
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
                     let time = video_stream_time_from_query(query);
-                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time);
+                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
+                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+
+                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                    });
                 }
             }
-            Self::Asset(video_result, timestamp) => {
+            Self::Asset(video_result, timestamp, blob) => {
                 video_asset_result_ui(ui, ui_layout, video_result);
 
                 // Show a mini video player for video blobs:
@@ -694,7 +733,7 @@ impl VideoUi {
                         video.data_descr().timescale,
                     );
 
-                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time);
+                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &|_| blob);
                 }
             }
         }

@@ -540,6 +540,7 @@ impl VideoDataDescription {
         data: &[u8],
         media_type: &str,
         debug_name: &str,
+        source_id: Tuid,
     ) -> Result<Self, VideoLoadError> {
         if data.is_empty() {
             return Err(VideoLoadError::ZeroBytes);
@@ -547,7 +548,7 @@ impl VideoDataDescription {
 
         re_tracing::profile_function!();
         match media_type {
-            "video/mp4" => Self::load_mp4(data, debug_name),
+            "video/mp4" => Self::load_mp4(data, debug_name, source_id),
 
             media_type => {
                 if media_type.starts_with("video/") {
@@ -714,9 +715,7 @@ impl VideoDataDescription {
             }
         }
 
-        let sample_idx = found_sample_idx?;
-
-        Some(sample_idx)
+        found_sample_idx
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
@@ -958,9 +957,6 @@ pub struct SampleMetadata {
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
 
-    /// The raw buffer this sample is in.
-    pub buffer: arrow::buffer::Buffer,
-
     /// The chunk this sample comes from.
     pub source_id: Tuid,
 
@@ -988,8 +984,13 @@ impl SampleMetadata {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, sample_idx: SampleIndex) -> Option<Chunk> {
-        let data = self.buffer.get(self.byte_span.range_usize())?.to_vec();
+    pub fn get<'a>(
+        &self,
+        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+        sample_idx: SampleIndex,
+    ) -> Option<Chunk> {
+        let buffer = get_buffer(self.source_id);
+        let data = buffer.get(self.byte_span.range_usize())?.to_vec();
 
         Some(Chunk {
             data,
@@ -1099,7 +1100,6 @@ mod tests {
                     decode_timestamp: Time(dts),
                     presentation_timestamp: Time(pts),
                     duration: Some(Time(1)),
-                    buffer: arrow::buffer::Buffer::default(),
                     source_id: Tuid::new(),
                     byte_span: Default::default(),
                 })
@@ -1218,6 +1218,7 @@ mod tests {
             &data,
             "video/mp4",
             &format!("test_{codec:?}_video_sampling"),
+            Tuid::new(),
         )
         .unwrap();
 
@@ -1225,7 +1226,11 @@ mod tests {
         let mut non_idr_count = 0;
 
         for (sample_idx, sample) in video_data.samples.iter_indexed() {
-            let chunk = sample.sample().unwrap().get(sample_idx).unwrap();
+            let chunk = sample
+                .sample()
+                .unwrap()
+                .get(&|_| &data, sample_idx)
+                .unwrap();
             let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
 
             if chunk.is_sync {

@@ -19,7 +19,11 @@ use crate::nalu::ANNEXB_NAL_START_CODE;
 use crate::{StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
-    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
+    pub fn load_mp4(
+        bytes: &[u8],
+        debug_name: &str,
+        source_id: re_tuid::Tuid,
+    ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
@@ -40,8 +44,6 @@ impl VideoDataDescription {
         let mut samples =
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
         let mut keyframe_indices = Vec::new();
-
-        let buffer = arrow::buffer::Buffer::from(bytes);
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
@@ -66,9 +68,7 @@ impl VideoDataDescription {
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
-                    // There's only a single buffer, which is the raw mp4 video data.
-                    buffer: buffer.clone(),
-                    source_id: re_tuid::Tuid::new(),
+                    source_id,
                     byte_span,
                 }));
             }

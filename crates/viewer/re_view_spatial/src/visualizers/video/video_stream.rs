@@ -1,3 +1,4 @@
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
@@ -153,10 +154,42 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     video_resolution = glam::vec2(w as _, h as _);
                 }
 
+                let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
+                let get_chunk_array = |id| {
+                    let chunk = storage_engine.store().chunk(&id)?;
+
+                    let sample_component = VideoStream::descriptor_sample().component;
+                    let raw_array = chunk.raw_component_array(sample_component)?;
+                    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
+                    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
+                    // (each VideoStream has exactly one VideoSample instance per time)`.
+                    //
+                    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
+                    // what you call values below (could use a better name btw).
+                    //
+                    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
+                    // i.e. get out a Vec<ByteRange>.
+                    let inner_list_array =
+                        raw_array.downcast_array_ref::<arrow::array::ListArray>()?;
+
+                    let values = inner_list_array
+                                .values()
+                                .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?;
+
+                    let values = values.values().inner();
+
+                    Some(values)
+                };
+
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
                     video_stream_time_from_query(query_context.query),
+                    &|id| {
+                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+
+                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                    },
                 )
             };
 

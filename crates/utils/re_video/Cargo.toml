@@ -48,7 +48,6 @@ re_tracing.workspace = true
 re_tuid.workspace = true
 
 ahash.workspace = true
-arrow.workspace = true
 bit-vec.workspace = true
 cros-codecs.workspace = true
 crossbeam.workspace = true

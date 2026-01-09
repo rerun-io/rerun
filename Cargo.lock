@@ -9488,6 +9488,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_tracing",
+ "re_tuid",
  "re_video",
  "serde",
  "slotmap",
@@ -9995,7 +9996,6 @@ name = "re_video"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "bit-vec",
  "cfg_aliases",
  "criterion",
@@ -10171,6 +10171,7 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "ordered-float 5.1.0",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk_store",
  "re_component_ui",

@@ -68,6 +68,7 @@ impl AssetVideo {
             blob_bytes,
             media_type.as_str(),
             "AssetVideo",
+            re_log_types::external::re_tuid::Tuid::new(),
         )?
         .frame_timestamps_nanos()
         .ok_or(re_video::VideoLoadError::NoTimescale)?

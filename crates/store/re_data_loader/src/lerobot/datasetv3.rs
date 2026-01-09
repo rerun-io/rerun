@@ -445,10 +445,15 @@ impl LeRobotDatasetV3 {
         let video_bytes: &[u8] = &contents;
 
         // Parse the video to get its structure
-        let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)
-            .map_err(|err| {
-                anyhow!("Failed to read video data description for feature '{observation}': {err}")
-            })?;
+        let video = VideoDataDescription::load_from_bytes(
+            video_bytes,
+            "video/mp4",
+            observation,
+            re_log_types::external::re_tuid::Tuid::new(),
+        )
+        .map_err(|err| {
+            anyhow!("Failed to read video data description for feature '{observation}': {err}")
+        })?;
 
         let (start_time, end_time) = self.get_feature_timestamps(episode, observation);
 
@@ -501,9 +506,11 @@ impl LeRobotDatasetV3 {
                 continue;
             }
 
-            let chunk = sample_meta.get(sample_idx).ok_or_else(|| {
-                anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
-            })?;
+            let chunk = sample_meta
+                .get(&|_| video_bytes, sample_idx)
+                .ok_or_else(|| {
+                    anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
+                })?;
 
             let sample_bytes = video
             .sample_data_in_stream_format(&chunk)

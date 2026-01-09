@@ -182,11 +182,12 @@ impl VideoPlayer {
     /// The video data description may change over time by adding and removing samples and GOPs,
     /// but other properties are expected to be stable.
     // TODO(andreas): have to detect when decoder is playing catch-up and don't show images that we're not interested in.
-    pub fn frame_at(
+    pub fn frame_at<'a>(
         &mut self,
         render_ctx: &RenderContext,
         requested_pts: Time,
         video_description: &re_video::VideoDataDescription,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if video_description.keyframe_indices.is_empty() {
             return Err(InsufficientSampleDataError::NoKeyFrames.into());
@@ -211,7 +212,7 @@ impl VideoPlayer {
 
         // Ensure we have enough samples enqueued to the decoder to cover the request.
         // (This method also makes sure that the next few frames become available, so call this even if we already have the frame we want.)
-        self.enqueue_samples(video_description, requested_sample_idx)?;
+        self.enqueue_samples(video_description, requested_sample_idx, get_video_buffer)?;
 
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
         self.sample_decoder
@@ -303,10 +304,11 @@ impl VideoPlayer {
     }
 
     /// Makes sure enough samples have been enqueued to cover the requested presentation timestamp.
-    fn enqueue_samples(
+    fn enqueue_samples<'a>(
         &mut self,
         video_description: &re_video::VideoDataDescription,
         requested_sample_idx: SampleIndex,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
 
@@ -352,7 +354,11 @@ impl VideoPlayer {
         } else {
             self.reset(video_description)?;
             // We haven't enqueued anything so far. Enqueue the requested keyframe range.
-            self.enqueue_keyframe_range(video_description, requested_keyframe_idx)?;
+            self.enqueue_keyframe_range(
+                video_description,
+                requested_keyframe_idx,
+                get_video_buffer,
+            )?;
 
             requested_keyframe_idx
         };
@@ -386,14 +392,18 @@ impl VideoPlayer {
             if let Some(next_keyframe) = next_keyframe
                 && last_enqueued + 1 >= next_keyframe
             {
-                self.enqueue_keyframe_range(video_description, next_keyframe_idx)?;
+                self.enqueue_keyframe_range(
+                    video_description,
+                    next_keyframe_idx,
+                    get_video_buffer,
+                )?;
                 keyframe_idx = next_keyframe_idx;
             }
             // If not, enqueue its remaining samples. This happens regularly in live video streams.
             else {
                 let range = (last_enqueued + 1)
                     ..next_keyframe.unwrap_or_else(|| video_description.samples.next_index());
-                self.enqueue_sample_range(video_description, &range)?;
+                self.enqueue_sample_range(video_description, &range, get_video_buffer)?;
             }
         }
 
@@ -507,10 +517,11 @@ impl VideoPlayer {
         Ok(())
     }
 
-    fn enqueue_keyframe_range(
+    fn enqueue_keyframe_range<'a>(
         &mut self,
         video_description: &re_video::VideoDataDescription,
         keyframe_idx: KeyframeIndex,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         let sample_range = video_description.keyframe_indices[keyframe_idx]
             ..video_description
@@ -519,16 +530,17 @@ impl VideoPlayer {
                 .copied()
                 .unwrap_or_else(|| video_description.samples.next_index());
 
-        self.enqueue_sample_range(video_description, &sample_range)
+        self.enqueue_sample_range(video_description, &sample_range, get_video_buffer)
     }
 
     /// Enqueues sample range *within* a keyframe range.
     ///
     /// All samples have to belong to the same keyframe.
-    fn enqueue_sample_range(
+    fn enqueue_sample_range<'a>(
         &mut self,
         video_description: &re_video::VideoDataDescription,
         sample_range: &Range<SampleIndex>,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         for (sample_idx, sample) in video_description
             .samples
@@ -546,7 +558,9 @@ impl VideoPlayer {
                     ));
                 }
             };
-            let chunk = sample.get(sample_idx).ok_or(VideoPlayerError::BadData)?;
+            let chunk = sample
+                .get(get_video_buffer, sample_idx)
+                .ok_or(VideoPlayerError::BadData)?;
             self.sample_decoder.decode(chunk)?;
 
             // Update continuously, since we want to keep track of our last state in case of errors.

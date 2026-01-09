@@ -607,8 +607,6 @@ fn read_samples_from_known_chunk(
             // Filled out later for everything but the last frame.
             duration: None,
 
-            // We're using offsets directly into this chunk data.
-            buffer: values.clone(),
             source_id: chunk.id().as_tuid(),
             byte_span,
         });
@@ -876,8 +874,6 @@ fn read_samples_from_new_chunk(
                     // Filled out later for everything but the last frame.
                     duration: None,
 
-                    // We're using offsets directly into the chunk data.
-                    buffer: values.clone(),
                     source_id: chunk_id.as_tuid(),
                     byte_span
                 }))

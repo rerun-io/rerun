@@ -289,11 +289,12 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    pub fn frame_at(
+    pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -319,9 +320,12 @@ impl Video {
         };
 
         decoder_entry.used_last_frame = true;
-        decoder_entry
-            .player
-            .frame_at(render_context, video_time, &self.video_description)
+        decoder_entry.player.frame_at(
+            render_context,
+            video_time,
+            &self.video_description,
+            get_video_buffer,
+        )
     }
 
     /// Removes all decoders that have been unused in the last frame.
