@@ -682,7 +682,15 @@ impl EntityDb {
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
 
-            furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),
+            furthest_from: if self.rrd_manifest_index.has_manifest() {
+                // If we have an RRD manifest, it means we can download chunks on-demand.
+                // So it makes sense to GC the things furthest from the current time cursor:
+                time_cursor.map(|(timeline, time)| (*timeline.name(), time))
+            } else {
+                // If we don't have an RRD manifest, then we can't redownload data,
+                // and we GC the oldest data instead.
+                None
+            },
         });
 
         if store_events.is_empty() {
