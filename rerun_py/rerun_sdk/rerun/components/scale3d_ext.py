@@ -27,8 +27,8 @@ class Scale3DExt:
 
         """
         if not hasattr(uniform_or_per_axis, "__len__") or len(uniform_or_per_axis) == 1:  # type: ignore[arg-type]
-            self.__attrs_init__([uniform_or_per_axis, uniform_or_per_axis, uniform_or_per_axis])
+            self.__attrs_init__(xyz=[uniform_or_per_axis, uniform_or_per_axis, uniform_or_per_axis])
         else:
             if uniform_or_per_axis is None:
                 uniform_or_per_axis = True
-            self.__attrs_init__(uniform_or_per_axis)
+            self.__attrs_init__(xyz=uniform_or_per_axis)
