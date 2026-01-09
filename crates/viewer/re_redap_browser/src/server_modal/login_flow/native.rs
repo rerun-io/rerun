@@ -28,7 +28,7 @@ impl State {
             ui.spinner();
         } else {
             ui.horizontal(|ui| {
-                if ActionButton::new(&icons::EXTERNAL_LINK, "Login", "Link opened!")
+                if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")
                     .variant(Variant::Outlined)
                     .show(ui, &mut self.show_open_feedback)
                     .clicked()

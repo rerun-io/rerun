@@ -36,7 +36,7 @@ impl LoginFlow {
         {
             if !self.started {
                 // Show button to start the flow
-                if ActionButton::new(&re_ui::icons::EXTERNAL_LINK, "Login", "Login")
+                if ActionButton::new(&re_ui::icons::EXTERNAL_LINK, "Log in", "Log in")
                     .variant(re_ui::Variant::Outlined)
                     .show(ui, &mut false)
                     .clicked()
