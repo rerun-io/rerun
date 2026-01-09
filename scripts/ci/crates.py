@@ -537,6 +537,11 @@ def publish_unpublished_crates_in_parallel(
                 dependencies.append(dependency.name)
         dependency_graph[name] = dependencies
 
+    if len(unpublished_crates) == 0:
+        # Building the DAG with an empty set of unpublished crates fails, so we exit early if no work needs to be done.
+        print("All crates have already been published.")
+        return
+
     # walk the dependency graph in parallel and publish each crate
     print(f"Publishing {len(unpublished_crates)} crates…")
     env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
