@@ -1,5 +1,5 @@
 ---
-title: Logging and ingestion
+title: Log and Ingest
 order: 100
 ---
 

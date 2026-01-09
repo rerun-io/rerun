@@ -1,5 +1,5 @@
 ---
-title: Visualization
+title: Visualize
 order: 200
 ---
 

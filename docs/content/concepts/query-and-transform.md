@@ -1,5 +1,5 @@
 ---
-title: Query and transform
+title: Query and Transform
 order: 300
 ---
 
