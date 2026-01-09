@@ -119,6 +119,13 @@ impl StoreBundle {
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
+    /// In insertion order.
+    pub fn recordings_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
+        self.recording_store
+            .values_mut()
+            .filter(|log| log.store_kind() == StoreKind::Recording)
+    }
+
     // --
 
     pub fn retain(&mut self, mut f: impl FnMut(&EntityDb) -> bool) {
