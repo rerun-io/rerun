@@ -1,33 +1,26 @@
-# Redirect Table for Moved Resources
-# ==================================
+# Redirect Table
+# ==============
 #
-# This file defines redirects for URLs that have been moved or renamed.
-# These are "hidden" redirects - they don't appear in the navigation sidebar
-# and exist purely for backwards compatibility (e.g., old bookmarks, external links).
+# This file defines hidden redirects for docs pages. These are old URLs that
+# should redirect to their new locations but should NOT appear in navigation.
 #
-# Format:
-#   old-path: new-path
+# Format: old-path: new-path
 #
-# Paths are relative to /docs/. Examples:
-#   - "old-page: new-page" redirects /docs/old-page to /docs/new-page
-#   - "old-page: https://example.com" redirects to an external URL
+# Paths are relative to /docs/. The destination can be:
+#   - A relative path: "new-section/new-page"
+#   - An external URL: "https://example.com"
 #
-# IMPORTANT: Do NOT add redirects here for pages that:
-#   - Should appear in the navigation (use markdown files with frontmatter instead)
-#   - Are intentional link targets from other documentation
-#   - Need to be validated by the link checker
+# For redirects that need to appear in navigation (like external API links),
+# use markdown files with frontmatter redirect instead. This ensures the link
+# checker can validate them.
 #
-# For those cases, create a markdown file with redirect frontmatter:
-#   ---
-#   title: Page Title
-#   order: 100
-#   redirect: target-path
-#   ---
+# NOTE: The build will fail if a markdown file exists for a path that's also
+# defined in this file. Remove one or the other to resolve conflicts.
 
-# Overview section (old paths)
+# Overview section
 overview/installing-viewer: overview/installing-rerun
 
-# Getting Started section (old paths)
+# Getting Started section
 getting-started/what-is-rerun: overview/what-is-rerun
 getting-started/navigating-the-viewer: getting-started/configure-the-viewer/navigating-the-viewer
 getting-started/troubleshooting: overview/installing-rerun/troubleshooting
@@ -52,7 +45,7 @@ concepts/timelines: concepts/logging-and-ingestion/timelines
 concepts/transforms: concepts/logging-and-ingestion/transforms
 concepts/visualizers-and-overrides: concepts/visualization/visualizers-and-overrides
 
-# Reference section (old paths)
+# Reference section
 reference/dataframes: concepts/query-and-transform/dataframes
 reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
 reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
@@ -72,7 +65,7 @@ reference/sdk-operating-modes: reference/sdk/operating-modes
 reference/video: concepts/logging-and-ingestion/video
 reference/viewer: reference/viewer/overview
 
-# Howto section (old paths)
+# Howto section
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
 howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
@@ -93,7 +86,7 @@ howto/short-lived-entities: howto/logging/clears
 howto/urdf: howto/logging-and-ingestion/urdf
 howto/using-native-loggers: howto/integrations/integrate-host-loggers
 
-# Howto - logging subfolder (old paths)
+# Howto - logging subfolder
 howto/logging/clears: howto/logging-and-ingestion/clears
 howto/logging/custom-data: howto/logging-and-ingestion/custom-data
 howto/logging/send-columns: howto/logging-and-ingestion/send-columns
@@ -101,6 +94,6 @@ howto/logging/send-partial-updates: howto/logging-and-ingestion/send-partial-upd
 howto/logging/send-table: howto/logging-and-ingestion/send-table
 howto/logging/shared-recordings: howto/logging-and-ingestion/shared-recordings
 
-# Howto - extend subfolder (old paths)
+# Howto - extend subfolder
 howto/extend/custom-data: howto/logging/custom-data
 howto/extend/extend-ui: howto/visualization/extend-ui
