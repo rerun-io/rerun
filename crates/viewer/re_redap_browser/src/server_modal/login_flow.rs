@@ -5,8 +5,8 @@ mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
 use native::State;
+use re_ui::ReButton;
 use re_ui::notifications::{Notification, NotificationLevel};
-use re_ui::{ReButton, UiExt as _};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 #[cfg(target_arch = "wasm32")]
 use web::State;

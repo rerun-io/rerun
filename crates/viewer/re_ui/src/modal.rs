@@ -382,6 +382,7 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     // The Uis response at this point will conveniently contain last frame's rect
     let last_rect = ui.response().rect;
 
+    #[expect(clippy::useless_let_if_seq)]
     let mut screen_size = ui.ctx().content_rect().size();
     if ui.is_sizing_pass() {
         // On the very first frame, there will be a sizing pass and the max_rect that frame might
