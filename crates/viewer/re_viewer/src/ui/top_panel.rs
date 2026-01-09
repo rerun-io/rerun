@@ -1,10 +1,11 @@
-use egui::NumExt as _;
+use egui::{Atom, Button, Color32, Id, Image, NumExt as _, Popup, RichText, Sense, include_image};
+use emath::{Rect, RectAlign, Vec2};
 use itertools::Itertools as _;
 use re_format::format_uint;
 use re_log_channel::{LogReceiverSet, LogSource};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::{StoreContext, StoreHub};
+use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
+use re_viewer_context::{StoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
@@ -454,6 +455,61 @@ fn panel_buttons_r2l(
         app.state.navigation.current(),
         rec_cfg,
         selection,
+    );
+
+    if let Some(auth) = &app.state.auth_state {
+        let rect_id = Id::new("user_icon_rect");
+        let user_icon_size = 16.0;
+        let response = Button::new((
+            Atom::custom(rect_id, Vec2::splat(user_icon_size)),
+            icons::DROPDOWN_ARROW
+                .as_image()
+                .tint(ui.visuals().text_color()),
+        ))
+        .atom_ui(ui);
+        if let Some(rect) = response.rect(rect_id) {
+            user_icon(&auth.email, rect, ui, user_icon_size / 2.0, 220);
+        }
+
+        Popup::menu(&response.response)
+            .align(RectAlign::BOTTOM_END)
+            .gap(3.0)
+            .show(|ui| {
+                ui.horizontal(|ui| {
+                    let user_icon_size = 32.0;
+                    let (rect, _) =
+                        ui.allocate_exact_size(Vec2::splat(user_icon_size), Sense::hover());
+                    user_icon(&auth.email, rect, ui, 8.0, 255);
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 2.0;
+                        ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
+                        if ui
+                            .link(RichText::new("Logout").color(ui.tokens().text_subdued))
+                            .clicked()
+                        {
+                            app.command_sender.send_system(SystemCommand::Logout);
+                        }
+                    })
+                });
+            });
+    }
+}
+
+fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u8) {
+    // The color should not change based on theme, so it's fine to hard-code here
+    #[expect(clippy::disallowed_methods)]
+    let text_color = Color32::from_gray(tint);
+    Image::new(include_image!("user_image.jpg"))
+        .corner_radius(corner_radius)
+        .tint(text_color)
+        .paint_at(ui, rect);
+    let initial = email.chars().next().unwrap_or('?').to_ascii_uppercase();
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        initial,
+        egui::FontId::proportional(rect.height() * 0.6),
+        Color32::WHITE,
     );
 }
 
