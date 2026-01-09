@@ -192,6 +192,17 @@ jobs:
           cache: true
           stripdown: true
 
+      - name: Inspect Vulkan SDK
+        if: ${{ matrix.name != 'macos' }}
+        run: |
+          echo PATH = $PATH
+          echo VULKAN_VERSION = $VULKAN_VERSION
+          echo VULKAN_SDK = $VULKAN_SDK
+          echo VK_LAYER_PATH = $VK_LAYER_PATH
+          echo LD_LIBRARY_PATH = $LD_LIBRARY_PATH
+          echo Folder size = `du -hs $VULKAN_SDK`
+          ls -a $VULKAN_SDK
+
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
