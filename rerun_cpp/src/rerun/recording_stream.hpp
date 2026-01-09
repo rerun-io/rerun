@@ -671,6 +671,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -698,6 +699,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -724,6 +726,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -760,6 +763,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
