@@ -35,7 +35,7 @@ For a full animation example, see the [Python animated URDF example](https://git
 
 ## URDF utilities (Python)
 
-Rerun provides the [`rr.urdf`](../../../../rerun_py/rerun_sdk/rerun/urdf.py) Python module that can facilitate the handling of URDF models in your code.
+Rerun provides the [`rr.urdf`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/urdf.py) Python module that can facilitate the handling of URDF models in your code.
 It can be used as an alternative to other 3rd-party packages like [yourdfpy](https://yourdfpy.readthedocs.io/en/latest/index.html) or [pytransforms3d](https://dfki-ric.github.io/pytransform3d/index.html).
 As shown below, you can use it e.g. to access individual joints of the URDF model and to compute their respective transforms based on joint states (e.g. angles for revolute joints).
 These transforms can be directly sent to Rerun.
