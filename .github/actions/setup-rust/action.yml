@@ -93,4 +93,3 @@ runs:
           target_wasm
           target_pixi
           target_pixi_wasm
-
