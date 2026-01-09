@@ -61,6 +61,12 @@ jobs:
           fetch-depth: 0 # we need full history
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 

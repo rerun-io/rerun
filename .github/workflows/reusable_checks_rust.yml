@@ -54,6 +54,12 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 
@@ -94,6 +100,12 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
+
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -152,6 +164,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -235,13 +253,17 @@ jobs:
         with:
           lfs: true
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}"
           save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.9.1

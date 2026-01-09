@@ -63,6 +63,12 @@ jobs:
       - name: Install Yarn
         run: npm install -g yarn
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
 

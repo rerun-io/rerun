@@ -79,6 +79,13 @@ jobs:
           pixi-version: v0.55.0
           environments: cpp
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
