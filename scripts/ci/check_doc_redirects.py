@@ -9,10 +9,10 @@ corresponding entries in docs/content/_redirects.yaml.
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
+import git
 import yaml
 
 DOCS_ROOT = Path(__file__).parent.parent.parent / "docs" / "content"
@@ -21,17 +21,13 @@ REDIRECTS_FILE = DOCS_ROOT / "_redirects.yaml"
 
 def get_deleted_and_renamed_docs(base_branch: str = "main") -> tuple[list[str], list[str]]:
     """Get lists of deleted and renamed doc paths relative to docs/content/."""
-    result = subprocess.run(
-        ["git", "diff", base_branch, "--name-status", "--", "docs/content/**/*.md"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    repo = git.Repo(search_parent_directories=True)
+    diff_output = repo.git.diff(base_branch, "--name-status", "--", "docs/content/**/*.md")
 
     deleted = []
     renamed = []
 
-    for line in result.stdout.strip().split("\n"):
+    for line in diff_output.strip().split("\n"):
         if not line:
             continue
         parts = line.split("\t")
