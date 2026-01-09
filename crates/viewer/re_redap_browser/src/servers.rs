@@ -8,7 +8,9 @@ use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
-use re_redap_client::ConnectionRegistryHandle;
+use re_redap_client::{
+    ClientCredentialsError, ConnectionRegistryHandle, CredentialSource, Credentials,
+};
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
@@ -129,39 +131,7 @@ impl Server {
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                if let Some(conn_err) = err.as_client_credentials_error() {
-                    let message = if conn_err.is_missing_token() {
-                        "This server requires authentication to access its data."
-                    } else {
-                        "The provided credentials are invalid for this server."
-                    };
-                    let edit_message = if conn_err.is_missing_token() {
-                        "Add credentials"
-                    } else {
-                        "Edit credentials"
-                    };
-                    Alert::warning().show(ui, |ui| {
-                        ui.vertical(|ui| {
-                            ui.strong(message);
-                            if ui
-                                .link(RichText::new(edit_message).strong().underline())
-                                .clicked()
-                            {
-                                ctx.command_sender
-                                    .send(Command::OpenEditServerModal(
-                                        EditRedapServerModalCommand {
-                                            origin: self.origin.clone(),
-                                            open_on_success: None,
-                                            title: None,
-                                        },
-                                    ))
-                                    .ok();
-                            }
-                        });
-                    });
-                } else {
-                    ui.error_label(err.to_string());
-                }
+                error_ui(viewer_ctx, ctx, ui, &self.origin, err);
             });
             return;
         }
@@ -272,6 +242,72 @@ impl Server {
             .title(table.name())
             .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
             .show(viewer_ctx, &self.runtime, ui);
+    }
+}
+
+fn error_ui(
+    viewer_ctx: &ViewerContext<'_>,
+    ctx: &Context<'_>,
+    ui: &mut egui::Ui,
+    origin: &re_uri::Origin,
+    err: &re_redap_client::ApiError,
+) {
+    if let Some(conn_err) = err.as_client_credentials_error() {
+        let logged_in = viewer_ctx.global_context.logged_in();
+
+        let has_token = !matches!(
+            conn_err,
+            ClientCredentialsError::UnauthenticatedMissingToken { .. }
+        );
+
+        let edit_message = match (logged_in, has_token) {
+            (true, true) => "Edit login or token",
+            (true, false) => "Edit login or add token",
+            (false, true) => "Log in or edit token",
+            (false, false) => "Log in or add token",
+        };
+
+        let message = match conn_err {
+            ClientCredentialsError::RefreshError { .. } => {
+                "There was an error refreshing your credentials"
+            }
+
+            ClientCredentialsError::SessionExpired => "Your session has expired",
+
+            ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
+                "This server requires authentication to access its data."
+            }
+
+            ClientCredentialsError::UnauthenticatedBadToken { credentials, .. } => {
+                match credentials.source {
+                    CredentialSource::PerOrigin => "The credentials for this origin are invalid",
+                    CredentialSource::Fallback => "The fallback credentials are invalid",
+                    CredentialSource::EnvVar => {
+                        "The credentials provided via environment variable REDAP_TOKEN are invalid"
+                    }
+                }
+            }
+        };
+
+        Alert::warning().show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.strong(message);
+                if ui
+                    .link(RichText::new(edit_message).strong().underline())
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
+                            origin: origin.clone(),
+                            open_on_success: None,
+                            title: None,
+                        }))
+                        .ok();
+                }
+            });
+        });
+    } else {
+        ui.error_label(err.to_string());
     }
 }
 
@@ -394,6 +430,20 @@ impl RedapServers {
 
     pub fn logout(&mut self) {
         self.server_modal_ui.logout();
+        // Log out from the servers that used the accounts token.
+        for server in self.servers.values() {
+            if matches!(
+                server.connection_registry.credentials(&server.origin),
+                Some(Credentials::Stored)
+            ) {
+                server
+                    .connection_registry
+                    .remove_credentials(&server.origin);
+                self.command_sender
+                    .send(Command::RefreshCollection(server.origin.clone()))
+                    .ok();
+            }
+        }
     }
 
     /// Per-frame housekeeping.
