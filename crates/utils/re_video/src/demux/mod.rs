@@ -691,7 +691,7 @@ impl VideoDataDescription {
         // First find what keyframe this decode timestamp is in, as an optimization since
         // we can't efficiently binary search the sample list with possible gaps.
         //
-        // Keyframes will always always be [`SampleMetadataState::Present`] and
+        // Keyframes will always be [`SampleMetadataState::Present`] and
         // have a decode timestamp we can compare against.
         let keyframe_idx = keyframes
             .partition_point(|p| {
