@@ -55,7 +55,10 @@ pub struct VisualizerInstruction {
     pub id: VisualizerInstructionId, // TODO(andreas,aedm): rly a string?
 
     pub visualizer_type: ViewSystemIdentifier,
+
+    // TODO(aedm): only generate this path if the instruction has to be saved to the blueprint store.
     pub override_path: EntityPath,
+
     /// List of components that have overrides for this visualizer instruction.
     ///
     /// Note that this does *not* take into account tree propagation of any special components
@@ -82,7 +85,6 @@ impl VisualizerInstruction {
         }
     }
 
-    // TODO(aedm): only generate this path if the instruction has to be saved to the blueprint store.
     pub fn override_path_for(
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,

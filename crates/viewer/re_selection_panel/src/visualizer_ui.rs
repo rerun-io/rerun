@@ -499,6 +499,8 @@ fn visualizer_components(
     }
 
     if !changed_component_mappings.is_empty() {
+        println!("Original instruction: {:#?}", instruction);
+
         let mut new_instruction = instruction.clone();
         for mapping in changed_component_mappings {
             // Overwrite the mapping in the new instruction.
@@ -507,12 +509,21 @@ fn visualizer_components(
                 .iter_mut()
                 .find(|m| m.target == mapping.target)
             {
+                println!(
+                    "Overwriting mapping: {:?} -> {:?}",
+                    orig_mapping.source, mapping.source
+                );
                 orig_mapping.source = mapping.source;
             } else {
+                println!(
+                    "Adding mapping: {:?} -> {:?}",
+                    mapping.source, mapping.target
+                );
                 new_instruction.component_mappings.push(mapping);
             }
         }
         new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+        println!("New instruction: {:#?}", new_instruction);
     }
 }
 
@@ -714,9 +725,6 @@ fn menu_add_new_visualizer(
             // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
 
-            // let new_id = uuid::Uuid::new_v4(); // TODO: figure out a better id scheme.
-
-            // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
             let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
 
             let new_instruction = VisualizerInstruction::new(

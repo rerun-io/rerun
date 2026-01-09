@@ -504,12 +504,23 @@ impl<'a> DataQueryPropertyResolver<'a> {
 
         let override_base_path = &node.data_result.override_base_path;
 
+        // println!(
+        //     "BP Any visualizers available: path: {:?} {:?}",
+        //     node.data_result.override_base_path, node.data_result.any_visualizers_available
+        // );
+
+        // println!(
+        //     "BP Visualizer instructions: {:#?}",
+        //     node.data_result.visualizer_instructions
+        // );
+
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
         if node.data_result.any_visualizers_available {
             // If the user has overridden the visualizers, update which visualizers are used.
             let id_component =
                 blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
+            // println!("BP ID component: {:?}", id_component);
             let type_component =
                 blueprint_archetypes::VisualizerInstruction::descriptor_visualizer_type().component;
             let component_map_component =
@@ -523,11 +534,15 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 )
                 .component_batch::<blueprint_components::VisualizerInstructionId>(id_component)
             {
+                println!(
+                    "BP Visualizer instruction IDs: {:#?}",
+                    visualizer_instruction_ids
+                );
                 node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
-                    .map(|instruction_id| {
+                    .map(|blueprint_instruction_id| {
                         let instruction_id = re_viewer_context::VisualizerInstructionId::from_uuid(
-                            instruction_id.0.into(),
+                            blueprint_instruction_id.0.into(),
                         );
 
                         let visualizer_override_path = VisualizerInstruction::override_path_for(
@@ -560,6 +575,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
                                     .collect()
                             });
 
+                        println!("BP Visualizer type: {:?}", visualizer_type);
+                        println!("BP Component mappings: {:#?}", component_mappings);
+
                         VisualizerInstruction::new(
                             instruction_id,
                             visualizer_type,
@@ -570,24 +588,71 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .collect();
             } else {
                 // Otherwise ask the `ViewClass` to choose.
-                node.data_result.visualizer_instructions = self
+                let recommended_visualizers = self
                     .view
                     .class(self.view_class_registry)
                     .choose_default_visualizers(
                         &node.data_result.entity_path,
                         self.visualizable_entities_per_visualizer,
                         self.indicated_entities_per_visualizer,
-                    )
-                    .0 // TODO
+                    );
+                node.data_result.visualizer_instructions = recommended_visualizers
+                    .0
                     .into_iter()
                     .enumerate()
-                    .map(|(index, (visualizer_type, component_mappings))| {
+                    .map(|(index, (visualizer_type, mut component_mappings))| {
+                        // println!("-- Visualizer type: {:?}", visualizer_type);
+                        // println!("-- Component mappings: {:#?}", component_mappings);
+                        let id = re_viewer_context::VisualizerInstructionId::new_deterministic(
+                            &node.data_result.entity_path,
+                            index,
+                        );
+
+                        let override_path = VisualizerInstruction::override_path_for(
+                            &node.data_result.override_base_path,
+                            &id,
+                        );
+
+                        // let component_mappings = vec![];
+                        component_mappings.clear();
+                        println!("BP Component mappings: {:#?}", component_mappings);
+                        if let Some(component_mapping_overrides) = blueprint
+                            .latest_at(blueprint_query, &override_path, [component_map_component])
+                            .component_batch::<blueprint_components::VisualizerComponentMapping>(
+                                component_map_component,
+                            )
+                        {
+                            for mapping in component_mapping_overrides {
+                                if let Some(target_component) = component_mappings
+                                    .iter_mut()
+                                    .find(|m| m.target == mapping.target.as_str())
+                                {
+                                    println!(
+                                        "BP Overriding mapping: {:?} -> {:?}",
+                                        target_component.source,
+                                        mapping.source.as_str()
+                                    );
+                                    target_component.source = mapping.source.as_str().into();
+                                } else {
+                                    println!(
+                                        "BP Adding mapping: {:?} -> {:?}",
+                                        mapping.source.as_str(),
+                                        mapping.target.as_str()
+                                    );
+                                    component_mappings.push(VisualizerComponentMapping {
+                                        source: mapping.source.as_str().into(),
+                                        target: mapping.target.as_str().into(),
+                                    });
+                                }
+                            }
+                        }
+                        println!(
+                            "BP Component mappings after overrides: {:#?}",
+                            component_mappings
+                        );
+
                         VisualizerInstruction::new(
-                            // i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
-                            re_viewer_context::VisualizerInstructionId::new_deterministic(
-                                &node.data_result.entity_path,
-                                index,
-                            ),
+                            id,
                             visualizer_type,
                             &node.data_result.override_base_path,
                             component_mappings,

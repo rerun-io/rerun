@@ -2,6 +2,7 @@
 
 use core::f32;
 use std::f64::consts::PI;
+use std::io::Read as _;
 use std::sync::Arc;
 
 use rerun::external::arrow;
@@ -54,7 +55,7 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
 
         // 1. Log using builtin Scalars archetype with sin curve
         let sin_value = sin_curve(x_f64);
-        rec.log("builtin", &Scalars::new([sin_value]))?;
+        // rec.log("builtin", &Scalars::new([sin_value]))?;
 
         // 2. Log using DynamicArchetype with Float64 (cos curve)
         let cos_value = cos_curve(x_f64);
@@ -94,7 +95,7 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
         rec.log("float64", &float64_archetype)?;
         rec.log("float64", &custom_archetype)?;
 
-        rec.log("float32", &float32_archetype)?;
+        // rec.log("float32", &float32_archetype)?;
 
         // 4. Log using DynamicArchetype with Float64 array containing both original and scaled
         let cos_multi_array = Arc::new(arrow::array::Float64Array::from(vec![
@@ -105,7 +106,7 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
         let float64_multi_archetype = DynamicArchetype::new("Float64MultiScalars")
             .with_component_from_data("cos", cos_multi_array);
 
-        rec.log("float64/multi", &float64_multi_archetype)?;
+        // rec.log("float64/multi", &float64_multi_archetype)?;
 
         // 5. Log using DynamicArchetype with Float32 array containing both original and scaled
         let sigmoid_multi_array = Arc::new(arrow::array::Float32Array::from(vec![
@@ -116,7 +117,7 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
         let float32_multi_archetype = DynamicArchetype::new("Float32MultiScalars")
             .with_component_from_data("sigmoid", sigmoid_multi_array);
 
-        rec.log("float32/multi", &float32_multi_archetype)?;
+        // rec.log("float32/multi", &float32_multi_archetype)?;
     }
 
     Ok(())
@@ -134,9 +135,12 @@ fn main() -> anyhow::Result<()> {
 
     use clap::Parser as _;
     let args = Args::parse();
-
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_test_any_scalar_gabor")?;
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_test_any_scalar")?;
     log_scalar_data(&rec)?;
+
+    let _ = std::io::stdin()
+        .read(&mut [0u8])
+        .expect("Failed to read from stdin");
 
     Ok(())
 }
