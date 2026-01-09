@@ -15,6 +15,14 @@ use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
+/// Helper function to apply transform frame prefix to a frame ID.
+fn apply_frame_prefix(frame_id: String, prefix: &Option<String>) -> String {
+    match prefix {
+        Some(prefix) => format!("{prefix}{frame_id}"),
+        None => frame_id,
+    }
+}
+
 fn is_urdf_file(path: impl AsRef<Path>) -> bool {
     path.as_ref()
         .extension()
@@ -83,6 +91,7 @@ impl DataLoader for UrdfDataLoader {
             &tx,
             &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
+            &settings.transform_frame_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
         )
         .with_context(|| "Failed to load URDF file!")?;
@@ -112,6 +121,7 @@ impl DataLoader for UrdfDataLoader {
             &tx,
             &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
+            &settings.transform_frame_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
         )
         .with_context(|| "Failed to load URDF file!")?;
@@ -283,6 +293,7 @@ fn log_robot(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
     entity_path_prefix: &Option<EntityPath>,
+    transform_frame_prefix: &Option<String>,
     timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
@@ -294,12 +305,13 @@ fn log_robot(
         .unwrap_or_else(|| EntityPath::from_single_string(urdf_tree.name.clone()));
 
     // The robot's root coordinate frame_id.
+    let root_frame = apply_frame_prefix(urdf_tree.root.name.clone(), transform_frame_prefix);
     send_archetype(
         tx,
         store_id,
         entity_path.clone(),
         timepoint,
-        &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
+        &CoordinateFrame::update_fields().with_frame(root_frame.clone()),
     )?;
 
     walk_tree(
@@ -307,7 +319,8 @@ fn log_robot(
         tx,
         store_id,
         &entity_path,
-        &urdf_tree.root.name,
+        &urdf_tree.root.name, // Note: has to be without prefix here!
+        transform_frame_prefix,
         timepoint,
     )?;
 
@@ -320,6 +333,7 @@ fn walk_tree(
     store_id: &StoreId,
     parent_path: &EntityPath,
     link_name: &str,
+    transform_frame_prefix: &Option<String>,
     timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let link = urdf_tree
@@ -329,7 +343,15 @@ fn walk_tree(
     debug_assert_eq!(link_name, link.name);
     let link_path = parent_path / EntityPathPart::new(link_name);
 
-    log_link(urdf_tree, tx, store_id, link, &link_path, timepoint)?;
+    log_link(
+        urdf_tree,
+        tx,
+        store_id,
+        link,
+        &link_path,
+        transform_frame_prefix,
+        timepoint,
+    )?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -338,7 +360,14 @@ fn walk_tree(
 
     for joint in joints {
         let joint_path = &link_path / EntityPathPart::new(&joint.name);
-        log_joint(tx, store_id, &joint_path, joint, timepoint)?;
+        log_joint(
+            tx,
+            store_id,
+            &joint_path,
+            joint,
+            transform_frame_prefix,
+            timepoint,
+        )?;
 
         // Recurse
         walk_tree(
@@ -346,7 +375,8 @@ fn walk_tree(
             tx,
             store_id,
             &joint_path,
-            &joint.child.link,
+            &joint.child.link, // Note: has to be without prefix here!
+            transform_frame_prefix,
             timepoint,
         )?;
     }
@@ -359,6 +389,7 @@ fn log_joint(
     store_id: &StoreId,
     joint_path: &EntityPath,
     joint: &Joint,
+    transform_frame_prefix: &Option<String>,
     timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let Joint {
@@ -376,22 +407,24 @@ fn log_joint(
     } = joint;
 
     // A joint's own coordinate frame is that of its parent link.
+    let parent_frame = apply_frame_prefix(parent.link.clone(), transform_frame_prefix);
     send_archetype(
         tx,
         store_id,
         joint_path.clone(),
         timepoint,
-        &CoordinateFrame::update_fields().with_frame(parent.link.clone()),
+        &CoordinateFrame::update_fields().with_frame(parent_frame.clone()),
     )?;
     // Send the joint origin, i.e. the default transform from parent link to child link.
+    let child_frame = apply_frame_prefix(child.link.clone(), transform_frame_prefix);
     send_transform(
         tx,
         store_id,
         joint_path.clone(),
         origin,
         timepoint,
-        parent.link.clone(),
-        child.link.clone(),
+        parent_frame,
+        child_frame,
     )?;
 
     log_debug_format(
@@ -538,6 +571,7 @@ fn log_link(
     store_id: &StoreId,
     link: &urdf_rs::Link,
     link_entity: &EntityPath,
+    transform_frame_prefix: &Option<String>,
     timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
@@ -557,7 +591,7 @@ fn log_link(
     )?;
 
     // Log coordinate frame ID of the link.
-    let link_name = link.name.clone();
+    let link_name = apply_frame_prefix(link.name.clone(), transform_frame_prefix);
     send_archetype(
         tx,
         store_id,

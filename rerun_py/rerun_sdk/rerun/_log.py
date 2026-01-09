@@ -223,6 +223,7 @@ def log_file_from_path(
     file_path: str | Path,
     *,
     entity_path_prefix: str | None = None,
+    transform_frame_prefix: str | None = None,
     static: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -244,6 +245,9 @@ def log_file_from_path(
     entity_path_prefix:
         What should the logged entity paths be prefixed with?
 
+    transform_frame_prefix:
+        What should transform frame names be prefixed with?
+
     static:
         If true, the components will be logged as static data.
 
@@ -262,6 +266,7 @@ def log_file_from_path(
     bindings.log_file_from_path(
         Path(file_path),
         entity_path_prefix=entity_path_prefix,
+        transform_frame_prefix=transform_frame_prefix,
         static_=static,
         recording=recording.to_native() if recording is not None else None,
     )
@@ -274,6 +279,7 @@ def log_file_from_contents(
     file_contents: bytes,
     *,
     entity_path_prefix: str | None = None,
+    transform_frame_prefix: str | None = None,
     static: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -298,6 +304,9 @@ def log_file_from_contents(
     entity_path_prefix:
         What should the logged entity paths be prefixed with?
 
+    transform_frame_prefix:
+        What should transform frame names be prefixed with?
+
     static:
         If true, the components will be logged as static data.
 
@@ -318,6 +327,7 @@ def log_file_from_contents(
         Path(file_path),
         file_contents,
         entity_path_prefix=entity_path_prefix,
+        transform_frame_prefix=transform_frame_prefix,
         static_=static,
         recording=recording.to_native() if recording is not None else None,
     )

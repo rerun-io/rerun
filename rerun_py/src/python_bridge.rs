@@ -1954,6 +1954,7 @@ fn send_arrow_chunk(
 #[pyo3(signature = (
     file_path,
     entity_path_prefix = None,
+    transform_frame_prefix = None,
     static_ = false,
     recording = None,
 ))]
@@ -1961,10 +1962,19 @@ fn log_file_from_path(
     py: Python<'_>,
     file_path: std::path::PathBuf,
     entity_path_prefix: Option<String>,
+    transform_frame_prefix: Option<String>,
     static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    log_file(py, file_path, None, entity_path_prefix, static_, recording)
+    log_file(
+        py,
+        file_path,
+        None,
+        entity_path_prefix,
+        transform_frame_prefix,
+        static_,
+        recording,
+    )
 }
 
 /// Log a file by contents.
@@ -1973,6 +1983,7 @@ fn log_file_from_path(
     file_path,
     file_contents,
     entity_path_prefix = None,
+    transform_frame_prefix = None,
     static_ = false,
     recording = None,
 ))]
@@ -1981,6 +1992,7 @@ fn log_file_from_contents(
     file_path: std::path::PathBuf,
     file_contents: &[u8],
     entity_path_prefix: Option<String>,
+    transform_frame_prefix: Option<String>,
     static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
@@ -1989,6 +2001,7 @@ fn log_file_from_contents(
         file_path,
         Some(file_contents),
         entity_path_prefix,
+        transform_frame_prefix,
         static_,
         recording,
     )
@@ -1999,6 +2012,7 @@ fn log_file(
     file_path: std::path::PathBuf,
     file_contents: Option<&[u8]>,
     entity_path_prefix: Option<String>,
+    transform_frame_prefix: Option<String>,
     static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
@@ -2012,12 +2026,18 @@ fn log_file(
                 file_path,
                 std::borrow::Cow::Borrowed(contents),
                 entity_path_prefix.map(Into::into),
+                transform_frame_prefix,
                 static_,
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     } else {
         recording
-            .log_file_from_path(file_path, entity_path_prefix.map(Into::into), static_)
+            .log_file_from_path(
+                file_path,
+                entity_path_prefix.map(Into::into),
+                transform_frame_prefix,
+                static_,
+            )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     }
 

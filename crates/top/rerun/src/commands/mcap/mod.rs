@@ -89,6 +89,7 @@ impl ConvertCommand {
                 opened_store_id: None,
                 force_store_info: false,
                 entity_path_prefix: None,
+                transform_frame_prefix: None,
                 timepoint: None,
             },
             path_to_input_mcap.into(),
