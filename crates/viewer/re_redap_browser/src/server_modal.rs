@@ -37,11 +37,10 @@ impl ServerModalMode {
     }
 }
 
-#[expect(clippy::large_enum_variant)]
 enum AuthKind {
     None,
     Token(String),
-    RerunAccount(Option<LoginFlow>),
+    RerunAccount(Option<Box<LoginFlow>>),
 }
 
 /// Authentication state for the server modal.
@@ -74,7 +73,7 @@ impl Authentication {
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
         match LoginFlow::open(ui) {
             Ok(flow) => {
-                self.kind = AuthKind::RerunAccount(Some(flow));
+                self.kind = AuthKind::RerunAccount(Some(Box::new(flow)));
                 self.error = None;
             }
             Err(err) => {
