@@ -44,6 +44,7 @@ class SegmentationImageExt:
         image: ImageLike,
         *,
         opacity: Float32Like | None = None,
+        draw_order: Float32Like | None = None,
     ) -> None:
         image = _to_numpy(image)
 
@@ -72,4 +73,5 @@ class SegmentationImageExt:
                 channel_datatype=datatype,
             ),
             opacity=opacity,
+            draw_order=draw_order,
         )

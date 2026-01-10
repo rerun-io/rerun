@@ -22,6 +22,8 @@ class VideoFrameReferenceExt:
         seconds: float | None = None,
         nanoseconds: int | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the VideoFrameReference archetype.
@@ -53,6 +55,15 @@ class VideoFrameReferenceExt:
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        opacity:
+            Opacity of the video, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-15.0`.
 
         """
 
@@ -69,6 +80,8 @@ class VideoFrameReferenceExt:
             self.__attrs_init__(
                 timestamp=timestamp,
                 video_reference=video_reference,
+                opacity=opacity,
+                draw_order=draw_order,
             )
             return
 
