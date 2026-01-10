@@ -178,10 +178,12 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             let blob_bytes =
                 datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
                     .unwrap();
+            let tuid = re_log_types::external::re_tuid::Tuid::new();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,
                 MediaType::mp4().as_str(),
                 video_path.to_str().unwrap(),
+                tuid,
             )
             .unwrap();
 
@@ -193,7 +195,6 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             );
 
             let mut annexb_stream_state = re_video::AnnexBStreamState::default();
-            let samples_buffers = std::iter::once(blob_bytes).collect();
 
             for (sample_idx, sample) in video_data_description.samples.iter().enumerate() {
                 let (codec, sample_bytes) = match video_data_description.codec {
@@ -212,7 +213,11 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                         re_video::write_avc_chunk_to_nalu_stream(
                             avcc,
                             &mut sample_bytes,
-                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &sample
+                                .sample()
+                                .unwrap()
+                                .get(&|_| blob_bytes, sample_idx)
+                                .unwrap(),
                             &mut annexb_stream_state,
                         )
                         .unwrap();
@@ -235,7 +240,11 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                         re_video::write_hevc_chunk_to_nalu_stream(
                             hvcc,
                             &mut sample_bytes,
-                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &sample
+                                .sample()
+                                .unwrap()
+                                .get(&|_| blob_bytes, sample_idx)
+                                .unwrap(),
                             &mut annexb_stream_state,
                         )
                         .unwrap();
@@ -244,7 +253,12 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                     }
                     VideoCodec::AV1 => {
                         // Extract raw sample bytes, under av1 they're OBUs already!
-                        let sample_bytes = sample.get(&samples_buffers, sample_idx).unwrap().data;
+                        let sample_bytes = sample
+                            .sample()
+                            .unwrap()
+                            .get(&|_| blob_bytes, sample_idx)
+                            .unwrap()
+                            .data;
                         (components::VideoCodec::AV1, sample_bytes)
                     }
                     VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
@@ -252,6 +266,8 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                 };
 
                 let time_ns = sample
+                    .sample()
+                    .unwrap()
                     .presentation_timestamp
                     .into_nanos(video_data_description.timescale.unwrap());
 

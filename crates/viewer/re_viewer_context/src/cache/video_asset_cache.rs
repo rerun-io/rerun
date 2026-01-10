@@ -86,6 +86,8 @@ impl VideoAssetCache {
                     video_buffer,
                     &media_type,
                     &debug_name,
+                    // For video assets we use the row-id as the source identifier.
+                    blob_row_id.as_tuid(),
                 )
                 .map(|data| Video::load(debug_name, data, decode_settings));
                 Entry {

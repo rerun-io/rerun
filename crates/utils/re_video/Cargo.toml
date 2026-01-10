@@ -45,6 +45,7 @@ re_byte_size.workspace = true
 re_log.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
+re_tuid.workspace = true
 
 ahash.workspace = true
 bit-vec.workspace = true

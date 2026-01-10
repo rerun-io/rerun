@@ -25,12 +25,13 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
+    let source_id = re_tuid::Tuid::new();
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path, source_id)
         .expect("failed to load video");
 
     println!(
         "{} {}x{}",
-        video.gops.num_elements(),
+        video.keyframe_indices.len(),
         video
             .encoding_details
             .as_ref()
@@ -78,9 +79,12 @@ fn main() {
     .expect("Failed to create decoder");
 
     let start = Instant::now();
-    let video_buffers = std::iter::once(video_blob.as_ref()).collect();
     for (sample_idx, sample) in video.samples.iter_indexed() {
-        let chunk = sample.get(&video_buffers, sample_idx).unwrap();
+        let Some(sample) = sample.sample() else {
+            continue;
+        };
+
+        let chunk = sample.get(&|_| &video_blob, sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
     decoder.end_of_video().expect("Failed to end of video");

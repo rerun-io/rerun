@@ -253,10 +253,15 @@ fn try_size_from_blob(
         re_tracing::profile_scope!("video asset");
 
         let media_type = components::MediaType::or_guess_from_data(media_type, blob)?;
-        re_video::VideoDataDescription::load_from_bytes(blob, media_type.as_str(), debug_name)
-            .ok()
-            .and_then(|video| video.encoding_details.map(|e| e.coded_dimensions))
-            .map(|[w, h]| [w as _, h as _])
+        re_video::VideoDataDescription::load_from_bytes(
+            blob,
+            media_type.as_str(),
+            debug_name,
+            re_log_types::external::re_tuid::Tuid::new(),
+        )
+        .ok()
+        .and_then(|video| video.encoding_details.map(|e| e.coded_dimensions))
+        .map(|[w, h]| [w as _, h as _])
     } else {
         None
     }

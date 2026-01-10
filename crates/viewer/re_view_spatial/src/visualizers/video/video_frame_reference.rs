@@ -190,12 +190,9 @@ impl VideoFrameReferenceVisualizer {
                         video.data_descr().timescale,
                     );
 
-                    match video.frame_at(
-                        ctx.render_ctx(),
-                        player_stream_id,
-                        video_time,
-                        &std::iter::once(video_buffer.as_ref()).collect(),
-                    ) {
+                    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|_| {
+                        &video_buffer
+                    }) {
                         Ok(video_frame_reference) => {
                             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                             let multiplicative_tint =

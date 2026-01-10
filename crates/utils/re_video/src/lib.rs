@@ -16,7 +16,7 @@ pub use decode::{
     YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use demux::{
-    ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
+    ChromaSubsamplingModes, KeyframeIndex, SampleIndex, SampleMetadata, SampleMetadataState,
     SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
     VideoLoadError,
 };

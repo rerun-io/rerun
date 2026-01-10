@@ -167,7 +167,8 @@ impl WebVideoDecoder {
 
         let first_frame_pts = video_descr
             .samples
-            .front()
+            .iter()
+            .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
@@ -283,6 +284,7 @@ impl AsyncDecoder for WebVideoDecoder {
         self.first_frame_pts = video_descr
             .samples
             .front()
+            .and_then(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         let encoding_details = video_descr
