@@ -1298,9 +1298,17 @@ impl RecordingStream {
         &self,
         filepath: impl AsRef<std::path::Path>,
         entity_path_prefix: Option<EntityPath>,
+        transform_frame_prefix: Option<String>,
         static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None, entity_path_prefix, static_, true)
+        self.log_file(
+            filepath,
+            None,
+            entity_path_prefix,
+            transform_frame_prefix,
+            static_,
+            true,
+        )
     }
 
     /// Logs the given `contents` using all [`re_data_loader::DataLoader`]s available.
@@ -1317,9 +1325,17 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
         entity_path_prefix: Option<EntityPath>,
+        transform_frame_prefix: Option<String>,
         static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents), entity_path_prefix, static_, true)
+        self.log_file(
+            filepath,
+            Some(contents),
+            entity_path_prefix,
+            transform_frame_prefix,
+            static_,
+            true,
+        )
     }
 
     /// If `prefer_current_recording` is set (which is always the case for now), the dataloader settings
@@ -1332,6 +1348,7 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
         entity_path_prefix: Option<EntityPath>,
+        transform_frame_prefix: Option<String>,
         static_: bool,
         prefer_current_recording: bool,
     ) -> RecordingStreamResult<()> {
@@ -1354,6 +1371,7 @@ impl RecordingStream {
             opened_store_id: None,
             force_store_info: false,
             entity_path_prefix,
+            transform_frame_prefix,
             timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current

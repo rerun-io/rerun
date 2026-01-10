@@ -834,6 +834,7 @@ def send_arrow_chunk(
 def log_file_from_path(
     file_path: str | os.PathLike[str],
     entity_path_prefix: str | None = None,
+    transform_frame_prefix: str | None = None,
     static_: bool = False,
     recording: PyRecordingStream | None = None,
 ) -> None:
@@ -843,6 +844,7 @@ def log_file_from_contents(
     file_path: str | os.PathLike[str],
     file_contents: bytes,
     entity_path_prefix: str | None = None,
+    transform_frame_prefix: str | None = None,
     static_: bool = False,
     recording: PyRecordingStream | None = None,
 ) -> None:

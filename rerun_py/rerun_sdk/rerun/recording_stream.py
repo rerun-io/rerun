@@ -1014,6 +1014,7 @@ class RecordingStream:
         file_contents: bytes,
         *,
         entity_path_prefix: str | None = None,
+        transform_frame_prefix: str | None = None,
         static: bool = False,
     ) -> None:
         r"""
@@ -1037,6 +1038,9 @@ class RecordingStream:
         entity_path_prefix:
             What should the logged entity paths be prefixed with?
 
+        transform_frame_prefix:
+            What should transform frame names be prefixed with?
+
         static:
             If true, the components will be logged as static data.
 
@@ -1054,6 +1058,7 @@ class RecordingStream:
             file_path=file_path,
             file_contents=file_contents,
             entity_path_prefix=entity_path_prefix,
+            transform_frame_prefix=transform_frame_prefix,
             static=static,
             recording=self,
         )
@@ -1063,6 +1068,7 @@ class RecordingStream:
         file_path: str | Path,
         *,
         entity_path_prefix: str | None = None,
+        transform_frame_prefix: str | None = None,
         static: bool = False,
     ) -> None:
         r"""
@@ -1083,6 +1089,9 @@ class RecordingStream:
         entity_path_prefix:
             What should the logged entity paths be prefixed with?
 
+        transform_frame_prefix:
+            What should transform frame names be prefixed with?
+
         static:
             If true, the components will be logged as static data.
 
@@ -1099,6 +1108,7 @@ class RecordingStream:
         log_file_from_path(
             file_path=file_path,
             entity_path_prefix=entity_path_prefix,
+            transform_frame_prefix=transform_frame_prefix,
             static=static,
             recording=self,
         )

@@ -351,7 +351,7 @@ fn main() -> anyhow::Result<()> {
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_mcap_protobuf")?;
     rec.set_sink(Box::new(lenses_sink));
-    rec.log_file_from_path(args.filepath, None, false)?;
+    rec.log_file_from_path(args.filepath, None, None, false)?;
 
     Ok(())
 }

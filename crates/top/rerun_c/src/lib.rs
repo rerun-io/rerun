@@ -1069,15 +1069,23 @@ fn rr_recording_stream_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
+    transform_frame_prefix: CStringView,
     static_: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let filepath = filepath.as_nonempty_str("filepath")?;
     let entity_path_prefix = entity_path_prefix.as_optional_str("entity_path_prefix")?;
+    let transform_frame_prefix =
+        transform_frame_prefix.as_optional_str("transform_frame_prefix")?;
 
     stream
-        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), static_)
+        .log_file_from_path(
+            filepath,
+            entity_path_prefix.map(Into::into),
+            transform_frame_prefix.map(Into::into),
+            static_,
+        )
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,
@@ -1094,12 +1102,17 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
+    transform_frame_prefix: CStringView,
     static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_)
-    {
+    if let Err(err) = rr_recording_stream_log_file_from_path_impl(
+        stream,
+        filepath,
+        entity_path_prefix,
+        transform_frame_prefix,
+        static_,
+    ) {
         err.write_error(error);
     }
 }
@@ -1110,6 +1123,7 @@ fn rr_recording_stream_log_file_from_contents_impl(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
+    transform_frame_prefix: CStringView,
     static_: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
@@ -1117,12 +1131,15 @@ fn rr_recording_stream_log_file_from_contents_impl(
     let filepath = filepath.as_nonempty_str("filepath")?;
     let contents = contents.as_bytes("contents")?;
     let entity_path_prefix = entity_path_prefix.as_optional_str("entity_path_prefix")?;
+    let transform_frame_prefix =
+        transform_frame_prefix.as_optional_str("transform_frame_prefix")?;
 
     stream
         .log_file_from_contents(
             filepath,
             std::borrow::Cow::Borrowed(contents),
             entity_path_prefix.map(Into::into),
+            transform_frame_prefix.map(Into::into),
             static_,
         )
         .map_err(|err| {
@@ -1142,6 +1159,7 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
+    transform_frame_prefix: CStringView,
     static_: bool,
     error: *mut CError,
 ) {
@@ -1150,6 +1168,7 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
         filepath,
         contents,
         entity_path_prefix,
+        transform_frame_prefix,
         static_,
     ) {
         err.write_error(error);

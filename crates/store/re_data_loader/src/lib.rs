@@ -58,6 +58,7 @@ pub mod external {
 /// * `--recording-id <store_id>`
 /// * `--opened-recording-id <opened_store_id>` (if set)
 /// * `--entity-path-prefix <entity_path_prefix>` (if set)
+/// * `--transform-frame-prefix <transform_frame_prefix>` (if set)
 /// * `--static` (if `timepoint` is set to the timeless timepoint)
 /// * `--timeless` \[deprecated\] (if `timepoint` is set to the timeless timepoint)
 /// * `--time_sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
@@ -86,6 +87,9 @@ pub struct DataLoaderSettings {
     /// What should the logged entity paths be prefixed with?
     pub entity_path_prefix: Option<EntityPath>,
 
+    /// What should transform frame names be prefixed with?
+    pub transform_frame_prefix: Option<String>,
+
     /// At what time(s) should the data be logged to?
     pub timepoint: Option<TimePoint>,
 }
@@ -99,6 +103,7 @@ impl DataLoaderSettings {
             opened_store_id: Default::default(),
             force_store_info: false,
             entity_path_prefix: Default::default(),
+            transform_frame_prefix: Default::default(),
             timepoint: Default::default(),
         }
     }
@@ -129,6 +134,7 @@ impl DataLoaderSettings {
             opened_store_id,
             force_store_info: _,
             entity_path_prefix,
+            transform_frame_prefix,
             timepoint,
         } = self;
 
@@ -155,6 +161,13 @@ impl DataLoaderSettings {
             args.extend([
                 "--entity-path-prefix".to_owned(),
                 format!("{entity_path_prefix}"),
+            ]);
+        }
+
+        if let Some(transform_frame_prefix) = transform_frame_prefix {
+            args.extend([
+                "--transform-frame-prefix".to_owned(),
+                format!("{transform_frame_prefix}"),
             ]);
         }
 

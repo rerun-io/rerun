@@ -175,6 +175,11 @@ typedef struct rr_data_loader_settings {
     /// Unspecified by default.
     rr_string entity_path_prefix;
 
+    /// What should transform frame names be prefixed with?
+    ///
+    /// Unspecified by default.
+    rr_string transform_frame_prefix;
+
     /// Should the logged data be static?
     ///
     /// Defaults to `false` if not set.
@@ -619,8 +624,8 @@ extern void rr_recording_stream_log(
 ///
 /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 extern void rr_recording_stream_log_file_from_path(
-    rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool static_,
-    rr_error* error
+    rr_recording_stream stream, rr_string path, rr_string entity_path_prefix,
+    rr_string transform_frame_prefix, bool static_, rr_error* error
 );
 
 /// Logs the given `contents` using all `DataLoader`s available.
@@ -633,7 +638,7 @@ extern void rr_recording_stream_log_file_from_path(
 /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
-    bool static_, rr_error* error
+    rr_string transform_frame_prefix, bool static_, rr_error* error
 );
 
 /// Sends the columns of components to the stream.

@@ -13,8 +13,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_dataframe_view_query_external")
         .spawn()?;
 
-    rec.log_file_from_path(path_to_rrd, None /* prefix */, false /* static */)?;
-    rec.log_file_from_path(path_to_rbl, None /* prefix */, false /* static */)?;
+    rec.log_file_from_path(
+        path_to_rrd,
+        None,  /* prefix */
+        None,  /* transform_frame_prefix */
+        false, /* static */
+    )?;
+    rec.log_file_from_path(
+        path_to_rbl,
+        None,  /* prefix */
+        None,  /* transform_frame_prefix */
+        false, /* static */
+    )?;
 
     Ok(())
 }

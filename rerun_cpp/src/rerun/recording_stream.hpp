@@ -671,6 +671,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -680,9 +681,11 @@ namespace rerun {
         /// \see `try_log_file_from_path`
         void log_file_from_path(
             const std::filesystem::path& filepath,
-            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+            std::string_view entity_path_prefix = std::string_view(),
+            std::string_view transform_frame_prefix = std::string_view(), bool static_ = false
         ) const {
-            try_log_file_from_path(filepath, entity_path_prefix, static_).handle();
+            try_log_file_from_path(filepath, entity_path_prefix, transform_frame_prefix, static_)
+                .handle();
         }
 
         /// Logs the file at the given `path` using all `DataLoader`s available.
@@ -696,6 +699,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -705,7 +709,8 @@ namespace rerun {
         /// \see `log_file_from_path`
         Error try_log_file_from_path(
             const std::filesystem::path& filepath,
-            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+            std::string_view entity_path_prefix = std::string_view(),
+            std::string_view transform_frame_prefix = std::string_view(), bool static_ = false
         ) const;
 
         /// Logs the given `contents` using all `DataLoader`s available.
@@ -721,6 +726,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -730,13 +736,15 @@ namespace rerun {
         /// \see `try_log_file_from_contents`
         void log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+            std::string_view entity_path_prefix = std::string_view(),
+            std::string_view transform_frame_prefix = std::string_view(), bool static_ = false
         ) const {
             try_log_file_from_contents(
                 filepath,
                 contents,
                 contents_size,
                 entity_path_prefix,
+                transform_frame_prefix,
                 static_
             )
                 .handle();
@@ -755,6 +763,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param transform_frame_prefix What should transform frame names be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
@@ -764,7 +773,8 @@ namespace rerun {
         /// \see `log_file_from_contents`
         Error try_log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+            std::string_view entity_path_prefix = std::string_view(),
+            std::string_view transform_frame_prefix = std::string_view(), bool static_ = false
         ) const;
 
         /// Directly log a columns of data to Rerun.
