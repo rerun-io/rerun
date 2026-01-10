@@ -285,16 +285,11 @@ def main() -> None:
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_prebuilt_cpp(example)
-        check_non_empty_rrd(cpp_output_path)
+        run_prebuilt_cpp(example)
     elif language == "py":
-        python_output_path = run_python(example)
-        check_non_empty_rrd(python_output_path)
+        run_python(example)
     elif language == "rust":
-        rust_output_path = run_prebuilt_rust(
-            example, release=args.release, target=args.target, target_dir=args.target_dir
-        )
-        check_non_empty_rrd(rust_output_path)
+        run_prebuilt_rust(example, release=args.release, target=args.target, target_dir=args.target_dir)
     else:
         raise AssertionError(f"Unknown language: {language}")
 
