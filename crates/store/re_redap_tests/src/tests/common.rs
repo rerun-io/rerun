@@ -15,6 +15,7 @@ use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
 
+use crate::utils::rerun::multi_chunked_entities_recording;
 use crate::{
     RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
     create_recording_with_embeddings, create_recording_with_properties,
@@ -186,6 +187,9 @@ pub enum LayerType {
 
     /// See [`crate::create_simple_blueprint`]
     SimpleBlueprint,
+
+    /// See [`crate::utils::rerun::multi_chunked_entities_recording`]
+    MultiChunkedEntities { entities: &'static [&'static str] },
 }
 
 impl LayerType {
@@ -257,7 +261,15 @@ impl LayerType {
             ),
 
             Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, segment_id),
+
+            Self::MultiChunkedEntities { entities } => {
+                multi_chunked_entities_recording(tuid_prefix, segment_id, entities)
+            }
         }
+    }
+
+    pub fn multi_chunked_entities(entities: &'static [&'static str]) -> Self {
+        Self::MultiChunkedEntities { entities }
     }
 }
 
@@ -337,6 +349,17 @@ impl LayerDefinition {
     pub fn layer_name(mut self, layer_name: &'static str) -> Self {
         self.layer_name = Some(layer_name);
         self
+    }
+
+    pub fn multi_chunked_entities(
+        segment_id: &'static str,
+        entities: &'static [&'static str],
+    ) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::multi_chunked_entities(entities),
+        }
     }
 }
 

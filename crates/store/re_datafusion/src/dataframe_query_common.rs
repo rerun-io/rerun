@@ -69,11 +69,30 @@ impl DataframeQueryTableProvider {
         segment_ids: &[impl AsRef<str> + Sync],
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
-        let mut client = connection
+        let client = connection
             .client(origin)
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
+        Self::new_from_client(
+            client,
+            dataset_id,
+            query_expression,
+            segment_ids,
+            #[cfg(not(target_arch = "wasm32"))]
+            trace_headers,
+        )
+        .await
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn new_from_client(
+        mut client: ConnectionClient,
+        dataset_id: EntryId,
+        query_expression: &QueryExpression,
+        segment_ids: &[impl AsRef<str> + Sync],
+        #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
+    ) -> Result<Self, DataFusionError> {
         let schema = client
             .inner()
             .get_dataset_schema(
@@ -230,6 +249,7 @@ impl TableProvider for DataframeQueryTableProvider {
         let mut query_expression = self.query_expression.clone();
 
         let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
+
         for dataset_query in dataset_queries {
             let response_stream = self
                 .client
