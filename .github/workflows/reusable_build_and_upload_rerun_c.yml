@@ -48,13 +48,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
@@ -71,7 +64,7 @@ permissions:
 jobs:
   set-config:
     name: Set Config (${{ inputs.PLATFORM }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
@@ -83,19 +76,19 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="ubuntu-arm-16-core"
+              runner="runs-on=${{ github.run_id }}/runner=arm64-ubuntu-large/extras=s3-cache"
               target="aarch64-unknown-linux-gnu"
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
-              runner="ubuntu-latest-16-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache"
               target="x86_64-unknown-linux-gnu"
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               lib_name="librerun_c.a"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-windows-large/extras=s3-cache"
               target="x86_64-pc-windows-msvc"
               container="null"
               lib_name="rerun_c.lib"
@@ -127,6 +120,11 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(needs.set-config.outputs.RUNNER, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - name: Show context
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
@@ -147,13 +145,15 @@ jobs:
         with:
           pixi-version: v0.55.0
 
-      - name: Set up Rust and Authenticate to GCS
-        uses: ./.github/actions/setup-rust
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
         with:
-          cache_key: "build-${{ inputs.PLATFORM }}"
-          save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
           targets: ${{ needs.set-config.outputs.TARGET }}
 
       - name: Build rerun_c (release)

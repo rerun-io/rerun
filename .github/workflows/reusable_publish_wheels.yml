@@ -133,8 +133,12 @@ jobs:
   publish-wheels:
     name: "Publish Wheels"
     needs: [get-commit-sha, generate-wheel-index]
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:

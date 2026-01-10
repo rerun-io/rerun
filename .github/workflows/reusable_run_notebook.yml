@@ -28,13 +28,17 @@ permissions:
 jobs:
   run-notebook:
     name: Run notebook
-    runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubuntu-latest runner is not enough).
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     container:
       image: ghcr.io/rerun-io/ci_docker:0.16.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}

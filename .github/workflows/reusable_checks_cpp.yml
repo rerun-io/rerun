@@ -25,11 +25,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  RUSTC_WRAPPER: "sccache"
-
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
@@ -53,7 +48,9 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
-        run: echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+        run: |
+          # replace "_RUN_ID_" with ${{ github.run_id }}, and parse as json
+          echo "matrix=$(sed 's/\_RUN_ID_/${{ github.run_id }}/g' ./.github/workflows/cpp_matrix_full.json | jq -c .)" >> $GITHUB_OUTPUT
 
   cpp-tests:
     name: C++ build & test - ${{ matrix.name }}
@@ -63,6 +60,11 @@ jobs:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
     runs-on: ${{ matrix.runs_on }}
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(matrix.runs_on, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       # Skipping the entire step would apparently require a separate job, not doing that here.
       # Instead we keep checking for the `matrix.pr_ci` flag.
       # See https://stackoverflow.com/questions/77186893/how-can-i-skip-the-whole-job-for-a-matrix-match-in-github-action
@@ -77,15 +79,18 @@ jobs:
           pixi-version: v0.55.0
           environments: cpp
 
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v2
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
-          cache_key: ${{ matrix.cache_key }}
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          cache_key_suffix: ${{ matrix.uid }}
 
       # Workaround for ASAN issues on Github images https://github.com/actions/runner-images/issues/9491
       - name: Fix kernel mmap rnd bits
