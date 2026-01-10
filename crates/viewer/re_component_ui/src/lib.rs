@@ -22,6 +22,7 @@ mod response_utils;
 mod text_log_columns;
 mod time_range;
 mod timeline_columns;
+pub mod transform_frame_id;
 mod transforms;
 mod variant_uis;
 mod video_timestamp;
@@ -46,8 +47,8 @@ use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
     GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed, MagnificationFilter, MarkerSize,
     Name, Opacity, Position2D, Position3D, Range1D, Scale3D, SeriesVisible, ShowLabels,
-    StrokeWidth, Text, Timestamp, TransformFrameId, TransformRelation, Translation3D, ValueRange,
-    Vector3D, VideoCodec, Visible,
+    StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
+    VideoCodec, Visible,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
@@ -118,7 +119,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
-    registry.add_singleline_edit_or_view::<TransformFrameId>(edit_singleline_string);
 
     // Enums:
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
@@ -213,6 +213,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_array_edit_or_view(text_log_columns::edit_or_view_columns_singleline);
     registry.add_multiline_array_edit_or_view(text_log_columns::edit_or_view_columns_multiline);
+
+    registry.add_singleline_edit_or_view(transform_frame_id::edit_or_view_transform_frame_id);
 
     // --------------------------------------------------------------------------------
     // All variant UIs:
