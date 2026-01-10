@@ -331,7 +331,7 @@ def main() -> None:
                     origin="world",
                     # Set the image plane distance to 5m for all camera visualizations.
                     defaults=[rr.Pinhole.from_fields(image_plane_distance=5.0)],
-                    overrides={"world/anns": rr.Boxes3D.from_fields(fill_mode="solid")},
+                    overrides={"world/anns": rr.Boxes3D(fill_mode="solid")},
                 ),
                 rrb.Vertical(
                     rrb.TextDocumentView(origin="description", name="Description"),

@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .geo_line_strings_ext import GeoLineStringsExt
 
@@ -21,7 +22,7 @@ __all__ = ["GeoLineStrings"]
 
 
 @define(str=False, repr=False, init=False)
-class GeoLineStrings(GeoLineStringsExt, Archetype):
+class GeoLineStrings(GeoLineStringsExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 
@@ -246,3 +247,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("GeoLineStrings", overrides=self.as_component_batches(), mappings=None)

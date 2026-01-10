@@ -16,6 +16,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .bar_chart_ext import BarChartExt
 
@@ -23,7 +24,7 @@ __all__ = ["BarChart"]
 
 
 @define(str=False, repr=False, init=False)
-class BarChart(BarChartExt, Archetype):
+class BarChart(BarChartExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A bar chart.
 
@@ -268,3 +269,7 @@ class BarChart(BarChartExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("BarChart", overrides=self.as_component_batches(), mappings=None)

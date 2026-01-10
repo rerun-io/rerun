@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .cylinders3d_ext import Cylinders3DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Cylinders3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Cylinders3D(Cylinders3DExt, Archetype):
+class Cylinders3D(Cylinders3DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: 3D cylinders with flat caps.
 
@@ -436,3 +437,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Cylinders3D", overrides=self.as_component_batches(), mappings=None)

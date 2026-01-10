@@ -16,13 +16,14 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TransformAxes3D"]
 
 
 @define(str=False, repr=False, init=False)
-class TransformAxes3D(Archetype):
+class TransformAxes3D(Archetype, VisualizableArchetype):
     """
     **Archetype**: A visual representation of a [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
 
@@ -247,3 +248,7 @@ class TransformAxes3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("TransformAxes3D", overrides=self.as_component_batches(), mappings=None)

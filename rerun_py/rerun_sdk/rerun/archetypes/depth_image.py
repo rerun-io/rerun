@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
@@ -21,7 +22,7 @@ __all__ = ["DepthImage"]
 
 
 @define(str=False, repr=False, init=False)
-class DepthImage(DepthImageExt, Archetype):
+class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A depth image, i.e. as captured by a depth camera.
 
@@ -394,3 +395,7 @@ class DepthImage(DepthImageExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("DepthImage", overrides=self.as_component_batches(), mappings=None)

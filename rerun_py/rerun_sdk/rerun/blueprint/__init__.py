@@ -12,7 +12,6 @@ from ..datatypes import (  # Re-export time range types for better discoverabili
 from . import (
     archetypes as archetypes,
     components as components,
-    visualizers as visualizers,
 )
 from .api import (
     Blueprint as Blueprint,
@@ -70,3 +69,4 @@ from .views import (
     TextLogView as TextLogView,
     TimeSeriesView as TimeSeriesView,
 )
+from .visualizers import VisualizableArchetype as VisualizableArchetype, Visualizer as Visualizer

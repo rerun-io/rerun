@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .segmentation_image_ext import SegmentationImageExt
 
@@ -21,7 +22,7 @@ __all__ = ["SegmentationImage"]
 
 
 @define(str=False, repr=False, init=False)
-class SegmentationImage(SegmentationImageExt, Archetype):
+class SegmentationImage(SegmentationImageExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: An image made up of integer [`components.ClassId`][rerun.components.ClassId]s.
 
@@ -263,3 +264,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("SegmentationImage", overrides=self.as_component_batches(), mappings=None)

@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .boxes3d_ext import Boxes3DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Boxes3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Boxes3D(Boxes3DExt, Archetype):
+class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
@@ -411,3 +412,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Boxes3D", overrides=self.as_component_batches(), mappings=None)

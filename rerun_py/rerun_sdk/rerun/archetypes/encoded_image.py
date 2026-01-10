@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .encoded_image_ext import EncodedImageExt
 
@@ -21,7 +22,7 @@ __all__ = ["EncodedImage"]
 
 
 @define(str=False, repr=False, init=False)
-class EncodedImage(EncodedImageExt, Archetype):
+class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: An image encoded as e.g. a JPEG or PNG.
 
@@ -274,3 +275,7 @@ class EncodedImage(EncodedImageExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("EncodedImage", overrides=self.as_component_batches(), mappings=None)
