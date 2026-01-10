@@ -1,6 +1,7 @@
 numpy
 opencv-python
 pycollada
+pyyaml
 rerun-sdk
 scipy
 yourdfpy
