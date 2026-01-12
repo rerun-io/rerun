@@ -481,6 +481,8 @@ async fn stream_segment_from_server(
                 }
             }
         }
+    } else {
+        re_log::debug_once!("Larger-than-RAM streaming is disabled");
     }
 
     // Fallback for servers that does not support the RRD manifests:
