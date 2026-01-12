@@ -47,9 +47,11 @@ __pycache__
 # Pixi environment
 .pixi
 
-# Generated uv shim (created by ensure-rerun-env)
+# Generated shims (created by ensure-rerun-env)
 scripts/pixi/uv
 scripts/pixi/uv.exe
+scripts/pixi/uvpy
+scripts/pixi/uvpy.exe
 
 .gdb_history
 perf.data*

@@ -12481,7 +12481,7 @@ packages:
 - pypi: ./rerun_pixi_env
   name: rerun-pixi-env
   version: 0.1.0
-  sha256: 46712bec2128d65b3e2e24ef191627d0a066aedc8bf6bca310de8c5710311b5f
+  sha256: 58d3d872fbb17aee8020e93b879f448e20c18b93db35cb5b0298e45953e536af
   requires_python: '>=3.10'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda

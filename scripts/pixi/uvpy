@@ -1,8 +1,10 @@
-#!/bin/bash
-# Wrapper script to run "uv run python" using the local uv wrapper
-# This ensures we use .venv instead of pixi env
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Use our uv wrapper script with "run python"
-"${SCRIPT_DIR}/uv" run python "$@"
+#!/home/jleibs/rerun/.pixi/envs/default/bin/python3.11
+# -*- coding: utf-8 -*-
+import sys
+from rerun_pixi_env import uvpy_shim_main
+if __name__ == "__main__":
+    if sys.argv[0].endswith("-script.pyw"):
+        sys.argv[0] = sys.argv[0][:-11]
+    elif sys.argv[0].endswith(".exe"):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(uvpy_shim_main())
