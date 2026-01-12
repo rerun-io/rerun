@@ -137,9 +137,10 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         self.model.from_camera_info(info)
 
+        # TODO: remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
         rr.log(
             "map/robot/camera/img",
-            rr.Pinhole(
+            rr.Pinhole.from_fields(
                 resolution=[self.model.width, self.model.height],
                 image_from_camera=self.model.intrinsic_matrix(),
                 parent_frame=info.header.frame_id,
