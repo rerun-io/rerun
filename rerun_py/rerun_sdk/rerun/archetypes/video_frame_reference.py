@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .video_frame_reference_ext import VideoFrameReferenceExt
 
@@ -21,7 +22,7 @@ __all__ = ["VideoFrameReference"]
 
 
 @define(str=False, repr=False, init=False)
-class VideoFrameReference(VideoFrameReferenceExt, Archetype):
+class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: References a single video frame.
 
@@ -357,3 +358,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("VideoFrameReference", overrides=self.as_component_batches(), mappings=None)

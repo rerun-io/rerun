@@ -133,4 +133,4 @@ This can be configured from the viewer's option menu. Alternatively, you can als
 * for the web viewer pass `&video_decoder=prefer_software` as a url parameter
 * for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
 
-For more information about video decoding, see also the reference page on [video](../../reference/video.md).
+For more information about video decoding, see also the reference page on [video](../../concepts/logging-and-ingestion/video.md).

@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Asset3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Asset3D(Asset3DExt, Archetype):
+class Asset3D(Asset3DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
@@ -257,3 +258,7 @@ class Asset3D(Asset3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Asset3D", overrides=self.as_component_batches(), mappings=None)

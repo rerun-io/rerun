@@ -4,14 +4,14 @@ order: 1000
 ---
 
 Rerun-0.9 introduces a new set of type-oriented logging APIs built on top of an updated, more concrete,
-[data model](../../concepts/entity-component.md).
+[data model](../../concepts/logging-and-ingestion/entity-component.md).
 
 Rather than using different functions to log different kinds of data, all data logging now goes through a singular `log`
 function. The easiest way to use the `log` function is with the Rerun-provided "Archetypes."
 
 Archetypes are a newly introduced concept in the data model to go alongside "Components" and "DataTypes." Archetypes
 represent common objects that are natively understood by the viewer, e.g. `Image` or `Points3D`. Every legacy logging
-API has been replaced by one (or more) new Archetypes. You can find more information in the [Entity Component](../../concepts/entity-component.md) section, and a list of available archetypes in the
+API has been replaced by one (or more) new Archetypes. You can find more information in the [Entity Component](../../concepts/logging-and-ingestion/entity-component.md) section, and a list of available archetypes in the
 [Archetype Overview](../types/archetypes.md). All Archetypes are part of the top-level `rerun` namespace.
 
 In practice, the changes are mostly demonstrated in the following example:
@@ -22,7 +22,7 @@ Note that for any Archetype that supports batching the object names are now plur
 with the `Points3D` archetype. Even if you are logging a single point, under the hood it is always implemented as a
 batch of size 1.
 
-For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../../concepts/entity-component.md).
+For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../../concepts/logging-and-ingestion/entity-component.md).
 
 # Migrating Python code
 

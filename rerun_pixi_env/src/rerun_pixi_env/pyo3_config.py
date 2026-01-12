@@ -1,15 +1,9 @@
-#!/usr/bin/env python3
 """
 Generate pyo3-build.cfg for stable builds across different build environments.
 
-This script queries the current Python interpreter and generates a config file
+This module queries the current Python interpreter and generates a config file
 that pyo3-build-config can use, ensuring consistent builds whether invoked
 via `maturin develop`, `uv sync`, or any other method.
-
-Usage:
-    pixi run py-build-pyo3-cfg
-
-The output is written to rerun_py/pyo3-build.cfg
 
 Note: The `version` field is set to 3.10 (our abi3 minimum), not the actual
 Python version, since we build with abi3-py310.
@@ -22,11 +16,6 @@ import sys
 import sysconfig
 from pathlib import Path
 from typing import Any
-
-
-def get_repo_root() -> Path:
-    """Get the repository root directory."""
-    return Path(__file__).parent.parent.resolve()
 
 
 def get_python_config() -> dict[str, Any]:
@@ -149,25 +138,8 @@ def generate_config_file(output_path: Path) -> bool:
     if output_path.exists():
         existing_content = output_path.read_text()
         if existing_content == new_content:
-            print(f"Up to date: {output_path}")
             return False
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(new_content)
-    print(f"Generated {output_path}")
     return True
-
-
-def main() -> None:
-    repo_root = get_repo_root()
-    output_path = repo_root / "rerun_py" / "pyo3-build.cfg"
-    python_path = get_python_executable()
-
-    generate_config_file(output_path)
-
-    print(f"  Python: {python_path}")
-    print(f"  Config: {output_path}")
-
-
-if __name__ == "__main__":
-    main()

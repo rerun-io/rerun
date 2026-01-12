@@ -53,7 +53,7 @@ def script_add_args(parser: ArgumentParser) -> None:
         "--serve",
         dest="serve",
         action="store_true",
-        help="Serve a web viewer (WARNING: experimental feature)",
+        help="Host a GRPC & web server and open a web viewer connecting to it.",
     )
     parser.add_argument("--url", type=str, default=None, help="Connect to this Rerun URL")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
