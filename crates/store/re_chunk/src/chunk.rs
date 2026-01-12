@@ -375,7 +375,9 @@ impl Chunk {
             && components.0 == other.components.0
     }
 
-    // TODO: document
+    /// Clones the chunk and renames a component.
+    ///
+    /// Note: archetype information and component type information is lost.
     pub fn with_renamed_component(
         &self,
         selector: ComponentIdentifier,
@@ -386,8 +388,8 @@ impl Chunk {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
                     component: target,
-                    archetype: None, // old_entry.descriptor.archetype, // TODO: that's inconsistent with target.
-                    component_type: None, // old_entry.descriptor.component_type, // TODO: that's just a lie.
+                    archetype: None,
+                    component_type: None,
                 },
                 list_array: old_entry.list_array,
             });

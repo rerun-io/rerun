@@ -13,9 +13,6 @@ use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
-// TODO: That can probably go away? -- kill it
-pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VisualizerInstructionId(pub uuid::Uuid);
 

@@ -35,7 +35,7 @@ pub use view_context_system::{
     ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
 };
 pub use view_query::{
-    DataResult, PerSystemDataResults, SmallVisualizerSet, ViewQuery, VisualizerComponentMapping,
+    DataResult, PerSystemDataResults, ViewQuery, VisualizerComponentMapping,
     VisualizerComponentMappings, VisualizerInstruction, VisualizerInstructionId,
 };
 pub use view_states::ViewStates;

@@ -117,14 +117,14 @@ pub use self::utils::{
 pub use self::view::{
     DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, PerSystemDataResults,
     PerSystemEntities, RecommendedView, RecommendedVisualizers, RequiredComponents,
-    SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
-    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
-    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
-    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, VisualizerCollection, VisualizerComponentMapping,
-    VisualizerComponentMappings, VisualizerExecutionErrorState, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerInstructionId, VisualizerQueryInfo, VisualizerSystem,
+    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
+    ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
+    ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
+    ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
+    VisualizerComponentMapping, VisualizerComponentMappings, VisualizerExecutionErrorState,
+    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionId, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
