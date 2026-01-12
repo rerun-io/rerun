@@ -1050,16 +1050,20 @@ fn load_known_chunk_offsets(
                 .push_back(re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid()));
         }
 
+        let idx = data_descr.samples.next_index();
         if let Some((chunk, rrd_entry)) = next_chunk
+            // `num_rows` gives us the maximal amount of frames in this chunk.
+            && let Some(end_idx) = rrd_entry
+                .num_rows
+                .checked_sub(1)
+                .map(|offset| idx.saturating_add(offset as usize))
             && !all_loaded_chunks.contains(chunk)
         {
-            let idx = data_descr.samples.next_index();
-            // `num_rows` gives us the maximal amount of frames in this chunk.
             known_chunk_ranges.insert(
                 *chunk,
                 ChunkSampleRange {
                     first_sample: idx,
-                    last_sample: idx + rrd_entry.num_rows as usize,
+                    last_sample: end_idx,
                 },
             );
             data_descr.samples.extend(std::iter::repeat_n(
