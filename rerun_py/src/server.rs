@@ -49,7 +49,7 @@ impl PyServerInternal {
 
         crate::utils::wait_for_future(py, async {
             let (handle, _) = args.create_server_handle().await.map_err(|err| {
-                PyValueError::new_err(format!("Failed to start Rerun server: {err}"))
+                PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
             })?;
 
             Ok(Self {
