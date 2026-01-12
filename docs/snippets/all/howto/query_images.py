@@ -58,7 +58,7 @@ nearest_keyframe = nearest_keyframe.select(
     .over(Window(window_frame=WindowFrame("rows", None, 0), order_by="log_time"))
     .alias("log_time")
 )
-keyframe_ts = pa.table(nearest_keyframe)["log_time"].to_numpy()[0]
+keyframe_ts = pa.table(nearest_keyframe.select("log_time"))["log_time"].to_numpy()[0]
 
 df = video_df.filter((col("log_time") <= selected_time) | (col("log_time") >= keyframe_ts))
 rows = df.select("log_time", video_column)
