@@ -57,7 +57,7 @@ reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
 reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference
 reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/layers-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
-reference/migration: reference/migration/migration-0-29
+reference/migration: reference/migration/migration-0-28
 reference/migration-0-9: reference/migration/migration-0-9
 reference/sdk: reference/sdk/logging-controls
 reference/sdk-micro-batching: reference/sdk/micro-batching
