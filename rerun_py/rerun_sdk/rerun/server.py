@@ -129,8 +129,7 @@ class Server:
 
     @deprecated("Renamed to `url`.")
     def address(self) -> str:
-        """Get the URL of the server to which clients can connect."""
-        return self._internal.url()
+        return self.url()
 
     def bind_ip(self) -> str:
         """Get the IP that we've bound the server to."""
