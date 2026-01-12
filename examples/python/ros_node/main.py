@@ -174,6 +174,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             "map/robot/camera/img/depth",
             rr.DepthImage(self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"), meter=1.0, colormap="viridis"),
         )
+        rr.log("map/robot/camera/img/depth", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
