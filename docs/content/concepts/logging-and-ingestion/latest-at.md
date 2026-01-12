@@ -62,4 +62,4 @@ Here's an example of updating only some specific properties of a point cloud, ov
 
 snippet: archetypes/points3d_partial_updates
 
-To learn more about how to use our partial updates APIs, refer to [this page](../../howto/logging/send-partial-updates.md).
+To learn more about how to use our partial updates APIs, refer to [this page](../../howto/logging-and-ingestion/send-partial-updates.md).

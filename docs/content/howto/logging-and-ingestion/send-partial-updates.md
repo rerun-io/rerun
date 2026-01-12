@@ -4,13 +4,13 @@ order: 200
 description: How to use the Rerun SDK to send partial data updates over time
 ---
 
-Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../../concepts/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
+Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../../concepts/logging-and-ingestion/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
 
-This is a natural consequence of how Rerun [ingests, stores](../../concepts/chunks.md) and finally [queries](../../concepts/visualization/entity-queries.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
+This is a natural consequence of how Rerun [ingests, stores](../../concepts/logging-and-ingestion/chunks.md) and finally [queries](../../concepts/visualization/entity-queries.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
 
 snippet: archetypes/points3d_simple
 
-Here, only the positions of the points have been specified but, looking at the [complete definition for Points3D](../../reference/types/archetypes/points3d.md), we can see that it has quite a few more [components](../../concepts/entity-component.md#data-model) available:
+Here, only the positions of the points have been specified but, looking at the [complete definition for Points3D](../../reference/types/archetypes/points3d.md), we can see that it has quite a few more [components](../../concepts/logging-and-ingestion/entity-component.md#data-model) available:
 > **Required**: [`Position3D`](../../reference/types/components/position3d.md)
 >
 > **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)

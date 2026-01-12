@@ -5,7 +5,7 @@ order: 1
 
 ## Setup
 
-Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-viewer.md#installing-the-viewer).
+Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-rerun.md#installing-the-viewer).
 
 ## Learning by example
 
@@ -130,6 +130,6 @@ If you'd rather learn from examples, check out the [example gallery](/examples) 
 There's also a stand-alone example that shows [interop with Eigen and OpenCV](https://github.com/rerun-io/cpp-example-opencv-eigen).
 
 To learn more about how to work with your own types, check the [Custom Collection Adapter](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/custom_collection_adapter) example on how to zero-copy adapt to Rerun types
-and the [Use custom data](../../howto/extend/custom-data.md) page for completely custom types.
+and the [Use custom data](../../howto/logging-and-ingestion/custom-data.md) page for completely custom types.
 
 To learn more about how to configure the C++ SDK's CMake file, check [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2cmake__setup__in__detail.html).

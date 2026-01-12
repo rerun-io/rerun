@@ -30,4 +30,4 @@ See the [views reference page](../types/views.md) for a list of available view c
 The view class, which is specified upon creation, determines which entities it can display, how it displays them, and the way they can be interacted with.
 Views can be created both from viewer and from code (see [Configure the Viewer](../../getting-started/configure-the-viewer.md)).
 
-To learn more about the _internals_ of how view classes work, check the [guide on implementing custom views](../../howto/extend/extend-ui.md).
+To learn more about the _internals_ of how view classes work, check the [guide on implementing custom views](../../howto/visualization/extend-ui.md).
