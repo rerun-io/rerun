@@ -22,7 +22,6 @@ try:
     import cv_bridge
     import laser_geometry
     import rclpy
-    import rerun_urdf
     from image_geometry import PinholeCameraModel
     from nav_msgs.msg import Odometry
     from numpy.lib.recfunctions import structured_to_unstructured
@@ -228,10 +227,14 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.log_tf_as_transform3d("map/robot/scan", time)
 
     def urdf_callback(self, urdf_msg: String) -> None:
-        """Log a URDF using `log_scene` from `rerun_urdf`."""
-        urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
-
-        rerun_urdf.log_scene(scene=urdf.scene, node=urdf.base_link, path="map/robot/urdf", static=True)
+        """Forwards the URDF from the robot description message to Rerun."""
+        # TODO: file_path is not known here, robot.urdf is just a placeholder to let Rerun know the file type.
+        rr.log_file_from_contents(
+            file_path="robot.urdf",
+            file_contents=urdf_msg.data.encode("utf-8"),
+            entity_path_prefix="map/robot/urdf",
+            static=True,
+        )
 
 
 def main() -> None:
