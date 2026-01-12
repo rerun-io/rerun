@@ -59,7 +59,7 @@ class CatalogClient:
 
     __slots__ = ("_internal",)
 
-    def __init__(self, address: str, token: str | None = None) -> None:
+    def __init__(self, url: str, token: str | None = None) -> None:
         from importlib.metadata import version
         from importlib.util import find_spec
 
@@ -79,7 +79,7 @@ class CatalogClient:
                 "datafusion", datafusion_version, _compatible_datafusion_version(expected_df_version)
             )
 
-        self._internal = CatalogClientInternal(address, token)
+        self._internal = CatalogClientInternal(url, token)
 
     @classmethod
     def _from_internal(cls, internal: CatalogClientInternal) -> CatalogClient:

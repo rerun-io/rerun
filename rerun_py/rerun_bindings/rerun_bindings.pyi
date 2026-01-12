@@ -1200,7 +1200,7 @@ class IndexingResult:
         """
 
 class CatalogClientInternal:
-    def __init__(self, addr: str, token: str | None = None) -> None: ...
+    def __init__(self, url: str, token: str | None = None) -> None: ...
 
     # ---
 
