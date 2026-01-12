@@ -1,5 +1,3 @@
-#![expect(deprecated)] // the py-bindings macro uses the functions we mark as deprecated
-
 use std::net::SocketAddr;
 
 use pyo3::exceptions::PyValueError;
@@ -72,12 +70,6 @@ impl PyServerInternal {
 
     /// The address of the server to which clients can connect.
     pub fn url(&self) -> String {
-        self.url.clone()
-    }
-
-    /// The address of the server to which clients can connect.
-    #[deprecated(note = "Renamed to `url`")]
-    pub fn address(&self) -> String {
         self.url.clone()
     }
 
