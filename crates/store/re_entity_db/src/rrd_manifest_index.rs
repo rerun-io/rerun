@@ -75,14 +75,14 @@ pub struct ChunkPrefetchOptions {
     /// Only consider chunks overlapping this range on [`Self::timeline`].
     pub desired_range: AbsoluteTimeRange,
 
-    /// Batch together requests until we reach this size.
-    pub max_bytes_per_batch: u64,
+    /// Batch together requests until we reach this size).
+    pub max_uncompressed_bytes_per_batch: u64,
 
     /// Total budget for all loaded chunks.
-    pub total_byte_budget: u64,
+    pub total_uncompressed_byte_budget: u64,
 
-    /// Maximum number of bytes in transit at once
-    pub max_bytes_in_transit: u64,
+    /// Maximum number of bytes in transit at once.
+    pub max_uncompressed_bytes_in_transit: u64,
 }
 
 /// Info about a single chunk that we know ahead of loading it.
@@ -398,9 +398,9 @@ impl RrdManifestIndex {
         let ChunkPrefetchOptions {
             timeline,
             desired_range,
-            max_bytes_per_batch,
-            mut total_byte_budget,
-            mut max_bytes_in_transit,
+            max_uncompressed_bytes_per_batch: max_bytes_per_batch,
+            total_uncompressed_byte_budget: mut total_byte_budget,
+            max_uncompressed_bytes_in_transit: mut max_bytes_in_transit,
         } = *options;
 
         let Some(manifest) = self.manifest.as_ref() else {
@@ -411,8 +411,8 @@ impl RrdManifestIndex {
             return Err(PrefetchError::UnknownTimeline(timeline));
         };
 
-        max_bytes_in_transit =
-            max_bytes_in_transit.saturating_sub(self.chunk_promises.num_bytes_pending());
+        max_bytes_in_transit = max_bytes_in_transit
+            .saturating_sub(self.chunk_promises.num_uncompressed_bytes_pending());
 
         if max_bytes_in_transit == 0 {
             return Ok(());
@@ -421,7 +421,7 @@ impl RrdManifestIndex {
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
 
-        let mut bytes_in_batch: u64 = 0;
+        let mut uncompressed_bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
         for (_, chunk_id) in chunks.query(desired_range.into()) {
@@ -434,14 +434,14 @@ impl RrdManifestIndex {
 
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
-            let chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
-            total_byte_budget = total_byte_budget.saturating_sub(chunk_size);
+            let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
+            total_byte_budget = total_byte_budget.saturating_sub(uncompressed_chunk_size);
             if total_byte_budget == 0 {
                 break; // We've already loaded too much.
             }
 
             if remote_chunk.state == LoadState::Unloaded {
-                max_bytes_in_transit = max_bytes_in_transit.saturating_sub(chunk_size);
+                max_bytes_in_transit = max_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
                 if max_bytes_in_transit == 0 {
                     break; // We've hit our budget.
                 }
@@ -451,19 +451,19 @@ impl RrdManifestIndex {
                 };
 
                 indices.push(row_idx);
-                bytes_in_batch += chunk_size;
+                uncompressed_bytes_in_batch += uncompressed_chunk_size;
                 remote_chunk.state = LoadState::InTransit;
 
-                if max_bytes_per_batch < bytes_in_batch {
+                if max_bytes_per_batch < uncompressed_bytes_in_batch {
                     let rb = take_record_batch(
                         &manifest.data,
                         &Int32Array::from(std::mem::take(&mut indices)),
                     )?;
                     self.chunk_promises.add(ChunkPromiseBatch {
                         promise: Mutex::new(Some(load_chunks(rb))),
-                        size_bytes: bytes_in_batch,
+                        size_bytes_uncompressed: uncompressed_bytes_in_batch,
                     });
-                    bytes_in_batch = 0;
+                    uncompressed_bytes_in_batch = 0;
                 }
             }
         }
@@ -472,7 +472,7 @@ impl RrdManifestIndex {
             let rb = take_record_batch(&manifest.data, &Int32Array::from(indices))?;
             self.chunk_promises.add(ChunkPromiseBatch {
                 promise: Mutex::new(Some(load_chunks(rb))),
-                size_bytes: bytes_in_batch,
+                size_bytes_uncompressed: uncompressed_bytes_in_batch,
             });
         }
 

@@ -15,7 +15,7 @@ pub struct ChunkPromiseBatch {
     pub promise: Mutex<Option<ChunkPromise>>,
 
     /// Total size of all the chunks in bytes.
-    pub size_bytes: u64,
+    pub size_bytes_uncompressed: u64,
 }
 
 /// In-progress downloads of chunks.
@@ -44,8 +44,8 @@ impl ChunkPromises {
         !self.batches.is_empty()
     }
 
-    pub fn num_bytes_pending(&self) -> u64 {
-        self.batches.iter().map(|b| b.size_bytes).sum()
+    pub fn num_uncompressed_bytes_pending(&self) -> u64 {
+        self.batches.iter().map(|b| b.size_bytes_uncompressed).sum()
     }
 
     /// See if we have received any new chunks since last call.

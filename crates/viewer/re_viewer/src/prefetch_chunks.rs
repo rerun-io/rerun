@@ -40,14 +40,14 @@ pub fn prefetch_chunks_for_active_recording(
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
         desired_range,
-        total_byte_budget,
+        total_uncompressed_byte_budget: total_byte_budget,
 
         // Batch small chunks together.
-        max_bytes_per_batch: 1_000_000,
+        max_uncompressed_bytes_per_batch: 1_000_000,
 
         // TODO(RR-3204): what is a reasonable size here?
         // A high value -> better theoretical bandwidth
-        max_bytes_in_transit: 10_000_000,
+        max_uncompressed_bytes_in_transit: 10_000_000,
     };
 
     let rrd_manifest = &mut recording.rrd_manifest_index;
