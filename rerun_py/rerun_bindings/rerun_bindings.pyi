@@ -61,7 +61,7 @@ class IndexColumnSelector:
 
         Parameters
         ----------
-        index : str
+        index:
             The name of the index to select. Usually the name of a timeline.
 
         """
@@ -146,9 +146,9 @@ class ComponentColumnSelector:
 
         Parameters
         ----------
-        entity_path : str
+        entity_path:
             The entity path to select.
-        component : str
+        component:
             The component to select. Example: `Points3D:positions`.
 
         """
@@ -227,7 +227,7 @@ def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -243,7 +243,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -1254,7 +1254,7 @@ class ViewerClient:
 
         Parameters
         ----------
-        addr : str
+        addr:
             The address of the viewer.
 
         """
