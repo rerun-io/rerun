@@ -137,7 +137,7 @@ class Entry:
         return self._inner.delete()
 
     def set_name(self, name: str) -> None:
-        return self._inner.update(name=name)
+        return self._inner.set_name(name)
 
 
 # Re-export Schema from the SDK

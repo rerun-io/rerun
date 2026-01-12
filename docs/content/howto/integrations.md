@@ -1,5 +1,6 @@
 ---
 title: Integrations
-order: 900
-redirect: howto/integrations/embed-notebooks
+order: 400
 ---
+
+How-to guides for integrating Rerun with other tools.

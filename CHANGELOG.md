@@ -1,5 +1,42 @@
 # Rerun changelog
 
+## [0.28.2](https://github.com/rerun-io/rerun/compare/0.28.1...0.28.2) - 2025-12-18 - Fix RRD compaction, plot panning, and Collada mesh loader
+
+### ✨ Overview & highlights
+
+**Fixes to `.rrd` Chunk handling.**
+
+We revised our Chunk slicing logic to prevent `.rrd` files ballooning in sizes. This also fixes the problem of broken `.rrd` files that contain tensors.
+
+**Collada (`.dae`) mesh support.**
+
+This patch adds native support for Collada (`.dae`) meshes, a common format used with URDF files. You can now load URDFs that reference `.dae` assets without manual mesh conversion!
+
+<picture>
+  <img src="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/full.png" alt="screenshot of a loaded mesh">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/1200w.png">
+</picture>
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Improve the docstrings related to serve_gpc APIs [#12314](https://github.com/rerun-io/rerun/pull/12314)
+- Add Python support for `UrdfTree` [#12310](https://github.com/rerun-io/rerun/pull/12310)
+
+#### 🪳 Bug fixes
+- Don't force absolute time views after panning [#12297](https://github.com/rerun-io/rerun/pull/12297)
+- Introduce deep Chunk slicing [#12312](https://github.com/rerun-io/rerun/pull/12312)
+
+#### 🌁 Viewer improvements
+- Collada (`.dae`) mesh loader [#10288](https://github.com/rerun-io/rerun/pull/10288)
+- Add option to hide all notification popups/toasts [#12354](https://github.com/rerun-io/rerun/pull/12354)
+
+#### 📚 Docs
+- docs: Fix parameter name from 'color' to 'colors' [#12294](https://github.com/rerun-io/rerun/pull/12294) (thanks [@Ivan-Zhong](https://github.com/Ivan-Zhong)!)
+
 ## [0.28.1](https://github.com/rerun-io/rerun/compare/0.28.0...0.28.1) - 2025-12-18 - Fix some telemetry, depth images, and logging
 
 #### 🪵 Log API

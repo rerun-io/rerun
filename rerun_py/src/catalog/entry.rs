@@ -157,9 +157,9 @@ impl PyEntryDetails {
 
 // ---
 
-pub fn update_entry(
+pub fn set_entry_name(
     py: Python<'_>,
-    name: Option<String>,
+    name: String,
     entry_details: &mut EntryDetails,
     client: &Py<PyCatalogClientInternal>,
 ) -> PyResult<()> {
@@ -167,7 +167,7 @@ pub fn update_entry(
     let connection = client.borrow_mut(py).connection().clone();
 
     let entry_details_update =
-        re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
+        re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: Some(name) };
 
     let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
     *entry_details = updated_entry_details;

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, cast
 
-from ..datatypes import Float32Like, Mat3x3Like, Rgba32Like, Vec2D, Vec2DLike, ViewCoordinatesLike
+from ..datatypes import Float32Like, Mat3x3Like, Rgba32Like, Utf8Like, Vec2D, Vec2DLike, ViewCoordinatesLike
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -25,6 +25,8 @@ class PinholeExt:
         principal_point: npt.ArrayLike | None = None,
         fov_y: float | None = None,
         aspect_ratio: float | None = None,
+        child_frame: Utf8Like | None = None,
+        parent_frame: Utf8Like | None = None,
         image_plane_distance: float | None = None,
         color: Rgba32Like | None = None,
         line_width: Float32Like | None = None,
@@ -87,8 +89,31 @@ class PinholeExt:
             Vertical field of view in radians.
         aspect_ratio
             Aspect ratio (width/height).
+        child_frame:
+            The child frame this transform transforms from.
+
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
+            E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
+
+            If not specified, this is set to the implicit transform frame of the current entity path.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+        parent_frame:
+            The parent frame this transform transforms into.
+
+            If not specified, this is set to the implicit transform frame of the current entity path's parent.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         image_plane_distance:
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+
             This is only used for visualization purposes, and does not affect the projection itself.
         color:
             Color of the camera frustum lines in the 3D viewer.
@@ -161,6 +186,8 @@ class PinholeExt:
                 image_from_camera=image_from_camera,
                 resolution=resolution,
                 camera_xyz=camera_xyz,
+                child_frame=child_frame,
+                parent_frame=parent_frame,
                 image_plane_distance=image_plane_distance,
                 color=color,
                 line_width=line_width,

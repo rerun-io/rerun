@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
 import pyarrow as pa
 from pyarrow import RecordBatchReader
+from typing_extensions import deprecated
 
 from rerun_bindings import (
     DatasetEntryInternal,
@@ -98,9 +99,27 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         self._internal.delete()
 
+    def set_name(self, name: str) -> None:
+        """
+        Change the name of this entry.
+
+        **Note**: entry names must be unique within the catalog. If the new name is not unique, an error will be raised.
+
+        Parameters
+        ----------
+        name : str
+            New name for the entry
+
+        """
+        self._internal.set_name(name)
+
+    @deprecated("Entry.update() is deprecated. Use Entry.set_name() instead.")
     def update(self, *, name: str | None = None) -> None:
         """
         Update this entry's properties.
+
+        .. deprecated::
+            Use :meth:`set_name` instead.
 
         Parameters
         ----------
@@ -109,7 +128,8 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         """
 
-        self._internal.update(name=name)
+        if name is not None:
+            self._internal.set_name(name)
 
     def __eq__(self, other: object) -> bool:
         """
