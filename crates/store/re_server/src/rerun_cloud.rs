@@ -1311,32 +1311,27 @@ impl RerunCloudService for RerunCloudHandler {
             .await
             .chunks_from_chunk_keys(&chunk_keys)?;
 
-        let compression = re_log_encoding::Compression::Off;
+        let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
+            let arrow_msg = re_log_types::ArrowMsg {
+                chunk_id: *chunk.id(),
+                batch: chunk.to_record_batch().map_err(|err| {
+                    tonic::Status::internal(format!(
+                        "failed to convert chunk to record batch: {err:#}"
+                    ))
+                })?,
+                on_release: None,
+            };
 
-        let encoded_chunks = chunks
-            .into_iter()
-            .map(|(store_id, chunk)| {
-                let arrow_msg = re_log_types::ArrowMsg {
-                    chunk_id: *chunk.id(),
-                    batch: chunk.to_record_batch().map_err(|err| {
-                        tonic::Status::internal(format!(
-                            "failed to convert chunk to record batch: {err:#}"
-                        ))
-                    })?,
-                    on_release: None,
-                };
+            let compression = re_log_encoding::Compression::Off;
 
-                arrow_msg
-                    .to_transport((store_id, compression))
-                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
+            let encoded_chunk = arrow_msg
+                .to_transport((store_id, compression))
+                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
+
+            Ok(re_protos::cloud::v1alpha1::FetchChunksResponse {
+                chunks: vec![encoded_chunk],
             })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let response = re_protos::cloud::v1alpha1::FetchChunksResponse {
-            chunks: encoded_chunks,
-        };
-
-        let stream = futures::stream::once(async move { Ok(response) });
+        });
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::FetchChunksStream

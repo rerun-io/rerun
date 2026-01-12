@@ -450,6 +450,8 @@ async fn stream_segment_from_server(
             .await;
         match manifest_result {
             Ok(rrd_manifest) => {
+                re_log::debug_once!("The server supports larger-than-RAM");
+
                 if tx
                     .send(DataSourceMessage::RrdManifest(
                         store_id.clone(),
@@ -473,7 +475,7 @@ async fn stream_segment_from_server(
             }
             Err(err) => {
                 if err.kind == ApiErrorKind::Unimplemented {
-                    // TODO(RR-3110): implement rrd manifest on cloud
+                    re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
                 } else {
                     re_log::warn!("Failed to load RRD manifest: {err}");
                 }

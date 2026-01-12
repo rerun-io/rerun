@@ -11,7 +11,7 @@ use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry, TableInsertMode};
 use tracing::instrument;
 
-use crate::catalog::entry::update_entry;
+use crate::catalog::entry::set_entry_name;
 use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -47,9 +47,8 @@ impl PyTableEntryInternal {
         connection.delete_entry(py, self.entry_details.id)
     }
 
-    #[pyo3(signature = (*, name=None))]
-    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
-        update_entry(py, name, &mut self.entry_details, &self.client)
+    fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
+        set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
     //
