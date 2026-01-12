@@ -26,7 +26,7 @@ Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline
 ### ROS 2 transforms and poses
 
 [`tf2_msgs/TFMessage`](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is converted to [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)s, with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the `transforms` list.
-The message and the timestamps of the individual transforms are put onto the `ros2_*` timelines, allowing the viewer to resolve the spatial relationships between frames similar to a TF buffer in ROS.
+The timestamps of the individual transforms are put onto the `ros2_*` timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
 More general information about TF-style transforms in Rerun can be found [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
 
 [`geometry_msgs/PoseStamped`](https://docs.ros2.org/foxy/api/geometry_msgs/msg/PoseStamped.html) is converted to [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) with a [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) on the same entity path.
