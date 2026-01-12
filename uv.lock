@@ -3973,11 +3973,14 @@ name = "oss-server-lerobot"
 version = "0.1.0"
 source = { editable = "examples/python/oss_server_lerobot" }
 dependencies = [
+    { name = "av" },
     { name = "datafusion" },
     { name = "lerobot" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas" },
+    { name = "pillow" },
+    { name = "pyarrow" },
     { name = "rerun-sdk" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -3986,10 +3989,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av" },
     { name = "datafusion" },
     { name = "lerobot" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pillow" },
+    { name = "pyarrow" },
     { name = "rerun-sdk", editable = "rerun_py" },
     { name = "scipy" },
     { name = "tqdm" },

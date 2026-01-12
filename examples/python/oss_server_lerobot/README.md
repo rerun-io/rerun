@@ -30,3 +30,26 @@ This example demonstrates how to:
 4. Validate the dataset is ready for robotics model training
 
 The key steps are:
+
+## Conversion CLI
+
+This example ships a CLI that reads a directory of `.rrd` recordings via the OSS server API, aligns them
+at a target FPS, and writes a LeRobot v3 dataset to disk.
+
+```bash
+oss_server_lerobot \
+  --rrd-dir /path/to/rrds \
+  --output /tmp/lerobot_dataset \
+  --dataset-name robot_runs \
+  --fps 10 \
+  --index real_time \
+  --action-path /action \
+  --state-path /observation/joint_positions \
+  --task-path /language_instruction \
+  --image front:/camera/front:raw
+```
+
+Notes:
+- Use `--image` multiple times to add more cameras (format: `key:path:kind`, where `kind` is `raw`, `compressed`, or `video`).
+- If your schema differs, override column names with `--action-column`, `--state-column`, or `--task-column`.
+- For video streams, pass `--video-format` if the stream is not H.264.

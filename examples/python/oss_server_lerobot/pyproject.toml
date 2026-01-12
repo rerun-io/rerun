@@ -2,7 +2,7 @@
 name = "oss_server_lerobot"
 version = "0.1.0"
 readme = "README.md"
-dependencies = ["numpy", "pandas", "rerun-sdk", "scipy", "tqdm", "lerobot", "datafusion"]
+dependencies = ["numpy", "pandas", "rerun-sdk", "scipy", "tqdm", "lerobot", "datafusion", "pyarrow", "pillow", "av"]
 
 [project.scripts]
 oss_server_lerobot = "oss_server_lerobot.__main__:main"
