@@ -473,7 +473,7 @@ pub struct VideoEncodingDetails {
     pub stsd: Option<re_mp4::StsdBox>,
 }
 
-/// Meta informationa about the video samples.
+/// Meta information about the video samples.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {
     /// Whether all decode timestamps are equal to presentation timestamps.

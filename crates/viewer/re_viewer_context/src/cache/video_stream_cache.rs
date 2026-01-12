@@ -542,40 +542,7 @@ fn read_samples_from_known_chunk(
         // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
         let decode_timestamp = re_video::Time(time.as_i64());
 
-        // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
-        //
-        // Equality means that we have two samples falling onto the same time.
-        // This is strange, but we allow it since decoders are fine with it (they care little about exact times)
-        // and this may well happen in practice, in fact it can be spuriously observed in the video streaming example.
-        // debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
-        // previous_max_presentation_timestamp = decode_timestamp;
-
-        let is_sync = match re_video::detect_gop_start(sample_bytes, *codec) {
-            Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
-                if encoding_details.as_ref() != Some(&new_encoding_details) {
-                    if let Some(old_encoding_details) = encoding_details.as_ref() {
-                        re_log::warn_once!(
-                            "Detected change of video encoding properties (like size, bit depth, compression etc.) over time. \
-                                    This is not supported and may cause playback issues."
-                        );
-                        re_log::trace!(
-                            "Previous encoding details: {:?}\n\nNew encoding details: {:?}",
-                            old_encoding_details,
-                            new_encoding_details
-                        );
-                    }
-                    *encoding_details = Some(new_encoding_details);
-                }
-
-                true
-            }
-            Ok(re_video::GopStartDetection::NotStartOfGop) => false,
-
-            Err(err) => {
-                re_log::error_once!("Failed to detect GOP for video sample: {err}");
-                false
-            }
-        };
+        let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
 
         if is_sync {
             keyframe_indices.push(*sample_idx);
@@ -632,6 +599,40 @@ fn read_samples_from_known_chunk(
     }
 
     Ok(())
+}
+
+/// Checks if the sample is a sync frame, and updates encoding details if necessary.
+fn is_sample_sync(
+    codec: &re_video::VideoCodec,
+    encoding_details: &mut Option<re_video::VideoEncodingDetails>,
+    sample_bytes: &[u8],
+) -> bool {
+    match re_video::detect_gop_start(sample_bytes, *codec) {
+        Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
+            if encoding_details.as_ref() != Some(&new_encoding_details) {
+                if let Some(old_encoding_details) = encoding_details.as_ref() {
+                    re_log::warn_once!(
+                        "Detected change of video encoding properties (like size, bit depth, compression etc.) over time. \
+                                    This is not supported and may cause playback issues."
+                    );
+                    re_log::trace!(
+                        "Previous encoding details: {:?}\n\nNew encoding details: {:?}",
+                        old_encoding_details,
+                        new_encoding_details
+                    );
+                }
+                *encoding_details = Some(new_encoding_details);
+            }
+
+            true
+        }
+        Ok(re_video::GopStartDetection::NotStartOfGop) => false,
+
+        Err(err) => {
+            re_log::error_once!("Failed to detect GOP for video sample: {err}");
+            false
+        }
+    }
 }
 
 /// Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
@@ -807,7 +808,10 @@ fn read_samples_from_new_chunk(
                 // it may in theory step arbitrarily through the data.
                 let sample_idx = sample_base_idx + idx;
 
-                let byte_span = Span { start:offsets[component_offset.start] as usize, len: lengths[component_offset.start] };
+                let byte_span = Span {
+                    start: offsets[component_offset.start] as usize,
+                    len: lengths[component_offset.start],
+                };
                 let sample_bytes = &values[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
@@ -822,32 +826,7 @@ fn read_samples_from_new_chunk(
                 debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
                 previous_max_presentation_timestamp = decode_timestamp;
 
-                let is_sync = match re_video::detect_gop_start(sample_bytes, *codec) {
-                    Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
-                        if encoding_details.as_ref() != Some(&new_encoding_details) {
-                            if let Some(old_encoding_details) = encoding_details.as_ref() {
-                                re_log::warn_once!(
-                                    "Detected change of video encoding properties (like size, bit depth, compression etc.) over time. \
-                                    This is not supported and may cause playback issues."
-                                );
-                                re_log::trace!(
-                                    "Previous encoding details: {:?}\n\nNew encoding details: {:?}",
-                                    old_encoding_details,
-                                    new_encoding_details
-                                );
-                            }
-                            *encoding_details = Some(new_encoding_details);
-                        }
-
-                        true
-                    }
-                    Ok(re_video::GopStartDetection::NotStartOfGop) => { false },
-
-                    Err(err) => {
-                        re_log::error_once!("Failed to detect GOP for video sample: {err}");
-                        false
-                    }
-                };
+                let is_sync = is_sample_sync(codec, encoding_details, sample_bytes);
 
                 if is_sync {
                     keyframe_indices.push(sample_idx);
@@ -858,20 +837,22 @@ fn read_samples_from_new_chunk(
                     return None;
                 };
 
-                Some(re_video::SampleMetadataState::Present(re_video::SampleMetadata {
-                    is_sync,
+                Some(re_video::SampleMetadataState::Present(
+                    re_video::SampleMetadata {
+                        is_sync,
 
-                    // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: sample_idx as u32,
-                    decode_timestamp,
-                    presentation_timestamp: decode_timestamp,
+                        // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
+                        frame_nr: sample_idx as u32,
+                        decode_timestamp,
+                        presentation_timestamp: decode_timestamp,
 
-                    // Filled out later for everything but the last frame.
-                    duration: None,
+                        // Filled out later for everything but the last frame.
+                        duration: None,
 
-                    source_id: chunk_id.as_tuid(),
-                    byte_span
-                }))
+                        source_id: chunk_id.as_tuid(),
+                        byte_span,
+                    },
+                ))
             }),
     );
 
