@@ -68,9 +68,15 @@ impl LoadState {
 }
 
 /// How to calculate which chunks to prefetch.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkPrefetchOptions {
     pub timeline: Timeline,
+
+    /// These chunks are required by one or more queries that are currently in-flight.
+    ///
+    /// We must try and download them in priority, as there are views actively waiting for them in order to
+    /// properly render.
+    pub missing_chunk_ids: HashSet<ChunkId>,
 
     /// Only consider chunks overlapping this range on [`Self::timeline`].
     pub desired_range: AbsoluteTimeRange,
@@ -123,7 +129,7 @@ pub struct RrdManifestIndex {
     /// These are the chunks known to exist in the data source (e.g. remote server).
     ///
     /// The chunk store may split large chunks and merge (compact) small ones,
-    /// so what's in the chunk store can differ significantally.
+    /// so what's in the chunk store can differ significantly.
     remote_chunks: HashMap<ChunkId, ChunkInfo>,
 
     chunk_promises: ChunkPromises,
@@ -390,18 +396,19 @@ impl RrdManifestIndex {
     /// Find the next candidates for prefetching.
     pub fn prefetch_chunks(
         &mut self,
-        options: &ChunkPrefetchOptions,
+        options: ChunkPrefetchOptions,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
 
         let ChunkPrefetchOptions {
             timeline,
+            missing_chunk_ids,
             desired_range,
-            max_uncompressed_bytes_per_batch: max_bytes_per_batch,
-            total_uncompressed_byte_budget: mut total_byte_budget,
-            max_uncompressed_bytes_in_transit: mut max_bytes_in_transit,
-        } = *options;
+            max_uncompressed_bytes_per_batch,
+            mut total_uncompressed_byte_budget,
+            mut max_uncompressed_bytes_in_transit,
+        } = options;
 
         let Some(manifest) = self.manifest.as_ref() else {
             return Err(PrefetchError::NoManifest);
@@ -411,10 +418,10 @@ impl RrdManifestIndex {
             return Err(PrefetchError::UnknownTimeline(timeline));
         };
 
-        max_bytes_in_transit = max_bytes_in_transit
+        max_uncompressed_bytes_in_transit = max_uncompressed_bytes_in_transit
             .saturating_sub(self.chunk_promises.num_uncompressed_bytes_pending());
 
-        if max_bytes_in_transit == 0 {
+        if max_uncompressed_bytes_in_transit == 0 {
             return Ok(());
         }
 
@@ -424,25 +431,38 @@ impl RrdManifestIndex {
         let mut uncompressed_bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
-        for (_, chunk_id) in chunks.query(desired_range.into()) {
-            let Some(remote_chunk) = self.remote_chunks.get_mut(chunk_id) else {
+        let missing_chunk_ids = missing_chunk_ids.into_iter();
+        let prefetched_chunk_ids = chunks
+            .query(desired_range.into())
+            .map(|(_, chunk_id)| *chunk_id);
+
+        let chunk_ids_in_priority_order =
+            missing_chunk_ids.chain(std::iter::once_with(|| prefetched_chunk_ids).flatten());
+
+        // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
+        // That's fine: they will still be missing next frame, and therefore will still be reported
+        // as such by the store.
+        for chunk_id in chunk_ids_in_priority_order {
+            let Some(remote_chunk) = self.remote_chunks.get_mut(&chunk_id) else {
                 re_log::warn_once!("Chunk {chunk_id:?} not found in RRD manifest index");
                 continue;
             };
 
-            let row_idx = self.manifest_row_from_chunk_id[chunk_id];
+            let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
 
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
-            total_byte_budget = total_byte_budget.saturating_sub(uncompressed_chunk_size);
-            if total_byte_budget == 0 {
+            total_uncompressed_byte_budget =
+                total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
+            if total_uncompressed_byte_budget == 0 {
                 break; // We've already loaded too much.
             }
 
             if remote_chunk.state == LoadState::Unloaded {
-                max_bytes_in_transit = max_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
-                if max_bytes_in_transit == 0 {
+                max_uncompressed_bytes_in_transit =
+                    max_uncompressed_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
+                if max_uncompressed_bytes_in_transit == 0 {
                     break; // We've hit our budget.
                 }
 
@@ -454,7 +474,7 @@ impl RrdManifestIndex {
                 uncompressed_bytes_in_batch += uncompressed_chunk_size;
                 remote_chunk.state = LoadState::InTransit;
 
-                if max_bytes_per_batch < uncompressed_bytes_in_batch {
+                if max_uncompressed_bytes_per_batch < uncompressed_bytes_in_batch {
                     let rb = take_record_batch(
                         &manifest.data,
                         &Int32Array::from(std::mem::take(&mut indices)),
