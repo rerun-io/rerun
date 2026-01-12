@@ -29,7 +29,8 @@ class Visualizer:
         overrides:
             Any component overrides to apply to fields of the visualizer.
         mappings:
-            Optional component name mappings (currently unused)
+            Optional component name mappings.
+            TODO(RR-3254): Currently unused - implement mapping functionality
 
         """
         self.visualizer_type = visualizer_type
