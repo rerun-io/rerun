@@ -254,7 +254,7 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Authenticate:");
+                ui.label("Authentication:");
 
                 ui.selectable_toggle(|ui| {
                     StripBuilder::new(ui)
@@ -265,7 +265,7 @@ impl ServerModal {
                                 if ui
                                     .selectable_label(
                                         matches!(self.auth.kind, AuthKind::RerunAccount(_)),
-                                        "Rerun account",
+                                        "Account login",
                                     )
                                     .clicked()
                                 {
@@ -277,7 +277,7 @@ impl ServerModal {
                                 if ui
                                     .selectable_label(
                                         matches!(self.auth.kind, AuthKind::Token(_)),
-                                        "With a token",
+                                        "Access token",
                                     )
                                     .clicked()
                                 {
@@ -399,7 +399,7 @@ impl ServerModal {
 fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
         AuthKind::RerunAccount(login_flow) => {
-            ui.label("Rerun account:");
+            ui.label("Account login:");
 
             if let Some(flow) = login_flow {
                 // Login flow is in progress - show login buttons or spinner

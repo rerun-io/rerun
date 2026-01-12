@@ -94,7 +94,7 @@ impl<'a> IntroItem<'a> {
                 };
                 ui.set_style(ui.ctx().style_of(opposite_theme));
 
-                ui.heading(RichText::new("Rerun Cloud").strong());
+                ui.heading(RichText::new("Rerun Data Platform").strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
