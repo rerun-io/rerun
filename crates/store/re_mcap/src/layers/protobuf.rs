@@ -342,7 +342,9 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
     };
 
     if descr.is_list() {
-        return Box::new(ListBuilder::new(inner));
+        return Box::new(
+            ListBuilder::new(inner).with_field(Field::new_list_field(datatype_from(descr), true)),
+        );
     }
 
     inner
