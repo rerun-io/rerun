@@ -499,31 +499,20 @@ fn visualizer_components(
     }
 
     if !changed_component_mappings.is_empty() {
-        println!("Original instruction: {:#?}", instruction);
-
         let mut new_instruction = instruction.clone();
         for mapping in changed_component_mappings {
-            // Overwrite the mapping in the new instruction.
+            // Set or override the mapping
             if let Some(orig_mapping) = new_instruction
                 .component_mappings
                 .iter_mut()
                 .find(|m| m.target == mapping.target)
             {
-                println!(
-                    "Overwriting mapping: {:?} -> {:?}",
-                    orig_mapping.source, mapping.source
-                );
-                orig_mapping.source = mapping.source;
+                orig_mapping.selector = mapping.selector;
             } else {
-                println!(
-                    "Adding mapping: {:?} -> {:?}",
-                    mapping.source, mapping.target
-                );
                 new_instruction.component_mappings.push(mapping);
             }
         }
         new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-        println!("New instruction: {:#?}", new_instruction);
     }
 }
 
@@ -568,7 +557,7 @@ fn source_component_ui(
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
                 // Get the current source component from the component mapping.
-                let current = component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
+                let current = component_map.map_or_else(|| "", |mapping| mapping.selector.as_str());
 
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
@@ -577,7 +566,7 @@ fn source_component_ui(
                             if ui.button(option).clicked() {
                                 changed_component_mappings.push(
                                     re_viewer_context::VisualizerComponentMapping {
-                                        source: option.into(),
+                                        selector: option.into(),
                                         target: component_descr.component,
                                     },
                                 );

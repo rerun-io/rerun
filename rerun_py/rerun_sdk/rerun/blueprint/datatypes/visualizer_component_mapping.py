@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-def _visualizer_component_mapping__source__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
+def _visualizer_component_mapping__selector__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
     if isinstance(x, datatypes.Utf8):
         return x
     else:
@@ -46,13 +46,13 @@ class VisualizerComponentMapping:
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, source: datatypes.Utf8Like, target: datatypes.Utf8Like) -> None:
+    def __init__(self: Any, selector: datatypes.Utf8Like, target: datatypes.Utf8Like) -> None:
         """
         Create a new instance of the VisualizerComponentMapping datatype.
 
         Parameters
         ----------
-        source:
+        selector:
             Source component name.
         target:
             Target component name.
@@ -60,9 +60,11 @@ class VisualizerComponentMapping:
         """
 
         # You can define your own __init__ function as a member of VisualizerComponentMappingExt in visualizer_component_mapping_ext.py
-        self.__attrs_init__(source=source, target=target)
+        self.__attrs_init__(selector=selector, target=target)
 
-    source: datatypes.Utf8 = field(converter=_visualizer_component_mapping__source__special_field_converter_override)
+    selector: datatypes.Utf8 = field(
+        converter=_visualizer_component_mapping__selector__special_field_converter_override
+    )
     # Source component name.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -82,7 +84,7 @@ VisualizerComponentMappingArrayLike = VisualizerComponentMapping | Sequence[Visu
 
 class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayLike]):
     _ARROW_DATATYPE = pa.struct([
-        pa.field("source", pa.utf8(), nullable=False, metadata={}),
+        pa.field("selector", pa.utf8(), nullable=False, metadata={}),
         pa.field("target", pa.utf8(), nullable=False, metadata={}),
     ])
 
@@ -99,7 +101,7 @@ class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayL
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.source for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.selector for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
                 Utf8Batch([x.target for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),

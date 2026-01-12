@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct VisualizerComponentMapping {
     /// Source component name.
-    pub source: crate::datatypes::Utf8,
+    pub selector: crate::datatypes::Utf8,
 
     /// Target component name.
     pub target: crate::datatypes::Utf8,
@@ -40,7 +40,11 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
-            Field::new("source", <crate::datatypes::Utf8>::arrow_datatype(), false),
+            Field::new(
+                "selector",
+                <crate::datatypes::Utf8>::arrow_datatype(),
+                false,
+            ),
             Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
         ]))
     }
@@ -56,7 +60,11 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
-                Field::new("source", <crate::datatypes::Utf8>::arrow_datatype(), false),
+                Field::new(
+                    "selector",
+                    <crate::datatypes::Utf8>::arrow_datatype(),
+                    false,
+                ),
                 Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -74,20 +82,20 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                 fields,
                 vec![
                     {
-                        let (somes, source): (Vec<_>, Vec<_>) = data
+                        let (somes, selector): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.source.clone());
+                                let datum = datum.as_ref().map(|datum| datum.selector.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let source_validity: Option<arrow::buffer::NullBuffer> = {
+                        let selector_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                source.iter().map(|opt| {
+                                selector.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             );
@@ -95,14 +103,14 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =
                                 arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in source.iter().flatten() {
+                            for data in selector.iter().flatten() {
                                 buffer_builder.append_slice(data.0.as_bytes());
                             }
                             let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
 
                             #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, source_validity)
+                                StringArray::new_unchecked(offsets, inner_data, selector_validity)
                             })
                         }
                     },
@@ -173,15 +181,15 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                     .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let source = {
-                    if !arrays_by_name.contains_key("source") {
+                let selector = {
+                    if !arrays_by_name.contains_key("selector") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "source",
+                            "selector",
                         ))
                         .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping");
                     }
-                    let arrow_data = &**arrays_by_name["source"];
+                    let arrow_data = &**arrays_by_name["selector"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -192,7 +200,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
-                                "rerun.blueprint.datatypes.VisualizerComponentMapping#source",
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
                             )?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
@@ -224,7 +232,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             })
                             .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context(
-                                "rerun.blueprint.datatypes.VisualizerComponentMapping#source",
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
                             )?
                             .into_iter()
                     }
@@ -286,16 +294,16 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                     }
                 };
                 ZipValidity::new_with_validity(
-                    ::itertools::izip!(source, target),
+                    ::itertools::izip!(selector, target),
                     arrow_data.nulls(),
                 )
                 .map(|opt| {
-                    opt.map(|(source, target)| {
+                    opt.map(|(selector, target)| {
                         Ok(Self {
-                            source: source
+                            selector: selector
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context(
-                                    "rerun.blueprint.datatypes.VisualizerComponentMapping#source",
+                                    "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
                                 )?,
                             target: target
                                 .ok_or_else(DeserializationError::missing_data)
@@ -316,7 +324,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
 impl ::re_byte_size::SizeBytes for VisualizerComponentMapping {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.source.heap_size_bytes() + self.target.heap_size_bytes()
+        self.selector.heap_size_bytes() + self.target.heap_size_bytes()
     }
 
     #[inline]

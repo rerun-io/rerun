@@ -43,7 +43,7 @@ impl VisualizerInstructionId {
 /// A single component mapping for a visualizer instruction.
 #[derive(Clone, Debug, Hash)]
 pub struct VisualizerComponentMapping {
-    pub source: ComponentIdentifier,
+    pub selector: ComponentIdentifier,
     pub target: ComponentIdentifier,
 }
 
@@ -108,7 +108,7 @@ impl VisualizerInstruction {
     pub fn write_instruction_to_blueprint(&self, ctx: &ViewerContext<'_>) {
         let component_mappings = self.component_mappings.iter().map(|mapping| {
             re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
-                source: mapping.source.as_str().into(),
+                selector: mapping.selector.as_str().into(),
                 target: mapping.target.as_str().into(),
             }
         });

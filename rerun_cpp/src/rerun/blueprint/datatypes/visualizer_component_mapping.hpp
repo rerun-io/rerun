@@ -22,7 +22,7 @@ namespace rerun::blueprint::datatypes {
     ///
     struct VisualizerComponentMapping {
         /// Source component name.
-        rerun::datatypes::Utf8 source;
+        rerun::datatypes::Utf8 selector;
 
         /// Target component name.
         rerun::datatypes::Utf8 target;

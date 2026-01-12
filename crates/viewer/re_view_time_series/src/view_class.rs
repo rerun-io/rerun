@@ -419,7 +419,7 @@ impl ViewClass for TimeSeriesView {
                     if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
                         for physical_component in components {
                             mappings.push(VisualizerComponentMapping {
-                                source: Scalars::descriptor_scalars().component,
+                                selector: Scalars::descriptor_scalars().component,
                                 target: *physical_component,
                             });
                         }
@@ -444,7 +444,7 @@ impl ViewClass for TimeSeriesView {
             {
                 for physical_component in components {
                     mappings.push(VisualizerComponentMapping {
-                        source: *physical_component,
+                        selector: *physical_component,
                         target: Scalars::descriptor_scalars().component,
                     });
                 }

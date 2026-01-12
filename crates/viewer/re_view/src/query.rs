@@ -47,7 +47,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
             if components.remove(&mapping.target) {
-                components.insert(mapping.source);
+                components.insert(mapping.selector);
             }
         }
 
@@ -58,9 +58,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
         // Apply mapping to the results.
         for mapping in &visualizer_instruction.component_mappings {
-            if let Some(mut chunks) = results.components.remove(&mapping.source) {
+            if let Some(mut chunks) = results.components.remove(&mapping.selector) {
                 for chunk in &mut chunks {
-                    *chunk = chunk.with_renamed_component(mapping.source, mapping.target);
+                    *chunk = chunk.with_renamed_component(mapping.selector, mapping.target);
                 }
 
                 results.components.insert(mapping.target, chunks);
@@ -118,7 +118,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
             if components.remove(&mapping.target) {
-                components.insert(mapping.source);
+                components.insert(mapping.selector);
             }
         }
         let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
@@ -129,9 +129,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
         // Apply mapping to the results.
         for mapping in &visualizer_instruction.component_mappings {
-            if let Some(chunk) = results.components.remove(&mapping.source) {
+            if let Some(chunk) = results.components.remove(&mapping.selector) {
                 let chunk = std::sync::Arc::new(
-                    chunk.with_renamed_component(mapping.source, mapping.target),
+                    chunk.with_renamed_component(mapping.selector, mapping.target),
                 )
                 .to_unit()
                 .expect("The source chunk was a unit chunk.");
