@@ -64,36 +64,6 @@ impl DynamicArchetype {
         self
     }
 
-    // TODO: hackity
-    /// Adds a field of arbitrary data to this archetype.
-    ///
-    /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
-    #[inline]
-    pub fn with_component_from_data_with_type(
-        mut self,
-        field: impl AsRef<str>,
-        component_type: ComponentType,
-        array: arrow::array::ArrayRef,
-    ) -> Self {
-        let field = field.as_ref();
-        let component = field.into();
-
-        self.batches.insert(
-            component,
-            SerializedComponentBatch {
-                array,
-                descriptor: {
-                    let mut desc = ComponentDescriptor::partial(component);
-                    if let Some(archetype_name) = self.archetype_name {
-                        desc = desc.with_builtin_archetype(archetype_name);
-                    }
-                    desc.with_component_type(component_type)
-                },
-            },
-        );
-        self
-    }
-
     /// Adds an existing Rerun [`Component`] to this archetype.
     #[inline]
     pub fn with_component<C: Component>(

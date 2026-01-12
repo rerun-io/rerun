@@ -109,7 +109,6 @@ fn settings_screen_ui_impl(
         timestamp_format,
         video,
         mapbox_access_token,
-        experimental_any_scalars: _,
 
         #[cfg(not(target_arch = "wasm32"))]
             cache_directory: _, // not yet exposed

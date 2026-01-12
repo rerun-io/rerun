@@ -378,11 +378,11 @@ impl Chunk {
     // TODO: document
     pub fn with_renamed_component(
         &self,
-        source: ComponentIdentifier,
+        selector: ComponentIdentifier,
         target: ComponentIdentifier,
     ) -> Self {
         let mut new_chunk = self.clone();
-        if let Some(old_entry) = new_chunk.components.remove(&source) {
+        if let Some(old_entry) = new_chunk.components.remove(&selector) {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
                     component: target,

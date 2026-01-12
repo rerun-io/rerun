@@ -296,11 +296,11 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    Some(re_viewer_context::EditTarget {
+                    re_viewer_context::EditTarget {
                         store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
                         timepoint: ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
                         entity_path: override_path.clone(),
-                    }),
+                    },
                     raw_current_value.as_ref(),
                     component_descr.clone(),
                     multiline,

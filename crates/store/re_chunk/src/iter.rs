@@ -1036,23 +1036,6 @@ impl Chunk {
     }
 }
 
-// TODO:
-// fn error_on_downcast_failure(
-//     component: ComponentIdentifier,
-//     target: &str,
-//     actual: &arrow::datatypes::DataType,
-// ) {
-//     if cfg!(debug_assertions) {
-//         panic!(
-//             "[DEBUG ASSERT] downcast to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
-//         );
-//     } else {
-//         re_log::error_once!(
-//             "downcast to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
-//         );
-//     }
-// }
-
 // ---
 
 #[cfg(test)]

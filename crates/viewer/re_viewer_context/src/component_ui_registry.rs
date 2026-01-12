@@ -800,11 +800,11 @@ impl ComponentUiRegistry {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx(),
             ui,
-            Some(EditTarget {
+            EditTarget {
                 store_id: ctx.store_ctx().blueprint.store_id().clone(),
                 timepoint: ctx.store_ctx().blueprint_timepoint_for_writes(),
                 entity_path: blueprint_write_path,
-            }),
+            },
             component_raw,
             component_descr.clone(),
             allow_multiline,
@@ -832,7 +832,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        target: Option<EditTarget>, // TODO: find a way to serialize all temp vis ids, probably not here
+        target: EditTarget,
         raw_current_value: &dyn arrow::array::Array,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
@@ -859,25 +859,18 @@ impl ComponentUiRegistry {
                 raw_current_value,
                 EditOrView::Edit,
             ) {
-                if let Some(target) = target {
-                    let EditTarget {
-                        store_id,
-                        timepoint,
-                        entity_path,
-                    } = target;
-
-                    ctx.append_array_to_store(
-                        store_id,
-                        timepoint,
-                        entity_path,
-                        component_descr,
-                        updated,
-                    );
-                } else {
-                    unimplemented!(
-                        "Saving edits to a temporary visualizer instruction is not supported yet."
-                    ); // TODO
-                }
+                let EditTarget {
+                    store_id,
+                    timepoint,
+                    entity_path,
+                } = target;
+                ctx.append_array_to_store(
+                    store_id,
+                    timepoint,
+                    entity_path,
+                    component_descr,
+                    updated,
+                );
             }
             return true;
         }

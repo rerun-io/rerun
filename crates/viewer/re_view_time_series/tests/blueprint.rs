@@ -240,7 +240,7 @@ fn setup_blueprint(
     })
 }
 
-// TODO: Move this test to a better place.
+// TODO(grtlr): Move this test to a better place.
 #[test]
 pub fn test_blueprint_f64_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
@@ -277,10 +277,6 @@ pub fn test_blueprint_f64_with_time_series() {
             )
         });
     }
-
-    // test_context
-    //     .save_recording_to_file("/Users/goertler/Desktop/dyn_f64.rrd")
-    //     .unwrap();
 
     test_context.send_time_commands(
         test_context.active_store_id(),
