@@ -403,7 +403,7 @@ fn check_ext_consistency(
         }
 
         if found_attrs_init {
-            // Extract field names using regex to find field_name=... patterns
+            // Extract field names using regex to find field_name=… patterns
             let mut found_fields = HashSet::new();
             for field_name in &expected_fields {
                 let field_pattern = format!(r"\b{}\s*=", regex_lite::escape(field_name));
