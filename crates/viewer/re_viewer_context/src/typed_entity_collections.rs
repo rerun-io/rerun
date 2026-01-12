@@ -65,7 +65,7 @@ impl std::ops::Deref for IndicatedEntities {
 
 /// List of elements per visualizer system.
 ///
-/// TODO: should this always be per visualizer instruction id rather than per visualizer type? depends on the usecase probably. Best do audit all usages of this!
+/// TODO(RR-3305): should this always be per visualizer instruction id rather than per visualizer type? depends on the usecase probably. Best do audit all usages of this!
 ///
 /// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
 /// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view.

@@ -133,7 +133,7 @@ pub fn visualizer_ui_impl(
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
                     let error_string = visualizer_errors
-                        .get(&visualizer_type) // TODO: track errors per visualizer id, not per visualizer type.
+                        .get(&visualizer_type) // TODO(RR-3304): track errors per visualizer id, not per visualizer type.
                         .and_then(|error_state| {
                             error_state.error_string_for(&data_result.entity_path)
                         });

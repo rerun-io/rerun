@@ -13,7 +13,7 @@ use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
-// TODO: That can probably go away?
+// TODO: That can probably go away? -- kill it
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -196,7 +196,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_visible().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_visible().component) {
             let parent_visibility = self
                 .entity_path
                 .parent()
@@ -231,7 +231,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_interactive().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_interactive().component) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
@@ -253,8 +253,8 @@ impl DataResult {
         );
     }
 
-    // TODO: only checks first visualizer instruction. plz move up to instruction.
-    fn has_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
+    // TODO: only checks first visualizer instruction. plz move up to instruction. -- do it.
+    fn has_base_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
         self.visualizer_instructions
             .first()
             .is_some_and(|instruction| {
@@ -312,7 +312,6 @@ pub struct ViewQuery<'s> {
     /// All [`DataResult`]s that are queried by active visualizers.
     ///
     /// Contains also invisible objects, use `iter_visible_data_results` to iterate over visible ones.
-    // TODO: this seems weird now, because within a dataresult we STILL have to iterate & filter for visualizers
     pub per_visualizer_data_results: PerSystemDataResults<'s>,
 
     /// The timeline we're on.

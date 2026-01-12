@@ -386,8 +386,8 @@ impl Chunk {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
                     component: target,
-                    archetype: old_entry.descriptor.archetype, // TODO: that's inconsistent with target.
-                    component_type: old_entry.descriptor.component_type, // TODO: that's just a lie.
+                    archetype: None, // old_entry.descriptor.archetype, // TODO: that's inconsistent with target.
+                    component_type: None, // old_entry.descriptor.component_type, // TODO: that's just a lie.
                 },
                 list_array: old_entry.list_array,
             });
