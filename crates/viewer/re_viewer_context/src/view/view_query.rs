@@ -250,26 +250,12 @@ impl DataResult {
         );
     }
 
-    // TODO: only checks first visualizer instruction. plz move up to instruction. -- do it.
     fn has_base_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
-        self.visualizer_instructions
-            .first()
-            .is_some_and(|instruction| {
-                instruction
-                    .component_overrides
-                    .get(&component)
-                    .is_some_and(|component| {
-                        ctx.store_context
-                            .blueprint
-                            .latest_at(
-                                ctx.blueprint_query,
-                                &instruction.override_path,
-                                [*component],
-                            )
-                            .get(*component)
-                            .is_some()
-                    })
-            })
+        ctx.store_context
+            .blueprint
+            .latest_at(ctx.blueprint_query, &self.override_base_path, [component])
+            .get(component)
+            .is_some()
     }
 
     /// Shorthand for checking for visibility on data overrides.
