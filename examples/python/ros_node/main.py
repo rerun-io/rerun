@@ -3,7 +3,7 @@
 Simple example of a ROS node that republishes some common types to Rerun.
 
 The solution here is mostly a toy example to show how ROS concepts can be
-mapped to Rerun. Fore more information on future improved ROS support,
+mapped to Rerun. For more information on future improved ROS support,
 see the tracking issue: <https://github.com/rerun-io/rerun/issues/1537>.
 
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Callable
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -52,86 +53,37 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__("rr_turtlebot")
 
-        # Used for subscribing to latching topics
-        latching_qos = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-
-        # Allow concurrent callbacks
-        self.callback_group = ReentrantCallbackGroup()
-
         # Assorted helpers for data conversions
         self.model = PinholeCameraModel()
         self.cv_bridge = cv_bridge.CvBridge()
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
+        self.subscribers: list[rclpy.Subscription] = []
 
-        # Subscriptions
-        self.info_sub = self.create_subscription(
-            CameraInfo,
-            "/rgbd_camera/camera_info",
-            self.cam_info_callback,
-            10,
-            callback_group=self.callback_group,
-        )
+        self.subscribe("/tf", TFMessage, self.tf_callback)
+        self.subscribe("/tf_static", TFMessage, self.tf_callback, latching=True)
+        self.subscribe("/odom", Odometry, self.odom_callback)
+        self.subscribe("/scan", LaserScan, self.scan_callback)
+        self.subscribe("/rgbd_camera/camera_info", CameraInfo, self.cam_info_callback)
+        self.subscribe("/rgbd_camera/image", Image, self.image_callback)
+        self.subscribe("/rgbd_camera/depth_image", Image, self.depth_callback)
+        self.subscribe("/robot_description", String, self.urdf_callback, latching=True)
 
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            "/odom",
-            self.odom_callback,
-            10,
-            callback_group=self.callback_group,
+    def subscribe(
+        self, topic: str, msg_type: type, callback: Callable[[rclpy.MsgT], None], latching: bool = False
+    ) -> None:
+        # `qos_profile` can either be an int (history depth) or a QoSProfile.
+        # See: https://docs.ros.org/en/rolling/p/rclpy/rclpy.node.html#rclpy.node.Node.create_subscription
+        qos_profile = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL) if latching else 10
+        sub = self.create_subscription(
+            msg_type=msg_type,
+            topic=topic,
+            callback=callback,
+            qos_profile=qos_profile,
+            callback_group=ReentrantCallbackGroup(),  # allow concurrent callbacks
         )
-
-        self.img_sub = self.create_subscription(
-            Image,
-            "/rgbd_camera/image",
-            self.image_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.points_sub = self.create_subscription(
-            Image,
-            "/rgbd_camera/depth_image",
-            self.depth_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.scan_sub = self.create_subscription(
-            LaserScan,
-            "/scan",
-            self.scan_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        # The urdf is published as latching
-        self.urdf_sub = self.create_subscription(
-            String,
-            "/robot_description",
-            self.urdf_callback,
-            qos_profile=latching_qos,
-            callback_group=self.callback_group,
-        )
-
-        self.tf_sub = self.create_subscription(
-            TFMessage,
-            "/tf",
-            self.tf_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        # Static TF is published as latching
-        self.tf_static_sub = self.create_subscription(
-            TFMessage,
-            "/tf_static",
-            self.tf_callback,
-            qos_profile=latching_qos,
-            callback_group=self.callback_group,
-        )
+        self.subscribers.append(sub)
 
     def cam_info_callback(self, info: CameraInfo) -> None:
-        """Log a `CameraInfo` as Rerun `Pinhole`."""
         time = Time.from_msg(info.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
@@ -149,7 +101,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def odom_callback(self, odom: Odometry) -> None:
-        """Update transforms when odom is updated."""
         time = Time.from_msg(odom.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
@@ -158,7 +109,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("odometry/ang_vel", rr.Scalars(odom.twist.twist.angular.z))
 
     def image_callback(self, img: Image) -> None:
-        """Log an `Image` with `log_image` using `cv_bridge`."""
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
@@ -166,7 +116,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("map/robot/camera/img", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def depth_callback(self, img: Image) -> None:
-        """Log a `PointCloud2` with `log_points`."""
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
@@ -200,7 +149,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("map/robot/scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
-        """Forwards the URDF from the robot description message to Rerun."""
         # TODO: file_path is not known here, robot.urdf is just a placeholder to let Rerun know the file type.
         rr.log_file_from_contents(
             file_path="robot.urdf",
@@ -210,7 +158,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def tf_callback(self, tf_msg: TFMessage) -> None:
-        """Process incoming TF messages to update Rerun transforms."""
         time = None
         for transform in tf_msg.transforms:
             time = Time.from_msg(transform.header.stamp)
