@@ -167,7 +167,7 @@ impl DataLoaderSettings {
         if let Some(transform_frame_prefix) = transform_frame_prefix {
             args.extend([
                 "--transform-frame-prefix".to_owned(),
-                format!("{transform_frame_prefix}"),
+                transform_frame_prefix.to_owned(),
             ]);
         }
 
