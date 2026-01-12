@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, overload, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from ..._baseclasses import DescribedComponentBatch
+if TYPE_CHECKING:
+    from ..._baseclasses import DescribedComponentBatch
 
 
 class Visualizer:
@@ -23,8 +24,10 @@ class Visualizer:
 
         Parameters
         ----------
-        visualizable_archetype:
-            An archetype instance (e.g., rr.Image.from_fields(opacity=0.5))
+        visualizer_type:
+            The type name of the visualizer.
+        overrides:
+            Any component overrides to apply to fields of the visualizer.
         mappings:
             Optional component name mappings (currently unused)
 

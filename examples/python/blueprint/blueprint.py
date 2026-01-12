@@ -34,9 +34,7 @@ def main() -> None:
                     origin="/",
                     contents=["/**"],
                     defaults=[rr.Boxes2D.from_fields(radii=2)],  # Default all rectangles to have a radius of 2
-                    overrides={
-                        "rect/0": rr.Boxes2D.from_fields(radii=1)
-                    },  # Override the radius of rect/0 to be 1
+                    overrides={"rect/0": rr.Boxes2D.from_fields(radii=1)},  # Override the radius of rect/0 to be 1
                 ),
             ),
             rrb.BlueprintPanel(state="collapsed"),
