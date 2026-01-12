@@ -655,7 +655,7 @@ In-memory Rerun data server.
 
 **Options**
 
-* `--ip <ADDR>`
+* `--host <ADDR>`
 > IP address to listen on.
 >
 > [Default: `0.0.0.0`]
