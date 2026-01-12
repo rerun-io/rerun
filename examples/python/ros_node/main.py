@@ -63,14 +63,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.cv_bridge = cv_bridge.CvBridge()
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
 
-        # Log a bounding box as a visual placeholder for the map
-        # # TODO(jleibs): Log the real map once [#1531](https://github.com/rerun-io/rerun/issues/1531) is merged
-        rr.log(
-            "map/box",
-            rr.Boxes3D(half_sizes=[3, 3, 1], centers=[0, 0, 1], colors=[255, 255, 255, 255]),
-            static=True,
-        )
-
         # Subscriptions
         self.info_sub = self.create_subscription(
             CameraInfo,
