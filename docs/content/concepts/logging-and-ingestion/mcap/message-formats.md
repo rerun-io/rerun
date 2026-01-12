@@ -27,7 +27,8 @@ Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline
 
 [`tf2_msgs/TFMessage`](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is converted to [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)s, with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the `transforms` list.
 The timestamps of the individual transforms are put onto the `ros2_*` timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
-More general information about TF-style transforms in Rerun can be found [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
+
+> More general information about TF-style transforms in Rerun can be found [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
 
 [`geometry_msgs/PoseStamped`](https://docs.ros2.org/foxy/api/geometry_msgs/msg/PoseStamped.html) is converted to [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) with a [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) on the same entity path.
 You can visualize these poses in the viewer by selecting the entity and adding a `TransformAxes3D` visualizer in the selection panel:
@@ -42,7 +43,7 @@ You can visualize these poses in the viewer by selecting the entity and adding a
 
 > **Note:** the visualization requires that the coordinate frame of the pose is known, i.e. is part of the transform hierarchy of your data.
 
-Other message types that are parsed by the `ros2msg` layer and have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html) with `frame_id` also get a Rerun `CoordinateFrame`.
+`CoordinateFrame`s are also added to other message types that are supported by the `ros2msg` layer and have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html).
 For data that can be visualized in 3D views (e.g. point clouds), this means that the viewer takes the respective coordinate frame's transform into account and renders the data relative to it.
 
 ## ROS2 reflection
