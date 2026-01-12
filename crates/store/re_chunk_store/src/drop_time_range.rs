@@ -95,7 +95,7 @@ impl ChunkStore {
         let mut events: Vec<ChunkStoreEvent> = vec![];
 
         for chunk in chunks_to_drop {
-            for diff in self.remove_chunks(vec![chunk], None) {
+            for diff in self.remove_chunks_shallow(vec![chunk], None) {
                 events.push(ChunkStoreEvent {
                     store_id: self.id.clone(),
                     store_generation: generation.clone(),

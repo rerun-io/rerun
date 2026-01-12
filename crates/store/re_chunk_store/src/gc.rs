@@ -361,18 +361,152 @@ impl ChunkStore {
 
         {
             re_tracing::profile_scope!("sweep");
-            self.remove_chunks(
+            self.remove_chunks_shallow(
                 chunks_to_be_removed,
                 Some((start_time, options.time_budget)),
             )
         }
     }
 
-    /// Surgically removes a set of _temporal_ [`ChunkId`]s from all indices.
+    /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical & virtual* indices.
+    ///
+    /// This only makes sense to use with compacted chunks: you don't want a chunk that was compacted
+    /// into a new larger chunk to linger on in our internal indices, both physical and virtual.
+    /// For garbage collection purposes, refer to [`Self::remove_chunks_shallow`] instead.
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    pub(crate) fn remove_chunks(
+    pub(crate) fn remove_chunks_deep(
+        &mut self,
+        chunks_to_be_removed: Vec<Arc<Chunk>>,
+        time_budget: Option<(Instant, Duration)>,
+    ) -> Vec<ChunkStoreDiff> {
+        re_tracing::profile_function!();
+
+        let diffs = self.remove_chunks_shallow(chunks_to_be_removed, time_budget);
+        debug_assert!(diffs.len() <= 1);
+
+        let Self {
+            id: _,
+            config: _,
+            time_type_registry: _,       // purely additive
+            type_registry: _,            // purely additive
+            per_column_metadata: _,      // purely additive
+            chunks_per_chunk_id: _,      // handled by shallow impl
+            chunk_ids_per_min_row_id: _, // handled by shallow impl
+            temporal_chunk_ids_per_entity_per_component,
+            temporal_chunk_ids_per_entity,
+            temporal_physical_chunks_stats: _, // handled by shallow impl
+            static_chunk_ids_per_entity: _,    // we don't GC static data
+            static_chunks_stats: _,            // we don't GC static data
+            insert_id: _,
+            gc_id: _,
+            event_id: _,
+        } = self;
+
+        // The shallow removal has already been done at this point, so we must go through now,
+        // regardless of the time budget.
+        _ = time_budget;
+
+        for diff in &diffs {
+            let chunk = &diff.chunk;
+            let chunk_id = chunk.id();
+
+            {
+                re_tracing::profile_scope!("removal (w/ component)");
+
+                if let Some(temporal_chunk_ids_per_timeline) =
+                    temporal_chunk_ids_per_entity_per_component.get_mut(chunk.entity_path())
+                {
+                    for (timeline, time_range_per_component) in chunk.time_range_per_component() {
+                        let Some(temporal_chunk_ids_per_component) =
+                            temporal_chunk_ids_per_timeline.get_mut(&timeline)
+                        else {
+                            continue;
+                        };
+
+                        for (component, time_range) in time_range_per_component {
+                            let Some(temporal_chunk_ids_per_time) =
+                                temporal_chunk_ids_per_component.get_mut(&component)
+                            else {
+                                continue;
+                            };
+
+                            // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                            // `max_interval_length` per time here.
+                            // In practice, this adds a lot of complexity for likely very little
+                            // performance benefit, since we expect the chunks to have similar interval
+                            // lengths on the happy path.
+
+                            if let Some(set) = temporal_chunk_ids_per_time
+                                .per_start_time
+                                .get_mut(&time_range.min())
+                            {
+                                set.remove(&chunk_id);
+                            }
+                            if let Some(set) = temporal_chunk_ids_per_time
+                                .per_end_time
+                                .get_mut(&time_range.max())
+                            {
+                                set.remove(&chunk_id);
+                            }
+                        }
+                    }
+                }
+            }
+
+            {
+                re_tracing::profile_scope!("insertion (w/o component)");
+
+                if let Some(temporal_chunk_ids_per_timeline) =
+                    temporal_chunk_ids_per_entity.get_mut(chunk.entity_path())
+                {
+                    for (timeline, time_column) in chunk.timelines() {
+                        let Some(temporal_chunk_ids_per_time) =
+                            temporal_chunk_ids_per_timeline.get_mut(timeline)
+                        else {
+                            continue;
+                        };
+
+                        let time_range = time_column.time_range();
+
+                        // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                        // `max_interval_length` per time here.
+                        // In practice, this adds a lot of complexity for likely very little
+                        // performance benefit, since we expect the chunks to have similar interval
+                        // lengths on the happy path.
+
+                        if let Some(set) = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get_mut(&time_range.min())
+                        {
+                            set.remove(&chunk_id);
+                        }
+                        if let Some(set) = temporal_chunk_ids_per_time
+                            .per_end_time
+                            .get_mut(&time_range.max())
+                        {
+                            set.remove(&chunk_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        diffs
+    }
+
+    /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical* indices only.
+    ///
+    /// This only makes sense to use with garbage collection: you want to make sure that a chunk that
+    /// was garbage collected away stills lingers on in our internal virtual indices, so we can know at
+    /// query time that some data was missing from local memory.
+    /// into a new larger chunk to linger on in our internal indices, both physical and virtual.
+    /// For compaction purposes, refer to [`Self::remove_chunks_deep`] instead.
+    ///
+    /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
+    /// when you already know where these chunks live.
+    pub(crate) fn remove_chunks_shallow(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<(Instant, Duration)>,
@@ -384,7 +518,7 @@ impl ChunkStore {
             config: _,
             time_type_registry: _,  // purely additive
             type_registry: _,       // purely additive
-            per_column_metadata: _, // purely additive only
+            per_column_metadata: _, // purely additive
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _, // purely additive: virtual index
