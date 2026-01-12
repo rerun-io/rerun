@@ -47,7 +47,7 @@ class Server:
     def __init__(
         self,
         *,
-        bind_ip: str = "0.0.0.0",
+        host: str = "0.0.0.0",
         port: int | None = None,
         datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
@@ -61,7 +61,7 @@ class Server:
 
         Parameters
         ----------
-        bind_ip:
+        host:
             The IP address to bind the server to.
         port:
             The port to bind the server to, or `None` to select a random available port.
@@ -74,14 +74,14 @@ class Server:
             Optional dictionary mapping table names to lance file paths which will be loaded and made available when the
             server starts.
         addr:
-            Deprecated: Renamed to `bind_ip`
+            Deprecated: Renamed to `host`
 
         """
 
-        if bind_ip == "0.0.0.0" and addr != "0.0.0.0":
-            bind_ip = addr
+        if host == "0.0.0.0" and addr != "0.0.0.0":
+            host = addr
             _send_warning_or_raise(
-                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `bind_ip`.",
+                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `host`.",
                 depth_to_user_code=1,
                 warning_type=DeprecationWarning,
             )
@@ -116,7 +116,7 @@ class Server:
                     all_datasets[name] = [str(p.absolute()) for p in paths]
 
         self._internal = _ServerInternal(
-            bind_ip=bind_ip,
+            host=host,
             port=resolved_port,
             datasets=all_datasets,
             dataset_prefixes=all_dataset_prefixes,
@@ -131,9 +131,9 @@ class Server:
     def address(self) -> str:
         return self.url()
 
-    def bind_ip(self) -> str:
-        """Get the IP that we've bound the server to."""
-        return self._internal.bind_ip()
+    def host(self) -> str:
+        """Get the host (IP) that we've bound the server to."""
+        return self._internal.host()
 
     def client(self) -> CatalogClient:
         """

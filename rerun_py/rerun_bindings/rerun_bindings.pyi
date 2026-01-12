@@ -1276,7 +1276,7 @@ class _ServerInternal:
     def __init__(
         self,
         *,
-        bind_ip: str,
+        host: str,
         port: int,
         datasets: dict[str, list[str]],
         dataset_prefixes: dict[str, str],
@@ -1287,7 +1287,7 @@ class _ServerInternal:
 
         Parameters
         ----------
-        bind_ip:
+        host:
             The IP address to bind the server to.
         port:
             The port to bind the server to.
@@ -1302,7 +1302,7 @@ class _ServerInternal:
         """
 
     def url(self) -> str: ...
-    def bind_ip(self) -> str: ...
+    def host(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
 

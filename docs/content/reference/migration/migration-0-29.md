@@ -54,7 +54,7 @@ The first argument to `CatalogClient` is now called `url`.
 The other arguments (including `token`) are now kw-args.
 
 ### `Server`: Renamed `addr` constructor parameter
-The first argument to `Server` is now called `bind_ip`.
+The first argument to `Server` is now called `host`.
 
 ### Deprecated `rerun.dataframe` API has been removed
 
@@ -69,4 +69,4 @@ The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have no
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
 
 ## CLI
-`rerun server --addr …` has been renamed `rerun server --ip …`
+`rerun server --addr …` has been renamed `rerun server --host …`

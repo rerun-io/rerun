@@ -18,7 +18,7 @@ use crate::{ServerBuilder, ServerHandle};
 pub struct Args {
     /// IP address to listen on.
     #[clap(long, default_value = "0.0.0.0")]
-    pub ip: String,
+    pub host: String,
 
     /// Port to bind to.
     #[clap(long, short = 'p', default_value_t = 51234)]
@@ -80,7 +80,7 @@ impl Args {
     /// Waits for the server to start, and return a handle to it together with its address.
     pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
         let Self {
-            ip,
+            host: ip,
             port,
             datasets,
             dataset_prefixes,

@@ -11,18 +11,18 @@ use re_server::{self, Args as ServerArgs, NamedPathCollection};
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
-    bind_ip: std::net::IpAddr,
+    host: std::net::IpAddr,
     url: String,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (*, bind_ip, port, datasets, dataset_prefixes, tables))]
-    #[pyo3(text_signature = "(self, *, bind_ip, port, datasets, dataset_prefixes, tables)")]
+    #[pyo3(signature = (*, host, port, datasets, dataset_prefixes, tables))]
+    #[pyo3(text_signature = "(self, *, host, port, datasets, dataset_prefixes, tables)")]
     pub fn new(
         py: Python<'_>,
-        bind_ip: &str,
+        host: &str,
         port: u16,
         datasets: &Bound<'_, PyDict>,
         dataset_prefixes: &Bound<'_, PyDict>,
@@ -34,22 +34,22 @@ impl PyServerInternal {
 
         // we can re-use the CLI argument to construct the server
         let args = ServerArgs {
-            ip: bind_ip.to_owned(),
+            host: host.to_owned(),
             port,
             datasets,
             dataset_prefixes,
             tables,
         };
 
-        let bind_ip: std::net::IpAddr = bind_ip
+        let host: std::net::IpAddr = host
             .parse()
-            .map_err(|err| PyValueError::new_err(format!("Invalid IP: {bind_ip:?}: {err}")))?;
+            .map_err(|err| PyValueError::new_err(format!("Invalid IP: {host:?}: {err}")))?;
 
-        let connect_ip = if bind_ip.is_unspecified() {
+        let connect_ip = if host.is_unspecified() {
             // We usually cannot connect to 0.0.0.0, so tell clients to connect to 127.0.0.1 instead:
             std::net::Ipv4Addr::LOCALHOST.into()
         } else {
-            bind_ip
+            host
         };
         let connect_address = SocketAddr::new(connect_ip, args.port);
 
@@ -62,7 +62,7 @@ impl PyServerInternal {
 
             Ok(Self {
                 handle: Some(handle),
-                bind_ip,
+                host,
                 url,
             })
         })
@@ -74,8 +74,8 @@ impl PyServerInternal {
     }
 
     /// Get the IP that we've bound the server to.
-    pub fn bind_ip(&self) -> String {
-        self.bind_ip.to_string()
+    pub fn host(&self) -> String {
+        self.host.to_string()
     }
 
     pub fn shutdown(&mut self, py: Python<'_>) -> PyResult<()> {

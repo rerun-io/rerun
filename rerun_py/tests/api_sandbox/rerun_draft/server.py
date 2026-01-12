@@ -12,20 +12,20 @@ if TYPE_CHECKING:
 
 
 class Server:
-    bind_ip = _server.Server.bind_ip
+    host = _server.Server.host
     is_running = _server.Server.is_running
     shutdown = _server.Server.shutdown
 
     def __init__(
         self,
         *,
-        bind_ip: str = "0.0.0.0",
+        host: str = "0.0.0.0",
         port: int | None = None,
         datasets: dict[str, PathLike[str]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
         self._internal = _server.Server(
-            bind_ip=bind_ip,
+            host=host,
             port=port,
             datasets=datasets,
             tables=tables,
