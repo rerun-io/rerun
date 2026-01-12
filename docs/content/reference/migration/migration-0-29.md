@@ -37,13 +37,7 @@ rr.send_blueprint(
 ```
 After:
 ```py
-rr.send_blueprint(
-    rrb.TimeSeriesView(
-        overrides={
-            "trig/sin": [rr.SeriesLines(), rr.SeriesPoints()],
-        },
-    )
-)
+rr.send_blueprint(rrb.TimeSeriesView(overrides={"trig/sin": [rr.SeriesLines(), rr.SeriesPoints()]}))
 ```
 
 In general, you can now pass any archetype that has a corresponding visualizer.
