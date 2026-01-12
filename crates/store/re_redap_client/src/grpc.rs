@@ -463,14 +463,18 @@ async fn stream_segment_from_server(
                     return Ok(ControlFlow::Break(()));
                 }
 
-                if store_id.is_recording() {
-                    return load_static_chunks(client, tx, &store_id, rrd_manifest).await;
-                } else {
-                    // Load all chunks in one go; most important first:
-                    let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
-                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
-                    })?;
-                    return load_chunks(client, tx, &store_id, batch).await;
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        // We load only the static chunks, and then let the viewer ask for the rest on-demand.
+                        return load_static_chunks(client, tx, &store_id, rrd_manifest).await;
+                    }
+                    StoreKind::Blueprint => {
+                        // Load all of the chunks in one go; most important first:
+                        let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                            ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                        })?;
+                        return load_chunks(client, tx, &store_id, batch).await;
+                    }
                 }
             }
             Err(err) => {

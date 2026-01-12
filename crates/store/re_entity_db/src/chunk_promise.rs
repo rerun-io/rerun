@@ -1,9 +1,12 @@
+//! Responsible for tracking in-progress chunk downloads for larger-than-RAM.
+
 use parking_lot::Mutex;
 use re_chunk::Chunk;
 
 /// A batch of chunks being loaded from a remote server.
 pub type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
 
+/// Represents a batch of chunks being downloaded.
 pub struct ChunkPromiseBatch {
     // The poll_promise API is a bit unergonomic.
     // For one, it is not `Sync`.
@@ -16,6 +19,8 @@ pub struct ChunkPromiseBatch {
 }
 
 /// In-progress downloads of chunks.
+///
+/// Used for larger-than-RAM streaming.
 #[derive(Default)]
 pub struct ChunkPromises {
     batches: Vec<ChunkPromiseBatch>,
@@ -25,7 +30,8 @@ static_assertions::assert_impl_all!(ChunkPromises: Sync);
 
 impl Clone for ChunkPromises {
     fn clone(&self) -> Self {
-        // This is fine: the clone will just have to start its own loading.
+        // This means the clone will have to start downloads from scratch.
+        // In practice, the `Clone` feature is only used for tests.
         Self {
             batches: Vec::new(),
         }

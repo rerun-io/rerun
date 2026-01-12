@@ -40,12 +40,14 @@ pub enum PrefetchError {
 ///
 /// The order here is used for priority to show the state in the ui (lower is more prioritized)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum LoadState {
+enum LoadState {
     /// The chunk is not loaded, nor being loaded.
     #[default]
     Unloaded,
 
     /// We have requested it.
+    ///
+    /// TODO(emilk): move this state to [`ChunkPromises`]
     InTransit,
 
     /// We have the chole chunk in memory.
@@ -86,7 +88,7 @@ pub struct ChunkPrefetchOptions {
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
 pub struct ChunkInfo {
-    pub state: LoadState,
+    state: LoadState,
 
     /// None for static chunks
     pub temporal: Option<TemporalChunkInfo>,
@@ -388,7 +390,7 @@ impl RrdManifestIndex {
     pub fn prefetch_chunks(
         &mut self,
         options: &ChunkPrefetchOptions,
-        load_chunk: &dyn Fn(RecordBatch) -> ChunkPromise,
+        load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
 
@@ -457,7 +459,7 @@ impl RrdManifestIndex {
                         &Int32Array::from(std::mem::take(&mut indices)),
                     )?;
                     self.chunk_promises.add(ChunkPromiseBatch {
-                        promise: Mutex::new(Some(load_chunk(rb))),
+                        promise: Mutex::new(Some(load_chunks(rb))),
                         size_bytes: bytes_in_batch,
                     });
                     bytes_in_batch = 0;
@@ -468,7 +470,7 @@ impl RrdManifestIndex {
         if !indices.is_empty() {
             let rb = take_record_batch(&manifest.data, &Int32Array::from(indices))?;
             self.chunk_promises.add(ChunkPromiseBatch {
-                promise: Mutex::new(Some(load_chunk(rb))),
+                promise: Mutex::new(Some(load_chunks(rb))),
                 size_bytes: bytes_in_batch,
             });
         }
