@@ -141,7 +141,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             "map/robot/camera/img",
             rr.Pinhole(
                 resolution=[self.model.width, self.model.height],
-                image_from_camera=self.model.intrinsicMatrix(),
+                image_from_camera=self.model.intrinsic_matrix(),
                 parent_frame=info.header.frame_id,
                 child_frame=info.header.frame_id + "_image_plane",
             ),
