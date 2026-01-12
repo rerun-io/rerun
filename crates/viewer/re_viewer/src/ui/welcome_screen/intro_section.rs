@@ -17,12 +17,13 @@ pub struct CloudState {
     pub login: LoginState,
 }
 
+#[cfg(feature = "analytics")] // these are currently only used when analytics is enabled
 impl CloudState {
-    pub fn is_logged_in(&self) -> bool {
+    fn is_logged_in(&self) -> bool {
         matches!(self.login, LoginState::Auth { .. })
     }
 
-    pub fn has_server(&self) -> bool {
+    fn has_server(&self) -> bool {
         self.has_server.is_some()
     }
 }
@@ -39,22 +40,22 @@ pub enum IntroItem {
 impl IntroItem {
     fn items() -> Vec<Self> {
         vec![
-            IntroItem::DocItem {
+            Self::DocItem {
                 title: "Send data in",
                 url: "https://rerun.io/docs/getting-started/data-in",
                 body: "Send data to Rerun from your running applications or existing files.",
             },
-            IntroItem::DocItem {
+            Self::DocItem {
                 title: "Explore data",
                 url: "https://rerun.io/docs/getting-started/configure-the-viewer",
                 body: "Familiarize yourself with the basics of using the Rerun Viewer.",
             },
-            IntroItem::DocItem {
+            Self::DocItem {
                 title: "Query data out",
                 url: "https://rerun.io/docs/getting-started/data-out",
                 body: "Perform analysis and send back the results to the original recording.",
             },
-            IntroItem::CloudLoginItem,
+            Self::CloudLoginItem,
         ]
     }
 
@@ -70,16 +71,16 @@ impl IntroItem {
             .corner_radius(8)
             .stroke(tokens.native_frame_stroke);
         match self {
-            IntroItem::DocItem { .. } => frame,
-            IntroItem::CloudLoginItem => frame.fill(opposite_tokens.panel_bg_color),
+            Self::DocItem { .. } => frame,
+            Self::CloudLoginItem => frame.fill(opposite_tokens.panel_bg_color),
         }
     }
 
     fn card_item(&self, ui: &Ui) -> CardLayoutItem {
         let frame = self.frame(ui);
         let min_width = match &self {
-            IntroItem::DocItem { .. } => 200.0,
-            IntroItem::CloudLoginItem => 400.0,
+            Self::DocItem { .. } => 200.0,
+            Self::CloudLoginItem => 400.0,
         };
         CardLayoutItem { frame, min_width }
     }
@@ -87,7 +88,7 @@ impl IntroItem {
     fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
         let label_size = 13.0;
         ui.vertical(|ui| match self {
-            IntroItem::DocItem { title, url, body } => {
+            Self::DocItem { title, url, body } => {
                 egui::Sides::new().shrink_left().show(ui, |ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
 
@@ -98,7 +99,7 @@ impl IntroItem {
                     if _response.clicked() || _response.clicked_with_open_in_background() {
                         re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
                             cloud_card: false,
-                            destination: url.to_string(),
+                            destination: (*url).to_owned(),
                             // We always open external links in a new tab
                             new_tab: true,
                             cta_cloud: false,
@@ -109,7 +110,7 @@ impl IntroItem {
                 });
                 ui.label(RichText::new(*body).size(label_size));
             }
-            IntroItem::CloudLoginItem => {
+            Self::CloudLoginItem => {
                 let opposite_theme = match ui.theme() {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
@@ -151,7 +152,7 @@ impl IntroItem {
                     #[cfg(feature = "analytics")]
                     re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
                         cloud_card: true,
-                        destination: "".to_owned(),
+                        destination: String::new(),
                         new_tab: false,
                         cta_cloud: true,
                         is_logged_in: cloud_state.is_logged_in(),
