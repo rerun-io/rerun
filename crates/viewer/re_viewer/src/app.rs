@@ -3097,28 +3097,32 @@ impl App {
                 re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let file_path_clone = file_path.clone();
                         let rgba = rgba.clone();
-                        self.command_sender
-                            .send_system(SystemCommand::FileSaver(Box::new(move || {
-                                let image = image::RgbaImage::from_raw(
-                                    rgba.width() as _,
-                                    rgba.height() as _,
-                                    bytemuck::pod_collect_to_vec(&rgba.pixels),
-                                )
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!("Failed to create image from screenshot data")
-                                })?;
-                                let path = PathBuf::from(file_path_clone);
-                                image.save(&path)?;
-                                re_log::info!("Screenshot saved to {}", path.display());
-                                Ok(path)
-                            })));
+                        let Some(image) = image::RgbaImage::from_raw(
+                            rgba.width() as _,
+                            rgba.height() as _,
+                            bytemuck::pod_collect_to_vec(&rgba.pixels),
+                        ) else {
+                            re_log::error!("Failed to create image from screenshot data");
+                            return;
+                        }
+
+                        // Convert the image to rgb8 (rather than rgba8). It's more compact and supported by more formats (like jpg).
+                        // TODO:
+
+                        match image.save(&file_path) {
+                            Ok(()) => {
+                                re_log::info!("Saved screenshot to {file_path:?}");
+                            }
+                            Err(err) => {
+                                re_log::error!("Failed to save screenshot to {file_path:?}: {err}");
+                            }
+                        }
                     }
                     #[cfg(target_arch = "wasm32")]
                     {
-                        re_log::warn!(
-                            "SaveToPath not supported on web. Attempted to save to: {file_path}"
+                        re_log::error!(
+                            "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path}"
                         );
                     }
                 }
