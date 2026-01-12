@@ -580,6 +580,57 @@ impl Properties for CliCommandInvoked {
 
 // -----------------------------------------------
 
+/// Tracks navigation clicks on the welcome screen cards.
+///
+/// This event is sent when users click on cards on the welcome screen,
+/// such as documentation links or cloud-related CTAs.
+pub struct WelcomeScreenNavigation {
+    /// Whether the click was on the Cloud card (true) or a documentation card (false).
+    pub cloud_card: bool,
+
+    /// The destination URL that was navigated to.
+    /// Empty string if the click was on a CTA that opened a modal instead.
+    pub destination: String,
+
+    /// Whether the link opened in a new tab.
+    pub new_tab: bool,
+
+    /// Whether this was a click on a cloud modal CTA (e.g. "Add server", "Login").
+    pub cta_cloud: bool,
+
+    /// Whether the user is logged in.
+    pub is_logged_in: bool,
+
+    /// Whether there is a server added.
+    pub has_server: bool,
+}
+
+impl Event for WelcomeScreenNavigation {
+    const NAME: &'static str = "welcome_navigation";
+}
+
+impl Properties for WelcomeScreenNavigation {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            cloud_card,
+            destination,
+            new_tab,
+            cta_cloud,
+            is_logged_in,
+            has_server,
+        } = self;
+
+        event.insert("cloud_card", cloud_card);
+        event.insert("destination", destination);
+        event.insert("new_tab", new_tab);
+        event.insert("cta_cloud", cta_cloud);
+        event.insert("is_logged_in", is_logged_in);
+        event.insert("has_server", has_server);
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;

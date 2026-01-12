@@ -17,17 +17,27 @@ pub struct CloudState {
     pub login: LoginState,
 }
 
-pub enum IntroItem<'a> {
+impl CloudState {
+    pub fn is_logged_in(&self) -> bool {
+        matches!(self.login, LoginState::Auth { .. })
+    }
+
+    pub fn has_server(&self) -> bool {
+        self.has_server.is_some()
+    }
+}
+
+pub enum IntroItem {
     DocItem {
         title: &'static str,
         url: &'static str,
         body: &'static str,
     },
-    CloudLoginItem(&'a CloudState),
+    CloudLoginItem,
 }
 
-impl<'a> IntroItem<'a> {
-    fn items(login_state: &'a CloudState) -> Vec<Self> {
+impl IntroItem {
+    fn items() -> Vec<Self> {
         vec![
             IntroItem::DocItem {
                 title: "Send data in",
@@ -44,7 +54,7 @@ impl<'a> IntroItem<'a> {
                 url: "https://rerun.io/docs/getting-started/data-out",
                 body: "Perform analysis and send back the results to the original recording.",
             },
-            IntroItem::CloudLoginItem(login_state),
+            IntroItem::CloudLoginItem,
         ]
     }
 
@@ -61,7 +71,7 @@ impl<'a> IntroItem<'a> {
             .stroke(tokens.native_frame_stroke);
         match self {
             IntroItem::DocItem { .. } => frame,
-            IntroItem::CloudLoginItem(_) => frame.fill(opposite_tokens.panel_bg_color),
+            IntroItem::CloudLoginItem => frame.fill(opposite_tokens.panel_bg_color),
         }
     }
 
@@ -69,12 +79,12 @@ impl<'a> IntroItem<'a> {
         let frame = self.frame(ui);
         let min_width = match &self {
             IntroItem::DocItem { .. } => 200.0,
-            IntroItem::CloudLoginItem(_) => 400.0,
+            IntroItem::CloudLoginItem => 400.0,
         };
         CardLayoutItem { frame, min_width }
     }
 
-    fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>) {
+    fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
         let label_size = 13.0;
         ui.vertical(|ui| match self {
             IntroItem::DocItem { title, url, body } => {
@@ -83,11 +93,23 @@ impl<'a> IntroItem<'a> {
 
                     ui.heading(RichText::new(*title).strong());
                 }, |ui| {
-                    ui.re_hyperlink("Docs", *url, true);
+                    let _response = ui.re_hyperlink("Docs", *url, true);
+                    #[cfg(feature = "analytics")]
+                    if _response.clicked() || _response.clicked_with_open_in_background() {
+                        re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
+                            cloud_card: false,
+                            destination: url.to_string(),
+                            // We always open external links in a new tab
+                            new_tab: true,
+                            cta_cloud: false,
+                            is_logged_in: cloud_state.is_logged_in(),
+                            has_server: cloud_state.has_server(),
+                        });
+                    }
                 });
                 ui.label(RichText::new(*body).size(label_size));
             }
-            IntroItem::CloudLoginItem(login_state) => {
+            IntroItem::CloudLoginItem => {
                 let opposite_theme = match ui.theme() {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
@@ -98,25 +120,56 @@ impl<'a> IntroItem<'a> {
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
+
+                    let link = |ui: &mut Ui, label: &str, url: &str| {
+                        let _response = ui.hyperlink_to(label, url);
+                        #[cfg(feature = "analytics")]
+                        if _response.clicked() || _response.clicked_with_open_in_background() {
+                            re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
+                                cloud_card: true,
+                                destination: url.to_owned(),
+                                // We always open external links in a new tab
+                                new_tab: true,
+                                cta_cloud: false,
+                                is_logged_in: cloud_state.is_logged_in(),
+                                has_server: cloud_state.has_server(),
+                            });
+                        }
+                    };
+
                     ui.style_mut().text_styles.get_mut(&TextStyle::Body).expect("Should always have body text style").size = label_size;
                     ui.label(
                         "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
                     );
-                    ui.hyperlink_to("here", "https://rerun.io/");
+                    link(ui, "here", "https://rerun.io/");
                     ui.label(" or ");
-                    ui.hyperlink_to("book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
+                    link(ui, "book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
                     ui.label(".");
                 });
 
-                match login_state {
+                let analytics = || {
+                    #[cfg(feature = "analytics")]
+                    re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
+                        cloud_card: true,
+                        destination: "".to_owned(),
+                        new_tab: false,
+                        cta_cloud: true,
+                        is_logged_in: cloud_state.is_logged_in(),
+                        has_server: cloud_state.has_server(),
+                    });
+                };
+
+                match cloud_state {
                     CloudState { has_server: None, login: LoginState::NoAuth } => {
                         if ui.primary_button("Add server and login").clicked() {
+                            analytics();
                             ctx.command_sender.send_ui(UICommand::AddRedapServer);
                         }
                     }
                     CloudState { has_server: None, login } => {
                         ui.horizontal_wrapped(|ui| {
                             if ui.primary_button("Add server").clicked() {
+                                analytics();
                                 ctx.command_sender.send_ui(UICommand::AddRedapServer);
                             }
                             if let LoginState::Auth { email: Some(email) } = login {
@@ -127,17 +180,19 @@ impl<'a> IntroItem<'a> {
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::NoAuth } => {
-                    ui.horizontal_wrapped(|ui| {
-                        if ui.primary_button("Add credentials").clicked() {
-                            ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(EditRedapServerModalCommand::new(origin.clone())));
-                        }
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        ui.weak("for address ");
-                        ui.strong(format!("{}", &origin.host));
+                        ui.horizontal_wrapped(|ui| {
+                            if ui.primary_button("Add credentials").clicked() {
+                                analytics();
+                                ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(EditRedapServerModalCommand::new(origin.clone())));
+                            }
+                            ui.spacing_mut().item_spacing.x = 0.0;
+                            ui.weak("for address ");
+                            ui.strong(format!("{}", &origin.host));
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
                         if ui.primary_button("Explore your data").clicked() {
+                            analytics();
                             ctx.command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(origin.clone())));
                         }
                     }
@@ -147,8 +202,8 @@ impl<'a> IntroItem<'a> {
     }
 }
 
-pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &CloudState) {
-    let items = IntroItem::items(login_state);
+pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
+    let items = IntroItem::items();
 
     ui.add_space(32.0);
 
@@ -164,6 +219,6 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &C
 
     CardLayout::new(items.iter().map(|item| item.card_item(ui)).collect()).show(ui, |ui, index| {
         let item = &items[index];
-        item.show(ui, ctx);
+        item.show(ui, ctx, cloud_state);
     });
 }
