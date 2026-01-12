@@ -774,7 +774,7 @@ impl App {
             return;
         };
 
-        re_log::debug!("Updating navigation bar");
+        re_log::trace!("Updating navigation bar");
 
         use crate::web_history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
@@ -2434,7 +2434,7 @@ impl App {
         }
 
         let was_empty = entity_db.is_empty();
-        let entity_db_add_result = entity_db.add(msg);
+        let entity_db_add_result = entity_db.add_log_msg(msg);
 
         // Downgrade to read-only, so we can access caches.
         let entity_db = store_hub
@@ -2728,7 +2728,7 @@ impl App {
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             re_log::info_once!(
-                "Reached memory limit of {}, dropping oldest data.",
+                "Reached memory limit of {}. Freeing up data…",
                 format_limit(limit.max_bytes)
             );
 
@@ -3058,15 +3058,36 @@ impl App {
     }
 
     /// Prefetch chunks for the open recording (stream from server)
-    fn prefetch_chunks(&self, store_hub: &mut StoreHub) -> Option<()> {
-        let recording = store_hub.active_recording_mut()?;
-        let time_ctrl = self.state.time_controls.get(recording.store_id())?;
-        crate::prefetch_chunks::prefetch_chunks(
-            &self.startup_options,
-            &self.rx_log,
-            recording,
-            time_ctrl,
-        )
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+        re_tracing::profile_function!();
+
+        // Receive in-transit chunks (previously prefetched):
+        for db in store_hub.store_bundle_mut().recordings_mut() {
+            if db.rrd_manifest_index.has_manifest() {
+                for chunk in db.rrd_manifest_index.resolve_pending_promises() {
+                    if let Err(err) = db.add_chunk(&std::sync::Arc::new(chunk)) {
+                        re_log::warn_once!("add_chunk failed: {err}");
+                    }
+                }
+
+                if db.rrd_manifest_index.has_pending_promises() {
+                    self.egui_ctx.request_repaint(); // check back for more
+                }
+            }
+        }
+
+        // Prefetch new chunks for the active recording (if any):
+        if let Some(recording) = store_hub.active_recording_mut()
+            && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
+        {
+            crate::prefetch_chunks::prefetch_chunks_for_active_recording(
+                &self.egui_ctx,
+                &self.startup_options,
+                recording,
+                time_ctrl,
+                self.connection_registry(),
+            );
+        }
     }
 }
 

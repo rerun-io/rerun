@@ -218,6 +218,12 @@ impl StoreHub {
         &self.store_bundle
     }
 
+    /// All the loaded recordings and blueprints.
+    #[inline]
+    pub fn store_bundle_mut(&mut self) -> &mut StoreBundle {
+        &mut self.store_bundle
+    }
+
     /// Get a read-only [`StorageContext`] and optionally a [`StoreContext`] (if available) from the [`StoreHub`].
     ///
     /// All of the returned references to blueprints and recordings will have a

@@ -16,13 +16,14 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TextDocument"]
 
 
 @define(str=False, repr=False, init=False)
-class TextDocument(Archetype):
+class TextDocument(Archetype, VisualizableArchetype):
     """
     **Archetype**: A text element intended to be displayed in its own text box.
 
@@ -277,3 +278,7 @@ class TextDocument(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("TextDocument", overrides=self.as_component_batches(), mappings=None)
