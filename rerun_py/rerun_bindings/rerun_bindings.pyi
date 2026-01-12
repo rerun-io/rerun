@@ -1248,7 +1248,7 @@ class RegistrationHandleInternal:
 class ViewerClient:
     """A connection to an instance of a Rerun viewer."""
 
-    def __init__(self, addr: str) -> None:
+    def __init__(self, addr: str = "127.0.0.1:9876") -> None:
         """
         Create a new viewer client object.
 
