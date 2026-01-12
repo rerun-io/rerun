@@ -14,7 +14,7 @@ This was already possible before, but only by relying on semi-private APIs that 
 In particular, these APIs had no way of keeping track of the surrounding context in which these logging calls were made (e.g. which archetype?), which created a lot of data modeling related issues.\
 Internally, these new APIs make it possible to implement many long awaited Rerun features, in the long term.
 
-The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](../../howto/logging/send-partial-updates.md).
+The following snippets give a succinct before/after picture; for more information about partial updates, please [refer to the dedicated documentation](../../howto/logging-and-ingestion/send-partial-updates.md).
 
 
 #### Python

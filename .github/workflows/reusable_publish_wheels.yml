@@ -158,7 +158,7 @@ jobs:
 
       - name: Publish to PyPI
         run: |
-          pixi run python scripts/ci/publish_wheels.py \
+          pixi run uvpy scripts/ci/publish_wheels.py \
             --version ${{ inputs.release-version }} \
             --dir "commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels" \
             --repository "${{ vars.PYPI_REPOSITORY }}" \

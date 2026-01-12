@@ -1,8 +1,0 @@
-#!/bin/bash
-# Wrapper script to run "uv run python" using the local uv wrapper
-# This ensures we use .venv instead of pixi env
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Use our uv wrapper script with "run python"
-"${SCRIPT_DIR}/uv" run python "$@"

@@ -25,6 +25,9 @@ default = []
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
+## Enable some feature only used for tests
+testing = []
+
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -52,8 +55,10 @@ indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
+poll-promise.workspace = true
 saturating_cast.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
+static_assertions.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

@@ -156,7 +156,7 @@ again.
 ### TF to rr.Transform3D
 
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the
-corresponding [Rerun Transforms](../../concepts/spaces-and-transforms.md#space-transformations).
+corresponding [Rerun Transforms](../../concepts/logging-and-ingestion/transforms.md#space-transformations).
 
 In Rerun, each path represents a coordinate frame, so we need to decide which TF frame each path will
 correspond to. In general, this is the frame_id of the sensor data that will be logged to that

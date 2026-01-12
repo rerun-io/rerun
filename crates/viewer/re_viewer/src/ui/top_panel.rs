@@ -499,7 +499,7 @@ fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u
     // The color should not change based on theme, so it's fine to hard-code here
     #[expect(clippy::disallowed_methods)]
     let text_color = Color32::from_gray(tint);
-    Image::new(include_image!("user_image.jpg"))
+    Image::new(include_image!("../../data/user_image.jpg"))
         .corner_radius(corner_radius)
         .tint(text_color)
         .paint_at(ui, rect);

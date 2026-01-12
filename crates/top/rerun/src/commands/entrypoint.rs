@@ -639,8 +639,8 @@ where
                 let web_header = unindent::unindent(
                     "\
                     ---
-                    title: CLI manual
-                    order: 250
+                    title: ⌨️ CLI manual
+                    order: 1150
                     ---\
                     ",
                 );
@@ -1276,7 +1276,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                                             }),
                                     };
 
-                                mut_db.add(&msg)?;
+                                mut_db.add_log_msg(&msg)?;
                             }
 
                             DataSourceMessage::TableMsg(_) => {
