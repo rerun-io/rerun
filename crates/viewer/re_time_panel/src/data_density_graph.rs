@@ -419,6 +419,8 @@ fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
 ///
 /// If the time cursor is over unloaded chunks, this draws a dashed line as a
 /// loading indicator.
+///
+/// `draw_ranges` indicates if the loaded ranges should be filled in.
 pub fn paint_loaded_indicator_bar(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
@@ -426,6 +428,7 @@ pub fn paint_loaded_indicator_bar(
     time_ctrl: &TimeControl,
     y: f32,
     x_range: Rangef,
+    draw_ranges: bool,
 ) {
     let Some(timeline) = time_ctrl.timeline() else {
         return;
@@ -441,31 +444,25 @@ pub fn paint_loaded_indicator_bar(
         .timeline_range(time_ctrl.timeline_name())
         .unwrap_or(AbsoluteTimeRange::EMPTY);
 
-    let current_time = time_ctrl.time_int();
-    let mut should_load = current_time.is_some_and(|time| full_range.contains(time));
-
     let loaded_ranges_on_timeline = db
         .rrd_manifest_index()
         .loaded_ranges_on_timeline(timeline)
-        .filter_map(|range| {
-            if current_time.is_some_and(|time| range.contains(time)) {
-                should_load = false;
-            }
-
-            let start = time_ranges_ui.x_from_time(range.min.into())?;
-            let end = time_ranges_ui.x_from_time(range.max.into())?;
-            debug_assert!(start <= end, "Negative x-range");
-            let x = Rangef::new(start as f32, end as f32).intersection(x_range);
-
-            if x.span() > 0.0 { Some(x) } else { None }
-        })
         .collect::<Vec<_>>();
+
+    let timeline_range = full_range;
+    let should_load = time_ctrl
+        .time_int()
+        .is_some_and(|time| full_range.contains(time))
+        && time_ctrl.time_int().is_some_and(|time| {
+            (&loaded_ranges_on_timeline)
+                .iter()
+                .all(|r| !r.contains(time))
+        });
 
     if should_load
         && let Some(start) = time_ranges_ui.x_from_time(full_range.min.into())
         && let Some(end) = time_ranges_ui.x_from_time(full_range.max.into())
     {
-        let range = x_range.intersection(Rangef::new(start as f32, end as f32));
         // How many points the gap is in the dashed line
         let gap = 5.0;
         // How many points each line is in the dashed line
@@ -473,9 +470,26 @@ pub fn paint_loaded_indicator_bar(
         // Animation speed of the loading in points per second
         let speed = 20.0;
 
-        if range.span() > 0.0 {
+        if x_range
+            .intersection(Rangef::new(start as f32, end as f32))
+            .span()
+            > 0.0
+        {
             let dashed_line = egui::Shape::dashed_line_with_offset(
-                &[egui::pos2(range.min, y), egui::pos2(range.max, y)],
+                &[
+                    egui::pos2(
+                        x_range
+                            .intersection(Rangef::new(start as f32, end as f32))
+                            .min,
+                        y,
+                    ),
+                    egui::pos2(
+                        x_range
+                            .intersection(Rangef::new(start as f32, end as f32))
+                            .max,
+                        y,
+                    ),
+                ],
                 ui.visuals().widgets.noninteractive.fg_stroke,
                 &[line],
                 &[gap],
@@ -484,14 +498,32 @@ pub fn paint_loaded_indicator_bar(
 
             ui.painter()
                 // Need to clip because offsetting the dashed line may end up outside otherwise
-                .with_clip_rect(egui::Rect::from_x_y_ranges(range, Rangef::EVERYTHING))
+                .with_clip_rect(egui::Rect::from_x_y_ranges(
+                    x_range.intersection(Rangef::new(start as f32, end as f32)),
+                    Rangef::EVERYTHING,
+                ))
                 .add(dashed_line);
         }
     }
 
-    for x in loaded_ranges_on_timeline {
-        ui.painter()
-            .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
+    if draw_ranges {
+        for range in loaded_ranges_on_timeline {
+            let Some(start) = time_ranges_ui.x_from_time(range.min.into()) else {
+                continue;
+            };
+            let Some(end) = time_ranges_ui.x_from_time(range.max.into()) else {
+                continue;
+            };
+            debug_assert!(start <= end, "Negative x-range");
+            let x = Rangef::new(start as f32, end as f32).intersection(x_range);
+
+            if x.span() <= 0.0 {
+                continue;
+            }
+
+            ui.painter()
+                .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
+        }
     }
 }
 
