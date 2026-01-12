@@ -28,11 +28,11 @@ try:
     from rclpy.callback_groups import ReentrantCallbackGroup
     from rclpy.node import Node
     from rclpy.qos import QoSDurabilityPolicy, QoSProfile
-    from rclpy.time import Duration, Time
+    from rclpy.time import Time
     from sensor_msgs.msg import CameraInfo, Image, LaserScan
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import String
-    from tf2_ros_msg import TFMessage
+    from tf2_msgs.msg import TFMessage
 
 except ImportError:
     print(
@@ -150,6 +150,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             rr.Pinhole(
                 resolution=[self.model.width, self.model.height],
                 image_from_camera=self.model.intrinsicMatrix(),
+                parent_frame=info.header.frame_id,
+                child_frame=info.header.frame_id + "_image_plane",
             ),
         )
 
@@ -162,16 +164,13 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("odometry/vel", rr.Scalars(odom.twist.twist.linear.x))
         rr.log("odometry/ang_vel", rr.Scalars(odom.twist.twist.angular.z))
 
-        # Update the robot pose itself via TF
-        self.log_tf_as_transform3d("map/robot", time)
-
     def image_callback(self, img: Image) -> None:
         """Log an `Image` with `log_image` using `cv_bridge`."""
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
         rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
-        self.log_tf_as_transform3d("map/robot/camera", time)
+        rr.log("map/robot/camera/img", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def depth_callback(self, img: Image) -> None:
         """Log a `PointCloud2` with `log_points`."""
@@ -204,7 +203,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
         rr.log("map/robot/scan", rr.LineStrips3D(segs, radii=0.0025))
-        self.log_tf_as_transform3d("map/robot/scan", time)
+        rr.log("map/robot/scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
         """Forwards the URDF from the robot description message to Rerun."""
@@ -225,18 +224,22 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
             rr.log(
                 "transforms",
-                rr.Transform3D(translation=[
-                    transform.transform.translation.x,
-                    transform.transform.translation.y,
-                    transform.transform.translation.z,
-                ], rotation=rr.Quaternion(xyzw=[
-                    transform.transform.rotation.x,
-                    transform.transform.rotation.y,
-                    transform.transform.rotation.z,
-                    transform.transform.rotation.w,
-                ]),
-                parent_frame=transform.header.frame_id,
-                child_frame=transform.child_frame_id,
+                rr.Transform3D(
+                    translation=[
+                        transform.transform.translation.x,
+                        transform.transform.translation.y,
+                        transform.transform.translation.z,
+                    ],
+                    rotation=rr.Quaternion(
+                        xyzw=[
+                            transform.transform.rotation.x,
+                            transform.transform.rotation.y,
+                            transform.transform.rotation.z,
+                            transform.transform.rotation.w,
+                        ]
+                    ),
+                    parent_frame=transform.header.frame_id,
+                    child_frame=transform.child_frame_id,
                 ),
             )
 
