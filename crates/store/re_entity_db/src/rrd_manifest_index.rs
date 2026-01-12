@@ -112,7 +112,8 @@ pub struct TemporalChunkInfo {
 ///
 /// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
-#[derive(Default, Clone)]
+#[derive(Default)]
+#[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
     /// The raw manifest.
     ///

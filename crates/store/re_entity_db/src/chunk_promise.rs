@@ -28,6 +28,7 @@ pub struct ChunkPromises {
 
 static_assertions::assert_impl_all!(ChunkPromises: Sync);
 
+#[cfg(feature = "testing")]
 impl Clone for ChunkPromises {
     fn clone(&self) -> Self {
         // This means the clone will have to start downloads from scratch.

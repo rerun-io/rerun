@@ -25,6 +25,9 @@ default = []
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
+## Enable some feature only used for tests
+testing = []
+
 
 [dependencies]
 re_arrow_util.workspace = true

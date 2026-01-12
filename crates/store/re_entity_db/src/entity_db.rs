@@ -62,7 +62,7 @@ impl EntityDbClass<'_> {
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
-#[derive(Clone)] // Useful for tests
+#[cfg_attr(feature = "testing", derive(Clone))]
 pub struct EntityDb {
     /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
     /// store id.
