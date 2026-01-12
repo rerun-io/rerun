@@ -139,11 +139,11 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def cam_info_callback(self, info: CameraInfo) -> None:
-        """Log a `CameraInfo` with `log_pinhole`."""
+        """Log a `CameraInfo` as Rerun `Pinhole`."""
         time = Time.from_msg(info.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
-        self.model.fromCameraInfo(info)
+        self.model.from_camera_info(info)
 
         rr.log(
             "map/robot/camera/img",
