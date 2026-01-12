@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
+from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import (
     CatalogClientInternal,
 )
@@ -59,7 +60,29 @@ class CatalogClient:
 
     __slots__ = ("_internal",)
 
-    def __init__(self, url: str, *, token: str | None = None) -> None:
+    def __init__(self, url: str, *, token: str | None = None, addr: str | None = None) -> None:
+        """
+        Connect to a remote Rerun catalog server.
+
+        Parameters
+        ----------
+        url:
+            The URL of the catalog server to connect to.
+        token:
+            An optional authentication token to use when connecting to the server.
+        addr:
+            Deprecated: Renamed to `url`
+
+        """
+
+        if addr is not None:
+            url = addr
+            _send_warning_or_raise(
+                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `url`.",
+                depth_to_user_code=1,
+                warning_type=DeprecationWarning,
+            )
+
         from importlib.metadata import version
         from importlib.util import find_spec
 

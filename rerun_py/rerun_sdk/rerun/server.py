@@ -74,7 +74,7 @@ class Server:
             Optional dictionary mapping table names to lance file paths which will be loaded and made available when the
             server starts.
         addr:
-            DEPRECATED: Renamed to `bind_ip`
+            Deprecated: Renamed to `bind_ip`
 
         """
 
@@ -82,7 +82,7 @@ class Server:
             bind_ip = addr
             _send_warning_or_raise(
                 "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `bind_ip`.",
-                depth_to_user_code=2,
+                depth_to_user_code=1,
                 warning_type=DeprecationWarning,
             )
 
