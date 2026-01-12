@@ -194,7 +194,7 @@ class View:
             visualizer = visualizer.visualizer()
 
         if isinstance(visualizer, Visualizer):
-            if visualizer.overrides is not None:
+            if visualizer.overrides is not None and len(visualizer.overrides) > 0:
                 stream.log(log_path, visualizer.overrides)
             return visualizer.visualizer_type
         else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
