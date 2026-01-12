@@ -429,14 +429,14 @@ fn check_ext_consistency(
             reporter.error(
                 ext_filepath.as_str(),
                 &obj.fqname,
-                "Could not find __attrs_init__ call".to_string(),
+                "Could not find __attrs_init__ call".to_owned(),
             );
         }
     } else {
         reporter.error(
             ext_filepath.as_str(),
             &obj.fqname,
-            "The __init__ method should call __attrs_init__ with all available fields".to_string(),
+            "The __init__ method should call __attrs_init__ with all available fields".to_owned(),
         );
     }
 }
