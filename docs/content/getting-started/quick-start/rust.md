@@ -7,7 +7,7 @@ order: 3
 
 The Rerun SDK for Rust requires a working installation of Rust 1.88+.
 
-After you have [installed the viewer](../../overview/installing-viewer.md#installing-the-viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](../../overview/installing-rerun/viewer.md) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand new Rust project:
 

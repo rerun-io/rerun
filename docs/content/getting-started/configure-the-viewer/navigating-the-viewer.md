@@ -5,7 +5,7 @@ order: 400
 
 This page will walk you through the basics of navigating the Rerun Viewer.
 
-By default, the Rerun Viewer uses heuristics to automatically determine an appropriate layout for your data. However, you'll often want precise control over how your data is displayed. Blueprints give you complete control over the Viewer's layout and configuration. For a conceptual understanding of blueprints, see [Blueprints](../../concepts/blueprints.md).
+By default, the Rerun Viewer uses heuristics to automatically determine an appropriate layout for your data. However, you'll often want precise control over how your data is displayed. Blueprints give you complete control over the Viewer's layout and configuration. For a conceptual understanding of blueprints, see [Blueprints](../../concepts/visualization/blueprints.md).
 
 This guide covers three complementary ways to work with the viewer:
 - **[Interactive configuration](#interactive-configuration)**: Modify layouts directly in the Viewer UI
@@ -168,7 +168,7 @@ When selecting a view, you can also set default component values that apply when
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/768w.png">
 </picture>
 
-See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for detailed information.
+See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for detailed information.
 
 ---
 
@@ -190,7 +190,7 @@ Blueprint files are small, portable, and can be version-controlled alongside you
 
 Load a blueprint file using "Open…" from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
 
-**Important:** The blueprint's Application ID must match the Application ID of your recording. Blueprints are bound to specific Application IDs to ensure they work with compatible data structures. See [Application IDs](../../concepts/blueprints.md#application-ids-binding-blueprints-to-data) for more details.
+**Important:** The blueprint's Application ID must match the Application ID of your recording. Blueprints are bound to specific Application IDs to ensure they work with compatible data structures. See [Application IDs](../../concepts/visualization/blueprints.md#application-ids-binding-blueprints-to-data) for more details.
 
 ### Sharing blueprints
 
@@ -211,5 +211,5 @@ This is particularly valuable for:
 ## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
-- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for per-entity customization
+- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for per-entity customization
 - **API Reference**: Browse the complete [Blueprint API](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control
