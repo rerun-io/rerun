@@ -54,6 +54,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         super().__init__("rr_turtlebot")
 
         # Assorted helpers for data conversions
+        self.pinhole_model = PinholeCameraModel()
         self.cv_bridge = cv_bridge.CvBridge()
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
         self.subscribers: list[rclpy.Subscription] = []
@@ -84,13 +85,14 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
     def cam_info_callback(self, info: CameraInfo) -> None:
         time = Time.from_msg(info.header.stamp)
+        self.pinhole_model.from_camera_info(info)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         # TODO: remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
         rr.log(
             "map/robot/camera/img",
             rr.Pinhole.from_fields(
                 resolution=[info.width, info.height],
-                image_from_camera=PinholeCameraModel().from_camera_info(info).intrinsic_matrix(),
+                image_from_camera=self.pinhole_model.intrinsic_matrix(),
                 parent_frame=info.header.frame_id,
                 child_frame=info.header.frame_id + "_image_plane",
             ),
