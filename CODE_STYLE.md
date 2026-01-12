@@ -250,6 +250,18 @@ Avoid negations in names. A lot of people struggle with double negations, so thi
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 
+### Be over-explicit in stringly typed situations
+In weak/stringly typed situations, be extra careful. This includes Python, Bash, and CLI args.
+
+Avoid vague names like "address". Prefer one of:
+
+* `ip`
+* `ip_port`
+* `url`
+* `email`
+* …
+
+
 ### Units
 * When in doubt, be explicit (`duration_secs: f32` is better than `duration: f32`)
 * All things being equal, prefer SI base units (seconds over milliseconds, Hz over RPM, etc)
