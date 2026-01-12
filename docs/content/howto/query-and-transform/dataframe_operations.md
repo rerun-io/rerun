@@ -4,7 +4,7 @@ order: 50
 ---
 
 Dataframes are core to modern analytics workflows.
-Rerun provides a dataframe interface to your data via [datafusion](https://datafusion.apache.org/python/).
+Rerun provides a dataframe interface to your data via [DataFusion](https://datafusion.apache.org/python/).
 This example performs a series of joins, filters, etc that highlight a variety of common operations in context.
 Because datafusion has a lazy execution model it is generally more performant to use datafusion for processing,
 however datafusion does allow conversion to dataframes for popular tools (pandas, polars, pyarrow).
