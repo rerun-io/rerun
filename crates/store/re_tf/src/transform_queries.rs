@@ -173,7 +173,7 @@ fn atomic_latest_at_query(
 
         if let Some(row_index) = highest_row_index_with_expected_frame_id {
             debug_assert!(!chunk.is_empty());
-            let new_unit_chunk = chunk.row_sliced(row_index, 1).into_unit()
+            let new_unit_chunk = chunk.row_sliced_shallow(row_index, 1).into_unit()
                 .expect("Chunk was just sliced to single row, therefore it must be convertible to a unit chunk");
 
             if let Some(previous_chunk) = &unit_chunk
@@ -182,7 +182,7 @@ fn atomic_latest_at_query(
                 // This should be rare: there's another chunk that also fits the exact same child id and the exact same time.
                 // Have to use row id as the tie breaker - if we failed that we're in here.
             } else {
-                unit_chunk = chunk.row_sliced(row_index, 1).into_unit();
+                unit_chunk = chunk.row_sliced_shallow(row_index, 1).into_unit();
             }
         }
     }
@@ -255,6 +255,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
 
     let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
 
+    #[expect(clippy::useless_let_if_seq)]
     let mut transform = DAffine3::IDENTITY;
 
     // The order of the components here is important.
@@ -451,7 +452,9 @@ pub fn query_and_resolve_instance_poses_at_entity(
     (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order.
+            #[expect(clippy::useless_let_if_seq)]
             let mut transform = DAffine3::IDENTITY;
+
             if let Some(translation) = iter_translation.next() {
                 transform = convert::translation_3d_to_daffine3(translation);
             }

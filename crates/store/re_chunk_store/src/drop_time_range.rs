@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_chunk::{ChunkId, TimelineName};
 use re_log_types::AbsoluteTimeRange;
 
@@ -24,10 +26,10 @@ impl ChunkStore {
 
         // Prepare the changes:
 
-        let mut chunk_ids_to_drop = vec![];
+        let mut chunks_to_drop = vec![];
         let mut new_chunks = vec![];
 
-        for (chunk_id, chunk) in &self.chunks_per_chunk_id {
+        for chunk in self.chunks_per_chunk_id.values() {
             let Some(time_column) = chunk.timelines().get(timeline) else {
                 // static chunk, or chunk that doesn't overlap this timeline
                 continue; // keep it
@@ -37,7 +39,7 @@ impl ChunkStore {
 
             if drop_range.contains_range(chunk_range) {
                 // The whole chunk should be dropped!
-                chunk_ids_to_drop.push(*chunk_id);
+                chunks_to_drop.push(chunk.clone());
             } else if drop_range.intersects(chunk_range) {
                 let chunk = chunk.sorted_by_timeline_if_unsorted(timeline);
 
@@ -70,14 +72,15 @@ impl ChunkStore {
                 }
 
                 if min_idx < max_idx {
-                    chunk_ids_to_drop.push(*chunk_id);
+                    chunks_to_drop.push(Arc::new(chunk.clone()));
                     if 0 < min_idx {
-                        new_chunks.push(chunk.row_sliced(0, min_idx).with_id(ChunkId::new()));
+                        new_chunks
+                            .push(chunk.row_sliced_shallow(0, min_idx).with_id(ChunkId::new()));
                     }
                     if max_idx < num_rows {
                         new_chunks.push(
                             chunk
-                                .row_sliced(max_idx, num_rows - max_idx)
+                                .row_sliced_shallow(max_idx, num_rows - max_idx)
                                 .with_id(ChunkId::new()),
                         );
                     }
@@ -91,8 +94,8 @@ impl ChunkStore {
         let generation = self.generation();
         let mut events: Vec<ChunkStoreEvent> = vec![];
 
-        for chunk_id in chunk_ids_to_drop {
-            for diff in self.remove_chunk(chunk_id) {
+        for chunk in chunks_to_drop {
+            for diff in self.remove_chunks(vec![chunk], None) {
                 events.push(ChunkStoreEvent {
                     store_id: self.id.clone(),
                     store_generation: generation.clone(),

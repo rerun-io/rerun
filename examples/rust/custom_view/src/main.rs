@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_view_class::<points3d_color_view::ColorCoordinatesView>()
                 .unwrap();
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         None,
     )?;

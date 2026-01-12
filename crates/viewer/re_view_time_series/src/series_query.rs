@@ -1,6 +1,7 @@
 //! Shared functionality for querying time series data.
 
 use itertools::Itertools as _;
+
 use re_chunk_store::RangeQuery;
 use re_chunk_store::external::re_chunk::CastToPrimitive;
 use re_log_types::{EntityPath, TimeInt};

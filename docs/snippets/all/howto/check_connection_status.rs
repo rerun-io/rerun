@@ -11,8 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let tx = tx.clone();
         rec.inspect_sink(move |sink| {
-            let grpc_sink = sink
-                .as_any()
+            let grpc_sink = (sink as &dyn std::any::Any)
                 .downcast_ref::<rerun::sink::GrpcSink>()
                 .expect("Expected a GrpcSink");
             tx.send(grpc_sink.status()).ok();

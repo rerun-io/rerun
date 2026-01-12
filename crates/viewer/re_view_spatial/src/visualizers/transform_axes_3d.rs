@@ -1,4 +1,3 @@
-use glam::Affine3A;
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::Archetype as _;
@@ -6,7 +5,6 @@ use re_sdk_types::archetypes::{
     CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
 };
 use re_sdk_types::components::{AxisLength, ShowLabels};
-use re_tf::TransformFrameIdHash;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
@@ -76,7 +74,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             // the additional transform data (the user usually knows which entity they are on).
             // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
             // for varying behavior.
-            let mut transforms_to_draw = if let Some(transform_info) =
+            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = if let Some(transform_info) =
                 transform_info_for_entity_or_report_error(
                     transforms,
                     &data_result.entity_path,
@@ -89,28 +87,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     let frame_id_hash =
                         transforms.transform_frame_id_for(data_result.entity_path.hash());
 
-                    if let Some(pinhole_tree_root_info) =
-                        transforms.pinhole_tree_root_info(transform_info.tree_root())
+                    if let Some(target_from_camera) =
+                        transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
-                        if transform_info.tree_root()
-                            == re_tf::TransformFrameIdHash::from_entity_path(
-                                &data_result.entity_path,
-                            )
-                        {
-                            // We're _at_ that pinhole.
-                            // Don't apply the from-2D transform, stick with the last known 3D.
-                            smallvec::smallvec![(
-                                frame_id_hash,
-                                pinhole_tree_root_info
-                                    .parent_root_from_pinhole_root
-                                    .as_affine3a()
-                            )]
-                        } else {
-                            // We're inside a 2D space. But this is a 3D transform.
-                            // Something is wrong here and this is not the right place to report it.
-                            // Better just don't draw the axis!
-                            smallvec::SmallVec::<[(TransformFrameIdHash, Affine3A); 1]>::new()
-                        }
+                        // Don't apply the from-2D transform, stick with the last known 3D.
+                        smallvec::smallvec![(frame_id_hash, target_from_camera.as_affine3a())]
                     } else {
                         transform_info
                             .target_from_instances()
@@ -235,10 +216,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 pub fn add_axis_arrows(
@@ -257,7 +234,7 @@ pub fn add_axis_arrows(
     let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder
-        .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
+        .batch(ent_path.map_or_else(|| "axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.28.0-alpha.1+dev"
-__version_info__ = (0, 28, 0, "alpha.1")
+__version__ = "0.29.0-alpha.1+dev"
+__version_info__ = (0, 29, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -26,10 +26,10 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
-    dataframe as dataframe,  # TODO(RR-3130): deprecated
     experimental as experimental,
     recording as recording,
     server as server,
+    urdf as urdf,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,

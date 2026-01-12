@@ -96,8 +96,4 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

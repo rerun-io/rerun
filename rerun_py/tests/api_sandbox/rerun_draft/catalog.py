@@ -13,8 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import pyarrow as pa
-    from rerun.catalog import RegistrationHandle
-    from rerun.dataframe import IndexColumnDescriptor
+    from rerun.catalog import IndexColumnDescriptor, RegistrationHandle
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
 
@@ -138,7 +137,7 @@ class Entry:
         return self._inner.delete()
 
     def set_name(self, name: str) -> None:
-        return self._inner.update(name=name)
+        return self._inner.set_name(name)
 
 
 # Re-export Schema from the SDK
@@ -578,5 +577,4 @@ AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
 EntryKind = _catalog.EntryKind
 NotFoundError = _catalog.NotFoundError
-TableInsertMode = _catalog.TableInsertMode
 VectorDistanceMetric = _catalog.VectorDistanceMetric

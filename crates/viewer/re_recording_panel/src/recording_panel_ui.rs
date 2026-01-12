@@ -5,7 +5,7 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
-use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
+use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -155,6 +155,14 @@ fn all_sections_ui(
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
     //
+    // Welcome and examples
+    //
+
+    if recording_panel_data.show_example_section {
+        welcome_item_ui(ctx, ui, recording_panel_data);
+    }
+
+    //
     // Empty placeholder
     //
 
@@ -179,15 +187,15 @@ fn all_sections_ui(
     // Local recordings and tables
     //
 
-    #[expect(clippy::collapsible_if)]
     if !recording_panel_data.local_apps.is_empty() || !recording_panel_data.local_tables.is_empty()
     {
+        let id = egui::Id::new("local items");
         if ui
             .list_item()
             .header()
             .show_hierarchical_with_children(
                 ui,
-                egui::Id::new("local items"),
+                id,
                 true,
                 list_item::LabelContent::header("Local"),
                 |ui| {
@@ -203,49 +211,13 @@ fn all_sections_ui(
             .item_response
             .clicked()
         {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    LOCAL_ORIGIN.clone(),
-                )));
-        }
-    }
-
-    //
-    // Examples
-    //
-
-    if recording_panel_data.show_example_section {
-        let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.is_selected_or_loading(&item);
-        let active = matches!(
-            ctx.display_mode(),
-            DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
-        );
-        let list_item = ui.list_item().header().selected(selected).active(active);
-        let title = list_item::LabelContent::header("Rerun examples");
-        let response = if recording_panel_data.example_apps.is_empty() {
-            list_item.show_flat(ui, title)
-        } else {
-            list_item
-                .show_hierarchical_with_children(
-                    ui,
-                    egui::Id::new("example items"),
-                    true,
-                    title,
-                    |ui| {
-                        for app_id_data in &recording_panel_data.example_apps {
-                            app_id_section_ui(ctx, ui, app_id_data);
-                        }
-                    },
-                )
-                .item_response
-        };
-
-        ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
-        ctx.handle_select_focus_sync(&response, item.clone());
-
-        if response.clicked() {
-            re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
+            let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                id,
+                true,
+            );
+            state.toggle(ui);
+            state.store(ui.ctx());
         }
     }
 
@@ -257,6 +229,48 @@ fn all_sections_ui(
 
     // Add space at the end of the recordings panel
     ui.add_space(8.0);
+}
+
+fn welcome_item_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    recording_panel_data: &RecordingPanelData<'_>,
+) {
+    let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
+    let selected = ctx.is_selected_or_loading(&item);
+    let active = matches!(
+        ctx.display_mode(),
+        DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+    );
+
+    let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
+
+    let list_item = ui.list_item().header().selected(selected).active(active);
+
+    let response = if recording_panel_data.example_apps.is_empty() {
+        list_item.show_flat(ui, title)
+    } else {
+        list_item
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new("example items"),
+                true,
+                title,
+                |ui| {
+                    for app_id_data in &recording_panel_data.example_apps {
+                        app_id_section_ui(ctx, ui, app_id_data);
+                    }
+                },
+            )
+            .item_response
+    };
+
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+    ctx.handle_select_focus_sync(&response, item);
+
+    if response.clicked() {
+        re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
+    }
 }
 
 // ---

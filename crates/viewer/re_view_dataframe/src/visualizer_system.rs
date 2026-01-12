@@ -26,8 +26,4 @@ impl VisualizerSystem for EmptySystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

@@ -115,9 +115,10 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let world_from_camera = pinhole_tree_root_info
-            .parent_root_from_pinhole_root
-            .as_affine3a();
+        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_frame_id) else {
+            return Err("Pinhole is not connected to the view's target frame.".to_owned());
+        };
+        let world_from_camera = world_from_camera.as_affine3a();
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return Err("Can only visualize pinhole under isometric transforms.".to_owned());
@@ -315,9 +316,5 @@ impl VisualizerSystem for CamerasVisualizer {
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }

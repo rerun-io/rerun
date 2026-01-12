@@ -1,22 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, overload
-
-from typing_extensions import deprecated
+from typing import TYPE_CHECKING, overload
 
 from rerun_bindings import (
     CatalogClientInternal,
 )
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
-from . import EntryId, TableInsertMode
+from . import EntryId
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import datafusion
     import pyarrow as pa
-    from pyarrow import RecordBatch, RecordBatchReader
 
     from . import DatasetEntry, TableEntry
 
@@ -147,24 +142,6 @@ class CatalogClient:
 
     # ---
 
-    @deprecated("Use entries() instead")
-    def all_entries(self) -> list[DatasetEntry | TableEntry]:
-        """Returns a list of all entries in the catalog."""
-
-        return self.entries()
-
-    @deprecated("Use datasets() instead")
-    def dataset_entries(self) -> list[DatasetEntry]:
-        """Returns a list of all dataset entries in the catalog."""
-        return self.datasets()
-
-    @deprecated("Use tables() instead")
-    def table_entries(self) -> list[TableEntry]:
-        """Returns a list of all dataset entries in the catalog."""
-        return self.tables()
-
-    # ---
-
     def entry_names(self, *, include_hidden: bool = False) -> list[str]:
         """
         Returns a list of all entry names in the catalog.
@@ -253,18 +230,6 @@ class CatalogClient:
 
     # ---
 
-    @deprecated("Use get_dataset() instead")
-    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        """Returns a dataset by its ID or name."""
-        return self.get_dataset(name=name, id=id)  # type: ignore[call-overload, no-any-return]
-
-    @deprecated("Use get_table() instead")
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
-        """Returns a table by its ID or name."""
-        return self.get_table(name=name, id=id)  # type: ignore[call-overload, no-any-return]
-
-    # ---
-
     def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
 
@@ -290,7 +255,7 @@ class CatalogClient:
 
         return TableEntry(self._internal.register_table(name, url))
 
-    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str | None = None) -> TableEntry:
         """
         Create and register a new table.
 
@@ -310,101 +275,6 @@ class CatalogClient:
         from . import TableEntry
 
         return TableEntry(self._internal.create_table(name, schema, url))
-
-    @deprecated("Use create_table() instead")
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
-        """Create and register a new table."""
-        return self.create_table(name, schema, url)
-
-    @deprecated("Use TableEntry.append(), overwrite(), or upsert() instead")
-    def write_table(
-        self,
-        name: str,
-        batches: RecordBatchReader | RecordBatch | Sequence[RecordBatch] | Sequence[Sequence[RecordBatch]],
-        insert_mode: TableInsertMode,
-    ) -> None:
-        """
-        Writes record batches into an existing table.
-
-        Parameters
-        ----------
-        name
-            The name of the table entry to write to. This table must already exist.
-
-        batches
-            One or more record batches to write into the table. For convenience, you can
-            pass in a record batch, list of record batches, list of list of batches, or
-            a [`pyarrow.RecordBatchReader`].
-
-        insert_mode
-            Determines how rows should be added to the existing table.
-
-        """
-        table = self.get_table(name=name)
-        if insert_mode == TableInsertMode.APPEND:
-            table.append(batches)
-        elif insert_mode == TableInsertMode.OVERWRITE:
-            table.overwrite(batches)
-        elif insert_mode == TableInsertMode.REPLACE:
-            table.upsert(batches)
-
-    @deprecated("Use TableEntry.append() instead")
-    def append_to_table(
-        self,
-        table_name: str,
-        batches: RecordBatchReader
-        | RecordBatch
-        | Sequence[RecordBatch]
-        | Sequence[Sequence[RecordBatch]]
-        | None = None,
-        **named_params: Any,
-    ) -> None:
-        """
-        Append record batches to an existing table.
-
-        Parameters
-        ----------
-        table_name
-            The name of the table entry to write to. This table must already exist.
-
-        batches
-            One or more record batches to write into the table.
-
-        **named_params
-            Named parameters to write to the table as columns.
-
-        """
-        table = self.get_table(name=table_name)
-        table.append(batches, **named_params)
-
-    @deprecated("Use TableEntry.upsert() instead")
-    def update_table(
-        self,
-        table_name: str,
-        batches: RecordBatchReader
-        | RecordBatch
-        | Sequence[RecordBatch]
-        | Sequence[Sequence[RecordBatch]]
-        | None = None,
-        **named_params: Any,
-    ) -> None:
-        """
-        Upsert record batches to an existing table.
-
-        Parameters
-        ----------
-        table_name
-            The name of the table entry to write to. This table must already exist.
-
-        batches
-            One or more record batches to write into the table.
-
-        **named_params
-            Named parameters to write to the table as columns.
-
-        """
-        table = self.get_table(name=table_name)
-        table.upsert(batches, **named_params)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

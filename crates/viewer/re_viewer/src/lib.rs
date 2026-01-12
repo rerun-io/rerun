@@ -17,6 +17,7 @@ pub mod event;
 mod history;
 mod navigation;
 mod open_url_description;
+mod prefetch_chunks;
 mod saving;
 mod screenshotter;
 mod startup_options;

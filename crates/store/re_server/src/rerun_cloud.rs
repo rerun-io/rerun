@@ -15,6 +15,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::LanceTable;
 use re_protos::cloud::v1alpha1::ext::{
     self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
     CreateTableEntryResponse, DataSource, EntryDetailsUpdate, ProviderDetails, QueryDatasetRequest,
@@ -39,14 +40,28 @@ use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::OnError;
+use re_tuid::Tuid;
 
-#[derive(Debug, Default)]
-pub struct RerunCloudHandlerSettings {}
+#[derive(Debug)]
+pub struct RerunCloudHandlerSettings {
+    storage_dir: tempfile::TempDir,
+}
+
+impl Default for RerunCloudHandlerSettings {
+    fn default() -> Self {
+        Self {
+            storage_dir: create_data_dir().expect("Failed to create data directory"),
+        }
+    }
+}
+
+fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
+    Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
+}
 
 #[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
     settings: RerunCloudHandlerSettings,
-
     store: InMemoryStore,
 }
 
@@ -119,7 +134,6 @@ impl RerunCloudHandlerBuilder {
 const DUMMY_TASK_ID: &str = "task_00000000DEADBEEF";
 
 pub struct RerunCloudHandler {
-    #[expect(dead_code)]
     settings: RerunCloudHandlerSettings,
 
     store: tokio::sync::RwLock<InMemoryStore>,
@@ -270,12 +284,13 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
+decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
-decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
-decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
-decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
-decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
+decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
+decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
+decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
+decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 
 impl RerunCloudHandler {
     async fn find_datasets(
@@ -635,6 +650,18 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
+                if !rrd_path.exists() {
+                    return Err(tonic::Status::not_found(format!(
+                        "RRD file not found, file does not exists: {rrd_path:?}"
+                    )));
+                }
+
+                if !rrd_path.is_file() {
+                    return Err(tonic::Status::not_found(format!(
+                        "RRD file not found, path is not a file: {rrd_path:?}"
+                    )));
+                }
+
                 let new_segment_ids = dataset
                     .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
                     .await?;
@@ -647,6 +674,16 @@ impl RerunCloudService for RerunCloudHandler {
                     storage_urls.push(storage_url.to_string());
                     task_ids.push(DUMMY_TASK_ID.to_owned());
                 }
+            } else {
+                return if storage_url.scheme() == "file" && storage_url.host().is_some() {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
+                    )))
+                } else {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, could not load URI: {storage_url}"
+                    )))
+                };
             }
         }
 
@@ -936,10 +973,12 @@ impl RerunCloudService for RerunCloudHandler {
         }))
     }
 
+    type GetRrdManifestStream = GetRrdManifestResponseStream;
+
     async fn get_rrd_manifest(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetRrdManifestResponse>> {
+    ) -> tonic::Result<tonic::Response<Self::GetRrdManifestStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -957,11 +996,16 @@ impl RerunCloudService for RerunCloudHandler {
         let dataset = store.dataset(entry_id)?;
         let rrd_manifest = dataset.rrd_manifest(&segment_id)?;
 
-        Ok(tonic::Response::new(GetRrdManifestResponse {
-            rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
-                tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
-            })?),
-        }))
+        let rrd_manifest_stream =
+            futures::stream::once(futures::future::ok(GetRrdManifestResponse {
+                rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
+                    tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
+                })?),
+            }));
+
+        Ok(tonic::Response::new(
+            Box::pin(rrd_manifest_stream) as Self::GetRrdManifestStream
+        ))
     }
 
     /* Indexing */
@@ -1267,32 +1311,27 @@ impl RerunCloudService for RerunCloudHandler {
             .await
             .chunks_from_chunk_keys(&chunk_keys)?;
 
-        let compression = re_log_encoding::Compression::Off;
+        let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
+            let arrow_msg = re_log_types::ArrowMsg {
+                chunk_id: *chunk.id(),
+                batch: chunk.to_record_batch().map_err(|err| {
+                    tonic::Status::internal(format!(
+                        "failed to convert chunk to record batch: {err:#}"
+                    ))
+                })?,
+                on_release: None,
+            };
 
-        let encoded_chunks = chunks
-            .into_iter()
-            .map(|(store_id, chunk)| {
-                let arrow_msg = re_log_types::ArrowMsg {
-                    chunk_id: *chunk.id(),
-                    batch: chunk.to_record_batch().map_err(|err| {
-                        tonic::Status::internal(format!(
-                            "failed to convert chunk to record batch: {err:#}"
-                        ))
-                    })?,
-                    on_release: None,
-                };
+            let compression = re_log_encoding::Compression::Off;
 
-                arrow_msg
-                    .to_transport((store_id, compression))
-                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))
+            let encoded_chunk = arrow_msg
+                .to_transport((store_id, compression))
+                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
+
+            Ok(re_protos::cloud::v1alpha1::FetchChunksResponse {
+                chunks: vec![encoded_chunk],
             })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let response = re_protos::cloud::v1alpha1::FetchChunksResponse {
-            chunks: encoded_chunks,
-        };
-
-        let stream = futures::stream::once(async move { Ok(response) });
+        });
 
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::FetchChunksStream
@@ -1509,7 +1548,27 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        let table = match &request.provider_details {
+        let details = if let Some(details) = request.provider_details {
+            details
+        } else {
+            // Create a directory in the storage directory. We use a tuid to avoid collisions
+            // and avoid any sanitization issue with the provided table name.
+            let table_path = self
+                .settings
+                .storage_dir
+                .path()
+                .join(format!("lance-{}", Tuid::new()));
+            ProviderDetails::LanceTable(LanceTable {
+                table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
+                    Status::internal(format!(
+                        "Failed to create table directory in {:?}",
+                        self.settings.storage_dir.path()
+                    ))
+                })?,
+            })
+        };
+
+        let table = match details {
             ProviderDetails::LanceTable(table) => {
                 store
                     .create_table_entry(table_name, &table.table_url, schema)

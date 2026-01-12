@@ -51,7 +51,7 @@ async fn test_column_projections<T>(
     let dataset_name = "my_dataset1";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     //

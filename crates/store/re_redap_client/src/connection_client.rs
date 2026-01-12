@@ -1,5 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::{RrdManifest, ToApplication as _};
 use re_log_types::EntryId;
@@ -372,7 +373,12 @@ where
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<RrdManifest> {
-        self.inner()
+        // TODO(cmc): at some point we should probably continue the stream all the way down, but
+        // for now we simplify downstream's life by concatenating everything in here.
+        let mut rrd_manifest_parts = Vec::new();
+
+        let responses = self
+            .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
@@ -382,14 +388,42 @@ where
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
-            .into_inner()
-            .rrd_manifest
-            .ok_or_else(|| {
-                let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                ApiError::serialization(err, "missing field in /GetRrdManifest response")
-            })?
-            .to_application(())
-            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
+            .into_inner();
+
+        futures::pin_mut!(responses);
+        while let Some(resp) = responses.next().await {
+            let rrd_manifest_part = resp
+                .map_err(|err| {
+                    ApiError::connection(err, "failed fetching /GetRrdManifest response part")
+                })?
+                .rrd_manifest
+                .ok_or_else(|| {
+                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
+                    ApiError::serialization(err, "missing field in /GetRrdManifest response")
+                })?
+                .to_application(())
+                .map_err(|err| {
+                    ApiError::serialization(err, "failed parsing /GetRrdManifest response")
+                })?;
+
+            rrd_manifest_parts.push(rrd_manifest_part);
+        }
+
+        let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
+            return Err(ApiError {
+                message: "failed parsing /GetRrdManifest response (no data)".to_owned(),
+                kind: crate::ApiErrorKind::Serialization,
+                source: None,
+            });
+        };
+
+        let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
+        rrd_manifest.data =
+            re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
+                ApiError::serialization(err, "failed concatenating /GetRrdManifest response parts")
+            })?;
+
+        Ok(rrd_manifest)
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -700,7 +734,7 @@ where
         Ok(response.table_entry)
     }
 
-    #[expect(clippy::fn_params_excessive_bools)]
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
@@ -837,12 +871,11 @@ where
     pub async fn create_table_entry(
         &mut self,
         name: &str,
-        url: &Url,
+        url: Option<Url>,
         schema: SchemaRef,
     ) -> ApiResult<TableEntry> {
-        let provider_details = ProviderDetails::LanceTable(LanceTable {
-            table_url: url.clone(),
-        });
+        let provider_details =
+            url.map(|url| ProviderDetails::LanceTable(LanceTable { table_url: url }));
         let request = CreateTableEntryRequest {
             name: name.to_owned(),
             schema: schema.as_ref().clone(),

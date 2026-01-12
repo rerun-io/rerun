@@ -128,10 +128,6 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl GeoPointsVisualizer {

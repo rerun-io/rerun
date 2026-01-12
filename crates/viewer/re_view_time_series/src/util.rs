@@ -126,7 +126,10 @@ pub fn points_to_series(
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
         .entity_min_time(&query.timeline, &instance_path.entity_path)
-        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+        .map_or_else(
+            || points.first().map_or(0, |p| p.time),
+            |time| time.as_i64(),
+        );
 
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter

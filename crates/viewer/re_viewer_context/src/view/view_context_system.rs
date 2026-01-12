@@ -13,7 +13,7 @@ pub type ViewContextSystemOncePerFrameResult = Box<dyn Any + Send + Sync>;
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before view part systems.
-pub trait ViewContextSystem: Send + Sync {
+pub trait ViewContextSystem: Send + Sync + Any {
     /// Executes once per active _type_ of [`ViewContextSystem`], independent of the view's state, query, blueprint properties etc.
     ///
     /// This is run each frame once per type of view context system if the context system is used by any view.
@@ -35,9 +35,6 @@ pub trait ViewContextSystem: Send + Sync {
         query: &ViewQuery<'_>,
         one_per_frame_execution_result: &ViewContextSystemOncePerFrameResult,
     );
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 // TODO(jleibs): This probably needs a better name now that it includes class name
@@ -52,7 +49,7 @@ impl ViewContextCollection {
     ) -> Result<&T, ViewSystemExecutionError> {
         self.systems
             .get(&T::identifier())
-            .and_then(|s| s.as_any().downcast_ref())
+            .and_then(|s| (s.as_ref() as &dyn Any).downcast_ref())
             .ok_or_else(|| {
                 ViewSystemExecutionError::ContextSystemNotFound(T::identifier().as_str())
             })

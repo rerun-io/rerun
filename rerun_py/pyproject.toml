@@ -35,10 +35,22 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.2", "syrupy==5.0.0"]
-notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
+tests = [
+  "inline-snapshot==0.31.1",
+  "opencv-python>4.6",
+  "polars==1.36.1",
+  "pytest==8.4.2",
+  "semver>=3.0,<3.1",
+  "syrupy==5.0.0",
+  "tomli==2.0.1",
+  "torch>=2.5", # Needs numpy 2 support
+  "datafusion==50.1.0",
+]
+notebook = ["rerun-notebook==0.29.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
-all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
+# Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
+# uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
+all = ["rerun-notebook==0.28.0-alpha.1+dev", "datafusion==50.1.0"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -65,41 +77,12 @@ unsafe-fixes = true
 # Allow preview lints to be enabled (like `PLW1514` to force `encoding` on open).
 preview = true
 # But we only want to opt-in to certain preview rules!
-lint.explicit-preview-rules = true
-
-extend-exclude = [
-  # Automatically generated test artifacts
-  "target_ra/",
-  "target_wasm/",
-  "target/",
-  "venv/",
-
-  "scripts/ci/compare_path_digest.py",
-
-  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
-  "docs/snippets/all/archetypes/text_document.py",
-  "docs/snippets/all/views/text_document.py",
-
-  # TODO(#4047): incomplete example snippet
-  "docs/snippets/all/tutorials/timelines_example.py",
-
-  # Intentionally incomplete snippets
-  "docs/snippets/all/concepts/how_helix_was_logged.py",
-  "docs/snippets/all/concepts/static",
-  "docs/snippets/all/tutorials/custom-application-id.py",
-  "docs/snippets/all/tutorials/custom-recording-id.py",
-
-  # generated
-  "examples/python/objectron/objectron/proto/objectron/proto.py",
-
-  # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
-  "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
-]
 
 lint.ignore = [
   # It's pretty hard to always avoid variable/argument shadowing of built-in
   "A001",
   "A002",
+  "A005",
 
   # Too many violations to fix
   # TODO(ab): fix 'em nonetheless!
@@ -132,6 +115,36 @@ lint.ignore = [
 
   # allow relative imports
   "TID252",
+]
+
+lint.explicit-preview-rules = true
+extend-exclude = [
+  # Automatically generated test artifacts
+  "target_ra/",
+  "target_wasm/",
+  "target/",
+  "venv/",
+
+  "scripts/ci/compare_path_digest.py",
+
+  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
+  "docs/snippets/all/archetypes/text_document.py",
+  "docs/snippets/all/views/text_document.py",
+
+  # TODO(#4047): incomplete example snippet
+  "docs/snippets/all/tutorials/timelines_example.py",
+
+  # Intentionally incomplete snippets
+  "docs/snippets/all/concepts/how_helix_was_logged.py",
+  "docs/snippets/all/concepts/static",
+  "docs/snippets/all/tutorials/custom-application-id.py",
+  "docs/snippets/all/tutorials/custom-recording-id.py",
+
+  # generated
+  "examples/python/objectron/objectron/proto/objectron/proto.py",
+
+  # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
+  "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
 ]
 
 line-length = 120
@@ -178,42 +191,18 @@ max-positional-args = 3
 [tool.ruff.lint.per-file-ignores]
 "*" = ["RUF012"] # TODO(emilk): consider enabling this
 
-"docs/snippets/all/*" = [
-  # Missing required import: `from __future__ import annotations`
-  "I002",
-]
-"crates/viewer/re_viewer/data/quick_start_guides/*" = [
-  # Missing required import: `from __future__ import annotations`
-  "I002",
-]
 "__init__.py" = ["F401", "F403"]
-"examples/notebook/notebook_neural_field_2d/neural_field_2d.ipynb" = [
-  # Intentional use of  `σ`
-  "RUF001",
-]
 
-"examples/*" = [
-  # We don't care about nice APIs in our examples:
-  "PLR0917",
-]
-"scripts/*" = [
-  # We don't care about nice APIs in our scripts:
-  "PLR0917",
-]
-"rerun_py/tests/*" = [
-  # We don't care about nice APIs in our tests:
-  "PLR0917",
-]
-"tests/python/*" = [
+"tests/*" = [
   # We don't care about nice APIs in our tests:
   "PLR0917",
 ]
 
-"rerun_py/rerun_sdk/*" = [
+"rerun_sdk/*" = [
   # Allow using rerun_bindings
   "TID251",
 ]
-"rerun_py/rerun_bindings/*" = [
+"rerun_bindings/*" = [
   # Allow using rerun_bindings
   "TID251",
 ]
@@ -247,6 +236,10 @@ locked = true
 name = "rerun_bindings"
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]
 
+# Use debug profile for editable installs (uv sync, pip install -e) to match
+# `pixi run py-build` and share the cargo cache.
+editable-profile = "dev"
+
 # Setting this to 1 causes lets the build.rs script know we are building a wheel,
 # which will cause it to check for the existence of the `rerun` binary.
 config = ["env.RERUN_BUILDING_WHEEL=\"1\""]
@@ -259,56 +252,6 @@ filterwarnings = """
 error
 """
 norecursedirs = ".* venv* target* build"
-
-######################
-# mypy configuration #
-######################
-
-[tool.mypy]
-# Examples and docs are managed independently of the SDK.
-# in ini file adjacent to this.
-files = [
-  "rerun_py/rerun_sdk/rerun",
-  "rerun_py/rerun_bindings",
-  "rerun_py/tests",
-  "rerun_notebook/src/rerun_notebook",
-  "tests/python",
-]
-namespace_packages = true
-show_error_codes = true
-strict = true
-enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code", "possibly-undefined"]
-ignore_missing_imports = false
-no_implicit_reexport = false
-disallow_untyped_calls = false
-
-[[tool.mypy.overrides]]
-
-module = [
-  "pyarrow.*",
-  # TODO(nick): remove datafusion/notebook after #10696 lands
-  "datafusion.*",
-  "rerun_notebook.*",
-  # https://github.com/jupyter-widgets/ipywidgets/issues/3688
-  "ipywidgets.*",
-  "anywidget.*",
-  # TODO(nick): is this blocked on above?
-  "jupyter_ui_poll.*",
-  # Ignore imports used in tests but not in the SDK.
-  "torch.*",
-  "torchvision.*",
-  "torchaudio.*",
-  "cv2.*",
-  "rerun.*",
-]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-# rerun_draft is a sandbox for testing new APIs - we don't care about strict type checking
-module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
-ignore_errors = true
-ignore_missing_imports = true
-
 
 [tool.inline-snapshot]
 format-command = "ruff check --config rerun_py/pyproject.toml --fix-only --stdin-filename {filename} | ruff format --config rerun_py/pyproject.toml --stdin-filename {filename}"

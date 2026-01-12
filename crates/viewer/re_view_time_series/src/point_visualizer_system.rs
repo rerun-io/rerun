@@ -59,10 +59,6 @@ impl VisualizerSystem for SeriesPointsSystem {
         self.load_scalars(ctx, query)?;
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl SeriesPointsSystem {

@@ -222,12 +222,27 @@ impl UrdfTree {
         })
     }
 
+    /// Name of the robot defined in the URDF.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The root [`Link`] in the URDF hierarchy.
+    pub fn root(&self) -> &Link {
+        &self.root
+    }
+
     pub fn joints(&self) -> impl Iterator<Item = &Joint> {
         self.joints.iter()
     }
 
     pub fn get_joint_by_name(&self, joint_name: &str) -> Option<&Joint> {
         self.joints.iter().find(|j| j.name == joint_name)
+    }
+
+    /// Returns the [`Link`] with the given `name`, if it exists.
+    pub fn get_link(&self, link_name: &str) -> Option<&Link> {
+        self.links.get(link_name)
     }
 
     fn get_joint_path(&self, joint: &Joint) -> EntityPath {
@@ -727,7 +742,7 @@ fn log_geometry(
                     store_id,
                     entity_path.clone(),
                     timepoint,
-                    &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
+                    &InstancePoses3D::update_fields().with_scales([(x as f32, y as f32, z as f32)]),
                 )?;
             }
 

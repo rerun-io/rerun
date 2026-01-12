@@ -6,22 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use super::builtin_interfaces::Time;
 
-/// Color representation in RGBA format
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ColorRGBA {
-    /// Red channel value (0.0-1.0)
-    pub r: f32,
-
-    /// Green channel value (0.0-1.0)
-    pub g: f32,
-
-    /// Blue channel value (0.0-1.0)
-    pub b: f32,
-
-    /// Alpha channel value (0.0-1.0)
-    pub a: f32,
-}
-
 /// A string type used in ROS2 messages.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StringMessage {

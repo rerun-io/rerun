@@ -481,6 +481,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
     #[expect(clippy::too_many_arguments)]
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn update_overrides_recursive(
         &self,
         blueprint: &EntityDb,

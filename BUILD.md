@@ -24,12 +24,36 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.88.0` once you are done.
+Make sure `cargo --version` prints `1.90.0` once you are done.
+
+### Python/PyO3 configuration (important!)
+
+This workspace uses [PyO3](https://pyo3.rs/) for Python bindings. Many crates have a transitive
+dependency on `pyo3-build-config`, which requires a configuration file to be present.
+
+**If you see this error:**
+```
+error: failed to parse contents of PYO3_CONFIG_FILE
+caused by:
+  - 0: failed to open PyO3 config file at /path/to/rerun/rerun_py/pyo3-build.cfg
+  - 1: No such file or directory (os error 2)
+```
+
+**Run `pixi run ensure-pyo3-build-cfg` to generate the config file:**
+
+This file is normally generated automatically by pixi activation scripts, but if you're running
+`cargo` directly outside of pixi, you'll need to generate it first. The configuration is
+referenced in `.cargo/config.toml`:
+```toml
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
+```
+
+For more details, see [Python build configuration](#python-build-configuration-automatic) below.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.88.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.90.0
 ```
 
 ## Git-lfs
@@ -102,10 +126,33 @@ Rerun is available as a package on PyPi and can be installed with `pip install r
 
 Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, you can do so easily in the Pixi environment:
-* Run `pixi run py-build --release` to build SDK & Viewer for Python (or `pixi run py-build` for a debug build)
-* Then you can run examples from the repository, either by making the Pixi shell active with  `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run Python examples/python/minimal/minimal.py`
 
+### Building from source
+If you want to build from source, you can do so easily in the Pixi environment:
+```sh
+pixi run py-build
+```
+
+Or to create a wheel:
+```sh
+pixi run py-build-wheel
+```
+
+You can run scripts that depend on rerun within the uv environment. For example:
+```sh
+pixi run uv run examples/python/minimal/minimal.py`
+```
+
+### Running the Python examples
+You can also install all rerun example and their dependencies into the same uv environment using:
+```sh
+pixi run py-build-examples
+```
+
+Each example is installed as a target within the uv environment. For example:
+```sh
+pixi run uv run plots
+```
 
 ### Tests & tooling
 
@@ -249,49 +296,27 @@ rustflags = [
 ]
 ```
 
-### Python build variables (macOS or linux)
+### Python build configuration (automatic)
 
-When building the python package you can greatly speed up your rebuilding
-by defining a `PYO3_CONFIG_FILE` environment variable pointing to a file
-that contains your build environment. You will need to update this file if
-there are major changes to your build, including when there are version
-changes in the [PyO3](https://pyo3.rs/) dependencies.
+The repository is configured to automatically generate a `PYO3_CONFIG_FILE` for stable
+Python builds. This file (`rerun_py/pyo3-build.cfg`) is automatically created when you
+first run any `pixi run` command, and ensures consistent cargo caching whether you build
+via `pixi run py-build`, `uv sync --package rerun-sdk`, or other methods.
 
-To set this variable, first run the following command:
-
-```shell
-PYO3_PRINT_CONFIG=1 cargo build
+The configuration is referenced in `.cargo/config.toml`:
+```toml
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 ```
 
-It should include an output similar to the following:
-
-```
-implementation=CPython
-version=3.10
-shared=true
-abi3=true
-lib_name=python3.12
-lib_dir=/opt/homebrew/opt/python@3.12/Frameworks/Python.framework/Versions/3.12/lib
-executable=/Users/myusername/src/datafusion-python/.venv/bin/python
-pointer_width=64
-build_flags=
-suppress_build_script_link_lines=false
+If you need to regenerate this file (e.g., after changing Python versions), run:
+```sh
+pixi run ensure-pyo3-build-cfg
 ```
 
-Copy the output in your terminal into a file and set this environment variable.
-
-```shell
-export PYO3_CONFIG_FILE="/Users/myusername/some/path/pyo3_build.config"
+To inspect what configuration pyo3 is using, you can run:
+```sh
+PYO3_PRINT_CONFIG=1 pixi run py-build
 ```
 
-If you are using VS Code for your IDE you may need to set these variables in
-your settings:
-
-```json
-"rust-analyzer.cargo.extraEnv": {
-    "PYO3_CONFIG_FILE": "/Users/myusername/some/path/pyo3_build.config"
-},
-"rust-analyzer.runnables.extraEnv": {
-    "PYO3_CONFIG_FILE": "/Users/myusername/some/path/pyo3_build.config"
-}
-```
+For more details on pyo3 build configuration, see the
+[PyO3 Building and Distribution documentation](https://pyo3.rs/main/building-and-distribution.html).

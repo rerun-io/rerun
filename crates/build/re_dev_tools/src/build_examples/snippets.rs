@@ -17,8 +17,26 @@ pub struct Snippets {
     output_dir: PathBuf,
 }
 
+fn install_snippet_deps() {
+    // uv sync --inexact --no-install-package rerun-sdk --group snippets
+    let mut cmd = Command::new("uv");
+    cmd.arg("sync");
+    cmd.arg("--inexact");
+    cmd.arg("--no-install-package");
+    cmd.arg("rerun-sdk");
+    cmd.arg("--group");
+    cmd.arg("snippets");
+
+    let _ = cmd
+        .status()
+        .expect("failed to run `uv sync` to install snippet dependencies");
+}
+
 impl Snippets {
     pub fn run(self) -> anyhow::Result<()> {
+        // Install snippet dependencies by running:
+        install_snippet_deps();
+
         create_dir_all(&self.output_dir)?;
 
         let snippets_dir = re_build_tools::cargo_metadata()?

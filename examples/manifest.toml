@@ -40,7 +40,6 @@ examples = [
   "ros2_bridge",
   "ros_bridge",
   "kiss-icp",
-  "urdf_loader",
   "live_depth_sensor",
   "lidar",
   "rrt_star",
@@ -81,8 +80,6 @@ examples = [
   "annotation_gradio",
   "prompt_depth_anything",
   "sam2_depthanything",
-  "human_pose_tracking",
-  "gesture_detection",
   "ocr",
   "live_camera_edge_detection",
   "segment_anything_model",
@@ -126,7 +123,6 @@ examples = [
   "notebook",
   "notebook_neural_field_2d",
   "lerobot_loader",
-  "urdf_loader",
   "vrs",
   "revy",
   "tfrecord_loader",
@@ -171,6 +167,7 @@ examples = [
 examples = [
   "_empty_rerun_sdk",
   "all_examples",
+  "blueprint", # Not very pretty
   "custom_callback",
   "custom_collection_adapter",
   "custom_data_loader",
@@ -192,4 +189,8 @@ examples = [
   "table_zoo",
   "template",
   "viewer_callbacks",
+
+  # TODO(jleibs): We want to bring them back once opentelemtry is fixed
+  "human_pose_tracking",
+  "gesture_detection",
 ]

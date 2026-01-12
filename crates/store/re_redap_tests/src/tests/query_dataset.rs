@@ -1,13 +1,16 @@
 use futures::StreamExt as _;
+use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::QueryDatasetResponse;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::ext::{
+    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };
-use crate::{FieldsTestExt as _, RecordBatchTestExt as _};
+use crate::{FieldsTestExt as _, RecordBatchTestExt as _, TempPath};
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
@@ -38,7 +41,7 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     let requests = vec![
@@ -103,7 +106,7 @@ pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
     let dataset_name = "dataset_with_layers";
     service.create_dataset_entry_with_name(dataset_name).await;
     service
-        .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
         .await;
 
     query_dataset_snapshot(
@@ -153,6 +156,153 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
     }
 }
 
+//TODO(RR-2613): this recording needs fleshing out in order to test more interesting queries.
+fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
+    use re_chunk::{Chunk, TimePoint};
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_sdk::RecordingStreamBuilder;
+
+    use crate::utils::rerun::{next_chunk_id_generator, next_row_id_generator};
+
+    let segment_id = "static_test_segment";
+    let tuid_prefix: u64 = 100;
+
+    let tmp_dir = tempfile::tempdir()?;
+    let tmp_path = tmp_dir.path().join(format!("{segment_id}.rrd"));
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let frame0 = TimeInt::new_temporal(0);
+    let points = MyPoint::from_iter(0..1);
+
+    // /static_only: single MyPoint logged as static
+    let static_only_chunk =
+        Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/static_only"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                TimePoint::default(),
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()?;
+
+    rec.send_chunk(static_only_chunk);
+
+    // /both: MyPoint logged as static and another logged at frame = 0
+    let both_static_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
+        .with_sparse_component_batches(
+            next_row_id(),
+            TimePoint::default(),
+            [(MyPoints::descriptor_points(), Some(&points as _))],
+        )
+        .build()?;
+    rec.send_chunk(both_static_chunk);
+
+    let both_temporal_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
+        .with_sparse_component_batches(
+            next_row_id(),
+            [build_frame_nr(frame0)],
+            [(MyPoints::descriptor_points(), Some(&points as _))],
+        )
+        .build()?;
+    rec.send_chunk(both_temporal_chunk);
+
+    // /temporal_only: MyPoint logged at frame = 0
+    let temporal_only_chunk =
+        Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/temporal_only"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_frame_nr(frame0)],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()?;
+    rec.send_chunk(temporal_only_chunk);
+
+    rec.flush_blocking()?;
+
+    Ok(crate::TempPath::new(tmp_dir, tmp_path))
+}
+
+pub async fn query_dataset_with_various_queries(service: impl RerunCloudService) {
+    let recording_path = create_recording_for_query_testing().unwrap();
+
+    let dataset_name = "dataset_with_layers";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(
+            dataset_name,
+            vec![
+                DataSource {
+                    storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
+                    is_prefix: false,
+                    layer: "base".to_owned(),
+                    kind: DataSourceKind::Rrd,
+                }
+                .into(),
+            ],
+        )
+        .await;
+
+    // TODO(RR-2613): we need considerably more use-cases here, but OSS server currently disregards the
+    // `query` parameter. So we're stuck with queries that should return all chunks. In the mean
+    // time, this test is useful to validate that the returned schema is correct.
+    let queries = [
+        (None, "none"),
+        (Some(Query::default()), "default"),
+        (
+            Some(Query {
+                latest_at: Some(QueryLatestAt {
+                    index: Some("frame_nr".to_owned()),
+                    at: TimeInt::MAX,
+                }),
+                range: None,
+                ..Default::default()
+            }),
+            "latest_at_end",
+        ),
+        (
+            Some(Query {
+                latest_at: None,
+                range: Some(QueryRange {
+                    index: "frame_nr".to_owned(),
+                    index_range: AbsoluteTimeRange {
+                        min: TimeInt::MIN,
+                        max: TimeInt::MAX,
+                    },
+                }),
+                ..Default::default()
+            }),
+            "range_all",
+        ),
+    ];
+
+    for (query, snapshot_name) in queries {
+        query_dataset_snapshot(
+            &service,
+            QueryDatasetRequest {
+                segment_ids: vec![],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                fuzzy_descriptors: vec![],
+                exclude_static_data: false,
+                exclude_temporal_data: false,
+                scan_parameters: None,
+                query,
+            },
+            dataset_name,
+            &format!("with_query_{snapshot_name}"),
+        )
+        .await;
+    }
+}
+
 // ---
 
 async fn query_dataset_snapshot(
@@ -186,8 +336,8 @@ async fn query_dataset_snapshot(
             .fields()
             .contains_unordered(&required_field),
         "query dataset must return all guaranteed fields\nExpected: {:#?}\nGot: {:#?}",
-        merged_chunk_info.schema().fields(),
         required_field,
+        merged_chunk_info.schema().fields(),
     );
 
     let required_column_names = required_field
@@ -203,7 +353,10 @@ async fn query_dataset_snapshot(
 
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
-        .remove_columns(&[QueryDatasetResponse::FIELD_CHUNK_KEY])
+        .remove_columns(&[
+            QueryDatasetResponse::FIELD_CHUNK_KEY,
+            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+        ])
         .auto_sort_rows()
         .unwrap();
 

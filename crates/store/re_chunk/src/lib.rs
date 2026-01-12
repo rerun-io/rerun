@@ -5,6 +5,7 @@
 //!
 
 mod builder;
+mod cast;
 mod chunk;
 mod helpers;
 mod iter;
@@ -34,6 +35,7 @@ pub use self::batcher::{
     ChunkBatcherResult, PendingRow,
 };
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
+pub use self::cast::CastToPrimitive;
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };

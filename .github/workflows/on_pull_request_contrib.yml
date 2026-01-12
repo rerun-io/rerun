@@ -33,3 +33,10 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
+
+  check-doc-redirects:
+    name: "Check Doc Redirects"
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    uses: ./.github/workflows/reusable_checks_doc_redirects.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}

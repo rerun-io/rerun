@@ -147,7 +147,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
 
     let bits_per_component = picture
         .bits_per_component()
-        .map_or(picture.bit_depth(), |bpc| bpc.0);
+        .map_or_else(|| picture.bit_depth(), |bpc| bpc.0);
 
     let bytes_per_component = if bits_per_component == 8 {
         1

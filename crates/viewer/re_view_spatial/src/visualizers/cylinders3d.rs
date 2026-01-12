@@ -266,10 +266,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 fn clean_length(suspicious_length: f32) -> f32 {

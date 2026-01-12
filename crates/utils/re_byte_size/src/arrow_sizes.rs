@@ -2,6 +2,9 @@ use arrow::array::{Array, ArrayRef, ListArray, RecordBatch};
 use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields};
 
+#[expect(unused_imports)] // for docs
+use arrow::array::ArrayData;
+
 use super::SizeBytes;
 
 impl SizeBytes for dyn Array {
@@ -136,58 +139,25 @@ impl SizeBytes for UnionFields {
 
 // ---
 
-/// Returns the accurate memory size of an Arrow array, accounting for slicing.
+/// Returns the total number of the bytes of memory occupied by the buffers by this slice of
+/// [`ArrayData`] (See also diagram on [`ArrayData`]).
 ///
-/// For `ListArray`s, this manually calculates the size by only counting the memory used by
-/// the list entries that are actually in the slice, since Arrow's `get_slice_memory_size()`
-/// doesn't properly handle the case where sliced `ListArray`s still reference large inner data.
+/// This is approximately the number of bytes if a new [`ArrayData`] was formed by creating new
+/// `Buffer`s with exactly the data needed.
+///
+/// For example, a [`DataType::Int64`] with `100` elements, [`ArrayData::get_slice_memory_size`] would
+/// return `100 * 8 = 800`. If the [`ArrayData`] was then [`Array::slice`]ed to refer to its first
+/// `20` elements, then [`ArrayData::get_slice_memory_size`] on the sliced [`ArrayData`] would return
+/// `20 * 8 = 160`.
+///
+/// ## Important notes regarding deep vs. shallow slicing
+///
+/// Deeply nested data that was shallow-sliced (i.e. using [`Array::slice]` instead of the deep-slicing
+/// helpers from `re_arrow_util`) might report sizes that do not make any intuitive sense.
+/// Always prefer deep-slicing when you need to reliably measure the physical size of the sliced data.
 fn array_slice_memory_size(array: &dyn Array) -> u64 {
-    // Special handling for ListArrays to get accurate slice memory size
-    if let Some(list_array) = array.as_any().downcast_ref::<ListArray>() {
-        return list_array_slice_memory_size(list_array);
-    }
-
-    // For other array types, use Arrow's built-in slice memory sizing
     array
         .to_data()
         .get_slice_memory_size()
         .unwrap_or_else(|_| array.get_buffer_memory_size()) as u64
-}
-
-/// Calculate the accurate memory size of a sliced `ListArray`.
-///
-/// This manually computes the size by only counting the memory of the list entries
-/// that are actually accessible in the slice, rather than the entire underlying data.
-fn list_array_slice_memory_size(list_array: &ListArray) -> u64 {
-    // Base size: offsets buffer + validity buffer + metadata
-    let mut total_size = 0u64;
-
-    // Offsets buffer: (length + 1) * size_of::<i32>()
-    total_size += (list_array.len() + 1) as u64 * std::mem::size_of::<i32>() as u64;
-
-    // Validity buffer if present
-    if let Some(validity) = list_array.nulls() {
-        total_size += validity.len().div_ceil(8) as u64; // bits to bytes, rounded up
-    }
-
-    // Calculate the range of inner values that are actually used by this slice
-    let offsets = list_array.value_offsets();
-    if offsets.len() < 2 {
-        return total_size; // Empty array
-    }
-
-    let start_offset = offsets[0] as usize;
-    let end_offset = offsets[offsets.len() - 1] as usize;
-    let values_len = end_offset - start_offset;
-
-    if values_len > 0 {
-        // Get the inner array and slice it to only the range we actually use
-        let inner_array = list_array.values();
-        let sliced_inner = inner_array.slice(start_offset, values_len);
-
-        // Recursively calculate the size of the sliced inner array
-        total_size += array_slice_memory_size(sliced_inner.as_ref());
-    }
-
-    total_size
 }

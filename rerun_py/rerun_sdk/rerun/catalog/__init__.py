@@ -11,8 +11,6 @@ from rerun_bindings import (
     IndexConfig as IndexConfig,
     IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
-    # TODO(RR-3130): remove deprecated TableInsertMode in 0.29 or later
-    TableInsertMode as TableInsertMode,
     VectorDistanceMetric as VectorDistanceMetric,
     rerun_trace_context as _rerun_trace_context,
 )

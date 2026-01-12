@@ -271,16 +271,29 @@ impl ViewContextSystem for TransformTreeContext {
             }
         }
 
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
+
         let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
-            self.entity_transform_id_mapping
-                .transform_frame_id_to_entity_path
-                .get(&transform_frame_id_hash)
-                .map_or_else(
-                    || 1.0,
-                    |entity_paths| {
-                        lookup_image_plane_distance(ctx, entity_paths, &latest_at_query) as f64
-                    },
-                )
+            // We're looking for an entity whose child frame is the given frame id hash.
+            // From that entity we'd like to know what image frame distance we should be using.
+            // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
+
+            let Some(frame_transforms) = transform_cache
+                .transforms_for_timeline(query.timeline)
+                .frame_transforms(transform_frame_id_hash)
+            else {
+                debug_assert!(
+                    false,
+                    "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
+                );
+                return 1.0;
+            };
+
+            let entity_path = frame_transforms.associated_entity_path(latest_at_query.at());
+            lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
         };
 
         let tree_transforms_per_frame = self
@@ -296,6 +309,8 @@ impl ViewContextSystem for TransformTreeContext {
             )
             .collect::<Vec<_>>();
 
+        // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
+        // Can we instead just do another lookup indirection to `self.transform_infos`?
         self.entity_frame_id_mapping = static_execution_result
             .child_frames_per_entity
             .iter()
@@ -316,10 +331,6 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let caches = ctx.viewer_ctx.store_context.caches;
-            let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.read_lock_transform_cache(ctx.recording())
-            });
             let transforms = transform_cache.transforms_for_timeline(query.timeline);
 
             let latest_at_query = &query.latest_at_query();
@@ -358,10 +369,6 @@ impl ViewContextSystem for TransformTreeContext {
                     .map(|_pinhole_info| info.root)
             });
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 fn map_tree_transform_to_transform_info(
@@ -399,6 +406,38 @@ impl TransformTreeContext {
         frame: TransformFrameIdHash,
     ) -> Option<&re_tf::PinholeTreeRoot> {
         self.transform_forest.pinhole_tree_root_info(frame)
+    }
+
+    /// Returns the transform from a pinhole root to the target frame if any.
+    ///
+    /// This is effectively the extrinsic portion of the pinhole's transform to the view's target frame.
+    /// Note that this may otherwise not be accessible since we allow both extrinsics and intrinsics to be
+    /// on a transform between two frames, with no transform frame representing just the extrinsics.
+    ///
+    /// Returns `None` if the path is not a pinhole root, or is not connected to the target frame or the target frame does not exist in the forest (i.e. is invalid).
+    #[inline]
+    pub fn target_from_pinhole_root(&self, frame: TransformFrameIdHash) -> Option<glam::DAffine3> {
+        let pinhole_root_info = self.pinhole_tree_root_info(frame)?;
+
+        // Special case: The pinhole _is_ the target frame
+        if self.target_frame == frame {
+            return Some(glam::DAffine3::IDENTITY);
+        }
+
+        let Some(root_from_target) = self.transform_forest.root_from_frame(self.target_frame)
+        else {
+            // This means our target doesn't exist in the forest.
+            return None;
+        };
+        if pinhole_root_info.parent_tree_root != root_from_target.root {
+            // The pinhole root is not connected to the target frame.
+            return None;
+        }
+
+        let root_from_target = root_from_target.target_from_source;
+        let target_from_root = root_from_target.inverse();
+
+        Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
     }
 
     /// Returns the target frame, also known as the space origin.
@@ -461,7 +500,7 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    entity_path: &SmallVec1<[EntityPathHash; 1]>,
+    entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
 ) -> f32 {
     // If there's several entity paths (with pinhole cameras) for the same transform id,
@@ -513,8 +552,7 @@ fn lookup_image_plane_distance(
                     })
             }
         })
-        .unwrap_or_default()
-        .into()
+        .unwrap_or_default() as _
 }
 
 impl EntityTransformIdMapping {

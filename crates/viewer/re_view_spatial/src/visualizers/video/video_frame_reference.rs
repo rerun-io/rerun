@@ -126,10 +126,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl VideoFrameReferenceVisualizer {

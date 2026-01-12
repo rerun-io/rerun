@@ -105,7 +105,7 @@ service RerunCloudService {
   // Get the RRD Footer manifest.
   //
   // This includes details about what chunks there are, and what kind of data they contain.
-  rpc GetRrdManifest(GetRrdManifestRequest) returns (GetRrdManifestResponse) {}
+  rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
   /* Indexing */
 
@@ -608,9 +608,6 @@ message Query {
   // If true, `columns` will contain the entire schema.
   bool columns_always_include_everything = 3;
 
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 4;
-
   // If true, `columns` always includes `byte_offset` and `byte_size`.
   bool columns_always_include_byte_offsets = 5;
 
@@ -625,6 +622,9 @@ message Query {
 
   // If true, `columns` always includes all component-level indexes.
   bool columns_always_include_component_indexes = 9;
+
+  reserved 4;
+  reserved "columns_always_include_chunk_ids";
 }
 
 // A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
@@ -862,9 +862,9 @@ message CreateTableEntryRequest {
 
   // Information about the table to register.
   //
-  // This must be encoded message of one one of the following supported types:
+  // This must be encoded message of one of the following supported types:
   // - LanceTable
-  google.protobuf.Any provider_details = 2;
+  optional google.protobuf.Any provider_details = 2;
 
   // Schema of the table to create
   rerun.common.v1alpha1.Schema schema = 3;

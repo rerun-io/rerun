@@ -63,6 +63,7 @@ pub fn textured_rect_from_image(
                 texture_filter_magnification,
                 texture_filter_minification,
                 multiplicative_tint,
+                force_draw_with_transparency: false,
                 depth_offset: ent_context.depth_offset,
                 outline_mask: ent_context.highlight.overall,
             },

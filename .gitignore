@@ -34,7 +34,6 @@ _deps
 **/venv*
 **/.venv*
 /env/
-.python-version
 
 # Python build artifacts:
 __pycache__
@@ -47,6 +46,12 @@ __pycache__
 
 # Pixi environment
 .pixi
+
+# Generated shims (created by ensure-rerun-env)
+scripts/pixi/uv
+scripts/pixi/uv.exe
+scripts/pixi/uvpy
+scripts/pixi/uvpy.exe
 
 .gdb_history
 perf.data*

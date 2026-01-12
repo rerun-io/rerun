@@ -96,8 +96,8 @@ def test_df_filters(catalog_client: CatalogClient, readonly_test_dataset: Datase
         # Collect all data without any filtering and store in memory
         # so that we can have guarantees that our push-down filters
         # do not impact the results.
-        full_data = readonly_test_dataset.reader(index=time_idx).collect()
-        catalog_client.ctx.register_record_batches(time_idx, [full_data])
+        full_data_batches = readonly_test_dataset.reader(index=time_idx).collect()
+        catalog_client.ctx.register_record_batches(time_idx, [full_data_batches])
         full_data = catalog_client.ctx.table(time_idx)
 
         for test_filter in all_tests:

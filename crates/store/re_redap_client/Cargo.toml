@@ -34,6 +34,7 @@ all-features = true
 re_arrow_util.workspace = true
 re_auth = { workspace = true, features = ["oauth"] }
 re_chunk.workspace = true
+re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
@@ -44,6 +45,7 @@ re_uri.workspace = true
 ahash.workspace = true
 arrow.workspace = true
 ehttp.workspace = true
+futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 serde.workspace = true

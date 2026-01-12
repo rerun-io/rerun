@@ -366,3 +366,39 @@ The `send_dataframe()` and `send_record_batch()` functions have been moved to th
 |-----------------------------------------|-----------------------------------------|
 | `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
 | `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
+
+## `RecordingStream` now cleans up when going out of scope in Python SDK
+
+`RecordingStream` objects are now cleaned up as they go out of scope. This specifically
+includes flushing and closing the associated sinks.
+
+This may lead to subtle changes in behavior if you are depending on side-effects of a
+a non-global recording stream staying open. The most notable example is the `serve_grpc()`
+sink. [See #12301](https://github.com/rerun-io/rerun/issues/12301) for an example and
+context.
+
+### Motivation
+Consider an example like:
+```python
+
+def create_recording(data, filename):
+    rec = rr.RecordingStream("rerun_example_cleanup")
+    rec.save(filename)
+
+    for event in data:
+        rec.log(...)
+
+def my_app():
+    ...
+
+    create_recording(data1, "data1.rrd")
+    create_recording(data2, "data2.rrd")
+    create_recording(data3, "data3.rrd")
+```
+
+**Before**
+All 3 recording files would stay open and unterminated until the application exit.
+
+**After**
+Now each recording is closed and terminated incrementally as the functions return
+and the RecordingStream objects go out of scope.

@@ -17,7 +17,7 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    SegmentQueryParams, StreamMode,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -67,7 +67,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         Err(original_error) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
-                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {
@@ -296,10 +296,13 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
+///
+/// `stream_mode` is a feature-flag for RRD manifest based larger-than-ram streaming.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
+    stream_mode: StreamMode,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -332,6 +335,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
+            StreamMode::FullLoad, // We always load the full blueprint
         )
         .await?
         .is_break()
@@ -378,6 +382,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         dataset_id.into(),
         segment_id.into(),
         fragment,
+        stream_mode,
     )
     .await?
     .is_break()
@@ -396,6 +401,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
+    stream_mode: StreamMode,
 ) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
@@ -438,33 +444,46 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    // TODO(RR-3110): load RRD manifest first
-    if false {
+    if stream_mode == StreamMode::OnDemand {
         let manifest_result = client
             .get_rrd_manifest(dataset_id, segment_id.clone())
             .await;
         match manifest_result {
             Ok(rrd_manifest) => {
+                re_log::debug_once!("The server supports larger-than-RAM");
+
                 if tx
                     .send(DataSourceMessage::RrdManifest(
                         store_id.clone(),
-                        rrd_manifest.into(),
+                        rrd_manifest.clone().into(),
                     ))
                     .is_err()
                 {
                     re_log::debug!("Receiver disconnected");
-                    return Ok(ControlFlow::Break(())); // cancelled
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                if store_id.is_recording() {
+                    return load_chunks_on_demand(client, tx, &store_id, rrd_manifest).await;
+                } else {
+                    // Load all chunks in one go; most important first:
+                    let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                    })?;
+                    return load_chunks(client, tx, &store_id, batch).await;
                 }
             }
             Err(err) => {
                 if err.kind == ApiErrorKind::Unimplemented {
-                    // TODO(RR-3110): implement rrd manifest on cloud
+                    re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
                 } else {
                     re_log::warn!("Failed to load RRD manifest: {err}");
                 }
             }
         }
     }
+
+    // Fallback for servers that does not support the RRD manifests:
 
     let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
 
@@ -584,13 +603,67 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
         .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
 }
 
+/// Load chunks on demand as requested by the viewer via `LoadCommand::LoadChunks`.
+async fn load_chunks_on_demand(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    rrd_manifest: re_log_encoding::RrdManifest,
+) -> ApiResult<ControlFlow<()>> {
+    {
+        // Pre-fetch everything static:
+        let col_chunk_is_static = rrd_manifest.col_chunk_is_static().map_err(|err| {
+            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
+        })?;
+
+        let mut indices = vec![];
+        for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
+            if chunk_is_static {
+                indices.push(row_idx as u32);
+            }
+        }
+        let static_chunks = arrow::compute::take_record_batch(
+            &rrd_manifest.data,
+            &arrow::array::UInt32Array::from(indices),
+        )
+        .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
+
+        re_log::debug!(
+            "Pre-fetching {} static chunks…",
+            re_format::format_uint(static_chunks.num_rows())
+        );
+        if load_chunks(client, tx, store_id, static_chunks)
+            .await?
+            .is_break()
+        {
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+
+    re_log::debug!("Waiting for viewer to tell me what to load…");
+    loop {
+        if let Ok(cmd) = tx.recv_cmd().await {
+            match cmd {
+                re_log_channel::LoadCommand::LoadChunks(batch) => {
+                    if load_chunks(client, tx, store_id, batch).await?.is_break() {
+                        return Ok(ControlFlow::Break(()));
+                    }
+                }
+            }
+        } else {
+            re_log::debug!("Receiver disconnected");
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+}
+
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
 async fn load_chunks(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     batch: RecordBatch,
-) -> Result<ControlFlow<()>, ApiError> {
+) -> ApiResult<ControlFlow<()>> {
     if batch.num_rows() == 0 {
         return Ok(ControlFlow::Continue(()));
     }
@@ -618,7 +691,7 @@ async fn load_chunks(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(())); // cancelled
+                return Ok(ControlFlow::Break(()));
             }
         }
     }

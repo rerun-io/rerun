@@ -57,10 +57,6 @@ impl VisualizerSystem for SeriesLinesSystem {
 
         self.load_scalars(ctx, query)
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl SeriesLinesSystem {

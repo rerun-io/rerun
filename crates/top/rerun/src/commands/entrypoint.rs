@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::{AuthErrorHandler, LogDataSource};
+use re_data_source::{AuthErrorHandler, LogDataSource, StreamMode};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -639,8 +639,8 @@ where
                 let web_header = unindent::unindent(
                     "\
                     ---
-                    title: CLI manual
-                    order: 250
+                    title: ⌨️ CLI manual
+                    order: 1150
                     ---\
                     ",
                 );
@@ -883,29 +883,6 @@ fn start_native_viewer(
 
     let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
-    #[allow(clippy::allow_attributes, unused_mut)]
-    let ReceiversFromUrlParams {
-        mut log_receivers,
-        urls_to_pass_on_to_viewer,
-    } = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::native_viewer(),
-        &connection_registry,
-        Some(auth_error_handler),
-    )?;
-
-    // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
-    #[cfg(feature = "server")]
-    if !connect {
-        let log_receiver = re_grpc_server::spawn_with_recv(
-            server_addr,
-            server_options,
-            re_grpc_server::shutdown::never(),
-        );
-
-        log_receivers.push(log_receiver);
-    }
-
     let tokio_runtime_handle = tokio_runtime_handle.clone();
 
     // Start catching `re_log::info/warn/error` messages
@@ -930,7 +907,7 @@ fn start_native_viewer(
                             egui_ctx.request_repaint();
                         }
                         Err(err) => {
-                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                            re_log::error!("Failed to listen for ctrl-c signal: {err}");
                         }
                     }
                 });
@@ -941,11 +918,36 @@ fn start_native_viewer(
                 call_source.app_env(),
                 startup_options,
                 cc,
-                Some(connection_registry),
+                Some(connection_registry.clone()),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
                 (command_tx, command_rx),
             );
+
+            #[allow(clippy::allow_attributes, unused_mut)]
+            let ReceiversFromUrlParams {
+                mut log_receivers,
+                urls_to_pass_on_to_viewer,
+            } = ReceiversFromUrlParams::new(
+                url_or_paths,
+                &UrlParamProcessingConfig::native_viewer(),
+                &connection_registry,
+                Some(auth_error_handler),
+                app.app_options().experimental.stream_mode,
+            )?;
+
+            // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
+            #[cfg(feature = "server")]
+            if !connect {
+                let log_receiver = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_options,
+                    re_grpc_server::shutdown::never(),
+                );
+
+                log_receivers.push(log_receiver);
+            }
+
             app.set_profiler(profiler);
             for rx in log_receivers {
                 app.add_log_receiver(rx);
@@ -957,7 +959,7 @@ fn start_native_viewer(
                 app.set_examples_manifest_url(url);
             }
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         renderer,
     )
@@ -1022,6 +1024,7 @@ fn connect_to_existing_server(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
+        Default::default(),
     )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
@@ -1073,6 +1076,7 @@ fn serve_web(
         &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
         connection_registry,
         None,
+        Default::default(),
     )?;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
@@ -1142,6 +1146,7 @@ fn serve_grpc(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
+        Default::default(),
     )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
@@ -1174,6 +1179,7 @@ fn save_or_test_receive(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
+        Default::default(),
     )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
@@ -1478,6 +1484,7 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
+        steam_mode: StreamMode,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1528,7 +1535,9 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
+            .map(|data_source| {
+                data_source.stream(auth_error_handler.clone(), connection_registry, steam_mode)
+            })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {

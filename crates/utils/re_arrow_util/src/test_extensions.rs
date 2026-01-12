@@ -246,6 +246,10 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
                     arrays
                         .push(redact_array!(array, arrow::array::Int64Array, |opt| opt.map(|_| 0)));
                 }
+                arrow::datatypes::DataType::UInt64 => {
+                    arrays
+                        .push(redact_array!(array, arrow::array::UInt64Array, |opt| opt.map(|_| 0)));
+                }
                 arrow::datatypes::DataType::List(field) => {
                     let list_array = array
                         .try_downcast_array_ref::<arrow::array::ListArray>()

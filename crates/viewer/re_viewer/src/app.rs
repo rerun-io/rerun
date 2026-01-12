@@ -246,7 +246,7 @@ impl App {
         }
 
         if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
-            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+            state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
         if app_env.is_test() {
@@ -669,6 +669,7 @@ impl App {
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+        re_tracing::profile_function!();
         while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
             self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
@@ -813,6 +814,8 @@ impl App {
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
     ) {
+        re_tracing::profile_function!(cmd.debug_name());
+
         match cmd {
             SystemCommand::TimeControlCommands {
                 store_id,
@@ -1302,6 +1305,8 @@ impl App {
         egui_ctx: &egui::Context,
         data_source: &LogDataSource,
     ) {
+        re_tracing::profile_function!();
+
         // Check if we've already loaded this data source and should just switch to it.
         //
         // Go through all sources that are still loading and those that are already in the store_hub.
@@ -1403,9 +1408,11 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source
-            .clone()
-            .stream(Self::auth_error_handler(sender), &self.connection_registry);
+        let stream = data_source.clone().stream(
+            Self::auth_error_handler(sender),
+            &self.connection_registry,
+            self.app_options().experimental.stream_mode,
+        );
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
@@ -2332,7 +2339,9 @@ impl App {
                 }
             });
 
-        self.notifications.show_toasts(egui_ctx);
+        if self.app_options().show_notification_toasts {
+            self.notifications.show_toasts(egui_ctx);
+        }
     }
 
     /// Show recent text log messages to the user as toast notifications.
@@ -3047,6 +3056,18 @@ impl App {
             blueprint_query,
         })
     }
+
+    /// Prefetch chunks for the open recording (stream from server)
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) -> Option<()> {
+        let recording = store_hub.active_recording_mut()?;
+        let time_ctrl = self.state.time_controls.get(recording.store_id())?;
+        crate::prefetch_chunks::prefetch_chunks(
+            &self.startup_options,
+            &self.rx_log,
+            recording,
+            time_ctrl,
+        )
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -3219,20 +3240,19 @@ impl eframe::App for App {
             force_store_info,
             promise,
         }) = &self.open_files_promise
+            && let Some(files) = promise.ready()
         {
-            if let Some(files) = promise.ready() {
-                for file in files {
-                    self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
-                            FileSource::FileDialog {
-                                recommended_store_id: recommended_store_id.clone(),
-                                force_store_info: *force_store_info,
-                            },
-                            file.clone(),
-                        )));
-                }
-                self.open_files_promise = None;
+            for file in files {
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
+                        FileSource::FileDialog {
+                            recommended_store_id: recommended_store_id.clone(),
+                            force_store_info: *force_store_info,
+                        },
+                        file.clone(),
+                    )));
             }
+            self.open_files_promise = None;
         }
 
         // NOTE: GPU resource stats are cheap to compute so we always do.
@@ -3322,6 +3342,8 @@ impl eframe::App for App {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
+
+        self.prefetch_chunks(&mut store_hub);
 
         {
             let (storage_context, store_context) = store_hub.read_context();
@@ -3686,7 +3708,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
 
 // TODO(emilk): unify this with `ViewerContext::save_file_dialog`
 #[allow(clippy::allow_attributes, clippy::needless_pass_by_ref_mut)] // `app` is only used on native
-#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // cannot return error on web
+#[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
     #[allow(clippy::allow_attributes, unused_variables)] app: &mut App, // only used on native
     rrd_version: CrateVersion,

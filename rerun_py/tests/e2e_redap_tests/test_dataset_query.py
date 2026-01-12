@@ -41,12 +41,12 @@ def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
             prior_segment = ""
             prior_timestamp = 0
             for rb in iter(rb_reader):
-                rb = rb.to_pyarrow()
-                for idx in range(rb.num_rows):
-                    segment = rb[0][idx].as_py()
+                rb_arrow: pyarrow.RecordBatch = rb.to_pyarrow()
+                for idx in range(rb_arrow.num_rows):
+                    segment = rb_arrow[0][idx].as_py()
 
                     # Nanosecond timestamps cannot be converted using `as_py()`
-                    timestamp = rb[1][idx]
+                    timestamp = rb_arrow[1][idx]
                     timestamp = timestamp.value if hasattr(timestamp, "value") else timestamp.as_py()
 
                     assert segment >= prior_segment

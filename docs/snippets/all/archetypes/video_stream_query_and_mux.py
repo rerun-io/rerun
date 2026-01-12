@@ -13,16 +13,17 @@ from pyarrow import ChunkedArray
 def read_h264_samples_from_rrd(rrd_path: str, video_entity: str, timeline: str) -> tuple[ChunkedArray, ChunkedArray]:
     """Load recording data and query video stream."""
 
-    recording = rr.dataframe.load_recording(rrd_path)
-    view = recording.view(index=timeline, contents=video_entity)
+    server = rr.server.Server(datasets={"video_stream": [rrd_path]})
+    client = server.client()
+    dataset = client.get_dataset("video_stream")
+    df = dataset.filter_contents(video_entity).reader(index=timeline)
 
     # Make sure this is H.264 encoded.
     # For that we just read out the first codec value batch and check whether it's H.264.
-    codec = view.select(f"{video_entity}:VideoStream:codec")
-    first_codec_batch = codec.read_next_batch()
+    first_codec_batch = df.select(f"/{video_entity}:VideoStream:codec").execute_stream().next()
     if first_codec_batch is None:
         raise ValueError(f"There's no video stream codec specified at {video_entity} for timeline {timeline}.")
-    codec_value = first_codec_batch.column(0)[0][0].as_py()
+    codec_value = first_codec_batch.to_pyarrow().column(0)[0][0].as_py()
     if codec_value != rr.VideoCodec.H264.value:
         raise ValueError(
             f"Video stream codec is not H.264 at {video_entity} for timeline {timeline}. "
@@ -32,7 +33,7 @@ def read_h264_samples_from_rrd(rrd_path: str, video_entity: str, timeline: str) 
         print(f"Video stream codec is H.264 at {video_entity} for timeline {timeline}.")
 
     # Get the video stream
-    timestamps_and_samples = view.select(timeline, f"{video_entity}:VideoStream:sample").read_all()
+    timestamps_and_samples = df.select(timeline, f"/{video_entity}:VideoStream:sample").to_arrow_table()
     times = timestamps_and_samples[0]
     samples = timestamps_and_samples[1]
 

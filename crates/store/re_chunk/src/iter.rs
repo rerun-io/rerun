@@ -16,6 +16,7 @@ use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
 use re_types_core::{ArrowString, Component, ComponentIdentifier};
 
+use crate::cast::error_on_downcast_failure;
 use crate::{Chunk, RowId, TimeColumn};
 
 // ---

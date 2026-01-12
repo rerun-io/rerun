@@ -38,10 +38,6 @@ impl VisualizerSystem for TestSystem {
     ) -> Result<VisualizerExecutionOutput, re_viewer_context::ViewSystemExecutionError> {
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl IdentifiedViewSystem for TestSystem {

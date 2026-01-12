@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
+use re_sdk_types::components::MediaType;
 use re_sdk_types::external::image;
 use re_sdk_types::{
     Archetype as _, ArchetypeName, Component as _, Loggable as _, SerializedComponentColumn,
@@ -234,20 +235,20 @@ fn try_size_from_blob(
         re_tracing::profile_scope!("image");
 
         let media_type = components::MediaType::or_guess_from_data(media_type, blob);
-        let mut reader = image::ImageReader::new(std::io::Cursor::new(blob));
 
-        if let Some(format) = media_type.and_then(|mt| image::ImageFormat::from_mime_type(&mt.0)) {
-            reader.set_format(format);
-        } else if let Ok(format) = image::guess_format(blob) {
-            // Weirdly enough, `reader.decode` doesn't do this for us.
-            reader.set_format(format);
-        }
-
-        reader.into_dimensions().ok().map(|size| size.into())
+        read_image_size_via_image_library(blob, media_type)
     } else if archetype_name == archetypes::EncodedDepthImage::name() {
-        // Encoded depth images always carry an ImageFormat component, so width/height
-        // are picked up via the format column earlier in the subscriber.
-        None
+        re_tracing::profile_scope!("encoded_depth_image");
+
+        let media_type = components::MediaType::or_guess_from_data(media_type, blob);
+
+        if media_type == Some(components::MediaType::rvl()) {
+            re_rvl::RosRvlMetadata::parse(blob)
+                .ok()
+                .map(|metadata| [metadata.width, metadata.height])
+        } else {
+            read_image_size_via_image_library(blob, media_type)
+        }
     } else if archetype_name == archetypes::AssetVideo::name() {
         re_tracing::profile_scope!("video asset");
 
@@ -259,6 +260,22 @@ fn try_size_from_blob(
     } else {
         None
     }
+}
+
+fn read_image_size_via_image_library(
+    blob: &[u8],
+    media_type: Option<MediaType>,
+) -> Option<[u32; 2]> {
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(blob));
+
+    if let Some(format) = media_type.and_then(|mt| image::ImageFormat::from_mime_type(&mt.0)) {
+        reader.set_format(format);
+    } else if let Ok(format) = image::guess_format(blob) {
+        // Weirdly enough, `reader.decode` doesn't do this for us.
+        reader.set_format(format);
+    }
+
+    reader.into_dimensions().ok().map(|size| size.into())
 }
 
 fn try_size_from_video_stream_sample(

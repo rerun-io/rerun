@@ -199,7 +199,7 @@ rayon.workspace = true
 # Native, optional:
 clap = { workspace = true, optional = true, features = ["derive"] }
 jiff = { workspace = true, optional = true }
-re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
+re_perf_telemetry = { workspace = true, optional = true }
 unindent = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 
