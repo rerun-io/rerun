@@ -59,7 +59,7 @@ class CatalogClient:
 
     __slots__ = ("_internal",)
 
-    def __init__(self, url: str, token: str | None = None) -> None:
+    def __init__(self, url: str, *, token: str | None = None) -> None:
         from importlib.metadata import version
         from importlib.util import find_spec
 
