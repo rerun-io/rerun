@@ -60,4 +60,4 @@ If the component on the left-side of the join (the so-called primary component) 
 On the other hand, if the component on the left-side of the join (the so-called primary component) has less instances than the other, then the last instance will be repeated across every instance left in the batch. We call this clamping, in reference to texture sampling (think `CLAMP_TO_EDGE`!).
 
 ## See also
-[`send_columns`](../../howto/send_columns.md) lets you efficiently send many batches of data in one log call.
+[`send_columns`](../../howto/logging-and-ingestion/send-columns.md) lets you efficiently send many batches of data in one log call.

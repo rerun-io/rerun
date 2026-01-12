@@ -28,7 +28,7 @@ In 0.17.0:
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/vizcomp-ui-after/86f74d239e8b77bc3df00e61cfc35eb9f4c07989/480w.png">
 </picture>
 
-See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
+See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
 
 
 ## New blueprint API to specify component overrides, visualizer overrides, and component defaults
@@ -69,7 +69,7 @@ rr.send_blueprint(
 )
 ```
 
-The [Plots](https://rerun.io/examples/feature-showcase/plots) example has been updated to showcase the new APIs. See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
+The [Plots](https://rerun.io/examples/feature-showcase/plots) example has been updated to showcase the new APIs. See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
 
 
 ## New and changed components

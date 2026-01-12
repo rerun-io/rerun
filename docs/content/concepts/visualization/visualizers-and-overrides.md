@@ -20,7 +20,7 @@ This section explains the process by which logged data is used to produce a visu
 In the Rerun Viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprints.md).
 
 The first step for a view to display its content is to determine which entities are involved.
-This is determined by the [entity query](../../reference/entity-queries.md), which is part of the view blueprint.
+This is determined by the [entity query](entity-queries.md), which is part of the view blueprint.
 The query is run against the data store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities.
