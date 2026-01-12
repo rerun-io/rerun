@@ -45,7 +45,7 @@ impl ChunkStore {
     }
 
     /// Returns a vector with all the chunks in this store, sorted in descending order relative to
-    /// their distance from the given `(timline, time)` cursor.
+    /// their distance from the given `(timeline, time)` cursor.
     pub fn find_temporal_chunks_furthest_from(
         &self,
         timeline: &TimelineName,
@@ -614,7 +614,7 @@ impl ChunkStore {
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
 /// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct QueryResults {
     /// The relevant *physical* chunks that were found for this query.
     ///
@@ -645,7 +645,11 @@ impl std::fmt::Display for QueryResults {
 
 impl QueryResults {
     fn from_chunk_ids(store: &ChunkStore, chunk_ids: impl Iterator<Item = ChunkId>) -> Self {
-        let mut this = Self::default();
+        let mut this = Self {
+            chunks: vec![],
+            missing: vec![],
+        };
+
         for chunk_id in chunk_ids {
             if let Some(chunk) = store.chunks_per_chunk_id.get(&chunk_id) {
                 this.chunks.push(chunk.clone());
@@ -653,6 +657,11 @@ impl QueryResults {
                 this.missing.push(chunk_id);
             }
         }
+
+        store
+            .missing_chunk_ids
+            .write()
+            .extend(this.missing.iter().copied());
 
         debug_assert!(
             this.chunks
@@ -1206,6 +1215,8 @@ mod tests {
                 MyPoints::descriptor_points().component,
             );
             assert!(results.is_empty());
+
+            assert!(store.gather_missing_chunk_ids().is_empty());
         }
 
         store.insert_chunk(&chunk1).unwrap();
@@ -1237,6 +1248,8 @@ mod tests {
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
+
+            assert!(store.gather_missing_chunk_ids().is_empty());
         }
 
         store.gc(&crate::GarbageCollectionOptions {
@@ -1251,7 +1264,7 @@ mod tests {
         // * latest-at results should still be complete
         // * range results should now be partial
         {
-            let results = store.latest_at_relevant_chunks(
+            let results_latest_at = store.latest_at_relevant_chunks(
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1260,10 +1273,10 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing: vec![],
             };
-            assert_eq!(false, results.is_partial());
-            assert_eq!(expected, results);
+            assert_eq!(false, results_latest_at.is_partial());
+            assert_eq!(expected, results_latest_at);
 
-            let results = store.range_relevant_chunks(
+            let results_range = store.range_relevant_chunks(
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1272,15 +1285,20 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing: vec![chunk1.id(), chunk2.id()],
             };
-            assert_eq!(true, results.is_partial());
-            assert_eq!(expected, results);
+            assert_eq!(true, results_range.is_partial());
+            assert_eq!(expected, results_range);
+
+            assert_eq!(
+                store.gather_missing_chunk_ids(),
+                itertools::chain!(results_latest_at.missing, results_range.missing).collect()
+            );
         }
 
         store.gc(&crate::GarbageCollectionOptions::gc_everything());
 
         // Now we've GC'd absolutely everything: we should only get partial results.
         {
-            let results = store.latest_at_relevant_chunks(
+            let results_latest_at = store.latest_at_relevant_chunks(
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1289,10 +1307,10 @@ mod tests {
                 chunks: vec![],
                 missing: vec![chunk3.id()],
             };
-            assert_eq!(true, results.is_partial());
-            assert_eq!(expected, results);
+            assert_eq!(true, results_latest_at.is_partial());
+            assert_eq!(expected, results_latest_at);
 
-            let results = store.range_relevant_chunks(
+            let results_range = store.range_relevant_chunks(
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1301,8 +1319,13 @@ mod tests {
                 chunks: vec![],
                 missing: vec![chunk1.id(), chunk2.id(), chunk3.id()],
             };
-            assert_eq!(true, results.is_partial());
-            assert_eq!(expected, results);
+            assert_eq!(true, results_range.is_partial());
+            assert_eq!(expected, results_range);
+
+            assert_eq!(
+                store.gather_missing_chunk_ids(),
+                itertools::chain!(results_latest_at.missing, results_range.missing).collect()
+            );
         }
 
         store.insert_chunk(&chunk1).unwrap();
@@ -1334,6 +1357,8 @@ mod tests {
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
+
+            assert!(store.gather_missing_chunk_ids().is_empty());
         }
     }
 
