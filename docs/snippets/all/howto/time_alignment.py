@@ -21,7 +21,7 @@ cheaper_column = (
     .filter_contents("/observation/joint_positions")
     .reader(index="real_time")
 )
-
+# TODO(RR-3189): Fix when we have a cleaner way to extract this time range efficiently
 min_max = cheaper_column.aggregate(
     "rerun_segment_id", [F.min(col("real_time")).alias("min"), F.max(col("real_time")).alias("max")]
 )
