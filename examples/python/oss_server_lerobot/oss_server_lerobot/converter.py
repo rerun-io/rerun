@@ -84,6 +84,12 @@ def _infer_vector_dim(table: pa.Table, column: str, label: str) -> int:
     if column not in table.column_names:
         raise ValueError(f"Column {column} for {label} was not found.")
     values = table[column].to_pylist()
+
+    # Debug: print table info
+    print(f"\nDebug: Inferring {label} dimension from column '{column}'")
+    print(f"Table has {len(table)} rows and columns: {table.column_names[:10]}...")  # Show first 10 columns
+    print(f"Non-null values in column: {sum(1 for v in values if v is not None)}/{len(values)}")
+
     for value in values:
         if value is None:
             continue
@@ -141,8 +147,8 @@ def _extract_video_samples(
     table: pa.Table, sample_column: str, keyframe_column: str, time_column: str
 ) -> tuple[list[bytes], np.ndarray, np.ndarray]:
     samples_raw = table[sample_column].to_pylist()
-    keyframes_raw = table[keyframe_column].to_pylist() if keyframe_column in table.column_names else [None] * len(
-        samples_raw
+    keyframes_raw = (
+        table[keyframe_column].to_pylist() if keyframe_column in table.column_names else [None] * len(samples_raw)
     )
     times_raw = table[time_column].to_pylist()
     samples: list[bytes] = []
@@ -251,8 +257,121 @@ def _infer_features(
     for spec in image_specs:
         contents.append(spec.path)
 
-    view = dataset.filter_segments(segment_id).filter_contents(contents)
-    table = pa.table(view.reader(index=index_column))
+    # Debug: check what's in the segment first
+    print(f"\n=== Debug: Checking segment '{segment_id}' ===")
+    print(f"Requested contents to filter: {contents}")
+    print(f"Index column: {index_column}")
+
+    # Check what indices/timelines are available
+    print("\nTrying different indices and content filters:")
+
+    # First try without any content filtering
+    try:
+        test_view = dataset.filter_segments(segment_id)
+        test_reader = test_view.reader(index=index_column)
+        # Just get schema without materializing
+        print(f"Segment has data (unfiltered): checking...")
+        test_df = test_reader.select(index_column).limit(1)
+        test_table = pa.table(test_df)
+        print(f"  Unfiltered with '{index_column}': {len(test_table)} rows (sample)")
+    except Exception as e:
+        print(f"  Error reading unfiltered: {e}")
+
+    # Now try each content individually
+    for content in contents[:3]:  # Check first 3 contents
+        try:
+            test_view = dataset.filter_segments(segment_id).filter_contents([content])
+            test_reader = test_view.reader(index=index_column)
+            test_df = test_reader.limit(5)
+            test_table = pa.table(test_df)
+            print(f"  Content '{content}': {len(test_table)} rows")
+            if len(test_table) > 0 and columns.action:
+                if columns.action in test_table.column_names:
+                    non_null = sum(1 for v in test_table[columns.action].to_pylist() if v is not None)
+                    print(f"    -> '{columns.action}' has {non_null}/{len(test_table)} non-null values")
+        except Exception as e:
+            print(f"  Content '{content}': Error - {str(e)[:100]}")
+
+    # Don't filter by contents to avoid schema mismatch issues with protobuf data
+    # Instead, we'll select only the specific columns we need
+    view = dataset.filter_segments(segment_id)
+
+    # Build list of specific columns we need to avoid schema mismatch issues
+    columns_to_read = [index_column]
+    if columns.action:
+        columns_to_read.append(columns.action)
+    if columns.state and columns.state != columns.action:  # Avoid duplicates
+        columns_to_read.append(columns.state)
+    if columns.task:
+        columns_to_read.append(columns.task)
+    for spec in image_specs:
+        if spec.kind == "raw":
+            columns_to_read.append(f"{spec.path}:Image:buffer")
+            columns_to_read.append(f"{spec.path}:Image:format")
+        elif spec.kind == "compressed":
+            columns_to_read.append(f"{spec.path}:EncodedImage:blob")
+
+    # Remove any duplicates while preserving order
+    seen = set()
+    unique_columns = []
+    for col in columns_to_read:
+        if col not in seen:
+            seen.add(col)
+            unique_columns.append(col)
+
+    print(f"Reading specific columns: {unique_columns[:10]}...")  # Show first 10
+
+    # Work around schema mismatch by reading each column separately
+    # Only read a small sample (first 100 rows) to infer dimensions
+    SAMPLE_SIZE = 100
+    all_data = {}
+
+    # Read index column first (just a sample)
+    print(f"  Reading index column (sample): {index_column}")
+    index_reader = view.reader(index=index_column).select(index_column).limit(SAMPLE_SIZE)
+    index_table = pa.table(index_reader)
+    all_data[index_column] = index_table[index_column].to_pylist()
+    print(f"    -> Got {len(all_data[index_column])} rows (sample)")
+
+    # Then read each data column separately to avoid schema conflicts
+    for col_name in unique_columns:
+        if col_name == index_column:
+            continue  # Already read
+
+        print(f"  Reading column (sample): {col_name}")
+        try:
+            col_reader = view.reader(index=index_column).select(col_name).limit(SAMPLE_SIZE)
+            col_table = pa.table(col_reader)
+            all_data[col_name] = col_table[col_name].to_pylist()
+            print(f"    -> Got {len(all_data[col_name])} rows (sample)")
+        except Exception as e:
+            print(f"    -> Error reading column: {e}")
+            all_data[col_name] = [None] * len(all_data[index_column])
+
+    # Ensure all columns have the same length
+    max_len = len(all_data[index_column])
+    for col_name in unique_columns:
+        if col_name not in all_data:
+            all_data[col_name] = [None] * max_len
+        elif len(all_data[col_name]) != max_len:
+            # Pad or truncate
+            if len(all_data[col_name]) < max_len:
+                all_data[col_name].extend([None] * (max_len - len(all_data[col_name])))
+            else:
+                all_data[col_name] = all_data[col_name][:max_len]
+
+    print(f"Combined sample table will have {max_len} rows")
+    table = pa.table(all_data)
+
+    # Debug: show what columns are available and sample of data
+    print(f"\n=== Debug: Inferring features from segment '{segment_id}' ===")
+    print(f"Index column: {index_column}")
+    print(f"Requested contents: {contents}")
+    print(f"Table shape: {len(table)} rows, {len(table.column_names)} columns")
+    print(f"Available columns (first 20): {table.column_names[:20]}")
+    if columns.action:
+        action_col_exists = columns.action in table.column_names
+        print(f"Action column '{columns.action}' exists: {action_col_exists}")
 
     features: dict[str, dict] = {}
     if columns.action:
@@ -311,9 +430,12 @@ def convert_rrd_dataset_to_lerobot(
     if action_path is None and state_path is None and not image_specs:
         raise ValueError("At least one of --action-path, --state-path, or --image must be provided.")
 
-    action_column = action_column or (f"{action_path}:Scalars:scalars" if action_path else None)
-    state_column = state_column or (f"{state_path}:Scalars:scalars" if state_path else None)
-    task_column = task_column or (f"{task_path}:TextDocument:text" if task_path else None)
+    if action_column is None and action_path:
+        action_column = action_path if ":" in action_path else f"{action_path}:Scalars:scalars"
+    if state_column is None and state_path:
+        state_column = state_path if ":" in state_path else f"{state_path}:Scalars:scalars"
+    if task_column is None and task_path:
+        task_column = task_path if ":" in task_path else f"{task_path}:TextDocument:text"
     columns = ColumnSpec(action=action_column, state=state_column, task=task_column)
 
     with rr.server.Server(datasets={dataset_name: rrd_dir}) as server:
@@ -345,116 +467,152 @@ def convert_rrd_dataset_to_lerobot(
             vcodec=vcodec,
         )
 
+        # Process each segment (recording) separately
         for segment_id in tqdm(segment_ids, desc="Segments"):
-            contents = []
-            if action_path:
-                contents.append(action_path)
-            if state_path:
-                contents.append(state_path)
-            if task_path:
-                contents.append(task_path)
-            for spec in image_specs:
-                contents.append(spec.path)
+            try:
+                contents = []
+                if action_path:
+                    contents.append(action_path)
+                if state_path:
+                    contents.append(state_path)
+                if task_path:
+                    contents.append(task_path)
+                for spec in image_specs:
+                    contents.append(spec.path)
 
-            view = dataset.filter_segments(segment_id).filter_contents(contents)
-            df = view.reader(index=index_column)
-            min_max = df.aggregate(
-                "rerun_segment_id",
-                [F.min(col(index_column)).alias("min"), F.max(col(index_column)).alias("max")],
-            )
-            min_max_table = pa.table(min_max)
-            min_value = min_max_table["min"].to_numpy()[0]
-            max_value = min_max_table["max"].to_numpy()[0]
-            desired_times = _make_time_grid(min_value, max_value, fps)
+                view = dataset.filter_segments(segment_id).filter_contents(contents)
+                df = view.reader(index=index_column)
 
-            df = view.reader(index=index_column, using_index_values=desired_times, fill_latest_at=True)
-            filters = []
-            if columns.action:
-                filters.append(col(columns.action).is_not_null())
-            if columns.state:
-                filters.append(col(columns.state).is_not_null())
-            for spec in image_specs:
-                if spec.kind == "raw":
-                    filters.append(col(f"{spec.path}:Image:buffer").is_not_null())
-                    filters.append(col(f"{spec.path}:Image:format").is_not_null())
-                elif spec.kind == "compressed":
-                    filters.append(col(f"{spec.path}:EncodedImage:blob").is_not_null())
-                elif spec.kind == "video":
-                    pass
-            if filters:
-                df = df.filter(*filters)
-
-            table = pa.table(df)
-            data_columns = {name: table[name].to_pylist() for name in table.column_names}
-            num_rows = table.num_rows
-            if num_rows == 0:
-                continue
-
-            video_frames: dict[str, list[np.ndarray]] = {}
-            row_times_ns = _normalize_times(table[index_column].to_pylist())
-            for spec in image_specs:
-                if spec.kind != "video":
-                    continue
-                sample_column = f"{spec.path}:VideoStream:sample"
-                keyframe_column = f"{spec.path}:is_keyframe"
-                video_view = dataset.filter_segments(segment_id).filter_contents(spec.path)
-                video_table = pa.table(
-                    video_view.reader(index=index_column).select(index_column, sample_column, keyframe_column)
+                # Get min/max times for this segment
+                min_max = df.aggregate(
+                    "rerun_segment_id",
+                    [F.min(col(index_column)).alias("min"), F.max(col(index_column)).alias("max")],
                 )
-                samples, times_ns, keyframes = _extract_video_samples(
-                    video_table, sample_column, keyframe_column, index_column
-                )
-                frames = []
-                for time_ns in row_times_ns:
-                    frames.append(_decode_video_frame(samples, times_ns, keyframes, int(time_ns), video_format))
-                video_frames[spec.key] = frames
+                min_max_table = pa.table(min_max)
+                min_value = min_max_table["min"].to_numpy()[0]
+                max_value = min_max_table["max"].to_numpy()[0]
+                desired_times = _make_time_grid(min_value, max_value, fps)
 
-            action_dim = features["action"]["shape"][0] if "action" in features else None
-            state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
-
-            for row_idx in tqdm(range(num_rows), desc=f"Frames ({segment_id})", leave=False):
-                frame: dict[str, object] = {}
-                if action_dim is not None and columns.action:
-                    frame["action"] = _to_float32_vector(
-                        data_columns[columns.action][row_idx],
-                        action_dim,
-                        "action",
-                    )
-                if state_dim is not None and columns.state:
-                    frame["observation.state"] = _to_float32_vector(
-                        data_columns[columns.state][row_idx],
-                        state_dim,
-                        "state",
-                    )
-
-                task_value = data_columns.get(columns.task, [None] * num_rows)[row_idx] if columns.task else None
-                task_value = _unwrap_singleton(task_value)
-                if task_value is None:
-                    task = task_default
-                elif isinstance(task_value, (bytes, bytearray, memoryview)):
-                    task = bytes(task_value).decode("utf-8")
-                else:
-                    task = str(task_value)
-                frame["task"] = task
-
+                df = view.reader(index=index_column, using_index_values=desired_times, fill_latest_at=True)
+                filters = []
+                if columns.action:
+                    filters.append(col(columns.action).is_not_null())
+                if columns.state:
+                    filters.append(col(columns.state).is_not_null())
                 for spec in image_specs:
                     if spec.kind == "raw":
-                        buffer_column = f"{spec.path}:Image:buffer"
-                        format_column = f"{spec.path}:Image:format"
-                        image = _decode_raw_image(
-                            data_columns[buffer_column][row_idx],
-                            data_columns[format_column][row_idx],
-                        )
+                        filters.append(col(f"{spec.path}:Image:buffer").is_not_null())
+                        filters.append(col(f"{spec.path}:Image:format").is_not_null())
                     elif spec.kind == "compressed":
-                        blob_column = f"{spec.path}:EncodedImage:blob"
-                        image = _decode_compressed_image(data_columns[blob_column][row_idx])
+                        filters.append(col(f"{spec.path}:EncodedImage:blob").is_not_null())
                     elif spec.kind == "video":
-                        image = video_frames[spec.key][row_idx]
-                    else:
-                        raise ValueError(f"Unsupported image kind '{spec.kind}'.")
-                    frame[f"observation.images.{spec.key}"] = image
+                        pass
+                if filters:
+                    df = df.filter(*filters)
 
-                lerobot_dataset.add_frame(frame)
-            lerobot_dataset.save_episode()
+                # Process in batches to avoid loading entire segment into memory at once
+                BATCH_SIZE = 1000  # Process 1000 rows at a time
+                batch_offset = 0
+                action_dim = features["action"]["shape"][0] if "action" in features else None
+                state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
+
+                # For video streams, we still need to load all samples for the segment
+                # since video decoding requires access to keyframes
+                video_data_cache: dict[str, tuple[list[bytes], np.ndarray, np.ndarray]] = {}
+                for spec in image_specs:
+                    if spec.kind != "video":
+                        continue
+                    sample_column = f"{spec.path}:VideoStream:sample"
+                    keyframe_column = f"{spec.path}:is_keyframe"
+                    video_view = dataset.filter_segments(segment_id).filter_contents(spec.path)
+                    video_table = pa.table(
+                        video_view.reader(index=index_column).select(index_column, sample_column, keyframe_column)
+                    )
+                    samples, times_ns, keyframes = _extract_video_samples(
+                        video_table, sample_column, keyframe_column, index_column
+                    )
+                    video_data_cache[spec.key] = (samples, times_ns, keyframes)
+
+                while True:
+                    # Get a batch of data
+                    batch_df = df.limit(BATCH_SIZE, offset=batch_offset)
+                    table = pa.table(batch_df)
+
+                    if table.num_rows == 0:
+                        break
+
+                    data_columns = {name: table[name].to_pylist() for name in table.column_names}
+                    num_rows = table.num_rows
+
+                    # Decode video frames for this batch if needed
+                    video_frames: dict[str, list[np.ndarray]] = {}
+                    if video_data_cache:
+                        row_times_ns = _normalize_times(table[index_column].to_pylist())
+                        for spec in image_specs:
+                            if spec.kind != "video":
+                                continue
+                            samples, times_ns, keyframes = video_data_cache[spec.key]
+                            frames = []
+                            for time_ns in row_times_ns:
+                                frames.append(_decode_video_frame(samples, times_ns, keyframes, int(time_ns), video_format))
+                            video_frames[spec.key] = frames
+
+                    for row_idx in tqdm(range(num_rows), desc=f"Frames ({segment_id}, batch {batch_offset})", leave=False):
+                        frame: dict[str, object] = {}
+                        if action_dim is not None and columns.action:
+                            frame["action"] = _to_float32_vector(
+                                data_columns[columns.action][row_idx],
+                                action_dim,
+                                "action",
+                            )
+                        if state_dim is not None and columns.state:
+                            frame["observation.state"] = _to_float32_vector(
+                                data_columns[columns.state][row_idx],
+                                state_dim,
+                                "state",
+                            )
+
+                        task_value = data_columns.get(columns.task, [None] * num_rows)[row_idx] if columns.task else None
+                        task_value = _unwrap_singleton(task_value)
+                        if task_value is None:
+                            task = task_default
+                        elif isinstance(task_value, (bytes, bytearray, memoryview)):
+                            task = bytes(task_value).decode("utf-8")
+                        else:
+                            task = str(task_value)
+                        frame["task"] = task
+
+                        for spec in image_specs:
+                            if spec.kind == "raw":
+                                buffer_column = f"{spec.path}:Image:buffer"
+                                format_column = f"{spec.path}:Image:format"
+                                image = _decode_raw_image(
+                                    data_columns[buffer_column][row_idx],
+                                    data_columns[format_column][row_idx],
+                                )
+                            elif spec.kind == "compressed":
+                                blob_column = f"{spec.path}:EncodedImage:blob"
+                                image = _decode_compressed_image(data_columns[blob_column][row_idx])
+                            elif spec.kind == "video":
+                                image = video_frames[spec.key][row_idx]
+                            else:
+                                raise ValueError(f"Unsupported image kind '{spec.kind}'.")
+                            frame[f"observation.images.{spec.key}"] = image
+
+                        lerobot_dataset.add_frame(frame)
+
+                    batch_offset += num_rows
+
+                    # If we got fewer rows than BATCH_SIZE, we've reached the end
+                    if num_rows < BATCH_SIZE:
+                        break
+
+                lerobot_dataset.save_episode()
+
+            except Exception as e:
+                print(f"Error processing segment {segment_id}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
 
         lerobot_dataset.finalize()
