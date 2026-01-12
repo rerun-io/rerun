@@ -54,7 +54,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         super().__init__("rr_turtlebot")
 
         # Assorted helpers for data conversions
-        self.model = PinholeCameraModel()
         self.cv_bridge = cv_bridge.CvBridge()
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
         self.subscribers: list[rclpy.Subscription] = []
@@ -86,15 +85,12 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def cam_info_callback(self, info: CameraInfo) -> None:
         time = Time.from_msg(info.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-
-        self.model.from_camera_info(info)
-
         # TODO: remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
         rr.log(
             "map/robot/camera/img",
             rr.Pinhole.from_fields(
-                resolution=[self.model.width, self.model.height],
-                image_from_camera=self.model.intrinsic_matrix(),
+                resolution=[info.width, info.height],
+                image_from_camera=PinholeCameraModel().from_camera_info(info).intrinsic_matrix(),
                 parent_frame=info.header.frame_id,
                 child_frame=info.header.frame_id + "_image_plane",
             ),
@@ -103,7 +99,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def odom_callback(self, odom: Odometry) -> None:
         time = Time.from_msg(odom.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-
         # Capture time-series data for the linear and angular velocities
         rr.log("odometry/vel", rr.Scalars(odom.twist.twist.linear.x))
         rr.log("odometry/ang_vel", rr.Scalars(odom.twist.twist.angular.z))
@@ -111,7 +106,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def image_callback(self, img: Image) -> None:
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-
         rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
         rr.log("map/robot/camera/img", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
@@ -158,11 +152,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def tf_callback(self, tf_msg: TFMessage) -> None:
-        time = None
         for transform in tf_msg.transforms:
             time = Time.from_msg(transform.header.stamp)
             rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-
             rr.log(
                 "transforms",
                 rr.Transform3D(
