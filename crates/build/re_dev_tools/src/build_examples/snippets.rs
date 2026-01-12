@@ -243,6 +243,7 @@ struct Config {
 struct OptOut {
     /// example name -> languages
     run: HashMap<String, Vec<String>>,
+
     /// example name (for backwards compatibility check opt-out)
     backwards_check: Vec<String>,
 }
