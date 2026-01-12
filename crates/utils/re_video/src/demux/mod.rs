@@ -221,8 +221,11 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
 }
 
 impl VideoDataDescription {
-    /// Get the range of samples which use a keyframe, including the keyframe sample itself.
-    pub fn get_keyframe_sample_range(&self, keyframe_idx: usize) -> Option<std::ops::Range<usize>> {
+    /// Get the group of pictures which use a keyframe, including the keyframe sample itself.
+    pub fn gop_sample_range_for_keyframe(
+        &self,
+        keyframe_idx: usize,
+    ) -> Option<std::ops::Range<usize>> {
         Some(
             *self.keyframe_indices.get(keyframe_idx)?
                 ..self

@@ -483,11 +483,11 @@ impl LeRobotDatasetV3 {
 
         // Determine the sample range to extract from the video
         let start_sample = video
-            .get_keyframe_sample_range(start_keyframe)
+            .gop_sample_range_for_keyframe(start_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
             .start;
         let end_sample = video
-            .get_keyframe_sample_range(end_keyframe)
+            .gop_sample_range_for_keyframe(end_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
             .end;
 
