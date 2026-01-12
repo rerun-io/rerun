@@ -135,6 +135,122 @@ impl PySchemaInternal {
 
         PyCapsule::new(py, ffi_schema, Some(capsule_name))
     }
+
+    /// List all unique archetype names in the schema.
+    ///
+    /// Returns a sorted list of fully-qualified archetype names.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of archetype names (e.g., `["rerun.archetypes.Points3D", ...]`)
+    fn archetypes(&self) -> Vec<String> {
+        let mut archetypes: Vec<String> = self
+            .schema
+            .component_columns()
+            .filter_map(|col| col.archetype.map(|a| a.to_string()))
+            .collect();
+
+        archetypes.sort();
+        archetypes.dedup();
+        archetypes
+    }
+
+    /// List all unique entity paths in the schema.
+    ///
+    /// Returns a sorted list of entity paths.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of entity paths (e.g., `["/world/points", "/world/camera", ...]`)
+    fn entities(&self) -> Vec<String> {
+        let mut entities: Vec<String> = self
+            .schema
+            .component_columns()
+            .map(|col| col.entity_path.to_string())
+            .collect();
+
+        entities.sort();
+        entities.dedup();
+        entities
+    }
+
+    /// List all unique component type names in the schema.
+    ///
+    /// Returns a sorted list of fully-qualified component type names.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of component type names (e.g., `["rerun.components.Position3D", ...]`)
+    fn component_types(&self) -> Vec<String> {
+        let mut component_types: Vec<String> = self
+            .schema
+            .component_columns()
+            .filter_map(|col| col.component_type.map(|c| c.to_string()))
+            .collect();
+
+        component_types.sort();
+        component_types.dedup();
+        component_types
+    }
+
+    /// Get columns matching ALL specified criteria.
+    ///
+    /// Filters columns using AND logic - a column must match all non-None criteria.
+    ///
+    /// Parameters
+    /// ----------
+    /// entity_path : str | None
+    ///     Optional entity path filter.
+    /// archetype : str | None
+    ///     Optional archetype name filter (fully-qualified, e.g., "rerun.archetypes.Points3D").
+    /// component_type : str | None
+    ///     Optional component type filter (fully-qualified, e.g., "rerun.components.Position3D").
+    ///
+    /// Returns
+    /// -------
+    /// list[ComponentColumnDescriptor]
+    ///     List of columns matching all provided criteria.
+    #[pyo3(signature = (entity_path=None, archetype=None, component_type=None))]
+    fn columns_for(
+        &self,
+        entity_path: Option<&str>,
+        archetype: Option<&str>,
+        component_type: Option<&str>,
+    ) -> Vec<PyComponentColumnDescriptor> {
+        self.schema
+            .component_columns()
+            .filter(|col| {
+                // Filter by entity_path if provided
+                if let Some(ep) = entity_path {
+                    if col.entity_path.to_string() != ep {
+                        return false;
+                    }
+                }
+
+                // Filter by archetype if provided
+                if let Some(arch) = archetype {
+                    match col.archetype {
+                        Some(col_arch) if col_arch.as_str() == arch => {}
+                        _ => return false,
+                    }
+                }
+
+                // Filter by component_type if provided
+                if let Some(ct) = component_type {
+                    match col.component_type {
+                        Some(col_ct) if col_ct.as_str() == ct => {}
+                        _ => return false,
+                    }
+                }
+
+                true
+            })
+            .map(|col| PyComponentColumnDescriptor(col.clone()))
+            .collect()
+    }
 }
 
 impl PySchemaInternal {
