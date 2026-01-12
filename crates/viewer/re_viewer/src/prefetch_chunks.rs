@@ -61,26 +61,21 @@ pub fn prefetch_chunks_for_active_recording(
         let connection_registry = connection_registry.clone();
         let origin = origin.clone();
 
-        // Annoying poll_promise API difference…
+        let fut = async move {
+            let mut client = connection_registry.client(origin).await.map_err(|err| {
+                re_log::warn_once!("Failed to connect to remote: {err}");
+            })?;
+            load_chunks(&mut client, &rb).await.map_err(|err| {
+                re_log::warn_once!("{err}");
+            })
+        };
+
+        // Annoying poll_promise API difference:
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                poll_promise::Promise::spawn_local(async move {
-                    let mut client = connection_registry.client(origin).await.map_err(|err| {
-                        re_log::warn_once!("Failed to connect to remote: {err}");
-                    })?;
-                    load_chunks(&mut client, &rb).await.map_err(|err| {
-                        re_log::warn_once!("{err}");
-                    })
-                })
+                poll_promise::Promise::spawn_local(fut)
             } else {
-                poll_promise::Promise::spawn_async(async move {
-                    let mut client = connection_registry.client(origin).await.map_err(|err| {
-                        re_log::warn_once!("Failed to connect to remote: {err}");
-                    })?;
-                    load_chunks(&mut client, &rb).await.map_err(|err| {
-                        re_log::warn_once!("{err}");
-                    })
-                })
+                poll_promise::Promise::spawn_async(fut)
             }
         }
     }) {
