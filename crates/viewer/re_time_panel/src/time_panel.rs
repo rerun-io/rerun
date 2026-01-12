@@ -1386,6 +1386,15 @@ impl TimePanel {
             let mut time_range_rect = ui.available_rect_before_wrap();
             time_range_rect.max.x -= space_needed_for_current_time;
 
+            data_density_graph::paint_loaded_indicator_bar(
+                ui,
+                &self.time_ranges_ui,
+                entity_db,
+                time_ctrl,
+                time_range_rect.min.y,
+                time_range_rect.x_range(),
+            );
+
             if time_range_rect.width() > 50.0 {
                 ui.allocate_rect(time_range_rect, egui::Sense::hover());
 
