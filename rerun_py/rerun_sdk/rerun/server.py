@@ -132,6 +132,10 @@ class Server:
         """Get the URL of the server to which clients can connect."""
         return self._internal.url()
 
+    def bind_ip(self) -> str:
+        """Get the IP that we've bound the server to."""
+        return self._internal.bind_ip()
+
     def client(self) -> CatalogClient:
         """
         Get a CatalogClient connected to this server.

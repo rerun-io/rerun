@@ -13,6 +13,7 @@ use re_server::{self, Args as ServerArgs, NamedPathCollection};
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
+    bind_ip: std::net::IpAddr,
     url: String,
 }
 
@@ -63,6 +64,7 @@ impl PyServerInternal {
 
             Ok(Self {
                 handle: Some(handle),
+                bind_ip,
                 url,
             })
         })
@@ -77,6 +79,11 @@ impl PyServerInternal {
     #[deprecated(note = "Renamed to `url`")]
     pub fn address(&self) -> String {
         self.url.clone()
+    }
+
+    /// Get the IP that we've bound the server to.
+    pub fn bind_ip(&self) -> String {
+        self.bind_ip.to_string()
     }
 
     pub fn shutdown(&mut self, py: Python<'_>) -> PyResult<()> {
