@@ -1276,7 +1276,7 @@ class _ServerInternal:
     def __init__(
         self,
         *,
-        address: str,
+        bind_ip: str,
         port: int,
         datasets: dict[str, list[str]],
         dataset_prefixes: dict[str, str],
@@ -1287,21 +1287,21 @@ class _ServerInternal:
 
         Parameters
         ----------
-        address
-            The address to bind the server to.
-        port
+        bind_ip:
+            The IP address to bind the server to.
+        port:
             The port to bind the server to.
-        datasets
+        datasets:
             Optional dictionary mapping dataset names to lists of RRD file paths.
-        dataset_prefixes
+        dataset_prefixes:
             Optional dictionary mapping dataset names to directories containing RRDs.
-        tables
+        tables:
             Optional dictionary mapping table names to lance file paths,
             which will be loaded and made available when the server starts.
 
         """
 
-    def address(self) -> str: ...
+    def url(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
 

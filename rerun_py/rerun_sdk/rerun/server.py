@@ -5,6 +5,9 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typing_extensions import deprecated
+
+from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import _ServerInternal
 
 from .catalog import CatalogClient
@@ -44,10 +47,11 @@ class Server:
     def __init__(
         self,
         *,
-        address: str = "0.0.0.0",
+        bind_ip: str = "0.0.0.0",
         port: int | None = None,
         datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
+        addr: str = "0.0.0.0",
     ) -> None:
         """
         Create a new Rerun server instance and start it.
@@ -57,8 +61,8 @@ class Server:
 
         Parameters
         ----------
-        address:
-            The address to bind the server to.
+        bind_ip:
+            The IP address to bind the server to.
         port:
             The port to bind the server to, or `None` to select a random available port.
         datasets:
@@ -69,8 +73,18 @@ class Server:
         tables:
             Optional dictionary mapping table names to lance file paths which will be loaded and made available when the
             server starts.
+        addr:
+            DEPRECATED: Renamed to `bind_ip`
 
         """
+
+        if bind_ip == "0.0.0.0" and addr != "0.0.0.0":
+            bind_ip = addr
+            _send_warning_or_raise(
+                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `bind_ip`.",
+                depth_to_user_code=2,
+                warning_type=DeprecationWarning,
+            )
 
         # Select a random open port if none is specified
         resolved_port: int
@@ -102,24 +116,21 @@ class Server:
                     all_datasets[name] = [str(p.absolute()) for p in paths]
 
         self._internal = _ServerInternal(
-            address=address,
+            bind_ip=bind_ip,
             port=resolved_port,
             datasets=all_datasets,
             dataset_prefixes=all_dataset_prefixes,
             tables={name: str(path) for name, path in (tables or {}).items()},
         )
 
+    def url(self) -> str:
+        """Get the URL of the server to which clients can connect."""
+        return self._internal.url()
+
+    @deprecated("Renamed to `url`.")
     def address(self) -> str:
-        """
-        Get the address of the server.
-
-        Returns
-        -------
-        str
-            The address of the server.
-
-        """
-        return self._internal.address()
+        """Get the URL of the server to which clients can connect."""
+        return self._internal.url()
 
     def client(self) -> CatalogClient:
         """
@@ -145,7 +156,7 @@ class Server:
         if not self._internal.is_running():
             raise RuntimeError("Cannot create client: server is not running.")
 
-        return CatalogClient(self._internal.address(), token=None)
+        return CatalogClient(self._internal.url(), token=None)
 
     def is_running(self) -> bool:
         """

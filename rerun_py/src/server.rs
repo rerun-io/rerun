@@ -1,3 +1,5 @@
+#![expect(deprecated)] // the py-bindings macro uses the functions we mark as deprecated
+
 use std::net::SocketAddr;
 
 use pyo3::exceptions::PyValueError;
@@ -11,17 +13,17 @@ use re_server::{self, Args as ServerArgs, NamedPathCollection};
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
-    address: SocketAddr,
+    url: String,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (*, address, port, datasets, dataset_prefixes, tables))]
-    #[pyo3(text_signature = "(self, *, address, port, datasets, dataset_prefixes, tables)")]
+    #[pyo3(signature = (*, bind_ip, port, datasets, dataset_prefixes, tables))]
+    #[pyo3(text_signature = "(self, *, bind_ip, port, datasets, dataset_prefixes, tables)")]
     pub fn new(
         py: Python<'_>,
-        address: &str,
+        bind_ip: &str,
         port: u16,
         datasets: &Bound<'_, PyDict>,
         dataset_prefixes: &Bound<'_, PyDict>,
@@ -33,19 +35,26 @@ impl PyServerInternal {
 
         // we can re-use the CLI argument to construct the server
         let args = ServerArgs {
-            addr: address.to_owned(),
+            ip: bind_ip.to_owned(),
             port,
             datasets,
             dataset_prefixes,
             tables,
         };
 
-        let address = SocketAddr::new(
-            args.addr.parse().map_err(|err| {
-                PyValueError::new_err(format!("Invalid address: {}: {err}", args.addr))
-            })?,
-            args.port,
-        );
+        let bind_ip: std::net::IpAddr = bind_ip
+            .parse()
+            .map_err(|err| PyValueError::new_err(format!("Invalid IP: {bind_ip:?}: {err}")))?;
+
+        let connect_ip = if bind_ip.is_unspecified() {
+            // We usually cannot connect to 0.0.0.0, so tell clients to connect to 127.0.0.1 instead:
+            std::net::Ipv4Addr::LOCALHOST.into()
+        } else {
+            bind_ip
+        };
+        let connect_address = SocketAddr::new(connect_ip, args.port);
+
+        let url = format!("rerun+http://{connect_address}");
 
         crate::utils::wait_for_future(py, async {
             let (handle, _) = args.create_server_handle().await.map_err(|err| {
@@ -54,13 +63,20 @@ impl PyServerInternal {
 
             Ok(Self {
                 handle: Some(handle),
-                address,
+                url,
             })
         })
     }
 
+    /// The address of the server to which clients can connect.
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
+    /// The address of the server to which clients can connect.
+    #[deprecated(note = "Renamed to `url`")]
     pub fn address(&self) -> String {
-        format!("rerun+http://{}", self.address)
+        self.url.clone()
     }
 
     pub fn shutdown(&mut self, py: Python<'_>) -> PyResult<()> {
