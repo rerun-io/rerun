@@ -88,11 +88,11 @@ def run_example(example: str, extra_args: list[str]) -> None:
     env["RERUN_STRICT"] = "1"
     env["RERUN_PANIC_ON_WARN"] = "1"
 
-    cmd = ["python", "-m", "rerun", "--port", str(PORT), "--test-receive"]
+    cmd = ["uvpy", "-m", "rerun", "--port", str(PORT), "--test-receive"]
     rerun_process = subprocess.Popen(cmd, env=env)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
-    cmd = ["python", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy", *extra_args]
+    cmd = ["uvpy", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy", *extra_args]
     python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")
