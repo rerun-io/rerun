@@ -1266,7 +1266,7 @@ class ViewerClient:
         A table is represented as a dataframe defined by an Arrow record batch.
         """
 
-    def save_screenshot(self, file_path: str, view_id: str | None = None) -> None:
+    def save_screenshot(self, file_path: str, *, view_id: str | None = None) -> None:
         """
         Saves a screenshot to a file.
 

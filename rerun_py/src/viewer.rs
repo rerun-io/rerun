@@ -52,6 +52,7 @@ impl PyViewerClient {
     ///
     /// If `view_id` is provided, screenshots that specific view.
     /// If `view_id` is None, screenshots the entire viewer.
+    #[pyo3(signature = (file_path, view_id = None))]
     fn save_screenshot(
         self_: Py<Self>,
         file_path: String,
