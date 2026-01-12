@@ -5,7 +5,7 @@ order: 1
 
 ## Setup
 
-Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-rerun.md#installing-the-viewer).
+Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-rerun/viewer.md).
 
 ## Learning by example
 
