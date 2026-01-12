@@ -13,6 +13,7 @@ use re_sdk_types::{ComponentDescriptor, ComponentSet};
 
 // ---
 
+#[expect(clippy::unwrap_used)]
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
@@ -23,7 +24,8 @@ fn query_latest_array(
 
     let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component_descr.component)
-        .into_iter()
+        .to_iter()
+        .unwrap()
         .filter_map(|chunk| {
             let chunk = chunk
                 .latest_at(query, component_descr.component)
@@ -345,7 +347,8 @@ fn latest_at() -> anyhow::Result<()> {
                         &entity_path,
                         false, /* don't include static data */
                     )
-                    .into_iter()
+                    .to_iter()
+                    .unwrap()
                     .map(|chunk| chunk.id())
                     .collect_vec();
                 chunk_ids.sort();
@@ -484,7 +487,8 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
                     &entity_path,
                     false, /* don't include static data */
                 )
-                .into_iter()
+                .to_iter()
+                .unwrap()
                 .map(|chunk| {
                     eprintln!("{chunk}");
                     chunk.id()
@@ -646,7 +650,8 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
                     &entity_path,
                     false, /* don't include static data */
                 )
-                .into_iter()
+                .to_iter()
+                .unwrap()
                 .map(|chunk| {
                     eprintln!("{chunk}");
                     chunk.id()
@@ -854,7 +859,7 @@ fn range() -> anyhow::Result<()> {
 
             eprintln!("================= {component_descr} @ {query:?} ===============");
             let mut results_processed = 0usize;
-            for chunk in results {
+            for chunk in results.to_iter().unwrap() {
                 let chunk = chunk.range(&query, component_descr.component);
                 eprintln!("{chunk}");
                 for (data_time, row_id) in chunk.iter_indices(&timeline_frame_nr) {
@@ -972,7 +977,8 @@ fn range() -> anyhow::Result<()> {
                         &entity_path,
                         false, /* don't include static data */
                     )
-                    .into_iter()
+                    .to_iter()
+                    .unwrap()
                     .map(|chunk| {
                         eprintln!("{chunk}");
                         chunk.id()
@@ -1148,7 +1154,8 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
                 &entity_path,
                 false, /* don't include static data */
             )
-            .into_iter()
+            .to_iter()
+            .unwrap()
             .map(|chunk| {
                 eprintln!("{chunk}");
                 chunk.id()
