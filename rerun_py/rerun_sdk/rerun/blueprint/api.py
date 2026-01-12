@@ -188,17 +188,18 @@ class View:
                 stream.log(log_path, VisualizerOverrides(visualizer_types))
 
     def _log_visualizer_override(
-        self, stream: RecordingStream, log_path: str, visualizer: VisualizerLike
+        self, stream: RecordingStream, base_override_path: str, visualizer: VisualizerLike
     ) -> str | None:
+        # TODO: generate a visualizer instruction id
         if isinstance(visualizer, VisualizableArchetype):
             visualizer = visualizer.visualizer()
 
         if isinstance(visualizer, Visualizer):
             if visualizer.overrides is not None:
-                stream.log(log_path, visualizer.overrides)
+                stream.log(base_override_path, visualizer.overrides)
             return visualizer.visualizer_type
         else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
-            stream.log(log_path, visualizer)
+            stream.log(base_override_path, visualizer)
             return None
 
     def _ipython_display_(self) -> None:
