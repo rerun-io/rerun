@@ -265,6 +265,13 @@ impl AsyncDecoder for WebVideoDecoder {
             .send(OutputCallbackMessage::Reset)
             .ok();
 
+        // For all we know, the first frame timestamp may have changed.
+        self.first_frame_pts = video_descr
+            .samples
+            .iter()
+            .find_map(|s| s.sample())
+            .map_or(Time::ZERO, |s| s.presentation_timestamp);
+
         if *IS_FIREFOX {
             // As of Firefox 140.0.4 we observe frequent tab crashes when calling `reset` on a video decoder.
             // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
@@ -279,13 +286,6 @@ impl AsyncDecoder for WebVideoDecoder {
             self.decoder = decoder;
             self.output_callback_tx = output_callback_tx;
         }
-
-        // For all we know, the first frame timestamp may have changed.
-        self.first_frame_pts = video_descr
-            .samples
-            .front()
-            .and_then(|s| s.sample())
-            .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         let encoding_details = video_descr
             .encoding_details

@@ -355,7 +355,7 @@ fn load_video_data_from_chunks(
         mp4_tracks: Default::default(),
     };
 
-    let mut known_chunk_offsets = BTreeMap::new();
+    let mut known_chunk_ranges = BTreeMap::new();
 
     let known_chunks = if let Some(entity_timelines) = store
         .rrd_manifest_index()
@@ -374,21 +374,25 @@ fn load_video_data_from_chunks(
         .map(|c| c.sorted_by_timeline_if_unsorted(&timeline))
         .collect::<Vec<_>>();
 
-    load_known_chunk_offsets(
+    load_known_chunk_ranges(
         &mut video_descr,
-        &mut known_chunk_offsets,
+        &mut known_chunk_ranges,
         known_chunks,
         &sorted_samples,
         &timeline,
     );
 
     for chunk in &sorted_samples {
-        let Some(known_offset) = known_chunk_offsets.get(&chunk.id()) else {
+        let Some(known_range) = known_chunk_ranges.get(&chunk.id()) else {
+            assert!(
+                !cfg!(debug_assertions),
+                "[DEBUG] We just made sure this chunk's range was registered"
+            );
             continue;
         };
 
         if let Err(err) =
-            read_samples_from_known_chunk(timeline, chunk, known_offset, &mut video_descr)
+            read_samples_from_known_chunk(timeline, chunk, known_range, &mut video_descr)
         {
             match err {
                 VideoStreamProcessingError::OutOfOrderSamples => {
@@ -401,7 +405,7 @@ fn load_video_data_from_chunks(
         }
     }
 
-    Ok((video_descr, known_chunk_offsets))
+    Ok((video_descr, known_chunk_ranges))
 }
 
 fn timescale_for_timeline(
@@ -452,7 +456,7 @@ fn read_samples_from_chunk(
 fn read_samples_from_known_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
-    known_offset: &ChunkSampleRange,
+    known_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
 ) -> Result<(), VideoStreamProcessingError> {
     let re_video::VideoDataDescription {
@@ -495,15 +499,15 @@ fn read_samples_from_known_chunk(
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
     let split_idx = keyframe_indices
-        .binary_search(&known_offset.first_sample)
+        .binary_search(&known_range.first_sample)
         .unwrap_or_else(|e| e);
 
     let end_keyframes = keyframe_indices
         .drain(split_idx..)
-        .filter(|idx| *idx >= known_offset.first_sample + chunk.num_rows())
+        .filter(|idx| *idx >= known_range.first_sample + chunk.num_rows())
         .collect::<Vec<_>>();
 
-    let range = known_offset.first_sample..known_offset.last_sample + 1;
+    let range = known_range.first_sample..known_range.last_sample + 1;
     let mut samples_iter = samples
         .iter_index_range_clamped_mut(&range)
         .filter(|(_, c)| c.source_id() == chunk.id().as_tuid())
@@ -579,7 +583,7 @@ fn read_samples_from_known_chunk(
         *sample = re_video::SampleMetadataState::Skip(chunk.id().as_tuid());
     }
 
-    let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= known_offset.last_sample);
+    let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= known_range.last_sample);
     let sort_to = keyframe_indices.len() + n;
     keyframe_indices.extend(end_keyframes);
 
@@ -587,7 +591,7 @@ fn read_samples_from_known_chunk(
         keyframe_indices[split_idx..sort_to].sort_unstable();
     }
 
-    update_sample_durations(known_offset, samples)?;
+    update_sample_durations(known_range, samples)?;
 
     if cfg!(debug_assertions)
         && let Err(err) = video_descr.sanity_check()
@@ -959,7 +963,7 @@ impl Cache for VideoStreamCache {
 }
 
 /// `loaded_chunks` should be sorted by start time, and internally sorted on `timeline`.
-fn load_known_chunk_offsets(
+fn load_known_chunk_ranges(
     data_descr: &mut re_video::VideoDataDescription,
     known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
     chunks_from_manifest: &BTreeMap<ChunkId, re_log_encoding::RrdManifestTemporalMapEntry>,
