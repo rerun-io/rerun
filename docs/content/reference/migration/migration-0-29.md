@@ -49,6 +49,13 @@ entry.set_name("new_name")
 
 The deprecated method will emit a `DeprecationWarning` and will be removed in a future release.
 
+### `CatalogClient`: Renamed `addr` constructor parameter
+The first argument to `CatalogClient` is now called `url`.
+The other arguments (including `token`) are now kw-args.
+
+### `Server`: Renamed `addr` constructor parameter
+The first argument to `Server` is now called `bind_ip`.
+
 ### Deprecated `rerun.dataframe` API has been removed
 
 The `rerun.dataframe` module and its associated APIs, which were deprecated in 0.28, have now been fully removed. This includes `RecordingView`, `Recording.view()`, and the ability to run dataframe queries locally via this module.
@@ -60,3 +67,6 @@ Please refer to the [0.28 migration guide section on `RecordingView` and local d
 The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have now been fully removed. If you were using any of these deprecated methods, you must update your code to use the new APIs.
 
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
+
+## CLI
+`rerun server --addr …` has been renamed `rerun server --ip …`
