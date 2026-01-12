@@ -63,12 +63,11 @@ def main() -> None:
     )
     parser.add_argument("--num-frames", type=int, default=None, help="The number of frames to log")
 
-    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(
-        args,
+    rr.init(
         "rerun_example_live_camera_edge_detection",
+        spawn=False,
         default_blueprint=rrb.Vertical(
             rrb.Horizontal(
                 rrb.Spatial2DView(origin="/image/rgb", name="Video"),
@@ -78,10 +77,9 @@ def main() -> None:
             row_shares=[1, 2],
         ),
     )
+    rr.serve_web_viewer(open_browser=True, connect_to=rr.serve_grpc(newest_first=True))
 
     run_canny(args.num_frames)
-
-    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

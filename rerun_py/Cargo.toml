@@ -15,7 +15,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "perf_telemetry"]
+default = ["extension-module", "perf_telemetry", "server", "web_viewer"]
 
 ## Extra features that aren't ready to be included in release builds yet.
 extra = []
