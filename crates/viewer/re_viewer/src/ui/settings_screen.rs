@@ -109,6 +109,7 @@ fn settings_screen_ui_impl(
         timestamp_format,
         video,
         mapbox_access_token,
+        experimental_any_scalars: _,
 
         #[cfg(not(target_arch = "wasm32"))]
             cache_directory: _, // not yet exposed
@@ -162,19 +163,6 @@ fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOption
     if larger_than_ram {
         ui.warning_label("This is an experimental feature that is not yet fully supported.");
     }
-}
-
-fn plot_any_scalars_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
-    ui.re_checkbox(
-            &mut app_options.experimental_any_scalars,
-            "Plot any scalars",
-        )
-        .on_hover_ui(|ui| {
-            ui.markdown_ui(
-                "The time series plot handles arbitrary scalar values, not just components logged via `archetypes.Scalars`.\n\n\
-                Also allows adding multiple visualizers of the same type to the same entity, with the extra option of specifying a component remapping.",
-            );
-        });
 }
 
 fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {

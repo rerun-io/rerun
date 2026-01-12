@@ -502,20 +502,10 @@ fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
     entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
-) -> f32 {
-    // If there's several entity paths (with pinhole cameras) for the same transform id,
-    // we don't know which camera plane to use.
-    //
-    // That's rather strange, but a scene can be set up for this to happen!
-    // Unfortunately it's also really hard to log a warning or anything at this point since
-    // we don't know the full entity path names.
-    //
-    // We're letting it slide for now since it's kinda hard to get into that situation.
-    let entity_path_hash = *entity_path.first();
-
+) -> f64 {
     let plane_dist_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
-
-    ctx.query_result
+    **ctx
+        .query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
         .map(|data_result| {
