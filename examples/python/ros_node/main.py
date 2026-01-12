@@ -32,9 +32,7 @@ try:
     from sensor_msgs.msg import CameraInfo, Image, LaserScan
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import String
-    from tf2_ros import TransformException
-    from tf2_ros.buffer import Buffer
-    from tf2_ros.transform_listener import TransformListener
+    from tf2_ros_msg import TFMessage
 
 except ImportError:
     print(
@@ -59,18 +57,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         # Allow concurrent callbacks
         self.callback_group = ReentrantCallbackGroup()
-
-        # Subscribe to TF topics
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-
-        # Define a mapping for transforms
-        self.path_to_frame = {
-            "map": "map",
-            "map/robot": "base_footprint",
-            "map/robot/scan": "rplidar_link",
-            "map/robot/camera": "oakd_rgb_camera_optical_frame",
-        }
 
         # Assorted helpers for data conversions
         self.model = PinholeCameraModel()
@@ -135,28 +121,22 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             callback_group=self.callback_group,
         )
 
-    def log_tf_as_transform3d(self, path: str, time: Time) -> None:
-        """
-        Helper to look up a transform with tf and log using `log_transform3d`.
+        self.tf_sub = self.create_subscription(
+            TFMessage,
+            "/tf",
+            self.tf_callback,
+            10,
+            callback_group=self.callback_group,
+        )
 
-        Note: we do the lookup on the client side instead of re-logging the raw transforms until
-        Rerun has support for Derived Transforms [#1533](https://github.com/rerun-io/rerun/issues/1533)
-        """
-        # Get the parent path
-        parent_path = path.rsplit("/", 1)[0]
-
-        # Find the corresponding frames from the mapping
-        child_frame = self.path_to_frame[path]
-        parent_frame = self.path_to_frame[parent_path]
-
-        # Do the TF lookup to get transform from child (source) -> parent (target)
-        try:
-            tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
-            t = tf.transform.translation
-            q = tf.transform.rotation
-            rr.log(path, rr.Transform3D(translation=[t.x, t.y, t.z], rotation=rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w])))
-        except TransformException as ex:
-            print(f"Failed to get transform: {ex}")
+        # Static TF is published as latching
+        self.tf_static_sub = self.create_subscription(
+            TFMessage,
+            "/tf_static",
+            self.tf_callback,
+            qos_profile=latching_qos,
+            callback_group=self.callback_group,
+        )
 
     def cam_info_callback(self, info: CameraInfo) -> None:
         """Log a `CameraInfo` with `log_pinhole`."""
@@ -235,6 +215,30 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             entity_path_prefix="map/robot/urdf",
             static=True,
         )
+
+    def tf_callback(self, tf_msg: TFMessage) -> None:
+        """Process incoming TF messages to update Rerun transforms."""
+        time = None
+        for transform in tf_msg.transforms:
+            time = Time.from_msg(transform.header.stamp)
+            rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+
+            rr.log(
+                "transforms",
+                rr.Transform3D(translation=[
+                    transform.transform.translation.x,
+                    transform.transform.translation.y,
+                    transform.transform.translation.z,
+                ], rotation=rr.Quaternion(xyzw=[
+                    transform.transform.rotation.x,
+                    transform.transform.rotation.y,
+                    transform.transform.rotation.z,
+                    transform.transform.rotation.w,
+                ]),
+                parent_frame=transform.header.frame_id,
+                child_frame=transform.child_frame_id,
+                ),
+            )
 
 
 def main() -> None:
