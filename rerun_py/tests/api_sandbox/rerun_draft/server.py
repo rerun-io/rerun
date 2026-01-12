@@ -12,20 +12,20 @@ if TYPE_CHECKING:
 
 
 class Server:
-    address = _server.Server.address
+    bind_ip = _server.Server.bind_ip
     is_running = _server.Server.is_running
     shutdown = _server.Server.shutdown
 
     def __init__(
         self,
         *,
-        address: str = "0.0.0.0",
+        bind_ip: str = "0.0.0.0",
         port: int | None = None,
         datasets: dict[str, PathLike[str]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
     ) -> None:
         self._internal = _server.Server(
-            address=address,
+            bind_ip=bind_ip,
             port=port,
             datasets=datasets,
             tables=tables,
@@ -43,5 +43,9 @@ class Server:
     ) -> None:
         self._internal.__exit__(exc_type, exc_value, traceback)
 
+    def url(self) -> str:
+        """Get the URL of the server to which clients can connect."""
+        return self._internal.url()
+
     def client(self) -> CatalogClient:
-        return CatalogClient(address=self.address())
+        return CatalogClient(self.url())
