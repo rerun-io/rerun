@@ -568,10 +568,6 @@ class TableEntry(Entry):
         """Returns the schema of the table."""
         return self.reader().schema()
 
-    def to_polars(self) -> Any:
-        """Returns the table as a Polars DataFrame."""
-        return self.reader().to_polars()
-
 
 AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
