@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use egui::{RichText, Widget as _};
+use egui::{RichText, TextWrapMode, Widget as _};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_ui::{DesignTokens, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, EditRedapServerModalCommand, Item, RecordingOrTable, SystemCommand,
@@ -52,9 +52,9 @@ impl RecordingPanel {
 
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
-                "Recordings",
+                "Sources",
                 Some(
-                    "These are the Recordings currently loaded in the Viewer, organized by application",
+                    "These are the Sources currently loaded in the Viewer, organized by application",
                 ),
                 |ui| {
                     add_button_ui(ctx, ui, &recording_panel_data);
@@ -167,12 +167,8 @@ fn all_sections_ui(
     //
 
     if recording_panel_data.is_empty() {
-        ui.list_item().interactive(false).show_flat(
-            ui,
-            re_ui::list_item::LabelContent::new("No recordings loaded")
-                .weak(true)
-                .italics(true),
-        );
+        ui.add_space(ui.tokens().panel_margin().left as f32);
+        ui.weak("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer");
     }
 
     //
