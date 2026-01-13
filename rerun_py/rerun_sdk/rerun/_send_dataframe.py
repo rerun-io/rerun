@@ -101,3 +101,178 @@ def send_dataframe(df: pa.RecordBatchReader | pa.Table, recording: RecordingStre
 
     for batch in df:
         send_record_batch(batch, recording)
+
+
+def view_contents_for_archetypes(
+    schema: Schema,
+    archetypes: str | list[str],
+    *,
+    entity_path: str | None = None,
+) -> ViewContentsLike:
+    """
+    Create a ViewContentsLike filter for specific archetypes.
+
+    This helper function makes it easy to filter views to specific archetypes
+    using the schema exploration methods.
+
+    Parameters
+    ----------
+    schema : Schema
+        The schema to query for columns.
+    archetypes : str | list[str]
+        Archetype name or list of archetype names (fully-qualified,
+        e.g., "rerun.archetypes.Points3D").
+    entity_path : str | None
+        Optional entity path filter. If provided, only columns at this
+        entity path will be included.
+
+    Returns
+    -------
+    ViewContentsLike
+        A contents specification that can be passed to `Recording.view()`
+        or `DatasetEntry.dataframe_query_view()`.
+
+    Examples
+    --------
+    Filter a recording to only Points3D data:
+
+    ```python
+    import rerun as rr
+
+    recording = rr.dataframe.load_recording("recording.rrd")
+    schema = recording.schema()
+
+    # Create view with only Points3D archetype
+    contents = rr.dataframe.view_contents_for_archetypes(
+        schema,
+        "rerun.archetypes.Points3D"
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter to multiple archetypes:
+
+    ```python
+    contents = rr.dataframe.view_contents_for_archetypes(
+        schema,
+        ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter to a specific archetype at a specific entity:
+
+    ```python
+    contents = rr.dataframe.view_contents_for_archetypes(
+        schema,
+        "rerun.archetypes.Points3D",
+        entity_path="/world/points"
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    """
+    if isinstance(archetypes, str):
+        archetypes = [archetypes]
+
+    all_components = []
+    for archetype in archetypes:
+        columns = schema.columns_for(
+            archetype=archetype,
+            entity_path=entity_path,
+        )
+        # Extract just the component part (e.g., "Points3D:positions")
+        # not the full column name (e.g., "/world/points:Points3D:positions")
+        all_components.extend([col.component for col in columns])
+
+    # Return as dict with wildcard path and specific component names
+    # This tells the view to include these components from any matching entity
+    return {"/**": all_components}
+
+
+def view_contents_for_component_types(
+    schema: Schema,
+    component_types: str | list[str],
+    *,
+    entity_path: str | None = None,
+) -> ViewContentsLike:
+    """
+    Create a ViewContentsLike filter for specific component types.
+
+    This helper function makes it easy to filter views to specific component types
+    using the schema exploration methods.
+
+    Parameters
+    ----------
+    schema : Schema
+        The schema to query for columns.
+    component_types : str | list[str]
+        Component type name or list of component type names (fully-qualified,
+        e.g., "rerun.components.Position3D").
+    entity_path : str | None
+        Optional entity path filter. If provided, only columns at this
+        entity path will be included.
+
+    Returns
+    -------
+    ViewContentsLike
+        A contents specification that can be passed to `Recording.view()`
+        or `DatasetEntry.dataframe_query_view()`.
+
+    Examples
+    --------
+    Filter a recording to only Position3D components:
+
+    ```python
+    import rerun as rr
+
+    recording = rr.dataframe.load_recording("recording.rrd")
+    schema = recording.schema()
+
+    # Create view with only Position3D components
+    contents = rr.dataframe.view_contents_for_component_types(
+        schema,
+        "rerun.components.Position3D"
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter to multiple component types:
+
+    ```python
+    contents = rr.dataframe.view_contents_for_component_types(
+        schema,
+        ["rerun.components.Position3D", "rerun.components.Color"]
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter to a specific component type at a specific entity:
+
+    ```python
+    contents = rr.dataframe.view_contents_for_component_types(
+        schema,
+        "rerun.components.Position3D",
+        entity_path="/world/points"
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    """
+    if isinstance(component_types, str):
+        component_types = [component_types]
+
+    all_components = []
+    for component_type in component_types:
+        columns = schema.columns_for(
+            component_type=component_type,
+            entity_path=entity_path,
+        )
+        # Extract just the component part (e.g., "Points3D:positions")
+        # not the full column name (e.g., "/world/points:Points3D:positions")
+        all_components.extend([col.component for col in columns])
+
+    # Return as dict with wildcard path and specific component names
+    # This tells the view to include these components from any matching entity
+    return {"/**": all_components}
+>>>>>>> 8c388a3028f (Follow-up 2: Add view contents helper functions for filtering):rerun_py/rerun_sdk/rerun/dataframe.py
