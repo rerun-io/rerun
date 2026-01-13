@@ -325,6 +325,7 @@ impl ViewClass for TimeSeriesView {
                             components
                                 .iter()
                                 .any(|c| {
+                                    // If it's a builtin type, it has to be a `Scalars` datatype. For non-builtin types we allow for anything compatible.
                                     *c == Scalars::descriptor_scalars().component
                                         || !ctx.reflection().component_identifiers.contains_key(c)
                                 })

@@ -174,13 +174,7 @@ impl IdentifiedViewSystem for Points3DVisualizer {
 
 impl VisualizerSystem for Points3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<Points3D>();
-
-        query_info.required = re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-            [re_sdk_types::components::Position3D::arrow_datatype()].into(),
-        );
-
-        query_info
+        VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
     fn execute(

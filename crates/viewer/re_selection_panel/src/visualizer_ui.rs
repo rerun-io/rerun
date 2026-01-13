@@ -237,9 +237,6 @@ fn visualizer_components(
             .collect::<Vec<_>>()
     };
 
-    // If a component mapping is changed, we need to update the blueprint.
-    let mut changed_component_mappings = vec![];
-
     // TODO(andreas): Should we show required components in a special way?
     for component_descr in sorted_component_list_by_archetype_for_ui(
         ctx.viewer_ctx.reflection(),
@@ -452,7 +449,6 @@ fn visualizer_components(
                 &entity_components_with_datatype,
                 component_descr,
                 instruction,
-                &mut changed_component_mappings,
             );
         };
 
@@ -497,23 +493,6 @@ fn visualizer_components(
             });
         }
     }
-
-    if !changed_component_mappings.is_empty() {
-        let mut new_instruction = instruction.clone();
-        for mapping in changed_component_mappings {
-            // Set or override the mapping
-            if let Some(orig_mapping) = new_instruction
-                .component_mappings
-                .iter_mut()
-                .find(|m| m.target == mapping.target)
-            {
-                orig_mapping.selector = mapping.selector;
-            } else {
-                new_instruction.component_mappings.push(mapping);
-            }
-        }
-        new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-    }
 }
 
 fn source_component_ui(
@@ -522,7 +501,6 @@ fn source_component_ui(
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
-    changed_component_mappings: &mut Vec<VisualizerComponentMapping>,
 ) {
     if !crate::ENABLE_COMPONENT_MAPPINGS_UI {
         return;
@@ -566,13 +544,13 @@ fn source_component_ui(
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
                     .show_ui(ui, |ui| {
-                        for option in [""].into_iter().chain(all_source_options.into_iter()) {
+                        for option in std::iter::once("").chain(all_source_options.into_iter()) {
                             if ui.button(option).clicked() {
-                                changed_component_mappings.push(
-                                    re_viewer_context::VisualizerComponentMapping {
-                                        selector: option.into(),
-                                        target: component_descr.component,
-                                    },
+                                save_component_mapping(
+                                    ctx,
+                                    instruction,
+                                    component_descr.component,
+                                    option.into(),
                                 );
                             }
                         }
@@ -580,6 +558,32 @@ fn source_component_ui(
             }),
         );
     });
+}
+
+fn save_component_mapping(
+    ctx: &ViewContext<'_>,
+    instruction: &VisualizerInstruction,
+    target_component: ComponentIdentifier,
+    selector: ComponentIdentifier,
+) {
+    let mut updated_instruction = instruction.clone();
+
+    // Set or override the mapping
+    if let Some(orig_mapping) = updated_instruction
+        .component_mappings
+        .iter_mut()
+        .find(|m| m.target == target_component)
+    {
+        orig_mapping.selector = selector;
+    } else {
+        updated_instruction.component_mappings.push(
+            re_viewer_context::VisualizerComponentMapping {
+                selector,
+                target: target_component,
+            },
+        );
+    }
+    updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 }
 
 fn editable_blueprint_component_list_item(
