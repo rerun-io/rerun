@@ -118,13 +118,48 @@ impl crate::DataUi for EntityDb {
 
             {
                 ui.grid_left_hand_label("Size");
-                ui.label(re_format::format_bytes(self.total_size_bytes() as _))
+
+                let total_size_bytes = self.total_size_bytes();
+                let static_size = if self.rrd_manifest_index().has_manifest() {
+                    self.rrd_manifest_index().full_uncompressed_size().max(total_size_bytes)
+                } else {
+                    total_size_bytes
+                };
+
+                ui.label(re_format::format_bytes(static_size as _))
                     .on_hover_text(
                         "Approximate size in RAM (decompressed).\n\
                          If you hover an entity in the streams view (bottom panel) you can see the \
                          size of individual entities.",
                     );
                 ui.end_row();
+
+                if self.rrd_manifest_index().has_manifest() {
+                    ui.grid_left_hand_label("Downloaded");
+
+
+                    let (memory_limit, max_downloaded) = if let Some(limit) = ctx.global_context.memory_limit.max_bytes && limit < static_size {
+                        (true, limit)
+                    } else {
+                        (false, static_size)
+                    };
+
+                    let current = re_format::format_bytes(total_size_bytes as _);
+                    let max_downloaded =  re_format::format_bytes(max_downloaded as _);
+
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{current} / {max_downloaded}"));
+
+                        if memory_limit {
+                            let rect = ui.small_icon(&re_ui::icons::INFO, None);
+
+                            ui.allocate_rect(rect, egui::Sense::hover()).on_hover_text(format!("Download limited to {max_downloaded} memory budget"));
+                        }
+                    });
+
+
+                    ui.end_row();
+                }
             }
 
             if ui_layout.is_selection_panel() {
