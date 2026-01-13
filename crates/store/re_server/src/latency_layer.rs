@@ -55,7 +55,9 @@ where
         let Self { mut inner, rtt } = self.clone();
         Box::pin(async move {
             let resp = inner.call(req).await;
-            sleep(rtt).await;
+            if rtt != Duration::ZERO {
+                sleep(rtt).await;
+            }
             resp
         })
     }
