@@ -83,7 +83,7 @@ impl PyDatasetViewInternal {
     }
 
     /// Filter schema columns based on content filters or column selectors.
-    fn filter_schema(&self, schema: SorbetColumnDescriptors) -> SorbetColumnDescriptors {
+    fn filter_schema(&self, schema: SorbetColumnDescriptors) -> PyResult<SorbetColumnDescriptors> {
         // If we have column selectors, use component-level filtering
         if let Some(column_selectors) = &self.column_selectors {
             return self.filter_schema_by_column_selectors(schema, column_selectors);
@@ -91,7 +91,7 @@ impl PyDatasetViewInternal {
 
         // Otherwise use entity path filtering
         if self.content_filters.is_empty() {
-            return schema;
+            return Ok(schema);
         }
 
         let filter = self.resolved_entity_path_filter();
@@ -108,9 +108,9 @@ impl PyDatasetViewInternal {
             })
             .collect();
 
-        SorbetColumnDescriptors {
+        Ok(SorbetColumnDescriptors {
             columns: filtered_columns,
-        }
+        })
     }
 
     /// Filter schema columns based on column selectors.
@@ -118,25 +118,21 @@ impl PyDatasetViewInternal {
         &self,
         schema: SorbetColumnDescriptors,
         column_selectors: &[String],
-    ) -> SorbetColumnDescriptors {
+    ) -> PyResult<SorbetColumnDescriptors> {
         use std::str::FromStr;
         use re_sorbet::ComponentColumnSelector;
 
-        // Parse all column selectors
+        // Parse all column selectors - fail fast with clear error
         let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
             .iter()
             .map(|s| ComponentColumnSelector::from_str(s))
             .collect();
 
-        let selectors = match selectors {
-            Ok(s) => s,
-            Err(_) => {
-                // If parsing fails, return empty schema
-                return SorbetColumnDescriptors {
-                    columns: Vec::new(),
-                };
-            }
-        };
+        let selectors = selectors.map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid column selector format: {e}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+            ))
+        })?;
 
         // Filter columns: keep non-component columns and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
@@ -144,7 +140,7 @@ impl PyDatasetViewInternal {
             .filter(|col| {
                 match col {
                     ColumnDescriptor::Component(comp) => {
-                        // Check if this component matches any of the selectors using the matches() method
+                        // Check if this component matches any selector
                         selectors.iter().any(|selector| comp.matches(selector))
                     }
                     // Keep row_id and index columns
@@ -153,9 +149,9 @@ impl PyDatasetViewInternal {
             })
             .collect();
 
-        SorbetColumnDescriptors {
+        Ok(SorbetColumnDescriptors {
             columns: filtered_columns,
-        }
+        })
     }
 }
 
@@ -192,7 +188,7 @@ impl PyDatasetViewInternal {
         } = PyDatasetEntryInternal::fetch_schema(&dataset)?;
 
         // Apply content filters
-        let filtered_columns = self_.filter_schema(base_columns);
+        let filtered_columns = self_.filter_schema(base_columns)?;
         Ok(PySchemaInternal {
             columns: filtered_columns,
             metadata,
@@ -434,21 +430,22 @@ fn build_view_contents(
 fn build_view_contents_from_column_selectors(
     schema: &ArrowSchema,
     column_selectors: &[String],
-) -> Option<ViewContentsSelector> {
+) -> PyResult<Option<ViewContentsSelector>> {
     use std::collections::BTreeMap;
     use std::str::FromStr;
     use re_sorbet::ComponentColumnSelector;
 
-    // Parse all column selectors
+    // Parse all column selectors - fail fast with clear error
     let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
         .iter()
         .map(|s| ComponentColumnSelector::from_str(s))
         .collect();
 
-    let selectors = match selectors {
-        Ok(s) => s,
-        Err(_) => return None,
-    };
+    let selectors = selectors.map_err(|e| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Invalid column selector format: {e}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+        ))
+    })?;
 
     // Extract component descriptors from schema and filter by selectors
     let matching_components: Vec<_> = schema
@@ -480,11 +477,11 @@ fn build_view_contents_from_column_selectors(
         .map(|(path, components)| (path, Some(components)))
         .collect();
 
-    if view_contents.is_empty() {
+    Ok(if view_contents.is_empty() {
         None
     } else {
         Some(ViewContentsSelector(view_contents))
-    }
+    })
 }
 
 /// Build a table provider for dataframe queries with the given parameters.
@@ -509,7 +506,7 @@ fn build_dataframe_query_table_provider(
 
     // Build view contents from either column selectors or content filters
     let view_contents = if let Some(selectors) = column_selectors {
-        build_view_contents_from_column_selectors(&schema, selectors)
+        build_view_contents_from_column_selectors(&schema, selectors)?
     } else {
         build_view_contents(&schema, content_filters)
     };

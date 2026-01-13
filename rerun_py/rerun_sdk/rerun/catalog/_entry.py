@@ -67,6 +67,7 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-de
 
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
+        AttributeError: If archetype type doesn't have archetype() method
     """
     if isinstance(archetype, str):
         if "." not in archetype:
@@ -77,6 +78,11 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-de
         return archetype
     else:
         # It's a Type[Archetype] - get the name via archetype() method
+        if not hasattr(archetype, "archetype") or not callable(archetype.archetype):
+            raise AttributeError(
+                f"Archetype type {archetype!r} must have a callable archetype() method. "
+                f"Make sure you're passing a valid Rerun archetype type."
+            )
         return archetype.archetype()
 
 
@@ -93,6 +99,7 @@ def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: 
 
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
+        AttributeError: If component type doesn't have _BATCH_TYPE._COMPONENT_TYPE
     """
     if isinstance(component_type, str):
         if "." not in component_type:
@@ -104,7 +111,108 @@ def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: 
         return component_type
     else:
         # It's a Type[ComponentMixin] - get via _BATCH_TYPE._COMPONENT_TYPE
+        if not hasattr(component_type, "_BATCH_TYPE"):
+            raise AttributeError(
+                f"Component type {component_type!r} must have a _BATCH_TYPE attribute. "
+                f"Make sure you're passing a valid Rerun component type."
+            )
+        if not hasattr(component_type._BATCH_TYPE, "_COMPONENT_TYPE"):
+            raise AttributeError(
+                f"Component type {component_type!r}._BATCH_TYPE must have a _COMPONENT_TYPE attribute. "
+                f"Make sure you're passing a valid Rerun component type."
+            )
         return component_type._BATCH_TYPE._COMPONENT_TYPE
+
+
+def _get_column_names_for_archetypes(
+    schema: Schema,  # type: ignore[name-defined]
+    archetypes: Sequence[ArchetypeSpec],  # type: ignore[name-defined]
+) -> list[str]:
+    """
+    Helper to get column names for a list of archetypes.
+
+    Args:
+        schema: The schema to query
+        archetypes: List of archetype specs
+
+    Returns:
+        List of column names matching the archetypes
+
+    Examples:
+        >>> schema = dataset.schema()
+        >>> # Get columns for single archetype
+        >>> columns = _get_column_names_for_archetypes(schema, [rr.Points3D])
+        >>> # Get columns for multiple archetypes
+        >>> columns = _get_column_names_for_archetypes(
+        ...     schema,
+        ...     ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+        ... )
+    """
+    all_column_names = []
+    for archetype in archetypes:
+        archetype_name = _archetype_to_name(archetype)  # type: ignore[arg-type]
+        column_names = schema.column_names_for(archetype=archetype_name)
+        all_column_names.extend(column_names)
+    return all_column_names
+
+
+def _normalize_to_sequence(value: Any) -> Sequence[Any]:
+    """
+    Normalize a single value or sequence to a sequence.
+
+    Strings are treated as single values, not sequences, even though
+    they are technically iterable.
+
+    Args:
+        value: Single value or sequence
+
+    Returns:
+        Sequence containing the value(s)
+
+    Examples:
+        >>> _normalize_to_sequence(rr.Points3D)
+        [<class 'rerun.archetypes.Points3D'>]
+        >>> _normalize_to_sequence("rerun.archetypes.Points3D")
+        ["rerun.archetypes.Points3D"]
+        >>> _normalize_to_sequence([rr.Points3D, rr.Transform3D])
+        [<class 'rerun.archetypes.Points3D'>, <class 'rerun.archetypes.Transform3D'>]
+    """
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return [value]
+    return value
+
+
+def _get_column_names_for_component_types(
+    schema: Schema,  # type: ignore[name-defined]
+    component_types: Sequence[ComponentTypeSpec],  # type: ignore[name-defined]
+) -> list[str]:
+    """
+    Helper to get column names for a list of component types.
+
+    Args:
+        schema: The schema to query
+        component_types: List of component type specs
+
+    Returns:
+        List of column names matching the component types
+
+    Examples:
+        >>> from rerun import components
+        >>> schema = dataset.schema()
+        >>> # Get columns for single component type
+        >>> columns = _get_column_names_for_component_types(schema, [components.Position3D])
+        >>> # Get columns for multiple component types
+        >>> columns = _get_column_names_for_component_types(
+        ...     schema,
+        ...     ["rerun.components.Position3D", "rerun.components.Color"]
+        ... )
+    """
+    all_column_names = []
+    for component_type in component_types:
+        component_type_name = _component_type_to_name(component_type)  # type: ignore[arg-type]
+        column_names = schema.column_names_for(component_type=component_type_name)
+        all_column_names.extend(column_names)
+    return all_column_names
 
 
 class Entry(ABC, Generic[InternalEntryT]):
@@ -548,6 +656,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         DatasetView
             A new view filtered to the matching entity paths/components.
 
+        Notes
+        -----
+        Edge cases and special behavior:
+
+        - **Property paths**: Entity paths starting with `"property:"` or containing
+          `"/__properties:"` are treated as entity paths (not column selectors), even
+          though they contain colons.
+        - **Mixing modes**: Cannot mix entity path patterns and column selectors in the
+          same call. Use either entity paths (wildcards allowed) OR column selectors
+          (exact paths only), not both. Raises `ValueError` if mixed.
+        - **Empty filter**: Passing an empty list `[]` returns all columns. To get an
+          empty view, filter to a non-existent path.
+        - **Invalid selectors**: Invalid column selector strings raise `ValueError` with
+          a clear error message.
+
         Examples
         --------
         Entity path filtering (all components):
@@ -584,6 +707,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             .filter_contents(["/world/points:Position3D"]))
         ```
 
+        See Also
+        --------
+        filter_archetypes : Filter to specific archetype types (higher-level filtering)
+        filter_component_types : Filter to specific component types (higher-level filtering)
+        schema.column_names_for : Get column names for filtering programmatically
+
         """
 
         if isinstance(exprs, str):
@@ -594,19 +723,22 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         column_selectors = []
 
         for expr in exprs:
-            if ":" in expr and not expr.startswith("-"):
-                # It's a column selector (has colon and not a negation pattern)
+            # Property paths contain ":" but are entity paths, not column selectors
+            # Column selectors have format "entity_path:component"
+            # Property paths start with "property:" or contain "/__properties:"
+            is_property_path = expr.startswith("property:") or "/__properties:" in expr
+
+            if ":" in expr and not expr.startswith("-") and not is_property_path:
+                # It's a column selector (has colon, not a negation, and not a property path)
                 column_selectors.append(expr)
             else:
-                # It's an entity path pattern (no colon, or is a negation)
+                # It's an entity path pattern (no colon, is a negation, or is a property path)
                 entity_paths.append(expr)
 
         # If we have column selectors, use component-level filtering
         if column_selectors:
             if entity_paths:
-                # Mixed mode: need to handle both entity paths and column selectors
-                # For now, we'll use column-level filtering and warn about mixed usage
-                # TODO(#9999): Support mixing entity paths with column selectors properly
+                # Mixed mode not supported: raise clear error
                 raise ValueError(
                     "Cannot mix entity path patterns and column selectors in the same filter. "
                     "Please use either entity paths (no colon) or column selectors (with colon), not both."
@@ -662,22 +794,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```
 
         """
-        if not isinstance(archetypes, Sequence) or isinstance(archetypes, str):
-            archetypes = [archetypes]
+        archetypes = _normalize_to_sequence(archetypes)
 
-        # Get schema and find matching column names
-        schema = self.schema()
-        all_column_names = []
-
-        for archetype in archetypes:
-            archetype_name = _archetype_to_name(archetype)
-            column_names = schema.column_names_for(archetype=archetype_name)
-            all_column_names.extend(column_names)
+        # Get column names using shared helper
+        all_column_names = _get_column_names_for_archetypes(self.schema(), archetypes)
 
         # Use filter_contents with the column names
         if not all_column_names:
-            # No matching columns - return empty view by filtering to non-existent path
-            return self.filter_contents([])
+            # No matching columns - return empty view by filtering to non-existent entity path
+            # Note: Empty list would return ALL columns, so we use a path that won't match anything
+            return self.filter_contents(["/__rerun_internal__/non_existent"])
 
         return self.filter_contents(all_column_names)
 
@@ -729,22 +855,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```
 
         """
-        if not isinstance(component_types, Sequence) or isinstance(component_types, str):
-            component_types = [component_types]
+        component_types = _normalize_to_sequence(component_types)
 
-        # Get schema and find matching column names
-        schema = self.schema()
-        all_column_names = []
-
-        for component_type in component_types:
-            component_type_name = _component_type_to_name(component_type)
-            column_names = schema.column_names_for(component_type=component_type_name)
-            all_column_names.extend(column_names)
+        # Get column names using shared helper
+        all_column_names = _get_column_names_for_component_types(self.schema(), component_types)
 
         # Use filter_contents with the column names
         if not all_column_names:
-            # No matching columns - return empty view by filtering to non-existent path
-            return self.filter_contents([])
+            # No matching columns - return empty view by filtering to non-existent entity path
+            # Note: Empty list would return ALL columns, so we use a path that won't match anything
+            return self.filter_contents(["/__rerun_internal__/non_existent"])
 
         return self.filter_contents(all_column_names)
 
@@ -1177,6 +1297,29 @@ class DatasetView:
         DatasetView
             A new view filtered to the matching entity paths/components.
 
+        Notes
+        -----
+        Edge cases and special behavior:
+
+        - **Property paths**: Entity paths starting with `"property:"` or containing
+          `"/__properties:"` are treated as entity paths (not column selectors), even
+          though they contain colons.
+        - **Mixing modes**: Cannot mix entity path patterns and column selectors in the
+          same call. Use either entity paths (wildcards allowed) OR column selectors
+          (exact paths only), not both. Raises `ValueError` if mixed.
+        - **Empty filter**: Passing an empty list `[]` returns all columns. To get an
+          empty view, filter to a non-existent path.
+        - **Invalid selectors**: Invalid column selector strings raise `ValueError` with
+          a clear error message.
+        - **Filter composition**: When called on a DatasetView, filters are composed
+          (intersected) with any existing filters.
+
+        See Also
+        --------
+        filter_archetypes : Filter to specific archetype types (higher-level filtering)
+        filter_component_types : Filter to specific component types (higher-level filtering)
+        schema.column_names_for : Get column names for filtering programmatically
+
         """
         if isinstance(exprs, str):
             exprs = [exprs]
@@ -1186,19 +1329,22 @@ class DatasetView:
         column_selectors = []
 
         for expr in exprs:
-            if ":" in expr and not expr.startswith("-"):
-                # It's a column selector (has colon and not a negation pattern)
+            # Property paths contain ":" but are entity paths, not column selectors
+            # Column selectors have format "entity_path:component"
+            # Property paths start with "property:" or contain "/__properties:"
+            is_property_path = expr.startswith("property:") or "/__properties:" in expr
+
+            if ":" in expr and not expr.startswith("-") and not is_property_path:
+                # It's a column selector (has colon, not a negation, and not a property path)
                 column_selectors.append(expr)
             else:
-                # It's an entity path pattern (no colon, or is a negation)
+                # It's an entity path pattern (no colon, is a negation, or is a property path)
                 entity_paths.append(expr)
 
         # If we have column selectors, use component-level filtering
         if column_selectors:
             if entity_paths:
-                # Mixed mode: need to handle both entity paths and column selectors
-                # For now, we'll use column-level filtering and warn about mixed usage
-                # TODO(#9999): Support mixing entity paths with column selectors properly
+                # Mixed mode not supported: raise clear error
                 raise ValueError(
                     "Cannot mix entity path patterns and column selectors in the same filter. "
                     "Please use either entity paths (no colon) or column selectors (with colon), not both."
@@ -1264,19 +1410,13 @@ class DatasetView:
         if not isinstance(archetypes, Sequence) or isinstance(archetypes, str):
             archetypes = [archetypes]  # type: ignore[list-item]
 
-        # Get the schema
-        schema = self.schema()
-
-        # Collect all column names for the given archetypes
-        all_column_names = []
-        for archetype in archetypes:
-            archetype_name = _archetype_to_name(archetype)  # type: ignore[arg-type]
-            column_names = schema.column_names_for(archetype=archetype_name)
-            all_column_names.extend(column_names)
+        # Get column names using shared helper
+        all_column_names = _get_column_names_for_archetypes(self.schema(), archetypes)
 
         # If no columns found, return an empty view
         if not all_column_names:
-            return self.filter_contents([])
+            # Note: Empty list would return ALL columns, so we use a path that won't match anything
+            return self.filter_contents(["/__rerun_internal__/non_existent"])
 
         # Filter by the collected column names
         return self.filter_contents(all_column_names)
@@ -1339,19 +1479,13 @@ class DatasetView:
         if not isinstance(component_types, Sequence) or isinstance(component_types, str):
             component_types = [component_types]  # type: ignore[list-item]
 
-        # Get the schema
-        schema = self.schema()
-
-        # Collect all column names for the given component types
-        all_column_names = []
-        for component_type in component_types:
-            component_type_name = _component_type_to_name(component_type)  # type: ignore[arg-type]
-            column_names = schema.column_names_for(component_type=component_type_name)
-            all_column_names.extend(column_names)
+        # Get column names using shared helper
+        all_column_names = _get_column_names_for_component_types(self.schema(), component_types)
 
         # If no columns found, return an empty view
         if not all_column_names:
-            return self.filter_contents([])
+            # Note: Empty list would return ALL columns, so we use a path that won't match anything
+            return self.filter_contents(["/__rerun_internal__/non_existent"])
 
         # Filter by the collected column names
         return self.filter_contents(all_column_names)

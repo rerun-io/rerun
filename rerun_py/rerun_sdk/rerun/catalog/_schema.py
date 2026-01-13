@@ -128,6 +128,15 @@ class Schema:
         list[str]
             Sorted list of archetype names (e.g., ["rerun.archetypes.Points3D", ...])
 
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        archetypes = schema.archetypes()
+        print(archetypes)
+        # ['rerun.archetypes.Boxes3D', 'rerun.archetypes.Points3D', 'rerun.archetypes.Transform3D']
+        ```
+
         """
         return self._internal.archetypes()
 
@@ -142,6 +151,15 @@ class Schema:
         list[str]
             Sorted list of entity paths (e.g., ["/world/points", "/world/camera", ...])
 
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        entities = schema.entities()
+        print(entities)
+        # ['/world/boxes', '/world/camera', '/world/points']
+        ```
+
         """
         return self._internal.entities()
 
@@ -155,6 +173,15 @@ class Schema:
         -------
         list[str]
             Sorted list of component type names (e.g., ["rerun.components.Position3D", ...])
+
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        component_types = schema.component_types()
+        print(component_types)
+        # ['rerun.components.Color', 'rerun.components.HalfSize3D', 'rerun.components.Position3D', ...]
+        ```
 
         """
         return self._internal.component_types()
@@ -184,6 +211,24 @@ class Schema:
         list[ComponentColumnDescriptor]
             List of columns matching all provided criteria.
 
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+
+        # Get all Position3D components
+        position_cols = schema.columns_for(component_type="rerun.components.Position3D")
+
+        # Get all columns at a specific entity
+        point_cols = schema.columns_for(entity_path="/world/points")
+
+        # Get specific component at specific entity
+        specific = schema.columns_for(
+            entity_path="/world/points",
+            component_type="rerun.components.Position3D"
+        )
+        ```
+
         """
         return self._internal.columns_for(entity_path, archetype, component_type)
 
@@ -212,6 +257,21 @@ class Schema:
         -------
         list[str]
             List of column names matching all provided criteria.
+
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+
+        # Get column names for all Position3D components
+        position_names = schema.column_names_for(component_type="rerun.components.Position3D")
+
+        # Use with filter_contents() to filter dataset
+        view = dataset.filter_contents(position_names)
+
+        # Get all Points3D archetype columns
+        points_names = schema.column_names_for(archetype="rerun.archetypes.Points3D")
+        ```
 
         """
         return self._internal.column_names_for(entity_path, archetype, component_type)
