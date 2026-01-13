@@ -386,7 +386,7 @@ impl ChunkStore {
                 // NOTE: The chunk that we've just added has been compacted already!
                 let srcs = std::iter::once((non_compacted_chunk.id(), non_compacted_chunk))
                     .chain(
-                        // NOTE: deep removal, we don't want a GC'd chunk to linger on!
+                        // NOTE: deep removal, we don't want a compacted chunk to linger on!
                         self.remove_chunks_deep(vec![elected_chunk.clone()], None)
                             .into_iter()
                             .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
