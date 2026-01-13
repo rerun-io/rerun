@@ -3,6 +3,7 @@ use itertools::Itertools as _;
 use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
+use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
@@ -583,6 +584,7 @@ fn save_component_mapping(
             },
         );
     }
+    // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 }
 
@@ -719,27 +721,42 @@ fn menu_add_new_visualizer(
     for visualizer_type in available_visualizers {
         if ui.button(visualizer_type.as_str()).clicked() {
             // To add a visualizer we have to do two things:
-            // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
-
-            let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
-
+            // * add an element to the list of active visualizer ids
             let new_instruction = VisualizerInstruction::new(
                 re_viewer_context::VisualizerInstructionId::new_random(),
                 *visualizer_type,
                 override_base_path,
-                component_mappings,
+                re_viewer_context::VisualizerComponentMappings::default(),
             );
-
-            let archetype = ActiveVisualizers::new(
+            let active_visualizer_archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
                     .map(|v| &v.id)
                     .chain(std::iter::once(&new_instruction.id))
                     .map(|v| v.0),
             );
-            ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
 
+            // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
+            // visualizers which would be entirely heuristically generated at this point!
+            let did_not_yet_persist_active_visualizers = ctx
+                .blueprint_db()
+                .latest_at(
+                    ctx.blueprint_query(),
+                    override_base_path,
+                    ActiveVisualizers::all_components()
+                        .iter()
+                        .map(|c| c.component),
+                )
+                .components
+                .is_empty();
+            if did_not_yet_persist_active_visualizers {
+                for instruction in active_visualizers {
+                    instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+                }
+            }
+
+            ctx.save_blueprint_archetype(override_base_path.clone(), &active_visualizer_archetype);
             new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 
             ui.close();
