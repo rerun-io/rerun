@@ -236,7 +236,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`LatestAtResults::missing`] field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LatestAtResults {
     /// The associated [`EntityPath`].
