@@ -10,16 +10,14 @@ import pytest
 import rerun as rr
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from rerun.catalog import CatalogClient, DatasetEntry
+    from rerun.catalog import DatasetEntry
 
     from e2e_redap_tests.conftest import EntryFactory
 
 
 @pytest.fixture
 def test_dataset_multi_component(
-    entry_factory: EntryFactory, catalog_client: CatalogClient
+    entry_factory: EntryFactory,
 ) -> DatasetEntry:
     """Create a test dataset with multiple components at same entity."""
     from pathlib import Path
@@ -28,7 +26,7 @@ def test_dataset_multi_component(
         rrd = f"{tmpdir}/test_multi.rrd"
 
         recording_id = uuid.uuid4()
-        with rr.RecordingStream("test_multi", recording_id=recording_id) as rec:
+        with rr.RecordingStream("rerun_example_test_multi", recording_id=recording_id) as rec:
             rec.save(rrd)
 
             # Log data with multiple components at same entity
@@ -94,7 +92,7 @@ class TestEntityPathFiltering:
     def test_filter_contents_by_wildcard_includes_all_components(
         self, test_dataset_multi_component: DatasetEntry
     ) -> None:
-        """wildcard filtering includes all components at matching entities."""
+        """Wildcard filtering includes all components at matching entities."""
         # Filter using wildcard
         view = test_dataset_multi_component.filter_contents(["/world/**"])
 
@@ -116,7 +114,7 @@ class TestEntityPathFiltering:
     def test_filter_contents_excludes_entity_paths(
         self, test_dataset_multi_component: DatasetEntry
     ) -> None:
-        """can exclude entity paths using - prefix."""
+        """Can exclude entity paths using - prefix."""
         # Include all under /world but exclude /world/boxes
         view = test_dataset_multi_component.filter_contents(["/world/**", "-/world/boxes"])
 
@@ -131,7 +129,7 @@ class TestEntityPathFiltering:
     def test_filter_contents_empty_list_returns_all_columns(
         self, test_dataset_multi_component: DatasetEntry
     ) -> None:
-        """empty filter list returns all columns."""
+        """Empty filter list returns all columns."""
         view = test_dataset_multi_component.filter_contents([])
 
         schema = view.schema()
@@ -143,7 +141,7 @@ class TestEntityPathFiltering:
     def test_filter_contents_nonexistent_path_returns_empty_view(
         self, test_dataset_multi_component: DatasetEntry
     ) -> None:
-        """filtering to non-existent path returns empty view."""
+        """Filtering to non-existent path returns empty view."""
         view = test_dataset_multi_component.filter_contents(["/nonexistent/**"])
 
         schema = view.schema()
@@ -316,7 +314,7 @@ class TestPropertyPathHandling:
             "property:test"  # Has colon but is a property path
         ])
 
-        # Should succeed without error (no "Cannot mix..." error)
+        # Should succeed without error (no "Cannot mix…" error)
         schema = view.schema()
         assert schema is not None
 

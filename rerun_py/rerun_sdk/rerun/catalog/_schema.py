@@ -172,7 +172,7 @@ class Schema:
         Returns
         -------
         list[str]
-            Sorted list of component type names (e.g., ["rerun.components.Position3D", ...])
+            Sorted list of component type names (e.g., ["rerun.components.Position3D", …])
 
         Examples
         --------
@@ -180,7 +180,7 @@ class Schema:
         schema = dataset.schema()
         component_types = schema.component_types()
         print(component_types)
-        # ['rerun.components.Color', 'rerun.components.HalfSize3D', 'rerun.components.Position3D', ...]
+        # ['rerun.components.Color', 'rerun.components.HalfSize3D', 'rerun.components.Position3D', …]
         ```
 
         """

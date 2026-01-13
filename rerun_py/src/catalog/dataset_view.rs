@@ -132,8 +132,8 @@ impl PyDatasetViewInternal {
         schema: SorbetColumnDescriptors,
         column_selectors: &[String],
     ) -> PyResult<SorbetColumnDescriptors> {
-        use std::str::FromStr;
         use re_sorbet::ComponentColumnSelector;
+        use std::str::FromStr;
 
         // Parse all column selectors - fail fast with clear error
         let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
@@ -141,9 +141,9 @@ impl PyDatasetViewInternal {
             .map(|s| ComponentColumnSelector::from_str(s))
             .collect();
 
-        let selectors = selectors.map_err(|e| {
+        let selectors = selectors.map_err(|err| {
             pyo3::exceptions::PyValueError::new_err(format!(
-                "Invalid column selector format: {e}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+                "Invalid column selector format: {err}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
             ))
         })?;
 
@@ -461,9 +461,9 @@ fn build_view_contents_from_column_selectors(
     schema: &ArrowSchema,
     column_selectors: &[String],
 ) -> PyResult<Option<ViewContentsSelector>> {
+    use re_sorbet::ComponentColumnSelector;
     use std::collections::BTreeMap;
     use std::str::FromStr;
-    use re_sorbet::ComponentColumnSelector;
 
     // Parse all column selectors - fail fast with clear error
     let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
@@ -471,9 +471,9 @@ fn build_view_contents_from_column_selectors(
         .map(|s| ComponentColumnSelector::from_str(s))
         .collect();
 
-    let selectors = selectors.map_err(|e| {
+    let selectors = selectors.map_err(|err| {
         pyo3::exceptions::PyValueError::new_err(format!(
-            "Invalid column selector format: {e}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+            "Invalid column selector format: {err}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
         ))
     })?;
 

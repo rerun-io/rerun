@@ -24,7 +24,6 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime
-    from typing import Type, Union
 
     import datafusion
 
@@ -47,8 +46,8 @@ if TYPE_CHECKING:
     )
 
     # Type aliases for archetype and component specs
-    ArchetypeSpec = Union[str, Type[Archetype]]
-    ComponentTypeSpec = Union[str, Type[ComponentMixin]]
+    ArchetypeSpec = str | type[Archetype]
+    ComponentTypeSpec = str | type[ComponentMixin]
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -72,6 +71,7 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-de
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
         AttributeError: If archetype type doesn't have archetype() method
+
     """
     if isinstance(archetype, str):
         if "." not in archetype:
@@ -104,6 +104,7 @@ def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: 
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
         AttributeError: If component type doesn't have _BATCH_TYPE._COMPONENT_TYPE
+
     """
     if isinstance(component_type, str):
         if "." not in component_type:
@@ -151,6 +152,7 @@ def _get_column_names_for_archetypes(
         ...     schema,
         ...     ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
         ... )
+
     """
     all_column_names = []
     for archetype in archetypes:
@@ -180,6 +182,7 @@ def _normalize_to_sequence(value: Any) -> Sequence[Any]:
         ["rerun.archetypes.Points3D"]
         >>> _normalize_to_sequence([rr.Points3D, rr.Transform3D])
         [<class 'rerun.archetypes.Points3D'>, <class 'rerun.archetypes.Transform3D'>]
+
     """
     if not isinstance(value, Sequence) or isinstance(value, str):
         return [value]
@@ -210,6 +213,7 @@ def _get_column_names_for_component_types(
         ...     schema,
         ...     ["rerun.components.Position3D", "rerun.components.Color"]
         ... )
+
     """
     all_column_names = []
     for component_type in component_types:

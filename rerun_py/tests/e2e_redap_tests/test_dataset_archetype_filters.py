@@ -9,7 +9,7 @@ import rerun as rr
 from rerun import components
 
 if TYPE_CHECKING:
-    from rerun.catalog import CatalogClient, ComponentColumnDescriptor, DatasetEntry, Schema
+    from rerun.catalog import DatasetEntry, Schema
 
     from e2e_redap_tests.conftest import EntryFactory
 
@@ -35,6 +35,7 @@ def assert_all_columns_match(
 
     Raises:
         AssertionError: If schema has no columns or any column doesn't match criteria
+
     """
     component_columns = schema.component_columns()
     assert len(component_columns) > 0, "Schema should have at least one component column"
@@ -47,7 +48,7 @@ def assert_all_columns_match(
             )
         if archetype is not None:
             assert col.archetype == archetype, (
-                f"Expected archetype '{archetype}', got '{col.archetype}' " f"for column {col.name}"
+                f"Expected archetype '{archetype}', got '{col.archetype}' for column {col.name}"
             )
         if component_type is not None:
             assert col.component_type == component_type, (
@@ -65,7 +66,7 @@ def get_first_segment(dataset: DatasetEntry) -> str:
 
 @pytest.fixture
 def test_dataset_with_archetypes(
-    entry_factory: EntryFactory, catalog_client: CatalogClient
+    entry_factory: EntryFactory,
 ) -> DatasetEntry:
     """Create a test dataset with various archetypes."""
     import tempfile
@@ -77,7 +78,7 @@ def test_dataset_with_archetypes(
         rrd = f"{tmpdir}/test_archetypes.rrd"
 
         recording_id = uuid.uuid4()
-        with rr.RecordingStream("test_archetypes", recording_id=recording_id) as rec:
+        with rr.RecordingStream("rerun_example_test_archetypes", recording_id=recording_id) as rec:
             rec.save(rrd)
 
             # Log Points3D at /world/points
@@ -282,7 +283,6 @@ class TestFilterComponentTypes:
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test filtering by a single component type using string."""
-        from rerun import components
 
         view = test_dataset_with_archetypes.filter_component_types(
             "rerun.components.Position3D"

@@ -143,7 +143,7 @@ impl PySchemaInternal {
     /// Returns
     /// -------
     /// list[str]
-    ///     Sorted list of archetype names (e.g., `["rerun.archetypes.Points3D", ...]`)
+    ///     Sorted list of archetype names (e.g., `["rerun.archetypes.Points3D", …]`)
     fn archetypes(&self) -> Vec<String> {
         let mut archetypes: Vec<String> = self
             .columns
@@ -163,7 +163,7 @@ impl PySchemaInternal {
     /// Returns
     /// -------
     /// list[str]
-    ///     Sorted list of entity paths (e.g., `["/world/points", "/world/camera", ...]`)
+    ///     Sorted list of entity paths (e.g., `["/world/points", "/world/camera", …]`)
     fn entities(&self) -> Vec<String> {
         let mut entities: Vec<String> = self
             .columns
@@ -183,7 +183,7 @@ impl PySchemaInternal {
     /// Returns
     /// -------
     /// list[str]
-    ///     Sorted list of component type names (e.g., `["rerun.components.Position3D", ...]`)
+    ///     Sorted list of component type names (e.g., `["rerun.components.Position3D", …]`)
     fn component_types(&self) -> Vec<String> {
         let mut component_types: Vec<String> = self
             .columns
