@@ -1,0 +1,16 @@
+direction: left
+
+Rerun process: {
+  Native Viewer: {
+    Renderer
+    Chunk Store
+  }
+  TCP Server
+}
+
+User process: {
+  SDK
+}
+
+User process.SDK -> ".rrd file"
+".rrd file" -> Rerun process.Native Viewer.Chunk Store

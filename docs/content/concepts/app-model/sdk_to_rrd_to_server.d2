@@ -1,0 +1,15 @@
+direction: left
+
+User process: {
+  SDK
+}
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+User process.SDK -> ".rrd file(s)"
+".rrd file(s)" -> Server process.Rerun Server.Dataset Store

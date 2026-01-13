@@ -1,0 +1,15 @@
+direction: left
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+Viewer: {
+  Renderer
+  Chunk Store
+}
+
+Server process.Rerun Server.Dataset Store -> Viewer.Chunk Store: "redap (gRPC)"

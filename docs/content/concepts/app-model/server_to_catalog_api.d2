@@ -1,0 +1,16 @@
+direction: left
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+User process: {
+  Catalog API
+  DataFusion
+}
+
+Server process.Rerun Server.Catalog -> User process.Catalog API: "redap (gRPC)"
+User process.Catalog API -> User process.DataFusion
