@@ -432,8 +432,12 @@ impl ChunkStore {
     ) -> Vec<ChunkStoreDiff> {
         re_tracing::profile_function!();
 
-        let diffs = self.remove_chunks_shallow(chunks_to_be_removed, time_budget);
-        debug_assert!(diffs.len() <= 1);
+        // Make sure to not forward those diffs as-is: just because the shallow deletion yielded
+        // nothing, doesn't mean that a deep one won't.
+        {
+            let diffs = self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+            debug_assert!(diffs.len() <= 1);
+        }
 
         let Self {
             id: _,
@@ -458,8 +462,10 @@ impl ChunkStore {
         // regardless of the time budget.
         _ = time_budget;
 
-        for diff in &diffs {
-            let chunk = &diff.chunk;
+        let mut diffs = Vec::new();
+
+        for chunk in chunks_to_be_removed {
+            let mut was_removed = false;
             let chunk_id = chunk.id();
 
             {
@@ -493,12 +499,14 @@ impl ChunkStore {
                                 .get_mut(&time_range.min())
                             {
                                 set.remove(&chunk_id);
+                                was_removed = true;
                             }
                             if let Some(set) = temporal_chunk_ids_per_time
                                 .per_end_time
                                 .get_mut(&time_range.max())
                             {
                                 set.remove(&chunk_id);
+                                was_removed = true;
                             }
                         }
                     }
@@ -531,15 +539,21 @@ impl ChunkStore {
                             .get_mut(&time_range.min())
                         {
                             set.remove(&chunk_id);
+                            was_removed = true;
                         }
                         if let Some(set) = temporal_chunk_ids_per_time
                             .per_end_time
                             .get_mut(&time_range.max())
                         {
                             set.remove(&chunk_id);
+                            was_removed = true;
                         }
                     }
                 }
+            }
+
+            if was_removed {
+                diffs.push(ChunkStoreDiff::deletion(chunk));
             }
         }
 
