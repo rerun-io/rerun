@@ -887,7 +887,9 @@ fn try_deserialize_array<C: re_sdk_types::Component>(
     match deserialized {
         Ok(values) => Some(values),
         Err(err) => {
-            re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
+            re_log::error_once!(
+                "Failed to deserialize component of type {component_type}: {err:#}",
+            );
             None
         }
     }

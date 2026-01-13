@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
-use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
+use re_chunk_store::{ChunkStore, OnMissingChunk, RangeQuery, TimeInt};
 use re_log_types::{AbsoluteTimeRange, EntityPath};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -262,7 +262,8 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, component);
+        let raw_chunks =
+            store.range_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
         // TODO(RR-3295): what should we do with virtual chunks here? (verbose iteration below)
         for raw_chunk in &raw_chunks.chunks {
             self.chunks
