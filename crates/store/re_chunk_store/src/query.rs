@@ -701,6 +701,33 @@ impl QueryResults {
 
         None
     }
+
+    /// Attempts to iterate over the returned chunks.
+    ///
+    /// If the results contain partial data:
+    /// * prints a debug log in release builds.
+    /// * prints a warning in debug builds.
+    ///
+    /// It is the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// [missing chunk IDs]: `Self::missing`
+    //
+    // TODO(RR-3295): this should ultimately not exist once all callsite have been updated to
+    // the do whatever happens to be "the right thing" in their respective context.
+    pub fn into_iter_verbose(self) -> impl Iterator<Item = Arc<Chunk>> {
+        if self.is_partial() {
+            const MSG: &str =
+                "iterating partial query results: some data has been silently discarded";
+            if cfg!(debug_assertions) {
+                re_log::warn_once!("{MSG}");
+            } else {
+                re_log::debug_once!("{MSG}");
+            }
+        }
+
+        self.chunks.into_iter()
+    }
 }
 
 // LatestAt

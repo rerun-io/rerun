@@ -76,7 +76,7 @@ fn atomic_latest_at_query(
     let query_time = query.at().as_i64();
 
     // TODO(RR-3295): what should we do with virtual chunks here?
-    for chunk in chunks.chunks {
+    for chunk in chunks.into_iter_verbose() {
         // Make sure the chunk is sorted (they usually are) in order to ensure we're getting the last relevant row.
         let chunk = if chunk.is_sorted() {
             chunk

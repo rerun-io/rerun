@@ -263,7 +263,7 @@ impl RangeCache {
         // cache them.
 
         let raw_chunks = store.range_relevant_chunks(query, entity_path, component);
-        // TODO(RR-3295): what should we do with virtual chunks here?
+        // TODO(RR-3295): what should we do with virtual chunks here? (verbose iteration below)
         for raw_chunk in &raw_chunks.chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -286,8 +286,7 @@ impl RangeCache {
 
         raw_chunks
             // TODO(RR-3295): what should we do with virtual chunks here?
-            .chunks
-            .into_iter()
+            .into_iter_verbose()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
                 debug_assert!(

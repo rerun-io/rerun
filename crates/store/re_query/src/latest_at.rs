@@ -637,8 +637,7 @@ impl LatestAtCache {
         let ((data_time, _row_id), unit) = store
             .latest_at_relevant_chunks(query, entity_path, component)
             // TODO(RR-3295): what should we do with virtual chunks here?
-            .chunks
-            .into_iter()
+            .into_iter_verbose()
             .filter_map(|chunk| {
                 let chunk = chunk.latest_at(query, component).into_unit()?;
                 chunk.index(&query.timeline()).map(|index| (index, chunk))
