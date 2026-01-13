@@ -24,9 +24,12 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime
+    from typing import Type, Union
 
     import datafusion
 
+    from rerun import Archetype
+    from rerun.archetypes._baseclasses import ComponentMixin
     from rerun.recording import Recording
 
     from . import (
@@ -43,8 +46,65 @@ if TYPE_CHECKING:
         VectorDistanceMetric,
     )
 
+    # Type aliases for archetype and component specs
+    ArchetypeSpec = Union[str, Type[Archetype]]
+    ComponentTypeSpec = Union[str, Type[ComponentMixin]]
+
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
+
+
+def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-defined]
+    """
+    Convert archetype spec to fully-qualified name.
+
+    Args:
+        archetype: Either a fully-qualified string (e.g., "rerun.archetypes.Points3D")
+                   or an Archetype type (e.g., rr.Points3D)
+
+    Returns:
+        Fully-qualified archetype name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(archetype, str):
+        if "." not in archetype:
+            raise ValueError(
+                f"Archetype name must be fully-qualified (e.g., 'rerun.archetypes.Points3D'), "
+                f"got: {archetype!r}. Short names like 'Points3D' are not supported."
+            )
+        return archetype
+    else:
+        # It's a Type[Archetype] - get the name via archetype() method
+        return archetype.archetype()
+
+
+def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: ignore[name-defined]
+    """
+    Convert component type spec to fully-qualified name.
+
+    Args:
+        component_type: Either a fully-qualified string (e.g., "rerun.components.Position3D")
+                        or a ComponentMixin type (e.g., rr.components.Position3D)
+
+    Returns:
+        Fully-qualified component type name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(component_type, str):
+        if "." not in component_type:
+            raise ValueError(
+                f"Component type name must be fully-qualified "
+                f"(e.g., 'rerun.components.Position3D'), got: {component_type!r}. "
+                f"Short names like 'Position3D' are not supported."
+            )
+        return component_type
+    else:
+        # It's a Type[ComponentMixin] - get via _BATCH_TYPE._COMPONENT_TYPE
+        return component_type._BATCH_TYPE._COMPONENT_TYPE
 
 
 class Entry(ABC, Generic[InternalEntryT]):
@@ -488,6 +548,138 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
 
+    def filter_archetypes(
+        self,
+        archetypes: ArchetypeSpec | Sequence[ArchetypeSpec],  # type: ignore[name-defined]
+    ) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given archetypes.
+
+        This filters the dataset to only include columns belonging to the specified
+        archetype(s). You can pass archetype types directly (e.g., `rr.Points3D`)
+        or fully-qualified string names (e.g., `"rerun.archetypes.Points3D"`).
+
+        Parameters
+        ----------
+        archetypes : str | Type[Archetype] | Sequence[str | Type[Archetype]]
+            Archetype or list of archetypes. Can be:
+            - A single archetype type (e.g., `rr.Points3D`)
+            - A fully-qualified string (e.g., `"rerun.archetypes.Points3D"`)
+            - A list of either
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching archetypes.
+
+        Examples
+        --------
+        ```python
+        import rerun as rr
+
+        # Filter to a single archetype using type
+        view = dataset.filter_archetypes(rr.Points3D)
+
+        # Filter using string
+        view = dataset.filter_archetypes("rerun.archetypes.Points3D")
+
+        # Filter to multiple archetypes
+        view = dataset.filter_archetypes([rr.Points3D, rr.Transform3D])
+
+        # Chain with other filters
+        view = dataset.filter_segments(["recording_0"]).filter_archetypes(rr.Points3D)
+
+        # Read filtered data
+        df = view.reader(index="frame")
+        ```
+
+        """
+        if not isinstance(archetypes, Sequence) or isinstance(archetypes, str):
+            archetypes = [archetypes]
+
+        # Get schema and find matching column names
+        schema = self.schema()
+        all_column_names = []
+
+        for archetype in archetypes:
+            archetype_name = _archetype_to_name(archetype)
+            column_names = schema.column_names_for(archetype=archetype_name)
+            all_column_names.extend(column_names)
+
+        # Use filter_contents with the column names
+        if not all_column_names:
+            # No matching columns - return empty view by filtering to non-existent path
+            return self.filter_contents([])
+
+        return self.filter_contents(all_column_names)
+
+    def filter_component_types(
+        self,
+        component_types: ComponentTypeSpec | Sequence[ComponentTypeSpec],  # type: ignore[name-defined]
+    ) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given component types.
+
+        This filters the dataset to only include columns of the specified
+        component type(s). You can pass component types directly (e.g.,
+        `rr.components.Position3D`) or fully-qualified string names (e.g.,
+        `"rerun.components.Position3D"`).
+
+        Parameters
+        ----------
+        component_types : str | Type[ComponentMixin] | Sequence[str | Type[ComponentMixin]]
+            Component type or list of component types. Can be:
+            - A single component type (e.g., `rr.components.Position3D`)
+            - A fully-qualified string (e.g., `"rerun.components.Position3D"`)
+            - A list of either
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching component types.
+
+        Examples
+        --------
+        ```python
+        import rerun as rr
+        from rerun import components
+
+        # Filter to a single component type
+        view = dataset.filter_component_types(components.Position3D)
+
+        # Filter using string
+        view = dataset.filter_component_types("rerun.components.Position3D")
+
+        # Filter to multiple component types
+        view = dataset.filter_component_types([components.Position3D, components.Color])
+
+        # Chain with other filters
+        view = dataset.filter_segments(["recording_0"]).filter_component_types(components.Position3D)
+
+        # Read filtered data
+        df = view.reader(index="frame")
+        ```
+
+        """
+        if not isinstance(component_types, Sequence) or isinstance(component_types, str):
+            component_types = [component_types]
+
+        # Get schema and find matching column names
+        schema = self.schema()
+        all_column_names = []
+
+        for component_type in component_types:
+            component_type_name = _component_type_to_name(component_type)
+            column_names = schema.column_names_for(component_type=component_type_name)
+            all_column_names.extend(column_names)
+
+        # Use filter_contents with the column names
+        if not all_column_names:
+            # No matching columns - return empty view by filtering to non-existent path
+            return self.filter_contents([])
+
+        return self.filter_contents(all_column_names)
+
     def reader(
         self,
         index: str | None,
@@ -896,6 +1088,154 @@ class DatasetView:
             exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
+
+    def filter_archetypes(
+        self,
+        archetypes: ArchetypeSpec | Sequence[ArchetypeSpec],  # type: ignore[name-defined]
+    ) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given archetypes.
+
+        Filters are composed: if this view already has filters, the result is the intersection
+        of the existing filters and the new archetype filter.
+
+        Parameters
+        ----------
+        archetypes : str | Type[Archetype] | Sequence[str | Type[Archetype]]
+            Archetype or list of archetypes. Can be either:
+            - Fully-qualified string (e.g., "rerun.archetypes.Points3D")
+            - Archetype type (e.g., rr.Points3D)
+            - List of either
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching archetypes.
+
+        Examples
+        --------
+        Filter to Points3D using type:
+
+        ```python
+        import rerun as rr
+        dataset = rr.catalog.Dataset(...)
+        view = dataset.filter_archetypes(rr.Points3D)
+        ```
+
+        Filter to multiple archetypes:
+
+        ```python
+        view = dataset.filter_archetypes([rr.Points3D, rr.Transform3D])
+        ```
+
+        Filter using fully-qualified string:
+
+        ```python
+        view = dataset.filter_archetypes("rerun.archetypes.Points3D")
+        ```
+
+        Chain with other filters:
+
+        ```python
+        view = dataset.filter_segments(["seg1"]).filter_archetypes(rr.Points3D)
+        ```
+
+        """
+        # Normalize to a list
+        if not isinstance(archetypes, Sequence) or isinstance(archetypes, str):
+            archetypes = [archetypes]  # type: ignore[list-item]
+
+        # Get the schema
+        schema = self.schema()
+
+        # Collect all column names for the given archetypes
+        all_column_names = []
+        for archetype in archetypes:
+            archetype_name = _archetype_to_name(archetype)  # type: ignore[arg-type]
+            column_names = schema.column_names_for(archetype=archetype_name)
+            all_column_names.extend(column_names)
+
+        # If no columns found, return an empty view
+        if not all_column_names:
+            return self.filter_contents([])
+
+        # Filter by the collected column names
+        return self.filter_contents(all_column_names)
+
+    def filter_component_types(
+        self,
+        component_types: ComponentTypeSpec | Sequence[ComponentTypeSpec],  # type: ignore[name-defined]
+    ) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given component types.
+
+        Filters are composed: if this view already has filters, the result is the intersection
+        of the existing filters and the new component type filter.
+
+        Parameters
+        ----------
+        component_types : str | Type[ComponentMixin] | Sequence[str | Type[ComponentMixin]]
+            Component type or list of component types. Can be either:
+            - Fully-qualified string (e.g., "rerun.components.Position3D")
+            - ComponentMixin type (e.g., rr.components.Position3D)
+            - List of either
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching component types.
+
+        Examples
+        --------
+        Filter to Position3D using type:
+
+        ```python
+        import rerun as rr
+        from rerun import components
+
+        dataset = rr.catalog.Dataset(...)
+        view = dataset.filter_component_types(components.Position3D)
+        ```
+
+        Filter to multiple component types:
+
+        ```python
+        view = dataset.filter_component_types([components.Position3D, components.Color])
+        ```
+
+        Filter using fully-qualified string:
+
+        ```python
+        view = dataset.filter_component_types("rerun.components.Position3D")
+        ```
+
+        Chain with other filters:
+
+        ```python
+        view = dataset.filter_segments(["seg1"]).filter_component_types(components.Position3D)
+        ```
+
+        """
+        # Normalize to a list
+        if not isinstance(component_types, Sequence) or isinstance(component_types, str):
+            component_types = [component_types]  # type: ignore[list-item]
+
+        # Get the schema
+        schema = self.schema()
+
+        # Collect all column names for the given component types
+        all_column_names = []
+        for component_type in component_types:
+            component_type_name = _component_type_to_name(component_type)  # type: ignore[arg-type]
+            column_names = schema.column_names_for(component_type=component_type_name)
+            all_column_names.extend(column_names)
+
+        # If no columns found, return an empty view
+        if not all_column_names:
+            return self.filter_contents([])
+
+        # Filter by the collected column names
+        return self.filter_contents(all_column_names)
 
     def __repr__(self) -> str:
         """Return a string representation of the DatasetView."""
