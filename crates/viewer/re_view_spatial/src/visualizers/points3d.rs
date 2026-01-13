@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
+use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Points3D;
 use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
-use re_sdk_types::{ArrowString, Loggable};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,

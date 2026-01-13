@@ -514,7 +514,8 @@ mod tests {
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
         let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
-        let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
+        let override_root =
+            ViewContents::base_override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.

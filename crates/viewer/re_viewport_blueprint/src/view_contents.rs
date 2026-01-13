@@ -100,7 +100,7 @@ impl ViewContents {
         }
     }
     /// Computes the override path for a given entity in a given view.
-    pub fn override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
+    pub fn base_override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
         blueprint_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
             id.uuid(),
             entity_path,
@@ -414,7 +414,7 @@ impl QueryExpressionEvaluator<'_> {
                     tree_prefix_only: !matches_filter,
                     visible: true, // Determined later during `update_overrides_recursive`.
                     interactive: true, // Determined later during `update_overrides_recursive`.
-                    override_base_path: ViewContents::override_path_for_entity(
+                    override_base_path: ViewContents::base_override_path_for_entity(
                         self.view_id,
                         entity_path,
                     ),

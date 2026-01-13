@@ -686,7 +686,7 @@ mod tests {
                     RecommendedView::new_single_entity("some/path"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"some/path".into()),
+                    ViewContents::base_override_path_for_entity(view_id, &"some/path".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
@@ -704,7 +704,7 @@ mod tests {
                     RecommendedView::new_single_entity("has_frame"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"has_frame".into()),
+                    ViewContents::base_override_path_for_entity(view_id, &"has_frame".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
@@ -773,6 +773,8 @@ mod tests {
                 let mut tree_context = TransformTreeContext::default();
                 let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
                 tree_context.execute(&view_ctx, &view_query, &once_per_frame);
+
+                dbg!(view_ctx.blueprint_db().storage_engine().store());
 
                 assert_eq!(
                     tree_context.target_frame(),
