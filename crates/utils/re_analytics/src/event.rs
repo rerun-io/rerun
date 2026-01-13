@@ -585,15 +585,12 @@ impl Properties for CliCommandInvoked {
 /// This event is sent when users click on cards on the welcome screen,
 /// such as documentation links or cloud-related CTAs.
 pub struct WelcomeScreenNavigation {
-    /// Whether the click was on the Cloud card (true) or a documentation card (false).
-    pub cloud_card: bool,
+    /// Type of the card. E.g. "docs", "redap".
+    pub card_type: String,
 
     /// The destination URL that was navigated to.
     /// Empty string if the click was on a CTA that opened a modal instead.
     pub destination: String,
-
-    /// Whether the link opened in a new tab.
-    pub new_tab: bool,
 
     /// Whether this was a click on a cloud modal CTA (e.g. "Add server", "Login").
     pub cta_cloud: bool,
@@ -612,17 +609,15 @@ impl Event for WelcomeScreenNavigation {
 impl Properties for WelcomeScreenNavigation {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
-            cloud_card,
+            card_type,
             destination,
-            new_tab,
             cta_cloud,
             is_logged_in,
             has_server,
         } = self;
 
-        event.insert("cloud_card", cloud_card);
+        event.insert("card_type", card_type);
         event.insert("destination", destination);
-        event.insert("new_tab", new_tab);
         event.insert("cta_cloud", cta_cloud);
         event.insert("is_logged_in", is_logged_in);
         event.insert("has_server", has_server);

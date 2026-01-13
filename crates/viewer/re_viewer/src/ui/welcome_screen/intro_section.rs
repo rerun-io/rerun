@@ -98,10 +98,8 @@ impl IntroItem {
                     #[cfg(feature = "analytics")]
                     if _response.clicked() || _response.clicked_with_open_in_background() {
                         re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                            cloud_card: false,
+                            card_type: "docs".to_string(),
                             destination: (*url).to_owned(),
-                            // We always open external links in a new tab
-                            new_tab: true,
                             cta_cloud: false,
                             is_logged_in: cloud_state.is_logged_in(),
                             has_server: cloud_state.has_server(),
@@ -127,10 +125,8 @@ impl IntroItem {
                         #[cfg(feature = "analytics")]
                         if _response.clicked() || _response.clicked_with_open_in_background() {
                             re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                                cloud_card: true,
+                                card_type: "redap".to_string(),
                                 destination: url.to_owned(),
-                                // We always open external links in a new tab
-                                new_tab: true,
                                 cta_cloud: false,
                                 is_logged_in: cloud_state.is_logged_in(),
                                 has_server: cloud_state.has_server(),
@@ -151,9 +147,8 @@ impl IntroItem {
                 let analytics = || {
                     #[cfg(feature = "analytics")]
                     re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                        cloud_card: true,
+                        card_type: "redap".to_string(),
                         destination: String::new(),
-                        new_tab: false,
                         cta_cloud: true,
                         is_logged_in: cloud_state.is_logged_in(),
                         has_server: cloud_state.has_server(),
