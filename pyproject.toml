@@ -123,6 +123,7 @@ examples = [
   # "human_pose_tracking",
 ]
 docs = [
+  "rerun-dev-fixup",
   # Documentation build dependencies (mkdocs and plugins)
   "griffe==1.4.1",
   "griffe-warnings-deprecated==1.1.0",

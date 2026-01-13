@@ -4625,6 +4625,7 @@ docs = [
     { name = "mkdocs-redirects" },
     { name = "mkdocstrings" },
     { name = "mkdocstrings-python" },
+    { name = "rerun-dev-fixup" },
     { name = "setuptools" },
     { name = "sphobjinv" },
 ]
@@ -4731,6 +4732,7 @@ docs = [
     { name = "mkdocs-redirects", git = "https://github.com/rerun-io/mkdocs-redirects.git?rev=fb6b074554975ba7729d68d04957ce7c7dfd5003" },
     { name = "mkdocstrings", specifier = "==0.26.2" },
     { name = "mkdocstrings-python", specifier = "==1.12.1" },
+    { name = "rerun-dev-fixup", editable = "rerun_py/rerun_dev_fixup" },
     { name = "setuptools", specifier = ">75" },
     { name = "sphobjinv", specifier = "==2.3.1" },
 ]
