@@ -72,6 +72,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             let entity_path = &data_result.entity_path;
 
             // Draw all transforms defined _at_ this entity.
+            // TODO(RR-3319): consider also root frames here (not only child frames).
             let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
                 .child_frames_for_entity(entity_path.hash())
                 .map(|(frame_id_hash, transform)| {
