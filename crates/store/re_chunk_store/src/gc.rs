@@ -370,12 +370,18 @@ impl ChunkStore {
 
     /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical & virtual* indices.
     ///
-    /// This only makes sense to use with compacted chunks: you don't want a chunk that was compacted
-    /// into a new larger chunk to linger on in our internal indices, both physical and virtual.
+    /// This only makes sense to use on chunks that resulted from the compaction of other chunks.
+    /// These chunks, by definition, only ever exist locally, and therefore there is never any good
+    /// reason to let them linger on in our internal indices, physical or virtual, since they
+    /// cannot possibly be re-fetched.
+    /// Note that this only applies to compaction, not splitting, since the chunk being split
+    /// never makes it into the store in the first place.
     /// For garbage collection purposes, refer to [`Self::remove_chunks_shallow`] instead.
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
+    //
+    // TODO(cmc): blueprint stores could use deep removal for everything. maybe expose a config flag?
     pub(crate) fn remove_chunks_deep(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,

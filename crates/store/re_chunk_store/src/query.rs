@@ -633,9 +633,13 @@ impl std::fmt::Display for QueryResults {
         let Self { chunks, missing } = self;
 
         let chunk_ids = chunks.iter().map(|c| c.id().to_string()).join(",");
-        let missing_ids = missing.iter().map(|id| id.to_string()).join(",");
 
-        f.write_fmt(format_args!("chunks:[{chunk_ids}] missing:[{missing_ids}]"))
+        if self.is_partial() {
+            let missing_ids = missing.iter().map(|id| id.to_string()).join(",");
+            f.write_fmt(format_args!("chunks:[{chunk_ids}] missing:[{missing_ids}]"))
+        } else {
+            f.write_fmt(format_args!("chunks:[{chunk_ids}]"))
+        }
     }
 }
 

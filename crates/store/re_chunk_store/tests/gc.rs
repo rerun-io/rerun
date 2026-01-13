@@ -24,9 +24,11 @@ fn query_latest_array(
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
-    // NOTE: Purposefully ignoring virtual chunks -- these tests predate that.
     let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component)
+        // Purposefully ignoring missing chunks.
+        // We know there's going to be missing chunks: it's the whole point of these tests to be
+        // removing chunks.
         .chunks
         .into_iter()
         .filter_map(|chunk| {
