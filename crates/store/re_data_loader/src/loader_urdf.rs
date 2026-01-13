@@ -456,13 +456,19 @@ fn transform_from_pose(
         .with_child_frame(child_frame)
 }
 
-fn instance_poses_from_pose(origin: &urdf_rs::Pose) -> InstancePoses3D {
+fn instance_poses_from_pose(origin: &urdf_rs::Pose, scale: Option<Vec3D>) -> InstancePoses3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let translation = Vec3D::new(xyz[0] as f32, xyz[1] as f32, xyz[2] as f32);
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
-    InstancePoses3D::update_fields()
+    let mut poses = InstancePoses3D::update_fields()
         .with_translations(vec![translation])
-        .with_quaternions(vec![quaternion])
+        .with_quaternions(vec![quaternion]);
+
+    if let Some(scale) = scale {
+        poses = poses.with_scales(vec![scale]);
+    }
+
+    poses
 }
 
 fn send_transform(
@@ -490,13 +496,14 @@ fn send_instance_pose_with_frame(
     timepoint: &TimePoint,
     origin: &urdf_rs::Pose,
     parent_frame: String,
+    scale: Option<Vec3D>,
 ) -> anyhow::Result<()> {
     send_archetype(
         tx,
         store_id,
         entity_path.clone(),
         timepoint,
-        &instance_poses_from_pose(origin),
+        &instance_poses_from_pose(origin, scale),
     )?;
     send_archetype(
         tx,
@@ -530,6 +537,16 @@ fn log_debug_format(
             }],
         ),
     )
+}
+
+fn extract_instance_scale(geometry: &Geometry) -> Option<Vec3D> {
+    match geometry {
+        Geometry::Mesh {
+            scale: Some(Vec3([x, y, z])),
+            ..
+        } => Some(Vec3D::new(*x as f32, *y as f32, *z as f32)),
+        _ => None,
+    }
 }
 
 fn log_link(
@@ -576,6 +593,7 @@ fn log_link(
         let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
 
+        let instance_scale = extract_instance_scale(geometry);
         // Prefer inline defined material properties if present, otherwise fall back to global material.
         let material = material.as_ref().and_then(|mat| {
             if mat.color.is_some() || mat.texture.is_some() {
@@ -594,6 +612,7 @@ fn log_link(
             timepoint,
             origin,
             link_name.clone(),
+            instance_scale,
         )?;
 
         log_geometry(
@@ -616,6 +635,8 @@ fn log_link(
         let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
 
+        let instance_scale = extract_instance_scale(geometry);
+
         // A collision geometry has no frame ID of its own and has a constant pose,
         // so we attach it to the link using an instance pose.
         send_instance_pose_with_frame(
@@ -625,6 +646,7 @@ fn log_link(
             timepoint,
             origin,
             link_name.clone(),
+            instance_scale,
         )?;
 
         log_geometry(
@@ -704,7 +726,7 @@ fn log_geometry(
     timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     match geometry {
-        Geometry::Mesh { filename, scale } => {
+        Geometry::Mesh { filename, scale: _ } => {
             use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
@@ -731,19 +753,6 @@ fn log_geometry(
                 if texture.is_some() {
                     re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                 }
-            }
-
-            if let Some(scale) = scale
-                && scale != &urdf_rs::Vec3([1.0; 3])
-            {
-                let urdf_rs::Vec3([x, y, z]) = *scale;
-                send_archetype(
-                    tx,
-                    store_id,
-                    entity_path.clone(),
-                    timepoint,
-                    &InstancePoses3D::update_fields().with_scales([(x as f32, y as f32, z as f32)]),
-                )?;
             }
 
             send_archetype(tx, store_id, entity_path, timepoint, &asset3d)?;
