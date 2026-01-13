@@ -144,7 +144,7 @@ package = false
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
-rerun-dev-fixup = { workspace = true }
+rerun-dev-fixup = { workspace = true, editable = false }
 # Example packages
 air_traffic_data = { workspace = true }
 animated_urdf = { workspace = true }
