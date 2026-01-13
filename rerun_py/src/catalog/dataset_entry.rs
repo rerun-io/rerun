@@ -853,6 +853,28 @@ impl PyDatasetEntryInternal {
         super::PyDatasetViewInternal::new(Py::from(self_), None, Some(exprs))
     }
 
+    /// Returns a new `DatasetView` filtered to the given component column selectors.
+    ///
+    /// Parameters
+    /// ----------
+    /// column_selectors : list[str]
+    ///     Component column selectors like "/entity_path:Component".
+    ///
+    /// Returns
+    /// -------
+    /// DatasetViewInternal
+    ///     A new view filtered to the given column selectors.
+    fn filter_contents_columns(
+        self_: PyRef<'_, Self>,
+        column_selectors: Vec<String>,
+    ) -> super::PyDatasetViewInternal {
+        super::PyDatasetViewInternal::new_with_column_selectors(
+            Py::from(self_),
+            None,
+            column_selectors,
+        )
+    }
+
     pub fn __str__(self_: PyRef<'_, Self>) -> String {
         format!(
             "DatasetEntry(name='{}', id='{}')",

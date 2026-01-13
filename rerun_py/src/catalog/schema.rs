@@ -146,7 +146,7 @@ impl PySchemaInternal {
     ///     Sorted list of archetype names (e.g., `["rerun.archetypes.Points3D", ...]`)
     fn archetypes(&self) -> Vec<String> {
         let mut archetypes: Vec<String> = self
-            .schema
+            .columns
             .component_columns()
             .filter_map(|col| col.archetype.map(|a| a.to_string()))
             .collect();
@@ -166,7 +166,7 @@ impl PySchemaInternal {
     ///     Sorted list of entity paths (e.g., `["/world/points", "/world/camera", ...]`)
     fn entities(&self) -> Vec<String> {
         let mut entities: Vec<String> = self
-            .schema
+            .columns
             .component_columns()
             .map(|col| col.entity_path.to_string())
             .collect();
@@ -186,7 +186,7 @@ impl PySchemaInternal {
     ///     Sorted list of component type names (e.g., `["rerun.components.Position3D", ...]`)
     fn component_types(&self) -> Vec<String> {
         let mut component_types: Vec<String> = self
-            .schema
+            .columns
             .component_columns()
             .filter_map(|col| col.component_type.map(|c| c.to_string()))
             .collect();
@@ -220,7 +220,7 @@ impl PySchemaInternal {
         archetype: Option<&str>,
         component_type: Option<&str>,
     ) -> Vec<PyComponentColumnDescriptor> {
-        self.schema
+        self.columns
             .component_columns()
             .filter(|col| {
                 // Filter by entity_path if provided

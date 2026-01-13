@@ -20,6 +20,7 @@ def test_dataset_with_archetypes(
     """Create a test dataset with various archetypes."""
     import tempfile
     import uuid
+    from pathlib import Path
 
     # Create a temporary recording with known archetypes
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -52,7 +53,9 @@ def test_dataset_with_archetypes(
 
         # Create dataset and register the recording
         dataset = entry_factory.create_dataset("test_archetypes")
-        handle = dataset.register_prefix(tmpdir)
+        # Convert tmpdir to a file:// URL
+        tmpdir_url = Path(tmpdir).as_uri()
+        handle = dataset.register_prefix(tmpdir_url)
         handle.wait(timeout_secs=30)
 
         return dataset

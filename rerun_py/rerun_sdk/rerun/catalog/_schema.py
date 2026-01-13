@@ -117,6 +117,105 @@ class Schema:
         """
         return [col.name for col in self]
 
+    def archetypes(self) -> list[str]:
+        """
+        List all unique archetype names in the schema.
+
+        Returns a sorted list of fully-qualified archetype names.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of archetype names (e.g., ["rerun.archetypes.Points3D", ...])
+
+        """
+        return self._internal.archetypes()
+
+    def entities(self) -> list[str]:
+        """
+        List all unique entity paths in the schema.
+
+        Returns a sorted list of entity paths.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of entity paths (e.g., ["/world/points", "/world/camera", ...])
+
+        """
+        return self._internal.entities()
+
+    def component_types(self) -> list[str]:
+        """
+        List all unique component type names in the schema.
+
+        Returns a sorted list of fully-qualified component type names.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of component type names (e.g., ["rerun.components.Position3D", ...])
+
+        """
+        return self._internal.component_types()
+
+    def columns_for(
+        self,
+        entity_path: str | None = None,
+        archetype: str | None = None,
+        component_type: str | None = None,
+    ) -> list[ComponentColumnDescriptor]:
+        """
+        Get columns matching ALL specified criteria.
+
+        Filters columns using AND logic - a column must match all non-None criteria.
+
+        Parameters
+        ----------
+        entity_path : str | None
+            Optional entity path filter.
+        archetype : str | None
+            Optional archetype name filter (fully-qualified, e.g., "rerun.archetypes.Points3D").
+        component_type : str | None
+            Optional component type filter (fully-qualified, e.g., "rerun.components.Position3D").
+
+        Returns
+        -------
+        list[ComponentColumnDescriptor]
+            List of columns matching all provided criteria.
+
+        """
+        return self._internal.columns_for(entity_path, archetype, component_type)
+
+    def column_names_for(
+        self,
+        entity_path: str | None = None,
+        archetype: str | None = None,
+        component_type: str | None = None,
+    ) -> list[str]:
+        """
+        Get column names matching ALL specified criteria.
+
+        This is a convenience method that returns just the column names,
+        designed for use with `dataset.filter_contents()`.
+
+        Parameters
+        ----------
+        entity_path : str | None
+            Optional entity path filter.
+        archetype : str | None
+            Optional archetype name filter (fully-qualified, e.g., "rerun.archetypes.Points3D").
+        component_type : str | None
+            Optional component type filter (fully-qualified, e.g., "rerun.components.Position3D").
+
+        Returns
+        -------
+        list[str]
+            List of column names matching all provided criteria.
+
+        """
+        return self._internal.column_names_for(entity_path, archetype, component_type)
+
     def __repr__(self) -> str:
         """Return a string representation of the schema."""
         return "\n".join(repr(col) for col in self)

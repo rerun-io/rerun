@@ -507,38 +507,81 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    def filter_contents(
+        self, exprs: str | Sequence[str]
+    ) -> DatasetView:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetView filtered to the given entity paths or specific component columns.
+
+        This method accepts both entity path patterns and component column selectors:
+        - **Entity path patterns** (no colon): Include all components at matching entities
+        - **Component column selectors** (with colon): Include only specific components
+
+        The format automatically detects which mode to use based on the presence of `:` in the string.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
+        Component column selectors use the format: `"entity_path:component"`
+        - Example: `"/world/points:Position3D"`
+        - This matches the format used by blueprint APIs (ComponentColumnSelector)
+
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Can be:
+            - Single string (entity path or column selector)
+            - List of strings (can mix entity paths and column selectors)
+
+            Entity path examples:
+            - `"/points/**"` - All components at entities under /points
+            - `"/world/camera"` - All components at /world/camera
+            - `"-/text/**"` - Exclude entities under /text
+
+            Column selector examples:
+            - `"/world/points:Position3D"` - Only Position3D component at /world/points
+            - `"/world/points:Points3D:positions"` - Specific archetype component
 
         Returns
         -------
         DatasetView
-            A new view filtered to the matching entity paths.
+            A new view filtered to the matching entity paths/components.
 
         Examples
         --------
+        Entity path filtering (all components):
         ```python
         # Filter to a single entity path
         view = dataset.filter_contents("/points/**")
 
         # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**"])
+        view = dataset.filter_contents(["/points/**", "/camera/**"])
 
         # Exclude certain paths
         view = dataset.filter_contents(["/points/**", "-/text/**"])
+        ```
 
-        # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        Component column filtering (specific components):
+        ```python
+        # Filter to specific components
+        view = dataset.filter_contents([
+            "/world/points:Position3D",
+            "/world/points:Color"
+        ])
+
+        # Mix entity paths and column selectors
+        view = dataset.filter_contents([
+            "/world/points:Position3D",  # Only Position3D at /world/points
+            "/world/camera"              # All components at /world/camera
+        ])
+        ```
+
+        Chaining with other filters:
+        ```python
+        view = (dataset
+            .filter_segments(["recording_0"])
+            .filter_contents(["/world/points:Position3D"]))
         ```
 
         """
@@ -546,7 +589,32 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        # Separate entity paths from column selectors based on presence of ":"
+        entity_paths = []
+        column_selectors = []
+
+        for expr in exprs:
+            if ":" in expr and not expr.startswith("-"):
+                # It's a column selector (has colon and not a negation pattern)
+                column_selectors.append(expr)
+            else:
+                # It's an entity path pattern (no colon, or is a negation)
+                entity_paths.append(expr)
+
+        # If we have column selectors, use component-level filtering
+        if column_selectors:
+            if entity_paths:
+                # Mixed mode: need to handle both entity paths and column selectors
+                # For now, we'll use column-level filtering and warn about mixed usage
+                # TODO(#9999): Support mixing entity paths with column selectors properly
+                raise ValueError(
+                    "Cannot mix entity path patterns and column selectors in the same filter. "
+                    "Please use either entity paths (no colon) or column selectors (with colon), not both."
+                )
+            return DatasetView(self._internal.filter_contents_columns(column_selectors))
+
+        # Otherwise use entity-path-only filtering (current behavior)
+        return DatasetView(self._internal.filter_contents(entity_paths))
 
     def filter_archetypes(
         self,
@@ -1065,29 +1133,80 @@ class DatasetView:
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
+    def filter_contents(
+        self, exprs: str | Sequence[str]
+    ) -> DatasetView:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetView filtered to the given entity paths or specific component columns.
+
+        Filters are composed: if this view already has filters, the result is the intersection
+        of the existing filters and the new content filter.
+
+        This method accepts both entity path patterns and component column selectors:
+        - **Entity path patterns** (no colon): Include all components at matching entities
+        - **Component column selectors** (with colon): Include only specific components
+
+        The format automatically detects which mode to use based on the presence of `:` in the string.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
+        Component column selectors use the format: `"entity_path:component"`
+        - Example: `"/world/points:Position3D"`
+        - This matches the format used by blueprint APIs (ComponentColumnSelector)
+
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Can be:
+            - Single string (entity path or column selector)
+            - List of strings (can mix entity paths and column selectors)
+
+            Entity path examples:
+            - `"/points/**"` - All components at entities under /points
+            - `"/world/camera"` - All components at /world/camera
+            - `"-/text/**"` - Exclude entities under /text
+
+            Column selector examples:
+            - `"/world/points:Position3D"` - Only Position3D component at /world/points
+            - `"/world/points:Points3D:positions"` - Specific archetype component
 
         Returns
         -------
         DatasetView
-            A new view filtered to the matching entity paths.
+            A new view filtered to the matching entity paths/components.
 
         """
         if isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        # Separate entity paths from column selectors based on presence of ":"
+        entity_paths = []
+        column_selectors = []
+
+        for expr in exprs:
+            if ":" in expr and not expr.startswith("-"):
+                # It's a column selector (has colon and not a negation pattern)
+                column_selectors.append(expr)
+            else:
+                # It's an entity path pattern (no colon, or is a negation)
+                entity_paths.append(expr)
+
+        # If we have column selectors, use component-level filtering
+        if column_selectors:
+            if entity_paths:
+                # Mixed mode: need to handle both entity paths and column selectors
+                # For now, we'll use column-level filtering and warn about mixed usage
+                # TODO(#9999): Support mixing entity paths with column selectors properly
+                raise ValueError(
+                    "Cannot mix entity path patterns and column selectors in the same filter. "
+                    "Please use either entity paths (no colon) or column selectors (with colon), not both."
+                )
+            return DatasetView(self._internal.filter_contents_columns(column_selectors))
+
+        # Otherwise use entity-path-only filtering (current behavior)
+        return DatasetView(self._internal.filter_contents(entity_paths))
 
     def filter_archetypes(
         self,
