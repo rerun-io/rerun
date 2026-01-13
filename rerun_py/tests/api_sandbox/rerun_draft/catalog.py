@@ -11,11 +11,78 @@ from rerun import catalog as _catalog
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
+    from typing import Type, Union
 
     import pyarrow as pa
     from rerun.catalog import IndexColumnDescriptor, RegistrationHandle
 
-    from rerun_bindings import IndexValuesLike  # noqa: TID251
+    from rerun import Archetype
+    from rerun.archetypes._baseclasses import ComponentMixin
+    from rerun_bindings import IndexValuesLike, Schema as _Schema  # noqa: TID251
+
+# Type aliases for archetype and component specs
+ArchetypeSpec = Union[str, "Type[Archetype]"]
+ComponentSpec = Union[str, "Type[ComponentMixin]"]
+
+
+# Helper functions for type conversion
+def _archetype_to_name(archetype: ArchetypeSpec) -> str:
+    """Convert archetype to fully-qualified name.
+
+    Args:
+        archetype: Either a fully-qualified string (e.g., "rerun.archetypes.Points3D")
+                   or an Archetype type (e.g., rr.Points3D)
+
+    Returns:
+        Fully-qualified archetype name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(archetype, str):
+        if "." not in archetype:
+            raise ValueError(
+                f"Archetype name must be fully-qualified (e.g., 'rerun.archetypes.Points3D'), "
+                f"got: {archetype!r}. Short names like 'Points3D' are not supported."
+            )
+        return archetype
+    else:
+        # It's a Type[Archetype] - get the name via archetype() method
+        return archetype.archetype()
+
+
+def _component_type_to_name(component_type: ComponentSpec) -> str:
+    """Convert component type to fully-qualified name.
+
+    Args:
+        component_type: Either a fully-qualified string (e.g., "rerun.components.Position3D")
+                        or a ComponentMixin type (e.g., rr.components.Position3D)
+
+    Returns:
+        Fully-qualified component type name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(component_type, str):
+        if "." not in component_type:
+            raise ValueError(
+                f"Component type name must be fully-qualified "
+                f"(e.g., 'rerun.components.Position3D'), got: {component_type!r}. "
+                f"Short names like 'Position3D' are not supported."
+            )
+        return component_type
+    else:
+        # It's a Type[ComponentMixin] - get via _BATCH_TYPE._COMPONENT_TYPE
+        return component_type._BATCH_TYPE._COMPONENT_TYPE
+
+
+def _normalize_to_list(value):
+    """Normalize single value or list to list."""
+    if isinstance(value, list):
+        return value
+    else:
+        return [value]
 
 
 class CatalogClient:
