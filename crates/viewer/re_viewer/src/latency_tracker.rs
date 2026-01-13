@@ -11,8 +11,10 @@ pub const MIN_QUERY_INTERVAL: web_time::Duration = web_time::Duration::from_secs
 pub enum LatencyResult {
     /// The most recent ping to the server failed.
     NoConnection,
+
     /// We haven't gotten back the answer for the first ping yet.
-    ToBeAssigned,
+    ToBeAssigned,'
+
     /// The most recently measured latency.
     MostRecent(web_time::Duration),
 }
