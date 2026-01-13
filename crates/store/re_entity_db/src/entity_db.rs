@@ -713,6 +713,8 @@ impl EntityDb {
                 // and we GC the oldest data instead.
                 None
             },
+
+            perform_deep_deletions: false,
         });
 
         if store_events.is_empty() {
