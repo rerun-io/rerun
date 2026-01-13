@@ -14,6 +14,9 @@ mod visualizer_ui;
 
 pub use selection_panel::SelectionPanel;
 
+/// Whether to show the component mappings UI.
+pub(crate) const ENABLE_COMPONENT_MAPPINGS_UI: bool = false;
+
 #[cfg(test)]
 mod test {
     use re_chunk_store::LatestAtQuery;

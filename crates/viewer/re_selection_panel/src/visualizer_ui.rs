@@ -524,6 +524,10 @@ fn source_component_ui(
     instruction: &VisualizerInstruction,
     changed_component_mappings: &mut Vec<VisualizerComponentMapping>,
 ) {
+    if !crate::ENABLE_COMPONENT_MAPPINGS_UI {
+        return;
+    }
+
     let Some(target_component_type) = &component_descr.component_type else {
         return;
     };
