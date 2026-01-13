@@ -231,6 +231,61 @@ class TestSchemaExploration:
         assert isinstance(columns, list)
         assert len(columns) == 0
 
+    def test_column_names_for_all(self) -> None:
+        """Test column_names_for() returns just names."""
+        column_names = self.schema.column_names_for()
+
+        # Should return list of strings
+        assert isinstance(column_names, list)
+        assert len(column_names) > 0
+        assert all(isinstance(name, str) for name in column_names)
+
+        # Should match names from columns_for()
+        columns = self.schema.columns_for()
+        expected_names = [col.name for col in columns]
+        assert column_names == expected_names
+
+    def test_column_names_for_archetype(self) -> None:
+        """Test column_names_for() filtered by archetype."""
+        column_names = self.schema.column_names_for(archetype="rerun.archetypes.Points3D")
+
+        # Should return list of strings
+        assert isinstance(column_names, list)
+        assert len(column_names) > 0
+        assert all(isinstance(name, str) for name in column_names)
+
+        # Should match names from columns_for()
+        columns = self.schema.columns_for(archetype="rerun.archetypes.Points3D")
+        expected_names = [col.name for col in columns]
+        assert column_names == expected_names
+
+    def test_column_names_for_entity_and_archetype(self) -> None:
+        """Test column_names_for() with multiple criteria."""
+        column_names = self.schema.column_names_for(
+            entity_path="/world/points",
+            archetype="rerun.archetypes.Points3D"
+        )
+
+        # Should return list of strings
+        assert isinstance(column_names, list)
+        assert len(column_names) > 0
+
+        # Should match names from columns_for()
+        columns = self.schema.columns_for(
+            entity_path="/world/points",
+            archetype="rerun.archetypes.Points3D"
+        )
+        expected_names = [col.name for col in columns]
+        assert column_names == expected_names
+
+    def test_column_names_for_no_match(self) -> None:
+        """Test column_names_for() returns empty list when no match."""
+        column_names = self.schema.column_names_for(entity_path="/nonexistent")
+
+        # Should return empty list
+        assert isinstance(column_names, list)
+        assert len(column_names) == 0
+
 
 class TestSchemaExplorationEmpty:
     """Test schema methods with minimal recording (only metadata)."""

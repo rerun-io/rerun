@@ -251,6 +251,37 @@ impl PySchemaInternal {
             .map(|col| PyComponentColumnDescriptor(col.clone()))
             .collect()
     }
+
+    /// Get column names matching ALL specified criteria.
+    ///
+    /// This is a convenience method that returns just the column names,
+    /// designed for use with `dataset.filter_contents()`.
+    ///
+    /// Parameters
+    /// ----------
+    /// entity_path : str | None
+    ///     Optional entity path filter.
+    /// archetype : str | None
+    ///     Optional archetype name filter (fully-qualified, e.g., "rerun.archetypes.Points3D").
+    /// component_type : str | None
+    ///     Optional component type filter (fully-qualified, e.g., "rerun.components.Position3D").
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     List of column names matching all provided criteria.
+    #[pyo3(signature = (entity_path=None, archetype=None, component_type=None))]
+    fn column_names_for(
+        &self,
+        entity_path: Option<&str>,
+        archetype: Option<&str>,
+        component_type: Option<&str>,
+    ) -> Vec<String> {
+        self.columns_for(entity_path, archetype, component_type)
+            .iter()
+            .map(|col| col.0.column_name(re_sorbet::BatchType::Dataframe))
+            .collect()
+    }
 }
 
 impl PySchemaInternal {

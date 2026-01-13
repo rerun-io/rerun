@@ -304,6 +304,55 @@ class SchemaInternal:
 
         """
 
+    def column_names_for(
+        self,
+        entity_path: str | None = None,
+        archetype: str | None = None,
+        component_type: str | None = None,
+    ) -> list[str]:
+        """
+        Get column names matching ALL specified criteria.
+
+        This is a convenience method that returns just the column names instead
+        of full column descriptors. It's designed for use with `dataset.filter_contents()`.
+
+        Parameters
+        ----------
+        entity_path : str | None
+            Optional entity path filter. Only columns at this exact entity path will be returned.
+        archetype : str | None
+            Optional archetype name filter (fully-qualified, e.g., "rerun.archetypes.Points3D").
+            Only columns belonging to this archetype will be returned.
+        component_type : str | None
+            Optional component type filter (fully-qualified, e.g., "rerun.components.Position3D").
+            Only columns of this component type will be returned.
+
+        Returns
+        -------
+        list[str]
+            List of column names matching all provided criteria.
+
+        Examples
+        --------
+        Get column names for an archetype to use with filter_contents:
+
+        ```python
+        column_names = schema.column_names_for(archetype="rerun.archetypes.Points3D")
+        view = dataset.filter_contents(column_names)
+        ```
+
+        Get column names for specific entity and archetype:
+
+        ```python
+        column_names = schema.column_names_for(
+            entity_path="/world/points",
+            archetype="rerun.archetypes.Points3D"
+        )
+        view = dataset.filter_contents(column_names)
+        ```
+
+        """
+
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
