@@ -74,7 +74,24 @@ $ ./logging_script
 
 Dataflow:
 
-diagram: sdk_to_viewer_logging
+```d2
+direction: left
+
+Rerun process: {
+  Native Viewer: {
+    Renderer
+    Chunk Store
+  }
+  gRPC Server
+}
+
+User process: {
+  SDK
+}
+
+User process.SDK -> Rerun process.gRPC Server
+Rerun process.gRPC Server -> Rerun process.Native Viewer.Chunk Store
+```
 
 Reference:
 * [SDK operating modes: `connect_grpc`](../reference/sdk/operating-modes.md#connect_grpc)
@@ -110,7 +127,24 @@ $ rerun https://example.com/recording.rrd
 
 Dataflow:
 
-diagram: sdk_to_rrd_to_viewer_logging
+```d2
+direction: left
+
+Rerun process: {
+  Native Viewer: {
+    Renderer
+    Chunk Store
+  }
+  gRPC Server
+}
+
+User process: {
+  SDK
+}
+
+User process.SDK -> ".rrd file"
+".rrd file" -> Rerun process.Native Viewer.Chunk Store
+```
 
 Reference:
 * [SDK operating modes: `save`](../reference/sdk/operating-modes.md#save)
@@ -178,7 +212,23 @@ dataset.register([
 
 Dataflow:
 
-diagram: sdk_to_rrd_to_server
+```d2
+direction: left
+
+User process: {
+  SDK
+}
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+User process.SDK -> ".rrd file(s)"
+".rrd file(s)" -> Server process.Rerun Server.Dataset Store
+```
 
 Reference:
 * [Getting data out of Rerun](../howto/query-and-transform/get-data-out.md)
@@ -201,7 +251,23 @@ Both Native and Web Viewers behave similarly when connected to a Server—they f
 
 Dataflow:
 
-diagram: server_to_viewer
+```d2
+direction: left
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+Viewer: {
+  Renderer
+  Chunk Store
+}
+
+Server process.Rerun Server.Dataset Store -> Viewer.Chunk Store: "redap (gRPC)"
+```
 
 
 ## Server to Catalog API
@@ -231,7 +297,24 @@ results = df.filter(df["entity_path"] == "/camera/image").collect()
 
 Dataflow:
 
-diagram: server_to_catalog_api
+```d2
+direction: left
+
+Server process: {
+  Rerun Server: {
+    Catalog
+    Dataset Store
+  }
+}
+
+User process: {
+  Catalog API
+  DataFusion
+}
+
+Server process.Rerun Server.Catalog -> User process.Catalog API: "redap (gRPC)"
+User process.Catalog API -> User process.DataFusion
+```
 
 Reference:
 * [Getting data out of Rerun](../howto/query-and-transform/get-data-out.md)
