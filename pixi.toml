@@ -232,6 +232,9 @@ lint-typos = "typos"
 toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
 
+# uv lockfile check
+uv-lock-check = "uv lock --dry-run && uv lock --check"
+
 # ------------------------------------------------------------------------------------------
 # Protobuf stuff:
 #
