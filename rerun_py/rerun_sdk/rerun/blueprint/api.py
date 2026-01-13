@@ -11,6 +11,7 @@ from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
 from .archetypes import (
+    ActiveVisualizers,
     ContainerBlueprint,
     EntityBehavior,
     PanelBlueprint,
@@ -19,7 +20,7 @@ from .archetypes import (
     ViewContents,
     ViewportBlueprint,
     VisibleTimeRanges,
-    VisualizerOverrides,
+    VisualizerInstruction,
 )
 from .components import PanelState, PanelStateLike
 from .visualizers import VisualizableArchetype, Visualizer
@@ -128,6 +129,16 @@ class View:
         """
         return f"view/{self.id}"
 
+    def _blueprint_base_visualizer_path_for_entity(self, entity_path: EntityPathLike) -> str:
+        """
+        Construct the base path for visualizer overrides for a given entity in a view.
+
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
+        entity_path_str = str(entity_path).removeprefix("/")
+        return f"{self.blueprint_path()}/ViewContents/overrides/{entity_path_str}/visualizers"
+
     def to_container(self) -> Container:
         """Convert this view to a container."""
         from .containers import Tabs
@@ -169,37 +180,44 @@ class View:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
-        # TODO(RR-3153): Use new visualizer type aware override datamodel.
         for path, visualizer in self.visualizer_overrides.items():
-            log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
+            base_visualizer_path = self._blueprint_base_visualizer_path_for_entity(path)
 
             if isinstance(visualizer, Iterable):
                 visualizer_list = visualizer
             else:
                 visualizer_list = [visualizer]
 
-            visualizer_types = []
+            visualizer_ids: list[uuid.UUID] = []
             for visualizer in visualizer_list:
-                visualizer_type = self._log_visualizer_override(stream, log_path, visualizer)
-                if visualizer_type is not None:
-                    visualizer_types.append(visualizer_type)
+                visualizer_id = self._log_visualizer_like(stream, base_visualizer_path, visualizer)
+                if visualizer_id is not None:
+                    visualizer_ids.append(visualizer_id)
 
-            if len(visualizer_types) > 0:
-                stream.log(log_path, VisualizerOverrides(visualizer_types))
+            if len(visualizer_ids) > 0:
+                stream.log(base_visualizer_path, ActiveVisualizers([id.bytes for id in visualizer_ids]))
 
-    def _log_visualizer_override(
-        self, stream: RecordingStream, base_override_path: str, visualizer: VisualizerLike
-    ) -> str | None:
-        # TODO: generate a visualizer instruction id
+    def _log_visualizer_like(
+        self,
+        stream: RecordingStream,
+        base_visualizer_path: str,
+        visualizer: VisualizerLike,
+    ) -> uuid.UUID | None:
         if isinstance(visualizer, VisualizableArchetype):
             visualizer = visualizer.visualizer()
 
         if isinstance(visualizer, Visualizer):
+            visualizer_path = f"{base_visualizer_path}/{visualizer.id}"
+
+            # TODO(RR-3254): Include mappings.
+            stream.log(visualizer_path, VisualizerInstruction(visualizer.visualizer_type))
             if visualizer.overrides is not None and len(visualizer.overrides) > 0:
-                stream.log(base_override_path, visualizer.overrides)
-            return visualizer.visualizer_type
+                stream.log(visualizer_path, visualizer.overrides)
+
+            return visualizer.id
         else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
-            stream.log(base_override_path, visualizer)
+            # These are logged at the base path without a UUID
+            stream.log(base_visualizer_path, visualizer)
             return None
 
     def _ipython_display_(self) -> None:

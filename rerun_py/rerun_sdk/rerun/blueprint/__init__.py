@@ -28,6 +28,7 @@ from .api import (
     View as View,
 )
 from .archetypes import (
+    ActiveVisualizers as ActiveVisualizers,
     Background as Background,
     EntityBehavior as EntityBehavior,
     EyeControls3D as EyeControls3D,
@@ -42,7 +43,6 @@ from .archetypes import (
     TextLogRows as TextLogRows,
     VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
-    ActiveVisualizers as ActiveVisualizers,
 )
 from .components import (
     BackgroundKind as BackgroundKind,

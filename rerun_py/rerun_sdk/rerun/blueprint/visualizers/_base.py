@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+import uuid
 
 if TYPE_CHECKING:
     from ..._baseclasses import DescribedComponentBatch
@@ -33,6 +34,7 @@ class Visualizer:
             TODO(RR-3254): Currently unused - implement mapping functionality
 
         """
+        self.id = uuid.uuid4()
         self.visualizer_type = visualizer_type
         self.overrides = overrides
         self.mappings = mappings or []
