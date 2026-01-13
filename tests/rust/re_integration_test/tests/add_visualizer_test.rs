@@ -16,6 +16,7 @@ use re_viewport_blueprint::ViewBlueprint;
 pub async fn test_add_visualizer_axes() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
+        max_steps: Some(100),
         ..Default::default()
     });
     harness.init_recording();

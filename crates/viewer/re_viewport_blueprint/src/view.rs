@@ -460,8 +460,8 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
-        ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
+        IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
+        VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
