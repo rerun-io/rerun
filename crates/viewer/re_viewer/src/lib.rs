@@ -15,6 +15,7 @@ mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod history;
+mod latency_tracker;
 mod navigation;
 mod open_url_description;
 mod prefetch_chunks;
