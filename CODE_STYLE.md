@@ -154,7 +154,7 @@ println!("{:-}, value"); // The `-` option stands for redaction.
 Look for `f.sign_minus()` in the code for where we handle this.
 
 ## Python
-Prefer kw-args (key-word arguments) for non-obvious parameters.
+Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
 
 * Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
 * Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
@@ -167,6 +167,8 @@ kw-args have two big benefits:
 First, they make future API changes a lot easier. We can add or remove arguments without breaking the API (just log deprecation notices).
 
 Secondly, named arguments makes the caller code a lot more readable.
+
+Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
