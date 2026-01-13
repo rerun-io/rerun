@@ -70,6 +70,12 @@ pub enum ChunkStoreError {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
+    #[error("Failed to load data, parsing error: {0:#}")]
+    Codec(#[from] re_log_encoding::CodecError),
+
+    #[error("Failed to load data, semantic error: {0:#}")]
+    Sorbet(#[from] re_sorbet::SorbetError),
+
     /// Error when parsing configuration from environment.
     #[error("Failed to parse config: '{name}={value}': {err}")]
     ParseConfig {

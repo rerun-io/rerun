@@ -551,6 +551,15 @@ impl EntityDb {
             re_log::error!("Failed to ingest RRD Manifest: {err}");
         }
 
+        if let Err(err) = self
+            .storage_engine
+            .write()
+            .store()
+            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
+        {
+            re_log::error!("Failed to load RRD Manifest into store: {err}");
+        }
+
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }

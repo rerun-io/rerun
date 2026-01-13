@@ -4,8 +4,10 @@ use std::sync::Arc;
 use ahash::HashMap;
 use arrow::array::Array as _;
 use itertools::Itertools as _;
+
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
+use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
@@ -16,6 +18,156 @@ use crate::{
 // ---
 
 impl ChunkStore {
+    /// This insert a batch of virtual chunks into the store, according to the given [`RrdManifest`].
+    ///
+    /// Since no physical data is involved, no events are fired.
+    /// All queries will return partial results until the missing physical data gets loaded in.
+    #[expect(clippy::needless_pass_by_value)] // we'll need it soon for lineage tracking
+    pub fn insert_rrd_manifest(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreResult<()> {
+        re_tracing::profile_function!();
+
+        let Self {
+            id: _,
+            config: _,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunks_per_chunk_id: _,      // physical data only
+            chunk_ids_per_min_row_id: _, // physical data only
+            temporal_chunk_ids_per_entity_per_component,
+            temporal_chunk_ids_per_entity,
+            temporal_physical_chunks_stats: _, // stats are for physical data only
+            static_chunk_ids_per_entity,
+            static_chunks_stats: _, // stats are for physical data only
+            insert_id: _,
+            gc_id: _,
+            event_id: _,
+        } = self;
+
+        let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
+            rrd_manifest.sorbet_schema.clone(),
+        ))?;
+
+        time_type_registry.extend(
+            sorbet_schema
+                .columns
+                .index_columns()
+                .map(|descr| (descr.timeline_name(), descr.timeline().typ())),
+        );
+
+        for descr in sorbet_schema.columns.component_columns() {
+            let Some((component_type, inner_datatype)) = descr
+                .component_type
+                .map(|typ| (typ, descr.inner_datatype()))
+            else {
+                continue;
+            };
+
+            if let Some(old_typ) = type_registry.insert(component_type, inner_datatype.clone())
+                && old_typ != inner_datatype
+            {
+                re_log::warn_once!(
+                    "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
+                    descr.component,
+                    component_type,
+                    descr.entity_path,
+                    re_arrow_util::format_data_type(&old_typ),
+                    re_arrow_util::format_data_type(&inner_datatype)
+                );
+            }
+        }
+
+        for descr in sorbet_schema.columns.component_columns() {
+            let inner_datatype = descr.inner_datatype();
+            let previous = per_column_metadata
+                .entry(descr.entity_path.clone())
+                .or_default()
+                .insert(
+                    descr.component,
+                    (
+                        descr.component_descriptor(),
+                        ColumnMetadataState {
+                            is_semantically_empty: descr.is_semantically_empty,
+                        },
+                        inner_datatype.clone(),
+                    ),
+                );
+
+            if let Some(previous) = previous
+                && previous.2 != inner_datatype
+            {
+                re_log::warn_once!(
+                    "Component '{}' on entity '{}' changed type from {} to {}",
+                    descr.component,
+                    descr.entity_path,
+                    re_arrow_util::format_data_type(&previous.2),
+                    re_arrow_util::format_data_type(&inner_datatype)
+                );
+            }
+        }
+
+        *static_chunk_ids_per_entity = rrd_manifest.get_static_data_as_a_map()?;
+
+        for (entity_path, per_timeline) in rrd_manifest.get_temporal_data_as_a_map()? {
+            for (timeline, per_component) in per_timeline {
+                for (component, per_chunk) in per_component {
+                    for (chunk_id, entry) in per_chunk {
+                        let RrdManifestTemporalMapEntry {
+                            time_range,
+                            num_rows: _,
+                        } = entry;
+                        // with component
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity_per_component
+                                .entry(entity_path.clone())
+                                .or_default();
+                            let per_component = per_timeline.entry(*timeline.name()).or_default();
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_component.entry(component).or_default();
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+
+                        // without component
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity
+                                .entry(entity_path.clone())
+                                .or_default();
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_timeline.entry(*timeline.name()).or_default();
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Inserts a [`Chunk`] in the store.
     ///
     /// Iff the store was modified, all registered subscribers will be notified and the
@@ -155,10 +307,6 @@ impl ChunkStore {
                                     chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
                                 });
 
-                            debug_assert!(
-                                cur_row_id_min_for_chunk.is_some(),
-                                "This condition cannot fail, we just want to avoid unwrapping",
-                            );
                             if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk {
                                 overwritten_chunk_ids
                                     .insert(*cur_chunk_id, cur_row_id_min_for_chunk);
