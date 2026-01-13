@@ -6,11 +6,61 @@ from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
+from rerun import components
 
 if TYPE_CHECKING:
-    from rerun.catalog import CatalogClient, DatasetEntry
+    from rerun.catalog import CatalogClient, ComponentColumnDescriptor, DatasetEntry, Schema
 
     from e2e_redap_tests.conftest import EntryFactory
+
+
+# Helper functions to improve test readability
+
+
+def assert_all_columns_match(
+    schema: Schema,
+    *,
+    entity_path: str | None = None,
+    archetype: str | None = None,
+    component_type: str | None = None,
+) -> None:
+    """
+    Assert that all component columns in a schema match the given criteria.
+
+    Args:
+        schema: The schema to check
+        entity_path: Expected entity path for all columns (optional)
+        archetype: Expected archetype for all columns (optional)
+        component_type: Expected component type for all columns (optional)
+
+    Raises:
+        AssertionError: If schema has no columns or any column doesn't match criteria
+    """
+    component_columns = schema.component_columns()
+    assert len(component_columns) > 0, "Schema should have at least one component column"
+
+    for col in component_columns:
+        if entity_path is not None:
+            assert col.entity_path == entity_path, (
+                f"Expected entity_path '{entity_path}', got '{col.entity_path}' "
+                f"for column {col.name}"
+            )
+        if archetype is not None:
+            assert col.archetype == archetype, (
+                f"Expected archetype '{archetype}', got '{col.archetype}' " f"for column {col.name}"
+            )
+        if component_type is not None:
+            assert col.component_type == component_type, (
+                f"Expected component_type '{component_type}', got '{col.component_type}' "
+                f"for column {col.name}"
+            )
+
+
+def get_first_segment(dataset: DatasetEntry) -> str:
+    """Get the first segment ID from a dataset (sorted alphabetically)."""
+    all_segments = sorted(dataset.segment_ids())
+    assert len(all_segments) > 0, "Dataset should have at least one segment"
+    return all_segments[0]
 
 
 @pytest.fixture
@@ -193,11 +243,7 @@ class TestFilterArchetypes:
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test chaining filter_archetypes with filter_segments."""
-        # Get first segment
-        all_segments = sorted(test_dataset_with_archetypes.segment_ids())
-        assert len(all_segments) >= 1
-
-        first_segment = all_segments[0]
+        first_segment = get_first_segment(test_dataset_with_archetypes)
 
         # Chain filters
         view = (
@@ -221,14 +267,12 @@ class TestFilterArchetypes:
             ["/world/points"]
         ).filter_archetypes(rr.Points3D)
 
-        schema = view.schema()
-
         # Should only have Points3D at /world/points
-        component_columns = schema.component_columns()
-        assert len(component_columns) > 0
-        for col in component_columns:
-            assert col.archetype == "rerun.archetypes.Points3D"
-            assert col.entity_path == "/world/points"
+        assert_all_columns_match(
+            view.schema(),
+            archetype="rerun.archetypes.Points3D",
+            entity_path="/world/points",
+        )
 
 
 class TestFilterComponentTypes:
@@ -375,13 +419,7 @@ class TestFilterComponentTypes:
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test chaining filter_component_types with filter_segments."""
-        from rerun import components
-
-        # Get first segment
-        all_segments = sorted(test_dataset_with_archetypes.segment_ids())
-        assert len(all_segments) >= 1
-
-        first_segment = all_segments[0]
+        first_segment = get_first_segment(test_dataset_with_archetypes)
 
         # Chain filters
         view = (
@@ -399,28 +437,22 @@ class TestFilterComponentTypes:
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test chaining filter_component_types with filter_contents."""
-        from rerun import components
-
         # Filter by entity path and component type
         view = test_dataset_with_archetypes.filter_contents(
             ["/world/points"]
         ).filter_component_types(components.Position3D)
 
-        schema = view.schema()
-
         # Should only have Position3D at /world/points
-        component_columns = schema.component_columns()
-        assert len(component_columns) > 0
-        for col in component_columns:
-            assert col.component_type == "rerun.components.Position3D"
-            assert col.entity_path == "/world/points"
+        assert_all_columns_match(
+            view.schema(),
+            component_type="rerun.components.Position3D",
+            entity_path="/world/points",
+        )
 
     def test_filter_component_types_chain_with_archetypes(
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test chaining filter_component_types with filter_archetypes."""
-        from rerun import components
-
         # Filter by archetype then component type
         # This should give us only Position3D components from Points3D archetype
         view = test_dataset_with_archetypes.filter_archetypes(
@@ -433,12 +465,12 @@ class TestFilterComponentTypes:
         component_types = schema.component_types()
         assert "rerun.components.Position3D" in component_types
 
-        # All columns should be from Points3D archetype
-        component_columns = schema.component_columns()
-        assert len(component_columns) > 0
-        for col in component_columns:
-            assert col.archetype == "rerun.archetypes.Points3D"
-            assert col.component_type == "rerun.components.Position3D"
+        # All columns should be from Points3D archetype and Position3D component
+        assert_all_columns_match(
+            schema,
+            archetype="rerun.archetypes.Points3D",
+            component_type="rerun.components.Position3D",
+        )
 
 
 class TestDatasetViewFiltering:
@@ -478,11 +510,7 @@ class TestDatasetViewFiltering:
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
         """Test chaining multiple filters on DatasetView."""
-        from rerun import components
-
-        # Get first segment
-        all_segments = sorted(test_dataset_with_archetypes.segment_ids())
-        first_segment = all_segments[0]
+        first_segment = get_first_segment(test_dataset_with_archetypes)
 
         # Chain multiple filters
         view = (
@@ -495,14 +523,13 @@ class TestDatasetViewFiltering:
         # All filters should be applied
         assert view.segment_ids() == [first_segment]
 
-        schema = view.schema()
-        component_columns = schema.component_columns()
-        assert len(component_columns) > 0
-
-        for col in component_columns:
-            assert col.entity_path == "/world/points"
-            assert col.archetype == "rerun.archetypes.Points3D"
-            assert col.component_type == "rerun.components.Position3D"
+        # Verify all columns match all filter criteria
+        assert_all_columns_match(
+            view.schema(),
+            entity_path="/world/points",
+            archetype="rerun.archetypes.Points3D",
+            component_type="rerun.components.Position3D",
+        )
 
 
 class TestDataAccess:

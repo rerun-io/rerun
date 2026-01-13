@@ -82,51 +82,42 @@ impl PyDatasetViewInternal {
         }
     }
 
+    /// Check if a column descriptor is a system column (row_id or index/time).
+    ///
+    /// System columns are always included in filtered schemas regardless of filter criteria.
+    fn is_system_column(col: &ColumnDescriptor) -> bool {
+        matches!(col, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_))
+    }
+
     /// Filter schema columns based on content filters or column selectors.
     fn filter_schema(&self, schema: SorbetColumnDescriptors) -> PyResult<SorbetColumnDescriptors> {
-        // If we have both column selectors and content filters, apply both in sequence
-        if let Some(column_selectors) = &self.column_selectors {
-            // First filter by column selectors
-            let schema = self.filter_schema_by_column_selectors(schema, column_selectors)?;
+        // Apply column selector filtering first if present
+        let schema = if let Some(column_selectors) = &self.column_selectors {
+            self.filter_schema_by_column_selectors(schema, column_selectors)?
+        } else {
+            schema
+        };
 
-            // Then filter by entity path if we have content filters
-            if !self.content_filters.is_empty() {
-                let filter = self.resolved_entity_path_filter();
-                let filtered_columns: Vec<ColumnDescriptor> = schema
-                    .into_iter()
-                    .filter(|col| {
-                        match col {
-                            ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
-                            // Keep row_id and index columns
-                            ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
-                        }
-                    })
-                    .collect();
-
-                return Ok(SorbetColumnDescriptors {
-                    columns: filtered_columns,
-                });
-            }
-
-            return Ok(schema);
+        // Then apply entity path filtering if present
+        if !self.content_filters.is_empty() {
+            self.filter_schema_by_entity_path(schema)
+        } else {
+            Ok(schema)
         }
+    }
 
-        // Otherwise use entity path filtering only
-        if self.content_filters.is_empty() {
-            return Ok(schema);
-        }
-
+    /// Filter schema columns based on entity path filters.
+    fn filter_schema_by_entity_path(
+        &self,
+        schema: SorbetColumnDescriptors,
+    ) -> PyResult<SorbetColumnDescriptors> {
         let filter = self.resolved_entity_path_filter();
 
-        // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
             .into_iter()
-            .filter(|col| {
-                match col {
-                    ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
-                    // Keep row_id and index columns
-                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
-                }
+            .filter(|col| match col {
+                ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
+                _ => Self::is_system_column(col),
             })
             .collect();
 
@@ -156,18 +147,14 @@ impl PyDatasetViewInternal {
             ))
         })?;
 
-        // Filter columns: keep non-component columns and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
             .into_iter()
-            .filter(|col| {
-                match col {
-                    ColumnDescriptor::Component(comp) => {
-                        // Check if this component matches any selector
-                        selectors.iter().any(|selector| comp.matches(selector))
-                    }
-                    // Keep row_id and index columns
-                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
+            .filter(|col| match col {
+                ColumnDescriptor::Component(comp) => {
+                    // Check if this component matches any selector
+                    selectors.iter().any(|selector| comp.matches(selector))
                 }
+                _ => Self::is_system_column(col),
             })
             .collect();
 
