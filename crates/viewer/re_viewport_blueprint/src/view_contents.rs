@@ -81,17 +81,6 @@ impl ViewContents {
 }
 
 impl ViewContents {
-    /// The prefix for entity override paths.
-    ///
-    /// Has to be kept in sync with similar occurrences in other SDK languages.
-    const OVERRIDES_PREFIX: &'static str = "overrides";
-
-    /// Visualizers prefix.
-    ///
-    /// At this prefix we store entity global information.
-    /// After that come visualizer instruction ids in the path hierarchy.
-    const VISUALIZERS_PREFIX: &'static str = "visualizers";
-
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling
@@ -110,22 +99,12 @@ impl ViewContents {
             new_entity_path_filter,
         }
     }
-
-    /// Entity path for a given view id.
-    fn blueprint_entity_path_for_id(id: ViewId) -> EntityPath {
-        // Don't use `entity_path_for_view_property` here because this will do a search in the future,
-        // thus needing the entity tree.
-        id.as_entity_path().join(&EntityPath::from_single_string(
-            blueprint_archetypes::ViewContents::name().short_name(),
-        ))
-    }
-
     /// Computes the override path for a given entity in a given view.
     pub fn override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
-        Self::blueprint_entity_path_for_id(id)
-            .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
-            .join(entity_path)
-            .join(&EntityPath::from_single_string(Self::VISUALIZERS_PREFIX))
+        blueprint_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+            id.uuid(),
+            entity_path,
+        )
     }
 
     /// Attempt to load a [`ViewContents`] from the blueprint store.

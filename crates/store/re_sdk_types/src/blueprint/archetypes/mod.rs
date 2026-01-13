@@ -31,6 +31,7 @@ mod time_axis;
 mod time_panel_blueprint;
 mod view_blueprint;
 mod view_contents;
+mod view_contents_ext;
 mod viewport_blueprint;
 mod visible_time_ranges;
 mod visual_bounds2d;

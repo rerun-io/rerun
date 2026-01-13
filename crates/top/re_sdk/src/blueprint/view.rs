@@ -118,12 +118,10 @@ impl View {
         }
 
         // Log overrides
+        // TODO(RR-3256): Need to patch this to support visualizer instructions properly.
         for (entity_path, override_batches_list) in &self.overrides {
-            let override_path = format!(
-                "{}/ViewContents/overrides/{}",
-                self.blueprint_path(),
-                entity_path
-            );
+            let override_path =
+                ViewContents::blueprint_base_visualizer_path_for_entity(self.id, entity_path);
             for override_batches in override_batches_list {
                 stream.log_serialized_batches(
                     override_path.clone(),
