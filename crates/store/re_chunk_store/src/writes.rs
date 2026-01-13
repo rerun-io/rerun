@@ -3,13 +3,11 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 use arrow::array::Array as _;
-use arrow::datatypes::DataType;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
-use re_sorbet::ComponentColumnDescriptor;
 
 use crate::store::ChunkIdSetPerTime;
 use crate::{
@@ -57,27 +55,10 @@ impl ChunkStore {
                 .map(|descr| (descr.timeline_name(), descr.timeline().typ())),
         );
 
-        /// The Sorbet schema always includes the outer list-array, while the type registries expect the inner type.
-        fn computer_inner_datatype(descr: &ComponentColumnDescriptor) -> DataType {
-            match descr.returned_datatype() {
-                arrow::datatypes::DataType::List(field) => field.data_type().clone(),
-
-                dt => {
-                    re_log::warn_once!(
-                        "Component '{}' on entity '{}' has unexpected non-list-array type: {}",
-                        descr.component,
-                        descr.entity_path,
-                        re_arrow_util::format_data_type(&dt),
-                    );
-                    dt
-                }
-            }
-        }
-
         for descr in sorbet_schema.columns.component_columns() {
             let Some((component_type, inner_datatype)) = descr
                 .component_type
-                .map(|typ| (typ, computer_inner_datatype(descr)))
+                .map(|typ| (typ, descr.inner_datatype()))
             else {
                 continue;
             };
@@ -97,7 +78,7 @@ impl ChunkStore {
         }
 
         for descr in sorbet_schema.columns.component_columns() {
-            let inner_datatype = computer_inner_datatype(descr);
+            let inner_datatype = descr.inner_datatype();
             let previous = per_column_metadata
                 .entry(descr.entity_path.clone())
                 .or_default()
