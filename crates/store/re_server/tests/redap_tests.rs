@@ -12,7 +12,7 @@ re_redap_tests::generate_redap_tests!(build);
 #[tokio::test(flavor = "multi_thread")]
 async fn version() {
     let (handle, addr) = re_server::Args {
-        addr: "127.0.0.1".into(),
+        host: "127.0.0.1".into(),
         port: 0,
         datasets: vec![],
         dataset_prefixes: vec![],

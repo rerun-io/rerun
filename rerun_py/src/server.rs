@@ -11,17 +11,18 @@ use re_server::{self, Args as ServerArgs, NamedPathCollection};
 #[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
-    address: SocketAddr,
+    host: std::net::IpAddr,
+    url: String,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
-    #[pyo3(signature = (*, address, port, datasets, dataset_prefixes, tables))]
-    #[pyo3(text_signature = "(self, *, address, port, datasets, dataset_prefixes, tables)")]
+    #[pyo3(signature = (*, host, port, datasets, dataset_prefixes, tables))]
+    #[pyo3(text_signature = "(self, *, host, port, datasets, dataset_prefixes, tables)")]
     pub fn new(
         py: Python<'_>,
-        address: &str,
+        host: &str,
         port: u16,
         datasets: &Bound<'_, PyDict>,
         dataset_prefixes: &Bound<'_, PyDict>,
@@ -33,34 +34,48 @@ impl PyServerInternal {
 
         // we can re-use the CLI argument to construct the server
         let args = ServerArgs {
-            addr: address.to_owned(),
+            host: host.to_owned(),
             port,
             datasets,
             dataset_prefixes,
             tables,
         };
 
-        let address = SocketAddr::new(
-            args.addr.parse().map_err(|err| {
-                PyValueError::new_err(format!("Invalid address: {}: {err}", args.addr))
-            })?,
-            args.port,
-        );
+        let host: std::net::IpAddr = host
+            .parse()
+            .map_err(|err| PyValueError::new_err(format!("Invalid IP: {host:?}: {err}")))?;
+
+        let connect_ip = if host.is_unspecified() {
+            // We usually cannot connect to 0.0.0.0, so tell clients to connect to 127.0.0.1 instead:
+            std::net::Ipv4Addr::LOCALHOST.into()
+        } else {
+            host
+        };
+        let connect_address = SocketAddr::new(connect_ip, args.port);
+
+        let url = format!("rerun+http://{connect_address}");
 
         crate::utils::wait_for_future(py, async {
             let (handle, _) = args.create_server_handle().await.map_err(|err| {
-                PyValueError::new_err(format!("Failed to start Rerun server: {err}"))
+                PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
             })?;
 
             Ok(Self {
                 handle: Some(handle),
-                address,
+                host,
+                url,
             })
         })
     }
 
-    pub fn address(&self) -> String {
-        format!("rerun+http://{}", self.address)
+    /// The address of the server to which clients can connect.
+    pub fn url(&self) -> String {
+        self.url.clone()
+    }
+
+    /// Get the IP that we've bound the server to.
+    pub fn host(&self) -> String {
+        self.host.to_string()
     }
 
     pub fn shutdown(&mut self, py: Python<'_>) -> PyResult<()> {
