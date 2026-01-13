@@ -35,11 +35,7 @@ def test_dataset_multi_component(
             # /world/points has Points3D with positions and colors
             rec.log(
                 "/world/points",
-                rr.Points3D(
-                    [[1, 2, 3], [4, 5, 6]],
-                    colors=[[255, 0, 0], [0, 255, 0]],
-                    radii=[0.1, 0.2]
-                ),
+                rr.Points3D([[1, 2, 3], [4, 5, 6]], colors=[[255, 0, 0], [0, 255, 0]], radii=[0.1, 0.2]),
             )
 
             # /world/boxes has Boxes3D
@@ -111,9 +107,7 @@ class TestEntityPathFiltering:
         assert "rerun.components.Position3D" in points_component_types
         assert "rerun.components.Color" in points_component_types
 
-    def test_filter_contents_excludes_entity_paths(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_filter_contents_excludes_entity_paths(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Can exclude entity paths using - prefix."""
         # Include all under /world but exclude /world/boxes
         view = test_dataset_multi_component.filter_contents(["/world/**", "-/world/boxes"])
@@ -126,9 +120,7 @@ class TestEntityPathFiltering:
         assert "/world/camera" in entity_paths
         assert "/world/boxes" not in entity_paths
 
-    def test_filter_contents_empty_list_returns_all_columns(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_filter_contents_empty_list_returns_all_columns(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Empty filter list returns all columns."""
         view = test_dataset_multi_component.filter_contents([])
 
@@ -149,9 +141,7 @@ class TestEntityPathFiltering:
 
         assert len(component_columns) == 0
 
-    def test_filter_contents_chains_with_segment_filter(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_filter_contents_chains_with_segment_filter(self, test_dataset_multi_component: DatasetEntry) -> None:
         """filter_contents chains with filter_segments."""
         segments = test_dataset_multi_component.segment_ids()
         assert len(segments) >= 1
@@ -159,9 +149,7 @@ class TestEntityPathFiltering:
         first_segment = segments[0]
 
         # Chain filters
-        view = (test_dataset_multi_component
-                .filter_segments([first_segment])
-                .filter_contents(["/world/points"]))
+        view = test_dataset_multi_component.filter_segments([first_segment]).filter_contents(["/world/points"])
 
         # Should have filtered segment
         assert view.segment_ids() == [first_segment]
@@ -181,9 +169,7 @@ class TestComponentColumnFiltering:
     ) -> None:
         """Can filter to specific component using column selector string."""
         # Proposed API: column selector format "entity_path:component"
-        view = test_dataset_multi_component.filter_contents([
-            "/world/points:Points3D:positions"
-        ])
+        view = test_dataset_multi_component.filter_contents(["/world/points:Points3D:positions"])
 
         schema = view.schema()
         component_columns = schema.component_columns()
@@ -199,7 +185,7 @@ class TestComponentColumnFiltering:
         """Can specify multiple components at same entity."""
         view = test_dataset_multi_component.filter_contents([
             "/world/points:Points3D:positions",
-            "/world/points:Points3D:colors"
+            "/world/points:Points3D:colors",
         ])
 
         schema = view.schema()
@@ -216,7 +202,7 @@ class TestComponentColumnFiltering:
         """Can filter components across multiple entities."""
         view = test_dataset_multi_component.filter_contents([
             "/world/points:Points3D:positions",
-            "/world/camera:Transform3D:translation"
+            "/world/camera:Transform3D:translation",
         ])
 
         schema = view.schema()
@@ -233,9 +219,7 @@ class TestComponentColumnFiltering:
         """Column selectors don't support wildcards in entity path."""
         # Note: Wildcard entity paths with column selectors would require special handling
         # For now, we only support exact entity paths in column selectors
-        view = test_dataset_multi_component.filter_contents([
-            "/world/points:Points3D:positions"
-        ])
+        view = test_dataset_multi_component.filter_contents(["/world/points:Points3D:positions"])
 
         schema = view.schema()
         component_columns = schema.component_columns()
@@ -250,10 +234,11 @@ class TestComponentColumnFiltering:
         """Mixing entity paths and column selectors raises error (for now)."""
         # Mixing requires more complex implementation, so we disallow it initially
         import pytest
+
         with pytest.raises(ValueError, match="Cannot mix entity path patterns and column selectors"):
             test_dataset_multi_component.filter_contents([
                 "/world/camera",  # Entity path (no colon)
-                "/world/points:Points3D:positions"  # Column selector (has colon)
+                "/world/points:Points3D:positions",  # Column selector (has colon)
             ])
 
     def test_filter_contents_column_selectors_chain_with_other_filters(
@@ -263,9 +248,9 @@ class TestComponentColumnFiltering:
         segments = test_dataset_multi_component.segment_ids()
         first_segment = segments[0]
 
-        view = (test_dataset_multi_component
-                .filter_segments([first_segment])
-                .filter_contents(["/world/points:Points3D:positions"]))
+        view = test_dataset_multi_component.filter_segments([first_segment]).filter_contents([
+            "/world/points:Points3D:positions"
+        ])
 
         # Should have filtered segment
         assert view.segment_ids() == [first_segment]
@@ -276,9 +261,7 @@ class TestComponentColumnFiltering:
         assert len(component_columns) == 1
         assert component_columns[0].component == "Points3D:positions"
 
-    def test_filter_contents_works_with_column_names_for(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_filter_contents_works_with_column_names_for(self, test_dataset_multi_component: DatasetEntry) -> None:
         """column_names_for() output can be passed directly to filter_contents()."""
         # Get column names for Position3D components using column_names_for()
         schema = test_dataset_multi_component.schema()
@@ -303,29 +286,25 @@ class TestComponentColumnFiltering:
 class TestPropertyPathHandling:
     """Tests for property path edge cases."""
 
-    def test_property_paths_are_treated_as_entity_paths(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_property_paths_are_treated_as_entity_paths(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Property paths with colons are treated as entity paths, not column selectors."""
         # Property paths contain colons but should be treated as entity paths
         # This should not raise an error about mixing modes
         view = test_dataset_multi_component.filter_contents([
             "/world/points",
-            "property:test"  # Has colon but is a property path
+            "property:test",  # Has colon but is a property path
         ])
 
         # Should succeed without error (no "Cannot mix…" error)
         schema = view.schema()
         assert schema is not None
 
-    def test_properties_directory_treated_as_entity_path(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_properties_directory_treated_as_entity_path(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Paths containing /__properties: are treated as entity paths."""
         # This should not raise an error about mixing modes
         view = test_dataset_multi_component.filter_contents([
             "/world/camera",
-            "/world/__properties:custom"  # Has colon but is a property path
+            "/world/__properties:custom",  # Has colon but is a property path
         ])
 
         # Should succeed without error
@@ -336,14 +315,10 @@ class TestPropertyPathHandling:
 class TestEdgeCaseColumnSelectors:
     """Tests for edge case column selector behaviors."""
 
-    def test_nonexistent_column_selector_returns_empty_view(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_nonexistent_column_selector_returns_empty_view(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Column selector for non-existent component returns empty view."""
         # This is valid syntax but doesn't match anything
-        view = test_dataset_multi_component.filter_contents([
-            "/world/points:NonExistentComponent"
-        ])
+        view = test_dataset_multi_component.filter_contents(["/world/points:NonExistentComponent"])
 
         schema = view.schema()
         component_columns = schema.component_columns()
@@ -351,9 +326,7 @@ class TestEdgeCaseColumnSelectors:
         # Should return empty (no matching columns)
         assert len(component_columns) == 0
 
-    def test_malformed_selector_with_missing_entity_path(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_malformed_selector_with_missing_entity_path(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Selector starting with colon gets treated as entity path."""
         # ":Component" is ambiguous - treated as entity path pattern
         view = test_dataset_multi_component.filter_contents([":Component"])
@@ -362,9 +335,7 @@ class TestEdgeCaseColumnSelectors:
         # Should work but likely returns empty (no entity starts with ":")
         assert schema is not None
 
-    def test_selector_with_trailing_colon(
-        self, test_dataset_multi_component: DatasetEntry
-    ) -> None:
+    def test_selector_with_trailing_colon(self, test_dataset_multi_component: DatasetEntry) -> None:
         """Selector ending with colon has undefined behavior."""
         # "/world/points:" - behavior depends on ComponentColumnSelector parser
         view = test_dataset_multi_component.filter_contents(["/world/points:"])

@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 
     import datafusion
 
-    from rerun import Archetype
-    from rerun.archetypes._baseclasses import ComponentMixin
+    from rerun import Archetype  # type: ignore[attr-defined]
+    from rerun.archetypes._baseclasses import ComponentMixin  # type: ignore[import-untyped]
     from rerun.recording import Recording
 
     from . import (
@@ -87,7 +87,7 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-de
                 f"Archetype type {archetype!r} must have a callable archetype() method. "
                 f"Make sure you're passing a valid Rerun archetype type."
             )
-        return archetype.archetype()
+        return archetype.archetype()  # type: ignore[no-any-return]
 
 
 def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: ignore[name-defined]
@@ -126,7 +126,7 @@ def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: 
                 f"Component type {component_type!r}._BATCH_TYPE must have a _COMPONENT_TYPE attribute. "
                 f"Make sure you're passing a valid Rerun component type."
             )
-        return component_type._BATCH_TYPE._COMPONENT_TYPE
+        return component_type._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[no-any-return]
 
 
 def _get_column_names_for_archetypes(
@@ -623,9 +623,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(
-        self, exprs: str | Sequence[str]
-    ) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths or specific component columns.
 
@@ -1259,9 +1257,7 @@ class DatasetView:
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(
-        self, exprs: str | Sequence[str]
-    ) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths or specific component columns.
 

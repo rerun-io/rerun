@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
@@ -18,6 +19,15 @@ from .types import (
 
 if TYPE_CHECKING:
     from rerun.catalog import Schema
+
+# Type aliases for column selection
+AnyComponentColumn: TypeAlias = str | ComponentColumnSelector | ComponentColumnDescriptor
+"""A component column specified as a string, selector, or descriptor."""
+
+AnyColumn: TypeAlias = (
+    str | ComponentColumnSelector | ComponentColumnDescriptor | IndexColumnSelector | IndexColumnDescriptor
+)
+"""Any column (component or index) specified as a string, selector, or descriptor."""
 
 # NOTE
 #
@@ -202,7 +212,6 @@ class SchemaInternal:
         """
 
     def __arrow_c_schema__(self) -> Any: ...
-
     def archetypes(self) -> list[str]:
         """
         List all unique archetype names in the schema.

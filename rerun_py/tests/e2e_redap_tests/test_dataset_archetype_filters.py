@@ -43,8 +43,7 @@ def assert_all_columns_match(
     for col in component_columns:
         if entity_path is not None:
             assert col.entity_path == entity_path, (
-                f"Expected entity_path '{entity_path}', got '{col.entity_path}' "
-                f"for column {col.name}"
+                f"Expected entity_path '{entity_path}', got '{col.entity_path}' for column {col.name}"
             )
         if archetype is not None:
             assert col.archetype == archetype, (
@@ -52,8 +51,7 @@ def assert_all_columns_match(
             )
         if component_type is not None:
             assert col.component_type == component_type, (
-                f"Expected component_type '{component_type}', got '{col.component_type}' "
-                f"for column {col.name}"
+                f"Expected component_type '{component_type}', got '{col.component_type}' for column {col.name}"
             )
 
 
@@ -115,13 +113,9 @@ def test_dataset_with_archetypes(
 class TestFilterArchetypes:
     """Test suite for filter_archetypes() method."""
 
-    def test_filter_archetypes_single_string(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_single_string(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by a single archetype using string."""
-        view = test_dataset_with_archetypes.filter_archetypes(
-            "rerun.archetypes.Points3D"
-        )
+        view = test_dataset_with_archetypes.filter_archetypes("rerun.archetypes.Points3D")
         schema = view.schema()
 
         # View should only contain Points3D archetype
@@ -130,9 +124,7 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Transform3D" not in archetypes
         assert "rerun.archetypes.Boxes3D" not in archetypes
 
-    def test_filter_archetypes_single_type(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_single_type(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by a single archetype using type."""
         view = test_dataset_with_archetypes.filter_archetypes(rr.Points3D)
         schema = view.schema()
@@ -143,13 +135,12 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Transform3D" not in archetypes
         assert "rerun.archetypes.Boxes3D" not in archetypes
 
-    def test_filter_archetypes_multiple_strings(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_multiple_strings(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple archetypes using strings."""
-        view = test_dataset_with_archetypes.filter_archetypes(
-            ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
-        )
+        view = test_dataset_with_archetypes.filter_archetypes([
+            "rerun.archetypes.Points3D",
+            "rerun.archetypes.Transform3D",
+        ])
         schema = view.schema()
 
         # View should contain both Points3D and Transform3D
@@ -158,13 +149,9 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Transform3D" in archetypes
         assert "rerun.archetypes.Boxes3D" not in archetypes
 
-    def test_filter_archetypes_multiple_types(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_multiple_types(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple archetypes using types."""
-        view = test_dataset_with_archetypes.filter_archetypes(
-            [rr.Points3D, rr.Transform3D]
-        )
+        view = test_dataset_with_archetypes.filter_archetypes([rr.Points3D, rr.Transform3D])
         schema = view.schema()
 
         # View should contain both Points3D and Transform3D
@@ -173,13 +160,9 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Transform3D" in archetypes
         assert "rerun.archetypes.Boxes3D" not in archetypes
 
-    def test_filter_archetypes_mixed_types_and_strings(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_mixed_types_and_strings(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by mixing types and strings."""
-        view = test_dataset_with_archetypes.filter_archetypes(
-            [rr.Points3D, "rerun.archetypes.Transform3D"]
-        )
+        view = test_dataset_with_archetypes.filter_archetypes([rr.Points3D, "rerun.archetypes.Transform3D"])
         schema = view.schema()
 
         # View should contain both Points3D and Transform3D
@@ -188,26 +171,20 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Transform3D" in archetypes
         assert "rerun.archetypes.Boxes3D" not in archetypes
 
-    def test_filter_archetypes_nonexistent(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_nonexistent(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by non-existent archetype returns empty view."""
-        view = test_dataset_with_archetypes.filter_archetypes(
-            "rerun.archetypes.NonExistent"
-        )
+        view = test_dataset_with_archetypes.filter_archetypes("rerun.archetypes.NonExistent")
         schema = view.schema()
 
         # View should have no component columns
         assert len(schema.component_columns()) == 0
 
-    def test_filter_archetypes_multiple_nonexistent(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_multiple_nonexistent(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple non-existent archetypes returns empty view."""
         view = test_dataset_with_archetypes.filter_archetypes([
             "rerun.archetypes.NonExistent1",
             "rerun.archetypes.NonExistent2",
-            "rerun.archetypes.FakeArchetype"
+            "rerun.archetypes.FakeArchetype",
         ])
         schema = view.schema()
 
@@ -215,15 +192,11 @@ class TestFilterArchetypes:
         assert len(schema.component_columns()) == 0
         assert len(schema.archetypes()) == 0
 
-    def test_filter_archetypes_empty_view_can_be_read(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_empty_view_can_be_read(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that reading from empty archetype filter doesn't crash."""
         import datafusion
 
-        view = test_dataset_with_archetypes.filter_archetypes(
-            "rerun.archetypes.NonExistent"
-        )
+        view = test_dataset_with_archetypes.filter_archetypes("rerun.archetypes.NonExistent")
 
         # Should be able to get a reader without crashing
         df = view.reader(index="frame")
@@ -233,24 +206,17 @@ class TestFilterArchetypes:
         schema = view.schema()
         assert len(schema.component_columns()) == 0
 
-    def test_filter_archetypes_invalid_string_format(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_invalid_string_format(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that short archetype names raise ValueError."""
         with pytest.raises(ValueError, match="must be fully-qualified"):
             test_dataset_with_archetypes.filter_archetypes("Points3D")
 
-    def test_filter_archetypes_chain_with_segments(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_chain_with_segments(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining filter_archetypes with filter_segments."""
         first_segment = get_first_segment(test_dataset_with_archetypes)
 
         # Chain filters
-        view = (
-            test_dataset_with_archetypes.filter_segments([first_segment])
-            .filter_archetypes(rr.Points3D)
-        )
+        view = test_dataset_with_archetypes.filter_segments([first_segment]).filter_archetypes(rr.Points3D)
 
         # Should have filtered by both segment and archetype
         assert view.segment_ids() == [first_segment]
@@ -259,14 +225,10 @@ class TestFilterArchetypes:
         assert "rerun.archetypes.Points3D" in archetypes
         assert "rerun.archetypes.Transform3D" not in archetypes
 
-    def test_filter_archetypes_chain_with_contents(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_chain_with_contents(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining filter_archetypes with filter_contents."""
         # Filter by entity path and archetype
-        view = test_dataset_with_archetypes.filter_contents(
-            ["/world/points"]
-        ).filter_archetypes(rr.Points3D)
+        view = test_dataset_with_archetypes.filter_contents(["/world/points"]).filter_archetypes(rr.Points3D)
 
         # Should only have Points3D at /world/points
         assert_all_columns_match(
@@ -279,14 +241,10 @@ class TestFilterArchetypes:
 class TestFilterComponentTypes:
     """Test suite for filter_component_types() method."""
 
-    def test_filter_component_types_single_string(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_single_string(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by a single component type using string."""
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            "rerun.components.Position3D"
-        )
+        view = test_dataset_with_archetypes.filter_component_types("rerun.components.Position3D")
         schema = view.schema()
 
         # View should only contain Position3D component type
@@ -295,35 +253,26 @@ class TestFilterComponentTypes:
 
         # All component columns should be Position3D
         component_columns = schema.component_columns()
-        position_columns = [
-            col
-            for col in component_columns
-            if col.component_type == "rerun.components.Position3D"
-        ]
+        position_columns = [col for col in component_columns if col.component_type == "rerun.components.Position3D"]
         assert len(position_columns) > 0
 
-    def test_filter_component_types_single_type(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_single_type(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by a single component type using type."""
         from rerun import components
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            components.Position3D
-        )
+        view = test_dataset_with_archetypes.filter_component_types(components.Position3D)
         schema = view.schema()
 
         # View should only contain Position3D component type
         component_types = schema.component_types()
         assert "rerun.components.Position3D" in component_types
 
-    def test_filter_component_types_multiple_strings(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_multiple_strings(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple component types using strings."""
-        view = test_dataset_with_archetypes.filter_component_types(
-            ["rerun.components.Position3D", "rerun.components.Color"]
-        )
+        view = test_dataset_with_archetypes.filter_component_types([
+            "rerun.components.Position3D",
+            "rerun.components.Color",
+        ])
         schema = view.schema()
 
         # View should contain both Position3D and Color
@@ -331,15 +280,11 @@ class TestFilterComponentTypes:
         assert "rerun.components.Position3D" in component_types
         assert "rerun.components.Color" in component_types
 
-    def test_filter_component_types_multiple_types(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_multiple_types(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple component types using types."""
         from rerun import components
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            [components.Position3D, components.Color]
-        )
+        view = test_dataset_with_archetypes.filter_component_types([components.Position3D, components.Color])
         schema = view.schema()
 
         # View should contain both Position3D and Color
@@ -347,15 +292,11 @@ class TestFilterComponentTypes:
         assert "rerun.components.Position3D" in component_types
         assert "rerun.components.Color" in component_types
 
-    def test_filter_component_types_mixed_types_and_strings(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_mixed_types_and_strings(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by mixing types and strings."""
         from rerun import components
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            [components.Position3D, "rerun.components.Color"]
-        )
+        view = test_dataset_with_archetypes.filter_component_types([components.Position3D, "rerun.components.Color"])
         schema = view.schema()
 
         # View should contain both Position3D and Color
@@ -363,26 +304,20 @@ class TestFilterComponentTypes:
         assert "rerun.components.Position3D" in component_types
         assert "rerun.components.Color" in component_types
 
-    def test_filter_component_types_nonexistent(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_nonexistent(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by non-existent component type returns empty view."""
-        view = test_dataset_with_archetypes.filter_component_types(
-            "rerun.components.NonExistent"
-        )
+        view = test_dataset_with_archetypes.filter_component_types("rerun.components.NonExistent")
         schema = view.schema()
 
         # View should have no component columns
         assert len(schema.component_columns()) == 0
 
-    def test_filter_component_types_multiple_nonexistent(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_multiple_nonexistent(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test filtering by multiple non-existent component types returns empty view."""
         view = test_dataset_with_archetypes.filter_component_types([
             "rerun.components.NonExistent1",
             "rerun.components.NonExistent2",
-            "rerun.components.FakeComponent"
+            "rerun.components.FakeComponent",
         ])
         schema = view.schema()
 
@@ -390,15 +325,11 @@ class TestFilterComponentTypes:
         assert len(schema.component_columns()) == 0
         assert len(schema.component_types()) == 0
 
-    def test_filter_component_types_empty_view_can_be_read(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_empty_view_can_be_read(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that reading from empty component type filter doesn't crash."""
         import datafusion
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            "rerun.components.NonExistent"
-        )
+        view = test_dataset_with_archetypes.filter_component_types("rerun.components.NonExistent")
 
         # Should be able to get a reader without crashing
         df = view.reader(index="frame")
@@ -408,23 +339,18 @@ class TestFilterComponentTypes:
         schema = view.schema()
         assert len(schema.component_columns()) == 0
 
-    def test_filter_component_types_invalid_string_format(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_invalid_string_format(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that short component type names raise ValueError."""
         with pytest.raises(ValueError, match="must be fully-qualified"):
             test_dataset_with_archetypes.filter_component_types("Position3D")
 
-    def test_filter_component_types_chain_with_segments(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_chain_with_segments(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining filter_component_types with filter_segments."""
         first_segment = get_first_segment(test_dataset_with_archetypes)
 
         # Chain filters
-        view = (
-            test_dataset_with_archetypes.filter_segments([first_segment])
-            .filter_component_types(components.Position3D)
+        view = test_dataset_with_archetypes.filter_segments([first_segment]).filter_component_types(
+            components.Position3D
         )
 
         # Should have filtered by both segment and component type
@@ -433,14 +359,12 @@ class TestFilterComponentTypes:
         component_types = schema.component_types()
         assert "rerun.components.Position3D" in component_types
 
-    def test_filter_component_types_chain_with_contents(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_chain_with_contents(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining filter_component_types with filter_contents."""
         # Filter by entity path and component type
-        view = test_dataset_with_archetypes.filter_contents(
-            ["/world/points"]
-        ).filter_component_types(components.Position3D)
+        view = test_dataset_with_archetypes.filter_contents(["/world/points"]).filter_component_types(
+            components.Position3D
+        )
 
         # Should only have Position3D at /world/points
         assert_all_columns_match(
@@ -449,15 +373,11 @@ class TestFilterComponentTypes:
             entity_path="/world/points",
         )
 
-    def test_filter_component_types_chain_with_archetypes(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_chain_with_archetypes(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining filter_component_types with filter_archetypes."""
         # Filter by archetype then component type
         # This should give us only Position3D components from Points3D archetype
-        view = test_dataset_with_archetypes.filter_archetypes(
-            rr.Points3D
-        ).filter_component_types(components.Position3D)
+        view = test_dataset_with_archetypes.filter_archetypes(rr.Points3D).filter_component_types(components.Position3D)
 
         schema = view.schema()
 
@@ -476,9 +396,7 @@ class TestFilterComponentTypes:
 class TestDatasetViewFiltering:
     """Test suite for DatasetView.filter_archetypes() and filter_component_types()."""
 
-    def test_datasetview_filter_archetypes(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_datasetview_filter_archetypes(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that DatasetView also has filter_archetypes method."""
         # First create a view
         view1 = test_dataset_with_archetypes.filter_archetypes(rr.Points3D)
@@ -489,16 +407,12 @@ class TestDatasetViewFiltering:
         # Both should have the same schema
         assert view1.schema() == view2.schema()
 
-    def test_datasetview_filter_component_types(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_datasetview_filter_component_types(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test that DatasetView also has filter_component_types method."""
         from rerun import components
 
         # First create a view
-        view1 = test_dataset_with_archetypes.filter_component_types(
-            components.Position3D
-        )
+        view1 = test_dataset_with_archetypes.filter_component_types(components.Position3D)
 
         # Then filter again on the view
         view2 = view1.filter_component_types(components.Position3D)
@@ -506,9 +420,7 @@ class TestDatasetViewFiltering:
         # Both should have the same schema
         assert view1.schema() == view2.schema()
 
-    def test_datasetview_multiple_filters(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_datasetview_multiple_filters(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test chaining multiple filters on DatasetView."""
         first_segment = get_first_segment(test_dataset_with_archetypes)
 
@@ -535,9 +447,7 @@ class TestDatasetViewFiltering:
 class TestDataAccess:
     """Test that filtered views can actually read data."""
 
-    def test_filter_archetypes_with_reader(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_archetypes_with_reader(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test reading data through a filtered view."""
         view = test_dataset_with_archetypes.filter_archetypes(rr.Points3D)
 
@@ -549,15 +459,11 @@ class TestDataAccess:
         batches = df.collect()
         assert len(batches) > 0
 
-    def test_filter_component_types_with_reader(
-        self, test_dataset_with_archetypes: DatasetEntry
-    ) -> None:
+    def test_filter_component_types_with_reader(self, test_dataset_with_archetypes: DatasetEntry) -> None:
         """Test reading data through a component type filtered view."""
         from rerun import components
 
-        view = test_dataset_with_archetypes.filter_component_types(
-            components.Position3D
-        )
+        view = test_dataset_with_archetypes.filter_component_types(components.Position3D)
 
         # Should be able to read from the filtered view
         df = view.reader(index="frame")
