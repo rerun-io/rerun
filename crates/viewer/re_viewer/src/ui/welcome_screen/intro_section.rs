@@ -98,7 +98,7 @@ impl IntroItem {
                     #[cfg(feature = "analytics")]
                     if _response.clicked() || _response.clicked_with_open_in_background() {
                         re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                            card_type: "docs".to_string(),
+                            card_type: "docs".to_owned(),
                             destination: (*url).to_owned(),
                             cta_cloud: false,
                             is_logged_in: cloud_state.is_logged_in(),
@@ -125,7 +125,7 @@ impl IntroItem {
                         #[cfg(feature = "analytics")]
                         if _response.clicked() || _response.clicked_with_open_in_background() {
                             re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                                card_type: "redap".to_string(),
+                                card_type: "redap".to_owned(),
                                 destination: url.to_owned(),
                                 cta_cloud: false,
                                 is_logged_in: cloud_state.is_logged_in(),
@@ -147,7 +147,7 @@ impl IntroItem {
                 let analytics = || {
                     #[cfg(feature = "analytics")]
                     re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
-                        card_type: "redap".to_string(),
+                        card_type: "redap".to_owned(),
                         destination: String::new(),
                         cta_cloud: true,
                         is_logged_in: cloud_state.is_logged_in(),
