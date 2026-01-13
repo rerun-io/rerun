@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class CatalogClient:
     """Client for a remote Rerun catalog server."""
 
-    def __init__(self, address: str, token: str | None = None) -> None:
-        self._inner = _catalog.CatalogClient(address, token)
+    def __init__(self, url: str, *, token: str | None = None) -> None:
+        self._inner = _catalog.CatalogClient(url, token=token)
         self.tmpdirs = []
         atexit.register(self._cleanup)
 
@@ -567,10 +567,6 @@ class TableEntry(Entry):
     def arrow_schema(self) -> pa.Schema:
         """Returns the schema of the table."""
         return self.reader().schema()
-
-    def to_polars(self) -> Any:
-        """Returns the table as a Polars DataFrame."""
-        return self.reader().to_polars()
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError

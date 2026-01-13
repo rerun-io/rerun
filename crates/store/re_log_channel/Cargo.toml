@@ -24,17 +24,7 @@ re_log_types.workspace = true
 re_tracing.workspace = true
 re_uri.workspace = true
 
-arrow.workspace = true
-async-channel.workspace = true
 crossbeam.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio.workspace = true
-
-# Web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures.workspace = true

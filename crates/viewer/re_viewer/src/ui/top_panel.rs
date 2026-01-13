@@ -484,7 +484,7 @@ fn panel_buttons_r2l(
                         ui.spacing_mut().item_spacing.y = 2.0;
                         ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
                         if ui
-                            .link(RichText::new("Logout").color(ui.tokens().text_subdued))
+                            .link(RichText::new("Log out").color(ui.tokens().text_subdued))
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);
@@ -499,7 +499,7 @@ fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u
     // The color should not change based on theme, so it's fine to hard-code here
     #[expect(clippy::disallowed_methods)]
     let text_color = Color32::from_gray(tint);
-    Image::new(include_image!("user_image.jpg"))
+    Image::new(include_image!("../../data/user_image.jpg"))
         .corner_radius(corner_radius)
         .tint(text_color)
         .paint_at(ui, rect);

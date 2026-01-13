@@ -62,7 +62,7 @@ impl EntityDbClass<'_> {
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
-#[derive(Clone)] // Useful for tests
+#[cfg_attr(feature = "testing", derive(Clone))]
 pub struct EntityDb {
     /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
     /// store id.
@@ -267,6 +267,15 @@ impl EntityDb {
     #[inline]
     pub fn store_id(&self) -> &StoreId {
         &self.store_id
+    }
+
+    /// What redap URI does this thing live on?
+    pub fn redap_uri(&self) -> Option<&re_uri::DatasetSegmentUri> {
+        if let Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) = &self.data_source {
+            Some(uri)
+        } else {
+            None
+        }
     }
 
     /// Returns the [`EntityDbClass`] of this entity db.
@@ -542,45 +551,58 @@ impl EntityDb {
             re_log::error!("Failed to ingest RRD Manifest: {err}");
         }
 
+        if let Err(err) = self
+            .storage_engine
+            .write()
+            .store()
+            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
+        {
+            re_log::error!("Failed to load RRD Manifest into store: {err}");
+        }
+
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }
     }
 
-    pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
-        re_tracing::profile_function!();
-
+    /// Insert new data into the store.
+    pub fn add_log_msg(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
         debug_assert_eq!(msg.store_id(), self.store_id());
 
-        let store_events = match &msg {
+        match &msg {
             LogMsg::SetStoreInfo(msg) => {
                 self.set_store_info(msg.clone());
-                vec![]
+                Ok(vec![]) // no events
             }
 
-            LogMsg::ArrowMsg(_, arrow_msg) => {
-                self.last_modified_at = web_time::Instant::now();
-
-                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
-                    .map_err(re_chunk::ChunkError::from)?;
-                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
-                chunk.sort_if_unsorted();
-                self.add_chunk_with_timestamp_metadata(
-                    &Arc::new(chunk),
-                    &chunk_batch.sorbet_schema().timestamps,
-                )?
-            }
+            LogMsg::ArrowMsg(_, arrow_msg) => self.add_record_batch(&arrow_msg.batch),
 
             LogMsg::BlueprintActivationCommand(_) => {
                 // Not for us to handle
-                vec![]
+                Ok(vec![]) // no events
             }
-        };
-
-        Ok(store_events)
+        }
     }
 
-    /// Used mostly for tests
+    /// Insert a chunk (encoded as a record batch) into the store.
+    pub fn add_record_batch(
+        &mut self,
+        record_batch: &arrow::array::RecordBatch,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
+
+        self.last_modified_at = web_time::Instant::now();
+        let chunk_batch =
+            re_sorbet::ChunkBatch::try_from(record_batch).map_err(re_chunk::ChunkError::from)?;
+        let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
+        chunk.sort_if_unsorted();
+        self.add_chunk_with_timestamp_metadata(
+            &Arc::new(chunk),
+            &chunk_batch.sorbet_schema().timestamps,
+        )
+    }
+
+    /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }

@@ -40,13 +40,13 @@ In one file or terminal launch the server and print its address,
 
 ```python
 server = rr.server.Server()
-print(server.address())
+print(server.url())
 ```
 
-in a separate file or terminal connect to that address
+in a separate file or terminal connect to that url
 
 ```python
-client = rr.catalog.CatalogClient(server_address)
+client = rr.catalog.CatalogClient(server.url())
 ```
 
 ## Adding new datasets

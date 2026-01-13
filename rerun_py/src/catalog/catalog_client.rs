@@ -46,8 +46,8 @@ impl PyCatalogClientInternal {
 
     /// Create a new catalog client object.
     #[new]
-    #[pyo3(text_signature = "(self, addr, token=None)")]
-    fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
+    #[pyo3(text_signature = "(self, url, token=None)")]
+    fn new(py: Python<'_>, url: String, token: Option<String>) -> PyResult<Self> {
         // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
         // what we set it to. But we have to set it, or we will crash at runtime, as soon as
         // anything tries to do anything TLS-related.
@@ -55,7 +55,7 @@ impl PyCatalogClientInternal {
         // but we removed that unused dependency, so now we must do it ourselves.
         _ = rustls::crypto::ring::default_provider().install_default();
 
-        let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
+        let origin = url.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_with_stored_credentials();
