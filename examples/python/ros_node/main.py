@@ -59,6 +59,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
         self.subscribers: list[rclpy.Subscription] = []
 
+        # Subscribe to the topics we want to republish to Rerun.
+        # See the callback methods below for how each message type is handled.
         self.subscribe("/tf", TFMessage, self.tf_callback)
         self.subscribe("/tf_static", TFMessage, self.tf_callback, latching=True)
         self.subscribe("/odom", Odometry, self.odom_callback)
@@ -85,6 +87,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.subscribers.append(sub)
 
     def cam_info_callback(self, info: CameraInfo) -> None:
+        """
+        Logs CameraInfo as a Rerun Pinhole.
+        """
         time = Time.from_msg(info.header.stamp)
         self.pinhole_model.from_camera_info(info)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
@@ -104,6 +109,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def odom_callback(self, odom: Odometry) -> None:
+        """
+        Logs data from Odometry as Rerun Scalars.
+        """
         time = Time.from_msg(odom.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         # Capture time-series data for the linear and angular velocities
@@ -111,12 +119,18 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("odom/twist/angular/z", rr.Scalars(odom.twist.twist.angular.z))
 
     def image_callback(self, img: Image) -> None:
+        """
+        Logs an RGB image as a Rerun Image.
+        """
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         rr.log("rgbd_camera/image", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
         rr.log("rgbd_camera/image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def depth_callback(self, img: Image) -> None:
+        """
+        Logs a depth image as a Rerun DepthImage.
+        """
         time = Time.from_msg(img.header.stamp)
         depth_image = rr.DepthImage(
             self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"),
@@ -129,7 +143,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
-        Log a LaserScan after transforming it to line-segments.
+        Logs a LaserScan after transforming it to line-segments.
 
         Note: we do a client-side transformation of the LaserScan data into Rerun
         points / lines until Rerun has native support for LaserScan style projections:
@@ -151,7 +165,15 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
-        # TODO: file_path is not known here, robot.urdf is just a placeholder to let Rerun know the file type.
+        """
+        Forwards the robot description message to Rerun's built-in URDF loader.
+
+        Documentation about URDF support in Rerun can be found here:
+        https://rerun.io/docs/howto/urdf
+        """
+        # NOTE: file_path is not known here, robot.urdf is just a placeholder
+        # to let Rerun know the file type. Since we run this example in a ROS environment,
+        # Rerun can use AMENT_PREFIX_PATH etc to resolve asset paths of the URDF.
         rr.log_file_from_contents(
             file_path="robot.urdf",
             file_contents=urdf_msg.data.encode("utf-8"),
@@ -160,6 +182,13 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def tf_callback(self, tf_msg: TFMessage) -> None:
+        """
+        Logs TF transforms to Rerun as Transform3D messages,
+        with `parent_frame` and `child_frame` fields set.
+
+        Documentation about transforms in Rerun can be found here:
+        https://rerun.io/docs/concepts/transforms
+        """
         for transform in tf_msg.transforms:
             time = Time.from_msg(transform.header.stamp)
             rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
