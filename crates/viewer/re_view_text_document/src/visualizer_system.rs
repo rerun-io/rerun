@@ -46,7 +46,7 @@ impl VisualizerSystem for TextDocumentSystem {
             let results = data_result.latest_at_with_blueprint_resolved_data::<TextDocument>(
                 ctx,
                 &timeline_query,
-                instruction,
+                Some(instruction),
             );
 
             let Some(text) = results

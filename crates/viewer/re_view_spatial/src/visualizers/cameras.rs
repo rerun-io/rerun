@@ -253,7 +253,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 data_result,
                 Pinhole::all_component_identifiers(),
                 query_shadowed_components,
-                instruction,
+                Some(instruction),
             );
 
             // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the

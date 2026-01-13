@@ -213,7 +213,7 @@ fn visualizer_components(
         data_result,
         query_info.queried_components(),
         query_shadowed_defaults,
-        instruction,
+        Some(instruction),
     );
 
     // Query all components of the entity so we can show them in the source component mapping UI.

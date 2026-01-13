@@ -76,7 +76,7 @@ impl VisualizerSystem for NodeVisualizer {
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphNodes>(
                     ctx,
                     &timeline_query,
-                    instruction,
+                    Some(instruction),
                 );
 
             let all_nodes =

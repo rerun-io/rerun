@@ -221,7 +221,7 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result,
                     [transform_frame_id_component],
                     query_shadowed_components,
-                    &VisualizerInstruction::placeholder(data_result), // Coordinate frame is not visualizer-specific.
+                    None, // Coordinate frame is not visualizer-specific.
                 )
             })
             .collect::<Vec<_>>();
@@ -521,7 +521,7 @@ fn lookup_image_plane_distance(
                         ctx,
                         latest_at_query,
                         plane_dist_component,
-                        visualizer_instruction,
+                        Some(visualizer_instruction),
                     )
                     .get_mono_with_fallback::<ImagePlaneDistance>(plane_dist_component)
             } else {
@@ -579,7 +579,6 @@ impl EntityTransformIdMapping {
                 archetypes::CoordinateFrame::descriptor_frame().component;
 
             let query_shadowed_components = false;
-            let visualizer_instruction = VisualizerInstruction::placeholder(origin_data_result); // coordinate frames aren't associated with any particular visualizer
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
@@ -587,7 +586,7 @@ impl EntityTransformIdMapping {
                 origin_data_result,
                 [transform_frame_id_component],
                 query_shadowed_components,
-                &visualizer_instruction,
+                None,
             );
 
             mapping.determine_frame_id_mapping_for(ctx, &results);

@@ -52,7 +52,7 @@ impl VisualizerSystem for TensorSystem {
                 data_result,
                 Tensor::all_component_identifiers(),
                 query_shadowed_defaults,
-                instruction,
+                Some(instruction),
             );
 
             let Some(all_tensor_chunks) =

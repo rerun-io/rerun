@@ -131,7 +131,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 data_result,
                 [axis_length_identifier, show_frame_identifier],
                 false,
-                instruction,
+                Some(instruction),
             );
 
             let axis_length: f32 = results

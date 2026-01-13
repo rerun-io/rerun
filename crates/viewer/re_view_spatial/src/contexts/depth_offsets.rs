@@ -91,7 +91,7 @@ fn collect_draw_order_per_visualizer(
             data_result,
             [draw_order_descriptor.component],
             query_shadowed_components,
-            instruction,
+            Some(instruction),
         )
         .get_mono::<DrawOrder>(draw_order_descriptor.component)
         .unwrap_or_else(|| {

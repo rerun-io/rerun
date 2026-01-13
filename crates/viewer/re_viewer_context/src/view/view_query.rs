@@ -89,20 +89,7 @@ impl VisualizerInstruction {
         override_base_path.join(&EntityPath::from_single_string(id.0.to_string()))
     }
 
-    // TODO(aedm): remove this method, use Option<VisualizerInstructionId> everywhere instead.
-    /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
-    /// but rather from the "general" blueprint overrides for the entity.
-    /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
-    pub fn placeholder(data_result: &DataResult) -> Self {
-        Self {
-            id: VisualizerInstructionId::invalid(),
-            visualizer_type: "___PLACEHOLDER___".into(),
-            component_overrides: IntSet::default(),
-            override_path: data_result.override_base_path.clone(), // Don't use an invalid path. The placeholder is used right now to point to the base override path.
-            component_mappings: VisualizerComponentMappings::default(),
-        }
-    }
-
+    /// Writes component mappings and visualizer type to the blueprint store.
     pub fn write_instruction_to_blueprint(&self, ctx: &ViewerContext<'_>) {
         let new_visualizer_instruction =
             re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(

@@ -91,7 +91,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 ctx,
                 &latest_at,
                 VideoStream::descriptor_opacity().component,
-                instruction,
+                Some(instruction),
             );
             let all_opacities = opacity_result.iter_as(
                 view_query.timeline,

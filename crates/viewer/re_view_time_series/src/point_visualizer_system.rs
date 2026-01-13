@@ -193,7 +193,7 @@ impl SeriesPointsSystem {
                 data_result,
                 archetypes::SeriesPoints::all_component_identifiers(),
                 query_shadowed_components,
-                instruction,
+                Some(instruction),
             );
 
             collect_colors(

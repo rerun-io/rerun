@@ -65,7 +65,7 @@ impl VisualizerSystem for EdgesVisualizer {
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
                     ctx,
                     &timeline_query,
-                    instruction,
+                    Some(instruction),
                 );
 
             let all_edges =

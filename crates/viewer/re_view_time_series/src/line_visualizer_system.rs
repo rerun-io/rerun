@@ -188,7 +188,7 @@ impl SeriesLinesSystem {
                 data_result,
                 archetypes::SeriesLines::all_component_identifiers(),
                 query_shadowed_components,
-                instruction,
+                Some(instruction),
             );
 
             collect_colors(

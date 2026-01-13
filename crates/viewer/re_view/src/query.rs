@@ -98,36 +98,42 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     query_shadowed_components: bool,
-    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
     let mut components = components.into_iter().collect::<IntSet<_>>();
-    let overrides = query_overrides(
-        ctx.viewer_ctx,
-        visualizer_instruction,
-        components.iter().copied(),
-    );
+    let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
+        let overrides = query_overrides(
+            ctx.viewer_ctx,
+            visualizer_instruction,
+            components.iter().copied(),
+        );
+        // No need to query for components that have overrides unless opted in!
+        if !query_shadowed_components {
+            components.retain(|component| overrides.get(*component).is_none());
+        }
 
-    // No need to query for components that have overrides unless opted in!
-    if !query_shadowed_components {
-        components.retain(|component| overrides.get(*component).is_none());
-    }
-
-    let results = {
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
             if components.remove(&mapping.target) {
                 components.insert(mapping.selector);
             }
         }
-        let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
-            latest_at_query,
-            &data_result.entity_path,
-            components,
-        );
 
-        // Apply mapping to the results.
+        overrides
+    } else {
+        LatestAtResults::empty(data_result.entity_path.clone(), latest_at_query.clone())
+    };
+
+    let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
+        latest_at_query,
+        &data_result.entity_path,
+        components,
+    );
+
+    // Apply mapping to the results.
+    let component_mappings_hash = if let Some(visualizer_instruction) = visualizer_instruction {
         for mapping in &visualizer_instruction.component_mappings {
             if let Some(chunk) = results.components.remove(&mapping.selector) {
                 let chunk = std::sync::Arc::new(
@@ -138,8 +144,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                 results.components.insert(mapping.target, chunk);
             }
         }
-
-        results
+        Hash64::hash(&visualizer_instruction.component_mappings)
+    } else {
+        Hash64::ZERO
     };
 
     HybridLatestAtResults {
@@ -149,7 +156,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         ctx,
         query: latest_at_query.clone(),
         data_result,
-        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
+        component_mappings_hash,
     }
 }
 
@@ -191,7 +198,7 @@ pub fn query_archetype_with_history<'a>(
                 data_result,
                 components,
                 query_shadowed_defaults,
-                visualizer_instruction,
+                Some(visualizer_instruction),
             );
             (latest_query, results).into()
         }
@@ -246,7 +253,7 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
@@ -254,7 +261,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
@@ -291,7 +298,7 @@ impl DataResultQuery for DataResult {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
@@ -310,7 +317,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
-        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
