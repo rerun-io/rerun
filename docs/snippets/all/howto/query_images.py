@@ -16,7 +16,7 @@ from PIL import Image
 sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
-CATALOG_URL = server.address()
+CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
 dataset = client.get_dataset(name="video_dataset")
 df = dataset.filter_contents(["/compressed_images/**", "/raw_images/**", "/video_stream/**"]).reader(index="log_time")
