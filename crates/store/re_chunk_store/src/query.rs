@@ -1216,7 +1216,7 @@ mod tests {
             );
             assert!(results.is_empty());
 
-            assert!(store.gather_missing_chunk_ids().is_empty());
+            assert!(store.take_missing_chunk_ids().is_empty());
         }
 
         store.insert_chunk(&chunk1).unwrap();
@@ -1249,7 +1249,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.gather_missing_chunk_ids().is_empty());
+            assert!(store.take_missing_chunk_ids().is_empty());
         }
 
         store.gc(&crate::GarbageCollectionOptions {
@@ -1289,7 +1289,7 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.gather_missing_chunk_ids(),
+                store.take_missing_chunk_ids(),
                 itertools::chain!(results_latest_at.missing, results_range.missing).collect()
             );
         }
@@ -1323,7 +1323,7 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.gather_missing_chunk_ids(),
+                store.take_missing_chunk_ids(),
                 itertools::chain!(results_latest_at.missing, results_range.missing).collect()
             );
         }
@@ -1358,7 +1358,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.gather_missing_chunk_ids().is_empty());
+            assert!(store.take_missing_chunk_ids().is_empty());
         }
     }
 

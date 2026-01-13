@@ -41,10 +41,7 @@ pub fn prefetch_chunks_for_active_recording(
         return None;
     }
 
-    let missing_chunk_ids = recording
-        .storage_engine()
-        .store()
-        .gather_missing_chunk_ids();
+    let missing_chunk_ids = recording.storage_engine().store().take_missing_chunk_ids();
 
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,

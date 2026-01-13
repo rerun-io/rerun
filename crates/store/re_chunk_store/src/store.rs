@@ -512,7 +512,7 @@ pub struct ChunkStore {
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
     /// found in local memory. This set is automatically populated anytime that happens.
     ///
-    /// Calling [`ChunkStore::gather_missing_chunk_ids`] will atomically return the contents of this set
+    /// Calling [`ChunkStore::take_missing_chunk_ids`] will atomically return the contents of this set
     /// as well as clearing it.
     pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
 
@@ -753,7 +753,7 @@ impl ChunkStore {
     /// new queries are run.
     /// Callers are expected to call this once per frame in order to know which chunks were missing during
     /// the previous frame.
-    pub fn gather_missing_chunk_ids(&self) -> HashSet<ChunkId> {
+    pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.missing_chunk_ids.write())
     }
 }
