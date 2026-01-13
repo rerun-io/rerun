@@ -69,16 +69,25 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // We first add the axes for the entity transforms, because we want them to be drawn below
-            // the additional transform data (the user usually knows which entity they are on).
+            // First, gather all transform frames defined at this entity.
+            // This can be empty if the entity has an implicit transform frame.
+            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
+                .child_frames_for_entity(data_result.entity_path.hash())
+                .map(|(frame_id_hash, transform)| {
+                    (*frame_id_hash, transform.target_from_source.as_affine3a())
+                })
+                .collect();
+
+            // If no explicit transform frames were found, add the implicit entity transform.
             // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
             // for varying behavior.
-            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = if let Some(transform_info) =
-                transform_info_for_entity_or_report_error(
+            if transforms_to_draw.is_empty()
+                && let Some(transform_info) = transform_info_for_entity_or_report_error(
                     transforms,
                     &data_result.entity_path,
                     &mut output,
-                ) {
+                )
+            {
                 // Determine which transforms to draw axes at.
                 // For pinhole cameras, we draw at the pinhole location only.
                 // For normal entities, we iterate over all instance poses.
@@ -90,27 +99,17 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
                         // Don't apply the from-2D transform, stick with the last known 3D.
-                        smallvec::smallvec![(frame_id_hash, target_from_camera.as_affine3a())]
+                        transforms_to_draw.push((frame_id_hash, target_from_camera.as_affine3a()));
                     } else {
-                        transform_info
-                            .target_from_instances()
-                            .iter()
-                            .map(|t| (frame_id_hash, t.as_affine3a()))
-                            .collect()
+                        transforms_to_draw.extend(
+                            transform_info
+                                .target_from_instances()
+                                .iter()
+                                .map(|t| (frame_id_hash, t.as_affine3a())),
+                        );
                     }
                 }
-            } else {
-                Default::default()
-            };
-
-            // We then extend this list with the transform frames defined at this entity.
-            transforms_to_draw.extend(
-                transforms
-                    .child_frames_for_entity(data_result.entity_path.hash())
-                    .map(|(frame_id_hash, transform)| {
-                        (*frame_id_hash, transform.target_from_source.as_affine3a())
-                    }),
-            );
+            }
 
             // Early exit if there's nothing to do.
             if transforms_to_draw.is_empty() {
