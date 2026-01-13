@@ -144,7 +144,7 @@ package = false
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
-rerun-dev-fixup = { workspace = true, editable = false }
+rerun-dev-fixup = { path = "rerun_py/rerun_dev_fixup", editable = false }
 # Example packages
 air_traffic_data = { workspace = true }
 animated_urdf = { workspace = true }
@@ -193,7 +193,6 @@ structure_from_motion = { workspace = true }
 [tool.uv.workspace]
 members = [
   "rerun_py",
-  "rerun_py/rerun_dev_fixup",
   "rerun_notebook",
   # Examples
   "examples/python/air_traffic_data",

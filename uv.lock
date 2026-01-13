@@ -45,7 +45,6 @@ members = [
     "openstreetmap-data",
     "plots",
     "raw-mesh",
-    "rerun-dev-fixup",
     "rerun-notebook",
     "rerun-sdk",
     "rerun-workspace",
