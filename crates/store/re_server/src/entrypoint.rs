@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use anyhow::Context as _;
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]
@@ -15,9 +16,9 @@ use crate::{ServerBuilder, ServerHandle};
 #[derive(Clone, Debug, clap::Parser)]
 #[clap(author, version, about)]
 pub struct Args {
-    /// Address to listen on.
+    /// IP address to listen on.
     #[clap(long, default_value = "0.0.0.0")]
-    pub addr: String,
+    pub host: String,
 
     /// Port to bind to.
     #[clap(long, short = 'p', default_value_t = 51234)]
@@ -79,7 +80,7 @@ impl Args {
     /// Waits for the server to start, and return a handle to it together with its address.
     pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
         let Self {
-            addr,
+            host: ip,
             port,
             datasets,
             dataset_prefixes,
@@ -134,10 +135,11 @@ impl Args {
                 .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
         };
 
-        let addr = SocketAddr::new(addr.parse()?, port);
+        let ip = ip.parse().with_context(|| format!("IP: {ip:?}"))?;
+        let ip_port = SocketAddr::new(ip, port);
 
         let server_builder = ServerBuilder::default()
-            .with_address(addr)
+            .with_address(ip_port)
             .with_service(rerun_cloud_server)
             .with_http_route(
                 "/version",

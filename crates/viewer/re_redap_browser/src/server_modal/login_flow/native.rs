@@ -5,7 +5,7 @@ use egui::mutex::Mutex;
 use re_auth::callback_server::OauthCallbackServer;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
-use re_ui::icons;
+use re_ui::{Variant, icons};
 
 use super::ActionButton;
 
@@ -28,14 +28,15 @@ impl State {
             ui.spinner();
         } else {
             ui.horizontal(|ui| {
-                if ActionButton::primary(&icons::EXTERNAL_LINK, "Login", "Link opened!")
+                if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")
+                    .variant(Variant::Outlined)
                     .show(ui, &mut self.show_open_feedback)
                     .clicked()
                 {
                     webbrowser::open(self.callback_server.get_login_url()).ok();
                 }
 
-                if ActionButton::secondary(&icons::COPY, "Copy link", "Copied to clipboard!")
+                if ActionButton::new(&icons::COPY, "Copy link", "Copied to clipboard!")
                     .show(ui, &mut self.show_copy_feedback)
                     .clicked()
                 {
