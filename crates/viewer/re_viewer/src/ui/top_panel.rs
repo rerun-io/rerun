@@ -164,7 +164,7 @@ fn top_bar_ui(
 
         panel_buttons_r2l(app, app_blueprint, ui, store_hub);
 
-        if !app.is_screenshotting() {
+        if !app.is_screenshotting() && !app.app_env().is_test() {
             connection_status_ui(
                 ui,
                 &mut app.server_latency_trackers,
