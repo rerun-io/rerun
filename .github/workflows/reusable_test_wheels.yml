@@ -95,7 +95,7 @@ jobs:
               container="null"
               ;;
             macos-arm64)
-              runner="macos-15-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
+              runner="macos-26-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
               container="null"
               ;;

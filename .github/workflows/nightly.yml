@@ -59,7 +59,7 @@ jobs:
     strategy:
       matrix:
         runs_on:
-          [ubuntu-latest-16-cores, macos-15-large, windows-latest-8-cores]
+          [ubuntu-latest-16-cores, macos-26-large, windows-latest-8-cores]
     runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: actions/checkout@v4
