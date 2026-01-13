@@ -146,7 +146,8 @@ impl DatastoreUi {
                         entity_path,
                         *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
             ChunkListMode::Query {
                 timeline,
@@ -161,7 +162,8 @@ impl DatastoreUi {
                         entity_path,
                         *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
         };
 

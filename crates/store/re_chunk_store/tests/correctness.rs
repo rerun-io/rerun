@@ -22,9 +22,11 @@ fn query_latest_component<C: re_types_core::Component>(
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
+    // NOTE: Purposefully ignoring virtual chunks -- these tests predate that.
     let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component)
-        .into_iter()
+        .to_iter()
+        .unwrap()
         .filter_map(|chunk| {
             let unit = chunk.latest_at(query, component).into_unit()?;
             unit.index(&query.timeline()).map(|index| (index, unit))
