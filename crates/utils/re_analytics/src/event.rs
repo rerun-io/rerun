@@ -583,7 +583,7 @@ impl Properties for CliCommandInvoked {
 /// Tracks navigation clicks on the welcome screen cards.
 ///
 /// This event is sent when users click on cards on the welcome screen,
-/// such as documentation links or cloud-related CTAs.
+/// such as documentation links or cloud-related call-to-actions (CTAs).
 pub struct WelcomeScreenNavigation {
     /// Type of the card. E.g. "docs", "redap".
     pub card_type: String,
