@@ -14,7 +14,6 @@ use re_sdk_types::ComponentIdentifier;
 
 // ---
 
-#[expect(clippy::unwrap_used)]
 fn query_latest_component<C: re_types_core::Component>(
     store: &ChunkStore,
     entity_path: &EntityPath,
@@ -28,7 +27,6 @@ fn query_latest_component<C: re_types_core::Component>(
         .latest_at_relevant_chunks(query, entity_path, component)
         .to_iter()
         .unwrap()
-        .into_iter()
         .filter_map(|chunk| {
             let unit = chunk.latest_at(query, component).into_unit()?;
             unit.index(&query.timeline()).map(|index| (index, unit))
