@@ -71,6 +71,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def subscribe(
         self, topic: str, msg_type: type, callback: Callable[[rclpy.MsgT], None], latching: bool = False
     ) -> None:
+        """Adds a subscriber to a topic with the given message type and callback."""
         # `qos_profile` can either be an int (history depth) or a QoSProfile.
         # See: https://docs.ros.org/en/rolling/p/rclpy/rclpy.node.html#rclpy.node.Node.create_subscription
         qos_profile = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL) if latching else 10
@@ -89,11 +90,15 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         # TODO: remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
         rr.log(
-            "map/robot/camera/img",
+            "rgbd_camera/camera_info",
             rr.Pinhole.from_fields(
                 resolution=[info.width, info.height],
                 image_from_camera=self.pinhole_model.intrinsic_matrix(),
                 parent_frame=info.header.frame_id,
+                # Specifying a `child_frame` for the 2D image plane allows Rerun to
+                # visualize the pinhole frustum together with the image in 3D views.
+                # This has to match the coordinate frames used when logging images,
+                # see `image_callback` below.
                 child_frame=info.header.frame_id + "_image_plane",
             ),
         )
@@ -102,24 +107,25 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         time = Time.from_msg(odom.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         # Capture time-series data for the linear and angular velocities
-        rr.log("odometry/vel", rr.Scalars(odom.twist.twist.linear.x))
-        rr.log("odometry/ang_vel", rr.Scalars(odom.twist.twist.angular.z))
+        rr.log("odom/twist/linear/x", rr.Scalars(odom.twist.twist.linear.x))
+        rr.log("odom/twist/angular/z", rr.Scalars(odom.twist.twist.angular.z))
 
     def image_callback(self, img: Image) -> None:
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-        rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
-        rr.log("map/robot/camera/img", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
+        rr.log("rgbd_camera/image", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
+        rr.log("rgbd_camera/image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def depth_callback(self, img: Image) -> None:
         time = Time.from_msg(img.header.stamp)
-        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-
-        rr.log(
-            "map/robot/camera/img/depth",
-            rr.DepthImage(self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"), meter=1.0, colormap="viridis"),
+        depth_image = rr.DepthImage(
+            self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"),
+            meter=1.0,
+            colormap="viridis",
         )
-        rr.log("map/robot/camera/img/depth", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+        rr.log("rgbd_camera/depth_image", depth_image)
+        rr.log("rgbd_camera/depth_image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
@@ -141,15 +147,15 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
-        rr.log("map/robot/scan", rr.LineStrips3D(segs, radii=0.0025))
-        rr.log("map/robot/scan", rr.CoordinateFrame(frame=scan.header.frame_id))
+        rr.log("scan", rr.LineStrips3D(segs, radii=0.0025))
+        rr.log("scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
         # TODO: file_path is not known here, robot.urdf is just a placeholder to let Rerun know the file type.
         rr.log_file_from_contents(
             file_path="robot.urdf",
             file_contents=urdf_msg.data.encode("utf-8"),
-            entity_path_prefix="map/robot/urdf",
+            entity_path_prefix="urdf",
             static=True,
         )
 
