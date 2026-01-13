@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use egui::NumExt as _;
 use egui_extras::Column;
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_format::time::format_relative_timestamp_secs;
-use re_log_types::external::arrow;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::resource_managers::SourceImageDataFormat;
 use re_renderer::video::VideoFrameTexture;
@@ -522,7 +520,7 @@ fn frame_info_ui(
         )
         .on_hover_text("The index of the keyframe that this sample belongs to.");
 
-        if let Some(sample_range) = video_descr.get_keyframe_sample_range(keyframe_idx) {
+        if let Some(sample_range) = video_descr.gop_sample_range_for_keyframe(keyframe_idx) {
             let first_sample = video_descr.samples.get(sample_range.start);
             let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
 
@@ -671,26 +669,12 @@ impl VideoUi {
                     let chunk = storage_engine.store().chunk(&id)?;
 
                     let sample_component = archetypes::VideoStream::descriptor_sample().component;
-                    let raw_array = chunk.raw_component_array(sample_component)?;
-                    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
-                    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
-                    // (each VideoStream has exactly one VideoSample instance per time)`.
-                    //
-                    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
-                    // what you call values below (could use a better name btw).
-                    //
-                    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
-                    // i.e. get out a Vec<ByteRange>.
-                    let inner_list_array =
-                        raw_array.downcast_array_ref::<arrow::array::ListArray>()?;
 
-                    let values = inner_list_array
-                                .values()
-                                .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?;
+                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                        chunk.raw_component_array(sample_component)?,
+                    )?;
 
-                    let values = values.values().inner();
-
-                    Some(values)
+                    Some(buffer)
                 };
 
                 if let Ok(video) = video_stream_result {

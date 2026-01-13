@@ -6,7 +6,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use parking_lot::RwLock;
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
@@ -473,29 +472,10 @@ fn read_samples_from_known_chunk(
         return Ok(());
     };
 
-    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
-    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
-    // (each VideoStream has exactly one VideoSample instance per time)`.
-    //
-    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
-    // what you call values below (could use a better name btw).
-    //
-    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
-    // i.e. get out a Vec<ByteRange>.
-    let inner_list_array = raw_array
-        .downcast_array_ref::<arrow::array::ListArray>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
-    let values = inner_list_array
-        .values()
-        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
-    let values = values.values().inner();
+    let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
+    )?;
 
-    let offsets = inner_list_array.offsets();
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
     let split_idx = keyframe_indices
@@ -761,29 +741,10 @@ fn read_samples_from_new_chunk(
         }
     }
 
-    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
-    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
-    // (each VideoStream has exactly one VideoSample instance per time)`.
-    //
-    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
-    // what you call values below (could use a better name btw).
-    //
-    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
-    // i.e. get out a Vec<ByteRange>.
-    let inner_list_array = raw_array
-        .downcast_array_ref::<arrow::array::ListArray>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
-    let values = inner_list_array
-        .values()
-        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
-    let values = values.values().inner();
+    let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
+    )?;
 
-    let offsets = inner_list_array.offsets();
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
     let sample_base_idx = samples.next_index();

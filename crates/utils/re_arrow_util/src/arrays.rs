@@ -5,8 +5,8 @@ use arrow::array::{
     Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
     PrimitiveArray, UInt32Array, new_empty_array,
 };
-use arrow::buffer::{NullBuffer, OffsetBuffer};
-use arrow::datatypes::{DataType, Field};
+use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
@@ -433,6 +433,19 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
     .with_metadata(field.metadata().clone());
 
     (list_field, list_array)
+}
+
+/// Get the underlying buffer of an arrow aray of logical type `Vec<Vec<Blob>>`.
+pub fn blob_arrays_offsets_and_buffer(array: &dyn Array) -> Option<(&OffsetBuffer<i32>, &Buffer)> {
+    let inner_list_array = array.downcast_array_ref::<arrow::array::ListArray>()?;
+
+    let values = inner_list_array
+        .values()
+        .downcast_array_ref::<PrimitiveArray<UInt8Type>>()?;
+
+    let values = values.values().inner();
+
+    Some((inner_list_array.offsets(), values))
 }
 
 #[test]

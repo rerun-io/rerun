@@ -1,4 +1,3 @@
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
@@ -159,26 +158,12 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     let chunk = storage_engine.store().chunk(&id)?;
 
                     let sample_component = VideoStream::descriptor_sample().component;
-                    let raw_array = chunk.raw_component_array(sample_component)?;
-                    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
-                    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
-                    // (each VideoStream has exactly one VideoSample instance per time)`.
-                    //
-                    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
-                    // what you call values below (could use a better name btw).
-                    //
-                    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
-                    // i.e. get out a Vec<ByteRange>.
-                    let inner_list_array =
-                        raw_array.downcast_array_ref::<arrow::array::ListArray>()?;
 
-                    let values = inner_list_array
-                                .values()
-                                .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?;
+                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                        chunk.raw_component_array(sample_component)?,
+                    )?;
 
-                    let values = values.values().inner();
-
-                    Some(values)
+                    Some(buffer)
                 };
 
                 video.video_renderer.frame_at(
