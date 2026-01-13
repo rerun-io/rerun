@@ -414,13 +414,14 @@ fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
 
 // ----------------------------------------------------------------------------
 
-/// Draws a one point thick line in the given range, indicating which sections
+/// Paints a one point thick line in the given range, indicating which sections
 /// on the time panel have only loaded chunks.
 ///
-/// If the time cursor is over unloaded chunks, this draws a dashed line as a
+/// If the time cursor is over unloaded chunks, this paints a dashed line as a
 /// loading indicator.
 ///
-/// `draw_ranges` indicates if the loaded ranges should be filled in.
+/// `paint_fully_loaded_ranges` indicates if fully loaded ranges from the rrd
+/// manifest should be filled in.
 pub fn paint_loaded_indicator_bar(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
