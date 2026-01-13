@@ -1,0 +1,30 @@
+name: "Test Deploy Docs (PR)"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# NOTE: This workflow is for debugging docs build failures.
+# It runs the same reusable_deploy_docs workflow as the release,
+# but without setting UPDATE_LATEST, so no docs are actually pushed to "stable".
+
+concurrency:
+  group: ${{ github.ref }}-docs-test
+  cancel-in-progress: true
+
+permissions:
+  contents: "write"
+  id-token: "write"
+
+jobs:
+  deploy-docs-test:
+    name: "Test Deploy Docs"
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: ${{ github.ref }}-docs-test
+      PY_DOCS_VERSION_NAME: dev
+      CPP_DOCS_VERSION_NAME: dev
+      JS_DOCS_VERSION_NAME: dev
+      # Not setting RELEASE_VERSION, RELEASE_COMMIT, or UPDATE_LATEST
+      # This means docs will be built but not pushed to "stable"
+    secrets: inherit
