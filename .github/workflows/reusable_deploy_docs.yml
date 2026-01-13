@@ -69,6 +69,9 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
+          # TODO(grtlr): It seems like the Pixi cache is causing us to needlessly attempt to build `rerun-sdk`
+          #              for generating Python docs. So we disable the cache here.
+          cache: false
 
       - id: "auth"
         uses: google-github-actions/auth@v2
