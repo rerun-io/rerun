@@ -49,11 +49,11 @@ pub type VisualizerComponentMappings = SmallVec<[VisualizerComponentMapping; 2]>
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
-    pub id: VisualizerInstructionId, // TODO(andreas,aedm): rly a string?
+    pub id: VisualizerInstructionId,
 
     pub visualizer_type: ViewSystemIdentifier,
 
-    // TODO(aedm): only generate this path if the instruction has to be saved to the blueprint store.
+    /// The blueprint path to the override values for this visualizer instruction.
     pub override_path: EntityPath,
 
     /// List of components that have overrides for this visualizer instruction.
@@ -89,6 +89,7 @@ impl VisualizerInstruction {
         override_base_path.join(&EntityPath::from_single_string(id.0.to_string()))
     }
 
+    // TODO(aedm): remove this method, use Option<VisualizerInstructionId> everywhere instead.
     /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
     /// but rather from the "general" blueprint overrides for the entity.
     /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
@@ -97,7 +98,7 @@ impl VisualizerInstruction {
             id: VisualizerInstructionId::invalid(),
             visualizer_type: "___PLACEHOLDER___".into(),
             component_overrides: IntSet::default(),
-            override_path: data_result.override_base_path.clone(), // TODO(aedm): create a clearly invalid one.
+            override_path: data_result.override_base_path.clone(), // Don't use an invalid path. The placeholder is used right now to point to the base override path.
             component_mappings: VisualizerComponentMappings::default(),
         }
     }

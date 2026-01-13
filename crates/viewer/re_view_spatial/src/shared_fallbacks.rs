@@ -199,7 +199,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                             ctx.view_ctx,
                             &query,
                             archetypes::CoordinateFrame::descriptor_frame().component,
-                            &VisualizerInstruction::placeholder(&node.data_result), // TODO(aedm): can we do this without a placeholder?
+                            &VisualizerInstruction::placeholder(&node.data_result),
                         )
                         .get_mono::<components::TransformFrameId>(
                             archetypes::CoordinateFrame::descriptor_frame().component,
