@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use re_build_info::BuildInfo;
+use re_build_info::{BuildInfo, CrateVersion};
 use url::Url;
 
 use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
@@ -626,6 +626,7 @@ impl Properties for WelcomeScreenNavigation {
         event.insert("cta_cloud", cta_cloud);
         event.insert("is_logged_in", is_logged_in);
         event.insert("has_server", has_server);
+        event.insert("rerun_version", CrateVersion::LOCAL.to_string());
     }
 }
 
