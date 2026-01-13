@@ -56,7 +56,8 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component);
+            let (cached, missing) = cache.range(&store, query, entity_path, component);
+            results.missing.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -74,22 +75,52 @@ impl QueryCache {
 ///
 /// Use [`RangeResults::get`] or [`RangeResults::get_required`] in order to access the results for
 /// each individual component.
-#[derive(Debug)]
+///
+/// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
+/// it is missing some data in order to compute accurate results.
+/// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
+#[derive(Debug, PartialEq)]
 pub struct RangeResults {
     /// The query that yielded these results.
     pub query: RangeQuery,
+
+    /// The relevant *virtual* chunks that were found for this query.
+    ///
+    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
+    /// results of this query cannot accurately be computed.
+    //
+    // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
+    // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
+    // their own tracking. And document it so.
+    pub missing: Vec<ChunkId>,
 
     /// Results for each individual component.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 }
 
 impl RangeResults {
-    #[inline]
-    pub fn new(query: RangeQuery) -> Self {
-        Self {
-            query,
-            components: Default::default(),
-        }
+    /// Returns true if these are partial results.
+    ///
+    /// Partial results happen when some of the chunks required to accurately compute the query are
+    /// currently missing/offloaded.
+    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// [missing chunk IDs]: `Self::missing`
+    pub fn is_partial(&self) -> bool {
+        !self.missing.is_empty()
+    }
+
+    /// Returns true if the results are *completely* empty.
+    ///
+    /// I.e. neither physical/loaded nor virtual/offloaded chunks could be found.
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            query: _,
+            missing,
+            components,
+        } = self;
+        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`Chunk`]s for the specified component.
@@ -113,9 +144,17 @@ impl RangeResults {
 }
 
 impl RangeResults {
-    #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component: ComponentIdentifier, chunks: Vec<Chunk>) {
+    fn new(query: RangeQuery) -> Self {
+        Self {
+            query,
+            missing: Default::default(),
+            components: Default::default(),
+        }
+    }
+
+    #[inline]
+    fn add(&mut self, component: ComponentIdentifier, chunks: Vec<Chunk>) {
         self.components.insert(component, chunks);
     }
 }
@@ -243,13 +282,20 @@ impl SizeBytes for RangeCache {
 
 impl RangeCache {
     /// Queries cached range data for a single component.
-    pub fn range(
+    ///
+    /// This returns the cached physical chunks that were found for this query, as well as any
+    /// virtual chunks that need to be fetched and loaded.
+    /// It is then the responsibility of the caller to look into these missing chunk IDs, fetch
+    /// them, load them, and then try the query again.
+    ///
+    /// Returns `(cached_chunks, missing_chunk_ids)`.
+    fn range(
         &mut self,
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
-    ) -> Vec<Chunk> {
+    ) -> (Vec<Chunk>, Vec<ChunkId>) {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
@@ -262,10 +308,11 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks =
-            store.range_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
-        // TODO(RR-3295): what should we do with virtual chunks here? (verbose iteration below)
-        for raw_chunk in &raw_chunks.chunks {
+        let results = store.range_relevant_chunks(query, entity_path, component);
+        // It is perfectly safe to cache partial range results, since missing data (if any), cannot
+        // possibly affect what's already cached, it can only augment it.
+        // Therefore, we do not even check for partial results here.
+        for raw_chunk in &results.chunks {
             self.chunks
                 .entry(raw_chunk.id())
                 .or_insert_with(|| RangeCachedChunk {
@@ -276,6 +323,9 @@ impl RangeCache {
                         .densified(component)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+
+                    // TODO(cmc): this isn't good enough: if the chunk was indeed densified, then we
+                    // need to account for it in the memory stats, whether it was resorted or not.
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
                 });
         }
@@ -285,9 +335,12 @@ impl RangeCache {
         // Since these `Chunk`s have already been pre-processed adequately, running a range filter
         // on them will be quite cheap.
 
-        raw_chunks
-            // TODO(RR-3295): what should we do with virtual chunks here?
-            .into_iter_verbose()
+        // It is perfectly fine to return partial range results, as they are always valid on their own,
+        // as long as we also advertise that some chunks were missing (which we do).
+        // Therefore, we do not even check for partial results here.
+        let chunks = results
+            .chunks
+            .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
                 debug_assert!(
@@ -301,7 +354,9 @@ impl RangeCache {
                 chunk.range(query, component)
             })
             .filter(|chunk| !chunk.is_empty())
-            .collect()
+            .collect();
+
+        (chunks, results.missing)
     }
 
     #[inline]
@@ -315,5 +370,180 @@ impl RangeCache {
         chunks.retain(|chunk_id, _chunk| !pending_invalidations.contains(chunk_id));
 
         pending_invalidations.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, ChunkId, RowId};
+    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::external::re_tuid::Tuid;
+    use re_log_types::{EntityPath, TimePoint, Timeline};
+
+    use super::*;
+
+    // Make sure queries yield partial results when we expect them to.
+    #[test]
+    #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
+    fn partial_data_basics() {
+        let store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::ALL_DISABLED,
+        );
+        let store = ChunkStoreHandle::new(store);
+
+        let entity_path: EntityPath = "some_entity".into();
+
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timepoint1 = TimePoint::from_iter([(timeline_frame, 1)]);
+        let point1 = MyPoint::new(1.0, 1.0);
+
+        let mut next_chunk_id = next_chunk_id_generator(0x1337);
+
+        // Overlapped chunks!
+        let chunk1 = create_chunk_with_point(
+            next_chunk_id(),
+            entity_path.clone(),
+            timepoint1.clone(),
+            point1,
+        );
+        let chunk2 = chunk1.clone_as(next_chunk_id(), RowId::new());
+        let chunk3 = chunk2.clone_as(next_chunk_id(), RowId::new());
+
+        let cache = QueryCache::new(store.clone());
+
+        let component = MyPoints::descriptor_points().component;
+        let query = RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3));
+
+        // We haven't inserted anything yet, so we just expect empty results across the board.
+        {
+            let results = cache.range(&query, &entity_path, [component]);
+            assert!(results.is_empty());
+        }
+
+        // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
+        // performs the underlying query regardless (only the sorting/slicing is cached).
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk1.clone()))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk2.clone()))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk3.clone()))
+            .unwrap();
+
+        // Now we've inserted everything, so we expect complete results across the board.
+        {
+            let results = cache.range(&query, &entity_path, [component]);
+            let expected = {
+                let mut results = RangeResults::new(query.clone());
+                results.add(
+                    component,
+                    vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
+                );
+                results
+            };
+            assert_eq!(false, results.is_partial());
+            assert_eq!(expected, results);
+        }
+
+        // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
+        // performs the underlying query regardless (only the sorting/slicing is cached).
+        store.write().remove_chunks_shallow(
+            vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
+            None,
+        );
+
+        // We've removed the first and last chunks from the store: results should now be partial.
+        {
+            let results = cache.range(&query, &entity_path, [component]);
+            let expected = {
+                let mut results = RangeResults::new(query.clone());
+                results.add(component, vec![chunk2.clone()]);
+                results.missing = vec![chunk1.id(), chunk3.id()];
+                results
+            };
+            assert_eq!(true, results.is_partial());
+            assert_eq!(expected, results);
+        }
+
+        // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
+        // performs the underlying query regardless (only the sorting/slicing is cached).
+        store
+            .write()
+            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
+
+        // Now we've removed absolutely everything: we should only get partial results.
+        {
+            let results = cache.range(&query, &entity_path, [component]);
+            let expected = {
+                let mut results = RangeResults::new(query.clone());
+                results.missing = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results
+            };
+            assert_eq!(true, results.is_partial());
+            assert_eq!(expected, results);
+        }
+
+        // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
+        // performs the underlying query regardless (only the sorting/slicing is cached).
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk1.clone()))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk2.clone()))
+            .unwrap();
+        store
+            .write()
+            .insert_chunk(&Arc::new(chunk3.clone()))
+            .unwrap();
+
+        // We've inserted everything back: all results should be complete once again.
+        {
+            let results = cache.range(&query, &entity_path, [component]);
+            let expected = {
+                let mut results = RangeResults::new(query.clone());
+                results.add(
+                    component,
+                    vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
+                );
+                results
+            };
+            assert_eq!(false, results.is_partial());
+            assert_eq!(expected, results);
+        }
+    }
+
+    fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {
+        let mut chunk_id = re_chunk::ChunkId::from_tuid(Tuid::from_nanos_and_inc(prefix, 0));
+        move || {
+            chunk_id = chunk_id.next();
+            chunk_id
+        }
+    }
+
+    fn create_chunk_with_point(
+        chunk_id: ChunkId,
+        entity_path: EntityPath,
+        timepoint: TimePoint,
+        point: MyPoint,
+    ) -> Chunk {
+        Chunk::builder_with_id(chunk_id, entity_path)
+            .with_component_batch(
+                RowId::new(),
+                timepoint,
+                (MyPoints::descriptor_points(), &[point]),
+            )
+            .build()
+            .unwrap()
     }
 }
