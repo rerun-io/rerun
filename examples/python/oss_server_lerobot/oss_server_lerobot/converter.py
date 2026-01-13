@@ -80,15 +80,10 @@ def _decode_compressed_image(blob_value: object) -> np.ndarray:
     return np.asarray(image)
 
 
-def _infer_vector_dim(table: pa.Table, column: str, label: str) -> int:
+def _infer_feature_shape(table: pa.Table, column: str, label: str) -> int:
     if column not in table.column_names:
         raise ValueError(f"Column {column} for {label} was not found.")
     values = table[column].to_pylist()
-
-    # Debug: print table info
-    print(f"\nDebug: Inferring {label} dimension from column '{column}'")
-    print(f"Table has {len(table)} rows and columns: {table.column_names[:10]}...")  # Show first 10 columns
-    print(f"Non-null values in column: {sum(1 for v in values if v is not None)}/{len(values)}")
 
     for value in values:
         if value is None:
@@ -247,59 +242,33 @@ def _infer_features(
     state_names: list[str] | None,
     video_format: str,
 ) -> dict[str, dict]:
+    # Build content filter list (entity paths) - same as main conversion loop
     contents = []
     if columns.action:
-        contents.append(columns.action.split(":")[0])
+        action_path = columns.action.split(":")[0]
+        contents.append(action_path)
     if columns.state:
-        contents.append(columns.state.split(":")[0])
+        state_path = columns.state.split(":")[0]
+        if state_path not in contents:
+            contents.append(state_path)
     if columns.task:
-        contents.append(columns.task.split(":")[0])
+        task_path = columns.task.split(":")[0]
+        if task_path not in contents:
+            contents.append(task_path)
     for spec in image_specs:
-        contents.append(spec.path)
+        if spec.path not in contents:
+            contents.append(spec.path)
 
-    # Debug: check what's in the segment first
-    print(f"\n=== Debug: Checking segment '{segment_id}' ===")
-    print(f"Requested contents to filter: {contents}")
-    print(f"Index column: {index_column}")
+    # Filter contents BEFORE creating reader
+    # TODO(gijsd): is this required?!
+    view = dataset.filter_segments(segment_id).filter_contents(contents)
+    print("view contents:", view.schema().column_names())
 
-    # Check what indices/timelines are available
-    print("\nTrying different indices and content filters:")
-
-    # First try without any content filtering
-    try:
-        test_view = dataset.filter_segments(segment_id)
-        test_reader = test_view.reader(index=index_column)
-        # Just get schema without materializing
-        print(f"Segment has data (unfiltered): checking...")
-        test_df = test_reader.select(index_column).limit(1)
-        test_table = pa.table(test_df)
-        print(f"  Unfiltered with '{index_column}': {len(test_table)} rows (sample)")
-    except Exception as e:
-        print(f"  Error reading unfiltered: {e}")
-
-    # Now try each content individually
-    for content in contents[:3]:  # Check first 3 contents
-        try:
-            test_view = dataset.filter_segments(segment_id).filter_contents([content])
-            test_reader = test_view.reader(index=index_column)
-            test_df = test_reader.limit(5)
-            test_table = pa.table(test_df)
-            print(f"  Content '{content}': {len(test_table)} rows")
-            if len(test_table) > 0 and columns.action:
-                if columns.action in test_table.column_names:
-                    non_null = sum(1 for v in test_table[columns.action].to_pylist() if v is not None)
-                    print(f"    -> '{columns.action}' has {non_null}/{len(test_table)} non-null values")
-        except Exception as e:
-            print(f"  Content '{content}': Error - {str(e)[:100]}")
-
-    # Don't filter by contents to avoid schema mismatch issues with protobuf data
-    # Instead, we'll select only the specific columns we need
-    view = dataset.filter_segments(segment_id)
-
-    # Build list of specific columns we need to avoid schema mismatch issues
     columns_to_read = [index_column]
     if columns.action:
         columns_to_read.append(columns.action)
+
+    # TODO(gijsd): do we want to handle this like this?
     if columns.state and columns.state != columns.action:  # Avoid duplicates
         columns_to_read.append(columns.state)
     if columns.task:
@@ -311,77 +280,29 @@ def _infer_features(
         elif spec.kind == "compressed":
             columns_to_read.append(f"{spec.path}:EncodedImage:blob")
 
-    # Remove any duplicates while preserving order
-    seen = set()
-    unique_columns = []
-    for col in columns_to_read:
-        if col not in seen:
-            seen.add(col)
-            unique_columns.append(col)
-
-    print(f"Reading specific columns: {unique_columns[:10]}...")  # Show first 10
-
-    # Work around schema mismatch by reading each column separately
-    # Only read a small sample (first 100 rows) to infer dimensions
-    SAMPLE_SIZE = 100
-    all_data = {}
-
-    # Read index column first (just a sample)
-    print(f"  Reading index column (sample): {index_column}")
-    index_reader = view.reader(index=index_column).select(index_column).limit(SAMPLE_SIZE)
-    index_table = pa.table(index_reader)
-    all_data[index_column] = index_table[index_column].to_pylist()
-    print(f"    -> Got {len(all_data[index_column])} rows (sample)")
-
-    # Then read each data column separately to avoid schema conflicts
-    for col_name in unique_columns:
-        if col_name == index_column:
-            continue  # Already read
-
-        print(f"  Reading column (sample): {col_name}")
-        try:
-            col_reader = view.reader(index=index_column).select(col_name).limit(SAMPLE_SIZE)
-            col_table = pa.table(col_reader)
-            all_data[col_name] = col_table[col_name].to_pylist()
-            print(f"    -> Got {len(all_data[col_name])} rows (sample)")
-        except Exception as e:
-            print(f"    -> Error reading column: {e}")
-            all_data[col_name] = [None] * len(all_data[index_column])
-
-    # Ensure all columns have the same length
-    max_len = len(all_data[index_column])
-    for col_name in unique_columns:
-        if col_name not in all_data:
-            all_data[col_name] = [None] * max_len
-        elif len(all_data[col_name]) != max_len:
-            # Pad or truncate
-            if len(all_data[col_name]) < max_len:
-                all_data[col_name].extend([None] * (max_len - len(all_data[col_name])))
-            else:
-                all_data[col_name] = all_data[col_name][:max_len]
-
-    print(f"Combined sample table will have {max_len} rows")
-    table = pa.table(all_data)
-
-    # Debug: show what columns are available and sample of data
-    print(f"\n=== Debug: Inferring features from segment '{segment_id}' ===")
-    print(f"Index column: {index_column}")
-    print(f"Requested contents: {contents}")
-    print(f"Table shape: {len(table)} rows, {len(table.column_names)} columns")
-    print(f"Available columns (first 20): {table.column_names[:20]}")
     if columns.action:
-        action_col_exists = columns.action in table.column_names
+        action_col_exists = columns.action in columns_to_read
         print(f"Action column '{columns.action}' exists: {action_col_exists}")
 
-    features: dict[str, dict] = {}
+    print("segment_id:", segment_id)
+    print("index_column:", index_column)
+    print("columns_to_read:", columns_to_read)
+    print("schema:", view.schema())
+    print("reader for index:", view.reader(index=index_column).schema())
+    df = view.reader(index=index_column).select_columns(*columns_to_read).limit(10)
+    print("raw df:", df)
+    print("df collect:", df.collect())
+    table = df.to_arrow_table()
+
+    features = {}
     if columns.action:
-        action_dim = _infer_vector_dim(table, columns.action, "action")
+        action_dim = _infer_feature_shape(table, columns.action, "action")
         if action_names is not None and len(action_names) != action_dim:
             raise ValueError("Action names length does not match inferred action dimension.")
         features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": action_names}
 
     if columns.state:
-        state_dim = _infer_vector_dim(table, columns.state, "state")
+        state_dim = _infer_feature_shape(table, columns.state, "state")
         if state_names is not None and len(state_names) != state_dim:
             raise ValueError("State names length does not match inferred state dimension.")
         features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": state_names}
@@ -554,10 +475,14 @@ def convert_rrd_dataset_to_lerobot(
                             samples, times_ns, keyframes = video_data_cache[spec.key]
                             frames = []
                             for time_ns in row_times_ns:
-                                frames.append(_decode_video_frame(samples, times_ns, keyframes, int(time_ns), video_format))
+                                frames.append(
+                                    _decode_video_frame(samples, times_ns, keyframes, int(time_ns), video_format)
+                                )
                             video_frames[spec.key] = frames
 
-                    for row_idx in tqdm(range(num_rows), desc=f"Frames ({segment_id}, batch {batch_offset})", leave=False):
+                    for row_idx in tqdm(
+                        range(num_rows), desc=f"Frames ({segment_id}, batch {batch_offset})", leave=False
+                    ):
                         frame: dict[str, object] = {}
                         if action_dim is not None and columns.action:
                             frame["action"] = _to_float32_vector(
@@ -572,7 +497,9 @@ def convert_rrd_dataset_to_lerobot(
                                 "state",
                             )
 
-                        task_value = data_columns.get(columns.task, [None] * num_rows)[row_idx] if columns.task else None
+                        task_value = (
+                            data_columns.get(columns.task, [None] * num_rows)[row_idx] if columns.task else None
+                        )
                         task_value = _unwrap_singleton(task_value)
                         if task_value is None:
                             task = task_default
@@ -612,6 +539,7 @@ def convert_rrd_dataset_to_lerobot(
             except Exception as e:
                 print(f"Error processing segment {segment_id}: {e}")
                 import traceback
+
                 traceback.print_exc()
                 continue
 
