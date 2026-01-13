@@ -224,10 +224,10 @@ impl PySchemaInternal {
             .component_columns()
             .filter(|col| {
                 // Filter by entity_path if provided
-                if let Some(ep) = entity_path {
-                    if col.entity_path.to_string() != ep {
-                        return false;
-                    }
+                if let Some(ep) = entity_path
+                    && col.entity_path.to_string() != ep
+                {
+                    return false;
                 }
 
                 // Filter by archetype if provided

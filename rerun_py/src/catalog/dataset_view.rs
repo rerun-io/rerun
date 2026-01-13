@@ -93,14 +93,14 @@ impl PyDatasetViewInternal {
     fn filter_schema(&self, schema: SorbetColumnDescriptors) -> PyResult<SorbetColumnDescriptors> {
         // Apply column selector filtering first if present
         let schema = if let Some(column_selectors) = &self.column_selectors {
-            self.filter_schema_by_column_selectors(schema, column_selectors)?
+            Self::filter_schema_by_column_selectors(schema, column_selectors)?
         } else {
             schema
         };
 
         // Then apply entity path filtering if present
         if !self.content_filters.is_empty() {
-            self.filter_schema_by_entity_path(schema)
+            Ok(self.filter_schema_by_entity_path(schema))
         } else {
             Ok(schema)
         }
@@ -110,7 +110,7 @@ impl PyDatasetViewInternal {
     fn filter_schema_by_entity_path(
         &self,
         schema: SorbetColumnDescriptors,
-    ) -> PyResult<SorbetColumnDescriptors> {
+    ) -> SorbetColumnDescriptors {
         let filter = self.resolved_entity_path_filter();
 
         let filtered_columns: Vec<ColumnDescriptor> = schema
@@ -121,19 +121,18 @@ impl PyDatasetViewInternal {
             })
             .collect();
 
-        Ok(SorbetColumnDescriptors {
+        SorbetColumnDescriptors {
             columns: filtered_columns,
-        })
+        }
     }
 
     /// Filter schema columns based on column selectors.
     fn filter_schema_by_column_selectors(
-        &self,
         schema: SorbetColumnDescriptors,
         column_selectors: &[String],
     ) -> PyResult<SorbetColumnDescriptors> {
         use re_sorbet::ComponentColumnSelector;
-        use std::str::FromStr;
+        use std::str::FromStr as _;
 
         // Parse all column selectors - fail fast with clear error
         let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
@@ -463,7 +462,7 @@ fn build_view_contents_from_column_selectors(
 ) -> PyResult<Option<ViewContentsSelector>> {
     use re_sorbet::ComponentColumnSelector;
     use std::collections::BTreeMap;
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     // Parse all column selectors - fail fast with clear error
     let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
