@@ -714,7 +714,8 @@ impl EntityDb {
                 None
             },
 
-            perform_deep_deletions: false,
+            // There is no point in keeping old virtual indices for blueprint data.
+            perform_deep_deletions: self.store_kind() == StoreKind::Blueprint,
         });
 
         if store_events.is_empty() {
