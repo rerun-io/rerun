@@ -96,6 +96,7 @@ impl Default for DataQueryResult {
             component_defaults: re_query::LatestAtResults {
                 entity_path: "<defaults>".into(),
                 query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+                missing: Default::default(),
                 compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
                 components: Default::default(),
             },

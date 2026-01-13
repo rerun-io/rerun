@@ -644,6 +644,7 @@ fn static_invalidation() {
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
+    eprintln!("{store}");
 }
 
 fn query_and_compare(
