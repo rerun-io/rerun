@@ -773,8 +773,6 @@ mod tests {
                 let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
                 tree_context.execute(&view_ctx, &view_query, &once_per_frame);
 
-                dbg!(view_ctx.blueprint_db().storage_engine().store());
-
                 assert_eq!(
                     tree_context.target_frame(),
                     TransformFrameIdHash::new(&expected_target),

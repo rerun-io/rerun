@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
 use re_sdk_types::archetypes::{self, Scalars};
@@ -7,10 +5,6 @@ use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::components;
 use re_sdk_types::datatypes::{self, TimeRange};
-use re_sdk_types::{
-    Archetype as _, DynamicArchetype,
-    external::arrow::array::{Float32Array, Int64Array},
-};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -233,66 +227,6 @@ fn setup_blueprint(
                 }),
             );
         }
-
-        blueprint.add_view_at_root(view)
-    })
-}
-
-// TODO(grtlr): Move this test to a better place.
-#[test]
-pub fn test_blueprint_f64_with_time_series() {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
-
-    let timeline = re_log_types::Timeline::log_tick();
-
-    for i in 0..32 {
-        let timepoint = TimePoint::from([(timeline, i)]);
-        let t = i as f64 / 8.0;
-        test_context.log_entity("plots/sin", |builder| {
-            builder.with_archetype(RowId::new(), timepoint.clone(), &Scalars::single(t.sin()))
-        });
-        test_context.log_entity("plots/cos", |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                timepoint.clone(),
-                // an untagged component
-                &DynamicArchetype::new(Scalars::name()).with_component_from_data(
-                    "scalars",
-                    Arc::new(Float32Array::from(vec![t.cos() as f32])),
-                ),
-            )
-        });
-        test_context.log_entity("plots/line", |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                timepoint,
-                // an untagged component
-                &DynamicArchetype::new(Scalars::name()).with_component_from_data(
-                    "scalars",
-                    // Something that stays in the same domain as a sine wave.
-                    Arc::new(Int64Array::from(vec![(i % 2) * 2 - 1])),
-                ),
-            )
-        });
-    }
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
-
-    let view_id = setup_descriptor_override_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "blueprint_f64_with_time_series",
-        egui::vec2(300.0, 300.0),
-        None,
-    );
-}
-
-fn setup_descriptor_override_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
         blueprint.add_view_at_root(view)
     })

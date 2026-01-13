@@ -1,9 +1,7 @@
 use re_log_types::AbsoluteTimeRange;
-use re_log_types::external::arrow;
-use re_sdk_types::Loggable as _;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
-use re_sdk_types::components::{self, AggregationPolicy};
+use re_sdk_types::components::AggregationPolicy;
 use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
@@ -12,12 +10,18 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
 use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
 
-pub fn supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
-    [
-        components::Scalar::arrow_datatype(),
-        arrow::datatypes::DataType::Float32,
-    ]
-}
+// pub fn supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
+//     [
+//         arrow::datatypes::DataType::Float32,
+//         arrow::datatypes::DataType::Float64,
+//         arrow::datatypes::DataType::Int8,
+//         arrow::datatypes::DataType::Int32,
+//         arrow::datatypes::DataType::Int64,
+//         arrow::datatypes::DataType::UInt8,
+//         arrow::datatypes::DataType::UInt32,
+//         arrow::datatypes::DataType::UInt64,
+//     ]
+// }
 
 /// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(

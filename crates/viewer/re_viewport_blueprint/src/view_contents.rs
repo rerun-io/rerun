@@ -573,7 +573,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             &id,
                         );
 
-                        // TODO(aedm): Pick a mapping from the ones `choose_default_visualizers` returned.
+                        // TODO(RR-3317): Pick a mapping from the ones `choose_default_visualizers` returned.
                         component_mappings.clear();
 
                         if let Some(component_mapping_overrides) = blueprint

@@ -16,7 +16,6 @@ use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
-use crate::util::supported_datatypes;
 use crate::{
     LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util,
 };
@@ -35,17 +34,27 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo {
-            relevant_archetype: archetypes::SeriesPoints::name().into(),
-            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                supported_datatypes().into_iter().collect(),
-            ),
-            queried: archetypes::Scalars::all_components()
-                .iter()
-                .chain(archetypes::SeriesPoints::all_components().iter())
-                .cloned()
-                .collect(),
-        }
+        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
+        query_info
+            .queried
+            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
+
+        query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
+
+        query_info
+
+        // TODO(RR-3318): Enable this.
+        // VisualizerQueryInfo {
+        //     relevant_archetype: archetypes::SeriesPoints::name().into(),
+        //     required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+        //         supported_datatypes().into_iter().collect(),
+        //     ),
+        //     queried: archetypes::Scalars::all_components()
+        //         .iter()
+        //         .chain(archetypes::SeriesPoints::all_components().iter())
+        //         .cloned()
+        //         .collect(),
+        // }
     }
 
     fn execute(
