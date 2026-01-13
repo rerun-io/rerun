@@ -84,12 +84,34 @@ impl PyDatasetViewInternal {
 
     /// Filter schema columns based on content filters or column selectors.
     fn filter_schema(&self, schema: SorbetColumnDescriptors) -> PyResult<SorbetColumnDescriptors> {
-        // If we have column selectors, use component-level filtering
+        // If we have both column selectors and content filters, apply both in sequence
         if let Some(column_selectors) = &self.column_selectors {
-            return self.filter_schema_by_column_selectors(schema, column_selectors);
+            // First filter by column selectors
+            let schema = self.filter_schema_by_column_selectors(schema, column_selectors)?;
+
+            // Then filter by entity path if we have content filters
+            if !self.content_filters.is_empty() {
+                let filter = self.resolved_entity_path_filter();
+                let filtered_columns: Vec<ColumnDescriptor> = schema
+                    .into_iter()
+                    .filter(|col| {
+                        match col {
+                            ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
+                            // Keep row_id and index columns
+                            ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
+                        }
+                    })
+                    .collect();
+
+                return Ok(SorbetColumnDescriptors {
+                    columns: filtered_columns,
+                });
+            }
+
+            return Ok(schema);
         }
 
-        // Otherwise use entity path filtering
+        // Otherwise use entity path filtering only
         if self.content_filters.is_empty() {
             return Ok(schema);
         }
@@ -257,14 +279,27 @@ impl PyDatasetViewInternal {
         let mut combined_filters = self_.content_filters.clone();
         combined_filters.extend(exprs);
 
-        Py::new(
-            py,
-            Self::new(
-                self_.dataset.clone_ref(py),
-                self_.segment_filter.clone(),
-                Some(combined_filters),
-            ),
-        )
+        // Preserve existing column selectors if any, so we can apply both filters
+        if let Some(column_selectors) = &self_.column_selectors {
+            Py::new(
+                py,
+                Self {
+                    dataset: self_.dataset.clone_ref(py),
+                    segment_filter: self_.segment_filter.clone(),
+                    content_filters: combined_filters,
+                    column_selectors: Some(column_selectors.clone()),
+                },
+            )
+        } else {
+            Py::new(
+                py,
+                Self::new(
+                    self_.dataset.clone_ref(py),
+                    self_.segment_filter.clone(),
+                    Some(combined_filters),
+                ),
+            )
+        }
     }
 
     /// Returns a new DatasetView filtered to the given component column selectors.
@@ -279,12 +314,20 @@ impl PyDatasetViewInternal {
     ) -> PyResult<Py<Self>> {
         let py = self_.py();
 
-        // Combine with existing column selectors if any
+        // Compute intersection with existing column selectors if any.
+        // This implements AND logic: a column must match both the existing filter
+        // and the new filter to be included.
         let combined_selectors = match &self_.column_selectors {
             Some(existing) => {
-                let mut combined = existing.clone();
-                combined.extend(column_selectors);
-                combined
+                // Convert new selectors to a set for efficient lookup
+                let new_set: HashSet<String> = column_selectors.into_iter().collect();
+
+                // Keep only existing selectors that are also in the new set (intersection)
+                existing
+                    .iter()
+                    .filter(|s| new_set.contains(*s))
+                    .cloned()
+                    .collect()
             }
             None => column_selectors,
         };
