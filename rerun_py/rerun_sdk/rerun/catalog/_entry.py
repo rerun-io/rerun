@@ -149,9 +149,9 @@ def _get_column_names_for_archetypes(
         >>> columns = _get_column_names_for_archetypes(schema, [rr.Points3D])
         >>> # Get columns for multiple archetypes
         >>> columns = _get_column_names_for_archetypes(
-        ...     schema,
-        ...     ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
-        ... )
+        …     schema,
+        …     ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+        … )
 
     """
     all_column_names = []
@@ -210,9 +210,9 @@ def _get_column_names_for_component_types(
         >>> columns = _get_column_names_for_component_types(schema, [components.Position3D])
         >>> # Get columns for multiple component types
         >>> columns = _get_column_names_for_component_types(
-        ...     schema,
-        ...     ["rerun.components.Position3D", "rerun.components.Color"]
-        ... )
+        …     schema,
+        …     ["rerun.components.Position3D", "rerun.components.Color"]
+        … )
 
     """
     all_column_names = []

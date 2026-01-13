@@ -126,7 +126,7 @@ class Schema:
         Returns
         -------
         list[str]
-            Sorted list of archetype names (e.g., ["rerun.archetypes.Points3D", ...])
+            Sorted list of archetype names (e.g., ["rerun.archetypes.Points3D", …])
 
         Examples
         --------
@@ -149,7 +149,7 @@ class Schema:
         Returns
         -------
         list[str]
-            Sorted list of entity paths (e.g., ["/world/points", "/world/camera", ...])
+            Sorted list of entity paths (e.g., ["/world/points", "/world/camera", …])
 
         Examples
         --------
