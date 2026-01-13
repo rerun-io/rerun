@@ -539,24 +539,12 @@ fn log_debug_format(
     )
 }
 
-fn is_identity_scale(x: f64, y: f64, z: f64) -> bool {
-    const EPS: f64 = 1e-12;
-    (x - 1.0).abs() < EPS && (y - 1.0).abs() < EPS && (z - 1.0).abs() < EPS
-}
-
 fn extract_instance_scale(geometry: &Geometry) -> Option<Vec3D> {
     match geometry {
         Geometry::Mesh {
             scale: Some(Vec3([x, y, z])),
             ..
-        } => {
-            // Only log a scale component if it isn't the identity.
-            if is_identity_scale(*x, *y, *z) {
-                None
-            } else {
-                Some(Vec3D::new(*x as f32, *y as f32, *z as f32))
-            }
-        }
+        } => Some(Vec3D::new(*x as f32, *y as f32, *z as f32)),
         _ => None,
     }
 }
