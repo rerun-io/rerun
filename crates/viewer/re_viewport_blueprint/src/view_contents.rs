@@ -14,7 +14,7 @@ use re_sdk_types::blueprint::components::QueryExpression;
 use re_sdk_types::blueprint::{
     archetypes as blueprint_archetypes, components as blueprint_components,
 };
-use re_sdk_types::{Archetype as _, Loggable as _, ViewClassIdentifier};
+use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewClassRegistry,

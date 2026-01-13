@@ -54,7 +54,7 @@ pub use self::annotations::{
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
-    BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
+    BlueprintContext, VisualizerConfiguration, blueprint_timeline, blueprint_timepoint_for_writes,
 };
 pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,

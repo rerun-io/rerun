@@ -15,8 +15,10 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
-use re_viewport_blueprint::{ViewBlueprint, ViewContents};
+use re_viewer_context::{
+    BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId, VisualizerConfiguration,
+};
+use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
@@ -183,23 +185,18 @@ fn setup_blueprint(
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
         // Overrides:
-        let cos_override_path =
-            ViewContents::override_path_for_entity(view.id, &EntityPath::from("plots/cos"));
-        // TODO: fix this test
-        // ctx.save_blueprint_archetype(
-        //     cos_override_path.clone(),
-        //     // Override which visualizer to use for the `cos` plot.
-        //     &blueprint::archetypes::ActiveVisualizers::new([
-        //         // TODO(RR-3153): remove the `as_str()`.
-        //         archetypes::SeriesPoints::visualizer().as_str(),
-        //     ]),
-        // );
-        ctx.save_blueprint_archetype(
-            cos_override_path,
-            // Override color and markers for the `cos` plot.
-            &archetypes::SeriesPoints::default()
-                .with_colors([(0, 255, 0)])
-                .with_markers([components::MarkerShape::Cross]),
+        ctx.save_visualizers(
+            &EntityPath::from("plots/cos"),
+            view.id,
+            // Override color and markers for the `cos` plot and make it a points visualizer.
+            [
+                &VisualizerConfiguration::new(archetypes::SeriesPoints::visualizer())
+                    .with_overrides(
+                        &archetypes::SeriesPoints::default()
+                            .with_colors([(0, 255, 0)])
+                            .with_markers([components::MarkerShape::Cross]),
+                    ),
+            ],
         );
 
         // Override default color (should apply to the `sin` plot).

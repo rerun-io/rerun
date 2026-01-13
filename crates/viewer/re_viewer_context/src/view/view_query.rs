@@ -109,6 +109,7 @@ impl VisualizerInstruction {
                 self.visualizer_type.as_str(),
             )
             // We always have ti write the component map because it we may need to clear out old mappings.
+            // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
             .with_component_map(self.component_mappings.iter().map(|mapping| {
                 re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
                     selector: mapping.selector.as_str().into(),
