@@ -2,8 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
+use ahash::HashSet;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
+use parking_lot::RwLock;
+
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
@@ -504,6 +507,15 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
+    /// This keeps track of all missing [`ChunkId`]s.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory. This set is automatically populated anytime that happens.
+    ///
+    /// Calling [`ChunkStore::take_missing_chunk_ids`] will atomically return the contents of this set
+    /// as well as clearing it.
+    pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
+
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 
@@ -547,6 +559,7 @@ impl Clone for ChunkStore {
             temporal_physical_chunks_stats: self.temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
+            missing_chunk_ids: Default::default(),
             insert_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
@@ -569,6 +582,7 @@ impl std::fmt::Display for ChunkStore {
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
+            missing_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -630,6 +644,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
+            missing_chunk_ids: Default::default(),
             insert_id: 0,
             gc_id: 0,
             event_id: AtomicU64::new(0),
@@ -727,6 +742,19 @@ impl ChunkStore {
             is_tombstone,
             is_semantically_empty: *is_semantically_empty,
         })
+    }
+
+    /// Returns the set of [`ChunkId`]s that were detected as missing since the last time since method was called.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory.
+    ///
+    /// Calling this method is destructive: the internal set is cleared on every call, and will grow back as
+    /// new queries are run.
+    /// Callers are expected to call this once per frame in order to know which chunks were missing during
+    /// the previous frame.
+    pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
+        std::mem::take(&mut self.missing_chunk_ids.write())
     }
 }
 
