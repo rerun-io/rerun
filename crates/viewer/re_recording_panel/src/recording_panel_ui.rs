@@ -53,9 +53,7 @@ impl RecordingPanel {
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
                 "Sources",
-                Some(
-                    "These are the Sources currently loaded in the Viewer, organized by application",
-                ),
+                Some("Your connected servers, opened recordings and tables."),
                 |ui| {
                     add_button_ui(ctx, ui, &recording_panel_data);
                 },
