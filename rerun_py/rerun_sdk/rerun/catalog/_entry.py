@@ -53,6 +53,10 @@ if TYPE_CHECKING:
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
 
+# Entity path used to represent an empty filter (matches nothing)
+# Empty list would return ALL columns, so we use a path that won't match anything
+_EMPTY_FILTER_PATH = "/__rerun_internal__/non_existent"
+
 
 def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-defined]
     """
@@ -802,8 +806,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         # Use filter_contents with the column names
         if not all_column_names:
             # No matching columns - return empty view by filtering to non-existent entity path
-            # Note: Empty list would return ALL columns, so we use a path that won't match anything
-            return self.filter_contents(["/__rerun_internal__/non_existent"])
+            return self.filter_contents([_EMPTY_FILTER_PATH])
 
         return self.filter_contents(all_column_names)
 
@@ -863,8 +866,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         # Use filter_contents with the column names
         if not all_column_names:
             # No matching columns - return empty view by filtering to non-existent entity path
-            # Note: Empty list would return ALL columns, so we use a path that won't match anything
-            return self.filter_contents(["/__rerun_internal__/non_existent"])
+            return self.filter_contents([_EMPTY_FILTER_PATH])
 
         return self.filter_contents(all_column_names)
 
@@ -1415,8 +1417,7 @@ class DatasetView:
 
         # If no columns found, return an empty view
         if not all_column_names:
-            # Note: Empty list would return ALL columns, so we use a path that won't match anything
-            return self.filter_contents(["/__rerun_internal__/non_existent"])
+            return self.filter_contents([_EMPTY_FILTER_PATH])
 
         # Filter by the collected column names
         return self.filter_contents(all_column_names)
@@ -1484,8 +1485,7 @@ class DatasetView:
 
         # If no columns found, return an empty view
         if not all_column_names:
-            # Note: Empty list would return ALL columns, so we use a path that won't match anything
-            return self.filter_contents(["/__rerun_internal__/non_existent"])
+            return self.filter_contents([_EMPTY_FILTER_PATH])
 
         # Filter by the collected column names
         return self.filter_contents(all_column_names)

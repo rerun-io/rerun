@@ -149,6 +149,39 @@ class TestFilterArchetypes:
         # View should have no component columns
         assert len(schema.component_columns()) == 0
 
+    def test_filter_archetypes_multiple_nonexistent(
+        self, test_dataset_with_archetypes: DatasetEntry
+    ) -> None:
+        """Test filtering by multiple non-existent archetypes returns empty view."""
+        view = test_dataset_with_archetypes.filter_archetypes([
+            "rerun.archetypes.NonExistent1",
+            "rerun.archetypes.NonExistent2",
+            "rerun.archetypes.FakeArchetype"
+        ])
+        schema = view.schema()
+
+        # View should have no component columns
+        assert len(schema.component_columns()) == 0
+        assert len(schema.archetypes()) == 0
+
+    def test_filter_archetypes_empty_view_can_be_read(
+        self, test_dataset_with_archetypes: DatasetEntry
+    ) -> None:
+        """Test that reading from empty archetype filter doesn't crash."""
+        import datafusion
+
+        view = test_dataset_with_archetypes.filter_archetypes(
+            "rerun.archetypes.NonExistent"
+        )
+
+        # Should be able to get a reader without crashing
+        df = view.reader(index="frame")
+        assert isinstance(df, datafusion.DataFrame)
+
+        # View should have no component columns (only index columns remain)
+        schema = view.schema()
+        assert len(schema.component_columns()) == 0
+
     def test_filter_archetypes_invalid_string_format(
         self, test_dataset_with_archetypes: DatasetEntry
     ) -> None:
@@ -296,6 +329,39 @@ class TestFilterComponentTypes:
         schema = view.schema()
 
         # View should have no component columns
+        assert len(schema.component_columns()) == 0
+
+    def test_filter_component_types_multiple_nonexistent(
+        self, test_dataset_with_archetypes: DatasetEntry
+    ) -> None:
+        """Test filtering by multiple non-existent component types returns empty view."""
+        view = test_dataset_with_archetypes.filter_component_types([
+            "rerun.components.NonExistent1",
+            "rerun.components.NonExistent2",
+            "rerun.components.FakeComponent"
+        ])
+        schema = view.schema()
+
+        # View should have no component columns
+        assert len(schema.component_columns()) == 0
+        assert len(schema.component_types()) == 0
+
+    def test_filter_component_types_empty_view_can_be_read(
+        self, test_dataset_with_archetypes: DatasetEntry
+    ) -> None:
+        """Test that reading from empty component type filter doesn't crash."""
+        import datafusion
+
+        view = test_dataset_with_archetypes.filter_component_types(
+            "rerun.components.NonExistent"
+        )
+
+        # Should be able to get a reader without crashing
+        df = view.reader(index="frame")
+        assert isinstance(df, datafusion.DataFrame)
+
+        # View should have no component columns (only index columns remain)
+        schema = view.schema()
         assert len(schema.component_columns()) == 0
 
     def test_filter_component_types_invalid_string_format(
