@@ -173,7 +173,10 @@ jobs:
           pixi-version: v0.55.0
 
       - name: Check example thumbnails
-        run: pixi run uvpy ./scripts/ci/thumbnails.py check
+        # Use uv run --frozen python instead of uvpy.
+        # It's nice to get valid checks here even if the uv lockfile is out-of-date
+        # uv-lock-check will independently validate the lockfile status.
+        run: pixi run uv run --frozen python ./scripts/ci/thumbnails.py check
 
   check-example-manifest-coverage:
     name: Check example manifest coverage
