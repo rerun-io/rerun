@@ -14,9 +14,7 @@ async fn version() {
     let (handle, addr) = re_server::Args {
         host: "127.0.0.1".into(),
         port: 0,
-        datasets: vec![],
-        dataset_prefixes: vec![],
-        tables: vec![],
+        ..Default::default()
     }
     .create_server_handle()
     .await

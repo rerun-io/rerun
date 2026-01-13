@@ -39,6 +39,7 @@ impl PyServerInternal {
             datasets,
             dataset_prefixes,
             tables,
+            latency_ms: 0, // no artificial latency
         };
 
         let host: std::net::IpAddr = host
