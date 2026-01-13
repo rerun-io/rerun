@@ -44,6 +44,7 @@ perf_telemetry = [
   "re_perf_telemetry/pyo3",
 ]
 
+## Add support for the in-memory OSS server.
 server = ["re_sdk/server", "dep:re_grpc_server"]
 
 ## Support serving a web viewer over HTTP with `serve()`.

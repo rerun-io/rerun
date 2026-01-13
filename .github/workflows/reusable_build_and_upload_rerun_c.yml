@@ -101,7 +101,7 @@ jobs:
               lib_name="rerun_c.lib"
               ;;
             macos-arm64)
-              runner="macos-15" # Small runners, because building rerun_c is fast
+              runner="macos-26" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"

@@ -94,7 +94,7 @@ impl<'a> IntroItem<'a> {
                 };
                 ui.set_style(ui.ctx().style_of(opposite_theme));
 
-                ui.heading(RichText::new("Rerun Cloud").strong());
+                ui.heading(RichText::new("Rerun Data Platform").strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
@@ -155,7 +155,7 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &C
     if let Some(auth) = ctx.auth_context {
         ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
 
-        if ui.add(Button::new("Logout").secondary().small()).clicked() {
+        if ui.add(Button::new("Log out").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);
         }
 

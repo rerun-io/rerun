@@ -25,7 +25,7 @@ impl TestServer {
         let port = get_free_port();
 
         let args = re_server::Args {
-            addr: "127.0.0.1".to_owned(),
+            host: "127.0.0.1".to_owned(),
             port,
             datasets: vec![],
             dataset_prefixes: vec![],

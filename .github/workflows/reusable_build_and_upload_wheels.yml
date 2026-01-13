@@ -130,7 +130,7 @@ jobs:
               compat="manylinux_2_28"
               ;;
             macos-arm64)
-              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-26-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               compat="manylinux_2_28"

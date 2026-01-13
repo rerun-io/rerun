@@ -153,7 +153,7 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
 
     if redap_url:
         # Connect to an external redap server
-        client = CatalogClient(address=redap_url, token=redap_token)
+        client = CatalogClient(url=redap_url, token=redap_token)
         yield client
         # No cleanup needed for external server
     else:

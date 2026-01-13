@@ -61,7 +61,7 @@ class IndexColumnSelector:
 
         Parameters
         ----------
-        index : str
+        index:
             The name of the index to select. Usually the name of a timeline.
 
         """
@@ -146,9 +146,9 @@ class ComponentColumnSelector:
 
         Parameters
         ----------
-        entity_path : str
+        entity_path:
             The entity path to select.
-        component : str
+        component:
             The component to select. Example: `Points3D:positions`.
 
         """
@@ -227,7 +227,7 @@ def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -243,7 +243,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -1200,7 +1200,7 @@ class IndexingResult:
         """
 
 class CatalogClientInternal:
-    def __init__(self, addr: str, token: str | None = None) -> None: ...
+    def __init__(self, url: str, token: str | None = None) -> None: ...
 
     # ---
 
@@ -1254,7 +1254,7 @@ class ViewerClient:
 
         Parameters
         ----------
-        addr : str
+        addr:
             The address of the viewer.
 
         """
@@ -1276,7 +1276,7 @@ class _ServerInternal:
     def __init__(
         self,
         *,
-        address: str,
+        host: str,
         port: int,
         datasets: dict[str, list[str]],
         dataset_prefixes: dict[str, str],
@@ -1287,21 +1287,22 @@ class _ServerInternal:
 
         Parameters
         ----------
-        address
-            The address to bind the server to.
-        port
+        host:
+            The IP address to bind the server to.
+        port:
             The port to bind the server to.
-        datasets
+        datasets:
             Optional dictionary mapping dataset names to lists of RRD file paths.
-        dataset_prefixes
+        dataset_prefixes:
             Optional dictionary mapping dataset names to directories containing RRDs.
-        tables
+        tables:
             Optional dictionary mapping table names to lance file paths,
             which will be loaded and made available when the server starts.
 
         """
 
-    def address(self) -> str: ...
+    def url(self) -> str: ...
+    def host(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
 

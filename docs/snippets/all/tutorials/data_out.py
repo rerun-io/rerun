@@ -17,7 +17,7 @@ assert example_rrd.exists(), f"Example RRD not found at {example_rrd}"
 # region: launch_server
 server = rr.server.Server(datasets={"tutorial": [example_rrd]})
 
-client = rr.catalog.CatalogClient(address=server.address())
+client = rr.catalog.CatalogClient(server.url())
 # endregion: launch_server
 
 # query the recording into a pandas dataframe
