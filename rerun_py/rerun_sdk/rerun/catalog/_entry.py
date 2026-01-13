@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     import datafusion
 
     from rerun import Archetype  # type: ignore[attr-defined]
-    from rerun.archetypes._baseclasses import ComponentMixin  # type: ignore[import-untyped]
+    from rerun.archetypes._baseclasses import ComponentMixin  # type: ignore[import-not-found, import-untyped]
     from rerun.recording import Recording
 
     from . import (
