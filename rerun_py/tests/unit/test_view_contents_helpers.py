@@ -239,3 +239,183 @@ class TestViewContentsHelpers:
         assert "rerun.archetypes.Boxes3D" in archetypes
         # Should NOT contain Transform3D
         assert "rerun.archetypes.Transform3D" not in archetypes
+
+
+class TestTypeConversion:
+    """Test suite for type conversion in view contents helpers."""
+
+    def setup_method(self) -> None:
+        """Create a test recording with known data."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rrd = tmpdir + "/test_type_conversion.rrd"
+
+            recording_id = uuid.uuid4()
+            with rr.RecordingStream("test_type_conversion", recording_id=recording_id) as rec:
+                rec.save(rrd)
+
+                # Log Points3D
+                rec.set_time("frame", sequence=1)
+                rec.log(
+                    "/world/points",
+                    rr.Points3D([[1, 2, 3]], colors=[[255, 0, 0]])
+                )
+
+            self.recording = rr.dataframe.load_recording(rrd)
+            self.schema = self.recording.schema()
+
+    def test_archetype_type_single(self) -> None:
+        """Test view_contents_for_archetypes with single archetype type."""
+        contents = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            rr.Points3D
+        )
+
+        # Should work the same as string version
+        contents_str = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            "rerun.archetypes.Points3D"
+        )
+
+        assert contents == contents_str
+
+    def test_archetype_type_multiple(self) -> None:
+        """Test view_contents_for_archetypes with multiple archetype types."""
+        contents = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            [rr.Points3D, rr.Transform3D]
+        )
+
+        contents_str = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+        )
+
+        assert contents == contents_str
+
+    def test_archetype_type_mixed(self) -> None:
+        """Test view_contents_for_archetypes with mixed types and strings."""
+        contents = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            [rr.Points3D, "rerun.archetypes.Transform3D"]
+        )
+
+        contents_all_str = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+        )
+
+        assert contents == contents_all_str
+
+    def test_archetype_type_with_entity_path(self) -> None:
+        """Test archetype type with entity_path parameter."""
+        contents = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            rr.Points3D,
+            entity_path="/world/points"
+        )
+
+        contents_str = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            "rerun.archetypes.Points3D",
+            entity_path="/world/points"
+        )
+
+        assert contents == contents_str
+
+    def test_component_type_single(self) -> None:
+        """Test view_contents_for_component_types with single component type."""
+        from rerun import components
+
+        contents = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            components.Position3D
+        )
+
+        contents_str = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            "rerun.components.Position3D"
+        )
+
+        assert contents == contents_str
+
+    def test_component_type_multiple(self) -> None:
+        """Test view_contents_for_component_types with multiple component types."""
+        from rerun import components
+
+        contents = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            [components.Position3D, components.Color]
+        )
+
+        contents_str = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            ["rerun.components.Position3D", "rerun.components.Color"]
+        )
+
+        assert contents == contents_str
+
+    def test_component_type_mixed(self) -> None:
+        """Test view_contents_for_component_types with mixed types and strings."""
+        from rerun import components
+
+        contents = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            [components.Position3D, "rerun.components.Color"]
+        )
+
+        contents_all_str = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            ["rerun.components.Position3D", "rerun.components.Color"]
+        )
+
+        assert contents == contents_all_str
+
+    def test_component_type_with_entity_path(self) -> None:
+        """Test component type with entity_path parameter."""
+        from rerun import components
+
+        contents = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            components.Position3D,
+            entity_path="/world/points"
+        )
+
+        contents_str = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            "rerun.components.Position3D",
+            entity_path="/world/points"
+        )
+
+        assert contents == contents_str
+
+    def test_integration_archetype_type_creates_view(self) -> None:
+        """Test that views can be created using archetype types."""
+        contents = rr.dataframe.view_contents_for_archetypes(
+            self.schema,
+            rr.Points3D
+        )
+
+        # Should successfully create view
+        view = self.recording.view(index="frame", contents=contents)
+        view_schema = view.schema()
+
+        # View should contain Points3D
+        archetypes = view_schema.archetypes()
+        assert "rerun.archetypes.Points3D" in archetypes
+
+    def test_integration_component_type_creates_view(self) -> None:
+        """Test that views can be created using component types."""
+        from rerun import components
+
+        contents = rr.dataframe.view_contents_for_component_types(
+            self.schema,
+            components.Position3D
+        )
+
+        # Should successfully create view
+        view = self.recording.view(index="frame", contents=contents)
+        view_schema = view.schema()
+
+        # View should contain Position3D
+        component_types = view_schema.component_types()
+        assert "rerun.components.Position3D" in component_types

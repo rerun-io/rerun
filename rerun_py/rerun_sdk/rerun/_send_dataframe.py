@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 
@@ -9,7 +9,15 @@ from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._send_columns import TimeColumnLike, send_columns
 
 if TYPE_CHECKING:
+    from typing import Type
+
+    from . import Archetype
+    from .archetypes._baseclasses import ComponentMixin
     from .recording_stream import RecordingStream
+
+    # Type aliases for archetype and component specs
+    ArchetypeSpec = Union[str, Type[Archetype]]
+    ComponentTypeSpec = Union[str, Type[ComponentMixin]]
 
 SORBET_INDEX_NAME = b"rerun:index_name"
 SORBET_ENTITY_PATH = b"rerun:entity_path"
@@ -103,9 +111,62 @@ def send_dataframe(df: pa.RecordBatchReader | pa.Table, recording: RecordingStre
         send_record_batch(batch, recording)
 
 
+def _archetype_to_name(archetype: ArchetypeSpec) -> str:  # type: ignore[name-defined]
+    """
+    Convert archetype spec to fully-qualified name.
+
+    Args:
+        archetype: Either a fully-qualified string (e.g., "rerun.archetypes.Points3D")
+                   or an Archetype type (e.g., rr.Points3D)
+
+    Returns:
+        Fully-qualified archetype name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(archetype, str):
+        if "." not in archetype:
+            raise ValueError(
+                f"Archetype name must be fully-qualified (e.g., 'rerun.archetypes.Points3D'), "
+                f"got: {archetype!r}. Short names like 'Points3D' are not supported."
+            )
+        return archetype
+    else:
+        # It's a Type[Archetype] - get the name via archetype() method
+        return archetype.archetype()
+
+
+def _component_type_to_name(component_type: ComponentTypeSpec) -> str:  # type: ignore[name-defined]
+    """
+    Convert component type spec to fully-qualified name.
+
+    Args:
+        component_type: Either a fully-qualified string (e.g., "rerun.components.Position3D")
+                        or a ComponentMixin type (e.g., rr.components.Position3D)
+
+    Returns:
+        Fully-qualified component type name as a string
+
+    Raises:
+        ValueError: If string is not fully-qualified (doesn't contain '.')
+    """
+    if isinstance(component_type, str):
+        if "." not in component_type:
+            raise ValueError(
+                f"Component type name must be fully-qualified "
+                f"(e.g., 'rerun.components.Position3D'), got: {component_type!r}. "
+                f"Short names like 'Position3D' are not supported."
+            )
+        return component_type
+    else:
+        # It's a Type[ComponentMixin] - get via _BATCH_TYPE._COMPONENT_TYPE
+        return component_type._BATCH_TYPE._COMPONENT_TYPE
+
+
 def view_contents_for_archetypes(
     schema: Schema,
-    archetypes: str | list[str],
+    archetypes: ArchetypeSpec | list[ArchetypeSpec],  # type: ignore[name-defined]
     *,
     entity_path: str | None = None,
 ) -> ViewContentsLike:
@@ -119,9 +180,11 @@ def view_contents_for_archetypes(
     ----------
     schema : Schema
         The schema to query for columns.
-    archetypes : str | list[str]
-        Archetype name or list of archetype names (fully-qualified,
-        e.g., "rerun.archetypes.Points3D").
+    archetypes : str | Type[Archetype] | list[str | Type[Archetype]]
+        Archetype or list of archetypes. Can be either:
+        - Fully-qualified string (e.g., "rerun.archetypes.Points3D")
+        - Archetype type (e.g., rr.Points3D)
+        - List of either
     entity_path : str | None
         Optional entity path filter. If provided, only columns at this
         entity path will be included.
@@ -134,7 +197,7 @@ def view_contents_for_archetypes(
 
     Examples
     --------
-    Filter a recording to only Points3D data:
+    Filter a recording to only Points3D data (using type):
 
     ```python
     import rerun as rr
@@ -142,7 +205,17 @@ def view_contents_for_archetypes(
     recording = rr.dataframe.load_recording("recording.rrd")
     schema = recording.schema()
 
-    # Create view with only Points3D archetype
+    # Create view with only Points3D archetype (using type)
+    contents = rr.dataframe.view_contents_for_archetypes(
+        schema,
+        rr.Points3D
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter using fully-qualified string:
+
+    ```python
     contents = rr.dataframe.view_contents_for_archetypes(
         schema,
         "rerun.archetypes.Points3D"
@@ -155,7 +228,7 @@ def view_contents_for_archetypes(
     ```python
     contents = rr.dataframe.view_contents_for_archetypes(
         schema,
-        ["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D"]
+        [rr.Points3D, rr.Transform3D]
     )
     view = recording.view(index="frame", contents=contents)
     ```
@@ -165,20 +238,23 @@ def view_contents_for_archetypes(
     ```python
     contents = rr.dataframe.view_contents_for_archetypes(
         schema,
-        "rerun.archetypes.Points3D",
+        rr.Points3D,
         entity_path="/world/points"
     )
     view = recording.view(index="frame", contents=contents)
     ```
 
     """
-    if isinstance(archetypes, str):
+    if not isinstance(archetypes, list):
         archetypes = [archetypes]
 
     all_components = []
     for archetype in archetypes:
+        # Convert type to name if needed
+        archetype_name = _archetype_to_name(archetype)
+
         columns = schema.columns_for(
-            archetype=archetype,
+            archetype=archetype_name,
             entity_path=entity_path,
         )
         # Extract just the component part (e.g., "Points3D:positions")
@@ -192,7 +268,7 @@ def view_contents_for_archetypes(
 
 def view_contents_for_component_types(
     schema: Schema,
-    component_types: str | list[str],
+    component_types: ComponentTypeSpec | list[ComponentTypeSpec],  # type: ignore[name-defined]
     *,
     entity_path: str | None = None,
 ) -> ViewContentsLike:
@@ -206,9 +282,11 @@ def view_contents_for_component_types(
     ----------
     schema : Schema
         The schema to query for columns.
-    component_types : str | list[str]
-        Component type name or list of component type names (fully-qualified,
-        e.g., "rerun.components.Position3D").
+    component_types : str | Type[ComponentMixin] | list[str | Type[ComponentMixin]]
+        Component type or list of component types. Can be either:
+        - Fully-qualified string (e.g., "rerun.components.Position3D")
+        - ComponentMixin type (e.g., rr.components.Position3D)
+        - List of either
     entity_path : str | None
         Optional entity path filter. If provided, only columns at this
         entity path will be included.
@@ -221,15 +299,26 @@ def view_contents_for_component_types(
 
     Examples
     --------
-    Filter a recording to only Position3D components:
+    Filter a recording to only Position3D components (using type):
 
     ```python
     import rerun as rr
+    from rerun import components
 
     recording = rr.dataframe.load_recording("recording.rrd")
     schema = recording.schema()
 
-    # Create view with only Position3D components
+    # Create view with only Position3D components (using type)
+    contents = rr.dataframe.view_contents_for_component_types(
+        schema,
+        components.Position3D
+    )
+    view = recording.view(index="frame", contents=contents)
+    ```
+
+    Filter using fully-qualified string:
+
+    ```python
     contents = rr.dataframe.view_contents_for_component_types(
         schema,
         "rerun.components.Position3D"
@@ -242,7 +331,7 @@ def view_contents_for_component_types(
     ```python
     contents = rr.dataframe.view_contents_for_component_types(
         schema,
-        ["rerun.components.Position3D", "rerun.components.Color"]
+        [components.Position3D, components.Color]
     )
     view = recording.view(index="frame", contents=contents)
     ```
@@ -252,20 +341,23 @@ def view_contents_for_component_types(
     ```python
     contents = rr.dataframe.view_contents_for_component_types(
         schema,
-        "rerun.components.Position3D",
+        components.Position3D,
         entity_path="/world/points"
     )
     view = recording.view(index="frame", contents=contents)
     ```
 
     """
-    if isinstance(component_types, str):
+    if not isinstance(component_types, list):
         component_types = [component_types]
 
     all_components = []
     for component_type in component_types:
+        # Convert type to name if needed
+        component_type_name = _component_type_to_name(component_type)
+
         columns = schema.columns_for(
-            component_type=component_type,
+            component_type=component_type_name,
             entity_path=entity_path,
         )
         # Extract just the component part (e.g., "Points3D:positions")
