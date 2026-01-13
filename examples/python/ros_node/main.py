@@ -99,6 +99,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             rr.Pinhole.from_fields(
                 resolution=[info.width, info.height],
                 image_from_camera=self.pinhole_model.intrinsic_matrix(),
+                image_plane_distance=1.0,
                 parent_frame=info.header.frame_id,
                 # Specifying a `child_frame` for the 2D image plane allows Rerun to
                 # visualize the pinhole frustum together with the image in 3D views.
@@ -161,7 +162,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
-        rr.log("scan", rr.LineStrips3D(segs, radii=0.0025))
+        rr.log("scan", rr.LineStrips3D(segs, radii=0.0025, colors=[255, 165, 0]))
         rr.log("scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
@@ -171,8 +172,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         Documentation about URDF support in Rerun can be found here:
         https://rerun.io/docs/howto/urdf
         """
-        # NOTE: file_path is not known here, robot.urdf is just a placeholder
-        # to let Rerun know the file type. Since we run this example in a ROS environment,
+        # NOTE: file_path is not known here, robot.urdf is just a placeholder to let
+        # Rerun know the file type. Since we run this example in a ROS environment,
         # Rerun can use AMENT_PREFIX_PATH etc to resolve asset paths of the URDF.
         rr.log_file_from_contents(
             file_path="robot.urdf",
