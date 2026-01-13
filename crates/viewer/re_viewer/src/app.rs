@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
-use re_auth::credentials::CredentialsProvider;
+use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
@@ -189,9 +189,10 @@ impl App {
             });
             // Call get_token once so the auth state is initialized.
             tokio_runtime.spawn_future(async move {
-                let _ = re_auth::credentials::CliCredentialsProvider::new()
+                re_auth::credentials::CliCredentialsProvider::new()
                     .get_token()
-                    .await;
+                    .await
+                    .ok();
             });
         }
 
