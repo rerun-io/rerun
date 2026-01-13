@@ -67,6 +67,10 @@ pub(crate) mod oauth {
     pub fn subscribe_auth_changes(callback: impl Fn(Option<oauth::User>) + Send + 'static) {
         let mut subscribers = AUTH_SUBSCRIBERS.lock();
         subscribers.push(Box::new(callback));
+        tokio::spawn(async move {
+            // Call get_token once to notify the new subscriber of the current state:
+            CliCredentialsProvider::new().get_token().await.ok();
+        });
     }
 
     /// Provider which uses `OAuth` credentials stored on the user's machine.
