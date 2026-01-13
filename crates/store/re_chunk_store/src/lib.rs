@@ -96,9 +96,9 @@ pub enum OnMissingChunk {
     /// Remember the missing chunk ID in [`ChunkStore::take_missing_chunk_ids`]
     /// and report it back in [`QueryResults::missing`].
     Report,
-}
 
-impl OnMissingChunk {
-    /// Use this behavior in tests
-    pub const TESTING: Self = OnMissingChunk::Report; // TODO: add a panic variant!
+    /// Panic when a chunk is missing.
+    ///
+    /// Only use this in tests!
+    Panic,
 }

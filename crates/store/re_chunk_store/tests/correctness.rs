@@ -24,7 +24,7 @@ fn query_latest_component<C: re_types_core::Component>(
 
     // NOTE: Purposefully ignoring virtual chunks -- these tests predate that.
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(OnMissingChunk::TESTING, query, entity_path, component)
+        .latest_at_relevant_chunks(OnMissingChunk::Panic, query, entity_path, component)
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
@@ -332,7 +332,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty frame_nr
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::TESTING,
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -343,7 +343,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty log_time
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::TESTING,
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -354,7 +354,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong entity path
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::TESTING,
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,
@@ -365,7 +365,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong timeline name
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::TESTING,
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,

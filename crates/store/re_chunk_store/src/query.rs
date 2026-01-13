@@ -663,6 +663,9 @@ impl QueryResults {
                     OnMissingChunk::Report => {
                         this.missing.push(chunk_id);
                     }
+                    OnMissingChunk::Panic => {
+                        panic!("ChunkStore is missing chunk ID: {chunk_id}");
+                    }
                 }
             }
         }
@@ -1226,7 +1229,7 @@ mod tests {
         // We haven't inserted anything yet, so we just expect empty results across the board.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1234,7 +1237,7 @@ mod tests {
             assert!(results.is_empty());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1251,7 +1254,7 @@ mod tests {
         // Now we've inserted everything, so we expect complete results across the board.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1264,7 +1267,7 @@ mod tests {
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1292,7 +1295,7 @@ mod tests {
         // * range results should now be partial
         {
             let results_latest_at = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1305,7 +1308,7 @@ mod tests {
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1328,7 +1331,7 @@ mod tests {
         // Now we've GC'd absolutely everything: we should only get partial results.
         {
             let results_latest_at = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1341,7 +1344,7 @@ mod tests {
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1366,7 +1369,7 @@ mod tests {
         // We've inserted everything back: all results should be complete once again.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1379,7 +1382,7 @@ mod tests {
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1437,7 +1440,7 @@ mod tests {
 
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1445,7 +1448,7 @@ mod tests {
             assert!(results.is_empty());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1463,7 +1466,7 @@ mod tests {
         // This used to fail because the compacted IDs would linger on in the internal virtual indices.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1471,7 +1474,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::TESTING,
+                OnMissingChunk::Panic,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
