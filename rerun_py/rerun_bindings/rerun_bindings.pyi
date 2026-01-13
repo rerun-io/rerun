@@ -598,7 +598,6 @@ class RecordingView:
             A reader that can be used to read out the selected data.
 
         """
->>>>>>> 373b30641ac (Phase 2-3: Add type stubs for new Schema methods)
 
 class Recording:
     """
