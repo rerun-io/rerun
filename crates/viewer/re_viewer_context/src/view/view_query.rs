@@ -104,17 +104,18 @@ impl VisualizerInstruction {
     }
 
     pub fn write_instruction_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        let component_mappings = self.component_mappings.iter().map(|mapping| {
-            re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
-                selector: mapping.selector.as_str().into(),
-                target: mapping.target.as_str().into(),
-            }
-        });
         let new_visualizer_instruction =
             re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(
                 self.visualizer_type.as_str(),
-                component_mappings,
-            );
+            )
+            // We always have ti write the component map because it we may need to clear out old mappings.
+            .with_component_map(self.component_mappings.iter().map(|mapping| {
+                re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
+                    selector: mapping.selector.as_str().into(),
+                    target: mapping.target.as_str().into(),
+                }
+            }));
+
         ctx.save_blueprint_archetype(self.override_path.clone(), &new_visualizer_instruction);
     }
 }
