@@ -376,6 +376,9 @@ py-sync-examples = { cmd = "pixi run uv sync --group examples --inexact --no-ins
 # Install example snippet dependencies without rebuilding rerun-sdk.
 # Use this after `py-build` to add snippet-specific dependencies.
 py-sync-snippets = { cmd = "pixi run uv sync --group snippets --inexact --no-install-package rerun-sdk" }
+# Install docs dependencies without rebuilding rerun-sdk.
+# Use this after `py-build` to add docs-specific dependencies.
+py-sync-docs = { cmd = "pixi run uv sync --group docs --no-install-package rerun-sdk" }
 
 
 # Build the `rerun-sdk` package in release mode.

@@ -82,7 +82,9 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Build docs
-        run: pixi run uv run --group docs mkdocs build -f rerun_py/mkdocs.yml -d site
+        run: |
+          pixi run py-sync-docs
+          pixi run uv run mkdocs build -f rerun_py/mkdocs.yml -d site
 
       - name: "Upload Python Docs (version)"
         uses: google-github-actions/upload-cloud-storage@v2

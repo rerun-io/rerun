@@ -123,6 +123,9 @@ examples = [
   # "human_pose_tracking",
 ]
 docs = [
+  # NOTE: we leave `rerun-sdk` out of the docs dependency list for the same reason
+  # as the `dev` group - it's slow to build and we can use rerun-dev-fixup to make
+  # the already-built package available via .pth file.
   "rerun-dev-fixup",
   # Documentation build dependencies (mkdocs and plugins)
   "griffe==1.4.1",
