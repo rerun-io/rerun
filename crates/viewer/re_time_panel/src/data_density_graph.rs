@@ -452,7 +452,7 @@ pub fn paint_loaded_indicator_bar(
 
     let is_loading_at_current_time = time_ctrl.time_int().is_some_and(|time| {
         full_time_range.contains(time)
-            && loaded_ranges_on_timeline.iter().all(|r| !r.contains(time))
+            && !loaded_ranges_on_timeline.iter().any(|r| r.contains(time))
     });
 
     if is_loading_at_current_time
