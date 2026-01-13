@@ -3,7 +3,7 @@ from __future__ import annotations
 import atexit
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 import datafusion
 from rerun import catalog as _catalog
@@ -11,23 +11,23 @@ from rerun import catalog as _catalog
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
-    from typing import Type, Union
 
     import pyarrow as pa
-    from rerun.catalog import IndexColumnDescriptor, RegistrationHandle
-
     from rerun import Archetype
     from rerun.archetypes._baseclasses import ComponentMixin
-    from rerun_bindings import IndexValuesLike, Schema as _Schema  # noqa: TID251
+    from rerun.catalog import IndexColumnDescriptor, RegistrationHandle
+
+    from rerun_bindings import IndexValuesLike  # noqa: TID251
 
 # Type aliases for archetype and component specs
-ArchetypeSpec = Union[str, "Type[Archetype]"]
-ComponentSpec = Union[str, "Type[ComponentMixin]"]
+ArchetypeSpec = Union[str, "type[Archetype]"]
+ComponentSpec = Union[str, "type[ComponentMixin]"]
 
 
 # Helper functions for type conversion
 def _archetype_to_name(archetype: ArchetypeSpec) -> str:
-    """Convert archetype to fully-qualified name.
+    """
+    Convert archetype to fully-qualified name.
 
     Args:
         archetype: Either a fully-qualified string (e.g., "rerun.archetypes.Points3D")
@@ -38,6 +38,7 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:
 
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
+
     """
     if isinstance(archetype, str):
         if "." not in archetype:
@@ -52,7 +53,8 @@ def _archetype_to_name(archetype: ArchetypeSpec) -> str:
 
 
 def _component_type_to_name(component_type: ComponentSpec) -> str:
-    """Convert component type to fully-qualified name.
+    """
+    Convert component type to fully-qualified name.
 
     Args:
         component_type: Either a fully-qualified string (e.g., "rerun.components.Position3D")
@@ -63,6 +65,7 @@ def _component_type_to_name(component_type: ComponentSpec) -> str:
 
     Raises:
         ValueError: If string is not fully-qualified (doesn't contain '.')
+
     """
     if isinstance(component_type, str):
         if "." not in component_type:
