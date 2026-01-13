@@ -4,20 +4,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .converter import ImageSpec, convert_rrd_dataset_to_lerobot
+from .converter import convert_rrd_dataset_to_lerobot
+from .types import ImageSpec
 
 
 def _parse_image_specs(raw_specs: list[str]) -> list[ImageSpec]:
     specs: list[ImageSpec] = []
     for raw_spec in raw_specs:
         parts = raw_spec.split(":")
-        if len(parts) != 3:
-            raise ValueError("Image spec must be formatted as key:path:kind (kind=raw|compressed|video).")
-        key, path, kind = parts
-        kind = kind.lower()
-        if kind not in {"raw", "compressed", "video"}:
-            raise ValueError(f"Unsupported image kind '{kind}' for image spec '{raw_spec}'.")
-        specs.append(ImageSpec(key=key, path=path, kind=kind))
+        if len(parts) != 2:
+            raise ValueError("Image spec must be formatted as key:path (videostream only).")
+        key, path = parts
+        specs.append(ImageSpec(key=key, path=path))
     return specs
 
 
@@ -46,10 +44,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--state-column", default=None, help="Override state column name.")
     parser.add_argument("--task-column", default=None, help="Override task column name.")
     parser.add_argument(
-        "--image",
+        "--video",
         action="append",
         default=[],
-        help="Image spec as key:path:kind (kind=raw|compressed|video). Repeatable.",
+        help="Video stream spec as key:path. Repeatable.",
     )
     parser.add_argument("--segments", nargs="*", default=None, help="Optional list of segment ids to convert.")
     parser.add_argument("--max-segments", type=int, default=None, help="Limit number of segments.")
@@ -63,7 +61,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
-    image_specs = _parse_image_specs(args.image)
+    image_specs = _parse_image_specs(args.video)
     repo_id = args.repo_id or args.dataset_name
     convert_rrd_dataset_to_lerobot(
         rrd_dir=args.rrd_dir,
