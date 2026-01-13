@@ -78,7 +78,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`RangeResults::missing`] field.
 #[derive(Debug, PartialEq)]
 pub struct RangeResults {
     /// The query that yielded these results.
