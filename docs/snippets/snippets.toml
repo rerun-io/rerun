@@ -21,6 +21,15 @@
 [snippets_ref]
 features = [
   [
+    "Query dataplatform",
+    [
+      "howto/dataframe_operations",
+      "howto/query_images",
+      "howto/time_alignment",
+      "howto/view_operations",
+    ],
+  ],
+  [
     "Setting recording properties",
     [
       "concepts/recording_properties",
@@ -96,6 +105,11 @@ features = [
 backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
+  # Dataplatform examples don't generate rrds
+  "howto/dataframe_operations",
+  "howto/query_images",
+  "howto/time_alignment",
+  "howto/view_operations",
 ]
 
 
@@ -180,12 +194,20 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/dataframe_operations" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/load_urdf" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
+]
+"howto/query_images" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/send_table" = [
   "py", # Requires a server to connect to
@@ -201,6 +223,10 @@ backwards_check = [
   "py", # Requires a server to connect to
   "cpp", # Doesn't exist
   "rust", # Doesn't exist
+]
+"howto/time_alignment" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "views" = [
   "cpp", # TODO(#5520): C++ views are not yet implemented
@@ -300,6 +326,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/view_operations" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 
 # --------------------------------------------------------------------------------------------------
 
@@ -376,6 +406,26 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "archetypes/text_log_integration" = [ # The entity path will differ because the integrations work differently
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/time_alignment" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/view_operations" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",

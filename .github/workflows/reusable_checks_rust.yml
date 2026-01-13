@@ -153,7 +153,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runs_on: "macos-15-xlarge"
+          - runs_on: "macos-26-xlarge"
             name: "macos"
           - runs_on: "windows-latest-32-cores"
             name: "windows"
@@ -213,7 +213,7 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - runs_on: "macos-15-xlarge"
+          - runs_on: "macos-26-xlarge"
             name: "macos"
           - runs_on: "windows-latest-32-cores"
             name: "windows"
