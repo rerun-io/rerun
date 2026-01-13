@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any, TypeAlias
@@ -10,7 +10,6 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
