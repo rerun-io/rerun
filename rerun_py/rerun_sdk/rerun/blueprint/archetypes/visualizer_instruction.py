@@ -32,7 +32,8 @@ class VisualizerInstruction(Archetype):
     def __init__(
         self: Any,
         visualizer_type: datatypes.Utf8Like,
-        component_map: blueprint_datatypes.VisualizerComponentMappingArrayLike,
+        *,
+        component_map: blueprint_datatypes.VisualizerComponentMappingArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the VisualizerInstruction archetype.
