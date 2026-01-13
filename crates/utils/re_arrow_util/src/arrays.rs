@@ -435,7 +435,7 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
     (list_field, list_array)
 }
 
-/// Get the underlying buffer of an arrow aray of logical type `Vec<Vec<Blob>>`.
+/// Get the underlying buffer of an arrow array of logical type `Vec<Vec<Blob>>`.
 pub fn blob_arrays_offsets_and_buffer(array: &dyn Array) -> Option<(&OffsetBuffer<i32>, &Buffer)> {
     let inner_list_array = array.downcast_array_ref::<arrow::array::ListArray>()?;
 
