@@ -2383,6 +2383,15 @@ impl App {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
                     entity_db.add_rrd_manifest_message(*rrd_manifest);
+
+                    if let Some(caches) = store_hub.active_caches() {
+                        // Downgrade to read-only, so we can access caches.
+                        let entity_db = store_hub
+                            .entity_db(&store_id)
+                            .expect("Just queried it mutable and that was fine.");
+
+                        caches.on_rrd_manifest(entity_db);
+                    }
                 }
 
                 DataSourceMessage::LogMsg(msg) => {

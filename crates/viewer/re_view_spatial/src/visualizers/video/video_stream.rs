@@ -153,11 +153,28 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     video_resolution = glam::vec2(w as _, h as _);
                 }
 
+                let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
+                let get_chunk_array = |id| {
+                    let chunk = storage_engine.store().chunk(&id)?;
+
+                    let sample_component = VideoStream::descriptor_sample().component;
+
+                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                        chunk.raw_component_array(sample_component)?,
+                    )?;
+
+                    Some(buffer)
+                };
+
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
                     video_stream_time_from_query(query_context.query),
-                    &video.sample_buffers(),
+                    &|id| {
+                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+
+                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                    },
                 )
             };
 
