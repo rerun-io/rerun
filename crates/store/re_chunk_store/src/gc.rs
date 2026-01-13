@@ -425,7 +425,7 @@ impl ChunkStore {
     /// when you already know where these chunks live.
     //
     // TODO(cmc): blueprint stores could use deep removal for everything. maybe expose a config flag?
-    pub(crate) fn remove_chunks_deep(
+    pub fn remove_chunks_deep(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
@@ -556,7 +556,7 @@ impl ChunkStore {
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    pub(crate) fn remove_chunks_shallow(
+    pub fn remove_chunks_shallow(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
