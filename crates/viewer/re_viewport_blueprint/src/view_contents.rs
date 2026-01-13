@@ -99,6 +99,7 @@ impl ViewContents {
             new_entity_path_filter,
         }
     }
+
     /// Computes the override path for a given entity in a given view.
     pub fn base_override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
         blueprint_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
