@@ -12,7 +12,7 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
-    ViewContextSystemOncePerFrameResult, VisualizerInstruction, typed_fallback_for,
+    ViewContextSystemOncePerFrameResult, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;

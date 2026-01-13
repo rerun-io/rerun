@@ -13,7 +13,7 @@ use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, VisualizerInstruction, contents_name_style, icon_for_container_kind,
+    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;

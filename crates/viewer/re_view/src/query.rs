@@ -104,27 +104,32 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     let mut components = components.into_iter().collect::<IntSet<_>>();
     let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
-        let overrides = query_overrides(
+        query_overrides(
             ctx.viewer_ctx,
             visualizer_instruction,
             components.iter().copied(),
-        );
-        // No need to query for components that have overrides unless opted in!
-        if !query_shadowed_components {
-            components.retain(|component| overrides.get(*component).is_none());
-        }
+        )
+    } else {
+        query_overrides_at_path(
+            ctx.viewer_ctx,
+            data_result.override_base_path(),
+            components.iter().copied(),
+        )
+    };
 
-        // Apply component mappings when querying the recording.
+    // No need to query for components that have overrides unless opted in!
+    if !query_shadowed_components {
+        components.retain(|component| overrides.get(*component).is_none());
+    }
+
+    // Apply component mappings when querying the recording.
+    if let Some(visualizer_instruction) = &visualizer_instruction {
         for mapping in &visualizer_instruction.component_mappings {
             if components.remove(&mapping.target) {
                 components.insert(mapping.selector);
             }
         }
-
-        overrides
-    } else {
-        LatestAtResults::empty(data_result.entity_path.clone(), latest_at_query.clone())
-    };
+    }
 
     let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
@@ -205,9 +210,27 @@ pub fn query_archetype_with_history<'a>(
     }
 }
 
-pub fn query_overrides(
+fn query_overrides(
     ctx: &ViewerContext<'_>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+) -> LatestAtResults {
+    if visualizer_instruction.component_overrides.is_empty() {
+        LatestAtResults::empty("<overrides>".into(), ctx.current_query())
+    } else {
+        query_overrides_at_path(
+            ctx,
+            &visualizer_instruction.override_path,
+            components
+                .into_iter()
+                .filter(|c| visualizer_instruction.component_overrides.contains(c)),
+        )
+    }
+}
+
+fn query_overrides_at_path(
+    ctx: &ViewerContext<'_>,
+    blueprint_path: &re_log_types::EntityPath,
     components: impl IntoIterator<Item = ComponentIdentifier>,
 ) -> LatestAtResults {
     // First see if any components have overrides.
@@ -216,33 +239,21 @@ pub fn query_overrides(
     let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
 
     for component in components {
-        if visualizer_instruction
-            .component_overrides
-            .contains(&component)
-        {
-            let component_override_result = blueprint_engine.cache().latest_at(
-                ctx.blueprint_query,
-                &visualizer_instruction.override_path,
-                [component],
-            );
+        // TODO(andreas): Batch these queries?
+        let component_override_result =
+            blueprint_engine
+                .cache()
+                .latest_at(ctx.blueprint_query, blueprint_path, [component]);
 
-            // If we successfully find a non-empty override, add it to our results.
+        // If we successfully find a non-empty override, add it to our results.
+        if let Some(value) = component_override_result.get(component) {
+            let index = value.index(&ctx.blueprint_query.timeline());
 
-            // TODO(jleibs): it seems like value could still be null/empty if the override
-            // has been cleared. It seems like something is preventing that from happening
-            // but I don't fully understand what.
-            //
-            // This is extra tricky since the promise hasn't been resolved yet so we can't
-            // actually look at the data.
-            if let Some(value) = component_override_result.get(component) {
-                let index = value.index(&ctx.blueprint_query.timeline());
+            // NOTE: This can never happen, but I'd rather it happens than an unwrap.
+            debug_assert!(index.is_some(), "{value:#?}");
+            let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
-                // NOTE: This can never happen, but I'd rather it happens than an unwrap.
-                debug_assert!(index.is_some(), "{value:#?}");
-                let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
-
-                overrides.add(component, index, value.clone());
-            }
+            overrides.add(component, index, value.clone());
         }
     }
     overrides
