@@ -25,7 +25,7 @@ pub async fn dataset_ui_test() {
 
     harness.get_by_label("Add…").click();
     harness.run_ok();
-    harness.get_by_label_contains("Add Redap server").click();
+    harness.get_by_label_contains("Connect to a server").click();
     harness.run_ok();
 
     snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
