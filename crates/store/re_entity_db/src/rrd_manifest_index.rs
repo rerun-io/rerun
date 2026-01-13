@@ -432,12 +432,13 @@ impl RrdManifestIndex {
         let mut indices = vec![];
 
         let missing_chunk_ids = missing_chunk_ids.into_iter();
-        let prefetched_chunk_ids = chunks
-            .query(desired_range.into())
-            .map(|(_, chunk_id)| *chunk_id);
-
+        let prefetched_chunk_ids = || {
+            chunks
+                .query(desired_range.into())
+                .map(|(_, chunk_id)| *chunk_id)
+        };
         let chunk_ids_in_priority_order =
-            missing_chunk_ids.chain(std::iter::once_with(|| prefetched_chunk_ids).flatten());
+            missing_chunk_ids.chain(std::iter::once_with(prefetched_chunk_ids).flatten());
 
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
         // That's fine: they will still be missing next frame, and therefore will still be reported
