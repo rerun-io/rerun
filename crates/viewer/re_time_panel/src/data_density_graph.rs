@@ -520,6 +520,8 @@ pub fn data_density_graph_ui(
 ) -> Option<TimeInt> {
     re_tracing::profile_function!();
 
+    let num_missing_chunk_ids_before = db.storage_engine().store().num_missing_chunk_ids();
+
     let mut data = build_density_graph(
         ui,
         time_ranges_ui,
@@ -528,6 +530,12 @@ pub fn data_density_graph_ui(
         item,
         time_ctrl.timeline()?,
         DensityGraphBuilderConfig::default(),
+    );
+
+    debug_assert_eq!(
+        num_missing_chunk_ids_before,
+        db.storage_engine().store().num_missing_chunk_ids(),
+        "DEBUG ASSERT: The density graph should not request new chunks. (This assert assumes single-threaded access to the store)."
     );
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
