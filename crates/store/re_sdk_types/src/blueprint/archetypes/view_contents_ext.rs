@@ -1,4 +1,4 @@
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathPart};
 use re_types_core::Archetype as _;
 
 use crate::blueprint::archetypes::ViewContents;
@@ -17,8 +17,11 @@ impl ViewContents {
 
     /// Entity path for a given view id in the store.
     fn blueprint_entity_path_for_view_id(view_id: uuid::Uuid) -> EntityPath {
-        EntityPath::from_single_string(view_id.to_string())
-            .join(&EntityPath::from_single_string(Self::name().short_name()))
+        EntityPath::new(vec![
+            EntityPathPart::new("view"),
+            EntityPathPart::new(view_id.to_string()),
+            EntityPathPart::new(Self::name().short_name()),
+        ])
     }
 
     /// Base override path for a given entity in a given view.
