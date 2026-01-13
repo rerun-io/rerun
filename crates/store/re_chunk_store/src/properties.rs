@@ -12,7 +12,7 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sorbet::ComponentColumnDescriptor;
 use re_types_core::ComponentDescriptor;
 
-use crate::{ChunkStore, QueryResults};
+use crate::{ChunkStore, OnMissingChunk, QueryResults};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExtractPropertiesError {
@@ -49,6 +49,7 @@ impl ChunkStore {
             let QueryResults { chunks, missing } = self
                 // TODO(zehiko) we should be able to get static chunks without specifying the timeline
                 .latest_at_relevant_chunks_for_all_components(
+                    OnMissingChunk::Report,
                     &LatestAtQuery::new(
                         TimelineName::log_tick(), /* timeline is irrelevant, these are static chunks */
                         TimeInt::MIN,

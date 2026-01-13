@@ -86,3 +86,19 @@ pub enum ChunkStoreError {
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
+
+/// What to do when a virtual chunk is missing from the store.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnMissingChunk {
+    /// Ignore the missing chunk, and return partial results.
+    Ignore,
+
+    /// Remember the missing chunk ID in [`ChunkStore::take_missing_chunk_ids`]
+    /// and report it back in [`QueryResults::missing`].
+    Report,
+}
+
+impl OnMissingChunk {
+    /// Use this behavior in tests
+    pub const TESTING: Self = OnMissingChunk::Report; // TODO: add a panic variant!
+}

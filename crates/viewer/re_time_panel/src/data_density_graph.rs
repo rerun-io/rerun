@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
-use re_chunk_store::RangeQuery;
+use re_chunk_store::{OnMissingChunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, Timeline};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
@@ -593,7 +593,13 @@ pub fn build_density_graph<'a>(
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component)
+                    .range_relevant_chunks(
+                        // Don't cause chunks to be downloaded just to show the density graph
+                        OnMissingChunk::Ignore,
+                        &query,
+                        &item.entity_path,
+                        component,
+                    )
                     // TODO(RR-3295): what should we do with virtual chunks here?
                     .into_iter_verbose()
                     .filter_map(|chunk| {

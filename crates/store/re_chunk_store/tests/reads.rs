@@ -4,7 +4,8 @@ use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
-    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, OnMissingChunk, RangeQuery,
+    TimeInt,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeType, Timeline, build_frame_nr};
@@ -23,7 +24,12 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr.component)
+        .latest_at_relevant_chunks(
+            OnMissingChunk::TESTING,
+            query,
+            entity_path,
+            component_descr.component,
+        )
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
@@ -343,6 +349,7 @@ fn latest_at() -> anyhow::Result<()> {
 
                 let mut chunk_ids = store
                     .latest_at_relevant_chunks_for_all_components(
+                        OnMissingChunk::TESTING,
                         &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                         &entity_path,
                         false, /* don't include static data */
@@ -483,6 +490,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
                 .latest_at_relevant_chunks_for_all_components(
+                    OnMissingChunk::TESTING,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
                     false, /* don't include static data */
@@ -646,6 +654,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
                 .latest_at_relevant_chunks_for_all_components(
+                    OnMissingChunk::TESTING,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
                     false, /* don't include static data */
@@ -854,8 +863,12 @@ fn range() -> anyhow::Result<()> {
             let timeline_frame_nr = TimelineName::new("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results =
-                store.range_relevant_chunks(&query, &entity_path, component_descr.component);
+            let results = store.range_relevant_chunks(
+                OnMissingChunk::TESTING,
+                &query,
+                &entity_path,
+                component_descr.component,
+            );
 
             eprintln!("================= {component_descr} @ {query:?} ===============");
             let mut results_processed = 0usize;
@@ -973,6 +986,7 @@ fn range() -> anyhow::Result<()> {
                 eprintln!("--- {time_range:?} ---");
                 let mut chunk_ids = store
                     .range_relevant_chunks_for_all_components(
+                        OnMissingChunk::TESTING,
                         &RangeQuery::new(timeline_frame_nr, time_range),
                         &entity_path,
                         false, /* don't include static data */
@@ -1150,6 +1164,7 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
         eprintln!("--- {time_range:?} ---");
         let mut chunk_ids = store
             .range_relevant_chunks_for_all_components(
+                OnMissingChunk::TESTING,
                 &RangeQuery::new(timeline_frame_nr, time_range),
                 &entity_path,
                 false, /* don't include static data */
