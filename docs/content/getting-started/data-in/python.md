@@ -286,7 +286,7 @@ Rerun offers several solutions for such use cases.
 
 ### Logging data over the network
 
-At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `0.0.0.0:9876` by default).
+At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `[::]:9876` by default, which accepts both IPv4 and IPv6 connections).
 
 On the logger side, simply use [`rr.connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc) instead of [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) to start sending the data over to any gRPC address.
 

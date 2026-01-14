@@ -41,7 +41,7 @@ The Rerun command-line interface:
 * `--bind <BIND>`
 > What bind address IP to use.
 >
-> [Default: `0.0.0.0`]
+> [Default: `::`]
 
 * `--memory-limit <MEMORY_LIMIT>`
 > An upper limit on how much memory the Rerun Viewer should use.
@@ -658,7 +658,7 @@ In-memory Rerun data server.
 * `--host <HOST>`
 > IP address to listen on.
 >
-> [Default: `0.0.0.0`]
+> [Default: `::`]
 
 * `-p, --port <PORT>`
 > Port to bind to.

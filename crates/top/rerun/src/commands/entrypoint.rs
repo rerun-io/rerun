@@ -90,7 +90,7 @@ struct Args {
     command: Option<Command>,
 
     /// What bind address IP to use.
-    #[clap(long, default_value = "0.0.0.0")]
+    #[clap(long, default_value = "::")]
     bind: IpAddr,
 
     #[clap(
