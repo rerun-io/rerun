@@ -507,6 +507,8 @@ impl RrdManifestIndex {
         &self,
         timeline: &Timeline,
     ) -> impl Iterator<Item = AbsoluteTimeRange> {
+        re_tracing::profile_function!();
+
         let mut scratch = Vec::new();
         let mut ranges = Vec::new();
 
@@ -517,6 +519,8 @@ impl RrdManifestIndex {
             let Some(data) = timelines.get(timeline) else {
                 continue;
             };
+
+            re_tracing::profile_scope!("timeline", timeline.name().as_str());
 
             for chunks in data.values() {
                 scratch.extend(chunks.iter().filter_map(|(c, range)| {
