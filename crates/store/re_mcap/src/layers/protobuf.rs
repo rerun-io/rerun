@@ -177,6 +177,12 @@ fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), Protobuf
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<BinaryBuilder>() {
         b.append_null();
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<StructBuilder>() {
+        // `StructBuilder` mandates that all child arrays must share the same length as parent.
+        // When appending null to parent, we must also append to children to maintain length.
+        // Reference: https://arrow.apache.org/docs/format/Columnar.html#physical-memory-layout
+        for child_builder in b.field_builders_mut() {
+            append_null_to_builder(child_builder)?;
+        }
         b.append_null();
     } else if let Some(b) = builder
         .as_any_mut()
@@ -466,6 +472,40 @@ impl MessageLayer for McapProtobufLayer {
             num_rows,
             message_descriptor.clone(),
         )))
+    }
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use arrow::array::{Array as _, ArrayBuilder, StringBuilder, StructBuilder};
+    use arrow::datatypes::{DataType, Field, Fields};
+
+    /// Verifies that `append_null_to_builder` properly handles `StructBuilder`
+    /// by recursively appending nulls to child builders to maintain length consistency.
+    #[test]
+    fn struct_builder_null_append_bug() {
+        // Create a StructBuilder with 2 child fields.
+        let fields = Fields::from(vec![
+            Field::new("a", DataType::Utf8, true),
+            Field::new("b", DataType::Utf8, true),
+        ]);
+        let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
+            Box::new(StringBuilder::new()),
+            Box::new(StringBuilder::new()),
+        ];
+        let mut struct_builder = StructBuilder::new(fields, field_builders);
+
+        // Test the fixed `append_null_to_builder` behavior:
+        // It should recursively append nulls to children before appending to parent
+        for _ in 0..10 {
+            // Use our append_null_to_builder function which should handle this correctly
+            super::append_null_to_builder(&mut struct_builder as &mut dyn ArrayBuilder)
+                .expect("append_null_to_builder should succeed");
+        }
+
+        let array = struct_builder.finish();
+        assert_eq!(array.len(), 10);
+        assert_eq!(array.null_count(), 10); // All structs are null
     }
 }
 
