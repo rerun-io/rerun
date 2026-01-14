@@ -254,7 +254,7 @@ impl ViewContents {
 
     /// Build up the initial [`DataQueryResult`] for this [`ViewContents`]
     ///
-    /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
+    /// Note that this result will not have any resolved overrides. Those can
     /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
     /// the result.
     pub fn execute_query(
@@ -456,7 +456,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         }
     }
 
-    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
+    /// Recursively walk the [`DataResultTree`] and update each node.
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
@@ -702,7 +702,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         }
     }
 
-    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
+    /// Recursively walk the [`DataResultTree`] and update each node.
     pub fn update_overrides(
         &self,
         blueprint: &EntityDb,
