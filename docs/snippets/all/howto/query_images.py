@@ -86,6 +86,6 @@ for packet, time in zip(container.demux(video_stream), times, strict=False):
         pass
 if frame is None:
     raise RuntimeError("Failed to decode any frame from video stream.")
-image = np.asarray(frame.to_image())
+image = np.asarray(frame.to_image())  # type: ignore[attr-defined]
 print(f"{image.shape=}")
 # endregion: video_stream
