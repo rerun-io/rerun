@@ -23,18 +23,21 @@ class Mat3x3Ext:
                 _send_warning_or_raise("Can't specify both columns and rows of matrix.", 1, recording=None)
 
             if isinstance(rows, Mat3x3):
-                self.flat_columns = rows.flat_columns
+                flat_columns = rows.flat_columns
             else:
                 arr = np.asarray(rows, dtype=np.float32).reshape(3, 3)
-                self.flat_columns = arr.flatten("F")
+                flat_columns = arr.flatten("F")
         elif columns is not None:
             # Equalize the format of the columns to a 3x3 matrix.
             # Numpy expects rows _and_ stores row-major. Therefore the flattened list will have flat columns.
             arr = np.asarray(columns, dtype=np.float32).reshape(3, 3)
-            self.flat_columns = arr.flatten("C")
+            flat_columns = arr.flatten("C")
         else:
             _send_warning_or_raise("Need to specify either columns or columns of matrix.", 1, recording=None)
-            self.flat_columns = np.identity(3, dtype=np.float32).flatten()
+            flat_columns = np.identity(3, dtype=np.float32).flatten()
+        self.__attrs_init__(
+            flat_columns=flat_columns,
+        )
 
     @staticmethod
     def native_to_pa_array_override(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:

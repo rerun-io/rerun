@@ -19,7 +19,7 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentTableSchemaRequest,
     GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionResponse,
     QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, VersionRequest,
     WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
@@ -86,6 +86,15 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
+    /// Uses the `/Version` endpoint for testing roundtrip time.
+    pub async fn ping(&mut self) -> ApiResult<()> {
+        self.inner()
+            .version(VersionRequest {})
+            .await
+            .map_err(|err| ApiError::tonic(err, "/Version failed"))
+            .map(|_| ())
+    }
+
     /// Find all entries matching the given filter.
     pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
         let result = self

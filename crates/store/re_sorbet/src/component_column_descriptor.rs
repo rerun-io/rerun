@@ -253,6 +253,25 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
+    /// Returns the child's datatype of the outer list-array.
+    ///
+    /// Logs a warning if the outer type is not a list-array, which should never happen in current Sorbet versions.
+    pub fn inner_datatype(&self) -> ArrowDatatype {
+        match self.returned_datatype() {
+            arrow::datatypes::DataType::List(field) => field.data_type().clone(),
+
+            dt => {
+                re_log::warn_once!(
+                    "Component '{}' on entity '{}' has unexpected non-list-array type: {}",
+                    self.component,
+                    self.entity_path,
+                    re_arrow_util::format_data_type(&dt),
+                );
+                dt
+            }
+        }
+    }
+
     /// What we show in the UI
     pub fn display_name(&self) -> &str {
         self.component.as_str()

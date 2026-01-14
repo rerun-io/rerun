@@ -52,10 +52,8 @@ impl RecordingPanel {
 
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
-                "Recordings",
-                Some(
-                    "These are the Recordings currently loaded in the Viewer, organized by application",
-                ),
+                "Sources",
+                Some("Your connected servers, opened recordings and tables."),
                 |ui| {
                     add_button_ui(ctx, ui, &recording_panel_data);
                 },
@@ -167,12 +165,8 @@ fn all_sections_ui(
     //
 
     if recording_panel_data.is_empty() {
-        ui.list_item().interactive(false).show_flat(
-            ui,
-            re_ui::list_item::LabelContent::new("No recordings loaded")
-                .weak(true)
-                .italics(true),
-        );
+        ui.add_space(ui.tokens().panel_margin().left as f32);
+        ui.weak("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer");
     }
 
     //

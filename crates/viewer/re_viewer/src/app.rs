@@ -34,6 +34,7 @@ use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::app_state::WelcomeScreenState;
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
+use crate::latency_tracker::ServerLatencyTrackers;
 use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
@@ -131,6 +132,8 @@ pub struct App {
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
     connection_registry: ConnectionRegistryHandle,
+
+    pub(crate) server_latency_trackers: ServerLatencyTrackers,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -454,6 +457,7 @@ impl App {
             event_dispatcher,
 
             connection_registry,
+            server_latency_trackers: ServerLatencyTrackers::default(),
             async_runtime: tokio_runtime,
         }
     }
@@ -2383,6 +2387,15 @@ impl App {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
                     entity_db.add_rrd_manifest_message(*rrd_manifest);
+
+                    if let Some(caches) = store_hub.active_caches() {
+                        // Downgrade to read-only, so we can access caches.
+                        let entity_db = store_hub
+                            .entity_db(&store_id)
+                            .expect("Just queried it mutable and that was fine.");
+
+                        caches.on_rrd_manifest(entity_db);
+                    }
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
@@ -3223,6 +3236,9 @@ impl eframe::App for App {
                 crate::web_history::go_forward();
             }
         }
+
+        self.server_latency_trackers
+            .update(&self.connection_registry);
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.

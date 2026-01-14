@@ -37,8 +37,15 @@ pub fn prefetch_chunks_for_active_recording(
         re_chunk::TimeInt::MAX, // Keep loading until the end (if we have the space for it).
     );
 
+    if !recording.rrd_manifest_index.has_manifest() {
+        return None;
+    }
+
+    let missing_chunk_ids = recording.storage_engine().store().take_missing_chunk_ids();
+
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
+        missing_chunk_ids,
         desired_range,
         total_uncompressed_byte_budget: total_byte_budget,
 
@@ -52,11 +59,7 @@ pub fn prefetch_chunks_for_active_recording(
 
     let rrd_manifest = &mut recording.rrd_manifest_index;
 
-    if !rrd_manifest.has_manifest() {
-        return None;
-    }
-
-    if let Err(err) = rrd_manifest.prefetch_chunks(&options, &|rb| {
+    if let Err(err) = rrd_manifest.prefetch_chunks(options, &|rb| {
         egui_ctx.request_repaint();
         let connection_registry = connection_registry.clone();
         let origin = origin.clone();
