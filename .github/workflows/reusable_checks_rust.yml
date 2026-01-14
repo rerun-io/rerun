@@ -181,7 +181,6 @@ jobs:
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
       - name: Install Vulkan SDK
-        if: ${{ matrix.name != 'macos' }}
         uses: rerun-io/install-vulkan-sdk-action@v1.1.0
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
