@@ -106,6 +106,7 @@ impl std::fmt::Display for VideoType {
         }
     }
 }
+
 fn snapshot_options_for_codec(codec: VideoCodec, viewport_size: egui::Vec2) -> SnapshotOptions {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
