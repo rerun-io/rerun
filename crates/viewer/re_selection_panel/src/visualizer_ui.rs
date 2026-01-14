@@ -443,7 +443,8 @@ fn visualizer_components(
                 });
             }
 
-            // Source component (if available)
+            // Source component (if available).
+            // TODO(RR-3338): Implement a new source componentselector UI.
             source_component_ui(
                 ctx,
                 ui,
