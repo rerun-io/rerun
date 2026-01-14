@@ -9408,7 +9408,6 @@ dependencies = [
  "re_arrow_util",
  "re_auth",
  "re_chunk",
- "re_format",
  "re_log",
  "re_log_channel",
  "re_log_encoding",

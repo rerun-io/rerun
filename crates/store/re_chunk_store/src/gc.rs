@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use web_time::Instant;
 
@@ -67,6 +68,12 @@ pub struct GarbageCollectionOptions {
     /// [`protect_latest`]: `GarbageCollectionOptions::protect_latest`
     /// [`protected_time_ranges`]: `GarbageCollectionOptions::protected_time_ranges`
     pub furthest_from: Option<(TimelineName, TimeInt)>,
+
+    /// If true, not only the physical data will be dropped, but so will the virtual indexes of that data.
+    ///
+    /// This will make it impossible to re-fetch the data on-demand later on.
+    /// This generally only makes sense for blueprint stores.
+    pub perform_deep_deletions: bool,
 }
 
 impl GarbageCollectionOptions {
@@ -77,6 +84,7 @@ impl GarbageCollectionOptions {
             protect_latest: 0,
             protected_time_ranges: Default::default(),
             furthest_from: None,
+            perform_deep_deletions: false,
         }
     }
 
@@ -312,7 +320,11 @@ impl ChunkStore {
 
         {
             re_tracing::profile_scope!("sweep");
-            self.remove_chunks_shallow(chunks_to_be_removed, Some(sweep_time_budget))
+            if options.perform_deep_deletions {
+                self.remove_chunks_deep(chunks_to_be_removed, Some(sweep_time_budget))
+            } else {
+                self.remove_chunks_shallow(chunks_to_be_removed, Some(sweep_time_budget))
+            }
         }
     }
 
@@ -423,17 +435,18 @@ impl ChunkStore {
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    //
-    // TODO(cmc): blueprint stores could use deep removal for everything. maybe expose a config flag?
-    pub(crate) fn remove_chunks_deep(
+    pub fn remove_chunks_deep(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
     ) -> Vec<ChunkStoreDiff> {
         re_tracing::profile_function!();
 
-        let diffs = self.remove_chunks_shallow(chunks_to_be_removed, time_budget);
-        debug_assert!(diffs.len() <= 1);
+        // Make sure to not forward those diffs as-is: just because the shallow deletion yielded
+        // nothing, doesn't mean that a deep one won't.
+        // The deep diff is always a superset of the shallow one (you can remove chunk physical
+        // chunks while keeping virtual ones, but not vice-versa).
+        let diffs_shallow = self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
 
         let Self {
             id: _,
@@ -458,8 +471,10 @@ impl ChunkStore {
         // regardless of the time budget.
         _ = time_budget;
 
-        for diff in &diffs {
-            let chunk = &diff.chunk;
+        let mut diffs = Vec::new();
+
+        for chunk in chunks_to_be_removed {
+            let mut was_removed = false;
             let chunk_id = chunk.id();
 
             {
@@ -493,12 +508,14 @@ impl ChunkStore {
                                 .get_mut(&time_range.min())
                             {
                                 set.remove(&chunk_id);
+                                was_removed = true;
                             }
                             if let Some(set) = temporal_chunk_ids_per_time
                                 .per_end_time
                                 .get_mut(&time_range.max())
                             {
                                 set.remove(&chunk_id);
+                                was_removed = true;
                             }
                         }
                     }
@@ -531,17 +548,42 @@ impl ChunkStore {
                             .get_mut(&time_range.min())
                         {
                             set.remove(&chunk_id);
+                            was_removed = true;
                         }
                         if let Some(set) = temporal_chunk_ids_per_time
                             .per_end_time
                             .get_mut(&time_range.max())
                         {
                             set.remove(&chunk_id);
+                            was_removed = true;
                         }
                     }
                 }
             }
+
+            if was_removed {
+                diffs.push(ChunkStoreDiff::deletion(chunk));
+            }
         }
+
+        debug_assert!(
+            diffs.len() >= diffs_shallow.len() && {
+                let diff_ids: ahash::HashSet<_> =
+                    diffs.iter().map(|diff| diff.chunk.id()).collect();
+                diffs_shallow
+                    .iter()
+                    .all(|diff| diff_ids.contains(&diff.chunk.id()))
+            },
+            "deep diff should always be a superset of the shallow diff:\ndeep: [{}]\nshallow: [{}]",
+            diffs
+                .iter()
+                .map(|diff| diff.chunk.id().to_string())
+                .join(", "),
+            diffs_shallow
+                .iter()
+                .map(|diff| diff.chunk.id().to_string())
+                .join(", "),
+        );
 
         diffs
     }
@@ -556,7 +598,7 @@ impl ChunkStore {
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    pub(crate) fn remove_chunks_shallow(
+    pub fn remove_chunks_shallow(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,

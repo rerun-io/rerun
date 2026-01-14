@@ -756,6 +756,13 @@ impl ChunkStore {
     pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.missing_chunk_ids.write())
     }
+
+    /// How many missing chunk IDs are currently registered?
+    ///
+    /// See also [`ChunkStore::take_missing_chunk_ids`].
+    pub fn num_missing_chunk_ids(&self) -> usize {
+        self.missing_chunk_ids.read().len()
+    }
 }
 
 // ---

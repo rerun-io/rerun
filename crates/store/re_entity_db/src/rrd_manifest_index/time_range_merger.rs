@@ -206,6 +206,8 @@ impl Ranges {
 /// sorted ranges with no gaps or overlaps while also prioritizing unloaded
 /// ranges over loaded ones.
 pub fn merge_ranges(ranges: &[TimeRange]) -> Vec<TimeRange> {
+    re_tracing::profile_function!();
+
     let mut ranges = Ranges {
         new: Vec::new(),
         incoming: ranges.iter().map(|t| IncomingRange(*t)).collect(),

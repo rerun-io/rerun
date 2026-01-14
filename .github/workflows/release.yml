@@ -171,6 +171,9 @@ jobs:
 
       - run: pixi run toml-fmt
 
+      # We must re-sync uv after bumping the version
+      - run: pixi run uv lock
+
       - name: Commit new version
         id: commit
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
@@ -242,6 +245,23 @@ jobs:
             --fill \
             --body-file pr-body.txt
 
+  uv-lock-check:
+    name: "Check uv.lock"
+    needs: [version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.release-commit }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check uv.lock is up-to-date
+        run: pixi run uv-lock-check
+
   update-docs:
     name: "Update Docs"
     needs: [version, publish-web]
@@ -258,7 +278,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
@@ -267,7 +287,7 @@ jobs:
 
   publish-rerun_c:
     name: "Build and Publish C/C++ SDKs"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_rerun_c.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -277,7 +297,7 @@ jobs:
 
   publish-rerun-cli:
     name: "Publish rerun-cli"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_rerun_cli.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -309,7 +329,7 @@ jobs:
 
   publish-js:
     name: "Publish JS"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_js.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -474,6 +494,9 @@ jobs:
           pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.crates.outputs.version }}"
 
       - run: pixi run toml-fmt
+
+      # We must re-sync uv after bumping the version
+      - run: pixi run uv lock
 
       - name: Commit new version
         run: |

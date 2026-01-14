@@ -256,7 +256,12 @@ fn decode_rvl_depth(
     ))
 }
 
-impl Cache for ImageDecodeCache {
+impl Cache for ImageDecodeCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    ImageInfo: Send + Sync,
+    ImageLoadError: Send + Sync,
+{
     fn begin_frame(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         let max_decode_cache_use = 4_000_000_000;

@@ -93,6 +93,7 @@ disallowed-methods = [
   { path = "std::time::Instant::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::Instant::now", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::SystemTime::now", reason = "use `web-time` or `time` crates instead for wasm/web compatibility" },
+  { path = "tokio::spawn", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn_blocking", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn", reason = "no Tokio runtime on web" },
 ]

@@ -104,7 +104,12 @@ impl VideoAssetCache {
     }
 }
 
-impl Cache for VideoAssetCache {
+impl Cache for VideoAssetCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    Video: Send + Sync,
+    VideoLoadError: Send + Sync,
+{
     fn begin_frame(&mut self) {
         re_tracing::profile_function!();
 
