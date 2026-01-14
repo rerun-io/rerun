@@ -41,7 +41,7 @@ When using `connect_grpc()` from the SDK, specify the port to target a specific 
 import rerun as rr
 
 # Connect to viewer on default port
-rr.init("my_app")
+rr.init("rerun_example_demo")
 rr.connect_grpc()
 
 # Or connect to a specific port

@@ -26,7 +26,7 @@ The Web Viewer has performance limitations compared to the native viewer. It run
 
 Both viewers can be extended: the Native Viewer through its [Rust API](../howto/visualization/extend-ui.md), and the Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md) or [Jupyter notebooks](../howto/integrations/embed-notebooks.md).
 
-### Data Platform
+### Data platform
 
 The Data Platform provides persistent storage and indexing for large-scale data. It organizes data into:
 
@@ -57,7 +57,7 @@ Logging SDK
 
 Viewer: {
   label.near: bottom-center
-    
+
   gRPC endpoint
   Chunk Store
   Renderer
@@ -172,7 +172,7 @@ Best for: sharing recordings, offline analysis, archiving.
 
 
 
-### Store on Data Platform
+### Store on data platform
 
 Register `.rrd` files with the Data Platform for persistent, indexed storage. Query and visualize on demand.
 
