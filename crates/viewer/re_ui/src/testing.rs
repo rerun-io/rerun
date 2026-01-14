@@ -41,7 +41,7 @@ fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     let broken_pixels_fraction = 2e-4;
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
-    let threshold = 1.5; // Must be pretty high because of 3D grid :/
+    let threshold = 0.7; // Slightly higher than default.
 
     SnapshotOptions::default()
         .threshold(threshold)
