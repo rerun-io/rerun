@@ -1364,7 +1364,8 @@ impl TimePanel {
                                 .text_color()
                                 .gamma_multiply((1.0 - age * age) as f32),
                         ),
-                    );
+                    )
+                    .on_hover_text("Connection throughput");
                 }
             });
         }
