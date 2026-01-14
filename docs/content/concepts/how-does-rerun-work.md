@@ -143,7 +143,7 @@ Logging SDK -> Viewer: stream
 
 Minimal example:
 
-snippet: concepts/app-model/native-sync
+snippet: concepts/how-does-rerun-work/log-to-grpc
 
 Best for: development, debugging, real-time monitoring.
 
@@ -160,7 +160,7 @@ Logging SDK -> ".rrd" -> Viewer: load
 
 Minimal example:
 
-snippet: concepts/app-model/native-async
+snippet: concepts/how-does-rerun-work/log-to-rrd
 
 And later:
 
