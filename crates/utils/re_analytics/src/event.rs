@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use re_build_info::BuildInfo;
+use re_build_info::{BuildInfo, CrateVersion};
 use url::Url;
 
 use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
@@ -575,6 +575,53 @@ impl Properties for CliCommandInvoked {
         event.insert("hide_welcome_screen", hide_welcome_screen);
         event.insert("detach_process", detach_process);
         event.insert("test_receive", test_receive);
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks navigation clicks on the welcome screen cards.
+///
+/// This event is sent when users click on cards on the welcome screen,
+/// such as documentation links or cloud-related call-to-actions (CTAs).
+pub struct WelcomeScreenNavigation {
+    /// Type of the card. E.g. "docs", "redap".
+    pub card_type: String,
+
+    /// The destination URL that was navigated to.
+    /// Empty string if the click was on a CTA that opened a modal instead.
+    pub destination: String,
+
+    /// Whether this was a click on a cloud modal CTA (e.g. "Add server", "Login").
+    pub cta_cloud: bool,
+
+    /// Whether the user is logged in.
+    pub is_logged_in: bool,
+
+    /// Whether there is a server added.
+    pub has_server: bool,
+}
+
+impl Event for WelcomeScreenNavigation {
+    const NAME: &'static str = "welcome_navigation";
+}
+
+impl Properties for WelcomeScreenNavigation {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            card_type,
+            destination,
+            cta_cloud,
+            is_logged_in,
+            has_server,
+        } = self;
+
+        event.insert("card_type", card_type);
+        event.insert("destination", destination);
+        event.insert("cta_cloud", cta_cloud);
+        event.insert("is_logged_in", is_logged_in);
+        event.insert("has_server", has_server);
+        event.insert("rerun_version", CrateVersion::LOCAL.to_string());
     }
 }
 

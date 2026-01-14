@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
+use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
@@ -34,6 +35,7 @@ use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::app_state::WelcomeScreenState;
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
+use crate::latency_tracker::ServerLatencyTrackers;
 use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
@@ -132,6 +134,8 @@ pub struct App {
 
     connection_registry: ConnectionRegistryHandle,
 
+    pub(crate) server_latency_trackers: ServerLatencyTrackers,
+
     /// The async runtime that should be used for all asynchronous operations.
     ///
     /// Using the global tokio runtime should be avoided since:
@@ -185,6 +189,13 @@ impl App {
                 command_sender.send_system(SystemCommand::OnAuthChanged(
                     user.map(|user| AuthContext { email: user.email }),
                 ));
+            });
+            // Call get_token once so the auth state is initialized.
+            tokio_runtime.spawn_future(async move {
+                re_auth::credentials::CliCredentialsProvider::new()
+                    .get_token()
+                    .await
+                    .ok();
             });
         }
 
@@ -454,6 +465,7 @@ impl App {
             event_dispatcher,
 
             connection_registry,
+            server_latency_trackers: ServerLatencyTrackers::default(),
             async_runtime: tokio_runtime,
         }
     }
@@ -3232,6 +3244,9 @@ impl eframe::App for App {
                 crate::web_history::go_forward();
             }
         }
+
+        self.server_latency_trackers
+            .update(&self.connection_registry);
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.

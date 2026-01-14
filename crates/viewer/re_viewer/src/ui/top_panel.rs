@@ -1,14 +1,13 @@
 use egui::{Atom, Button, Color32, Id, Image, NumExt as _, Popup, RichText, Sense, include_image};
 use emath::{Rect, RectAlign, Vec2};
-use itertools::Itertools as _;
 use re_format::format_uint;
-use re_log_channel::{LogReceiverSet, LogSource};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
 use re_viewer_context::{StoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
+use crate::latency_tracker::{LatencyResult, ServerLatencyTrackers};
 
 pub fn top_panel(
     frame: &eframe::Frame,
@@ -165,8 +164,13 @@ fn top_bar_ui(
 
         panel_buttons_r2l(app, app_blueprint, ui, store_hub);
 
-        if !app.is_screenshotting() {
-            connection_status_ui(ui, app.msg_receive_set());
+        if !app.is_screenshotting() && !app.app_env().is_test() {
+            connection_status_ui(
+                ui,
+                &mut app.server_latency_trackers,
+                app.state.navigation.current(),
+                store_hub,
+            );
         }
     });
 }
@@ -301,64 +305,44 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &LogReceiverSet) {
-    let sources = rx
-        .sources()
-        .into_iter()
-        .filter(|source| {
-            match source.as_ref() {
-                LogSource::File(_)
-                | LogSource::RrdHttpStream { .. }
-                | LogSource::RedapGrpcStream { .. }
-                | LogSource::Stdin => {
-                    false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
-                }
+fn connection_status_ui(
+    ui: &mut egui::Ui,
+    latency_trackers: &mut ServerLatencyTrackers,
+    display_mode: &re_viewer_context::DisplayMode,
+    store_hub: &StoreHub,
+) {
+    if let Some(origin) = display_mode.redap_origin(store_hub)
+        && origin != *re_redap_browser::EXAMPLES_ORIGIN
+    {
+        let latency = latency_trackers.origin_latency(&origin);
 
-                LogSource::RrdWebEvent
-                | LogSource::Sdk
-                | LogSource::MessageProxy { .. }
-                | LogSource::JsChannel { .. } => true,
+        let url = origin.format_host();
+        match latency {
+            LatencyResult::ToBeAssigned => {}
+            LatencyResult::NoConnection => {
+                ui.label(format!("no connection to {url}"));
             }
-        })
-        .collect_vec();
+            LatencyResult::MostRecent(duration) => {
+                let mut layout_job = egui::text::LayoutJob::default();
 
-    match sources.len() {
-        0 => return,
-        1 => {
-            source_label(ui, sources[0].as_ref());
-        }
-        n => {
-            // In practice we never get here
-            ui.label(format!("{n} sources connected"))
-                .on_hover_ui(|ui| {
-                    ui.vertical(|ui| {
-                        for source in &sources {
-                            source_label(ui, source.as_ref());
-                        }
-                    });
-                });
-        }
-    }
+                let ms = duration.as_millis();
 
-    fn source_label(ui: &mut egui::Ui, source: &LogSource) -> egui::Response {
-        let response = ui.label(source.status_string());
+                RichText::new(format!("{ms} ms")).strong().append_to(
+                    &mut layout_job,
+                    ui.style(),
+                    egui::FontSelection::Default,
+                    egui::Align::Center,
+                );
 
-        let tooltip = match source {
-            LogSource::File(_)
-            | LogSource::Stdin
-            | LogSource::RrdHttpStream { .. }
-            | LogSource::RedapGrpcStream { .. }
-            | LogSource::RrdWebEvent
-            | LogSource::JsChannel { .. }
-            | LogSource::Sdk => None,
+                RichText::new(format!(" latency for {url}")).append_to(
+                    &mut layout_job,
+                    ui.style(),
+                    egui::FontSelection::Default,
+                    egui::Align::Center,
+                );
 
-            LogSource::MessageProxy { .. } => Some("Waiting for an SDK to connect".to_owned()),
-        };
-
-        if let Some(tooltip) = tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
+                ui.label(layout_job);
+            }
         }
     }
 }

@@ -168,7 +168,7 @@ impl Chunk {
 pub type ChunkShared = Arc<Chunk>;
 
 /// A [`ChunkShared`] that is guaranteed to always contain a single row's worth of data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnitChunkShared(ChunkShared);
 
 impl std::ops::Deref for UnitChunkShared {

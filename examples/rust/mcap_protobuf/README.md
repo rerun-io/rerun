@@ -11,9 +11,12 @@ This is achieved by using the Lenses API, which allows transform custom data col
 In this particular example, we load and transform Foxglove messages from an MCAP file and log them to Rerun.
 Some message types that are supported in this demo:
 
-* [`foxglove.PoseInFrame`](https://docs.foxglove.dev/docs/sdk/schemas/pose-in-frame)
+* [`foxglove.CameraCalibration`](https://docs.foxglove.dev/docs/sdk/schemas/camera-calibration)
 * [`foxglove.CompressedImage`](https://docs.foxglove.dev/docs/sdk/schemas/compressed-image)
 * [`foxglove.CompressedVideo`](https://docs.foxglove.dev/docs/sdk/schemas/compressed-video)
+* [`foxglove.FrameTransforms`](https://docs.foxglove.dev/docs/sdk/schemas/frame-transforms)
+* [`foxglove.PoseInFrame`](https://docs.foxglove.dev/docs/sdk/schemas/pose-in-frame)
+* [`foxglove.PosesInFrame`](https://docs.foxglove.dev/docs/sdk/schemas/poses-in-frame)
 
 You can run the example with:
 

@@ -625,6 +625,10 @@ pub struct QueryResults {
     ///
     /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
     /// results of this query cannot accurately be computed.
+    //
+    // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
+    // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
+    // their own tracking. And document it so.
     pub missing: Vec<ChunkId>,
 }
 
@@ -1288,6 +1292,7 @@ mod tests {
             protect_latest: 1,
             protected_time_ranges: Default::default(),
             furthest_from: None,
+            perform_deep_deletions: false,
         });
 
         // We've GC'd the past-most half of the store:
