@@ -651,21 +651,20 @@ async fn load_static_chunks(
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
-#[cfg(not(target_arch = "wasm32"))]
 async fn load_chunks(
     client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     full_batch: RecordBatch,
 ) -> ApiResult<ControlFlow<()>> {
-    use futures::future;
-
     re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+
+    use futures::stream::FuturesUnordered;
 
     // Batch requests in groups of N=32 rows.
     const BATCH_SIZE: usize = 32;
     let num_rows = full_batch.num_rows();
-    let mut batch_handles = Vec::with_capacity(num_rows.div_ceil(BATCH_SIZE));
+    let mut futures = FuturesUnordered::new();
 
     for start in (0..num_rows).step_by(BATCH_SIZE) {
         let end = usize::min(start + BATCH_SIZE, num_rows);
@@ -675,45 +674,14 @@ async fn load_chunks(
         let tx = tx.clone();
         let store_id = store_id.clone();
 
-        batch_handles.push(tokio::spawn(async move {
+        futures.push(async move {
             load_small_chunk_batch(&mut client, &tx, &store_id, &small_batch).await
-        }));
+        });
     }
 
-    let results = future::join_all(batch_handles).await;
-    for res in results {
-        let result = res.map_err(|err| ApiError::internal(err, "Join error in load_chunks"))??;
+    while let Some(res) = futures::stream::StreamExt::next(&mut futures).await {
+        let result = res?;
         if result.is_break() {
-            return Ok(ControlFlow::Break(()));
-        }
-    }
-
-    re_log::trace!("Finished downloading {} chunks.", num_rows);
-
-    Ok(ControlFlow::Continue(()))
-}
-
-/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
-#[cfg(target_arch = "wasm32")]
-async fn load_chunks(
-    client: &mut ConnectionClient,
-    tx: &re_log_channel::LogSender,
-    store_id: &StoreId,
-    full_batch: RecordBatch,
-) -> ApiResult<ControlFlow<()>> {
-    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
-
-    // Batch requests in groups of N=32 rows.
-    const BATCH_SIZE: usize = 32;
-    let num_rows = full_batch.num_rows();
-
-    for start in (0..num_rows).step_by(BATCH_SIZE) {
-        let end = usize::min(start + BATCH_SIZE, num_rows);
-        let small_batch = full_batch.slice(start, end - start);
-        if load_small_chunk_batch(client, &tx, &store_id, &small_batch)
-            .await?
-            .is_break()
-        {
             return Ok(ControlFlow::Break(()));
         }
     }
