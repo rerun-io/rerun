@@ -2396,6 +2396,7 @@ impl App {
                     let entity_db = store_hub.entity_db_mut(&store_id);
                     entity_db.add_rrd_manifest_message(*rrd_manifest);
 
+                    // TODO(RR-3329): Should this run for all caches?
                     if let Some(caches) = store_hub.active_caches() {
                         // Downgrade to read-only, so we can access caches.
                         let entity_db = store_hub
@@ -2430,6 +2431,8 @@ impl App {
         self.run_pending_system_commands(store_hub, egui_ctx);
     }
 
+    /// There is logic duplicated between this and [`Self::prefetch_chunks`].
+    /// Make sure they are kept in sync!
     fn receive_log_msg(
         &self,
         msg: &LogMsg,
@@ -2464,17 +2467,16 @@ impl App {
 
         match entity_db_add_result {
             Ok(store_events) => {
-                if let Some(caches) = store_hub.active_caches() {
-                    caches.on_store_events(&store_events, entity_db);
-                }
-
-                self.validate_loaded_events(&store_events);
+                self.process_store_events_for_db(store_hub, entity_db, &store_events);
             }
 
             Err(err) => {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             }
         }
+
+        // Note: some of the logic above is duplicated in `fn prefetch_chunks`.
+        // Make sure they are kept in sync!
 
         if was_empty && !entity_db.is_empty() {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
@@ -2543,6 +2545,20 @@ impl App {
         if msg_will_add_new_store {
             self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
         }
+    }
+
+    fn process_store_events_for_db(
+        &self,
+        store_hub: &StoreHub,
+        entity_db: &EntityDb,
+        store_events: &[re_chunk_store::ChunkStoreEvent],
+    ) {
+        // TODO(RR-3329): Should this run for all caches?
+        if let Some(caches) = store_hub.active_caches() {
+            caches.on_store_events(store_events, entity_db);
+        }
+
+        self.validate_loaded_events(store_events);
     }
 
     fn receive_table_msg(
@@ -3079,6 +3095,9 @@ impl App {
     }
 
     /// Prefetch chunks for the open recording (stream from server)
+    ///
+    /// There is logic duplicated between this and [`Self::receive_log_msg`].
+    /// Make sure they are kept in sync!
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
@@ -3109,11 +3128,10 @@ impl App {
                     .entity_db(&store_id)
                     .expect("Just queried it mutable and that was fine.");
 
-                if let Some(caches) = store_hub.active_caches() {
-                    caches.on_store_events(&store_events, db);
-                }
+                self.process_store_events_for_db(store_hub, db, &store_events);
 
-                self.validate_loaded_events(&store_events);
+                // Note: some of the logic above is duplicated in `fn receive_log_msg`.
+                // Make sure they are kept in sync!
 
                 if db.rrd_manifest_index.has_pending_promises() {
                     self.egui_ctx.request_repaint(); // check back for more
