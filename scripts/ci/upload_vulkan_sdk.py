@@ -63,7 +63,7 @@ def download_and_upload_vulkan_sdk(version: str, platform: str) -> None:
 
     local_file = Path(filename)
 
-    print(f"\nDownloading {filename} from LunarG...")
+    print(f"\nDownloading {filename} from LunarG…")
     print(f"   URL: {lunarg_url}")
 
     # Download from LunarG
@@ -94,7 +94,7 @@ def download_and_upload_vulkan_sdk(version: str, platform: str) -> None:
     blob_path = f"vulkan/{version}/{platform}/{filename}"
     gcloud_url = f"gs://{GCLOUD_BUCKET}/{blob_path}"
 
-    print("\nUploading to GCloud storage...")
+    print("\nUploading to GCloud storage…")
     print(f"   Destination: {gcloud_url}")
 
     try:
@@ -124,7 +124,7 @@ def download_and_upload_vulkan_sdk(version: str, platform: str) -> None:
         sys.exit(1)
 
     # Clean up local file
-    print("\nCleaning up local file...")
+    print("\nCleaning up local file…")
     local_file.unlink()
     print(f"OK: Removed {local_file}")
 
