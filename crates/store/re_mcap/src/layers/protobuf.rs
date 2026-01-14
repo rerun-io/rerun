@@ -483,7 +483,7 @@ mod unit_tests {
     /// Verifies that `append_null_to_builder` properly handles `StructBuilder`
     /// by recursively appending nulls to child builders to maintain length consistency.
     #[test]
-    fn struct_builder_null_append_bug() {
+    fn struct_builder_null_append() {
         // Create a StructBuilder with 2 child fields.
         let fields = Fields::from(vec![
             Field::new("a", DataType::Utf8, true),
@@ -495,8 +495,7 @@ mod unit_tests {
         ];
         let mut struct_builder = StructBuilder::new(fields, field_builders);
 
-        // Test the fixed `append_null_to_builder` behavior:
-        // It should recursively append nulls to children before appending to parent
+        // It should recursively append nulls to children before appending to parent:
         for _ in 0..10 {
             // Use our append_null_to_builder function which should handle this correctly
             super::append_null_to_builder(&mut struct_builder as &mut dyn ArrayBuilder)
@@ -741,11 +740,12 @@ mod integration_tests {
             (summary, writer.into_inner().into_inner())
         };
 
-        // Verify that decode failures don't cause panics - only valid messages should be returned
         let chunks = run_layer(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
-        // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows
+        // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows.
         assert_eq!(chunks[0].num_rows(), 5);
+
+        insta::assert_snapshot!("decode_failure_resilience", format!("{:-240}", &chunks[0]));
     }
 
     /// Test with field number gaps in the protobuf schema.
@@ -814,6 +814,8 @@ mod integration_tests {
             println!("  Field #{}: {}", field.number(), field.name());
         }
 
+        let num_messages = 3;
+
         let (summary, buffer) = {
             let buffer = Vec::new();
             let cursor = io::Cursor::new(buffer);
@@ -822,8 +824,7 @@ mod integration_tests {
             let channel_id = add_schema_and_channel(&mut writer, &message_descriptor, "test_topic")
                 .expect("failed to add schema and channel");
 
-            // Write 10 test messages
-            for i in 0..10 {
+            for i in 0..num_messages {
                 let msg = DynamicMessage::parse_text_format(
                     message_descriptor.clone(),
                     &format!(
@@ -844,31 +845,12 @@ mod integration_tests {
             (summary, writer.into_inner().into_inner())
         };
 
-        // With the fix, field number gaps should be handled correctly:
-        // We create 4 builders (one per field with numbers 1, 2, 5, 8)
-        // and correctly map them to their actual protobuf field numbers.
-        // Result: All fields should be read correctly with their values intact!
         let chunks = run_layer(&summary, buffer.as_slice());
 
-        // Verify we got all messages
         assert_eq!(chunks.len(), 1);
-        assert_eq!(chunks[0].num_rows(), 10);
+        assert_eq!(chunks[0].num_rows(), num_messages as usize);
 
-        // Verify the data contains actual values, not nulls
-        // (Before the fix, description and count would be null due to field mapping bug)
-        let chunk_str = format!("{:-120}", &chunks[0]);
-
-        // Check that we have actual description values (not all nulls)
-        assert!(
-            chunk_str.contains("Desc"),
-            "Field 'description' (field #5) should have values, not nulls"
-        );
-
-        // Check that we have actual count values (not all nulls)
-        assert!(
-            chunk_str.contains("count:"),
-            "Field 'count' (field #8) should have values, not nulls"
-        );
+        insta::assert_snapshot!("field_number_gaps", format!("{:-240}", &chunks[0]));
     }
 
     /// In `proto3`, all fields are optional, so we test various combinations of missing fields.
@@ -884,31 +866,29 @@ mod integration_tests {
             let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
                 .expect("failed to add schema and channel");
 
-            // Message 1: has all fields
+            // Message 1: has all fields.
             let dynamic_message_1 = DynamicMessage::parse_text_format(
                 person_message.clone(),
                 "name: \"Alice\" id: 123 status: 1",
             )
             .expect("failed to parse text format");
 
-            // Message 2: has only name (id and status missing)
-            // This tests the bug - struct with missing optional fields
+            // Message 2: has only name (id and status missing).
             let dynamic_message_2 =
                 DynamicMessage::parse_text_format(person_message.clone(), "name: \"Bob\"")
                     .expect("failed to parse text format");
 
-            // Message 3: has only id (name and status missing)
+            // Message 3: has only id (name and status missing).
             let dynamic_message_3 =
                 DynamicMessage::parse_text_format(person_message.clone(), "id: 456")
                     .expect("failed to parse text format");
 
-            // Message 4: has only status (name and id missing)
+            // Message 4: has only status (name and id missing).
             let dynamic_message_4 =
                 DynamicMessage::parse_text_format(person_message.clone(), "status: 2")
                     .expect("failed to parse text format");
 
-            // Message 5: empty message (all fields missing)
-            // This is the most extreme case - may trigger the crash
+            // Message 5: empty message (all fields missing).
             let dynamic_message_5 = DynamicMessage::parse_text_format(person_message.clone(), "")
                 .expect("failed to parse text format");
 
@@ -931,9 +911,6 @@ mod integration_tests {
         let chunks = run_layer(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
-        insta::assert_snapshot!(
-            "missing_optional_fields_proto3",
-            format!("{:-240}", &chunks[0])
-        );
+        insta::assert_snapshot!("missing_optional_fields", format!("{:-240}", &chunks[0]));
     }
 }
