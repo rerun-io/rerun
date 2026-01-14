@@ -20,7 +20,7 @@ The Viewer visualizes your data. It comes in two forms:
 - **Native Viewer**: A desktop application for Linux, macOS, and Windows
 - **Web Viewer**: A Wasm application that runs in browsers
 
-The viewer includes a [**Chunk Store**](logging-and-ingestion/chunks) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
+The viewer includes a [**Chunk Store**](logging-and-ingestion/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
 The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
 
@@ -128,7 +128,7 @@ See: C++ SDK [installation instructions](../overview/installing-rerun/cpp.md) an
 
 These NPM packages bundle the Web Viewer for inclusion on a website.
 
-See: the `web-viewer` package [reference](../reference/npm)
+See: the `web-viewer` package [reference](../reference/npm.md)
 
 ## Common workflows
 
