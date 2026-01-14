@@ -157,25 +157,36 @@ async fn fetch_entries_and_register_tables(
 
     let mut entries = HashMap::default();
 
+    // Create a schema for raw (uncached) table providers
+    const RAW_SCHEMA: &str = "__rerun_internal__";
+    session_ctx
+        .catalog("datafusion")
+        .expect("default catalog exists")
+        .register_schema(
+            RAW_SCHEMA,
+            Arc::new(datafusion::catalog::MemorySchemaProvider::new()),
+        )
+        .ok();
+
     let mut futures_unordered: FuturesUnordered<_> = futures_iter.collect();
     while let Some((details, result)) = futures_unordered.next().await {
         let id = details.id;
         let inner_result = result.map(|(inner, provider)| {
-            // Register raw provider as {name}_uncached
-            let uncached_name = format!("{}_uncached", &details.name);
+            // Register raw provider in the internal schema
+            let raw_table_ref = format!("{RAW_SCHEMA}.{}", &details.name);
             session_ctx
-                .register_table(&uncached_name, Arc::clone(&provider))
+                .register_table(&raw_table_ref, Arc::clone(&provider))
                 .ok();
 
-            // Create cached provider that reads from the uncached table
+            // Create cached provider that reads from the raw table
             let cached_provider = StreamingCacheTableProvider::from_session_table(
                 Arc::clone(&session_ctx),
-                uncached_name,
+                raw_table_ref,
                 provider.schema(),
                 runtime.clone(),
             );
 
-            // Register cached provider with original name
+            // Register cached provider with original name (in default schema)
             session_ctx
                 .register_table(&details.name, Arc::new(cached_provider))
                 .ok();
