@@ -18,7 +18,7 @@ At any time, you can checkout the complete code listing for this tutorial [here]
 
 ## Prerequisites
 
-We assume you have working Python and `rerun-sdk` installations. If not, check out [installing python](../overview/installing-rerun/python.md).
+We assume you have working Python and `rerun-sdk` installations. If not, check out [installing python](../../overview/installing-rerun/python.md).
 
 ## Initializing the SDK
 
