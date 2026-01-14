@@ -72,14 +72,15 @@ impl LoadState {
 pub struct ChunkPrefetchOptions {
     pub timeline: Timeline,
 
+    /// Start loading chunks from this time onwards,
+    /// before looping back to the start.
+    pub start_time: TimeInt,
+
     /// These chunks are required by one or more queries that are currently in-flight.
     ///
     /// We must try and download them in priority, as there are views actively waiting for them in order to
     /// properly render.
     pub missing_chunk_ids: HashSet<ChunkId>,
-
-    /// Only consider chunks overlapping this range on [`Self::timeline`].
-    pub desired_range: AbsoluteTimeRange,
 
     /// Batch together requests until we reach this size).
     pub max_uncompressed_bytes_per_batch: u64,
@@ -412,7 +413,7 @@ impl RrdManifestIndex {
         let ChunkPrefetchOptions {
             timeline,
             missing_chunk_ids,
-            desired_range,
+            start_time,
             max_uncompressed_bytes_per_batch,
             mut total_uncompressed_byte_budget,
             mut max_uncompressed_bytes_in_transit,
@@ -440,15 +441,21 @@ impl RrdManifestIndex {
         let mut indices = vec![];
 
         let missing_chunk_ids = missing_chunk_ids.into_iter();
-        let prefetched_chunk_ids = || {
+        let chunks_ids_after_time_cursor = || {
             chunks
-                .query(desired_range.into())
+                .query(start_time..=TimeInt::MAX)
+                .map(|(_, chunk_id)| *chunk_id)
+        };
+        let chunks_ids_before_time_cursor = || {
+            chunks
+                .query(TimeInt::MIN..=start_time.saturating_sub(1))
                 .map(|(_, chunk_id)| *chunk_id)
         };
         let chunk_ids_in_priority_order = itertools::chain!(
             self.static_chunk_ids.iter().copied(),
             missing_chunk_ids,
-            std::iter::once_with(prefetched_chunk_ids).flatten()
+            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );
 
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
