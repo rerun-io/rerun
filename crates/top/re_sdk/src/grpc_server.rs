@@ -10,6 +10,10 @@ use crate::sink::SinkFlushError;
 /// The hosted gRPC server may be connected to by any SDK or Viewer.
 ///
 /// All data sent through this sink is immediately redirected to the gRPC server.
+///
+/// NOTE: When the `GrpcServerSink` is dropped, it will shut down the gRPC server.
+/// If this sink has been passed to a `RecordingStream`, dropping, or disconnecting
+/// the `RecordingStream` will indirectly drop this sink and shut down the server.
 pub struct GrpcServerSink {
     uri: re_uri::ProxyUri,
 
@@ -91,10 +95,6 @@ impl crate::sink::LogSink for GrpcServerSink {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 

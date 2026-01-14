@@ -323,7 +323,7 @@ def _run_register_mode(host: str, port: int, cache_dir: Path) -> None:
     c = CatalogClient(f"rerun+http://{host}:{port}")
 
     try:
-        entry = c.get_table_entry(name=name)
+        entry = c.get_table(name)
         entry.delete()
     except Exception:
         pass

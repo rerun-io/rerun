@@ -87,7 +87,7 @@ impl SpawnOptions {
     /// Resolves the final connect address value.
     pub fn connect_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             self.port,
         )
     }
@@ -95,7 +95,7 @@ impl SpawnOptions {
     /// Resolves the final listen address value.
     pub fn listen_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
             self.port,
         )
     }

@@ -86,6 +86,8 @@ impl VideoAssetCache {
                     video_buffer,
                     &media_type,
                     &debug_name,
+                    // For video assets we use the row-id as the source identifier.
+                    blob_row_id.as_tuid(),
                 )
                 .map(|data| Video::load(debug_name, data, decode_settings));
                 Entry {
@@ -102,7 +104,12 @@ impl VideoAssetCache {
     }
 }
 
-impl Cache for VideoAssetCache {
+impl Cache for VideoAssetCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    Video: Send + Sync,
+    VideoLoadError: Send + Sync,
+{
     fn begin_frame(&mut self) {
         re_tracing::profile_function!();
 
@@ -152,9 +159,5 @@ impl Cache for VideoAssetCache {
         let cache_key_removed = filter_blob_removed_events(events);
         self.0
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 }

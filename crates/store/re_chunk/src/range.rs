@@ -237,7 +237,7 @@ impl Chunk {
                 return chunk.emptied();
             };
 
-            let chunk = chunk.densified(component);
+            let (chunk, _densified) = chunk.densified(component);
 
             let chunk = if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk
@@ -265,7 +265,7 @@ impl Chunk {
                 end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
             }
 
-            chunk.row_sliced(start_index, end_index.saturating_sub(start_index))
+            chunk.row_sliced_shallow(start_index, end_index.saturating_sub(start_index))
         }
     }
 }

@@ -1,9 +1,10 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
 use re_auth::client::AuthDecorator;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, ChunkId};
 use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
@@ -16,7 +17,7 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    SegmentQueryParams, StreamMode,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -66,7 +67,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         Err(original_error) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
-                url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             ]
             .contains(&origin.host)
             {
@@ -295,10 +296,13 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
+///
+/// `stream_mode` is a feature-flag for RRD manifest based larger-than-ram streaming.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
+    stream_mode: StreamMode,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -324,15 +328,20 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
-        stream_segment_from_server(
+        if stream_segment_from_server(
             &mut client,
             blueprint_store_info,
             &tx,
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
+            StreamMode::FullLoad, // We always load the full blueprint
         )
-        .await?;
+        .await?
+        .is_break()
+        {
+            return Ok(());
+        }
 
         if tx
             .send(
@@ -366,15 +375,20 @@ pub async fn stream_blueprint_and_segment_from_server(
         store_version: None,
     };
 
-    stream_segment_from_server(
+    if stream_segment_from_server(
         &mut client,
         store_info,
         &tx,
         dataset_id.into(),
         segment_id.into(),
         fragment,
+        stream_mode,
     )
-    .await?;
+    .await?
+    .is_break()
+    {
+        return Ok(());
+    }
 
     Ok(())
 }
@@ -387,7 +401,8 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
-) -> ApiResult {
+    stream_mode: StreamMode,
+) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Streaming {store_id:?}…");
@@ -403,7 +418,7 @@ async fn stream_segment_from_server(
         .is_err()
     {
         re_log::debug!("Receiver disconnected");
-        return Ok(());
+        return Ok(ControlFlow::Break(()));
     }
 
     // Send UI commands for recording (as opposed to blueprint) stores.
@@ -420,7 +435,7 @@ async fn stream_segment_from_server(
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
-            return Ok(());
+            return Ok(ControlFlow::Break(()));
         }
     }
 
@@ -429,46 +444,122 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let manifest_result = client
-        .get_rrd_manifest(dataset_id, segment_id.clone())
-        .await;
-    match manifest_result {
-        Ok(rrd_manifest) => {
-            if tx
-                .send(DataSourceMessage::RrdManifest(
-                    store_id.clone(),
-                    rrd_manifest.into(),
-                ))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+    if stream_mode == StreamMode::OnDemand {
+        let manifest_result = client
+            .get_rrd_manifest(dataset_id, segment_id.clone())
+            .await;
+        match manifest_result {
+            Ok(rrd_manifest) => {
+                re_log::debug_once!("The server supports larger-than-RAM");
+
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.clone().into(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        re_log::debug!("Letting the viewer load chunks on-demand");
+                        return Ok(ControlFlow::Continue(()));
+                    }
+                    StoreKind::Blueprint => {
+                        // Load all of the chunks in one go; most important first:
+                        let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                            ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                        })?;
+                        return load_chunks(client, tx, &store_id, batch).await;
+                    }
+                }
+            }
+            Err(err) => {
+                if err.kind == ApiErrorKind::Unimplemented {
+                    re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
+                } else {
+                    re_log::warn!("Failed to load RRD manifest: {err}");
+                }
             }
         }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                // TODO(RR-3110): implement rrd manifest on cloud
-            } else {
-                re_log::warn!("Failed to load RRD manifest: {err}");
-            }
-        }
+    } else {
+        re_log::debug_once!("Larger-than-RAM streaming is disabled");
     }
 
-    // Retrieve the chunk IDs we're interested in:
-    // TODO(RR-3110): use the rrd manifest instead
+    // Fallback for servers that does not support the RRD manifests:
+
+    let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
+
+    if let Some(time_selection) = fragment.time_selection {
+        // Start by loading only the chunks required for the time selection:
+        let time_selection_batches = client
+            .query_dataset_chunk_index(SegmentQueryParams {
+                dataset_id,
+                segment_id: segment_id.clone(),
+                include_static_data: true,
+                include_temporal_data: true,
+                query: Some(
+                    re_protos::cloud::v1alpha1::ext::Query::latest_at_range(
+                        time_selection.timeline.name(),
+                        time_selection.range,
+                    )
+                    .into(),
+                ),
+            })
+            .await?;
+
+        if time_selection_batches.is_empty() {
+            re_log::debug!(
+                "No chunks found for time selection {:?} in recording {:?}",
+                time_selection,
+                store_id
+            );
+        } else {
+            let batch = arrow::compute::concat_batches(
+                &time_selection_batches[0].schema(),
+                &time_selection_batches,
+            )
+            .map_err(|err| {
+                ApiError::invalid_arguments(err, "Failed to concat chunk index batches")
+            })?;
+
+            // Prioritize the chunks:
+            let batch = sort_batch(&batch)
+                .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
+
+            if let Some(chunk_ids) = chunk_id_column(&batch) {
+                already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
+            } else {
+                re_log::warn_once!(
+                    "Failed to find 'chunk_id' column in chunk index response. Schema: {}",
+                    batch.schema()
+                );
+            }
+
+            if load_chunks(client, tx, &store_id, batch).await?.is_break() {
+                return Ok(ControlFlow::Break(()));
+            }
+        }
+
+        // Now load the rest (chunks outside the time range):
+    }
+
     let batches = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: None,
+            query: None, // everything
         })
         .await?;
 
     if batches.is_empty() {
         re_log::info!("Empty recording"); // We likely won't get here even on empty recording
-        return Ok(());
+        return Ok(ControlFlow::Continue(()));
     }
 
     let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches)
@@ -478,9 +569,95 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    // Fetch the chunks base on the ids:
-    let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
+    if let Some(chunk_ids) = chunk_id_column(&batch)
+        && !already_loaded_chunk_ids.is_empty()
+    {
+        // Filter out already loaded chunk IDs:
+        let filtered_indices: Vec<usize> = chunk_ids
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, chunk_id)| {
+                if already_loaded_chunk_ids.contains(chunk_id) {
+                    None
+                } else {
+                    Some(idx)
+                }
+            })
+            .collect();
 
+        let filtered_batch = arrow::compute::take_record_batch(
+            &batch,
+            &arrow::array::UInt32Array::from(
+                filtered_indices
+                    .iter()
+                    .map(|&i| i as u32)
+                    .collect::<Vec<u32>>(),
+            ),
+        )
+        .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
+
+        load_chunks(client, tx, &store_id, filtered_batch).await
+    } else {
+        load_chunks(client, tx, &store_id, batch).await
+    }
+}
+
+fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
+    batch
+        .column_by_name("chunk_id")
+        .and_then(|array| array.as_fixed_size_binary_opt())
+        .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
+}
+
+/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+async fn load_chunks(
+    client: &ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    full_batch: RecordBatch,
+) -> ApiResult<ControlFlow<()>> {
+    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+
+    use futures::stream::FuturesUnordered;
+
+    // Batch requests in groups of N=32 rows.
+    const BATCH_SIZE: usize = 32;
+    let num_rows = full_batch.num_rows();
+    let mut futures = FuturesUnordered::new();
+
+    for start in (0..num_rows).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_rows);
+        let small_batch = full_batch.slice(start, end - start);
+
+        let mut client = client.clone();
+        let tx = tx.clone();
+        let store_id = store_id.clone();
+
+        futures.push(async move {
+            load_small_chunk_batch(&mut client, &tx, &store_id, &small_batch).await
+        });
+    }
+
+    while let Some(res) = futures::stream::StreamExt::next(&mut futures).await {
+        let result = res?;
+        if result.is_break() {
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+
+    re_log::trace!("Finished downloading {} chunks.", num_rows);
+
+    Ok(ControlFlow::Continue(()))
+}
+
+async fn load_small_chunk_batch(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    batch: &RecordBatch,
+) -> ApiResult<ControlFlow<()>> {
+    // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
+    let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
 
     while let Some(chunks) = chunk_stream.next().await {
@@ -502,12 +679,12 @@ async fn stream_segment_from_server(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(()); // cancelled
+                return Ok(ControlFlow::Break(()));
             }
         }
     }
 
-    Ok(())
+    Ok(ControlFlow::Continue(()))
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {

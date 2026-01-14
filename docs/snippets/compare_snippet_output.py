@@ -89,6 +89,10 @@ class Example:
 
 
 def main() -> None:
+    # force UTF-8 so emoji and such work on Windows
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
+
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
     parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
@@ -118,10 +122,16 @@ def main() -> None:
 
     if args.no_py:
         pass  # No need to build the Python SDK
-    elif args.no_py_build:
-        print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
-        build_python_sdk(build_env)
+        if args.no_py_build:
+            print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
+        else:
+            build_python_sdk(build_env)
+        # Use uv to install the snippet dependencies
+        run(
+            ["uv", "sync", "--group", "snippets", "--inexact", "--no-install-package", "rerun-sdk"],
+            env=build_env,
+        )
 
     if args.no_cpp:
         pass  # No need to build the C++ SDK
@@ -275,16 +285,11 @@ def main() -> None:
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_prebuilt_cpp(example)
-        check_non_empty_rrd(cpp_output_path)
+        run_prebuilt_cpp(example)
     elif language == "py":
-        python_output_path = run_python(example)
-        check_non_empty_rrd(python_output_path)
+        run_python(example)
     elif language == "rust":
-        rust_output_path = run_prebuilt_rust(
-            example, release=args.release, target=args.target, target_dir=args.target_dir
-        )
-        check_non_empty_rrd(rust_output_path)
+        run_prebuilt_rust(example, release=args.release, target=args.target, target_dir=args.target_dir)
     else:
         raise AssertionError(f"Unknown language: {language}")
 

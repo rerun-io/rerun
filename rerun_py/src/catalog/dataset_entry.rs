@@ -29,9 +29,9 @@ use super::{
     PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
     PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
-use crate::catalog::entry::update_entry;
-use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
-use crate::dataframe::{AnyComponentColumn, PyRecording};
+use crate::catalog::entry::set_entry_name;
+use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
+use crate::recording::PyRecording;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -85,9 +85,8 @@ impl PyDatasetEntryInternal {
         connection.delete_entry(py, self.entry_details.id)
     }
 
-    #[pyo3(signature = (*, name=None))]
-    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
-        update_entry(py, name, &mut self.entry_details, &self.client)
+    fn set_name(&mut self, py: Python<'_>, name: String) -> PyResult<()> {
+        set_entry_name(py, name, &mut self.entry_details, &self.client)
     }
 
     //
@@ -429,13 +428,7 @@ impl PyDatasetEntryInternal {
 
         let handle = ChunkStoreHandle::new(store?);
 
-        let cache =
-            re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(handle.clone()));
-
-        Ok(PyRecording {
-            store: handle,
-            cache,
-        })
+        Ok(PyRecording { store: handle })
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`

@@ -1,5 +1,5 @@
 ---
-title: See data in the Rerun Viewer
+title: Visualize
 order: 425
 ---
 
@@ -85,7 +85,7 @@ Depending on your display size, the panels may have a different arrangements. Fu
 This window has five main sections:
 
 -   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
--   [Recordings panel](../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
+-   [Recordings panel](../concepts/logging-and-ingestion/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
 -   [Blueprint panel](../reference/viewer/blueprints.md) (below Recordings): Controls the different views.
 -   [Selection panel](../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
 -   [Timeline panel](../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
@@ -105,7 +105,7 @@ via the [Blueprint API](#programmatic-blueprints), or by [loading an .rbl file](
 
 ## Exploring data
 
-In Rerun, data is modeled using [entities](../concepts/entity-component.md) (essentially objects) that contain batches of [components](../reference/types/components.md)
+In Rerun, data is modeled using [entities](../concepts/logging-and-ingestion/entity-component.md) (essentially objects) that contain batches of [components](../reference/types/components.md)
 that change over time. Each entity is identified by an entity path, which uses a hierarchical syntax to represent relationships between entities.
 Let's explore an example of this hierarchy in our scene:
 
@@ -118,7 +118,7 @@ Let's explore an example of this hierarchy in our scene:
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per each view using [Overrides](../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
+Visualizations can also be customized per each view using [Overrides](../concepts/visualization/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
@@ -204,7 +204,7 @@ to the "frame" timeline and double-click the timeline panel to reset it to the d
 One thing to notice is there is a gap in the timeline in the "frame" view. This dataset is actually missing a few
 frames, and the timeline view of frames makes this easy to spot. This highlights the importance of applying meaningful
 timestamps to your data as you log it. You also aren't limited to frame and log_time. Rerun lets you define your own
-timelines however you would like. You can read more about timelines [here](../concepts/timelines.md).
+timelines however you would like. You can read more about timelines [here](../concepts/logging-and-ingestion/timelines.md).
 
 ## Conclusion
 

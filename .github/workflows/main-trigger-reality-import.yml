@@ -1,0 +1,32 @@
+name: Main Trigger Reality Import
+
+# Triggers sync-imports in reality when commits are merged to main.
+# This sends a repository_dispatch event to rerun-io/reality.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  trigger-import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: |
+            reality
+
+      - name: Trigger reality sync-imports workflow
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/rerun-io/reality/dispatches \
+            -f event_type=sync-import \
+            -f "client_payload[repo]=rerun"

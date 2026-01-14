@@ -44,6 +44,7 @@ perf_telemetry = [
   "re_perf_telemetry/pyo3",
 ]
 
+## Add support for the in-memory OSS server.
 server = ["re_sdk/server", "dep:re_grpc_server"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
@@ -59,7 +60,6 @@ re_auth.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
-re_dataframe.workspace = true
 re_datafusion.workspace = true
 re_redap_client.workspace = true
 re_grpc_client.workspace = true

@@ -791,9 +791,6 @@ pub struct Query {
     /// If true, `columns` will contain the entire schema.
     #[prost(bool, tag = "3")]
     pub columns_always_include_everything: bool,
-    /// If true, `columns` always includes `chunk_id`,
-    #[prost(bool, tag = "4")]
-    pub columns_always_include_chunk_ids: bool,
     /// If true, `columns` always includes `byte_offset` and `byte_size`.
     #[prost(bool, tag = "5")]
     pub columns_always_include_byte_offsets: bool,
@@ -1297,7 +1294,7 @@ pub struct CreateTableEntryRequest {
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
     ///
-    /// This must be encoded message of one one of the following supported types:
+    /// This must be encoded message of one of the following supported types:
     /// - LanceTable
     #[prost(message, optional, tag = "2")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
@@ -2300,8 +2297,10 @@ pub mod rerun_cloud_service_client {
         pub async fn get_rrd_manifest(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRrdManifestResponse>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetRrdManifestResponse>>,
+            tonic::Status,
+        > {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -2314,7 +2313,7 @@ pub mod rerun_cloud_service_client {
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetRrdManifest",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
         }
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
         ///
@@ -2772,13 +2771,18 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the GetRrdManifest method.
+        type GetRrdManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetRrdManifestResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
         /// Get the RRD Footer manifest.
         ///
         /// This includes details about what chunks there are, and what kind of data they contain.
         async fn get_rrd_manifest(
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRrdManifestResponse>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<Self::GetRrdManifestStream>, tonic::Status>;
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
         ///
         /// This endpoint requires the standard dataset headers.
@@ -3678,11 +3682,13 @@ pub mod rerun_cloud_service_server {
                     #[allow(non_camel_case_types)]
                     struct GetRrdManifestSvc<T: RerunCloudService>(pub Arc<T>);
                     impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::GetRrdManifestRequest>
+                        tonic::server::ServerStreamingService<super::GetRrdManifestRequest>
                         for GetRrdManifestSvc<T>
                     {
                         type Response = super::GetRrdManifestResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type ResponseStream = T::GetRrdManifestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetRrdManifestRequest>,
@@ -3711,7 +3717,7 @@ pub mod rerun_cloud_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

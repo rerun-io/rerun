@@ -4,7 +4,6 @@ from abc import ABC
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
-import datafusion
 import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
@@ -13,7 +12,7 @@ from rerun_bindings import (
     DatasetEntryInternal,
     DatasetViewInternal,
     TableEntryInternal,
-    TableInsertMode,
+    TableInsertModeInternal,
 )
 
 from . import EntryId
@@ -25,6 +24,8 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime
+
+    import datafusion
 
     from rerun.recording import Recording
 
@@ -98,9 +99,27 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         self._internal.delete()
 
+    def set_name(self, name: str) -> None:
+        """
+        Change the name of this entry.
+
+        **Note**: entry names must be unique within the catalog. If the new name is not unique, an error will be raised.
+
+        Parameters
+        ----------
+        name : str
+            New name for the entry
+
+        """
+        self._internal.set_name(name)
+
+    @deprecated("Entry.update() is deprecated. Use Entry.set_name() instead.")
     def update(self, *, name: str | None = None) -> None:
         """
         Update this entry's properties.
+
+        .. deprecated::
+            Use :meth:`set_name` instead.
 
         Parameters
         ----------
@@ -109,7 +128,8 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         """
 
-        self._internal.update(name=name)
+        if name is not None:
+            self._internal.set_name(name)
 
     def __eq__(self, other: object) -> bool:
         """
@@ -194,16 +214,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
 
-    @deprecated("Use default_blueprint_segment_id() instead")
-    def default_blueprint_partition_id(self) -> str | None:
-        """The default blueprint partition ID for this dataset, if any."""
-        return self.default_blueprint()
-
-    @deprecated("Use set_default_blueprint_segment_id() instead")
-    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
-        """Set the default blueprint partition ID for this dataset."""
-        return self.set_default_blueprint(partition_id)
-
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
         from ._schema import Schema
@@ -214,11 +224,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Returns a list of segment IDs for the dataset."""
 
         return self._internal.segment_ids()
-
-    @deprecated("Use segment_ids() instead")
-    def partition_ids(self) -> list[str]:
-        """Returns a list of partition IDs for the dataset."""
-        return self.segment_ids()
 
     def segment_table(
         self,
@@ -320,17 +325,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
-    @deprecated("Use segment_url() instead")
-    def partition_url(  # noqa: PLR0917
-        self,
-        partition_id: str,
-        timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
-    ) -> str:
-        """Return the URL for the given partition."""
-        return self.segment_url(partition_id, timeline, start, end)
-
     def register(
         self,
         recording_uri: str | Sequence[str],
@@ -409,19 +403,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.download_segment(segment_id)
 
-    @deprecated("Use download_segment() instead")
-    def download_partition(self, partition_id: str) -> Recording:
-        """Download a partition from the dataset."""
-        return self.download_segment(partition_id)
-
-    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
         Parameters
         ----------
         segment_ids
-            A list of segment ID strings or a DataFusion DataFrame
+            A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
             with a column named 'rerun_segment_id'. When passing a DataFrame,
             if there are additional columns, they will be ignored.
 
@@ -433,6 +422,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
+        # Filter to a single segment
+        view = dataset.filter_segments("recording_0")
+
         # Filter to specific segments
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
@@ -446,12 +438,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        if isinstance(segment_ids, datafusion.DataFrame):
+        import datafusion
+
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+        elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -461,8 +457,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        exprs : Sequence[str]
-            Entity path expressions.
+        exprs : str | Sequence[str]
+            Entity path expression or list of entity path expressions.
 
         Returns
         -------
@@ -472,6 +468,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
+        # Filter to a single entity path
+        view = dataset.filter_contents("/points/**")
+
         # Filter to specific entity paths
         view = dataset.filter_contents(["/points/**"])
 
@@ -479,17 +478,20 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         view = dataset.filter_contents(["/points/**", "-/text/**"])
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
+
+        if isinstance(exprs, str):
+            exprs = [exprs]
 
         return DatasetView(self._internal.filter_contents(list(exprs)))
 
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
@@ -499,6 +501,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Create a reader over this dataset.
 
         Returns a DataFusion DataFrame.
+
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
 
         Parameters
         ----------
@@ -542,22 +559,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Create a full-text search index on the given column."""
 
         return self._internal.create_fts_search_index(
-            column=column,
-            time_index=time_index,
-            store_position=store_position,
-            base_tokenizer=base_tokenizer,
-        )
-
-    @deprecated("use create_fts_search_index")
-    def create_fts_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None:
-        return self.create_fts_search_index(
             column=column,
             time_index=time_index,
             store_position=store_position,
@@ -612,32 +613,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             distance_metric=distance_metric,
         )
 
-    @deprecated("use create_vector_search_index instead")
-    def create_vector_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = "Cosine",
-    ) -> IndexingResult:
-        return self.create_vector_search_index(
-            column=column,
-            time_index=time_index,
-            target_partition_num_rows=target_partition_num_rows,
-            num_sub_vectors=num_sub_vectors,
-            distance_metric=distance_metric,
-        )
-
     def list_search_indexes(self) -> list[IndexingResult]:
         """List all user-defined indexes in this dataset."""
 
         return self._internal.list_search_indexes()
-
-    @deprecated("use list_search_indexes instead")
-    def list_indexes(self) -> list[IndexingResult]:
-        return self.list_search_indexes()
 
     def delete_search_indexes(
         self,
@@ -646,13 +625,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Deletes all user-defined indexes for the specified column."""
 
         return self._internal.delete_search_indexes(column)
-
-    @deprecated("use delete_search_indexes instead")
-    def delete_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]:
-        return self.delete_search_indexes(column)
 
     def search_fts(
         self,
@@ -815,29 +787,10 @@ class DatasetView:
 
         return segment_table_df
 
-    @deprecated("This method is deprecated and will be removed in a future release")
-    def download_segment(self, segment_id: str) -> Recording:
-        """
-        Download a specific segment from the dataset.
-
-        Parameters
-        ----------
-        segment_id : str
-            The ID of the segment to download.
-
-        Returns
-        -------
-        Recording
-            The downloaded recording.
-
-        """
-
-        return self.dataset.download_segment(segment_id)
-
     def reader(
         self,
-        *,
         index: str | None,
+        *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
@@ -847,6 +800,21 @@ class DatasetView:
         Create a reader over this DatasetView.
 
         Returns a DataFusion DataFrame.
+
+        Server side filters
+        -------------------
+
+        The returned DataFrame supports server side filtering for both `rerun_segment_id`
+        and the index (timeline) column, which can greatly improve performance. For
+        example, the following filters will effectively be handled by the Rerun server.
+
+        ```python
+        dataset.reader(index="real_time").filter(col("rerun_segment_id") == "aabbccddee")
+        dataset.reader(index="real_time").filter(col("real_time") == "1234567890")
+        dataset.reader(index="real_time").filter(
+            (col("rerun_segment_id") == "aabbccddee") & (col("real_time") == "1234567890")
+        )
+        ```
 
         Parameters
         ----------
@@ -877,7 +845,7 @@ class DatasetView:
             using_index_values=using_index_values,
         )
 
-    def filter_segments(self, segment_ids: Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
@@ -886,8 +854,8 @@ class DatasetView:
 
         Parameters
         ----------
-        segment_ids : Sequence[str] | datafusion.DataFrame
-            Either a list of segment ID strings or a DataFusion DataFrame
+        segment_ids : str | Sequence[str] | datafusion.DataFrame
+            A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
             with a column named 'rerun_segment_id'.
 
         Returns
@@ -896,12 +864,16 @@ class DatasetView:
             A new view filtered to the given segments.
 
         """
-        if isinstance(segment_ids, datafusion.DataFrame):
+        import datafusion
+
+        if isinstance(segment_ids, str):
+            segment_ids = [segment_ids]
+        elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given entity paths.
 
@@ -911,8 +883,8 @@ class DatasetView:
 
         Parameters
         ----------
-        exprs : Sequence[str]
-            Entity path expressions.
+        exprs : str | Sequence[str]
+            Entity path expression or list of entity path expressions.
 
         Returns
         -------
@@ -920,6 +892,9 @@ class DatasetView:
             A new view filtered to the matching entity paths.
 
         """
+        if isinstance(exprs, str):
+            exprs = [exprs]
+
         return DatasetView(self._internal.filter_contents(list(exprs)))
 
     def __repr__(self) -> str:
@@ -994,7 +969,7 @@ class TableEntry(Entry[TableEntryInternal]):
             Each named parameter corresponds to a column in the table.
 
         """
-        self._write(batches, named_params, TableInsertMode.APPEND)
+        self._write(batches, named_params, TableInsertModeInternal.APPEND)
 
     def overwrite(
         self,
@@ -1014,7 +989,7 @@ class TableEntry(Entry[TableEntryInternal]):
             Each named parameter corresponds to a column in the table.
 
         """
-        self._write(batches, named_params, TableInsertMode.OVERWRITE)
+        self._write(batches, named_params, TableInsertModeInternal.OVERWRITE)
 
     def upsert(
         self,
@@ -1041,13 +1016,13 @@ class TableEntry(Entry[TableEntryInternal]):
             Each named parameter corresponds to a column in the table
 
         """
-        self._write(batches, named_params, TableInsertMode.REPLACE)
+        self._write(batches, named_params, TableInsertModeInternal.REPLACE)
 
     def _write(
         self,
         batches: _BatchesType | None,
         named_params: dict[str, Any],
-        insert_mode: TableInsertMode,
+        insert_mode: TableInsertModeInternal,
     ) -> None:
         """Internal helper that implements append/overwrite/upsert."""
         if batches is not None and len(named_params) > 0:
@@ -1061,7 +1036,7 @@ class TableEntry(Entry[TableEntryInternal]):
     def _write_batches(
         self,
         batches: _BatchesType,
-        insert_mode: TableInsertMode,
+        insert_mode: TableInsertModeInternal,
     ) -> None:
         """Internal helper to write batches to the table."""
         # If already a RecordBatchReader, pass it directly
@@ -1097,7 +1072,7 @@ class TableEntry(Entry[TableEntryInternal]):
     def _write_named_params(
         self,
         named_params: dict[str, Any],
-        insert_mode: TableInsertMode,
+        insert_mode: TableInsertModeInternal,
     ) -> None:
         """Internal helper to write named parameters to the table."""
         batch = self._python_objects_to_record_batch(self.arrow_schema(), named_params)

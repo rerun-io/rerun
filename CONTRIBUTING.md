@@ -241,7 +241,7 @@ Tests are located in the [./rerun_cpp/tests/](./rerun_cpp/tests/) folder.
 ### Snippet comparison tests
 
 ```sh
-pixi run -e py docs/snippets/compare_snippet_output.py
+pixi run uvpy docs/snippets/compare_snippet_output.py
 ```
 
 More details in the [README.md](./docs/snippets/README.md).
@@ -251,7 +251,7 @@ Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are w
 ### Release checklists
 
 ```sh
-pixi run -e examples python tests/python/release_checklist/main.py
+pixi run uv run tests/python/release_checklist/main.py
 ```
 
 More details in the [README.md](./tests/python/release_checklist/README.md).

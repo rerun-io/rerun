@@ -1,18 +1,24 @@
 # Pixi is a package management tool for developers.
 # Before running a task, pixi ensures that all listed dependencies are installed first.
 #
-# Run the tasks with `pixi run TASK`, e.g. `pixi run codegen`.
-# Extra CLI argument after `pixi run TASK` are passed to the task cmd.
-# Lists tasks with `pixi task list`
-#
-# Type `pixi shell` to enter the pixi environment.
+# Run tasks with `pixi run TASK`, e.g. `pixi run codegen`.
+# Extra CLI arguments after `pixi run TASK` are passed to the task cmd.
+# List tasks with `pixi task list`
 #
 # https://pixi.sh/latest/
-
-# We currently assume pixi version 0.34.0
-# You can check that your environment is correct by running:
-# - python scripts/check_env.py
-# - pixi run check-env
+#
+# Python Development Workflow:
+# ----------------------------
+# Pixi manages build tools (Rust, C++, maturin, etc.) while uv manages Python runtime
+# dependencies in a separate .venv directory. To work with Python:
+#
+#   pixi run py-build                              # Build the rerun-sdk
+#   pixi run uv run examples/python/minimal/…   # Run Python scripts via uv
+#   pixi run uvpy script.py                        # Shorthand for running Python scripts
+#
+# See the [environments] section below for more details.
+#
+# Check your environment is correct by running: pixi run check-env
 
 [workspace]
 name = "rerun"
@@ -45,22 +51,29 @@ libc = "2.28"
 # Global
 
 [activation]
+# Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
+scripts = ["scripts/pixi/activate.sh"]
 
-[target.unix.activation.env]
+[activation.env]
+RERUN_DEV_ENVIRONMENT = "true"
+
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
+# Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
+# This ensures uv targets .venv instead of the pixi environment.
+PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
+
+[target.win-64.activation]
+# Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
+# This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
+scripts = ["scripts/pixi/activate.bat"]
 
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
-
-# python-dev
-
-[feature.python-dev.activation.env]
-# RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk.
-RERUN_ALLOW_MISSING_BIN = "1"
-RERUN_DEV_ENVIRONMENT = "true"
-
+# Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
+# This ensures uv targets .venv instead of the pixi environment.
+PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
 
 ################################################################################
 # ENVIRONMENTS
@@ -70,22 +83,17 @@ RERUN_DEV_ENVIRONMENT = "true"
 # The default environment is meant to serve as the basis for common development and
 # CI tasks. If you are only working in rust, this is the only environment you need.
 #
-# For practical reasons, this environment includes the utilities necessary to build
-# the python wheel. However, it does not come with the rerun python bindings installed.
+# Python run-time dependencies are installed and managed in a parallel uv environment.
+# `pixi run py-build` will install the rerun-sdk package into that uv environment.
 #
-# To run code that uses python or cpp bindings, you will generally need to use one of
-# the more specialized environments: `py` or `cpp`.
-# - The python-dev feature is not included in the default environment because it can
-#   lead to unexpected (lengthy) Rerun build during environment creation.
+# NOTE: when you run `pixi run uv`, it will find a `uv` helper script, which unsets
+# CONDA_PREFIX before invoking uv, ensuring that the uv environment is used rather
+# than leaking the pixi conda environment.
+#
+# To run code that uses cpp bindings, you will generally need to use the `cpp` env.
 # - The cpp feature cannot be included in the default environment because
 #   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
-default = ["base", "wheel-build"]
-
-# The py environment is for running any code with a dependency on the python `rerun-sdk`.
-py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
-
-# The py-docs environment is for building docs for the python package.
-py-docs = ["base", "python-docs"]
+default = ["base"]
 
 # The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
 #
@@ -93,38 +101,6 @@ py-docs = ["base", "python-docs"]
 # As of writing this breaks building the web viewer on MacOS, so do not enable it in any environment
 # in which you want to do viewer builds.
 cpp = ["base", "cpp"]
-
-# The wheel-test environment is for testing the python package when built from a wheel.
-# This environment is specifically used for validation of the wheel artifact in CI.
-# It does not include the features necessary for a source-build of the wheel.
-#
-# WARNING: wheel-test default depends on a published `rerun-sdk` version which will
-# be installed from pypi and not from the local source code.
-#
-# To update the wheel artifact that is registered with pixi, you can use `pixi_install_wheel.py`.
-# For example:
-# ```
-# pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
-# ```
-
-# Just the deps for running snippet comparisons.
-wheel-test-min = ["base", "cpp", "py-test-deps", "python-pypi", "wheel-build", "wheel-test"]
-
-# The full deps for running all examples
-wheel-test = ["base", "wheel-test", "wheel-build", "py-test-deps", "examples-common", "python-pypi"]
-
-# Example environments
-
-# These environments use the dev version of the python package.
-# The package will be installed in editable mode, so changes to the python code will be reflected immediately.
-# However, any changes to do the rust bindings will require running `pixi run py-build-examples`.
-examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
-# examples-ocr = ["examples-ocr", "wheel-build"]
-
-# This environment uses the pypi-published version of the python package. This avoids the need to
-# build the package from source if you just want to try running the examples locally.
-examples-pypi = ["examples-common", "python-pypi"]
-
 
 ################################################################################
 # TASKS
@@ -240,7 +216,7 @@ fmt = { depends-on = ["format"] }
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
 ] }
-link-check = 'lychee --verbose --cache --max-cache-age 1d . --base-url . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+link-check = 'lychee --verbose --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -255,6 +231,14 @@ lint-typos = "typos"
 # Toml tasks
 toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
+
+# uv lockfile check
+# We unset RUSTC_WRAPPER because it can interfere with uv+maturin in minimal
+# environments where we might want to run this check. The rust being used
+# internally for this check is being set up by the pep517 environment and so
+# we might run it in an environment that doesn't otherwise have or expect
+# rust to be setup.
+uv-lock-check = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
 
 # ------------------------------------------------------------------------------------------
 # Protobuf stuff:
@@ -301,23 +285,24 @@ nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scri
 
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
-py-fmt = { cmd = "ruff check --fix --config rerun_py/pyproject.toml {{ files }} && ruff format --config rerun_py/pyproject.toml {{ files }}", args = [
+py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format {{ files }}", args = [
   { arg = "files", default = "." },
 ] }
-py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
+py-fmt-check = "uv run ruff check . && uv run ruff format --check ."
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd = "nbqa mypy examples/notebook scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml --cache-dir .mypy_cache_rerun_nb ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.
+py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook scripts/ tests/python/ docs/snippets/ --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
+py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 dev-tools = "cargo run --locked -p re_dev_tools --"
-build-examples = "cargo run --locked -p re_dev_tools -- build-examples"
+build-examples = "uv run cargo run --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
@@ -373,125 +358,82 @@ js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-packag
 
 js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
 
-[feature.wheel-build.tasks]
+
 # Build and install a development version of the rerun-sdk Python package.
+#
+# These packages are installed into the parallel uv environment.
 #
 # This only needs to be called when you have made changes that would impact the rust bindings of
 # the python package. The python code will be imported directly from the source folder and will
 # reflect changes immediately upon re-import.
-# Note:
-# - pip (which is called by maturin develop) doesn't recognize conda/pixi envs as venv, and thus complains if
-#   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
+# -
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
-py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
-  "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
-] }
 
-py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
-  "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
-] }
-
-# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
-  "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
-] }
-
-# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
-  "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
-] }
-
-
+py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = ["js-build-base"] }
+py-build-notebook = { cmd = "uv sync --package rerun-notebook", depends-on = ["js-build-base"] }
+py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook" }
+# Create a wheel for the `rerun-sdk` package.
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+  "rerun-build-native-and-web-release",
+] }
+# Install example dependencies without rebuilding rerun-sdk.
+# Use this after `py-build` to add example-specific packages like opencv, torch, etc.
+py-sync-examples = { cmd = "pixi run uv sync --group examples --inexact --no-install-package rerun-sdk" }
+# Install example snippet dependencies without rebuilding rerun-sdk.
+# Use this after `py-build` to add snippet-specific dependencies.
+py-sync-snippets = { cmd = "pixi run uv sync --group snippets --inexact --no-install-package rerun-sdk" }
+
+
+# Build the `rerun-sdk` package in release mode.
+py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-web-viewer = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+  "rerun-build-native-and-web",
+], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature in release mode.
+py-build-web-viewer-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+  "rerun-build-native-and-web-release",
+], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+# Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+# Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+
+py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
+py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
+py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = ["py-build-release"] }
+
+snapshots = "uvpy scripts/snapshots.py"
+
+py-check-signatures = "uvpy scripts/ci/python_check_signatures.py"
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
 py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
   "js-build-no-wasm",
 ] }
 
-# Build an installable wheel.
-# The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
-  "rerun-build-native-and-web-release",
-] }
-
 # Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
 py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
-[feature.python-tasks.tasks]
-
-# Dedicated alias for building the python bindings for the `py` environment.
-py-build = "pixi run -e py py-build-common"
-
-# Dedicated alias for building the python bindings in release mode for the `py` environment.
-py-build-release = "pixi run -e py py-build-common-release"
-
-# Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-debug = "pixi run -e py py-build-common --features re_perf_telemetry/tracy"
-
-# Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf = "pixi run -e py py-build-common-release --features re_perf_telemetry/tracy"
-
-py-check-signatures = "python scripts/ci/python_check_signatures.py"
-
 # Helper alias to run the python interpreter in the context of the python environment
-rrpy = "python"
+rrpy = "uvpy"
 
-py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends-on = [
-  "py-build-release",
-] }
 
-py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends-on = [
+py-plot-dashboard = { cmd = "uvpy tests/python/plot_dashboard_stress/main.py", depends-on = [
   "py-build",
 ] }
 
-
-# Run the Python tests.
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = ["py-build-release"] }
-
-snapshots = "python scripts/snapshots.py"
-
-[feature.python-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
 search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
-# Serve python docs locally
-py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
+# Serve python docs locally (uses mkdocs from uv docs dependency group)
+py-docs-serve = "uv run --group docs mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
-# Build python docs locally
-py-docs-build = "mkdocs build -f rerun_py/mkdocs.yml"
-
-[feature.wheel-test.tasks]
-# In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
-# However, since `rerun` is already its own task, we can't just `pixi run rerun`. This task lets us work
-# around that and executes `rerun` from the system shell within the context of the pixi environment.
-rerun-from-path = "rerun"
-
-[feature.examples-tasks.tasks]
-
-# Dedicated alias for building the python bindings for the `examples` environment.
-py-build-examples = "pixi run -e examples py-build-common"
-
-# Dedicated alias for building the python bindings for the `examples` environment, with performance telemetry including Tracy profiler.
-py-build-perf-debug-examples = "pixi run -e examples py-build-common --features re_perf_telemetry/tracy"
-
-# Dedicated alias for building the python bindings for the `examples` environment, in release.
-py-build-release-examples = "pixi run -e examples py-build-common-release"
-
-# Dedicated alias for building the python bindings for the `examples` environment in release, with performance telemetry including Tracy profiler.
-py-build-perf-examples = "pixi run -e examples py-build-common-release --features re_perf_telemetry/tracy"
-
-# Python example utilities
-py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
-  "py-build-examples",
-] }
-py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends-on = [
-  "rerun-build-web-cli",
-  "py-build-examples",
-] }
+# Build python docs locally (uses mkdocs from uv docs dependency group)
+py-docs-build = "uv run --group docs mkdocs build -f rerun_py/mkdocs.yml"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
@@ -571,54 +513,42 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.20.1.*"
+lychee = "0.21.0.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
-nbqa = "*"
+pyyaml = ">=6.0" # For `check_doc_redirects.py`
 nbstripout = "*"
 ninja = "1.11.1.*"
-numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
+libprotobuf = "6.*" # Provides `protoc` compiler needed by lance and prost-build
+protobuf = "6.*" # Python bindings for protobuf
 prettier = ">=3.6"
-pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.2"
-pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
+rich = "==14.2.0"
 semver = ">=3.0,<3.1"
-syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
+tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.37.2"
+urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
 gh = ">=2.79.0,<3"
-
-
-[feature.base.pypi-dependencies]
-cryptography = "==38.0.4" # For `upload_image.py`
-google-cloud-storage = "==2.9.0" # For `upload_image.py`
-hatch = "==1.12.0" # For `rerun_notebook`
-huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
-inline-snapshot = "==0.31.0" # For `api_sandbox`
-jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
-parso = ">=0.8.4, <0.9"
-Pillow = ">=10.0.0" # For `thumbnails.py`
-polars = "==1.35.2" # For api_sandbox
-pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
-requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
-types-decorator = "*" # Type hint stubs
-types-Deprecated = "==1.2.9.2" # Type hint stubs
-types-pytz = "*" # Type hint stubs
-types-requests = ">=2.31,<3" # Type hint stubs
-
-[feature.wheel-build.dependencies]
 binaryen = "117.*" # for `wasm-opt`
-maturin = "==1.8.1"
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
-pyarrow = "18.0.0.*"
 wheel = ">=0.38,<0.39"
+
+[feature.base.pypi-dependencies]
+cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
+google-cloud-storage = "==2.9.0" # For `upload_image.py`
+hatch = "*" # For `rerun_notebook`
+pillow = ">=12.1.0,<13" # For `upload_image.py`
+pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
+requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
+rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
+uv = "==0.9.17"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
@@ -658,174 +588,3 @@ vs2022_win-64 = "19.37.32822.*"
 
 [feature.cpp.pypi-dependencies]
 ghp-import = "==2.1.0" # for CI documentation handling
-
-# PYTHON DEV ENVIRONMENT
-[feature.python-dev]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
-
-[feature.python-dev.dependencies]
-# We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
-# and other common examples/snippets.
-#
-# We specifically don't use the pypi version because the conda version is generally
-# more portable. However, this is all a total mess. See: https://github.com/rerun-io/rerun/pull/6946
-#
-# This is also redundantly defined in `python-pypi`
-opencv = ">4.6"
-numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
-
-[feature.python-dev.pypi-dependencies]
-# Install the `rerun_py` as a package in editable mode.
-# This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
-# However, pixi doesn't know how to track the rust dependencies of the python package, so
-# you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true }
-
-# The same applies to the notebook.
-# However, in order to build rerun-notebook and thus to even activate environments with the
-# python-dev environment you first have to build `js-build-base`.
-# This in itself is a usability problem, but since Pixi may want to upgrade or setup these environments
-# when running the `js-build-base` task itself, it makes bootstrapping impossible without manual intervention.
-#rerun-notebook = { path = "rerun_notebook", editable = true }
-
-[feature.python-docs.pypi-dependencies]
-griffe = "==1.4.1"
-griffe-warnings-deprecated = "==1.1.0"
-mkdocs = "==1.6.1"
-mkdocs-gen-files = "==0.5.0"
-mkdocs-literate-nav = "==0.6.1"
-mkdocs-material = "==9.4.7"
-mkdocs-material-extensions = "==1.3"
-mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
-mkdocstrings = "==0.26.2"
-mkdocstrings-python = "==1.12.1"
-setuptools = ">75"
-sphobjinv = "==2.3.1"
-
-[feature.py-test-deps]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
-
-[feature.py-test-deps.dependencies]
-# Used for some video examples.
-# Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
-av = "==14.2.0"
-
-[feature.py-test-deps.pypi-dependencies]
-# Torch is needed to run the rerun unit tests.
-# This dependency is here to get torch into the pixi cache because it's large and installing it
-# during the wheel-test task itself is otherwise painful.
-torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
-# DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==50.1.0"
-
-[feature.wheel-test.dependencies]
-pip = ">=23"
-
-# PYTHON PYPI ENVIRONMENT
-[feature.python-pypi]
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
-
-[feature.python-pypi.dependencies]
-# Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
-opencv = ">4.6"
-numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
-
-
-[feature.python-pypi.pypi-dependencies]
-rerun-sdk = { version = "==0.24.0", extras = ["all"] }
-rerun-notebook = "==0.24.0"
-
-# EXAMPLES ENVIRONMENT
-[feature.examples-common]
-# TODO(#9180): Split `examples` into high-dep and low-dep so we can run some examples on `linux-aarch64` and `osx-64`.
-platforms = ["linux-64", "osx-arm64", "win-64"]
-
-
-[feature.examples-common.system-requirements]
-macos = "13.0" # needed for scipy and opencv contrib wheels
-
-[feature.examples-common.dependencies]
-python = "=3.11"
-
-# TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
-pyproj = ">=3.7.0"
-
-# Need to use the conda version of umap-learn to be compatible with numpy-2
-umap-learn = "==0.5.7"
-
-[feature.examples-common.pypi-dependencies]
-# External deps
-av = "==14.2.0"
-datafusion = "==50.1.0"
-jupyter = ">=1.0"
-polars = ">=0.12.0"
-
-segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
-
-# Rerun libs
-
-air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
-arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
-blueprint = { path = "examples/python/blueprint", editable = true }
-blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
-camera_video_stream = { path = "examples/python/camera_video_stream", editable = true }
-clock = { path = "examples/python/clock", editable = true }
-controlnet = { path = "examples/python/controlnet", editable = true }
-dataframe_query = { path = "examples/python/dataframe_query", editable = true }
-detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
-dicom_mri = { path = "examples/python/dicom_mri", editable = true }
-dna = { path = "examples/python/dna", editable = true }
-drone_lidar = { path = "examples/python/drone_lidar", editable = true }
-imu_signals = { path = "examples/python/imu_signals", editable = true }
-incremental_logging = { path = "examples/python/incremental_logging", editable = true }
-lidar = { path = "examples/python/lidar", editable = true }
-live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
-live_scrolling_plot = { path = "examples/python/live_scrolling_plot", editable = true }
-# This depends on umap-learn which is incompatible with numpy-2 if it is installed from pypi.
-llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
-log_file = { path = "examples/python/log_file", editable = true }
-minimal = { path = "examples/python/minimal", editable = true }
-minimal_options = { path = "examples/python/minimal_options", editable = true }
-multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
-multithreading = { path = "examples/python/multithreading", editable = true }
-graph_lattice = { path = "examples/python/graph_lattice", editable = true }
-graphs = { path = "examples/python/graphs", editable = true }
-nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
-nv12 = { path = "examples/python/nv12", editable = true }
-objectron = { path = "examples/python/objectron", editable = true }
-open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
-openstreetmap_data = { path = "examples/python/openstreetmap_data", editable = true }
-plots = { path = "examples/python/plots", editable = true }
-raw_mesh = { path = "examples/python/raw_mesh", editable = true }
-rgbd = { path = "examples/python/rgbd", editable = true }
-rrt_star = { path = "examples/python/rrt_star", editable = true }
-segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
-server_tables = { path = "examples/python/server_tables", editable = true }
-shared_recording = { path = "examples/python/shared_recording", editable = true }
-stdio = { path = "examples/python/stdio", editable = true }
-structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
-
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
-
-# # OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
-# [feature.examples-ocr]
-# platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
-#
-# [feature.examples-ocr.system-requirements]
-# macos = "12.0" # needed for scipy
-#
-# [feature.examples-ocr.dependencies]
-# poppler = "24.04"     # Needed to read pdf files.
-# faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
-#
-# # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
-# numpy = "<2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
-#
-# [feature.examples-ocr.pypi-dependencies]
-# rerun-sdk = { path = "rerun_py", editable = true }
-# rerun-notebook = { path = "rerun_notebook", editable = true }
-#
-# paddleclas = { version = "==2.5.2" }
-# ocr = { path = "examples/python/ocr", editable = true }

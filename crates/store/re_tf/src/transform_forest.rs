@@ -128,6 +128,10 @@ pub struct PinholeTreeRoot {
     pub pinhole_projection: ResolvedPinholeProjection,
 
     /// Transforms the 2D subtree into its parent 3D space.
+    ///
+    /// Keep in mind that even if you're in a 3D target space, this may not be the final 3D transform
+    /// of the pinhole since the target may be a child for the pinhole's parent tree root.
+    /// (i.e. your target space may not be the root of the 3D tree!)
     pub parent_root_from_pinhole_root: glam::DAffine3,
 }
 
@@ -716,6 +720,8 @@ fn transforms_at(
     id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> ParentChildTransforms {
+    #![expect(clippy::useless_let_if_seq)]
+
     let mut parent_from_child;
     let pinhole_projection;
 

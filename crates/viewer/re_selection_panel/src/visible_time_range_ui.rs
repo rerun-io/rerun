@@ -22,10 +22,6 @@ pub fn visible_time_range_ui_for_view(
     if !view_class.supports_visible_time_range() {
         return;
     }
-    let Some(timeline) = ctx.time_ctrl.timeline() else {
-        ui.weak("No active timeline");
-        return;
-    };
 
     let property_path = entity_path_for_view_property(
         view.id,
@@ -36,7 +32,7 @@ pub fn visible_time_range_ui_for_view(
     let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
-        timeline,
+        ctx.time_ctrl.timeline(),
         ctx.view_class_registry(),
         view_state,
     );

@@ -149,6 +149,7 @@ fn test_line_properties() {
     }
 }
 
+#[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
 fn test_line_properties_impl(
     multiple_properties: bool,
     multiple_scalars: bool,
@@ -290,6 +291,7 @@ fn test_point_properties() {
     }
 }
 
+#[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
 fn test_point_properties_impl(
     multiple_properties: bool,
     multiple_scalars: bool,

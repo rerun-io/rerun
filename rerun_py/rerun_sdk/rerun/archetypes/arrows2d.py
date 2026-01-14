@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .arrows2d_ext import Arrows2DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Arrows2D"]
 
 
 @define(str=False, repr=False, init=False)
-class Arrows2D(Arrows2DExt, Archetype):
+class Arrows2D(Arrows2DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: 2D arrows with optional colors, radii, labels, etc.
 
@@ -362,3 +363,7 @@ class Arrows2D(Arrows2DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Arrows2D", overrides=self.as_component_batches(), mappings=None)

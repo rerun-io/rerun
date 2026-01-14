@@ -1,16 +1,13 @@
 use anyhow::Context as _;
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::archetypes::{DepthImage, Image};
+use re_sdk_types::archetypes::{CoordinateFrame, DepthImage, Image};
 use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
-
-/// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
-#[derive(Default)]
-pub struct ImageSchemaPlugin;
 
 pub struct ImageMessageParser {
     /// The raw image data blobs.
@@ -19,6 +16,7 @@ pub struct ImageMessageParser {
     blobs: Vec<Vec<u8>>,
     image_formats: Vec<ImageFormat>,
     is_depth_image: bool,
+    frame_ids: Vec<String>,
 }
 
 impl Ros2MessageParser for ImageMessageParser {
@@ -27,6 +25,7 @@ impl Ros2MessageParser for ImageMessageParser {
             blobs: Vec::with_capacity(num_rows),
             image_formats: Vec::with_capacity(num_rows),
             is_depth_image: false,
+            frame_ids: Vec::with_capacity(num_rows),
         }
     }
 }
@@ -49,6 +48,8 @@ impl MessageParser for ImageMessageParser {
             header.stamp.as_nanos() as u64,
         ));
 
+        self.frame_ids.push(header.frame_id);
+
         let dimensions = [width, height];
         let img_format = decode_image_format(&encoding, dimensions)
             .with_context(|| format!("Failed to decode image format for encoding '{encoding}' with dimensions {width}x{height}"))?;
@@ -69,12 +70,13 @@ impl MessageParser for ImageMessageParser {
             blobs,
             image_formats,
             is_depth_image,
+            frame_ids,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let chunk_components: Vec<_> = if is_depth_image {
+        let mut chunk_components: Vec<_> = if is_depth_image {
             DepthImage::update_fields()
                 .with_many_buffer(blobs)
                 .with_many_format(image_formats)
@@ -87,6 +89,15 @@ impl MessageParser for ImageMessageParser {
                 .columns_of_unit_batches()?
                 .collect()
         };
+
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (see also camera info parser).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids);
+        chunk_components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(image_plane_frame_ids)
+                .columns_of_unit_batches()?,
+        );
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),

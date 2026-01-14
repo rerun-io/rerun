@@ -90,8 +90,8 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Archetype,
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
-built-in support. See [Entities and Components](../../concepts/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
+built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
+[Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
@@ -105,7 +105,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../concepts/entity-component.md).",
+on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).",
                 &components,
             ),
             (

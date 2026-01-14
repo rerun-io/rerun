@@ -102,8 +102,4 @@ impl<S: LogSink> LogSink for LensesSink<S> {
     ) -> Result<(), crate::sink::SinkFlushError> {
         self.sink.flush_blocking(timeout)
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

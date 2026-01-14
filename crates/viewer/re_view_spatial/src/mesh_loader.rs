@@ -79,6 +79,7 @@ impl LoadedMesh {
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
 
         let mut cpu_model = match media_type.as_str() {
+            MediaType::DAE => re_renderer::importer::dae::load_dae_from_buffer(bytes, render_ctx)?,
             MediaType::GLTF | MediaType::GLB => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }

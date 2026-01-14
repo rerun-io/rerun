@@ -130,7 +130,7 @@ jobs:
               compat="manylinux_2_28"
               ;;
             macos-arm64)
-              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-26-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               compat="manylinux_2_28"
@@ -204,7 +204,7 @@ jobs:
 
       - name: Build
         run: |
-          pixi run python scripts/ci/build_and_upload_wheels.py \
+          pixi run uvpy scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
@@ -227,7 +227,7 @@ jobs:
         run: |
           rm -rf dist
           pixi run js-build-base
-          pixi run python scripts/ci/build_and_upload_rerun_notebook.py \
+          pixi run uvpy scripts/ci/build_and_upload_rerun_notebook.py \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
 
       - name: Save rerun_notebook wheel artifact

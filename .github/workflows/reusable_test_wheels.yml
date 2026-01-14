@@ -95,7 +95,7 @@ jobs:
               container="null"
               ;;
             macos-arm64)
-              runner="macos-15-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
+              runner="macos-26-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
               container="null"
               ;;
@@ -109,7 +109,7 @@ jobs:
 
   test-wheels:
     name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     needs: [set-config]
 
@@ -150,8 +150,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          # Only has the deps for round-trips. Not all examples.
-          environments: wheel-test-min
 
       - name: Download Wheel
         uses: actions/download-artifact@v4
@@ -161,50 +159,48 @@ jobs:
 
       - name: Get version
         id: get-version
-        run: pixi run -e wheel-test-min 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
+        run: pixi run 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
-          pixi list -e wheel-test-min | grep rerun_sdk
-          pixi run -e wheel-test-min python -m rerun --version
-          pixi run -e wheel-test-min which rerun
-          pixi run -e wheel-test-min rerun-from-path  --version
+          pixi run uv pip show rerun-sdk
+          pixi run uvpy -m rerun --version
 
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         # Workaround for OpenCV TLS issue, see https://github.com/opencv/opencv/issues/14884#issuecomment-815632861
-        run: cd rerun_py/tests && LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1 pixi run -e wheel-test-min pytest -c ../pyproject.toml
+        run: LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1 pixi run py-test-no-build
 
       - name: Run unit tests
         if: ${{ inputs.PLATFORM != 'linux-arm64' }}
-        run: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
+        run: pixi run py-test-no-build
 
       - name: Run e2e test
-        run: RUST_LOG=debug pixi run -e wheel-test-min python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug pixi run uvpy scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
         # Only check that the release checklist executes successfully
-        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run -e wheel-test-min python tests/python/release_checklist/main.py --stdout > /dev/null
+        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run uvpy tests/python/release_checklist/main.py --stdout > /dev/null
 
       - name: Build C++ snippets
         if: ${{ !inputs.FAST }}
         # Separated out of compare_snippet_output.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min cpp-build-snippets
+        run: pixi run cpp-build-snippets
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: RUST_LOG=debug pixi run -e wheel-test-min python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
+        run: RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
 
       - name: Check the python library signatures
-        run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py
+        run: pixi run py-check-signatures
 
       - name: Report disk usage
         if: always() # Run this even if a previous step fails.

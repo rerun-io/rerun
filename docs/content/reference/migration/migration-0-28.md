@@ -215,6 +215,17 @@ Key migration patterns:
 - Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
 - Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame <!-- NOLINT -->
 
+The `DataFrame` created by `reader()` now supports server side filtering for segment IDs and time indices.
+These can cause significant performance enhancements for some queries. Any filters involving these columns
+should occur immediately after the creation of the `DataFrame` to ensure they are properly pushed down to
+the server.
+
+```python
+df = view.reader(index="log_tick").filter(
+    (col("rerun_segment_id") == "recording_0") & (col("log_tick") == 123456)
+)
+```
+
 ### Registration and tasks
 
 The dataset segment registration APIs have been consolidated, and return a `RegistrationHandle` specific to the registration process. The more generic `Tasks` object previously used has been removed.
@@ -334,7 +345,7 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     pandas_df = df.to_pandas()
 ```
 
-For more details on the new API, see the [Query data out of Rerun](../../howto/get-data-out.md) guide.
+For more details on the new API, see the [Query data out of Rerun](../../howto/query-and-transform/get-data-out.md) guide.
 
 ### `Recording` moved to `rerun.recording`
 
@@ -355,3 +366,39 @@ The `send_dataframe()` and `send_record_batch()` functions have been moved to th
 |-----------------------------------------|-----------------------------------------|
 | `rr.dataframe.send_dataframe()`         | `rr.send_dataframe()`                   |
 | `rr.dataframe.send_record_batch()`      | `rr.send_record_batch()`                |
+
+## `RecordingStream` now cleans up when going out of scope in Python SDK
+
+`RecordingStream` objects are now cleaned up as they go out of scope. This specifically
+includes flushing and closing the associated sinks.
+
+This may lead to subtle changes in behavior if you are depending on side-effects of a
+a non-global recording stream staying open. The most notable example is the `serve_grpc()`
+sink. [See #12301](https://github.com/rerun-io/rerun/issues/12301) for an example and
+context.
+
+### Motivation
+Consider an example like:
+```python
+
+def create_recording(data, filename):
+    rec = rr.RecordingStream("rerun_example_cleanup")
+    rec.save(filename)
+
+    for event in data:
+        rec.log(...)
+
+def my_app():
+    ...
+
+    create_recording(data1, "data1.rrd")
+    create_recording(data2, "data2.rrd")
+    create_recording(data3, "data3.rrd")
+```
+
+**Before**
+All 3 recording files would stay open and unterminated until the application exit.
+
+**After**
+Now each recording is closed and terminated incrementally as the functions return
+and the RecordingStream objects go out of scope.

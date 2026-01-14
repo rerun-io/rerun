@@ -526,6 +526,7 @@ impl ComponentUiRegistry {
     }
 
     /// Tries to lookup a ui callback with the given constraints.
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn untyped_component_ui_callback(
         &self,
         component_type: ComponentType,
@@ -886,7 +887,9 @@ fn try_deserialize_array<C: re_sdk_types::Component>(
     match deserialized {
         Ok(values) => Some(values),
         Err(err) => {
-            re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
+            re_log::error_once!(
+                "Failed to deserialize component of type {component_type}: {err:#}",
+            );
             None
         }
     }

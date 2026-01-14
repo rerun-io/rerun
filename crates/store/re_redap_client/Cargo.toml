@@ -41,8 +41,10 @@ re_protos.workspace = true
 re_log_channel.workspace = true
 re_uri.workspace = true
 
+ahash.workspace = true
 arrow.workspace = true
 ehttp.workspace = true
+futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 serde.workspace = true

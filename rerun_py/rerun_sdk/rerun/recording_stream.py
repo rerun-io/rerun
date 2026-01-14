@@ -606,6 +606,9 @@ class RecordingStream:
 
         This function returns immediately.
 
+        NOTE: When the `RecordingStream` is disconnected, or otherwise goes out of scope, it will shut down the
+        gRPC server.
+
         Parameters
         ----------
         grpc_port:
@@ -665,7 +668,7 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
-    def send_recording(self, recording: rr.dataframe.Recording) -> None:
+    def send_recording(self, recording: rr.recording.Recording) -> None:
         """
         Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 

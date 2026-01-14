@@ -59,13 +59,13 @@ jobs:
     strategy:
       matrix:
         runs_on:
-          [ubuntu-latest-16-cores, macos-15-large, windows-latest-8-cores]
+          [ubuntu-latest-16-cores, macos-26-xlarge, windows-latest-8-cores]
     runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.88.0
+          toolchain: 1.90.0
 
       - run: cargo build -p rerun # Intentionally NOT using pixi, because we wanna check that we can build outside of pixi
 

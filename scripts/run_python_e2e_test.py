@@ -44,22 +44,26 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        "examples/python/minimal_options",
-        "examples/python/multithreading",
-        "examples/python/plots",
+        "minimal_options",
+        "multithreading",
+        "plots",
     ]
 
     if not parser.parse_args().no_install:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["pip", "install"]
+        # It's important we use --inexact and --no-install-package here to avoid
+        # reinstalling rerun-sdk and potentially messing up the. Environment
+        # This script is sometimes used in CI where rerun-sdk is already installed
+        # from wheel, using the `--no-build` option above.
+        args = ["uv", "sync", "--inexact", "--no-install-package", "rerun-sdk"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
-            args.extend(["-e", example])
+            args.extend(["--package", example])
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
-        print(f"pip install in {elapsed:.1f} seconds")
+        print(f"uv sync in {elapsed:.1f} seconds")
         print()
 
     for example in examples:
@@ -84,11 +88,11 @@ def run_example(example: str, extra_args: list[str]) -> None:
     env["RERUN_STRICT"] = "1"
     env["RERUN_PANIC_ON_WARN"] = "1"
 
-    cmd = ["python", "-m", "rerun", "--port", str(PORT), "--test-receive"]
+    cmd = ["uvpy", "-m", "rerun", "--port", str(PORT), "--test-receive"]
     rerun_process = subprocess.Popen(cmd, env=env)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
-    cmd = ["python", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy", *extra_args]
+    cmd = ["uvpy", "-m", example, "--connect", "--url", f"rerun+http://127.0.0.1:{PORT}/proxy", *extra_args]
     python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")

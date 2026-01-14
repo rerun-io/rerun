@@ -253,7 +253,7 @@ pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> TraceHeade
     }
 
     try_extract(py).unwrap_or_else(|err| {
-        tracing::debug!("Failed to extract trace context: {}", err);
+        tracing::debug!("Failed to extract trace context: {err}");
         TraceHeaders::empty()
     })
 }

@@ -206,6 +206,7 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
 
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
@@ -271,6 +272,14 @@ impl QueryDatasetResponse {
         )
     }
 
+    pub fn field_chunk_byte_len() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_BYTE_LENGTH,
+            DataType::UInt64,
+            false
+        ))
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
@@ -279,6 +288,7 @@ impl QueryDatasetResponse {
             Self::field_chunk_key(),
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
+            Self::field_chunk_byte_len(),
         ]
     }
 
@@ -298,6 +308,7 @@ impl QueryDatasetResponse {
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
+        chunk_byte_lengths: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
         let schema = Arc::new(Self::schema());
 
@@ -310,6 +321,7 @@ impl QueryDatasetResponse {
             Arc::new(BinaryArray::from(chunk_keys)),
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
+            Arc::new(UInt64Array::from(chunk_byte_lengths)),
         ];
 
         RecordBatch::try_new_with_options(
@@ -328,6 +340,7 @@ impl FetchChunksRequest {
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
     pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
+    pub const FIELD_CHUNK_BYTE_LENGTH: &str = QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH;
 
     pub fn required_column_names() -> Vec<String> {
         vec![
@@ -336,6 +349,7 @@ impl FetchChunksRequest {
             Self::FIELD_CHUNK_ID.to_owned(),
             Self::FIELD_CHUNK_SEGMENT_ID.to_owned(),
             Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
+            Self::FIELD_CHUNK_BYTE_LENGTH.to_owned(),
         ]
     }
 
@@ -761,7 +775,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub provider_details: ProviderDetails,
+    pub provider_details: Option<ProviderDetails>,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
@@ -770,7 +784,10 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some((&value.provider_details).try_into()?),
+            provider_details: value
+                .provider_details
+                .map(|d| (&d).try_into())
+                .transpose()?,
         })
     }
 }
@@ -789,12 +806,10 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
-                missing_field!(
-                    crate::cloud::v1alpha1::CreateTableEntryRequest,
-                    "provider_details"
-                ),
-            )?)?,
+            provider_details: value
+                .provider_details
+                .map(|v| ProviderDetails::try_from(&v))
+                .transpose()?,
         })
     }
 }
@@ -1328,7 +1343,6 @@ pub struct Query {
     pub latest_at: Option<QueryLatestAt>,
     pub range: Option<QueryRange>,
     pub columns_always_include_everything: bool,
-    pub columns_always_include_chunk_ids: bool,
     pub columns_always_include_byte_offsets: bool,
     pub columns_always_include_entity_paths: bool,
     pub columns_always_include_static_indexes: bool,
@@ -1401,7 +1415,6 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
             latest_at,
             range,
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,
@@ -1424,7 +1437,6 @@ impl From<Query> for crate::cloud::v1alpha1::Query {
                 index_range: Some(range.index_range.into()),
             }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
-            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
                 .columns_always_include_component_indexes,
             columns_always_include_entity_paths: value.columns_always_include_entity_paths,
@@ -2514,6 +2526,7 @@ mod tests {
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
+        let chunk_byte_lengths = vec![1024u64, 2048u64];
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
@@ -2522,6 +2535,7 @@ mod tests {
             chunk_keys,
             chunk_entity_paths,
             chunk_is_static,
+            chunk_byte_lengths,
         )
         .unwrap();
     }

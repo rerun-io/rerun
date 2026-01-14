@@ -16,13 +16,14 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TextLog"]
 
 
 @define(str=False, repr=False, init=False)
-class TextLog(Archetype):
+class TextLog(Archetype, VisualizableArchetype):
     """
     **Archetype**: A log entry in a text log, comprised of a text body and its log level.
 
@@ -251,3 +252,7 @@ class TextLog(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("TextLog", overrides=self.as_component_batches(), mappings=None)

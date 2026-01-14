@@ -692,19 +692,6 @@ impl ViewClass for TimeSeriesView {
                 }
             }
 
-            let time_float_offset_id = plot_id.with("time_float_offset");
-            // Since we store the x-axis view range with integers we want to store an extra temporary float offset for the view.
-            let plot_x_range = ui
-                .ctx()
-                .memory(|mem| mem.data.get_temp::<Range1D>(time_float_offset_id))
-                .map(|offset| {
-                    Range1D::new(
-                        x_range.start() + offset.start(),
-                        x_range.end() + offset.end(),
-                    )
-                })
-                .unwrap_or(x_range);
-
             let mut plot_double_clicked = false;
             let egui_plot::PlotResponse {
                 inner: _,
@@ -726,7 +713,7 @@ impl ViewClass for TimeSeriesView {
 
                 // Let the user pick x and y ranges from the blueprint:
                 plot_ui.set_plot_bounds_y(y_range);
-                plot_ui.set_plot_bounds_x(plot_x_range);
+                plot_ui.set_plot_bounds_x(x_range);
 
                 // Needed by for the visualizers' fallback provider.
                 state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -792,15 +779,6 @@ impl ViewClass for TimeSeriesView {
                     let new_x_range = transform_axis_range(transform, 0);
                     let new_x_range_rounded =
                         Range1D::new(new_x_range.start().round(), new_x_range.end().round());
-                    ui.ctx().memory_mut(|m| {
-                        m.data.insert_temp(
-                            time_float_offset_id,
-                            Range1D::new(
-                                new_x_range.start() - new_x_range_rounded.start(),
-                                new_x_range.end() - new_x_range_rounded.end(),
-                            ),
-                        );
-                    });
 
                     let new_view_time_range =
                         re_sdk_types::blueprint::components::TimeRange(TimeRange {

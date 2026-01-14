@@ -1,3 +1,4 @@
+#![expect(clippy::fn_params_excessive_bools)] // We used named arguments, so this is fine
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 
@@ -38,7 +39,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
-use crate::dataframe::PyRecording;
+use crate::recording::PyRecording;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -250,8 +251,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
-    // dataframes
-    crate::dataframe::register(m)?;
+    // recording
+    crate::recording::register(m)?;
 
     // catalog
     crate::catalog::register(py, m)?;
@@ -261,6 +262,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // server
     crate::server::register(py, m)?;
+
+    // urdf
+    crate::urdf::register(py, m)?;
 
     Ok(())
 }

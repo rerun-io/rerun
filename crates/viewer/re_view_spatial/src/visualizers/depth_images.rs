@@ -15,6 +15,7 @@ use re_viewer_context::{
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
@@ -34,7 +35,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(None),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -118,8 +119,9 @@ pub fn process_depth_image_data(
     if is_3d_view {
         // In 3D views we should show depth images as a depth cloud and no textured rect.
         // For that we need a pinhole at or above that entity in the transform tree.
-        if let Some(pinhole_tree_root_info) =
-            transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
+        let tree_root_frame = ent_context.transform_info.tree_root();
+        if let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(tree_root_frame)
+            && let Some(world_from_view) = transforms.target_from_pinhole_root(tree_root_frame)
         {
             let fill_ratio = fill_ratio.unwrap_or_default();
 
@@ -130,6 +132,7 @@ pub fn process_depth_image_data(
                 ent_context,
                 entity_path,
                 pinhole_tree_root_info,
+                world_from_view.as_affine3a(),
                 depth_meter,
                 fill_ratio,
                 &textured_rect.colormapped_texture,
@@ -174,6 +177,7 @@ fn process_entity_view_as_depth_cloud(
     ent_context: &SpatialSceneEntityContext<'_>,
     ent_path: &EntityPath,
     pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
+    world_from_view: glam::Affine3A,
     depth_meter: DepthMeter,
     radius_scale: FillRatio,
     depth_texture: &ColormappedTexture,
@@ -182,9 +186,6 @@ fn process_entity_view_as_depth_cloud(
 
     // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might on the way.
     let pinhole = &pinhole_tree_root_info.pinhole_projection;
-    let world_from_view = pinhole_tree_root_info
-        .parent_root_from_pinhole_root
-        .as_affine3a();
     let world_from_rdf =
         world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
 
@@ -350,10 +351,6 @@ impl VisualizerSystem for DepthImageVisualizer {
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 

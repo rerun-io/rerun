@@ -9,7 +9,7 @@
 //! This is a pretty heavy shader though, so the overhead is minimal.
 //!
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
-//! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
+//! behaves pretty much exactly like our point cloud renderer (see [`crate::renderer::point_cloud`]).
 
 use itertools::Itertools as _;
 use smallvec::smallvec;

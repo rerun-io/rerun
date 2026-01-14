@@ -628,6 +628,7 @@ impl Renderer for MeshRenderer {
 }
 
 /// Determines which draw phases an mesh instance participates in.
+#[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
 fn instance_draw_phases(
     instance: &GpuMeshInstance,
     any_material_transparent: bool,

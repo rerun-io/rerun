@@ -1,19 +1,17 @@
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::archetypes::{CoordinateFrame, Pinhole};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
+use super::super::util::suffix_image_plane_frame_ids;
 use crate::Error;
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};
 
-/// Plugin that parses `sensor_msgs/msg/CameraInfo` messages.
-#[derive(Default)]
-pub struct CameraInfoSchemaPlugin;
-
 pub struct CameraInfoMessageParser {
     image_from_cameras: Vec<[f32; 9]>,
     resolutions: Vec<(f32, f32)>,
+    frame_ids: Vec<String>,
 }
 
 impl Ros2MessageParser for CameraInfoMessageParser {
@@ -21,6 +19,7 @@ impl Ros2MessageParser for CameraInfoMessageParser {
         Self {
             image_from_cameras: Vec::with_capacity(num_rows),
             resolutions: Vec::with_capacity(num_rows),
+            frame_ids: Vec::with_capacity(num_rows),
         }
     }
 }
@@ -39,6 +38,8 @@ impl MessageParser for CameraInfoMessageParser {
         ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             header.stamp.as_nanos() as u64,
         ));
+
+        self.frame_ids.push(header.frame_id);
 
         // ROS2 stores the intrinsic matrix K as a row-major 9-element array:
         // [fx, 0, cx, 0, fy, cy, 0, 0, 1]
@@ -67,21 +68,37 @@ impl MessageParser for CameraInfoMessageParser {
         let Self {
             image_from_cameras,
             resolutions,
+            frame_ids,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
+        // We need a frame ID for the image plane. This doesn't exist in ROS,
+        // so we use the camera frame ID with a suffix here (and in the image parsers).
+        let image_plane_frame_ids = suffix_image_plane_frame_ids(frame_ids.clone());
+
+        let mut components: Vec<_> = Pinhole::update_fields()
+            .with_many_image_from_camera(image_from_cameras)
+            .with_many_resolution(resolutions)
+            .with_many_parent_frame(frame_ids.clone())
+            .with_many_child_frame(image_plane_frame_ids)
+            .columns_of_unit_batches()
+            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
+            .collect();
+
+        components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()
+                .map_err(|err| Error::Other(anyhow::anyhow!(err)))?,
+        );
+
         let pinhole_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             timelines.clone(),
-            Pinhole::update_fields()
-                .with_many_image_from_camera(image_from_cameras)
-                .with_many_resolution(resolutions)
-                .columns_of_unit_batches()
-                .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
-                .collect(),
+            components.into_iter().collect(),
         )?;
 
         Ok(vec![pinhole_chunk])

@@ -218,6 +218,12 @@ impl StoreHub {
         &self.store_bundle
     }
 
+    /// All the loaded recordings and blueprints.
+    #[inline]
+    pub fn store_bundle_mut(&mut self) -> &mut StoreBundle {
+        &mut self.store_bundle
+    }
+
     /// Get a read-only [`StorageContext`] and optionally a [`StoreContext`] (if available) from the [`StoreHub`].
     ///
     /// All of the returned references to blueprints and recordings will have a
@@ -932,6 +938,8 @@ impl StoreHub {
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
                     furthest_from: None,
+                    // There is no point in keeping old virtual indices for blueprint data.
+                    perform_deep_deletions: true,
                 });
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");

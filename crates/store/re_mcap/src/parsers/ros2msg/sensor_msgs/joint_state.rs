@@ -1,21 +1,18 @@
 use re_chunk::external::arrow::array::{Float64Builder, ListBuilder, StringBuilder};
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::archetypes::{Scalars, SeriesLines};
+use re_sdk_types::archetypes::{CoordinateFrame, Scalars, SeriesLines};
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
 use crate::Error;
 use crate::parsers::{MessageParser, ParserContext, cdr};
 
-/// Plugin that parses `sensor_msgs/msg/JointState` messages.
-#[derive(Default)]
-pub struct JointStateSchemaPlugin;
-
 pub struct JointStateMessageParser {
     joint_names: ListBuilder<StringBuilder>,
     positions: ListBuilder<Float64Builder>,
     velocities: ListBuilder<Float64Builder>,
     efforts: ListBuilder<Float64Builder>,
+    frame_ids: ListBuilder<StringBuilder>,
 }
 
 impl Ros2MessageParser for JointStateMessageParser {
@@ -25,6 +22,7 @@ impl Ros2MessageParser for JointStateMessageParser {
             positions: ListBuilder::with_capacity(Float64Builder::new(), num_rows),
             velocities: ListBuilder::with_capacity(Float64Builder::new(), num_rows),
             efforts: ListBuilder::with_capacity(Float64Builder::new(), num_rows),
+            frame_ids: ListBuilder::with_capacity(StringBuilder::new(), num_rows),
         }
     }
 }
@@ -44,6 +42,9 @@ impl MessageParser for JointStateMessageParser {
         ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             header.stamp.as_nanos() as u64,
         ));
+
+        self.frame_ids.values().append_value(header.frame_id);
+        self.frame_ids.append(true);
 
         for name in &name {
             self.joint_names.values().append_value(name);
@@ -71,6 +72,7 @@ impl MessageParser for JointStateMessageParser {
             mut positions,
             mut velocities,
             mut efforts,
+            mut frame_ids,
         } = *self;
 
         let names_components = joint_names.finish();
@@ -102,7 +104,7 @@ impl MessageParser for JointStateMessageParser {
         let efforts_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone() / "effort",
-            timelines,
+            timelines.clone(),
             [
                 (Scalars::descriptor_scalars(), efforts.finish()),
                 (SeriesLines::descriptor_names(), names_components.clone()),
@@ -111,6 +113,18 @@ impl MessageParser for JointStateMessageParser {
             .collect(),
         )?;
 
-        Ok(vec![positions_chunk, velocities_chunk, efforts_chunk])
+        let frame_ids_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            timelines,
+            std::iter::once((CoordinateFrame::descriptor_frame(), frame_ids.finish())).collect(),
+        )?;
+
+        Ok(vec![
+            positions_chunk,
+            velocities_chunk,
+            efforts_chunk,
+            frame_ids_chunk,
+        ])
     }
 }

@@ -908,16 +908,14 @@ fn update_overrides(
                     ctx.indicated_entities_per_visualizer,
                 );
 
-                if let Some(timeline) = ctx.time_ctrl.timeline() {
-                    resolver.update_overrides(
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                        timeline,
-                        ctx.view_class_registry,
-                        &mut query_result,
-                        view_state,
-                    );
-                }
+                resolver.update_overrides(
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                    ctx.time_ctrl.timeline(),
+                    ctx.view_class_registry,
+                    &mut query_result,
+                    view_state,
+                );
 
                 (view.id, query_result)
             },

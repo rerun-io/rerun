@@ -6,9 +6,8 @@ namespace rerun.archetypes;
 table TransformAxes3D (
   "attr.docs.category": "Transforms",
   "attr.docs.view_types": "Spatial3DView",
-  "attr.docs.unreleased",
   "attr.rerun.state": "stable",
-  "attr.rerun.visualizer": "Transform3DArrows",
+  "attr.rerun.visualizer": "TransformAxes3D",
   "attr.rust.derive": "PartialEq"
 ) {
   /// Visual length of the 3 axes.

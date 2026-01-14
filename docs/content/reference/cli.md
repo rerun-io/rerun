@@ -1,6 +1,6 @@
 ---
-title: CLI manual
-order: 250
+title: ⌨️ CLI manual
+order: 1150
 ---
 
 ## rerun
@@ -655,8 +655,8 @@ In-memory Rerun data server.
 
 **Options**
 
-* `--addr <ADDR>`
-> Address to listen on.
+* `--host <HOST>`
+> IP address to listen on.
 >
 > [Default: `0.0.0.0`]
 
@@ -670,6 +670,11 @@ In-memory Rerun data server.
 
 * `-t, --table <[NAME=]TABLE_PATH>`
 > Load a lance file as a table (can be specified multiple times). You can specify only a path or provide a name such as `-t my_table=./path/to/table`.
+
+* `--latency-ms <LATENCY_MS>`
+> Artificial latency to add to each request (in milliseconds).
+>
+> [Default: `0`]
 
 * `-V, --version `
 > Print version.

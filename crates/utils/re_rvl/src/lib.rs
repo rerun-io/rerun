@@ -133,20 +133,22 @@ pub fn decode_rvl_with_quantization(
     let disparity = decode_rvl_without_quantization(data, metadata)?;
     let mut depth = Vec::with_capacity(disparity.len());
 
-    // ROS2's compressed_depth_image_transport sets inverse depth quantization parameters
-    // only for 32FC1 images. For 16UC1, depth_quant_a/b are zero.
+    // ROS2's compressed_depth_image_transport sets inverse depth quantization parameters only for 32FC1 images.
+    // For 16UC1, depth_quant_a/b are zero and zeros in the disparity map represent zero depth.
     // https://github.com/ros-perception/image_transport_plugins/blob/8aa39fe13a812273066bbef9b3c330508bd21618/compressed_depth_image_transport/src/codec.cpp#L263
     let has_quantization = metadata.depth_quant_a != 0.0;
 
-    for value in disparity {
-        if value == 0 {
-            depth.push(f32::NAN);
-        } else if has_quantization {
-            let quantized = value as f32;
-            depth.push(metadata.depth_quant_a / (quantized - metadata.depth_quant_b));
-        } else {
-            depth.push(value as f32);
+    if has_quantization {
+        for value in disparity {
+            if value == 0 {
+                depth.push(f32::NAN);
+            } else {
+                let quantized = value as f32;
+                depth.push(metadata.depth_quant_a / (quantized - metadata.depth_quant_b));
+            }
         }
+    } else {
+        depth.extend(disparity.into_iter().map(|value| value as f32));
     }
     Ok(depth)
 }
@@ -290,6 +292,19 @@ mod tests {
         assert!((decoded[0] - 2.5).abs() < 1e-6);
         assert!(decoded[1].is_nan());
         assert!((decoded[2] - (10.0 / 9.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn decodes_rvl_with_quantization_when_parameters_zero() {
+        let disparity = [0u16, 1200, 0];
+        let quant_params = (0.0, 0.0);
+        let data = build_depth_message([3, 1], &disparity, quant_params);
+        let metadata = RosRvlMetadata::parse(&data).unwrap();
+        let decoded = decode_rvl_with_quantization(&data, &metadata).unwrap();
+        assert!(!decoded[0].is_nan());
+        assert_eq!(decoded[0], 0.0);
+        assert_eq!(decoded[1], 1200.0);
+        assert_eq!(decoded[2], 0.0);
     }
 
     fn build_depth_message(

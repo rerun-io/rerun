@@ -1,10 +1,10 @@
 //! Test child-parent transform relations all logged at the same time stamp.
 
-use re_log_types::{TimePoint, Timeline};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_sdk_types::datatypes::Angle;
-use re_sdk_types::{archetypes, components};
+use re_sdk_types::{archetypes, blueprint, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -198,4 +198,60 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity_with_coo
         });
     test_harness.run();
     test_harness.snapshot("transform_many_child_parent_relations_on_single_time_and_entity_with_coordinate_frame_overrides");
+}
+
+/// Tests correct display of transform axes for transformations that have a set child frame.
+#[test]
+fn test_transform_axes_for_explicit_transforms() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
+
+    // Everything on the same timestamp!
+    let timeline = Timeline::new_sequence("time");
+    let time = TimePoint::from([(timeline, 0)]);
+
+    log_transforms(&mut test_context, &time);
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline(*timeline.name()),
+            TimeControlCommand::SetTime(0.into()),
+        ],
+    );
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_blueprint =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
+
+        let view_id = view_blueprint.id;
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        setup_camera(ctx, view_id);
+
+        // Override (set) the `TransformAxes3DVisualizer`
+        let transforms_override_path = ViewContents::override_path_for_entity(
+            view_id,
+            &EntityPath::from("all_the_transforms"),
+        );
+        ctx.save_blueprint_archetype(
+            transforms_override_path.clone(),
+            &blueprint::archetypes::VisualizerOverrides::new([
+                // TODO(RR-3153): remove the `as_str()`.
+                archetypes::TransformAxes3D::visualizer().as_str(),
+            ]),
+        );
+        ctx.save_blueprint_archetype(
+            transforms_override_path,
+            &archetypes::TransformAxes3D::new(1.0).with_show_frame(true),
+        );
+
+        view_id
+    });
+
+    let mut test_harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    test_harness.run();
+    test_harness.snapshot("transform_axes_for_explicit_transforms");
 }

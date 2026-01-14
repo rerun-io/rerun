@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
@@ -21,7 +22,7 @@ __all__ = ["Image"]
 
 
 @define(str=False, repr=False, init=False)
-class Image(ImageExt, Archetype):
+class Image(ImageExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A monochrome or color image.
 
@@ -295,3 +296,9 @@ class Image(ImageExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Image", overrides=self.as_component_batches(), mappings=None)
+
+    # __array__ can be found in image_ext.py

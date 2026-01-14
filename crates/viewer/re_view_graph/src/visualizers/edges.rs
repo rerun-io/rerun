@@ -111,8 +111,4 @@ impl VisualizerSystem for EdgesVisualizer {
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

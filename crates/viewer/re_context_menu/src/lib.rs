@@ -336,7 +336,7 @@ trait ContextMenuAction {
     ///
     /// The default implementation delegates to [`Self::label`].
     ///
-    /// Note: this is run from inside a [`egui::Response.context_menu()`] closure and must call
+    /// Note: this is run from inside a [`egui::Response::context_menu()`] closure and must call
     /// [`Self::process_selection`] when triggered by the user.
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) -> egui::Response {
         let label = self.label(ctx);

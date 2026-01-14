@@ -256,7 +256,12 @@ fn decode_rvl_depth(
     ))
 }
 
-impl Cache for ImageDecodeCache {
+impl Cache for ImageDecodeCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    ImageInfo: Send + Sync,
+    ImageLoadError: Send + Sync,
+{
     fn begin_frame(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         let max_decode_cache_use = 4_000_000_000;
@@ -328,10 +333,6 @@ impl Cache for ImageDecodeCache {
         let cache_key_removed = filter_blob_removed_events(events);
         self.cache
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 }
 

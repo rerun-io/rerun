@@ -122,7 +122,7 @@ pub trait UiExt {
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
         let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);
@@ -519,6 +519,7 @@ pub trait UiExt {
     /// Display content under a header that is conditionally collapsible. If `collapsing` is `true`,
     /// this is equivalent to [`Self::collapsing_header`]. If `collapsing` is `false`, the content
     /// is displayed under a static, non-collapsible header.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn maybe_collapsing_header<R>(
         &mut self,
 
@@ -1119,7 +1120,7 @@ pub trait UiExt {
 
             response
         })
-        .response
+        .inner
     }
 
     /// Show some close/maximize/minimize buttons for the native window.

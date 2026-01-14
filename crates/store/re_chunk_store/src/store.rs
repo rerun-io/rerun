@@ -2,8 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
+use ahash::HashSet;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
+use parking_lot::RwLock;
+
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
@@ -236,10 +239,13 @@ pub struct ChunkIdSetPerTime {
     /// This is used to bound the backwards linear walk when looking for overlapping chunks in
     /// latest-at queries.
     ///
+    /// This is purely additive: this value is never decremented for any reason, whether it's GC,
+    /// chunk splitting, or whatever else.
+    ///
     /// See [`ChunkStore::latest_at`] implementation comments for more details.
     pub(crate) max_interval_length: u64,
 
-    /// [`ChunkId`]s organized by their _most specific_ start time.
+    /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ start time.
     ///
     /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
     /// was instantiated, e.g.:
@@ -248,9 +254,12 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
+    ///
+    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
+    /// will never remove values from this set.
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
 
-    /// [`ChunkId`]s organized by their _most specific_ end time.
+    /// *Both physical & virtual* [`ChunkId`]s organized by their _most specific_ end time.
     ///
     /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
     /// was instantiated, e.g.:
@@ -259,6 +268,9 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
     ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
+    ///
+    /// This index includes virtual/offloaded chunks, and therefore is purely additive: garbage collection
+    /// will never remove values from this set.
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
@@ -402,11 +414,15 @@ pub struct ChunkStore {
 
     /// Keeps track of the _latest_ datatype for each time column.
     ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    ///
     /// See also [`Self::time_column_type`].
     pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
 
     /// Keeps track of the _latest_ datatype information for all component types that have been written
     /// to the store so far.
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
     ///
     /// See also [`Self::lookup_datatype`].
     //
@@ -420,14 +436,36 @@ pub struct ChunkStore {
         IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
+    /// All the *physical* chunks currently loaded in the store, mapped by their respective IDs.
+    ///
+    /// Physical chunks are chunks that are actively loaded into the store's volatile memory.
+    ///
+    /// During garbage collection, physical chunks are offloaded from memory and become virtual
+    /// chunks instead. At the same time, their IDs are removed from this set, which is how we
+    /// distinguish virtual from physical chunks.
+    ///
+    /// Virtual chunks are still indexed by the store, but querying for them will not yield any data,
+    /// just hints that some data is missing and must first be re-inserted by the caller.
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
-    /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
+    /// All *physical* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in
+    /// each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
+    ///
+    /// During garbage collection, physical chunks are offloaded from memory and become virtual
+    /// chunks instead. At the same time, their IDs are removed from this set, which is how we
+    /// distinguish virtual from physical chunks.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
+    /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, further
+    /// indexed by [`ComponentIdentifier`].
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    /// This implies that the chunk IDs present in this set might be either physical/loaded or
+    /// virtual/offloaded.
+    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
+    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
@@ -435,17 +473,27 @@ pub struct ChunkStore {
     pub(crate) temporal_chunk_ids_per_entity_per_component:
         ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
+    /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, without the
+    /// [`ComponentType`] index.
+    ///
+    /// This index is purely additive: it is never affected by garbage collection in any way.
+    /// This implies that the chunk IDs present in this set might be either physical/loaded or
+    /// virtual/offloaded.
+    /// When leveraging this index, make sure you understand whether you expect loaded chunks,
+    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerTimelinePerEntity,
 
-    /// Accumulated size statitistics for all temporal [`Chunk`]s currently present in the store.
+    /// Accumulated size statitistics for all *physical* temporal [`Chunk`]s currently present in the store.
     ///
-    /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
-    pub(crate) temporal_chunks_stats: ChunkStoreChunkStats,
+    /// This is too costly to be computed from scratch every frame, and therefore materialized here.
+    ///
+    /// *This exclusively covers physical/loaded chunks*. During GC, these statistics are decremented
+    /// as you'd expect.
+    pub(crate) temporal_physical_chunks_stats: ChunkStoreChunkStats,
 
     /// Static data. Never garbage collected.
     ///
@@ -454,10 +502,19 @@ pub struct ChunkStore {
     /// Existing temporal will not be removed. Events won't be fired.
     pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentPerEntity,
 
-    /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
+    /// Accumulated size statitistics for all *physical* static [`Chunk`]s currently present in the store.
     ///
-    /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
+    /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
+
+    /// This keeps track of all missing [`ChunkId`]s.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory. This set is automatically populated anytime that happens.
+    ///
+    /// Calling [`ChunkStore::take_missing_chunk_ids`] will atomically return the contents of this set
+    /// as well as clearing it.
+    pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -499,9 +556,10 @@ impl Clone for ChunkStore {
                 .temporal_chunk_ids_per_entity_per_component
                 .clone(),
             temporal_chunk_ids_per_entity: self.temporal_chunk_ids_per_entity.clone(),
-            temporal_chunks_stats: self.temporal_chunks_stats,
+            temporal_physical_chunks_stats: self.temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
+            missing_chunk_ids: Default::default(),
             insert_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
@@ -518,12 +576,13 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
-            chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
+            chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
-            temporal_chunks_stats,
+            temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
+            missing_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -537,12 +596,12 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "stats: {\n"))?;
         f.write_str(&indent::indent_all_by(
             8,
-            format!("{}", *static_chunks_stats + *temporal_chunks_stats),
+            format!("{}", *static_chunks_stats + *temporal_physical_chunks_stats),
         ))?;
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
-        for chunk_id in chunk_id_per_min_row_id.values() {
+        for chunk_id in chunk_ids_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
@@ -582,9 +641,10 @@ impl ChunkStore {
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
-            temporal_chunks_stats: Default::default(),
+            temporal_physical_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
+            missing_chunk_ids: Default::default(),
             insert_id: 0,
             gc_id: 0,
             event_id: AtomicU64::new(0),
@@ -682,6 +742,26 @@ impl ChunkStore {
             is_tombstone,
             is_semantically_empty: *is_semantically_empty,
         })
+    }
+
+    /// Returns the set of [`ChunkId`]s that were detected as missing since the last time since method was called.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory.
+    ///
+    /// Calling this method is destructive: the internal set is cleared on every call, and will grow back as
+    /// new queries are run.
+    /// Callers are expected to call this once per frame in order to know which chunks were missing during
+    /// the previous frame.
+    pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
+        std::mem::take(&mut self.missing_chunk_ids.write())
+    }
+
+    /// How many missing chunk IDs are currently registered?
+    ///
+    /// See also [`ChunkStore::take_missing_chunk_ids`].
+    pub fn num_missing_chunk_ids(&self) -> usize {
+        self.missing_chunk_ids.read().len()
     }
 }
 

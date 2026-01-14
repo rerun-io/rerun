@@ -1,17 +1,15 @@
-use re_chunk::external::arrow::array::{FixedSizeListBuilder, Float64Builder};
+use re_chunk::external::arrow::array::{
+    FixedSizeListBuilder, Float64Builder, ListBuilder, StringBuilder,
+};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
 use re_sdk_types::ComponentDescriptor;
-use re_sdk_types::archetypes::{Scalars, SeriesLines};
+use re_sdk_types::archetypes::{CoordinateFrame, Scalars, SeriesLines};
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;
 use crate::Error;
 use crate::parsers::{MessageParser, ParserContext, cdr};
-
-/// Plugin that parses `sensor_msgs/msg/Imu` messages.
-#[derive(Default)]
-pub struct ImuSchemaPlugin;
 
 fn fixed_size_list_builder(
     value_length: i32,
@@ -23,6 +21,7 @@ fn fixed_size_list_builder(
 pub struct ImuMessageParser {
     orientation: FixedSizeListBuilder<Float64Builder>,
     sensor_readings: FixedSizeListBuilder<Float64Builder>,
+    frame_ids: ListBuilder<StringBuilder>,
 }
 
 impl ImuMessageParser {
@@ -52,6 +51,7 @@ impl Ros2MessageParser for ImuMessageParser {
         Self {
             orientation: fixed_size_list_builder(4, num_rows),
             sensor_readings: fixed_size_list_builder(6, num_rows),
+            frame_ids: ListBuilder::with_capacity(StringBuilder::new(), num_rows),
         }
     }
 }
@@ -65,6 +65,9 @@ impl MessageParser for ImuMessageParser {
         ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             imu.header.stamp.as_nanos() as u64,
         ));
+
+        self.frame_ids.values().append_value(imu.header.frame_id);
+        self.frame_ids.append(true);
 
         self.orientation.values().append_slice(&[
             imu.orientation.x,
@@ -96,6 +99,7 @@ impl MessageParser for ImuMessageParser {
         let Self {
             mut orientation,
             mut sensor_readings,
+            mut frame_ids,
         } = *self;
 
         let data_chunk = Chunk::from_auto_row_ids(
@@ -113,6 +117,7 @@ impl MessageParser for ImuMessageParser {
                         .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     orientation.finish().into(),
                 ),
+                (CoordinateFrame::descriptor_frame(), frame_ids.finish()),
                 // TODO(#10728): Figure out what to do with the covariance matrices.
             ]
             .into_iter()

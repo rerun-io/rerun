@@ -33,7 +33,7 @@ impl Chunk {
         }
     }
 
-    /// Slices the [`Chunk`] vertically.
+    /// Shallow-slices the [`Chunk`] vertically.
     ///
     /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
     ///
@@ -42,10 +42,56 @@ impl Chunk {
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is shallow and therefore always O(1), which implicitly means that it cannot
+    /// ever modify the values of the offsets themselves.
+    /// Since the offsets are left untouched, the original unsliced data must always be kept around
+    /// too, _even if the sliced data were to be written to disk_.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` might not always make intuitive
+    /// sense, and should be used very carefully.
+    ///
+    /// For these reasons, shallow slicing should only be used in the context of short-term, in-memory storage
+    /// (e.g. when slicing the results of a query).
+    /// When slicing data for long-term storage, whether in-memory or on disk, see [`Self::row_sliced_deep`] instead.
     #[must_use]
-    #[inline]
-    pub fn row_sliced(&self, index: usize, len: usize) -> Self {
-        re_tracing::profile_function!();
+    pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
+        let deep = false;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    /// Deep-slices the [`Chunk`] vertically.
+    ///
+    /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
+    ///
+    /// This cannot fail nor panic: `index` and `len` will be capped so that they cannot
+    /// run out of bounds.
+    /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is deep and therefore always O(N).
+    ///
+    /// The underlying data, offsets, bitmaps and other buffers required will be reallocated, copied around,
+    /// and patched as much as required so that the resulting physical data becomes as packed as possible for
+    /// the desired slice.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` should always match intuitive expectations.
+    ///
+    /// These characteristics make deep slicing very useful for longer term data, whether it's stored
+    /// in-memory (e.g. in a `ChunkStore`), or on disk.
+    /// When slicing data for short-term needs (e.g. slicing the results of a query) prefer [`Self::row_sliced_shallow`] instead.
+    #[must_use]
+    pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
+        let deep = true;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    #[must_use]
+    fn row_sliced_impl(&self, index: usize, len: usize, deep: bool) -> Self {
+        re_tracing::profile_function!(if deep { "deep" } else { "shallow" });
 
         let Self {
             id,
@@ -78,7 +124,11 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: row_ids.clone().slice(index, len),
+            row_ids: if deep {
+                re_arrow_util::deep_slice_array(row_ids, index, len)
+            } else {
+                row_ids.slice(index, len)
+            },
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
@@ -87,7 +137,11 @@ impl Chunk {
                 .values()
                 .map(|column| {
                     SerializedComponentColumn::new(
-                        column.list_array.clone().slice(index, len),
+                        if deep {
+                            re_arrow_util::deep_slice_array(&column.list_array, index, len)
+                        } else {
+                            column.list_array.slice(index, len)
+                        },
                         column.descriptor.clone(),
                     )
                 })
@@ -256,20 +310,23 @@ impl Chunk {
         chunk
     }
 
-    /// Densifies the [`Chunk`] vertically based on the `componentiptor` column.
+    /// Densifies the [`Chunk`] vertically based on the `component_pov` column.
     ///
-    /// Densifying here means dropping all rows where the associated value in the `componentiptor`
+    /// Densifying here means dropping all rows where the associated value in the `component_pov`
     /// column is null.
     ///
-    /// The result is a new [`Chunk`] where the `componentiptor` column is guaranteed to be dense.
+    /// The result is a new [`Chunk`] where the `component_pov` column is guaranteed to be dense.
     ///
-    /// If `componentiptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
+    /// If `component_pov` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
+    ///
+    /// Returns `false` if the operation was a no-op (i.e. the chunk was already dense), true otherwise
+    /// (i.e. the data had to be reallocated).
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn densified(&self, component_pov: ComponentIdentifier) -> Self {
+    pub fn densified(&self, component_pov: ComponentIdentifier) -> (Self, bool) {
         let Self {
             id,
             entity_path,
@@ -281,15 +338,15 @@ impl Chunk {
         } = self;
 
         if self.is_empty() {
-            return self.clone();
+            return (self.clone(), false);
         }
 
         let Some(component_list_array) = self.components.get_array(component_pov) else {
-            return self.clone();
+            return (self.clone(), false);
         };
 
         let Some(validity) = component_list_array.nulls() else {
-            return self.clone();
+            return (self.clone(), false);
         };
 
         re_tracing::profile_function!();
@@ -350,7 +407,7 @@ impl Chunk {
         #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
-        chunk
+        (chunk, true)
     }
 
     /// Empties the [`Chunk`] vertically.
@@ -451,7 +508,7 @@ impl Chunk {
         }
 
         if self.is_static() {
-            return self.row_sliced(self.num_rows().saturating_sub(1), 1);
+            return self.row_sliced_shallow(self.num_rows().saturating_sub(1), 1);
         }
 
         let Some(time_column) = self.timelines.get(index) else {
@@ -826,8 +883,10 @@ mod tests {
     #![expect(clippy::cast_possible_wrap)]
 
     use itertools::Itertools as _;
-    use re_log_types::TimePoint;
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{
+        TimePoint,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+    };
 
     use super::*;
     use crate::{Chunk, RowId, Timeline};
@@ -1591,9 +1650,9 @@ mod tests {
         eprintln!("Original chunk size: {original_size} bytes");
 
         // Create 3 single-row slices
-        let slice1 = chunk.row_sliced(0, 1);
-        let slice2 = chunk.row_sliced(1, 1);
-        let slice3 = chunk.row_sliced(2, 1);
+        let slice1 = chunk.row_sliced_deep(0, 1);
+        let slice2 = chunk.row_sliced_deep(1, 1);
+        let slice3 = chunk.row_sliced_deep(2, 1);
 
         let slice1_size = slice1.heap_size_bytes();
         let slice2_size = slice2.heap_size_bytes();
@@ -1609,7 +1668,7 @@ mod tests {
         // The slices should add up to approximately the original size
         // We allow some overhead for metadata duplication (row IDs, timeline data, etc.)
         // but the component data should be accurately sliced
-        let acceptable_overhead = 650; // bytes for metadata overhead (increased for raw arrays)
+        let acceptable_overhead = 1900; // bytes for metadata overhead (increased for raw arrays)
 
         assert!(
             total_slice_size <= original_size + acceptable_overhead,

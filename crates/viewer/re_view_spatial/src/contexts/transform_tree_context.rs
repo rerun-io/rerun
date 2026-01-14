@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use nohash_hasher::IntMap;
+use itertools::Either;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
@@ -16,7 +17,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;
 
-type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+type FrameIdHashMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+type ChildFramesPerEntity = IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>;
 
 /// Details on how to transform an entity (!) to the origin of the view's space.
 #[derive(Clone, Debug, PartialEq)]
@@ -107,19 +109,21 @@ pub struct TransformTreeContext {
     transform_infos: IntMap<EntityPathHash, Result<TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
     target_frame_pinhole_root: Option<TransformFrameIdHash>,
+    entity_frame_id_mapping: IntMap<EntityPathHash, IntMap<TransformFrameIdHash, TreeTransform>>,
     entity_transform_id_mapping: EntityTransformIdMapping,
-    frame_id_mapping: Arc<FrameIdMapping>,
+    frame_id_hash_mapping: Arc<FrameIdHashMapping>,
 }
 
 impl Default for TransformTreeContext {
     fn default() -> Self {
         Self {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
+            entity_frame_id_mapping: Default::default(),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
             target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
-            frame_id_mapping: Arc::new(FrameIdMapping::default()),
+            frame_id_hash_mapping: Arc::new(FrameIdHashMapping::default()),
         }
     }
 }
@@ -146,13 +150,16 @@ impl IdentifiedViewSystem for TransformTreeContext {
 
 struct TransformTreeContextOncePerFrameResult {
     transform_forest: Arc<re_tf::TransformForest>,
-    frame_id_mapping: Arc<FrameIdMapping>,
+    frame_id_hash_mapping: Arc<FrameIdHashMapping>,
+    child_frames_per_entity: Arc<ChildFramesPerEntity>,
 }
 
 impl ViewContextSystem for TransformTreeContext {
     fn execute_once_per_frame(
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
+        re_tracing::profile_function!();
+
         let caches = ctx.store_context.caches;
         let (transform_forest, transform_cache) =
             caches.entry(|c: &mut TransformDatabaseStoreCache| {
@@ -171,9 +178,15 @@ impl ViewContextSystem for TransformTreeContext {
             .iter_frame_ids()
             .map(|(k, v)| (*k, v.clone()));
 
+        let child_frames_per_entity = transform_cache
+            .frame_id_registry()
+            .iter_entities_with_child_frames()
+            .map(|(k, v)| (*k, v.clone()));
+
         Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest,
-            frame_id_mapping: Arc::new(frame_ids.collect()),
+            frame_id_hash_mapping: Arc::new(frame_ids.collect()),
+            child_frames_per_entity: Arc::new(child_frames_per_entity.collect()),
         })
     }
 
@@ -188,7 +201,7 @@ impl ViewContextSystem for TransformTreeContext {
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
-        self.frame_id_mapping = static_execution_result.frame_id_mapping.clone();
+        self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
         let results = query
             .iter_all_data_results()
@@ -249,11 +262,36 @@ impl ViewContextSystem for TransformTreeContext {
             };
 
             let frame_hash = TransformFrameIdHash::new(&frame);
-            if !self.frame_id_mapping.contains_key(&frame_hash) {
+            if !self.frame_id_hash_mapping.contains_key(&frame_hash) {
                 // As overrides are local to this view we need to clone the whole map to add new hashes.
-                Arc::make_mut(&mut self.frame_id_mapping).insert(frame_hash, frame);
+                Arc::make_mut(&mut self.frame_id_hash_mapping).insert(frame_hash, frame);
             }
         }
+
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
+
+        let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
+            // We're looking for an entity whose child frame is the given frame id hash.
+            // From that entity we'd like to know what image frame distance we should be using.
+            // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
+
+            let Some(frame_transforms) = transform_cache
+                .transforms_for_timeline(query.timeline)
+                .frame_transforms(transform_frame_id_hash)
+            else {
+                debug_assert!(
+                    false,
+                    "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
+                );
+                return 1.0;
+            };
+
+            let entity_path = frame_transforms.associated_entity_path(latest_at_query.at());
+            lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
+        };
 
         let tree_transforms_per_frame = self
             .transform_forest
@@ -263,29 +301,33 @@ impl ViewContextSystem for TransformTreeContext {
                     .transform_frame_id_to_entity_path
                     .keys()
                     .copied(),
-                &|transform_frame_id_hash| {
-                    self.entity_transform_id_mapping
-                        .transform_frame_id_to_entity_path
-                        .get(&transform_frame_id_hash)
-                        .map_or_else(
-                            || 1.0,
-                            |entity_paths| {
-                                lookup_image_plane_distance(ctx, entity_paths, &latest_at_query)
-                                    as f64
-                            },
-                        )
-                },
+                &lookup_image_plane_distance,
                 // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
             )
             .collect::<Vec<_>>();
 
+        // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
+        // Can we instead just do another lookup indirection to `self.transform_infos`?
+        self.entity_frame_id_mapping = static_execution_result
+            .child_frames_per_entity
+            .iter()
+            .map(|(entity_path, child_frame_ids)| {
+                let tree_transforms = self
+                    .transform_forest
+                    .transform_from_to(
+                        self.target_frame,
+                        child_frame_ids.iter().copied(),
+                        &lookup_image_plane_distance,
+                    )
+                    .filter_map(|(id, transform)| Some((id, transform.ok()?)))
+                    .collect();
+                (*entity_path, tree_transforms)
+            })
+            .collect();
+
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let caches = ctx.viewer_ctx.store_context.caches;
-            let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.read_lock_transform_cache(ctx.recording())
-            });
             let transforms = transform_cache.transforms_for_timeline(query.timeline);
 
             let latest_at_query = &query.latest_at_query();
@@ -323,10 +365,6 @@ impl ViewContextSystem for TransformTreeContext {
                     .pinhole_tree_root_info(info.root)
                     .map(|_pinhole_info| info.root)
             });
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -367,6 +405,38 @@ impl TransformTreeContext {
         self.transform_forest.pinhole_tree_root_info(frame)
     }
 
+    /// Returns the transform from a pinhole root to the target frame if any.
+    ///
+    /// This is effectively the extrinsic portion of the pinhole's transform to the view's target frame.
+    /// Note that this may otherwise not be accessible since we allow both extrinsics and intrinsics to be
+    /// on a transform between two frames, with no transform frame representing just the extrinsics.
+    ///
+    /// Returns `None` if the path is not a pinhole root, or is not connected to the target frame or the target frame does not exist in the forest (i.e. is invalid).
+    #[inline]
+    pub fn target_from_pinhole_root(&self, frame: TransformFrameIdHash) -> Option<glam::DAffine3> {
+        let pinhole_root_info = self.pinhole_tree_root_info(frame)?;
+
+        // Special case: The pinhole _is_ the target frame
+        if self.target_frame == frame {
+            return Some(glam::DAffine3::IDENTITY);
+        }
+
+        let Some(root_from_target) = self.transform_forest.root_from_frame(self.target_frame)
+        else {
+            // This means our target doesn't exist in the forest.
+            return None;
+        };
+        if pinhole_root_info.parent_tree_root != root_from_target.root {
+            // The pinhole root is not connected to the target frame.
+            return None;
+        }
+
+        let root_from_target = root_from_target.target_from_source;
+        let target_from_root = root_from_target.inverse();
+
+        Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
+    }
+
     /// Returns the target frame, also known as the space origin.
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {
@@ -392,6 +462,18 @@ impl TransformTreeContext {
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
     }
 
+    /// Returns all reachable frame for the current root.
+    #[inline]
+    pub fn child_frames_for_entity(
+        &self,
+        entity_path: EntityPathHash,
+    ) -> impl Iterator<Item = (&TransformFrameIdHash, &TreeTransform)> {
+        match self.entity_frame_id_mapping.get(&entity_path) {
+            Some(frames) => Either::Right(frames.iter()),
+            None => Either::Left(std::iter::empty()),
+        }
+    }
+
     /// Looks up a frame ID by its hash.
     ///
     /// Returns `None` if the frame id hash was never encountered.
@@ -400,7 +482,7 @@ impl TransformTreeContext {
         &self,
         frame_id_hash: TransformFrameIdHash,
     ) -> Option<&TransformFrameId> {
-        self.frame_id_mapping.get(&frame_id_hash)
+        self.frame_id_hash_mapping.get(&frame_id_hash)
     }
 
     /// Formats a frame ID hash as a human-readable string.
@@ -415,20 +497,12 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    entity_path: &SmallVec1<[EntityPathHash; 1]>,
+    entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
-) -> f32 {
-    // If there's several entity paths (with pinhole cameras) for the same transform id,
-    // we don't know which camera plane to use.
-    //
-    // That's rather strange, but a scene can be set up for this to happen!
-    // Unfortunately it's also really hard to log a warning or anything at this point since
-    // we don't know the full entity path names.
-    //
-    // We're letting it slide for now since it's kinda hard to get into that situation.
-    let entity_path_hash = *entity_path.first();
-
-    ctx.query_result
+) -> f64 {
+    let plane_distance_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
+    **ctx
+        .query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
         .cloned()
@@ -437,14 +511,11 @@ fn lookup_image_plane_distance(
                 .latest_at_with_blueprint_resolved_data_for_component(
                     ctx,
                     latest_at_query,
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
+                    plane_distance_component,
                 )
-                .get_mono_with_fallback::<ImagePlaneDistance>(
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
-                )
+                .get_mono_with_fallback::<ImagePlaneDistance>(plane_distance_component)
         })
-        .unwrap_or_default()
-        .into()
+        .unwrap_or_default() as _
 }
 
 impl EntityTransformIdMapping {

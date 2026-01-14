@@ -25,7 +25,7 @@ def test_table_to_polars(tmp_path: Path) -> None:
 
         table.append(int16=[12], string_list=[["a", "b", "c"]])
 
-        df = client.get_table(name="my_table").to_polars()
+        df = client.get_table(name="my_table").reader().to_polars()
 
         assert str(df) == inline_snapshot("""\
 shape: (1, 2)
@@ -64,9 +64,9 @@ shape: (3, 4)
 │ ---                ┆ ---               ┆ ---              ┆ ---              │
 │ str                ┆ list[str]         ┆ u64              ┆ u64              │
 ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡
-│ simple_recording_0 ┆ ["base"]          ┆ 2                ┆ 1273             │
-│ simple_recording_1 ┆ ["base"]          ┆ 2                ┆ 1273             │
-│ simple_recording_2 ┆ ["base"]          ┆ 2                ┆ 1273             │
+│ simple_recording_0 ┆ ["base"]          ┆ 2                ┆ 2092             │
+│ simple_recording_1 ┆ ["base"]          ┆ 2                ┆ 2092             │
+│ simple_recording_2 ┆ ["base"]          ┆ 2                ┆ 2092             │
 └────────────────────┴───────────────────┴──────────────────┴──────────────────┘\
 """)
 

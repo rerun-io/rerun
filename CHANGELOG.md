@@ -1,5 +1,271 @@
 # Rerun changelog
 
+## [0.28.2](https://github.com/rerun-io/rerun/compare/0.28.1...0.28.2) - 2025-12-18 - Fix RRD compaction, plot panning, and Collada mesh loader
+
+### ✨ Overview & highlights
+
+**Fixes to `.rrd` Chunk handling.**
+
+We revised our Chunk slicing logic to prevent `.rrd` files ballooning in sizes. This also fixes the problem of broken `.rrd` files that contain tensors.
+
+**Collada (`.dae`) mesh support.**
+
+This patch adds native support for Collada (`.dae`) meshes, a common format used with URDF files. You can now load URDFs that reference `.dae` assets without manual mesh conversion!
+
+<picture>
+  <img src="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/full.png" alt="screenshot of a loaded mesh">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/collada-dae/d5579d553ce5d018e3eebca3891080026bee1f6f/1200w.png">
+</picture>
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Improve the docstrings related to serve_gpc APIs [#12314](https://github.com/rerun-io/rerun/pull/12314)
+- Add Python support for `UrdfTree` [#12310](https://github.com/rerun-io/rerun/pull/12310)
+
+#### 🪳 Bug fixes
+- Don't force absolute time views after panning [#12297](https://github.com/rerun-io/rerun/pull/12297)
+- Introduce deep Chunk slicing [#12312](https://github.com/rerun-io/rerun/pull/12312)
+
+#### 🌁 Viewer improvements
+- Collada (`.dae`) mesh loader [#10288](https://github.com/rerun-io/rerun/pull/10288)
+- Add option to hide all notification popups/toasts [#12354](https://github.com/rerun-io/rerun/pull/12354)
+
+#### 📚 Docs
+- docs: Fix parameter name from 'color' to 'colors' [#12294](https://github.com/rerun-io/rerun/pull/12294) (thanks [@Ivan-Zhong](https://github.com/Ivan-Zhong)!)
+
+## [0.28.1](https://github.com/rerun-io/rerun/compare/0.28.0...0.28.1) - 2025-12-18 - Fix some telemetry, depth images, and logging
+
+#### 🪵 Log API
+- Ensure that `flush` waits for all data loaders to finish [#12281](https://github.com/rerun-io/rerun/pull/12281)
+
+#### 🪳 Bug fixes
+- Fix video errors having black rectangle around them [#12284](https://github.com/rerun-io/rerun/pull/12284)
+- Fix RVL depth decoding for non-quantized images [#12289](https://github.com/rerun-io/rerun/pull/12289)
+
+#### 🌁 Viewer improvements
+- Fix image planes not working correctly in some named-transform frame scenarios [#12276](https://github.com/rerun-io/rerun/pull/12276)
+- Fix auto-size for 2d views with RVL encoded depth image not working [#12288](https://github.com/rerun-io/rerun/pull/12288)
+- Restore depth image visualizers to 2D view kind (fix heuristic) [#12290](https://github.com/rerun-io/rerun/pull/12290)
+- Add dataloader for encoded depth image (to allow `log_from_file` & dragdrop) [#12287](https://github.com/rerun-io/rerun/pull/12287)
+
+#### 🤷‍ Other
+- Improved error message when `rrd compare --unordered` fails [#12282](https://github.com/rerun-io/rerun/pull/12282)
+
+## [0.28.0](https://github.com/rerun-io/rerun/compare/0.27.2...0.28.0) - 2025-12-18 - Transforms, URDF, LeRobotV3, and Catalog API improvements
+
+🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-28)
+
+### ✨ Overview & highlights
+
+**Transform system overhaul.** This release brings significant improvements to how transforms are handled, especially from ROS or MCAP-based systems. You can now decouple spatial relationships from entity paths by using `CoordinateFrame` to associate entities with named frames, and `Transform3D` with `child_frame`/`parent_frame` parameters to define relationships between frames—similar to ROS tf2. Pinhole cameras also support this system. Additionally, axis visualization has moved to its own `TransformAxes3D` archetype.
+
+Much more can be found at our revamped docs page [here](https://rerun.io/docs/concepts/transforms).
+
+**Improved URDF and MCAP Transform support.** Parent and child frame components are now available in the `Transform3D` archetype, meaning you can send transforms to a single entity instead of using the entity path to inform the structure (note, for URDFs this is required). Additionally, ROS2’s `tf2_msgs/TFMessage` and `PoseStamped` messages are automatically parsed as `Transform3D` and `InstancePoses3D` , respectively, from MCAP files.
+
+**AV1 video codec support.** `VideoStream` now supports the AV1 codec alongside existing formats.
+
+**Catalog API refinements (Python).** The Python catalog API has been substantially reworked: "partition" terminology is now "segment," table operations have moved to `TableEntry` objects, and the query interface has been simplified with methods like `filter_segments()`, `filter_contents()`, and `reader()`.
+
+**Viewer usability improvements.** New keyboard shortcuts let you switch between recordings (`cmd` + `option` + `↑/↓`) and navigate the timeline (`←/→` to move by 0.1s. Add `shift` for 1s. `home/end` to jump to beginning or end).
+
+Forward/back navigation is now available on native viewers as well.
+
+**New dataloaders.** Added LeRobot v3 dataloader support.
+
+## ⚠️ Breaking changes
+
+🧳 Migration guide: [https://rerun.io/docs/reference/migration/migration-0-28](https://rerun.io/docs/reference/migration/migration-0-28)
+
+**Transactional transform behavior (important!):**
+Changes to `Transform3D`, `InstancePose3D`, or `Pinhole` transform properties are now treated transactionally. Updating any component resets all other transform components—the viewer no longer looks back in time for previously logged values. If you relied on partial updates (e.g., logging only rotation while keeping a previous translation), you must now re-log all components together. If you always logged the same components on every call or used the standard constructors, no changes are needed. [#11911](https://github.com/rerun-io/rerun/pull/11911)
+
+```python
+rr.log("simple", rr.Transform3D(translation=[1.0, 2.0, 3.0]))
+# In 0.27: This clears the translation—it will NOT inherit the previous value
+rr.log("simple", rr.Transform3D.from_fields(scale=2))
+```
+
+**Transform3D archetype changes:**
+
+- `Transform3D::axis_length` has moved to the new `TransformAxes3D` archetype [#11925](https://github.com/rerun-io/rerun/pull/11925)
+- `CoordinateFrame::frame_id` renamed to `CoordinateFrame::frame` [#11991](https://github.com/rerun-io/rerun/pull/11991)
+- Redundant `Pose*` component types removed in favor of general counterparts (e.g., `PoseTranslation3D` → `Translation3D`) [#11905](https://github.com/rerun-io/rerun/pull/11905)
+
+**URDF loader changes:**
+Transform updates for URDF models now require `parent_frame` and `child_frame` fields to be set (matching URDF joint specifications), and must include both rotation and translation. This aligns with ROS tf2 conventions and allows sending all transform updates on a single entity. [#12005](https://github.com/rerun-io/rerun/pull/12005)
+
+**Deprecated API removal:**
+Items marked deprecated before 0.27 have been removed, including old `Timeline`, `TimeColumn`, `Asset3D`, `AssetVideo`, `Image`, and `Pinhole` methods. [#12204](https://github.com/rerun-io/rerun/pull/12204)
+
+**MCAP timeline naming:**
+MCAP timelines renamed from `log_time`/`publish_time` to `message_log_time`/`message_publish_time` to avoid conflicts with SDK timestamps. [#12145](https://github.com/rerun-io/rerun/pull/12145)
+
+**Python Catalog API (breaking changes):**
+
+- The `rerun_partition_id` column is now `rerun_segment_id`
+- `entries()`, `datasets()`, `tables()` now return lists of entry objects instead of DataFrames
+- `get_table()` returns a `TableEntry` object instead of a DataFrame—use `.reader()` to get the DataFrame
+- `DataframeQueryView` removed; use `filter_segments()`, `filter_contents()`, and `reader()` instead [#12151](https://github.com/rerun-io/rerun/pull/12151)
+- `register()` and `register_batch()` merged into single `register()` returning `RegistrationHandle` [#12187](https://github.com/rerun-io/rerun/pull/12187)
+- `search_fts()` and `search_vector()` now return DataFrames directly (no `.df()` needed) [#12198](https://github.com/rerun-io/rerun/pull/12198)
+
+**Python Catalog API (deprecated, still work):**
+
+- "Partition" renamed to "segment" throughout (e.g., `partition_table()` → `segment_table()`) [#12059](https://github.com/rerun-io/rerun/pull/12059)
+- Method renames: `get_dataset_entry` → `get_dataset`, `get_table_entry` → `get_table`, etc. [#12112](https://github.com/rerun-io/rerun/pull/12112)
+- Table writes moved from `CatalogClient` to `TableEntry` (`append()`, `overwrite()`, `upsert()`) [#12114](https://github.com/rerun-io/rerun/pull/12114)
+- `Schema` types moved from `rerun.dataframe` to `rerun.catalog` [#12135](https://github.com/rerun-io/rerun/pull/12135)
+- Search index methods renamed: `create_fts_index()` → `create_fts_search_index()`, etc. [#12198](https://github.com/rerun-io/rerun/pull/12198)
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Transform3D no longer sets all its components to empty array by default [#11911](https://github.com/rerun-io/rerun/pull/11911)
+- Move `Transform3D::axis_length` into its own `TransformAxes3D` archetype [#11925](https://github.com/rerun-io/rerun/pull/11925)
+- Add `show_frame` option on `TransformAxes3D` [#11977](https://github.com/rerun-io/rerun/pull/11977)
+- Rename `CoordinateFrame::frame_id` to `CoordinateFrame::frame` [#11991](https://github.com/rerun-io/rerun/pull/11991)
+- RRD footers 1: framing [#12044](https://github.com/rerun-io/rerun/pull/12044)
+- RRD footers 2: RRD manifests [#12047](https://github.com/rerun-io/rerun/pull/12047)
+- RRD footers 3: encoding/decoding manifests [#12048](https://github.com/rerun-io/rerun/pull/12048)
+- Add option to specify `target_frame` to `SpatialInformation` [#12040](https://github.com/rerun-io/rerun/pull/12040)
+- Remove redundant `Pose*` components [#11905](https://github.com/rerun-io/rerun/pull/11905)
+- Add `OutputMode` option to Lenses [#12107](https://github.com/rerun-io/rerun/pull/12107)
+- Load URDF with frame IDs and named transforms [#12005](https://github.com/rerun-io/rerun/pull/12005)
+- RRD manifests: implement `chunk_byte_size_uncompressed` support [#12194](https://github.com/rerun-io/rerun/pull/12194)
+- Disable merging compaction for video samples [#12270](https://github.com/rerun-io/rerun/pull/12270)
+
+#### 🌊 C++ API
+- Make component type registration thread-safe in C++ SDK [#11907](https://github.com/rerun-io/rerun/pull/11907)
+- Don't install signal handlers into rerun_c outside of DEBUG mode [#11956](https://github.com/rerun-io/rerun/pull/11956)
+
+#### 🐍 Python API
+- Fix dataframe queries failing on empty datasets [#11846](https://github.com/rerun-io/rerun/pull/11846)
+- Add lint to check if rust classes have __str__, fix or exclude all existing [#11928](https://github.com/rerun-io/rerun/pull/11928)
+- Partition-to-segment rename (wave 1): redap layer [#12017](https://github.com/rerun-io/rerun/pull/12017)
+- Partition-to-segment rename (wave 3): Python SDK [#12059](https://github.com/rerun-io/rerun/pull/12059)
+- Rework notebook auth to use device code flow [#12128](https://github.com/rerun-io/rerun/pull/12128)
+- Catalog API update 1: listing entries [#12103](https://github.com/rerun-io/rerun/pull/12103)
+- Catalog API update 2: getting and creating entries [#12112](https://github.com/rerun-io/rerun/pull/12112)
+- Catalog API update 3: editing tables [#12114](https://github.com/rerun-io/rerun/pull/12114)
+- Catalog API update 4: schema [#12135](https://github.com/rerun-io/rerun/pull/12135)
+- Catalog API update 5: dataset query [#12151](https://github.com/rerun-io/rerun/pull/12151)
+- Catalog API update 6: register APIs [#12187](https://github.com/rerun-io/rerun/pull/12187)
+- Catalog API update 7: `segment_table` and blueprint APIs [#12191](https://github.com/rerun-io/rerun/pull/12191)
+- Catalog API update 8: search indexes [#12198](https://github.com/rerun-io/rerun/pull/12198)
+- Remove items marked as deprecated before 0.27 [#12204](https://github.com/rerun-io/rerun/pull/12204)
+- [python] Automatically disconnected recordings when they go fully out of scope [#12220](https://github.com/rerun-io/rerun/pull/12220)
+
+#### 🦀 Rust API
+- Make `RecordingStream::disabled()` a `const fn` [#11829](https://github.com/rerun-io/rerun/pull/11829) (thanks [@kpreid](https://github.com/kpreid)!)
+- Fix double memcpy in Rust blob serialization of image and other blob-based types [#11842](https://github.com/rerun-io/rerun/pull/11842) (thanks [@joelreymont](https://github.com/joelreymont)!)
+- Remove items marked as deprecated before 0.27 [#12204](https://github.com/rerun-io/rerun/pull/12204)
+
+#### 🪳 Bug fixes
+- Fix rare case for incorrect queries for some cases of out of order logging [#11892](https://github.com/rerun-io/rerun/pull/11892)
+- Fix exiting tracking with inputs [#11915](https://github.com/rerun-io/rerun/pull/11915)
+- Fix the visible time range for the time series view [#11938](https://github.com/rerun-io/rerun/pull/11938)
+- Fix sharing links to time ranges on duration timelines [#11948](https://github.com/rerun-io/rerun/pull/11948)
+- Fix opening non-recording URLs on startup [#11981](https://github.com/rerun-io/rerun/pull/11981)
+- Fix `ChunkId` clash due to chunk splitting [#12008](https://github.com/rerun-io/rerun/pull/12008)
+- Fix scroll bar / resize handle flicker in selection panel [#12020](https://github.com/rerun-io/rerun/pull/12020) (thanks [@kratos2377](https://github.com/kratos2377)!)
+- Fix infinite redraw that sometimes happened in a spatial 3d view [#12030](https://github.com/rerun-io/rerun/pull/12030)
+- Do input from the perspective of spin [#12068](https://github.com/rerun-io/rerun/pull/12068)
+- Fix incorrect displayed transform for some cases of logging transforms at a previously shown time [#12088](https://github.com/rerun-io/rerun/pull/12088)
+- Fix links to time points [#12163](https://github.com/rerun-io/rerun/pull/12163)
+- Fix timepanel size being rounded down [#12208](https://github.com/rerun-io/rerun/pull/12208)
+- Fix missing data after saving a time slice as .rrd [#12239](https://github.com/rerun-io/rerun/pull/12239)
+
+#### 🌁 Viewer improvements
+- Add `av1` support to `VideoStream` [#11849](https://github.com/rerun-io/rerun/pull/11849)
+- Improved transform query semantics [#11901](https://github.com/rerun-io/rerun/pull/11901)
+- Text log view blueprint properties [#11896](https://github.com/rerun-io/rerun/pull/11896)
+- Order partitions by opening order [#11936](https://github.com/rerun-io/rerun/pull/11936)
+- Allow visualizers to report runtime errors [#11962](https://github.com/rerun-io/rerun/pull/11962)
+- Instanced drawing of `TransformAxes3D` via `InstancePose3D` [#11970](https://github.com/rerun-io/rerun/pull/11970)
+- Add utility for sampling video from `VideoDataDescription` [#11972](https://github.com/rerun-io/rerun/pull/11972)
+- Relax visualizability constraints and handle invalid transforms as visualization errors instead [#11973](https://github.com/rerun-io/rerun/pull/11973)
+- Native back and forth navigation [#11974](https://github.com/rerun-io/rerun/pull/11974)
+- Add support to explicit child/parent transform frames for `Pinhole` [#11988](https://github.com/rerun-io/rerun/pull/11988)
+- Eye rotation or translation with inputs stops using fallbacks for both [#12025](https://github.com/rerun-io/rerun/pull/12025)
+- Transform frame ancestors in UI [#12006](https://github.com/rerun-io/rerun/pull/12006)
+- Better discovery for view's visualizer errors [#12015](https://github.com/rerun-io/rerun/pull/12015)
+- Partition-to-segment rename (wave 2): `re_uri` [#12050](https://github.com/rerun-io/rerun/pull/12050)
+- Make `InstancePose3D` consistently interact with transform frames [#12021](https://github.com/rerun-io/rerun/pull/12021)
+- Gracefully exit on `ctrl c` [#12079](https://github.com/rerun-io/rerun/pull/12079)
+- Add `NavSatService::Unknown` to ROS2 parsing [#12106](https://github.com/rerun-io/rerun/pull/12106)
+- Add exclusions for 2d visualizables in 3d and vice-versa [#12087](https://github.com/rerun-io/rerun/pull/12087)
+- Replace time trimming urls with time selection [#12154](https://github.com/rerun-io/rerun/pull/12154)
+- Better target frame fallback [#12127](https://github.com/rerun-io/rerun/pull/12127)
+- LeRobot v3 dataloader [#12071](https://github.com/rerun-io/rerun/pull/12071)
+- Allow specifying widths of `BarChart` bars [#12090](https://github.com/rerun-io/rerun/pull/12090) (thanks [@bilsen](https://github.com/bilsen)!)
+- Support `png` & `rvl` depth images via new `EncodedDepthImage` archetype + integration with viewer and `re_mcap` [#11877](https://github.com/rerun-io/rerun/pull/11877) (thanks [@makeecat](https://github.com/makeecat)!)
+- Show `TransformAxes3D` for out-of-hierarchy `Transform`s [#12262](https://github.com/rerun-io/rerun/pull/12262)
+
+#### 🗄️ OSS server
+- Add static/temporal chunk query filtering to OSS server [#11984](https://github.com/rerun-io/rerun/pull/11984)
+- Expose `/version` from oss server [#12108](https://github.com/rerun-io/rerun/pull/12108)
+- Add support for creating dataset from list of RRDs to `rerun.server.Server` [#12225](https://github.com/rerun-io/rerun/pull/12225)
+
+#### 🚀 Performance improvements
+- JIT compaction in ChunkStore can now split chunks in addition to merging them [#11921](https://github.com/rerun-io/rerun/pull/11921)
+- Cache dataset schema [#11808](https://github.com/rerun-io/rerun/pull/11808)
+- Simplify transform resolution cache's tracking based on new atomic-latest-at semantics [#11909](https://github.com/rerun-io/rerun/pull/11909)
+- Add FPS to metrics [#11904](https://github.com/rerun-io/rerun/pull/11904)
+- GC: target chunks furthest from time cursor [#12217](https://github.com/rerun-io/rerun/pull/12217)
+
+#### 🧑‍🏫 Examples
+- Add EgoExo Forge and VistaDream examples [#11883](https://github.com/rerun-io/rerun/pull/11883)
+
+#### 📚 Docs
+- Make python api doc search match more things [#11946](https://github.com/rerun-io/rerun/pull/11946)
+- Remove load_recording docs [#11997](https://github.com/rerun-io/rerun/pull/11997)
+- Mark frame based transform apis as stable [#12028](https://github.com/rerun-io/rerun/pull/12028)
+- Add new (snippet) example for using pinholes with 3D->2D & 2D->3D projection [#12033](https://github.com/rerun-io/rerun/pull/12033)
+- Complete overhaul of transform manual page [#12034](https://github.com/rerun-io/rerun/pull/12034)
+- Document built-in URDF loader [#12056](https://github.com/rerun-io/rerun/pull/12056)
+
+#### 🖼 UI improvements
+- Add shortcuts to switch between recordings [#11637](https://github.com/rerun-io/rerun/pull/11637)
+- Allow to load URDF files via file dialog [#11941](https://github.com/rerun-io/rerun/pull/11941)
+- Load URDF file into the current recording, if one exists already [#11944](https://github.com/rerun-io/rerun/pull/11944)
+- Add shortcuts to navigate the timeline [#11933](https://github.com/rerun-io/rerun/pull/11933)
+- Make transform frame edit not experimental [#12057](https://github.com/rerun-io/rerun/pull/12057)
+- Add memory budget to setting panel [#12190](https://github.com/rerun-io/rerun/pull/12190)
+- Show server auth modal on auth errors when loading recording [#12121](https://github.com/rerun-io/rerun/pull/12121)
+
+#### 🧢 MCAP
+- Rename MCAP timelines to avoid conflicts with SDK timestamps [#12145](https://github.com/rerun-io/rerun/pull/12145)
+- Parse `PoseStamped` from ROS 2 MCAPs as `InstancePoses3D` [#11879](https://github.com/rerun-io/rerun/pull/11879)
+- Parse `tf2_msgs/TFMessage` from ROS 2 MCAPs as `Transform3D`s [#12224](https://github.com/rerun-io/rerun/pull/12224)
+- Parse `frame_id` fields of ROS 2 MCAP messages as `CoordinateFrame` [#12238](https://github.com/rerun-io/rerun/pull/12238)
+
+#### 🧑‍💻 Dev-experience
+- cpp: Export `compile_commands.json` via Pixi [#11898](https://github.com/rerun-io/rerun/pull/11898)
+
+#### 🗣 Refactors
+- Partition-to-segment rename (wave 4): rename everything else [#12085](https://github.com/rerun-io/rerun/pull/12085)
+
+#### 📦 Dependencies
+- Use `scuffle-av1` for parsing av1 headers [#11910](https://github.com/rerun-io/rerun/pull/11910)
+- Update `walkers` (map widget) to 0.50.0 [#12024](https://github.com/rerun-io/rerun/pull/12024) (thanks [@podusowski](https://github.com/podusowski)!)
+
+#### 🤷‍ Other
+- DPF: create_index: deprecate num_partitions [#11920](https://github.com/rerun-io/rerun/pull/11920)
+- Add partition table context menu and row selection [#11908](https://github.com/rerun-io/rerun/pull/11908)
+- Implement the search service [#11954](https://github.com/rerun-io/rerun/pull/11954)
+- Add `MapProvider::MapboxLight` [#12083](https://github.com/rerun-io/rerun/pull/12083) (thanks [@sectore](https://github.com/sectore)!)
+- Implement streaming for datafusion table [#12162](https://github.com/rerun-io/rerun/pull/12162)
+- Add rerun cloud section to welcome page [#12051](https://github.com/rerun-io/rerun/pull/12051)
+- Add support for server side filtering of DataFusion DataFrames [#12147](https://github.com/rerun-io/rerun/pull/12147)
+- Fix compaction of recordings containing video streams [35810c74187c250925e958a8f095756915313ce7](https://github.com/rerun-io/rerun/commit/35810c74187c250925e958a8f095756915313ce7)
+- Python SDK: Add timeout_sec argument to flush [f69d249e5c6bc5225d8f2f0be384243ab9dacf03](https://github.com/rerun-io/rerun/commit/f69d249e5c6bc5225d8f2f0be384243ab9dacf03)
+
+
 ## [0.27.2](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatibility with dependency
 
 - Fix non semver compliant breaking changes in `ply-rs` breaking Rust builds [#11890](https://github.com/rerun-io/rerun/pull/11890)

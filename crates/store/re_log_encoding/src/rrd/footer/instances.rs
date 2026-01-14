@@ -729,6 +729,8 @@ impl RrdManifest {
                         | Self::FIELD_CHUNK_KEY
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
 
+                        name if Self::COMMON_IMPL_SPECIFIC_FIELDS.contains(&name) => {}
+
                         name => {
                             return Err(crate::CodecError::from(ChunkError::Malformed {
                                 reason: format!(
@@ -1036,6 +1038,21 @@ impl RrdManifest {
     pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
     pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
+
+    /// These fields might be returned by some implementations (such as Rerun Cloud) that do not
+    /// support fetching chunks with only a set of chunk-keys.
+    /// We generally want to ignore them during tests and sanity checking, and just blindly forward
+    /// them as-is otherwise.
+    pub const COMMON_IMPL_SPECIFIC_FIELDS: &[&str] = &[
+        "chunk_partition_id",
+        "chunk_partition_layer",
+        "rerun_partition_id",
+        "rerun_partition_layer",
+        "chunk_segment_id",
+        "chunk_segment_layer",
+        "rerun_segment_id",
+        "rerun_segment_layer",
+    ];
 
     pub fn field_chunk_id() -> Field {
         use re_log_types::external::re_types_core::Loggable as _;
@@ -1396,7 +1413,10 @@ impl RrdManifest {
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+        Ok(self
+            .col_chunk_byte_size_uncompressed_raw()?
+            .iter()
+            .flatten())
     }
 
     /// Returns the raw Arrow data for chunk-key column, if present.

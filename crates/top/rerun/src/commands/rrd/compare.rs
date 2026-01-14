@@ -78,23 +78,6 @@ impl CompareCommand {
             re_format::format_uint(chunks2.len()),
         );
 
-        let mut unordered_failed = false;
-        if *unordered {
-            let mut chunks2_opt: Vec<Option<Arc<Chunk>>> =
-                chunks2.clone().into_iter().map(Some).collect_vec();
-            'outer: for chunk1 in &chunks1 {
-                for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
-                    #[expect(clippy::unwrap_used)]
-                    if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
-                        *chunk2 = None;
-                        continue 'outer;
-                    }
-                }
-                unordered_failed = true;
-                break;
-            }
-        }
-
         fn format_chunk(chunk: &Chunk) -> String {
             re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
@@ -110,7 +93,47 @@ impl CompareCommand {
             .to_string()
         }
 
-        if !*unordered || unordered_failed {
+        if *unordered {
+            let mut chunks2_remaining = chunks2;
+            let mut unmatched_chunks1 = Vec::new();
+
+            for chunk1 in &chunks1 {
+                if let Some(pos) = chunks2_remaining
+                    .iter()
+                    .position(|chunk2| re_chunk::Chunk::ensure_similar(chunk1, chunk2).is_ok())
+                {
+                    chunks2_remaining.swap_remove(pos);
+                } else {
+                    unmatched_chunks1.push(chunk1.clone());
+                }
+            }
+
+            if !unmatched_chunks1.is_empty() || !chunks2_remaining.is_empty() {
+                let mut error_msg = String::from("Unordered comparison failed:\n");
+
+                if !unmatched_chunks1.is_empty() {
+                    error_msg.push_str(&format!(
+                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:\n",
+                        unmatched_chunks1.len()
+                    ));
+                    for chunk in &unmatched_chunks1 {
+                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                    }
+                }
+
+                if !chunks2_remaining.is_empty() {
+                    error_msg.push_str(&format!(
+                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:\n",
+                        chunks2_remaining.len()
+                    ));
+                    for chunk in &chunks2_remaining {
+                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                    }
+                }
+
+                anyhow::bail!(error_msg);
+            }
+        } else {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
                     format!(
@@ -166,7 +189,7 @@ fn load_chunks(
                     re_chunk_store::ChunkStoreConfig::ALL_DISABLED,
                 )
             })
-            .add(&msg)
+            .add_log_msg(&msg)
             .context("decode rrd file contents")?;
     }
 

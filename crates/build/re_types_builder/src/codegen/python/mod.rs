@@ -1,7 +1,6 @@
 //! Implements the Python codegen pass.
 
 mod views;
-mod visualizers;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::iter;
@@ -10,6 +9,7 @@ use std::ops::Deref;
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::{Itertools as _, chain};
+use regex_lite::Regex;
 use unindent::unindent;
 
 use self::views::code_for_view;
@@ -142,16 +142,6 @@ impl CodeGenerator for PythonCodeGenerator {
             */
         }
 
-        // Generate visualizers.py
-        let visualizers_code = visualizers::generate_visualizers_file(reporter, objects);
-        files_to_write.insert(
-            self.pkg_path
-                .join("blueprint")
-                .join("visualizers")
-                .join("mapping.py"),
-            visualizers_code,
-        );
-
         files_to_write
     }
 }
@@ -222,7 +212,7 @@ struct ExtensionClass {
 }
 
 impl ExtensionClass {
-    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> Self {
+    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object, objects: &Objects) -> Self {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
         let ext_filepath = base_path.join(file_name.clone());
         let module_name = ext_filepath.file_stem().unwrap().to_owned();
@@ -266,6 +256,11 @@ impl ExtensionClass {
                 .collect();
 
             let has_init = methods.contains(&INIT_METHOD);
+
+            // Verify that the __init__ method calls __attrs_init__ with all fields
+            if has_init {
+                check_ext_consistency(reporter, obj, objects, &contents, &ext_filepath);
+            }
             let has_array = methods.contains(&ARRAY_METHOD);
             let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
@@ -325,6 +320,116 @@ impl ExtensionClass {
     }
 }
 
+fn check_ext_consistency(
+    reporter: &Reporter,
+    obj: &Object,
+    objects: &Objects,
+    contents: &str,
+    ext_filepath: &Utf8PathBuf,
+) {
+    // Collect expected field names - either direct fields or fields from referenced objects
+    let mut expected_fields = HashSet::new();
+
+    for field in &obj.fields {
+        if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::Datatype {
+            // For archetypes/datatypes, always use the direct field names since they reference components
+            // and we want to use the component names directly, not look inside the components
+            expected_fields.insert(&field.name);
+        } else {
+            // For components and datatypes, check if this field references another rerun datatype
+            if let Type::Object { fqname } = &field.typ {
+                if let Some(referenced_obj) = objects.get(fqname) {
+                    // Only apply field indirection if referencing another datatype, not component
+                    if referenced_obj.kind == ObjectKind::Datatype {
+                        // Use the referenced datatype's fields instead of the direct field name
+                        for referenced_field in &referenced_obj.fields {
+                            expected_fields.insert(&referenced_field.name);
+                        }
+                    } else {
+                        // If referencing a component, use the direct field name
+                        expected_fields.insert(&field.name);
+                    }
+                } else {
+                    // Fallback to the direct field name if we can't find the referenced object
+                    expected_fields.insert(&field.name);
+                }
+            } else {
+                // For non-object types, use the direct field name
+                expected_fields.insert(&field.name);
+            }
+        }
+    }
+
+    // Look for __attrs_init__ call using Python indentation structure
+    if contents.contains("__attrs_init__") {
+        let lines: Vec<&str> = contents.lines().collect();
+        let mut attrs_init_section = String::new();
+        let mut found_attrs_init = false;
+        let mut base_indent = 0;
+
+        for line in lines {
+            if line.contains("__attrs_init__(") && !found_attrs_init {
+                found_attrs_init = true;
+                // Calculate the indentation of the __attrs_init__ line
+                base_indent = line.len() - line.trim_start().len();
+                attrs_init_section.push_str(line);
+                attrs_init_section.push('\n');
+
+                // Check if it's a single-line call (ends with ')' on the same line)
+                if line.trim_end().ends_with(')') {
+                    break;
+                }
+            } else if found_attrs_init {
+                attrs_init_section.push_str(line);
+                attrs_init_section.push('\n');
+
+                // Check if this line has a ')' at the same or lesser indentation level
+                let line_indent = line.len() - line.trim_start().len();
+                if line.trim_start().starts_with(')') && line_indent <= base_indent {
+                    break;
+                }
+            }
+        }
+
+        if found_attrs_init {
+            // Extract field names using regex to find field_name=… patterns
+            let mut found_fields = HashSet::new();
+            for field_name in &expected_fields {
+                let field_pattern = format!(r"\b{}\s*=", regex_lite::escape(field_name));
+                let field_regex = Regex::new(&field_pattern).unwrap();
+                if field_regex.is_match(&attrs_init_section) {
+                    found_fields.insert(field_name);
+                }
+            }
+
+            // Check if all expected fields are present
+            for field_name in &expected_fields {
+                if !found_fields.contains(field_name) {
+                    reporter.error(
+                        ext_filepath.as_str(),
+                        &obj.fqname,
+                        format!(
+                            "The __init__ method should call __attrs_init__ with field '{field_name}={field_name}' parameter",
+                        ),
+                    );
+                }
+            }
+        } else {
+            reporter.error(
+                ext_filepath.as_str(),
+                &obj.fqname,
+                "Could not find __attrs_init__ call".to_owned(),
+            );
+        }
+    } else {
+        reporter.error(
+            ext_filepath.as_str(),
+            &obj.fqname,
+            "The __init__ method should call __attrs_init__ with all available fields".to_owned(),
+        );
+    }
+}
+
 struct ExtensionClasses {
     classes: BTreeMap<String, ExtensionClass>,
 }
@@ -367,7 +472,7 @@ impl PythonCodeGenerator {
                         kind_path.clone()
                     };
 
-                    let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
+                    let ext_class = ExtensionClass::new(reporter, &kind_path, obj, objects);
 
                     (obj.fqname.clone(), ext_class)
                 })
@@ -508,6 +613,16 @@ impl PythonCodeGenerator {
             if ext_class.found {
                 code.push_unindented(
                     format!("from .{} import {}", ext_class.module_name, ext_class.name,),
+                    1,
+                );
+            }
+
+            if obj
+                .try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER)
+                .is_some()
+            {
+                code.push_unindented(
+                    format!("from {rerun_path}blueprint import Visualizer, VisualizableArchetype"),
                     1,
                 );
             }
@@ -696,6 +811,11 @@ fn code_for_struct(
         superclasses.push("Archetype".to_owned());
     }
 
+    let visualizer_name = obj.try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER);
+    if visualizer_name.is_some() {
+        superclasses.push("VisualizableArchetype".to_owned());
+    }
+
     // Delegating component inheritance comes after the `ExtensionClass`
     // This way if a component needs to override `__init__` it still can.
     if obj.is_delegating_component() {
@@ -870,6 +990,14 @@ fn code_for_struct(
                 "__repr__ = Archetype.__repr__ # type: ignore[assignment] ",
                 1,
             );
+
+            if let Some(visualizer_name) = visualizer_name {
+                code.push_indented(1, "", 1);
+                code.push_indented(1, "def visualizer(self) -> Visualizer:", 1);
+                code.push_indented(2, r#""""Creates a visualizer for this archetype.""""#, 1);
+                // TODO(RR-3254): Add options for mapping here
+                code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=None)"#), 1);
+            }
         }
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
@@ -938,7 +1066,6 @@ fn code_for_enum(
     if let Some(deprecation_summary) = obj.deprecation_summary() {
         code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
-
     let superclasses = {
         let mut superclasses = vec![];
         if ext_class.found {
@@ -2502,7 +2629,7 @@ fn quote_parameter_type_alias(
     }
 }
 
-fn quote_init_parameter_from_field(
+pub fn quote_init_parameter_from_field(
     field: &ObjectField,
     objects: &Objects,
     current_obj_fqname: &str,

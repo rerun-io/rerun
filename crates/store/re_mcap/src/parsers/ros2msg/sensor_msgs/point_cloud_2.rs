@@ -10,6 +10,7 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Fields};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
+use re_sdk_types::archetypes::CoordinateFrame;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{
     Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
@@ -25,6 +26,8 @@ use crate::parsers::util::{blob_list_builder, fixed_size_list_builder};
 
 pub struct PointCloud2MessageParser {
     num_rows: usize,
+
+    frame_id: ListBuilder<StringBuilder>,
 
     height: FixedSizeListBuilder<UInt32Builder>,
     width: FixedSizeListBuilder<UInt32Builder>,
@@ -69,6 +72,8 @@ impl Ros2MessageParser for PointCloud2MessageParser {
 
         Self {
             num_rows,
+
+            frame_id: ListBuilder::with_capacity(StringBuilder::new(), num_rows),
 
             height: fixed_size_list_builder(1, num_rows),
             width: fixed_size_list_builder(1, num_rows),
@@ -333,6 +338,8 @@ impl MessageParser for PointCloud2MessageParser {
         let Self {
             num_rows,
 
+            frame_id,
+
             height,
             width,
             fields,
@@ -346,6 +353,9 @@ impl MessageParser for PointCloud2MessageParser {
 
             points_3ds,
         } = self;
+
+        frame_id.values().append_value(point_cloud.header.frame_id);
+        frame_id.append(true);
 
         height.values().append_slice(&[point_cloud.height]);
         width.values().append_slice(&[point_cloud.width]);
@@ -459,6 +469,7 @@ impl MessageParser for PointCloud2MessageParser {
         let Self {
             num_rows: _,
 
+            mut frame_id,
             mut width,
             mut height,
             mut fields,
@@ -474,6 +485,14 @@ impl MessageParser for PointCloud2MessageParser {
         } = *self;
 
         let mut chunks = Vec::new();
+
+        let frame_ids_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            timelines.clone(),
+            std::iter::once((CoordinateFrame::descriptor_frame(), frame_id.finish())).collect(),
+        )?;
+        chunks.push(frame_ids_chunk);
 
         for (i, points_3d) in points_3ds.iter().enumerate() {
             let timelines = timelines

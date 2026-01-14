@@ -15,14 +15,14 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.catalog import CatalogClient
+from rerun.catalog import CatalogClient, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import DatasetEntry, TableEntry
+    from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
 
 
@@ -153,7 +153,7 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
 
     if redap_url:
         # Connect to an external redap server
-        client = CatalogClient(address=redap_url, token=redap_token)
+        client = CatalogClient(url=redap_url, token=redap_token)
         yield client
         # No cleanup needed for external server
     else:
@@ -206,7 +206,7 @@ class EntryFactory:
         self._created_entries.append(entry)
         return entry
 
-    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str | None = None) -> TableEntry:
         """Create a table with automatic cleanup. Mirrors CatalogClient.create_table()."""
         prefixed_name = self.apply_prefix(name)
         entry = self._client.create_table(prefixed_name, schema, url)
@@ -285,12 +285,16 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
 @dataclasses.dataclass
 class PrefilledCatalog:
     factory: EntryFactory
-    dataset: DatasetEntry
+    prefilled_dataset: DatasetEntry
 
     @property
     def client(self) -> CatalogClient:
         """Convenience property to access the underlying CatalogClient."""
         return self.factory.client
+
+    def prefilled_tables(self) -> list[TableEntry]:
+        """Returns a list of table entries that are prefilled in the catalog."""
+        return [entry for entry in self.factory._created_entries if isinstance(entry, TableEntry)]
 
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures

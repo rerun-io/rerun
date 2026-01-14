@@ -1,3 +1,4 @@
+use re_data_source::StreamMode;
 use re_log_types::TimestampFormat;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
@@ -7,11 +8,19 @@ const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppOptions {
+    /// Experimental feature flags.
+    pub experimental: ExperimentalAppOptions,
+
     /// Warn if the e2e latency exceeds this value.
     pub warn_e2e_latency: f32,
 
     /// Show milliseconds, RAM usage, etc.
     pub show_metrics: bool,
+
+    /// Show toasts for log messages?
+    ///
+    /// If false, you can still view them in the notifications panel.
+    pub show_notification_toasts: bool,
 
     /// Include the "Welcome screen" application in the recordings panel?
     #[serde(alias = "include_welcome_screen_button_in_recordings_panel")]
@@ -23,31 +32,15 @@ pub struct AppOptions {
     /// Inspect the blueprint timeline.
     pub inspect_blueprint_timeline: bool,
 
-    /// Disable garbage collection of the blueprint.
+    /// Is garbage collection of the blueprint enabled?
     pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
     #[serde(rename = "timestamp_format")]
     pub timestamp_format: TimestampFormat,
 
-    /// Preferred method for video decoding on web.
-    pub video_decoder_hw_acceleration: DecodeHardwareAcceleration,
-
-    /// Override the path to the FFmpeg binary.
-    ///
-    /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
-    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
-    ///
-    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid losing the user-defined
-    /// path when disabling the override.
-    #[expect(clippy::doc_markdown)]
-    pub video_decoder_override_ffmpeg_path: bool,
-
-    /// Custom path to the FFmpeg binary.
-    ///
-    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
-    #[expect(clippy::doc_markdown)]
-    pub video_decoder_ffmpeg_path: String,
+    /// Video decoding options.
+    pub video: VideoOptions,
 
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
@@ -68,9 +61,13 @@ pub struct AppOptions {
 impl Default for AppOptions {
     fn default() -> Self {
         Self {
+            experimental: Default::default(),
+
             warn_e2e_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
+
+            show_notification_toasts: true,
 
             include_rerun_examples_button_in_recordings_panel: true,
 
@@ -82,9 +79,7 @@ impl Default for AppOptions {
 
             timestamp_format: TimestampFormat::default(),
 
-            video_decoder_hw_acceleration: DecodeHardwareAcceleration::default(),
-            video_decoder_override_ffmpeg_path: false,
-            video_decoder_ffmpeg_path: String::new(),
+            video: Default::default(),
 
             mapbox_access_token: String::new(),
 
@@ -122,12 +117,57 @@ impl AppOptions {
     /// Get the video decoder settings.
     pub fn video_decoder_settings(&self) -> DecodeSettings {
         DecodeSettings {
-            hw_acceleration: self.video_decoder_hw_acceleration,
+            hw_acceleration: self.video.hw_acceleration,
 
             #[cfg(not(target_arch = "wasm32"))]
             ffmpeg_path: self
-                .video_decoder_override_ffmpeg_path
-                .then(|| std::path::PathBuf::from(&self.video_decoder_ffmpeg_path)),
+                .video
+                .override_ffmpeg_path
+                .then(|| std::path::PathBuf::from(&self.video.ffmpeg_path)),
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct VideoOptions {
+    /// Preferred method for video decoding on web.
+    pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Override the path to the FFmpeg binary.
+    ///
+    /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
+    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
+    ///
+    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid losing the user-defined
+    /// path when disabling the override.
+    #[expect(clippy::doc_markdown)]
+    pub override_ffmpeg_path: bool,
+
+    /// Custom path to the FFmpeg binary.
+    ///
+    /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
+    #[expect(clippy::doc_markdown)]
+    pub ffmpeg_path: String,
+}
+
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct ExperimentalAppOptions {
+    /// Larger-than-RAM streaming using RRD manifest.
+    ///
+    /// If false, we load the entire recording into memory.
+    /// We skip loading the RRD manifest.
+    ///
+    /// If `true`, we stream in only the chunks we need, as we need it.
+    /// And we load the RRD manifest.
+    pub stream_mode: StreamMode,
+}
+
+impl Default for ExperimentalAppOptions {
+    fn default() -> Self {
+        Self {
+            stream_mode: StreamMode::FullLoad,
         }
     }
 }

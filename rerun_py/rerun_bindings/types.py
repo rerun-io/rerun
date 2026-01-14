@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, TypeAlias, Union
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
@@ -20,32 +19,6 @@ if TYPE_CHECKING:
         IndexColumnSelector as IndexColumnSelector,
         IndexingResult as IndexingResult,
     )
-
-AnyColumn: TypeAlias = Union[
-    str,
-    "ComponentColumnDescriptor",
-    "ComponentColumnSelector",
-    "IndexColumnDescriptor",
-    "IndexColumnSelector",
-]
-"""A type alias for any column-like object."""
-
-
-AnyComponentColumn: TypeAlias = Union[
-    str,
-    "ComponentColumnDescriptor",
-    "ComponentColumnSelector",
-]
-"""A type alias for any component-column-like object."""
-
-ViewContentsLike: TypeAlias = str | dict[str, AnyColumn | str | Sequence[str]]
-"""
-A type alias for specifying the contents of a view.
-
-This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-specifying multiple content-expressions and a respective list of components to select within
-that expression such as `{"world/cameras/**": ["Image:buffer", "Camera:image_from_camera"]}`.
-"""
 
 IndexValuesLike: TypeAlias = npt.NDArray[np.int_] | npt.NDArray[np.datetime64] | pa.Int64Array
 """

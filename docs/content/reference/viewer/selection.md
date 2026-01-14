@@ -40,7 +40,7 @@ To learn more about the various settings check the on-hover tooltips.
 Click-through selections
 ------------------------
 Making selections can be context sensitive to the current selection.
-The most common case for this is selecting instances of an entity (see also [Batch Data](../../concepts/batches.md)):
+The most common case for this is selecting instances of an entity (see also [Batch Data](../../concepts/logging-and-ingestion/batches.md)):
 E.g. in order to select a point of a point cloud in a View,
 first select the entire entity (the cloud) by clicking on one of the points.
 Once the cloud is selected, you can further refine that selection by clicking on an individual point.

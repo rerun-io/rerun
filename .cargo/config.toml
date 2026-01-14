@@ -18,13 +18,18 @@ incremental = false
 # so that we don't run them on cargo publish or on users machines.
 IS_IN_RERUN_WORKSPACE = "yes"
 
-# Depending on the pixi environment, we get different `CONDA_PREFIX` values.
-# This means that changing the pixi environment (or not using it in the first place) will cause rebuilds.
-# To avoid unnecessary rebuilds, we set a fixed value here.
-# For details see:
-# https://pyo3.rs/main/building-and-distribution.html#configuring-the-python-version
-PYO3_PYTHON = "python"
-
+# Use a stable pyo3 config file to prevent cargo cache invalidation when building
+# via different tools (maturin develop vs uv sync). The config file pins the Python
+# executable to .venv/bin/python, ensuring consistent builds regardless of whether
+# uv uses an isolated build environment.
+# The `relative = true` makes cargo expand this to an absolute path.
+#
+# NOTE: This file must be generated before any cargo build involving pyo3.
+# Run `pixi run ensure-pyo3-build-cfg `
+#
+# If you need to build outside of pixi, you may run `python scripts/generate_pyo3_config.py`
+# manually. But, mixing this with any pixi invocations will result in spurious rebuilds.
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]

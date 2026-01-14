@@ -7,8 +7,8 @@ use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
-use crate::video::VideoPlayerError;
 use crate::video::player::{TimedDecodingError, VideoTexture};
+use crate::video::{InsufficientSampleDataError, VideoPlayerError};
 use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
 
 #[derive(Default)]
@@ -58,6 +58,9 @@ pub struct VideoSampleDecoder {
 
     frame_receiver: Receiver<re_video::FrameResult>,
     decoder_output: DecoderOutput,
+
+    /// The [`Chunk::sample_idx`] of the latest submitted sample.
+    latest_sample_idx: Option<usize>,
 }
 
 impl re_byte_size::SizeBytes for VideoSampleDecoder {
@@ -67,6 +70,7 @@ impl re_byte_size::SizeBytes for VideoSampleDecoder {
             decoder: _, // TODO(emilk): maybe we should count this
             frame_receiver: _,
             decoder_output,
+            latest_sample_idx: _,
         } = self;
         debug_name.heap_size_bytes() + decoder_output.heap_size_bytes()
     }
@@ -89,6 +93,7 @@ impl VideoSampleDecoder {
             decoder,
             decoder_output: DecoderOutput::default(),
             frame_receiver,
+            latest_sample_idx: None,
         })
     }
 
@@ -143,7 +148,25 @@ impl VideoSampleDecoder {
 
     /// Start decoding the given chunk.
     pub fn decode(&mut self, chunk: Chunk) -> Result<(), VideoPlayerError> {
+        let sample_idx = chunk.sample_idx;
+
+        if let Some(latest_sample_idx) = self.latest_sample_idx {
+            // Some sanity checks:
+            if latest_sample_idx + 1 == sample_idx {
+                // All good!
+            } else if latest_sample_idx < sample_idx {
+                return Err(InsufficientSampleDataError::MissingSamples.into());
+            } else if sample_idx == latest_sample_idx {
+                return Err(InsufficientSampleDataError::DuplicateSampleIdx.into());
+            } else {
+                return Err(InsufficientSampleDataError::OutOfOrderSampleIdx.into());
+            }
+        }
+
         self.decoder.submit_chunk(chunk)?;
+
+        self.latest_sample_idx = Some(sample_idx);
+
         Ok(())
     }
 
@@ -152,6 +175,7 @@ impl VideoSampleDecoder {
     /// Should flush all pending frames.
     pub fn end_of_video(&mut self) -> Result<(), VideoPlayerError> {
         self.decoder.end_of_video()?;
+        self.latest_sample_idx = None;
         Ok(())
     }
 
@@ -201,6 +225,7 @@ impl VideoSampleDecoder {
         // Flush out any pending frames.
         self.process_decoder_output();
         self.decoder_output.clear();
+        self.latest_sample_idx = None;
 
         Ok(())
     }

@@ -345,7 +345,7 @@ pub struct TimeControl {
     playing: bool,
 
     /// If true, we are in "follow" mode (see [`PlayState::Following`]).
-    /// Ignored when [`Self.playing`] is `false`.
+    /// Ignored when [`Self::playing`] is `false`.
     following: bool,
 
     speed: f32,
@@ -525,6 +525,7 @@ impl TimeControl {
 
     /// Create [`TimeControlCommand`]s to move the time forward (if playing), and perhaps pause if
     /// we've reached the end.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     pub fn update(
         &mut self,
         timeline_histograms: &TimeHistogramPerTimeline,
@@ -641,6 +642,7 @@ impl TimeControl {
     }
 
     /// Apply state diff to response if needed.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn apply_state_diff_if_needed(
         &mut self,
         response: TimeControlResponse,
@@ -949,13 +951,20 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::SetTimeSelection(time_range) => {
-                if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                    if let Some(blueprint_ctx) = blueprint_ctx {
-                        blueprint_ctx.set_time_selection(*time_range);
-                    }
+                if let Some(blueprint_ctx) = blueprint_ctx {
+                    blueprint_ctx.set_time_selection(*time_range);
+                }
 
-                    state.time_selection = Some((*time_range).into());
+                let state = self
+                    .states
+                    .entry(*self.timeline_name())
+                    .or_insert_with(|| TimeState::new(time_range.min));
 
+                let repaint = state.time_selection.map(|r| r.to_int()) != Some(*time_range);
+
+                state.time_selection = Some((*time_range).into());
+
+                if repaint {
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No

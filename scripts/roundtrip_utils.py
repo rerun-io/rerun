@@ -17,7 +17,10 @@ def get_repo_root() -> str:
     else:
         get_rev_parse = subprocess.run(["git", "rev-parse", "--show-toplevel"], check=False, capture_output=True)
         assert get_rev_parse.returncode == 0
-        return get_rev_parse.stdout.decode("utf-8").strip()
+        repo_root = get_rev_parse.stdout.decode(
+            "utf-8"
+        ).strip()  # Cache the output of repo root, so we don't have to parse the git rev every time.
+        return repo_root
 
 
 def run(

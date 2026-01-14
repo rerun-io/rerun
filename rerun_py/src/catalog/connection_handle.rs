@@ -23,7 +23,7 @@ use re_protos::{invalid_schema, missing_field};
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use tracing::Instrument as _;
 
-use crate::catalog::table_entry::PyTableInsertMode;
+use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
 
@@ -209,7 +209,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         name: String,
         schema: SchemaRef,
-        url: &url::Url,
+        url: Option<url::Url>,
     ) -> PyResult<TableEntry> {
         let entry_id = wait_for_future(
             py,
@@ -247,7 +247,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         entry_id: EntryId,
         stream: ArrowArrayStreamReader,
-        insert_mode: PyTableInsertMode,
+        insert_mode: PyTableInsertModeInternal,
     ) -> PyResult<()> {
         wait_for_future(
             py,

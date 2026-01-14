@@ -2,11 +2,11 @@ use std::iter::repeat_n;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+    Array, ArrayData, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
     PrimitiveArray, UInt32Array, new_empty_array,
 };
-use arrow::buffer::{NullBuffer, OffsetBuffer};
-use arrow::datatypes::{DataType, Field};
+use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
@@ -435,57 +435,529 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
     (list_field, list_array)
 }
 
-#[cfg(test)]
-mod tests {
+/// Get the underlying buffer of an arrow array of logical type `Vec<Vec<Blob>>`.
+pub fn blob_arrays_offsets_and_buffer(array: &dyn Array) -> Option<(&OffsetBuffer<i32>, &Buffer)> {
+    let inner_list_array = array.downcast_array_ref::<arrow::array::ListArray>()?;
 
+    let values = inner_list_array
+        .values()
+        .downcast_array_ref::<PrimitiveArray<UInt8Type>>()?;
+
+    let values = values.values().inner();
+
+    Some((inner_list_array.offsets(), values))
+}
+
+#[test]
+fn test_wrap_in_list_array() {
     use arrow::array::{Array as _, AsArray as _, Int32Array};
     use arrow::buffer::{NullBuffer, ScalarBuffer};
     use arrow::datatypes::{DataType, Int32Type};
 
+    // Convert [42, 69, null, 1337] into [[42], [69], null, [1337]]
+    let original_field = Field::new("item", DataType::Int32, true);
+    let original_array = Int32Array::new(
+        ScalarBuffer::from(vec![42, 69, -1, 1337]),
+        Some(NullBuffer::from(vec![true, true, false, true])),
+    );
+    assert_eq!(original_array.len(), 4);
+    assert_eq!(original_array.null_count(), 1);
+
+    let (new_field, new_array) =
+        wrap_in_list_array(&original_field, into_arrow_ref(original_array.clone()));
+
+    assert_eq!(new_field.data_type(), new_array.data_type());
+    assert_eq!(new_array.len(), original_array.len());
+    assert_eq!(new_array.null_count(), original_array.null_count());
+    assert_eq!(original_field.data_type(), &new_array.value_type());
+
+    assert_eq!(
+        new_array
+            .value(0)
+            .as_primitive::<Int32Type>()
+            .values()
+            .as_ref(),
+        &[42]
+    );
+    assert_eq!(
+        new_array
+            .value(1)
+            .as_primitive::<Int32Type>()
+            .values()
+            .as_ref(),
+        &[69]
+    );
+    assert_eq!(
+        new_array
+            .value(3)
+            .as_primitive::<Int32Type>()
+            .values()
+            .as_ref(),
+        &[1337]
+    );
+}
+
+// ---
+
+/// Deep-slicing operation for Arrow arrays.
+///
+/// The data, offsets, bitmaps and any other buffers required will be reallocated, copied around, and patched
+/// as much as required so that the resulting physical data becomes as packed as possible for the desired slice.
+///
+/// This is the erased version, see [`deep_slice_array`] for a typed implementation.
+//
+// TODO(cmc): optimize from there; future results should always match this baseline.
+pub fn deep_slice_array_erased(
+    array: &dyn arrow::array::Array,
+    offset: usize,
+    length: usize,
+) -> ArrayRef {
+    let data = array.to_data();
+
+    let use_null_optimization = false;
+    let mut data_sliced =
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+
+    data_sliced.extend(0, offset, offset + length);
+
+    arrow::array::make_array(data_sliced.freeze())
+}
+
+/// Deep-slicing operation for Arrow arrays.
+///
+/// The data, offsets, bitmaps and any other buffers required will be reallocated, copied around, and patched
+/// as much as required so that the resulting physical data becomes as packed as possible for the desired slice.
+///
+/// This is the erased version, see [`deep_slice_array_erased`] for a typed implementation.
+//
+// TODO(cmc): optimize from there; future results should always match this baseline.
+pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, offset: usize, length: usize) -> T {
+    let data = array.to_data();
+
+    let use_null_optimization = false;
+    let mut data_sliced =
+        arrow::array::MutableArrayData::new(vec![&data], use_null_optimization, length);
+
+    data_sliced.extend(0, offset, offset + length);
+
+    T::from(data_sliced.freeze())
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::cast_possible_wrap,
+    clippy::disallowed_methods,
+    clippy::needless_pass_by_value
+)]
+mod tests {
+    use arrow::array::{
+        Array, ArrayRef, Float32Array, Int32Array, Int64Array, ListArray, RecordBatch, StructArray,
+        UInt8Array, UnionArray,
+    };
+    use arrow::buffer::{OffsetBuffer, ScalarBuffer};
+    use arrow::datatypes::{Field, UnionFields};
+    use arrow::ipc::writer::StreamWriter;
+    use std::sync::Arc;
+
     use super::*;
 
     #[test]
-    fn test_wrap_in_list_array() {
-        // Convert [42, 69, null, 1337] into [[42], [69], null, [1337]]
-        let original_field = Field::new("item", DataType::Int32, true);
-        let original_array = Int32Array::new(
-            ScalarBuffer::from(vec![42, 69, -1, 1337]),
-            Some(NullBuffer::from(vec![true, true, false, true])),
-        );
-        assert_eq!(original_array.len(), 4);
-        assert_eq!(original_array.null_count(), 1);
+    fn deep_slice() {
+        let mut output = String::new();
 
-        let (new_field, new_array) =
-            wrap_in_list_array(&original_field, into_arrow_ref(original_array.clone()));
+        let size = 100_000;
+        let values: Vec<i32> = (0..size as i32).collect();
 
-        assert_eq!(new_field.data_type(), new_array.data_type());
-        assert_eq!(new_array.len(), original_array.len());
-        assert_eq!(new_array.null_count(), original_array.null_count());
-        assert_eq!(original_field.data_type(), &new_array.value_type());
+        let int_array = Int32Array::from(values);
+        output += &print_info("int32", Arc::new(int_array.clone()), 25000, 50000);
 
-        assert_eq!(
-            new_array
-                .value(0)
-                .as_primitive::<Int32Type>()
-                .values()
-                .as_ref(),
-            &[42]
+        let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(1, size));
+        let list_int_array = ListArray::try_new(
+            Arc::new(arrow::datatypes::Field::new(
+                "item",
+                int_array.data_type().clone(),
+                false,
+            )),
+            offsets,
+            Arc::new(int_array.clone()),
+            None,
+        )
+        .unwrap();
+        output += &print_info(
+            "list[int32]",
+            Arc::new(list_int_array.clone()),
+            25000,
+            50000,
         );
-        assert_eq!(
-            new_array
-                .value(1)
-                .as_primitive::<Int32Type>()
-                .values()
-                .as_ref(),
-            &[69]
+
+        let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(1, size));
+        let list_list_int_array = ListArray::try_new(
+            Arc::new(arrow::datatypes::Field::new(
+                "item",
+                list_int_array.data_type().clone(),
+                false,
+            )),
+            offsets,
+            Arc::new(list_int_array.clone()),
+            None,
+        )
+        .unwrap();
+        output += &print_info(
+            "list[list[int32]]",
+            Arc::new(list_list_int_array.clone()),
+            5000,
+            5,
         );
-        assert_eq!(
-            new_array
-                .value(3)
-                .as_primitive::<Int32Type>()
-                .values()
-                .as_ref(),
-            &[1337]
+
+        let struct_array = StructArray::new(
+            vec![Field::new("i", int_array.data_type().clone(), false)].into(),
+            vec![Arc::new(int_array.clone())],
+            None,
         );
+        output += &print_info(
+            "struct{int32}",
+            Arc::new(struct_array.clone()),
+            25000,
+            50000,
+        );
+
+        let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(1, size));
+        let list_struct_int_array = ListArray::try_new(
+            Arc::new(arrow::datatypes::Field::new(
+                "item",
+                struct_array.data_type().clone(),
+                false,
+            )),
+            offsets,
+            Arc::new(struct_array.clone()),
+            None,
+        )
+        .unwrap();
+        output += &print_info(
+            "list[struct{int32}]",
+            Arc::new(list_struct_int_array.clone()),
+            25000,
+            50000,
+        );
+
+        // union#dense{{u8,f32,i64}}
+        {
+            const NUM_TOTAL: usize = 100_000;
+
+            let u8s = UInt8Array::from_iter_values(
+                (0u32..).take(NUM_TOTAL).map(|i| (i % u8::MAX as u32) as u8),
+            );
+            let f32s =
+                Float32Array::from_iter_values((0..).take(NUM_TOTAL / 3 + 1).map(|i| i as f32));
+            let i64s = Int64Array::from_iter_values((0..).take(NUM_TOTAL / 3 + 1));
+
+            let type_ids = vec![0, 1, 2];
+            let fields = vec![
+                Arc::new(Field::new("u8", u8s.data_type().clone(), true)),
+                Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
+                Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
+            ];
+            let union_fields = UnionFields::new(type_ids, fields);
+
+            let type_id_buffer = ScalarBuffer::from(
+                (0..NUM_TOTAL as i32)
+                    .map(|i| (i % 3) as i8)
+                    .collect::<Vec<_>>(),
+            );
+            let value_offsets =
+                ScalarBuffer::from((0..NUM_TOTAL as i32).map(|i| i / 3).collect::<Vec<_>>());
+
+            let children = vec![
+                Arc::new(u8s) as ArrayRef,
+                Arc::new(f32s) as ArrayRef,
+                Arc::new(i64s) as ArrayRef,
+            ];
+
+            let array = Arc::new(
+                UnionArray::try_new(union_fields, type_id_buffer, Some(value_offsets), children)
+                    .unwrap(),
+            ) as ArrayRef;
+
+            let from = NUM_TOTAL / 4;
+            let len = NUM_TOTAL / 2;
+            output += &print_info("union#dense{{u8,f32,i64}}:", array, from, len);
+        }
+
+        // union#sparse{{u8,f32,i64}}
+        {
+            const NUM_TOTAL: usize = 100_000;
+
+            let u8s = UInt8Array::from_iter_values(
+                (0u32..).take(NUM_TOTAL).map(|i| (i % u8::MAX as u32) as u8),
+            );
+            let f32s = Float32Array::from_iter_values((0..).take(NUM_TOTAL).map(|i| i as f32));
+            let i64s = Int64Array::from_iter_values((0..).take(NUM_TOTAL));
+
+            let type_ids = vec![0, 1, 2];
+            let fields = vec![
+                Arc::new(Field::new("u8", u8s.data_type().clone(), true)),
+                Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
+                Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
+            ];
+            let union_fields = UnionFields::new(type_ids, fields);
+
+            let type_id_buffer = ScalarBuffer::from(
+                (0..NUM_TOTAL as i32)
+                    .map(|i| (i % 3) as i8)
+                    .collect::<Vec<_>>(),
+            );
+
+            let children = vec![
+                Arc::new(u8s) as ArrayRef,
+                Arc::new(f32s) as ArrayRef,
+                Arc::new(i64s) as ArrayRef,
+            ];
+
+            let array = Arc::new(
+                UnionArray::try_new(union_fields, type_id_buffer, None, children).unwrap(),
+            ) as ArrayRef;
+
+            let from = NUM_TOTAL / 4;
+            let len = NUM_TOTAL / 2;
+            output += &print_info("union#sparse{{u8,f32,i64}}:", array, from, len);
+        }
+
+        // union#dense{{list[u8],list[f32],list[i64]}}
+        {
+            const NUM_TOTAL: usize = 100_000;
+            const NUM_PER_BATCH: usize = 5_000;
+
+            let u8s = UInt8Array::from_iter_values(
+                (0u32..)
+                    .take(NUM_TOTAL / 2)
+                    .map(|i| (i % u8::MAX as u32) as u8),
+            );
+            let f32s = Float32Array::from_iter_values((0..).take(NUM_TOTAL / 2).map(|i| i as f32));
+            let i64s = Int64Array::from_iter_values((0..).take(NUM_TOTAL / 2));
+
+            let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(
+                NUM_PER_BATCH,
+                (NUM_TOTAL / 3 + 1) / NUM_PER_BATCH + 1,
+            ));
+            let list_u8s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    u8s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(u8s.clone()),
+                None,
+            )
+            .unwrap();
+            let list_f32s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    f32s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(f32s.clone()),
+                None,
+            )
+            .unwrap();
+            let list_i64s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    i64s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(i64s.clone()),
+                None,
+            )
+            .unwrap();
+
+            let type_ids = vec![0, 1, 2];
+            let fields = vec![
+                Arc::new(Field::new("u8_list", list_u8s.data_type().clone(), true)),
+                Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
+                Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
+            ];
+            let union_fields = UnionFields::new(type_ids, fields);
+
+            let type_id_buffer = ScalarBuffer::from(
+                (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
+                    .map(|i| (i % 3) as i8)
+                    .collect::<Vec<_>>(),
+            );
+            let value_offsets = ScalarBuffer::from(
+                (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
+                    .map(|i| i / 3)
+                    .collect::<Vec<_>>(),
+            );
+
+            let children = vec![
+                Arc::new(list_u8s) as ArrayRef,
+                Arc::new(list_f32s) as ArrayRef,
+                Arc::new(list_i64s) as ArrayRef,
+            ];
+
+            let array = Arc::new(
+                UnionArray::try_new(union_fields, type_id_buffer, Some(value_offsets), children)
+                    .unwrap(),
+            ) as ArrayRef;
+
+            let from = NUM_TOTAL / NUM_PER_BATCH / 4;
+            let len = NUM_TOTAL / NUM_PER_BATCH / 2;
+            output += &print_info(
+                "union#dense{{list[u8],list[f32],list[i64]}}:",
+                array,
+                from,
+                len,
+            );
+        }
+
+        // union#sparse{{list[u8],list[f32],list[i64]}}
+        {
+            const NUM_TOTAL: usize = 100_000;
+            const NUM_PER_BATCH: usize = 5_000;
+
+            let u8s = UInt8Array::from_iter_values(
+                (0u32..).take(NUM_TOTAL).map(|i| (i % u8::MAX as u32) as u8),
+            );
+            let f32s = Float32Array::from_iter_values((0..).take(NUM_TOTAL).map(|i| i as f32));
+            let i64s = Int64Array::from_iter_values((0..).take(NUM_TOTAL));
+
+            let offsets = OffsetBuffer::from_lengths(std::iter::repeat_n(
+                NUM_PER_BATCH,
+                NUM_TOTAL / NUM_PER_BATCH,
+            ));
+            let list_u8s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    u8s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(u8s.clone()),
+                None,
+            )
+            .unwrap();
+            let list_f32s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    f32s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(f32s.clone()),
+                None,
+            )
+            .unwrap();
+            let list_i64s = ListArray::try_new(
+                Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    i64s.data_type().clone(),
+                    false,
+                )),
+                offsets.clone(),
+                Arc::new(i64s.clone()),
+                None,
+            )
+            .unwrap();
+
+            let type_ids = vec![0, 1, 2];
+            let fields = vec![
+                Arc::new(Field::new("u8_list", list_u8s.data_type().clone(), true)),
+                Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
+                Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
+            ];
+            let union_fields = UnionFields::new(type_ids, fields);
+
+            let type_id_buffer = ScalarBuffer::from(
+                (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
+                    .map(|i| (i % 3) as i8)
+                    .collect::<Vec<_>>(),
+            );
+
+            let children = vec![
+                Arc::new(list_u8s) as ArrayRef,
+                Arc::new(list_f32s) as ArrayRef,
+                Arc::new(list_i64s) as ArrayRef,
+            ];
+
+            let array = Arc::new(
+                UnionArray::try_new(union_fields, type_id_buffer, None, children).unwrap(),
+            ) as ArrayRef;
+
+            let from = NUM_TOTAL / NUM_PER_BATCH / 4;
+            let len = NUM_TOTAL / NUM_PER_BATCH / 2;
+            output += &print_info(
+                "union#sparse{{list[u8],list[f32],list[i64]}}:",
+                array,
+                from,
+                len,
+            );
+        }
+
+        insta::assert_snapshot!("deep_slice_comparisons", output);
+    }
+
+    fn dump_array_stats(array: &dyn Array) -> String {
+        let data = array.to_data();
+        format!(
+            "len={:10} array_size={:10} buf_size={:10} data.len={:10} data.array_size={:10} data.buf_size={:10} data.slice_size={:10}",
+            array.len(),
+            array.get_array_memory_size(),
+            array.get_buffer_memory_size(),
+            data.len(),
+            data.get_array_memory_size(),
+            data.get_buffer_memory_size(),
+            data.get_slice_memory_size().unwrap(),
+        )
+    }
+
+    fn dump_array_to_ipc(array: Arc<dyn Array>) -> usize {
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![
+            arrow::datatypes::Field::new("col", array.data_type().clone(), false),
+        ]));
+
+        let batch = RecordBatch::try_new(schema.clone(), vec![array]).unwrap();
+
+        let mut buffer = Vec::new();
+        {
+            let mut writer = StreamWriter::try_new(&mut buffer, &schema).unwrap();
+            writer.write(&batch).unwrap();
+            writer.finish().unwrap();
+        }
+
+        buffer.len()
+    }
+
+    fn print_info(descr: &str, array: Arc<dyn Array>, offset: usize, len: usize) -> String {
+        let mut output = String::new();
+
+        let from = offset;
+        let to = offset + len;
+
+        let sliced = array.slice(offset, len);
+        let deep_sliced = deep_slice_array_erased(&array, offset, len);
+        assert_eq!(&deep_sliced, &sliced);
+
+        output += &format!("{descr}:\n");
+        output += &format!(
+            "array[0..]:          {} / IPC={:6}\n",
+            dump_array_stats(&array),
+            dump_array_to_ipc(array.clone()),
+        );
+        output += &format!(
+            "slice[{from:5}..{to:5}]: {} / IPC={:6}\n",
+            dump_array_stats(&sliced),
+            dump_array_to_ipc(sliced.clone())
+        );
+        output += &format!(
+            " deep[{from:5}..{to:5}]: {} / IPC={:6}\n",
+            dump_array_stats(&deep_sliced),
+            dump_array_to_ipc(deep_sliced.clone())
+        );
+        output += "\n";
+
+        output
     }
 }

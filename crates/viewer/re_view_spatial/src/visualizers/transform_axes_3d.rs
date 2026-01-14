@@ -14,7 +14,7 @@ use re_viewer_context::{
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::contexts::TransformTreeContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::utilities::transform_info_for_entity_or_report_error;
+use crate::visualizers::utilities::format_transform_info_result;
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -69,44 +69,65 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let Some(transform_info) = transform_info_for_entity_or_report_error(
-                transforms,
-                &data_result.entity_path,
-                &mut output,
-            ) else {
-                continue;
-            };
+            let entity_path = &data_result.entity_path;
 
-            // Determine which transforms to draw axes at.
-            // For pinhole cameras, we draw at the pinhole location only.
-            // For normal entities, we iterate over all instance poses.
-            let transforms_to_draw: smallvec::SmallVec<[glam::Affine3A; 1]> =
-                if let Some(pinhole_tree_root_info) =
-                    transforms.pinhole_tree_root_info(transform_info.tree_root())
-                {
-                    if transform_info.tree_root()
-                        == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+            // Draw all transforms defined _at_ this entity.
+            // TODO(RR-3319): consider also root frames here (not only child frames).
+            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
+                .child_frames_for_entity(entity_path.hash())
+                .map(|(frame_id_hash, transform)| {
+                    (*frame_id_hash, transform.target_from_source.as_affine3a())
+                })
+                .collect();
+
+            // We then *prepend* the axes for the entity's coordinate frame, because we want them to be drawn below
+            // the additional transform data (the user usually knows which entity they are on).
+            // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
+            // for varying behavior.
+            let coordinate_frame_transform_result =
+                transforms.target_from_entity_path(entity_path.hash());
+
+            match coordinate_frame_transform_result {
+                Some(Ok(transform_info)) => {
+                    let frame_id_hash = transforms.transform_frame_id_for(entity_path.hash());
+
+                    if let Some(target_from_camera) =
+                        transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
-                        // We're _at_ that pinhole.
                         // Don't apply the from-2D transform, stick with the last known 3D.
-                        smallvec::smallvec![
-                            pinhole_tree_root_info
-                                .parent_root_from_pinhole_root
-                                .as_affine3a()
-                        ]
+                        transforms_to_draw
+                            .insert(0, (frame_id_hash, target_from_camera.as_affine3a()));
                     } else {
-                        // We're inside a 2D space. But this is a 3D transform.
-                        // Something is wrong here and this is not the right place to report it.
-                        // Better just don't draw the axis!
-                        continue;
+                        transforms_to_draw.insert_many(
+                            0,
+                            transform_info
+                                .target_from_instances()
+                                .iter()
+                                .map(|t| (frame_id_hash, t.as_affine3a())),
+                        );
                     }
-                } else {
-                    transform_info
-                        .target_from_instances()
-                        .iter()
-                        .map(|t| t.as_affine3a())
-                        .collect()
-                };
+                }
+
+                // There are many reasons why a transform may be invalid and we want to report those.
+                // However, if we already have named transforms to draw and the coordinate frame at this entity
+                // is an implicit one, we skip reporting errors for it.
+                Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, .. }))
+                    if !transforms_to_draw.is_empty()
+                        && src.as_entity_path_hash() == entity_path.hash() => {}
+
+                _ => {
+                    if let Err(err_msg) =
+                        format_transform_info_result(transforms, coordinate_frame_transform_result)
+                    {
+                        output.report_error_for(entity_path.clone(), err_msg);
+                    }
+                }
+            }
+
+            // Early exit if there's nothing to do.
+            if transforms_to_draw.is_empty() {
+                return Ok(output);
+            }
 
             let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;
             let show_frame_identifier = TransformAxes3D::descriptor_show_frame().component;
@@ -136,40 +157,36 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
                 .into();
 
-            if show_frame {
-                // Add label at the center of each transform instance if `show_frame` is enabled.
-                let frame_id_hash =
-                    transforms.transform_frame_id_for(data_result.entity_path.hash());
-
-                if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
-                    self.0
-                        .ui_labels
-                        .extend(transforms_to_draw.iter().map(|transform| UiLabel {
+            // Draw axes for each instance
+            for (instance_index, (label_id_hash, world_from_obj)) in
+                transforms_to_draw.iter().enumerate()
+            {
+                if show_frame {
+                    if let Some(frame_id) = transforms.lookup_frame_id(*label_id_hash) {
+                        self.0.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
                             target: UiLabelTarget::Position3D(
-                                transform.transform_point3(glam::Vec3::ZERO),
+                                world_from_obj.transform_point3(glam::Vec3::ZERO),
                             ),
                             labeled_instance: InstancePathHash::entity_all(
                                 &data_result.entity_path,
                             ),
-                        }));
-                } else {
-                    // It should not be possible to hit this path and frame id hashes are not something that
-                    // we should ever expose to our users, so let's add a debug assert for good measure.
-                    debug_assert!(
-                        false,
-                        "[DEBUG ASSERT] unable to resolve frame id hash {frame_id_hash:?}"
-                    );
-                    output.report_error_for(
-                        data_result.entity_path.clone(),
-                        format!("Could not resolve frame id hash {frame_id_hash:?}"),
-                    );
+                        });
+                    } else {
+                        // It should not be possible to hit this path and frame id hashes are not something that
+                        // we should ever expose to our users, so let's add a debug assert for good measure.
+                        debug_assert!(
+                            false,
+                            "[DEBUG ASSERT] unable to resolve frame id hash {label_id_hash:?}"
+                        );
+                        output.report_error_for(
+                            data_result.entity_path.clone(),
+                            format!("Could not resolve frame id hash {label_id_hash:?}"),
+                        );
+                    }
                 }
-            }
 
-            // Draw axes for each instance
-            for (instance_index, world_from_obj) in transforms_to_draw.iter().enumerate() {
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
                 self.0.add_bounding_box(
                     data_result.entity_path.hash(),
@@ -209,10 +226,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 pub fn add_axis_arrows(
@@ -231,7 +244,7 @@ pub fn add_axis_arrows(
     let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder
-        .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
+        .batch(ent_path.map_or_else(|| "axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

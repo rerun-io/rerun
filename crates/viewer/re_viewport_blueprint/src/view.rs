@@ -384,7 +384,7 @@ impl ViewBlueprint {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: Option<&Timeline>,
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
@@ -403,12 +403,14 @@ impl ViewBlueprint {
             blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component,
         );
 
-        let time_range = ranges.ok().flatten().and_then(|ranges| {
+        let time_range = active_timeline.and_then(|active_timeline| {
             ranges
+                .ok()??
                 .iter()
                 .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
                 .map(|range| range.range.clone())
         });
+
         time_range.map_or_else(
             || {
                 let view_class = view_class_registry.get_class_or_log_error(self.class_identifier);
@@ -767,16 +769,14 @@ mod tests {
                     .expect("view class should be registered"),
             );
 
-            if let Some(timeline) = ctx.time_ctrl.timeline() {
-                resolver.update_overrides(
-                    ctx.blueprint_db(),
-                    ctx.blueprint_query,
-                    timeline,
-                    ctx.view_class_registry(),
-                    &mut query_result,
-                    view_state,
-                );
-            }
+            resolver.update_overrides(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                ctx.time_ctrl.timeline(),
+                ctx.view_class_registry(),
+                &mut query_result,
+                view_state,
+            );
 
             result = Some(query_result.clone());
         });

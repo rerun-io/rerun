@@ -51,7 +51,7 @@ pub use self::annotations::{
     AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
     ResolvedAnnotationInfos,
 };
-pub use self::app_options::AppOptions;
+pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
     BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,

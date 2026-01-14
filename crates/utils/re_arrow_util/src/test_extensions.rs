@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ArrayRef, ListArray, StringArray};
+use arrow::array::{Array as _, ArrayRef, ListArray, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Fields};
 use datafusion::common::DataFusionError;
@@ -172,8 +172,10 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         }
 
         let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
-        #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
-        Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
+        Some(
+            Self::try_new_with_options(Arc::new(schema), arrays, &RecordBatchOptions::default())
+                .expect("creating record batch"),
+        )
     }
 
     fn replace_str(&self, column_name: &str, from: &str, to: &str) -> Self {
@@ -207,8 +209,8 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema)
         } else {
-            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
-            Self::try_new(schema, arrays).expect("creation should succeed")
+            Self::try_new_with_options(schema, arrays, &RecordBatchOptions::default())
+                .expect("creation should succeed")
         }
     }
 
@@ -243,6 +245,10 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
                 arrow::datatypes::DataType::Int64 => {
                     arrays
                         .push(redact_array!(array, arrow::array::Int64Array, |opt| opt.map(|_| 0)));
+                }
+                arrow::datatypes::DataType::UInt64 => {
+                    arrays
+                        .push(redact_array!(array, arrow::array::UInt64Array, |opt| opt.map(|_| 0)));
                 }
                 arrow::datatypes::DataType::List(field) => {
                     let list_array = array
@@ -307,8 +313,8 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema.clone())
         } else {
-            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
-            Self::try_new(schema.clone(), arrays).expect("creation should succeed")
+            Self::try_new_with_options(schema.clone(), arrays, &RecordBatchOptions::default())
+                .expect("creation should succeed")
         }
     }
 

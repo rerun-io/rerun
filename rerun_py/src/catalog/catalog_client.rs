@@ -46,8 +46,8 @@ impl PyCatalogClientInternal {
 
     /// Create a new catalog client object.
     #[new]
-    #[pyo3(text_signature = "(self, addr, token=None)")]
-    fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
+    #[pyo3(text_signature = "(self, url, token=None)")]
+    fn new(py: Python<'_>, url: String, token: Option<String>) -> PyResult<Self> {
         // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
         // what we set it to. But we have to set it, or we will crash at runtime, as soon as
         // anything tries to do anything TLS-related.
@@ -55,7 +55,7 @@ impl PyCatalogClientInternal {
         // but we removed that unused dependency, so now we must do it ourselves.
         _ = rustls::crypto::ring::default_provider().install_default();
 
-        let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
+        let origin = url.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_with_stored_credentials();
@@ -238,16 +238,26 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: String,
         schema: PyArrowType<Schema>,
-        url: String,
+        url: Option<String>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
+        // Verify we have a valid table name
+        let dialect = datafusion::logical_expr::sqlparser::dialect::GenericDialect;
+        let _ = datafusion::logical_expr::sqlparser::parser::Parser::new(&dialect)
+            .try_with_sql(name.as_str())
+            .and_then(|mut parser| parser.parse_multipart_identifier())
+            .map_err(|err| PyValueError::new_err(format!("Invalid table name. {err}")))?;
+
         let url = url
-            .parse::<url::Url>()
-            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+            .map(|url| {
+                url.parse::<url::Url>()
+                    .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))
+            })
+            .transpose()?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table_entry(py, name, schema, &url)?;
+        let table_entry = connection.create_table_entry(py, name, schema, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
 

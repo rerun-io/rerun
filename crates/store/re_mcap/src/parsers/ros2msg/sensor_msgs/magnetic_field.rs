@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::archetypes::Arrows3D;
+use re_sdk_types::archetypes::{Arrows3D, CoordinateFrame};
 use re_sdk_types::datatypes::Vec3D;
 
 use super::super::definitions::sensor_msgs;
@@ -7,18 +7,16 @@ use crate::Error;
 use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::{MessageParser, ParserContext, cdr};
 
-/// Plugin that parses `sensor_msgs/msg/MagneticField` messages.
-#[derive(Default)]
-pub struct MagneticFieldSchemaPlugin;
-
 pub struct MagneticFieldMessageParser {
     vectors: Vec<Vec3D>,
+    frame_ids: Vec<String>,
 }
 
 impl Ros2MessageParser for MagneticFieldMessageParser {
     fn new(num_rows: usize) -> Self {
         Self {
             vectors: Vec::with_capacity(num_rows),
+            frame_ids: Vec::with_capacity(num_rows),
         }
     }
 }
@@ -34,6 +32,8 @@ impl MessageParser for MagneticFieldMessageParser {
             magnetic_field.header.stamp.as_nanos() as u64,
         ));
 
+        self.frame_ids.push(magnetic_field.header.frame_id);
+
         // Convert magnetic field vector to Vector3D and store
         self.vectors.push(Vec3D([
             magnetic_field.magnetic_field.x as f32,
@@ -48,16 +48,24 @@ impl MessageParser for MagneticFieldMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let Self { vectors } = *self;
+        let Self { vectors, frame_ids } = *self;
+
+        let mut components: Vec<_> = Arrows3D::update_fields()
+            .with_vectors(vectors)
+            .columns_of_unit_batches()?
+            .collect();
+
+        components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()?,
+        );
 
         let data_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            Arrows3D::update_fields()
-                .with_vectors(vectors)
-                .columns_of_unit_batches()?
-                .collect(),
+            components.into_iter().collect(),
         )?;
 
         Ok(vec![data_chunk])

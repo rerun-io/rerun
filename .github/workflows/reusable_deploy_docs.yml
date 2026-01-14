@@ -69,7 +69,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: py-docs
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -83,7 +82,7 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Build docs
-        run: pixi run -e py-docs mkdocs build -f rerun_py/mkdocs.yml -d site
+        run: pixi run uv run --group docs mkdocs build -f rerun_py/mkdocs.yml -d site
 
       - name: "Upload Python Docs (version)"
         uses: google-github-actions/upload-cloud-storage@v2
@@ -200,7 +199,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.55.0
-          environments: py-docs
 
       - id: "auth"
         uses: google-github-actions/auth@v2

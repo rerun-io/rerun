@@ -327,6 +327,11 @@ def serve_grpc(
     This function returns immediately. In order to keep the server running, you must keep the Python process running
     as well.
 
+    NOTE: The grpc server is associated with a [`rerun.RecordingStream`][] object. By default, if no other recording
+    was specified, this will be the global recording. When that `RecordingStream` is disconnected, or otherwise goes
+    out of scope, the associated gRPC server will be shut down.
+    See: [Issue: #12313](https://github.com/rerun-io/rerun/issues/12313) for possible complications.
+
     Parameters
     ----------
     grpc_port:

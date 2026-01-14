@@ -7,7 +7,7 @@ mod grpc;
 pub use self::connection_client::{GenericConnectionClient, SegmentQueryParams};
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    Credentials,
+    CredentialSource, Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
     RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,
@@ -15,6 +15,20 @@ pub use self::grpc::{
 };
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+
+/// Controls how to load chunks from the remote server.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum StreamMode {
+    /// Load all data into memory.
+    #[default]
+    FullLoad,
+
+    /// Larger-than-RAM support.
+    ///
+    /// Load chunks as needed.
+    /// Will start by loading the RRD manifest.
+    OnDemand,
+}
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]

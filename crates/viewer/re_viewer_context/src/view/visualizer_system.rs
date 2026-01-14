@@ -140,7 +140,7 @@ impl VisualizerExecutionOutput {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait VisualizerSystem: Send + Sync + 'static {
+pub trait VisualizerSystem: Send + Sync + std::any::Any {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
@@ -164,8 +164,6 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     fn data(&self) -> Option<&dyn std::any::Any> {
         None
     }
-
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 pub struct VisualizerCollection {
@@ -179,7 +177,7 @@ impl VisualizerCollection {
     ) -> Result<&T, ViewSystemExecutionError> {
         self.systems
             .get(&T::identifier())
-            .and_then(|s| s.as_any().downcast_ref())
+            .and_then(|s| (s.as_ref() as &dyn std::any::Any).downcast_ref())
             .ok_or_else(|| {
                 ViewSystemExecutionError::VisualizerSystemNotFound(T::identifier().as_str())
             })

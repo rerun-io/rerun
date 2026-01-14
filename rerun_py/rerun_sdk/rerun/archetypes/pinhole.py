@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .pinhole_ext import PinholeExt
 
@@ -21,7 +22,7 @@ __all__ = ["Pinhole"]
 
 
 @define(str=False, repr=False, init=False)
-class Pinhole(PinholeExt, Archetype):
+class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 
@@ -519,3 +520,7 @@ class Pinhole(PinholeExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Cameras", overrides=self.as_component_batches(), mappings=None)

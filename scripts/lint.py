@@ -1492,7 +1492,6 @@ def main() -> None:
         "./docs/snippets/all/tutorials/custom-application-id.py",  # nuh-uh, I don't want rerun_example_ here
         "./docs/snippets/all/tutorials/custom-application-id.rs",  # nuh-uh, I don't want rerun_example_ here
         "./examples/assets",
-        "./examples/python/depth_guided_stable_diffusion/cache/",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated
         "./examples/rust/objectron/src/objectron.rs",  # auto-generated

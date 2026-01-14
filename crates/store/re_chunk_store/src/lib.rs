@@ -45,14 +45,16 @@ pub use self::events::{
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::properties::ExtractPropertiesError;
+pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub(crate) use self::store::ColumnMetadataState;
 pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
 };
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+pub(crate) use self::store::ColumnMetadataState;
 
 pub mod external {
     pub use {arrow, re_chunk};
@@ -68,6 +70,12 @@ pub enum ChunkStoreError {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
+    #[error("Failed to load data, parsing error: {0:#}")]
+    Codec(#[from] re_log_encoding::CodecError),
+
+    #[error("Failed to load data, semantic error: {0:#}")]
+    Sorbet(#[from] re_sorbet::SorbetError),
+
     /// Error when parsing configuration from environment.
     #[error("Failed to parse config: '{name}={value}': {err}")]
     ParseConfig {
@@ -78,3 +86,19 @@ pub enum ChunkStoreError {
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
+
+/// What to do when a virtual chunk is missing from the store.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnMissingChunk {
+    /// Ignore the missing chunk, and return partial results.
+    Ignore,
+
+    /// Remember the missing chunk ID in [`ChunkStore::take_missing_chunk_ids`]
+    /// and report it back in [`QueryResults::missing`].
+    Report,
+
+    /// Panic when a chunk is missing.
+    ///
+    /// Only use this in tests!
+    Panic,
+}

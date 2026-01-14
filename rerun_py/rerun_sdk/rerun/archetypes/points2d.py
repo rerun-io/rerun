@@ -14,6 +14,7 @@ from .._baseclasses import (
     Archetype,
     ComponentColumnList,
 )
+from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .points2d_ext import Points2DExt
 
@@ -21,7 +22,7 @@ __all__ = ["Points2D"]
 
 
 @define(str=False, repr=False, init=False)
-class Points2D(Points2DExt, Archetype):
+class Points2D(Points2DExt, Archetype, VisualizableArchetype):
     """
     **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
 
@@ -425,3 +426,7 @@ class Points2D(Points2DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
+
+    def visualizer(self) -> Visualizer:
+        """Creates a visualizer for this archetype."""
+        return Visualizer("Points2D", overrides=self.as_component_batches(), mappings=None)

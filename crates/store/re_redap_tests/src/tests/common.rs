@@ -26,7 +26,7 @@ use crate::{
 pub trait RerunCloudServiceExt: RerunCloudService {
     async fn create_dataset_entry_with_name(&self, dataset_name: &str) -> DatasetEntry;
 
-    async fn register_with_dataset_name(
+    async fn register_with_dataset_name_blocking(
         &self,
         dataset_name: &str,
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
@@ -51,7 +51,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         .expect("conversion to ext::DatasetEntry should succeed")
     }
 
-    async fn register_with_dataset_name(
+    async fn register_with_dataset_name_blocking(
         &self,
         dataset_name: &str,
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
@@ -63,7 +63,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         .with_entry_name(dataset_name)
         .expect("Failed to create a request");
 
-        register_with_dataset(self, request).await;
+        register_with_dataset_blocking(self, request).await;
     }
 
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
@@ -86,7 +86,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
 
 // ---
 
-async fn register_with_dataset(
+async fn register_with_dataset_blocking(
     service: &impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
     request: tonic::Request<RegisterWithDatasetRequest>,
 ) {

@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.88"
+msrv = "1.90"
 
 allow-unwrap-in-tests = true
 
@@ -18,7 +18,7 @@ avoid-breaking-exported-api = false
 
 excessive-nesting-threshold = 16 # TODO(emilk): lower this
 
-max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
+max-fn-params-bools = 1
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#/large_include_file
 max-include-file-size = 1000000
@@ -93,6 +93,7 @@ disallowed-methods = [
   { path = "std::time::Instant::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::Instant::now", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::SystemTime::now", reason = "use `web-time` or `time` crates instead for wasm/web compatibility" },
+  { path = "tokio::spawn", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn_blocking", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn", reason = "no Tokio runtime on web" },
 ]

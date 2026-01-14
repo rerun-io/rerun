@@ -104,8 +104,4 @@ impl LogSink for BinaryStreamSink {
     fn flush_blocking(&self, _timeout: std::time::Duration) -> Result<(), SinkFlushError> {
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

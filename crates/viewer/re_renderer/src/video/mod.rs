@@ -7,7 +7,7 @@ use ahash::HashMap;
 use parking_lot::Mutex;
 pub use player::PlayerConfiguration;
 use re_log::ResultExt as _;
-use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
+use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
@@ -29,6 +29,15 @@ pub enum InsufficientSampleDataError {
 
     #[error("The requested frame data is not, or no longer, available.")]
     ExpectedSampleNotAvailable,
+
+    #[error("Missing samples between last decoded sample and requested sample.")]
+    MissingSamples,
+
+    #[error("Duplicate sample index encountered.")]
+    DuplicateSampleIdx,
+
+    #[error("Out of order sample index encountered.")]
+    OutOfOrderSampleIdx,
 }
 
 /// Error that can occur during playing videos.
@@ -289,12 +298,12 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    pub fn frame_at(
+    pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        video_buffers: &StableIndexDeque<&[u8]>,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -324,7 +333,7 @@ impl Video {
             render_context,
             video_time,
             &self.video_description,
-            video_buffers,
+            get_video_buffer,
         )
     }
 

@@ -432,7 +432,7 @@ mod tests {
                 RedapUri::Proxy(ProxyUri {
                     origin: Origin {
                         scheme: Scheme::RerunHttp,
-                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                        host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                         port: DEFAULT_PROXY_PORT,
                     },
                 }),

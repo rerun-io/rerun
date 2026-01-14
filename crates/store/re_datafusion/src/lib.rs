@@ -8,6 +8,7 @@ mod dataframe_query_provider;
 mod dataframe_query_provider_wasm;
 mod dataset_manifest;
 mod grpc_streaming_provider;
+pub(crate) mod pushdown_expressions;
 mod search_provider;
 mod segment_table;
 mod table_entry_provider;

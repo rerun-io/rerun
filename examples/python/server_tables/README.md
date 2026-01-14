@@ -3,7 +3,6 @@ title = "Server tables"
 tags = ["DataFrame", "Tables", "Server", "Cloud",]
 thumbnail = "https://static.rerun.io/server_tables/d5155346d84caed5c53de507708c780727c075ef/480w.png"
 thumbnail_dimensions = [480, 358]
-channel = "main"
 -->
 
 ## Writing server tables example
@@ -40,8 +39,8 @@ pip install -e examples/python/server_tables
 python examples/python/server_tables/server_tables.py
 ```
 
-or to run it from pixi
+or to run it via pixi/uv
 
 ```bash
-pixi run -e examples server_tables
+pixi run py-build && pixi run uv run examples/python/server_tables/server_tables.py
 ```

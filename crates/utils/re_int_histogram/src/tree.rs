@@ -72,7 +72,6 @@ const ROOT_LEVEL: Level = 64 - LEVEL_STEP;
 static_assertions::const_assert_eq!(ROOT_LEVEL + LEVEL_STEP, 64);
 static_assertions::const_assert_eq!((ROOT_LEVEL - BOTTOM_LEVEL) % LEVEL_STEP, 0);
 const NUM_NODE_STEPS: u64 = (ROOT_LEVEL - BOTTOM_LEVEL) / LEVEL_STEP;
-#[expect(dead_code)] // used in static assert
 const NUM_STEPS_IN_DENSE_LEAF: u64 = 64 - NUM_NODE_STEPS * LEVEL_STEP;
 static_assertions::const_assert_eq!(1 << NUM_STEPS_IN_DENSE_LEAF, NUM_CHILDREN_IN_DENSE);
 
@@ -316,7 +315,6 @@ impl Iterator for Iter<'_> {
 // ----------------------------------------------------------------------------
 // Low-level data structure.
 
-#[expect(clippy::enum_variant_names)]
 #[derive(Clone, Debug)]
 enum Node {
     /// An inner node, addressed by the next few bits of the key/address.

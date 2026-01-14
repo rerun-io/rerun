@@ -4,25 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Duration defines a period between two time points.
-///
-/// Messages of this datatype follow the ROS Time design:
-/// <https://design.ros2.org/articles/clock_and_time.html>
-///
-/// # Examples
-///
-/// - The duration `-1.7` seconds is represented as `{ sec: -2, nanosec: 300_000_000 }`
-/// - The duration `1.7` seconds is represented as `{ sec: 1,  nanosec: 700_000_000 }`
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Duration {
-    /// The seconds component, valid over all `int32` values.
-    pub sec: i32,
-
-    /// The nanoseconds component, valid in the range `[0, 1_000_000_000)`.
-    /// This is added to the seconds component.
-    pub nanosec: u32,
-}
-
 /// Represents a specific point in ROS Time.
 ///
 /// Messages of this datatype follow the ROS Time design:

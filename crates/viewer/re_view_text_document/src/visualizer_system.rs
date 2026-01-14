@@ -58,8 +58,4 @@ impl VisualizerSystem for TextDocumentSystem {
 
         Ok(VisualizerExecutionOutput::default())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

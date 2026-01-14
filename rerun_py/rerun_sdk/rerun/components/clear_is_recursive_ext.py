@@ -19,4 +19,4 @@ class ClearIsRecursiveExt:
             If true, also clears all recursive children entities.
 
         """
-        self.__attrs_init__(recursive)
+        self.__attrs_init__(value=recursive)

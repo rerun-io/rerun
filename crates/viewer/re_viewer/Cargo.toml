@@ -134,7 +134,6 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 jiff.workspace = true
 parking_lot.workspace = true
-poll-promise = { workspace = true, features = ["web"] }
 rayon.workspace = true
 rfd.workspace = true
 ron.workspace = true
@@ -143,6 +142,7 @@ serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 tap.workspace = true
 thiserror.workspace = true
+tokio-stream.workspace = true
 url.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
@@ -150,10 +150,12 @@ wgpu.workspace = true
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, optional = true }
+poll-promise = { workspace = true, features = ["tokio"] }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
+poll-promise = { workspace = true, features = ["web"] }
 strum.workspace = true
 strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true

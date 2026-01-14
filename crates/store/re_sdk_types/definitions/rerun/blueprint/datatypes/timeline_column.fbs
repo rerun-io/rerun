@@ -4,8 +4,7 @@ namespace rerun.blueprint.datatypes;
 table TimelineColumn (
   "attr.python.aliases": "datatypes.Utf8Like",
   "attr.rust.derive": "PartialEq, Eq, Hash",
-  "attr.rerun.scope": "blueprint",
-  "attr.docs.unreleased"
+  "attr.rerun.scope": "blueprint"
 ) {
   /// Is this column visible?
   ///

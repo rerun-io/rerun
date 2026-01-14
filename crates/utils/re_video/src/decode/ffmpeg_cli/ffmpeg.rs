@@ -112,7 +112,7 @@ impl From<AnnexBStreamWriteError> for Error {
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
 struct FFmpegFrameInfo {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -797,7 +797,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Done => {
                 // This happens on `pkill ffmpeg`, for instance.
-                re_log::debug!("{debug_name}'s ffmpeg is Done");
+                re_log::trace!("{debug_name}'s ffmpeg is Done");
                 return None;
             }
 

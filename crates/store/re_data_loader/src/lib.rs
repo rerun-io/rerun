@@ -471,9 +471,11 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
 ];
 
+pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
+
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
-pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
 
 // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
@@ -492,6 +494,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         .iter()
         .chain(SUPPORTED_THIRD_PARTY_FORMATS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_DEPTH_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
         .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)

@@ -136,7 +136,7 @@ def test_register_batch(
     result = handle.wait()
 
     assert len(result.segment_ids) == 3
-    assert result.segment_ids == recording_ids
+    assert sorted(result.segment_ids) == sorted(recording_ids)
 
 
 @pytest.mark.local_only

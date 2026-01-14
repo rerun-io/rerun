@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::archetypes::GeoPoints;
+use re_sdk_types::archetypes::{CoordinateFrame, GeoPoints};
 use re_sdk_types::components::LatLon;
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 
@@ -11,13 +11,10 @@ use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::parsers::ros2msg::definitions::sensor_msgs;
 use crate::parsers::util::fixed_size_list_builder;
 
-/// Plugin that parses `sensor_msgs/msg/NavSatFix` messages.
-#[derive(Default)]
-pub struct NavSatFixSchemaPlugin;
-
 pub struct NavSatFixMessageParser {
     geo_points: Vec<LatLon>,
     altitude: FixedSizeListBuilder<Float64Builder>,
+    frame_ids: Vec<String>,
 }
 
 impl NavSatFixMessageParser {
@@ -37,6 +34,7 @@ impl Ros2MessageParser for NavSatFixMessageParser {
         Self {
             geo_points: Vec::with_capacity(num_rows),
             altitude: fixed_size_list_builder(1, num_rows),
+            frame_ids: Vec::with_capacity(num_rows),
         }
     }
 }
@@ -58,6 +56,8 @@ impl MessageParser for NavSatFixMessageParser {
             header.stamp.as_nanos() as u64,
         ));
 
+        self.frame_ids.push(header.frame_id);
+
         // Store latitude/longitude as geographic points
         let geo_point = LatLon::new(latitude, longitude);
         self.geo_points.push(geo_point);
@@ -73,6 +73,7 @@ impl MessageParser for NavSatFixMessageParser {
         let Self {
             geo_points,
             mut altitude,
+            frame_ids,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
@@ -84,6 +85,12 @@ impl MessageParser for NavSatFixMessageParser {
             .collect();
 
         chunk_components.extend([Self::create_metadata_column("altitude", altitude.finish())]);
+
+        chunk_components.extend(
+            CoordinateFrame::update_fields()
+                .with_many_frame(frame_ids)
+                .columns_of_unit_batches()?,
+        );
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),

@@ -115,6 +115,21 @@ jobs:
       - name: Toml format check
         run: pixi run toml-fmt-check
 
+  uv-lock-check:
+    name: Check uv.lock is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check uv.lock
+        run: pixi run uv-lock-check
+
   check-too-large-files:
     name: Check for too large files
     runs-on: ubuntu-latest
@@ -146,7 +161,7 @@ jobs:
         run: pixi run check-publish-flags
 
   check-example-thumbnails:
-    name: Check Python example thumbnails
+    name: Check example thumbnails
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -157,8 +172,11 @@ jobs:
         with:
           pixi-version: v0.55.0
 
-      - name: Check Python example thumbnails
-        run: pixi run ./scripts/ci/thumbnails.py check
+      - name: Check example thumbnails
+        # Use uv run --frozen python instead of uvpy.
+        # It's nice to get valid checks here even if the uv lockfile is out-of-date
+        # uv-lock-check will independently validate the lockfile status.
+        run: pixi run uv run --frozen python ./scripts/ci/thumbnails.py check
 
   check-example-manifest-coverage:
     name: Check example manifest coverage
@@ -286,12 +304,12 @@ jobs:
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
-        uses: lycheeverse/lychee-action@v2.6.1
+        uses: lycheeverse/lychee-action@v2.7.0
         with:
           fail: true
-          lycheeVersion: "v0.20.1"
+          lycheeVersion: "v0.21.0"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           # If updating version or args update the pixi.toml to match.
           args: |
-            --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"

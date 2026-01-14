@@ -7,7 +7,7 @@ ChunkStore {
     config: ChunkStoreConfig { enable_changelog: true, chunk_max_bytes: 393216, chunk_max_rows: 4096, chunk_max_rows_if_unsorted: 1024 }
     stats: {
         num_chunks: 1
-        total_size_bytes: 934 B
+        total_size_bytes: 1.2 KiB
         num_rows: 1
         num_events: 2
     }
@@ -15,7 +15,7 @@ ChunkStore {
         ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         │ METADATA:                                                                                                                                                                       │
         │ * entity_path: /this/that                                                                                                                                                       │
-        │ * heap_size_bytes: 710                                                                                                                                                          │
+        │ * heap_size_bytes: 1012                                                                                                                                                         │
         │ * id: chunk_0000000000661EFDf2e3b19f7c045f15                                                                                                                                    │
         │ * version: [**REDACTED**]                                                                                                                                                     │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤

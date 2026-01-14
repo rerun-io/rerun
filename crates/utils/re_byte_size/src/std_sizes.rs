@@ -1,6 +1,6 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use crate::SizeBytes;
@@ -16,6 +16,7 @@ impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
+        // `BTreeMap` does not have a capacity method.
 
         let keys_size_bytes = if K::is_pod() {
             (self.len() * std::mem::size_of::<K>()) as _
@@ -37,6 +38,7 @@ impl<K: SizeBytes> SizeBytes for BTreeSet<K> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
+        // `BTreeSet` does not have a capacity method.
 
         if K::is_pod() {
             (self.len() * std::mem::size_of::<K>()) as _
@@ -52,18 +54,34 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
         // NOTE: It's all on the heap at this point.
 
         let keys_size_bytes = if K::is_pod() {
-            (self.len() * std::mem::size_of::<K>()) as _
+            (self.capacity() * std::mem::size_of::<K>()) as _
         } else {
-            self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
+            (self.capacity() * std::mem::size_of::<K>()) as u64
+                + self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
         let values_size_bytes = if V::is_pod() {
-            (self.len() * std::mem::size_of::<V>()) as _
+            (self.capacity() * std::mem::size_of::<V>()) as _
         } else {
-            self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+            (self.capacity() * std::mem::size_of::<V>()) as u64
+                + self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
         keys_size_bytes + values_size_bytes
+    }
+}
+
+impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // NOTE: It's all on the heap at this point.
+
+        if K::is_pod() {
+            (self.capacity() * std::mem::size_of::<K>()) as _
+        } else {
+            (self.capacity() * std::mem::size_of::<K>()) as u64
+                + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        }
     }
 }
 
