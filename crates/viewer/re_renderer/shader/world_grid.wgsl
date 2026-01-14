@@ -24,6 +24,9 @@ struct VertexOutput {
     @builtin(position)
     position: vec4f,
 
+    @location(1) @interpolate(flat)
+    line_spacing_factor: f32,
+
     @location(0) @interpolate(flat) // Result doesn't differ per vertex.
     next_cardinality_interpolation: f32,
 };
@@ -61,7 +64,7 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     let camera_plane_distance_grid_units = camera_plane_distance_world / config.spacing;
     let line_cardinality = max(log2(camera_plane_distance_grid_units) / log2(10.0) - 0.9, 0.0); // -0.9 instead of 1.0 so we always see a little bit of the next level even if we're very close.
     let line_base_cardinality = floor(line_cardinality);
-    let line_spacing_factor = pow(10.0, line_base_cardinality);
+    out.line_spacing_factor = pow(10.0, line_base_cardinality) * config.spacing;
     out.next_cardinality_interpolation = line_cardinality - line_base_cardinality;
 
     return out;
@@ -86,7 +89,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     let plane_world_position = intersect_ray_plane(camera_ray, config.plane) * camera_ray.direction + frame.camera_position;
     let plane_y_axis = normalize(cross(config.plane.normal, select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), config.plane.normal.x != 0.0)));
     let plane_x_axis = cross(plane_y_axis, config.plane.normal);
-    let plane_position = vec2f(dot(plane_x_axis, plane_world_position), dot(plane_y_axis, plane_world_position)) / config.spacing + config.normal_offset;
+    let plane_position = vec2f(dot(plane_x_axis, plane_world_position), dot(plane_y_axis, plane_world_position)) / in.line_spacing_factor;
 
     // Distance to a grid line in x and y ranging from 0 to 1.
     let distance_to_grid_line_base = calc_distance_to_grid_line(plane_position);
@@ -142,7 +145,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     return config.color * intensity_combined;
 
     // Useful debugging visualizations:
-    // return vec4f(line_cardinality - line_base_cardinality, 0.0, 0.0, 1.0);
-    // return vec4f(intensity_combined);
-    // return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
+    //return vec4f(in.next_cardinality_interpolation, 0.0, 0.0, 1.0);
+    //return vec4f(intensity_combined);
+    //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
 }
