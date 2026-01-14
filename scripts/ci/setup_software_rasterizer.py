@@ -207,8 +207,10 @@ def extract_swiftshader_from_chrome() -> tuple[Path, str] | None:
     """
     Extract SwiftShader binaries from a local (!) Chrome installation.
 
-    This is primarily used to create the initial upload to GCloud storage.
     Chrome bundles SwiftShader (Apache 2.0 license) as its software Vulkan implementation.
+
+    This is a helper function for maintainers to upload new SwiftShader versions.
+    Run this script with --upload-swiftshader to extract from Chrome and upload.
 
     Returns:
         Tuple of (Path to libvk_swiftshader.dylib, Chrome version string), or None if Chrome is not found.
