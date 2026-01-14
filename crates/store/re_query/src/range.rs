@@ -240,20 +240,20 @@ pub struct RangeCachedChunk {
     pub chunk: Chunk,
 
     /// When a `Chunk` gets cached, it is pre-processed according to the current [`QueryCacheKey`],
-    /// e.g. it is time-sorted on the appropriate timeline.
+    /// e.g. it is time-sorted on the appropriate timeline and densified for the given component.
     ///
     /// In the happy case, pre-processing a `Chunk` is a no-op, and the cached `Chunk` is just a
     /// reference to the real one sitting in the store.
     /// Otherwise, the cached `Chunk` is a full blown copy of the original one.
-    pub resorted: bool,
+    pub reallocated: bool,
 }
 
 impl SizeBytes for RangeCachedChunk {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        let Self { chunk, resorted } = self;
+        let Self { chunk, reallocated } = self;
 
-        if *resorted {
+        if *reallocated {
             // The chunk had to be post-processed for caching.
             // Its data was duplicated.
             Chunk::heap_size_bytes(chunk)
@@ -314,21 +314,21 @@ impl RangeCache {
         // possibly affect what's already cached, it can only augment it.
         // Therefore, we do not even check for partial results here.
         for raw_chunk in &results.chunks {
-            self.chunks
-                .entry(raw_chunk.id())
-                .or_insert_with(|| RangeCachedChunk {
-                    // TODO(#7008): avoid unnecessary sorting on the unhappy path
-                    chunk: raw_chunk
-                        // Densify the cached chunk according to the cache key's component, which
-                        // will speed up future arrow operations on this chunk.
-                        .densified(component)
-                        // Pre-sort the cached chunk according to the cache key's timeline.
-                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+            self.chunks.entry(raw_chunk.id()).or_insert_with(|| {
+                // Densify the cached chunk according to the cache key's component, which
+                // will speed up future arrow operations on this chunk.
+                let (chunk, densified) = raw_chunk.densified(component);
 
-                    // TODO(cmc): this isn't good enough: if the chunk was indeed densified, then we
-                    // need to account for it in the memory stats, whether it was resorted or not.
-                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
-                });
+                // Pre-sort the cached chunk according to the cache key's timeline.
+                //
+                // TODO(#7008): avoid unnecessary sorting on the unhappy path
+                let chunk = chunk.sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name);
+
+                let reallocated =
+                    densified || !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name);
+
+                RangeCachedChunk { chunk, reallocated }
+            });
         }
 
         // Second, we simply retrieve from the cache all the relevant `Chunk`s .
