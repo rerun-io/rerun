@@ -1536,10 +1536,17 @@ def main() -> None:
                 num_errors += lint_file(filepath, args)
     else:
         repo = git.Repo(".", search_parent_directories=True)
+        assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
+        repo_root = Path(repo.working_tree_dir).resolve()
+        current_root = Path(root_dirpath).resolve()
+
         tracked_files = [item[1].path for item in repo.index.iter_blobs()]
         for filepath in tracked_files:
-            # TODO do this with pathlib for general sep types
-            filepath = "./" + filepath
+            # Filter to only files under current_root (for monorepo support)
+            full_path = repo_root / filepath
+            if not full_path.is_relative_to(current_root):
+                continue
+            filepath = "./" + str(full_path.relative_to(current_root))
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):
