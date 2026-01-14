@@ -427,10 +427,10 @@ wgpu = { version = "27.0.1", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "gles",
   "metal",
+  "vulkan-portability", # Enables use of Vulkan on MacOS. We use this for software rasterizing our CI (there aren't any Metal software rasterizers and we had issues with flaky tests when creating lots of Metal devices in parallel)
   "vulkan",
   "webgl",
   "webgpu",
-  "vulkan-portability", # Enables use of Vulkan on MacOS. We use this for software rasterizing our CI (there aren't any Metal software rasterizers and we had issues with flaky tests when creating lots of Metal devices in parallel)
   #"dx12",   # DX12 backend on wgpu isn't as stable. Also, we want to reduce the number of backends on native. Ideally we only have Vulkan & Metal, but we also keep GL as a manual fallback.
   #"angle",  # As above, we want to limit the numbers of backends we support. GL support via angle isn't great and we didn't need it so far.
 
