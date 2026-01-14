@@ -43,6 +43,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         video_bytes,
         media_type_str,
         "AssetVideo",
+        re_sdk::external::re_tuid::Tuid::new(),
     ) {
         Ok(video) => video,
         Err(err) => {

@@ -252,6 +252,26 @@ fn error_ui(
     origin: &re_uri::Origin,
     err: &re_redap_client::ApiError,
 ) {
+    let edit_alert = |ui: &mut egui::Ui, message: &str, edit_message: &str| {
+        Alert::warning().show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.strong(message);
+                if ui
+                    .link(RichText::new(edit_message).strong().underline())
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
+                            origin: origin.clone(),
+                            open_on_success: None,
+                            title: None,
+                        }))
+                        .ok();
+                }
+            });
+        });
+    };
+
     if let Some(conn_err) = err.as_client_credentials_error() {
         let logged_in = viewer_ctx.global_context.logged_in();
 
@@ -289,23 +309,12 @@ fn error_ui(
             }
         };
 
-        Alert::warning().show(ui, |ui| {
-            ui.vertical(|ui| {
-                ui.strong(message);
-                if ui
-                    .link(RichText::new(edit_message).strong().underline())
-                    .clicked()
-                {
-                    ctx.command_sender
-                        .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
-                            origin: origin.clone(),
-                            open_on_success: None,
-                            title: None,
-                        }))
-                        .ok();
-                }
-            });
-        });
+        edit_alert(ui, message, edit_message);
+    } else if matches!(
+        &err.kind,
+        re_redap_client::ApiErrorKind::InvalidServer | re_redap_client::ApiErrorKind::Connection
+    ) {
+        edit_alert(ui, &err.to_string(), "Edit server settings");
     } else {
         ui.error_label(err.to_string());
     }

@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery, OnMissingChunk};
 use re_log_types::example_components::{MyIndex, MyPoint, MyPoints};
 use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
@@ -22,9 +22,11 @@ fn query_latest_component<C: re_types_core::Component>(
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
+    // NOTE: Purposefully ignoring virtual chunks -- these tests predate that.
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component)
-        .into_iter()
+        .latest_at_relevant_chunks(OnMissingChunk::Panic, query, entity_path, component)
+        .to_iter()
+        .unwrap()
         .filter_map(|chunk| {
             let unit = chunk.latest_at(query, component).into_unit()?;
             unit.index(&query.timeline()).map(|index| (index, unit))
@@ -330,6 +332,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty frame_nr
     {
         let chunks = store.latest_at_relevant_chunks(
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -340,6 +343,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty log_time
     {
         let chunks = store.latest_at_relevant_chunks(
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -350,6 +354,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong entity path
     {
         let chunks = store.latest_at_relevant_chunks(
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,
@@ -360,6 +365,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong timeline name
     {
         let chunks = store.latest_at_relevant_chunks(
+            OnMissingChunk::Panic,
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,

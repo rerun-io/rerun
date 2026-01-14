@@ -153,6 +153,23 @@ println!("{:-}, value"); // The `-` option stands for redaction.
 
 Look for `f.sign_minus()` in the code for where we handle this.
 
+## Python
+Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
+
+* Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Best: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+
+This forces the use of kw-args for everything following the `*`.
+
+kw-args have two big benefits:
+
+First, they make future API changes a lot easier. We can add or remove arguments without breaking the API (just log deprecation notices).
+
+Secondly, named arguments makes the caller code a lot more readable.
+
+Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
+
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
 
@@ -249,6 +266,18 @@ Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg
 Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
+
+### Be over-explicit in stringly typed situations
+In weak/stringly typed situations, be extra careful. This includes Python, Bash, and CLI args.
+
+Avoid vague names like "address". Prefer one of:
+
+* `ip`
+* `ip_port`
+* `url`
+* `email`
+* …
+
 
 ### Units
 * When in doubt, be explicit (`duration_secs: f32` is better than `duration: f32`)

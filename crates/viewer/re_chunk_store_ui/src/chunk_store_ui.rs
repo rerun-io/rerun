@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
-use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
+use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, RangeQuery};
 use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
@@ -142,11 +142,13 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .latest_at_relevant_chunks(
+                        OnMissingChunk::Report,
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
                         *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
             ChunkListMode::Query {
                 timeline,
@@ -157,11 +159,13 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .range_relevant_chunks(
+                        OnMissingChunk::Report,
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
                         *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
         };
 

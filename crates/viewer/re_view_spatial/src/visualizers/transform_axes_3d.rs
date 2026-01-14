@@ -14,7 +14,7 @@ use re_viewer_context::{
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::contexts::TransformTreeContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::utilities::transform_info_for_entity_or_report_error;
+use crate::visualizers::utilities::format_transform_info_result;
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -69,48 +69,60 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // We first add the axes for the entity transforms, because we want them to be drawn below
+            let entity_path = &data_result.entity_path;
+
+            // Draw all transforms defined _at_ this entity.
+            // TODO(RR-3319): consider also root frames here (not only child frames).
+            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
+                .child_frames_for_entity(entity_path.hash())
+                .map(|(frame_id_hash, transform)| {
+                    (*frame_id_hash, transform.target_from_source.as_affine3a())
+                })
+                .collect();
+
+            // We then *prepend* the axes for the entity's coordinate frame, because we want them to be drawn below
             // the additional transform data (the user usually knows which entity they are on).
             // TODO(grtlr): In the future we could make the `show_frame` component an enum to allow
             // for varying behavior.
-            let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = if let Some(transform_info) =
-                transform_info_for_entity_or_report_error(
-                    transforms,
-                    &data_result.entity_path,
-                    &mut output,
-                ) {
-                // Determine which transforms to draw axes at.
-                // For pinhole cameras, we draw at the pinhole location only.
-                // For normal entities, we iterate over all instance poses.
-                {
-                    let frame_id_hash =
-                        transforms.transform_frame_id_for(data_result.entity_path.hash());
+            let coordinate_frame_transform_result =
+                transforms.target_from_entity_path(entity_path.hash());
+
+            match coordinate_frame_transform_result {
+                Some(Ok(transform_info)) => {
+                    let frame_id_hash = transforms.transform_frame_id_for(entity_path.hash());
 
                     if let Some(target_from_camera) =
                         transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
                         // Don't apply the from-2D transform, stick with the last known 3D.
-                        smallvec::smallvec![(frame_id_hash, target_from_camera.as_affine3a())]
+                        transforms_to_draw
+                            .insert(0, (frame_id_hash, target_from_camera.as_affine3a()));
                     } else {
-                        transform_info
-                            .target_from_instances()
-                            .iter()
-                            .map(|t| (frame_id_hash, t.as_affine3a()))
-                            .collect()
+                        transforms_to_draw.insert_many(
+                            0,
+                            transform_info
+                                .target_from_instances()
+                                .iter()
+                                .map(|t| (frame_id_hash, t.as_affine3a())),
+                        );
                     }
                 }
-            } else {
-                Default::default()
-            };
 
-            // We then extend this list with the transform frames defined at this entity.
-            transforms_to_draw.extend(
-                transforms
-                    .child_frames_for_entity(data_result.entity_path.hash())
-                    .map(|(frame_id_hash, transform)| {
-                        (*frame_id_hash, transform.target_from_source.as_affine3a())
-                    }),
-            );
+                // There are many reasons why a transform may be invalid and we want to report those.
+                // However, if we already have named transforms to draw and the coordinate frame at this entity
+                // is an implicit one, we skip reporting errors for it.
+                Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, .. }))
+                    if !transforms_to_draw.is_empty()
+                        && src.as_entity_path_hash() == entity_path.hash() => {}
+
+                _ => {
+                    if let Err(err_msg) =
+                        format_transform_info_result(transforms, coordinate_frame_transform_result)
+                    {
+                        output.report_error_for(entity_path.clone(), err_msg);
+                    }
+                }
+            }
 
             // Early exit if there's nothing to do.
             if transforms_to_draw.is_empty() {

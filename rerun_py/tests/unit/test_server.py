@@ -16,8 +16,8 @@ def test_server_starts_and_stops() -> None:
     server = Server()
     assert server.is_running()
 
-    address = server.address()
-    assert address.startswith("rerun+http://")
+    url = server.url()
+    assert url.startswith("rerun+http://")
 
     server.shutdown()
     assert not server.is_running()
@@ -27,8 +27,8 @@ def test_server_context_manager() -> None:
     """Test that the server works as a context manager."""
     with Server() as server:
         assert server.is_running()
-        address = server.address()
-        assert address.startswith("rerun+http://")
+        url = server.url()
+        assert url.startswith("rerun+http://")
 
     assert not server.is_running()
 
@@ -37,7 +37,7 @@ def test_server_custom_port() -> None:
     """Test that the server can be started on a custom port."""
     with Server(port=19876) as server:
         assert server.is_running()
-        assert "19876" in server.address()
+        assert "19876" in server.url()
 
 
 def test_server_random_port() -> None:
@@ -46,7 +46,7 @@ def test_server_random_port() -> None:
         # Both servers should be running on different ports
         assert server1.is_running()
         assert server2.is_running()
-        assert server1.address() != server2.address()
+        assert server1.url() != server2.url()
 
 
 def test_server_shutdown_twice_raises() -> None:

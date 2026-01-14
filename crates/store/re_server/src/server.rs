@@ -30,6 +30,7 @@ pub enum ServerError {
 pub struct Server {
     addr: SocketAddr,
     routes: Routes,
+    artificial_latency: std::time::Duration,
 }
 
 /// `ServerHandle` is a tiny helper abstraction that enables us to
@@ -82,12 +83,18 @@ impl Server {
     /// Starts the server and return `ServerHandle` so that caller can manage
     /// the server lifecycle.
     pub fn start(self) -> ServerHandle {
+        let Self {
+            addr,
+            routes,
+            artificial_latency,
+        } = self;
+
         let (ready_tx, ready_rx) = mpsc::channel(1);
         let (failed_tx, failed_rx) = mpsc::channel(1);
         let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
         tokio::spawn(async move {
-            let listener = if let Ok(listener) = TcpListener::bind(self.addr).await {
+            let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
                 let local_addr = listener.local_addr().unwrap();
                 info!(
@@ -98,10 +105,10 @@ impl Server {
                 ready_tx.send(local_addr).await.unwrap();
                 listener
             } else {
-                error!("Failed to bind to address {}", self.addr);
+                error!("Failed to bind to address {addr}");
                 #[expect(clippy::unwrap_used)]
                 failed_tx
-                    .send(format!("Failed to bind to address {}", self.addr))
+                    .send(format!("Failed to bind to address {addr}"))
                     .await
                     .unwrap();
                 return;
@@ -125,6 +132,7 @@ impl Server {
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
                 .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
+                .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
                 // to avoid rejecting regular HTTP requests
                 .into_inner();
@@ -139,7 +147,7 @@ impl Server {
                 .layer(middlewares);
 
             let _ = builder
-                .add_routes(self.routes)
+                .add_routes(routes)
                 .serve_with_incoming_shutdown(incoming, async {
                     shutdown_rx.await.ok();
                 })
@@ -168,6 +176,7 @@ pub struct ServerBuilder {
     addr: Option<SocketAddr>,
     routes_builder: RoutesBuilder,
     axum_routes: axum::Router,
+    artificial_latency: std::time::Duration,
 }
 
 impl ServerBuilder {
@@ -200,8 +209,21 @@ impl ServerBuilder {
         self
     }
 
+    /// Add fake latency to simulate a remote server.
+    pub fn with_artificial_latency(mut self, artificial_latency: std::time::Duration) -> Self {
+        self.artificial_latency = artificial_latency;
+        self
+    }
+
     pub fn build(self) -> Server {
-        let grpc_routes = self.routes_builder.routes();
+        let Self {
+            addr,
+            routes_builder,
+            axum_routes,
+            artificial_latency,
+        } = self;
+
+        let grpc_routes = routes_builder.routes();
         let grpc_routes = grpc_routes.into_axum_router();
 
         // Apply GrpcWebLayer only to gRPC routes, not HTTP routes
@@ -209,7 +231,7 @@ impl ServerBuilder {
 
         let routes =
             grpc_routes
-                .merge(self.axum_routes)
+                .merge(axum_routes)
                 .fallback(|_req: axum::extract::Request| async {
                     use axum::response::IntoResponse as _;
                     http::StatusCode::NOT_FOUND.into_response()
@@ -217,10 +239,10 @@ impl ServerBuilder {
 
         Server {
             #[expect(clippy::unwrap_used)]
-            addr: self
-                .addr
+            addr: addr
                 .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
             routes: routes.into(),
+            artificial_latency,
         }
     }
 }

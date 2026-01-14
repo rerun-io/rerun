@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
+use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
@@ -34,6 +35,7 @@ use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::app_state::WelcomeScreenState;
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
+use crate::latency_tracker::ServerLatencyTrackers;
 use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
@@ -132,6 +134,8 @@ pub struct App {
 
     connection_registry: ConnectionRegistryHandle,
 
+    pub(crate) server_latency_trackers: ServerLatencyTrackers,
+
     /// The async runtime that should be used for all asynchronous operations.
     ///
     /// Using the global tokio runtime should be avoided since:
@@ -185,6 +189,13 @@ impl App {
                 command_sender.send_system(SystemCommand::OnAuthChanged(
                     user.map(|user| AuthContext { email: user.email }),
                 ));
+            });
+            // Call get_token once so the auth state is initialized.
+            tokio_runtime.spawn_future(async move {
+                re_auth::credentials::CliCredentialsProvider::new()
+                    .get_token()
+                    .await
+                    .ok();
             });
         }
 
@@ -454,6 +465,7 @@ impl App {
             event_dispatcher,
 
             connection_registry,
+            server_latency_trackers: ServerLatencyTrackers::default(),
             async_runtime: tokio_runtime,
         }
     }
@@ -2383,6 +2395,16 @@ impl App {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
                     entity_db.add_rrd_manifest_message(*rrd_manifest);
+
+                    // TODO(RR-3329): Should this run for all caches?
+                    if let Some(caches) = store_hub.active_caches() {
+                        // Downgrade to read-only, so we can access caches.
+                        let entity_db = store_hub
+                            .entity_db(&store_id)
+                            .expect("Just queried it mutable and that was fine.");
+
+                        caches.on_rrd_manifest(entity_db);
+                    }
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
@@ -2409,6 +2431,8 @@ impl App {
         self.run_pending_system_commands(store_hub, egui_ctx);
     }
 
+    /// There is logic duplicated between this and [`Self::prefetch_chunks`].
+    /// Make sure they are kept in sync!
     fn receive_log_msg(
         &self,
         msg: &LogMsg,
@@ -2443,17 +2467,16 @@ impl App {
 
         match entity_db_add_result {
             Ok(store_events) => {
-                if let Some(caches) = store_hub.active_caches() {
-                    caches.on_store_events(&store_events, entity_db);
-                }
-
-                self.validate_loaded_events(&store_events);
+                self.process_store_events_for_db(store_hub, entity_db, &store_events);
             }
 
             Err(err) => {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             }
         }
+
+        // Note: some of the logic above is duplicated in `fn prefetch_chunks`.
+        // Make sure they are kept in sync!
 
         if was_empty && !entity_db.is_empty() {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
@@ -2522,6 +2545,20 @@ impl App {
         if msg_will_add_new_store {
             self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
         }
+    }
+
+    fn process_store_events_for_db(
+        &self,
+        store_hub: &StoreHub,
+        entity_db: &EntityDb,
+        store_events: &[re_chunk_store::ChunkStoreEvent],
+    ) {
+        // TODO(RR-3329): Should this run for all caches?
+        if let Some(caches) = store_hub.active_caches() {
+            caches.on_store_events(store_events, entity_db);
+        }
+
+        self.validate_loaded_events(store_events);
     }
 
     fn receive_table_msg(
@@ -3058,17 +3095,43 @@ impl App {
     }
 
     /// Prefetch chunks for the open recording (stream from server)
+    ///
+    /// There is logic duplicated between this and [`Self::receive_log_msg`].
+    /// Make sure they are kept in sync!
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
+        let store_ids: Vec<_> = store_hub
+            .store_bundle()
+            .recordings()
+            .map(|db| db.store_id().clone())
+            .collect();
         // Receive in-transit chunks (previously prefetched):
-        for db in store_hub.store_bundle_mut().recordings_mut() {
+        for store_id in store_ids {
+            let db = store_hub.entity_db_mut(&store_id);
+
             if db.rrd_manifest_index.has_manifest() {
+                let mut store_events = Vec::new();
                 for chunk in db.rrd_manifest_index.resolve_pending_promises() {
-                    if let Err(err) = db.add_chunk(&std::sync::Arc::new(chunk)) {
-                        re_log::warn_once!("add_chunk failed: {err}");
+                    match db.add_chunk(&std::sync::Arc::new(chunk)) {
+                        Ok(events) => {
+                            store_events.extend(events);
+                        }
+                        Err(err) => {
+                            re_log::warn_once!("add_chunk failed: {err}");
+                        }
                     }
                 }
+
+                // Downgrade to read-only, so we can access caches.
+                let db = store_hub
+                    .entity_db(&store_id)
+                    .expect("Just queried it mutable and that was fine.");
+
+                self.process_store_events_for_db(store_hub, db, &store_events);
+
+                // Note: some of the logic above is duplicated in `fn receive_log_msg`.
+                // Make sure they are kept in sync!
 
                 if db.rrd_manifest_index.has_pending_promises() {
                     self.egui_ctx.request_repaint(); // check back for more
@@ -3223,6 +3286,9 @@ impl eframe::App for App {
                 crate::web_history::go_forward();
             }
         }
+
+        self.server_latency_trackers
+            .update(&self.connection_registry);
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.

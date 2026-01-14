@@ -474,6 +474,7 @@ impl TimePanel {
             Rangef::new(time_x_left, right)
         };
 
+        let draw_loaded_ranges = true;
         data_density_graph::paint_loaded_indicator_bar(
             ui,
             &self.time_ranges_ui,
@@ -481,6 +482,7 @@ impl TimePanel {
             time_ctrl,
             top_row_y,
             time_fg_x_range,
+            draw_loaded_ranges,
         );
 
         let side_margin = 26.0; // chosen so that the scroll bar looks approximately centered in the default gap
@@ -1385,6 +1387,17 @@ impl TimePanel {
 
             let mut time_range_rect = ui.available_rect_before_wrap();
             time_range_rect.max.x -= space_needed_for_current_time;
+
+            let draw_loaded_ranges = false;
+            data_density_graph::paint_loaded_indicator_bar(
+                ui,
+                &self.time_ranges_ui,
+                entity_db,
+                time_ctrl,
+                time_range_rect.min.y,
+                time_range_rect.x_range(),
+                draw_loaded_ranges,
+            );
 
             if time_range_rect.width() > 50.0 {
                 ui.allocate_rect(time_range_rect, egui::Sense::hover());

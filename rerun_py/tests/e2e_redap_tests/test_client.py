@@ -42,6 +42,6 @@ def test_network_unreachable() -> None:
         with pytest.raises(ConnectionError, match=r"failed to connect to server"):  # Adjust exception type as needed
             # This works because 192.0.2.0 is a reserved address block for documentation and examples.
             # ISPs should not route traffic to this block and just drop SYN packets.
-            CatalogClient(address="rerun+http://192.0.2.1")
+            CatalogClient(url="rerun+http://192.0.2.1")
     finally:
         signal.alarm(0)  # Cancel the alarm

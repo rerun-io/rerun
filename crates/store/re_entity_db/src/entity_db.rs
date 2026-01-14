@@ -551,6 +551,15 @@ impl EntityDb {
             re_log::error!("Failed to ingest RRD Manifest: {err}");
         }
 
+        if let Err(err) = self
+            .storage_engine
+            .write()
+            .store()
+            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
+        {
+            re_log::error!("Failed to load RRD Manifest into store: {err}");
+        }
+
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }
@@ -704,6 +713,9 @@ impl EntityDb {
                 // and we GC the oldest data instead.
                 None
             },
+
+            // There is no point in keeping old virtual indices for blueprint data.
+            perform_deep_deletions: self.store_kind() == StoreKind::Blueprint,
         });
 
         if store_events.is_empty() {
