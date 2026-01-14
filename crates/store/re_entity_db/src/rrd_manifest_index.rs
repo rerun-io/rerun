@@ -4,6 +4,7 @@ use std::ops::RangeInclusive;
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
+use emath::NumExt as _;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
@@ -394,12 +395,32 @@ impl RrdManifestIndex {
     }
 
     /// See if we have received any new chunks since last call.
-    pub fn resolve_pending_promises(&mut self) -> Vec<Chunk> {
-        self.chunk_promises.resolve_pending()
+    pub fn resolve_pending_promises(&mut self, time: f64) -> Vec<Chunk> {
+        self.chunk_promises.resolve_pending(time)
     }
 
     pub fn has_pending_promises(&self) -> bool {
         !self.chunk_promises.has_pending()
+    }
+
+    pub fn chunk_bandwidth(&self) -> Option<f64> {
+        self.chunk_promises
+            .download_size_history
+            .bandwidth()
+            .map(|b| b.0)
+    }
+
+    pub fn chunk_bandwidth_data_age(&self, time: f64) -> f64 {
+        self.chunk_promises
+            .download_size_history
+            .iter()
+            .last()
+            .map(|(t, _)| {
+                let age = time - t;
+
+                (age / self.chunk_promises.download_size_history.max_age() as f64).at_most(1.0)
+            })
+            .unwrap_or(1.0)
     }
 
     /// Find the next candidates for prefetching.

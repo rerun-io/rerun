@@ -1343,6 +1343,29 @@ impl TimePanel {
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
+
+                let age = entity_db
+                    .rrd_manifest_index()
+                    .chunk_bandwidth_data_age(ui.time());
+                if ctx.app_options().show_metrics && age < 1.0 {
+                    let mut rate = entity_db
+                        .rrd_manifest_index()
+                        .chunk_bandwidth()
+                        .unwrap_or(0.0);
+
+                    if !rate.is_finite() {
+                        rate = 0.0;
+                    }
+
+                    ui.label(
+                        RichText::new(format!("{} / s", re_format::format_bytes(rate))).color(
+                            ui.style()
+                                .visuals
+                                .text_color()
+                                .gamma_multiply((1.0 - age * age) as f32),
+                        ),
+                    );
+                }
             });
         }
     }
