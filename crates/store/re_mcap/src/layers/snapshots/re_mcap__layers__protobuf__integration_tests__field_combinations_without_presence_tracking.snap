@@ -12,21 +12,31 @@ expression: "format!(\"{:-240}\", &chunks[0])"
 │ ┌───────────────────────────────────────────────┬──────────────────────────────┬──────────────────────────────────┬──────────────────────────────────────────────────────────┐ │
 │ │ RowId                                         ┆ message_log_time             ┆ message_publish_time             ┆ com.example.Person:message                               │ │
 │ │ ---                                           ┆ ---                          ┆ ---                              ┆ ---                                                      │ │
-│ │ type: FixedSizeBinary[16]                     ┆ type: nullable Duration(ns)  ┆ type: nullable Duration(ns)      ┆ type: nullable List[nullable Struct[3]]                  │ │
+│ │ type: FixedSizeBinary[16]                     ┆ type: nullable Duration(ns)  ┆ type: nullable Duration(ns)      ┆ type: nullable List[nullable Struct[4]]                  │ │
 │ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time ┆ index_name: message_publish_time ┆ archetype: com.example.Person                            │ │
 │ │ ARROW:extension:name: TUID                    ┆ is_sorted: true              ┆ is_sorted: true                  ┆ component: com.example.Person:message                    │ │
 │ │ is_sorted: true                               ┆ kind: index                  ┆ kind: index                      ┆ kind: data                                               │ │
 │ │ kind: control                                 ┆                              ┆                                  ┆                                                          │ │
 │ ╞═══════════════════════════════════════════════╪══════════════════════════════╪══════════════════════════════════╪══════════════════════════════════════════════════════════╡ │
-│ │ row_[**REDACTED**]                            ┆ PT0.000000042S               ┆ PT0.000000042S                   ┆ [{name: Alice, id: 123, status: {name: ACTIVE, value:    │ │
-│ │                                               ┆                              ┆                                  ┆ 1}}]                                                     │ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000001S               ┆ PT0.000000001S                   ┆ [{name: Alice, id: 123, status: {name: ACTIVE, value:    │ │
+│ │                                               ┆                              ┆                                  ┆ 1}, address: {street: Main St, city: NYC}}]              │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ PT0.000000043S               ┆ PT0.000000043S                   ┆ [{name: Bob, id: 0, status: {name: UNKNOWN, value: 0}}]  │ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000002S               ┆ PT0.000000002S                   ┆ [{name: Bob, id: 0, status: {name: INACTIVE, value: 2},  │ │
+│ │                                               ┆                              ┆                                  ┆ address: {street: Oak Ave, city: }}]                     │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ PT0.000000044S               ┆ PT0.000000044S                   ┆ [{name: , id: 456, status: {name: UNKNOWN, value: 0}}]   │ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000003S               ┆ PT0.000000003S                   ┆ [{name: Charlie, id: 456, status: {name: UNKNOWN, value: │ │
+│ │                                               ┆                              ┆                                  ┆ 0}, address: null}]                                      │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ PT0.000000045S               ┆ PT0.000000045S                   ┆ [{name: , id: 0, status: {name: INACTIVE, value: 2}}]    │ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000004S               ┆ PT0.000000004S                   ┆ [{name: Dave, id: 0, status: {name: UNKNOWN, value: 0},  │ │
+│ │                                               ┆                              ┆                                  ┆ address: {street: , city: LA}}]                          │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ PT0.000000046S               ┆ PT0.000000046S                   ┆ [{name: , id: 0, status: {name: UNKNOWN, value: 0}}]     │ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000005S               ┆ PT0.000000005S                   ┆ [{name: , id: 789, status: {name: UNKNOWN, value: 0},    │ │
+│ │                                               ┆                              ┆                                  ┆ address: null}]                                          │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000006S               ┆ PT0.000000006S                   ┆ [{name: , id: 0, status: {name: ACTIVE, value: 1},       │ │
+│ │                                               ┆                              ┆                                  ┆ address: null}]                                          │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ PT0.000000007S               ┆ PT0.000000007S                   ┆ [{name: , id: 0, status: {name: UNKNOWN, value: 0},      │ │
+│ │                                               ┆                              ┆                                  ┆ address: null}]                                          │ │
 │ └───────────────────────────────────────────────┴──────────────────────────────┴──────────────────────────────────┴──────────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
