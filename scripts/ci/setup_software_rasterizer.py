@@ -10,8 +10,10 @@ For macOS, we use SwiftShader instead of lavapipe. SwiftShader is Google's softw
 that provides better compatibility with macOS.
 Using a software rasterizer avoids GPU-related flakiness on CI runners which we hit quite often when
 running many tests in parallel - we got spurious timeouts and failure to find graphics devices,
-the cause of these issues is unknown.
+the cause of these issues is unknown. See https://github.com/rerun-io/rerun/issues/11359.
 (Since SwiftShader is Apache 2.0 licensed, we can host the binaries ourselves, which speeds up the whole process.)
+
+TODO(#12450): Investigate whether we can run lavapipe instead.
 """
 
 from __future__ import annotations

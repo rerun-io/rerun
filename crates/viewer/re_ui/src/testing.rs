@@ -31,6 +31,7 @@ pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuil
 fn use_lenient_macos_ci_thresholds() -> bool {
     // TODO(andreas): As of writing SwiftShader gets MSAA wrong and has drastically different texture filtering.
     // TODO(andreas): A more straight forward check for swiftshader would be better here.
+    // TODO(#12450): Investigate whether we can run lavapipe instead.
     cfg!(target_os = "macos") && std::env::var("CI").is_ok()
 }
 
