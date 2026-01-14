@@ -462,17 +462,17 @@ pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
 ///
 /// This is very similar to wgpu-core's implementation of `DynInstance::enumerate_adapters`.
 pub fn select_adapter(
-    instance: &wgpu::Instance,
+    adapters: &[wgpu::Adapter],
     enabled_backends: wgpu::Backends,
     surface: Option<&wgpu::Surface<'_>>,
 ) -> Result<wgpu::Adapter, String> {
-    let mut adapters = instance.enumerate_adapters(enabled_backends);
-
     if adapters.is_empty() {
         return Err(format!(
             "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
         ));
     }
+
+    let mut adapters = adapters.to_vec();
 
     // Filter out adapters that can't present to the given surface.
     if let Some(surface) = &surface {
@@ -495,7 +495,7 @@ pub fn select_adapter(
         }
     }
 
-    re_log::debug!("Found the following graphics adapters:");
+    re_log::debug!("Found the following viable graphics adapters:");
     for adapter in &adapters {
         re_log::debug!("* {}", crate::adapter_info_summary(&adapter.get_info()));
     }
