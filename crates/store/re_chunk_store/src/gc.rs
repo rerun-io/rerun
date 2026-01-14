@@ -68,6 +68,12 @@ pub struct GarbageCollectionOptions {
     /// [`protect_latest`]: `GarbageCollectionOptions::protect_latest`
     /// [`protected_time_ranges`]: `GarbageCollectionOptions::protected_time_ranges`
     pub furthest_from: Option<(TimelineName, TimeInt)>,
+
+    /// If true, not only the physical data will be dropped, but so will the virtual indexes of that data.
+    ///
+    /// This will make it impossible to re-fetch the data on-demand later on.
+    /// This generally only makes sense for blueprint stores.
+    pub perform_deep_deletions: bool,
 }
 
 impl GarbageCollectionOptions {
@@ -78,6 +84,7 @@ impl GarbageCollectionOptions {
             protect_latest: 0,
             protected_time_ranges: Default::default(),
             furthest_from: None,
+            perform_deep_deletions: false,
         }
     }
 
@@ -313,7 +320,11 @@ impl ChunkStore {
 
         {
             re_tracing::profile_scope!("sweep");
-            self.remove_chunks_shallow(chunks_to_be_removed, Some(sweep_time_budget))
+            if options.perform_deep_deletions {
+                self.remove_chunks_deep(chunks_to_be_removed, Some(sweep_time_budget))
+            } else {
+                self.remove_chunks_shallow(chunks_to_be_removed, Some(sweep_time_budget))
+            }
         }
     }
 
@@ -424,8 +435,6 @@ impl ChunkStore {
     ///
     /// This is orders of magnitude faster than trying to `retain()` on all our internal indices,
     /// when you already know where these chunks live.
-    //
-    // TODO(cmc): blueprint stores could use deep removal for everything. maybe expose a config flag?
     pub fn remove_chunks_deep(
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,

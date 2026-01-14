@@ -1292,6 +1292,7 @@ mod tests {
             protect_latest: 1,
             protected_time_ranges: Default::default(),
             furthest_from: None,
+            perform_deep_deletions: false,
         });
 
         // We've GC'd the past-most half of the store:
