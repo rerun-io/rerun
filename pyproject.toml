@@ -35,6 +35,7 @@ dev = [
   "requests>=2.28",
   "types-requests==2.32.4.20250913",
   "tqdm>=4.60",
+  "ty==0.0.11",
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
@@ -364,3 +365,33 @@ ignore_missing_imports = true
 module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
 ignore_errors = true
 ignore_missing_imports = true
+
+[tool.ty.environment]
+extra-paths = ["rerun_py", "rerun_py/rerun_sdk"]
+
+[tool.ty.src]
+include = [
+  "rerun_py/rerun_sdk/rerun",
+  "rerun_py/rerun_bindings",
+  "rerun_py/tests",
+  "rerun_notebook/src/rerun_notebook",
+  "tests/python",
+]
+
+[tool.ty.rules]
+# parsing disagrees with mypy
+unused-ignore-comment = "ignore"
+# Stricter parsing than mypy
+invalid-argument-type = "ignore"
+# others to burn down
+possibly-missing-attribute = "ignore"
+invalid-assignment = "ignore"
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
+index-out-of-bounds = "ignore"
+no-matching-overload = "ignore"
+unsupported-operator = "ignore"
+call-non-callable = "ignore"
+unresolved-reference = "ignore"
+invalid-return-type = "ignore"
+unresolved-global = "ignore"
