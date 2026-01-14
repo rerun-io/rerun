@@ -652,19 +652,61 @@ async fn load_static_chunks(
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
 async fn load_chunks(
+    client: &ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    full_batch: RecordBatch,
+) -> ApiResult<ControlFlow<()>> {
+    use futures::future;
+    use std::sync::Arc;
+
+    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+
+    // Loading all the chunks in one go is a bad idea, especially on web.
+    // So we put each load in its own request:
+
+    let full_batch = Arc::new(full_batch);
+    let mut handles = Vec::with_capacity(full_batch.num_rows());
+
+    for i in 0..full_batch.num_rows() {
+        let row_batch = Arc::clone(&full_batch);
+        let mut client = client.clone();
+        let tx = tx.clone();
+        let store_id = store_id.clone();
+
+        handles.push(tokio::spawn(async move {
+            let single_row_batch = arrow::compute::take_record_batch(
+                &row_batch,
+                &arrow::array::UInt32Array::from(vec![i as u32]),
+            )
+            .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
+
+            load_small_chunk_batch(&mut client, &tx, &store_id, &single_row_batch).await
+        }));
+    }
+
+    let results = future::join_all(handles).await;
+    for res in results {
+        let result = res.map_err(|err| ApiError::internal(err, "Join error in load_chunks"))??;
+        if result.is_break() {
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+
+    re_log::trace!("Finished downloading {} chunks.", full_batch.num_rows());
+
+    Ok(ControlFlow::Continue(()))
+}
+
+async fn load_small_chunk_batch(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
-    batch: RecordBatch,
+    batch: &RecordBatch,
 ) -> ApiResult<ControlFlow<()>> {
-    if batch.num_rows() == 0 {
-        return Ok(ControlFlow::Continue(()));
-    }
-
-    re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
-
-    let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
+    let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
             if tx
@@ -688,8 +730,6 @@ async fn load_chunks(
             }
         }
     }
-
-    re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
 
     Ok(ControlFlow::Continue(()))
 }
