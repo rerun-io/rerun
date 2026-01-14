@@ -256,7 +256,7 @@ def upload_swiftshader_to_gcloud(lib_path: Path, version: str) -> None:
     Run this script with --upload-swiftshader to extract from Chrome and upload.
 
     SwiftShader is Apache 2.0 licensed, so we can redistribute the binaries.
-    See: https://github.com/google/swiftshader/blob/master/LICENSE.txt
+    See: https://github.com/google/swiftshader/blob/HEAD/LICENSE.txt
 
     Args:
         lib_path: Path to the libvk_swiftshader.dylib file to upload
@@ -278,7 +278,7 @@ def upload_swiftshader_to_gcloud(lib_path: Path, version: str) -> None:
         bucket = client.bucket(SWIFTSHADER_GCLOUD_BUCKET)
         blob = bucket.blob(blob_path)
 
-        print(f"Uploading to bucket '{SWIFTSHADER_GCLOUD_BUCKET}' at path '{blob_path}'...")
+        print(f"Uploading to bucket '{SWIFTSHADER_GCLOUD_BUCKET}' at path '{blob_path}'…")
         blob.upload_from_filename(str(lib_path))
 
         print(f"✓ Successfully uploaded to {gcloud_url}")
@@ -308,7 +308,7 @@ def setup_swiftshader_for_macos() -> dict[str, str]:
     Returns:
         Dictionary of environment variables to set.
     """
-    print("Setting up SwiftShader for macOS...")
+    print("Setting up SwiftShader for macOS…")
 
     try:
         from google.cloud import storage
@@ -326,7 +326,7 @@ def setup_swiftshader_for_macos() -> dict[str, str]:
     # Download from GCloud
     blob_path = f"{SWIFTSHADER_GCLOUD_PATH}/libvk_swiftshader.dylib"
     gcloud_url = f"gs://{SWIFTSHADER_GCLOUD_BUCKET}/{blob_path}"
-    print(f"Downloading SwiftShader from {gcloud_url}...")
+    print(f"Downloading SwiftShader from {gcloud_url}…")
 
     try:
         client = storage.Client("rerun-open")
@@ -389,7 +389,7 @@ def vulkan_info(extra_env_vars: dict[str, str]) -> None:
         print("The Vulkan SDK should be installed with vulkaninfo utility.")
         sys.exit(1)
 
-    print(f"\nRunning vulkaninfo to verify setup (from {vulkaninfo_path})...\n")
+    print(f"\nRunning vulkaninfo to verify setup (from {vulkaninfo_path})…\n")
     print(run([vulkaninfo_path, "--summary"], env=env).stdout)
 
 
@@ -409,7 +409,7 @@ def main() -> None:
             print("ERROR: --upload-swiftshader is only supported on macOS")
             sys.exit(1)
 
-        print("Extracting SwiftShader from local Chrome and uploading to GCloud...")
+        print("Extracting SwiftShader from local Chrome and uploading to GCloud…")
         result = extract_swiftshader_from_chrome()
         if result is None:
             print("ERROR: Could not find SwiftShader in Chrome installation")
