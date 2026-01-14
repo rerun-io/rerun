@@ -139,6 +139,15 @@ direction: right
 Logging SDK -> Viewer: stream
 ```
 
+Minimal example:
+
+```python
+import rerun as rr
+rr.init("my_app")
+rr.spawn()  # Start viewer and connect
+rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
+```
+
 Best for: development, debugging, real-time monitoring.
 
 
@@ -150,6 +159,21 @@ Log data to `.rrd` files, then open them in the Viewer whenever needed. Files ca
 ```d2
 direction: right
 Logging SDK -> ".rrd" -> Viewer: load
+```
+
+Minimal example:
+
+```python
+import rerun as rr
+rr.init("my_app")
+rr.save("recording.rrd")
+rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
+```
+
+And later:
+
+```sh
+$ rerun recording.rrd
 ```
 
 Best for: sharing recordings, offline analysis, archiving.
@@ -167,6 +191,16 @@ Data Platform -> Viewer: redap
 Data Platform -> Catalog SDK: redap
 ```
 
+Minimal example of creating a dataset and registering files:
+
+```python
+import rerun as rr
+client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
+dataset = client.create_dataset("my_data")
+dataset.register(["s3://my-rrd-files/recording1.rrd", "s3://my-rrd-files/recording2.rrd"])
+```
+
+
 Best for: large datasets, team collaboration, production pipelines.
 
 
@@ -180,6 +214,16 @@ direction: right
 Data Platform -> Catalog SDK: redap
 Data Platform <- Catalog SDK: redap
 Data Platform -> Viewer: redap
+```
+
+Minimal example of querying a dataset:
+
+```python
+import rerun as rr
+client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
+dataset = client.get_dataset("my_data")
+df = dataset.reader(index="log_time")  # df is a DataFusion.DataFrame
+print(df)
 ```
 
 Best for: data pipelines, batch processing, ML training data preparation.
