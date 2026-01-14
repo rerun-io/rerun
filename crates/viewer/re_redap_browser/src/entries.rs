@@ -7,7 +7,7 @@ use datafusion::catalog::TableProvider;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
-use re_dataframe_ui::RequestedObject;
+use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
@@ -208,12 +208,12 @@ fn fetch_entry_details(
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(Left(Left(
-            fetch_dataset_details(client, entry.id, origin)
+            fetch_dataset_details(client, entry.id, origin.clone(), runtime.clone())
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin, runtime.clone())
+            fetch_table_details(client, entry.id, origin.clone(), runtime.clone())
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -235,7 +235,8 @@ fn fetch_entry_details(
 async fn fetch_dataset_details(
     mut client: ConnectionClient,
     id: EntryId,
-    origin: &re_uri::Origin,
+    origin: re_uri::Origin,
+    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let result = client
         .read_dataset_entry(id)
@@ -245,19 +246,21 @@ async fn fetch_dataset_details(
             origin: origin.clone(),
         })?;
 
-    let table_provider = SegmentTableProvider::new(client, id)
+    let inner_provider = SegmentTableProvider::new(client, id)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating segment table provider"))?;
 
+    let table_provider: Arc<dyn TableProvider> =
+        Arc::new(StreamingCacheTableProvider::new(inner_provider, runtime));
+
     Ok((result, table_provider))
 }
 
-#[cfg_attr(target_arch = "wasm32", expect(unused_variables))]
 async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
-    origin: &re_uri::Origin,
+    origin: re_uri::Origin,
     runtime: AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
@@ -266,14 +269,17 @@ async fn fetch_table_details(
     })?;
 
     #[cfg(target_arch = "wasm32")]
-    let runtime = None;
+    let tokio_runtime = None;
     #[cfg(not(target_arch = "wasm32"))]
-    let runtime = Some(runtime.inner().clone());
+    let tokio_runtime = Some(runtime.inner().clone());
 
-    let table_provider = TableEntryTableProvider::new(client, id, runtime)
+    let inner_provider = TableEntryTableProvider::new(client, id, tokio_runtime)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;
+
+    let table_provider: Arc<dyn TableProvider> =
+        Arc::new(StreamingCacheTableProvider::new(inner_provider, runtime));
 
     Ok((result, table_provider))
 }
