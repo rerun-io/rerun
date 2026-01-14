@@ -659,34 +659,28 @@ async fn load_chunks(
     full_batch: RecordBatch,
 ) -> ApiResult<ControlFlow<()>> {
     use futures::future;
-    use std::sync::Arc;
 
     re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
 
-    // Loading all the chunks in one go is a bad idea, especially on web.
-    // So we put each load in its own request:
+    // Batch requests in groups of N=32 rows.
+    const BATCH_SIZE: usize = 32;
+    let num_rows = full_batch.num_rows();
+    let mut batch_handles = Vec::with_capacity(num_rows.div_ceil(BATCH_SIZE));
 
-    let full_batch = Arc::new(full_batch);
-    let mut handles = Vec::with_capacity(full_batch.num_rows());
+    for start in (0..num_rows).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_rows);
+        let small_batch = full_batch.slice(start, end - start);
 
-    for i in 0..full_batch.num_rows() {
-        let row_batch = Arc::clone(&full_batch);
         let mut client = client.clone();
         let tx = tx.clone();
         let store_id = store_id.clone();
 
-        handles.push(tokio::spawn(async move {
-            let single_row_batch = arrow::compute::take_record_batch(
-                &row_batch,
-                &arrow::array::UInt32Array::from(vec![i as u32]),
-            )
-            .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
-
-            load_small_chunk_batch(&mut client, &tx, &store_id, &single_row_batch).await
+        batch_handles.push(tokio::spawn(async move {
+            load_small_chunk_batch(&mut client, &tx, &store_id, &small_batch).await
         }));
     }
 
-    let results = future::join_all(handles).await;
+    let results = future::join_all(batch_handles).await;
     for res in results {
         let result = res.map_err(|err| ApiError::internal(err, "Join error in load_chunks"))??;
         if result.is_break() {
@@ -694,7 +688,7 @@ async fn load_chunks(
         }
     }
 
-    re_log::trace!("Finished downloading {} chunks.", full_batch.num_rows());
+    re_log::trace!("Finished downloading {} chunks.", num_rows);
 
     Ok(ControlFlow::Continue(()))
 }
@@ -709,24 +703,22 @@ async fn load_chunks(
 ) -> ApiResult<ControlFlow<()>> {
     re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
 
-    // Loading all the chunks in one go is a bad idea, especially on web.
-    // So we put each load in its own request:
+    // Batch requests in groups of N=32 rows.
+    const BATCH_SIZE: usize = 32;
+    let num_rows = full_batch.num_rows();
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut handles = Vec::with_capacity(full_batch.num_rows());
-
-    for i in 0..full_batch.num_rows() {
-        let single_row_batch = arrow::compute::take_record_batch(
-            &full_batch,
-            &arrow::array::UInt32Array::from(vec![i as u32]),
-        )
-        .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
-
-        // Can't easily spawn many and wait for all of them on wasm:
-        load_small_chunk_batch(client, &tx, &store_id, &single_row_batch).await?;
+    for start in (0..num_rows).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_rows);
+        let small_batch = full_batch.slice(start, end - start);
+        if load_small_chunk_batch(client, &tx, &store_id, &small_batch)
+            .await?
+            .is_break()
+        {
+            return Ok(ControlFlow::Break(()));
+        }
     }
 
-    re_log::trace!("Finished downloading {} chunks.", full_batch.num_rows());
+    re_log::trace!("Finished downloading {} chunks.", num_rows);
 
     Ok(ControlFlow::Continue(()))
 }
