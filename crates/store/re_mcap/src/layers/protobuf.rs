@@ -524,7 +524,7 @@ mod integration_tests {
     use crate::LayerRegistry;
     use crate::layers::McapProtobufLayer;
 
-    fn create_pool() -> DescriptorPool {
+    fn create_pool_with_person() -> MessageDescriptor {
         let status = EnumDescriptorProto {
             name: Some("Status".into()),
             value: vec![
@@ -591,7 +591,10 @@ mod integration_tests {
 
         let encoded = file_descriptor_set.encode_to_vec();
 
-        DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool")
+        let pool =
+            DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool");
+        pool.get_message_by_name("com.example.Person")
+            .expect("missing message descriptor")
     }
 
     /// Returns a channel id.
@@ -651,10 +654,7 @@ mod integration_tests {
     fn two_simple_rows() {
         // Writing to the MCAP buffer.
         let (summary, buffer) = {
-            let pool = create_pool();
-            let person_message = pool
-                .get_message_by_name("com.example.Person")
-                .expect("missing message descriptor");
+            let person_message = create_pool_with_person();
 
             let buffer = Vec::new();
             let cursor = io::Cursor::new(buffer);
@@ -692,13 +692,67 @@ mod integration_tests {
         insta::assert_snapshot!("two_simple_rows", format!("{:-240}", &chunks[0]));
     }
 
-    /// Test for issue #12410: Test with field number gaps in the protobuf schema.
-    /// When protobuf fields have non-consecutive numbers (e.g., 1, 2, 5, 8), but we iterate
-    /// by index (0, 1, 2, 3) and map to consecutive numbers (1, 2, 3, 4), we try to access
-    /// fields that don't exist in the schema, triggering "missing protobuf field X" errors.
+    /// This test verifies that we are resilient to decode failures. When messages fail to decode,
+    /// they should be logged and skipped without causing length mismatches.
     #[test]
-    fn protobuf_field_number_gaps() {
+    fn decode_failure_resilience() {
         use prost_reflect::prost::Message as _;
+
+        let (summary, buffer) = {
+            let person_message = create_pool_with_person();
+
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+                .expect("failed to add schema and channel");
+
+            // Write a mix of valid messages and completely invalid protobuf data
+            for i in 0..10 {
+                let bytes = if i % 2 == 0 {
+                    // Write completely invalid protobuf data (random bytes that will fail to decode)
+                    vec![0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB]
+                } else {
+                    // Write a valid message
+                    let msg = DynamicMessage::parse_text_format(
+                        person_message.clone(),
+                        &format!("name: \"Person{i}\" id: {i}"),
+                    )
+                    .expect("failed to parse text format");
+                    msg.encode_to_vec()
+                };
+
+                // Write the (valid or invalid) message directly
+                writer
+                    .write_to_known_channel(
+                        &mcap::records::MessageHeader {
+                            channel_id,
+                            sequence: 0,
+                            log_time: 100 + i,
+                            publish_time: 100 + i,
+                        },
+                        &bytes,
+                    )
+                    .expect("failed to write message");
+            }
+
+            let summary = writer.finish().expect("finishing writer failed");
+            (summary, writer.into_inner().into_inner())
+        };
+
+        // Verify that decode failures don't cause panics - only valid messages should be returned
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+        // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows
+        assert_eq!(chunks[0].num_rows(), 5);
+    }
+
+    /// Test with field number gaps in the protobuf schema.
+    #[test]
+    fn field_number_gaps() {
+        use prost_reflect::prost::Message as _;
+        use prost_reflect::prost_types::field_descriptor_proto;
 
         // Create a protobuf schema with gaps in field numbers
         let pool = prost_reflect::DescriptorPool::decode(
@@ -712,30 +766,32 @@ mod integration_tests {
                             prost_reflect::prost_types::FieldDescriptorProto {
                                 name: Some("name".to_owned()),
                                 number: Some(1),
-                                label: Some(1),  // LABEL_OPTIONAL
-                                r#type: Some(9), // TYPE_STRING
+                                r#type: Some(field_descriptor_proto::Type::String as i32),
                                 ..Default::default()
                             },
                             prost_reflect::prost_types::FieldDescriptorProto {
                                 name: Some("id".to_owned()),
                                 number: Some(2),
-                                label: Some(1),
-                                r#type: Some(5), // TYPE_INT32
+                                r#type: Some(field_descriptor_proto::Type::Int32 as i32),
                                 ..Default::default()
                             },
                             prost_reflect::prost_types::FieldDescriptorProto {
                                 name: Some("description".to_owned()),
-                                number: Some(5), // Gap: skipping 3, 4
-                                label: Some(1),
-                                r#type: Some(9), // TYPE_STRING
+                                number: Some(5), // Gap: fields 3, 4 are just missing
+                                r#type: Some(field_descriptor_proto::Type::String as i32),
                                 ..Default::default()
                             },
                             prost_reflect::prost_types::FieldDescriptorProto {
                                 name: Some("count".to_owned()),
-                                number: Some(8), // Gap: skipping 6, 7
-                                label: Some(1),
-                                r#type: Some(5), // TYPE_INT32
+                                number: Some(8), // Gap: fields 6, 7 are reserved
+                                r#type: Some(field_descriptor_proto::Type::Int32 as i32),
                                 ..Default::default()
+                            },
+                        ],
+                        reserved_range: vec![
+                            prost_reflect::prost_types::descriptor_proto::ReservedRange {
+                                start: Some(6),
+                                end: Some(8), // end is exclusive, so this reserves 6 and 7
                             },
                         ],
                         ..Default::default()
@@ -815,4 +871,69 @@ mod integration_tests {
         );
     }
 
+    /// In `proto3`, all fields are optional, so we test various combinations of missing fields.
+    #[test]
+    fn missing_optional_fields() {
+        let (summary, buffer) = {
+            let person_message = create_pool_with_person();
+
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+                .expect("failed to add schema and channel");
+
+            // Message 1: has all fields
+            let dynamic_message_1 = DynamicMessage::parse_text_format(
+                person_message.clone(),
+                "name: \"Alice\" id: 123 status: 1",
+            )
+            .expect("failed to parse text format");
+
+            // Message 2: has only name (id and status missing)
+            // This tests the bug - struct with missing optional fields
+            let dynamic_message_2 =
+                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Bob\"")
+                    .expect("failed to parse text format");
+
+            // Message 3: has only id (name and status missing)
+            let dynamic_message_3 =
+                DynamicMessage::parse_text_format(person_message.clone(), "id: 456")
+                    .expect("failed to parse text format");
+
+            // Message 4: has only status (name and id missing)
+            let dynamic_message_4 =
+                DynamicMessage::parse_text_format(person_message.clone(), "status: 2")
+                    .expect("failed to parse text format");
+
+            // Message 5: empty message (all fields missing)
+            // This is the most extreme case - may trigger the crash
+            let dynamic_message_5 = DynamicMessage::parse_text_format(person_message.clone(), "")
+                .expect("failed to parse text format");
+
+            write_message(&mut writer, channel_id, &dynamic_message_1, 42)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_2, 43)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_3, 44)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_4, 45)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_5, 46)
+                .expect("failed to write message");
+
+            let summary = writer.finish().expect("finishing writer failed");
+
+            (summary, writer.into_inner().into_inner())
+        };
+
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+
+        insta::assert_snapshot!(
+            "missing_optional_fields_proto3",
+            format!("{:-240}", &chunks[0])
+        );
+    }
 }
