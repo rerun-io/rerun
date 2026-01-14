@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use re_chunk::Chunk;
+use re_log_encoding::RrdManifest;
 use re_log_types::StoreId;
 
 use crate::ChunkStoreGeneration;
@@ -121,6 +122,14 @@ pub struct ChunkStoreDiff {
     /// They are in "query-model space" and are not an accurate representation of what happens in storage space.
     pub kind: ChunkStoreDiffKind,
 
+    /// A new [`RrdManifest`] was inserted into the store.
+    ///
+    /// This is very different from the usual chunk-related events as this is purely virtual.
+    /// Still, even though no physical data was ingested yet, it might be important for downstream
+    /// consumers to know what kind of virtual data is being referenced from now.
+    /// For example, query caches must know about pending tombstones as soon as they start being referenced.
+    pub rrd_manifest: Option<Arc<RrdManifest>>,
+
     /// The chunk that was added or removed.
     ///
     /// If the addition of a chunk to the store triggered a compaction, that chunk _pre-compaction_ is
@@ -136,8 +145,7 @@ pub struct ChunkStoreDiff {
     // deallocated.
     pub chunk: Arc<Chunk>,
 
-    /// If the an added chunk is a smaller piece of a split chunk,
-    /// then this is the original chunk.
+    /// If the an added chunk is a smaller piece of a split chunk, then this is the original chunk.
     ///
     /// In other words, this is the chunk that someone called [`ChunkStore::insert_chunk`] on,
     /// but that never made it into the store as is, but got split into multiple pieces,
@@ -161,11 +169,13 @@ impl PartialEq for ChunkStoreDiff {
         let Self {
             kind,
             chunk,
+            rrd_manifest,
             split_source,
             compacted,
         } = self;
         *kind == rhs.kind
             && chunk.id() == rhs.chunk.id()
+            && rrd_manifest == &rhs.rrd_manifest
             && split_source == &rhs.split_source
             && compacted == &rhs.compacted
     }
@@ -178,9 +188,21 @@ impl ChunkStoreDiff {
     pub fn addition(chunk: Arc<Chunk>, compacted: Option<ChunkCompactionReport>) -> Self {
         Self {
             kind: ChunkStoreDiffKind::Addition,
+            rrd_manifest: None,
             chunk,
             split_source: None,
             compacted,
+        }
+    }
+
+    pub fn rrd_manifest(rrd_manifest: Arc<RrdManifest>) -> Self {
+        Self {
+            kind: ChunkStoreDiffKind::Addition,
+            rrd_manifest: Some(rrd_manifest),
+            // TODO: we need an enum for the 2 different payloads
+            chunk: Arc::new(Chunk::empty(ChunkId::ZERO, "<empty>".into())),
+            split_source: None,
+            compacted: None,
         }
     }
 
@@ -188,6 +210,7 @@ impl ChunkStoreDiff {
     pub fn deletion(chunk: Arc<Chunk>) -> Self {
         Self {
             kind: ChunkStoreDiffKind::Deletion,
+            rrd_manifest: None,
             chunk,
             split_source: None,
             compacted: None,
