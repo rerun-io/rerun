@@ -22,7 +22,7 @@ The Viewer visualizes your data. It comes in two forms:
 
 Both versions include a **Chunk Store** (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
-The Web Viewer has [performance limitations](#what-are-the-web-viewer-limitations) compared to native.
+The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
 
 ### Data Platform
 
@@ -97,36 +97,3 @@ Data Platform.Datasets -> Catalog SDK: redap
 - **Save and load recordings** → [Logging and ingestion](logging-and-ingestion.md)
 - **Query data programmatically** → [Query and transform](query-and-transform.md)
 - **Visualize from Data Platform** → [Query and transform](query-and-transform.md)
-
-
-## FAQ
-
-### What are the Web Viewer limitations?
-
-The Web Viewer runs as 32-bit Wasm, limited to ~2 GiB memory in practice. When it runs out, it drops the oldest data. It also runs single-threaded, making it slower than native.
-
-For large datasets, use the Data Platform—the Viewer fetches data on-demand rather than loading everything into memory.
-
-### How do I run multiple Viewer windows?
-
-Each Viewer binds to a gRPC port. To open multiple windows, use different ports:
-
-```sh
-$ rerun --port 9876 &
-$ rerun --port 6789 &
-```
-
-### When should I use the Viewer's gRPC endpoint vs the Data Platform?
-
-**Viewer's gRPC endpoint**: For development and debugging. Data streams directly into the Viewer's memory for immediate visualization.
-
-**Data Platform**: For production, large datasets, team collaboration, or programmatic access. Data persists in storage and can be accessed by multiple Viewers or the Catalog SDK.
-
-### How do I connect to a Data Platform?
-
-Via CLI:
-```sh
-$ rerun connect rerun+http://your-data-platform:51234
-```
-
-Or in the Viewer UI, use **Add Redap server**.
