@@ -57,7 +57,7 @@ impl ProtobufMessageParser {
             );
             debug_assert!(
                 message_descriptor.oneofs().len() == 0,
-                "`oneof` in schema {} is not supported yet",
+                "[DEBUG ASSERT] `oneof` in schema {} is not supported yet",
                 message_descriptor.full_name()
             );
         }
