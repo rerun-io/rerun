@@ -24,6 +24,8 @@ The viewer includes a [**Chunk Store**](logging-and-ingestion/chunks) (in-memory
 
 The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
 
+Both viewers can be extended: the Native Viewer through its [Rust API](../howto/visualization/extend-ui.md), and the Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md) or [Jupyter notebooks](../howto/integrations/embed-notebooks.md).
+
 ### Data Platform
 
 The Data Platform provides persistent storage and indexing for large-scale data. It organizes data into:
@@ -106,7 +108,7 @@ See: [CLI reference](../reference/cli.md)
 The Python SDK includes:
 - **Logging SDK**
 - **Catalog SDK**
-- **CLI**, including the Viewer (the `rerun` CLI is made avaiable by installing the `rerun-sdk` Pyhton package)
+- **CLI**, including the Viewer (the `rerun` CLI is made available by installing the `rerun-sdk` Python package)
 
 See: Python SDK [installation instructions](../overview/installing-rerun/python.md) and [quick start guide](../getting-started/quick-start/python.md)
 
