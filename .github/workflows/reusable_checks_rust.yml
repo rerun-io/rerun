@@ -193,9 +193,6 @@ jobs:
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
       - name: Rust tests
-        # We've seen some jobs fail on macOS because of a rendering adapter.
-        # Unfortunately, just retrying it using e.g. https://github.com/nick-fields/retry does NOT help
-        # TODO(#11359): fix the Mac snapshot tests
         run: pixi run rs-check --only tests
 
       - name: Upload test results
