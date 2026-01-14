@@ -24,10 +24,7 @@ struct VertexOutput {
     @builtin(position)
     position: vec4f,
 
-    @location(0)
-    scaled_world_plane_position: vec2f,
-
-    @location(1) @interpolate(flat) // Result doesn't differ per vertex.
+    @location(0) @interpolate(flat) // Result doesn't differ per vertex.
     next_cardinality_interpolation: f32,
 };
 
@@ -65,7 +62,6 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     let line_cardinality = max(log2(camera_plane_distance_grid_units) / log2(10.0) - 0.9, 0.0); // -0.9 instead of 1.0 so we always see a little bit of the next level even if we're very close.
     let line_base_cardinality = floor(line_cardinality);
     let line_spacing_factor = pow(10.0, line_base_cardinality);
-    out.scaled_world_plane_position = shifted_plane_position / (config.spacing * line_spacing_factor);
     out.next_cardinality_interpolation = line_cardinality - line_base_cardinality;
 
     return out;
@@ -83,11 +79,20 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // We're not actually implementing the "pristine grid shader" which is a grid with world space thickness,
     // but rather the pixel space grid, which is a lot simpler, but happens to be also described very well in this article.
 
+    // Use a camera ray intersection instead of interpolating the plane vertex positions.
+    // Since those can be very far away, this approach ends up being much more precise!
+    // (also it has the added benefit that we're independent of the geometry in general!)
+    let camera_ray = camera_ray_from_fragcoord(in.position.xy);
+    let plane_world_position = intersect_ray_plane(camera_ray, config.plane) * camera_ray.direction + frame.camera_position;
+    let plane_y_axis = normalize(cross(config.plane.normal, select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), config.plane.normal.x != 0.0)));
+    let plane_x_axis = cross(plane_y_axis, config.plane.normal);
+    let plane_position = vec2f(dot(plane_x_axis, plane_world_position), dot(plane_y_axis, plane_world_position)) / config.spacing + config.normal_offset;
+
     // Distance to a grid line in x and y ranging from 0 to 1.
-    let distance_to_grid_line_base = calc_distance_to_grid_line(in.scaled_world_plane_position);
+    let distance_to_grid_line_base = calc_distance_to_grid_line(plane_position);
 
     // Figure out the how wide the lines are in this "draw space".
-    let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
+    let plane_unit_pixel_derivative = fwidthFine(plane_position);
     let line_anti_alias = plane_unit_pixel_derivative;
     let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
@@ -119,7 +124,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // Every tenth line is a more intense, we call those "cardinal" lines.
     // Experimented previously with more levels of cardinal lines, but it gets too busy:
     // It seems that if we want to go down this path, we should ensure that there's only two levels of lines on screen at a time.
-    let distance_to_grid_line_cardinal = calc_distance_to_grid_line(in.scaled_world_plane_position * 0.1);
+    let distance_to_grid_line_cardinal = calc_distance_to_grid_line(plane_position * 0.1);
     var intensity_cardinal = linearstep2(width_in_grid_units + line_anti_alias,
                                          width_in_grid_units - line_anti_alias,
                                          distance_to_grid_line_cardinal * 10.0);
