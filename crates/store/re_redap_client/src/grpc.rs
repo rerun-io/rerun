@@ -729,6 +729,7 @@ async fn load_small_chunk_batch(
     store_id: &StoreId,
     batch: &RecordBatch,
 ) -> ApiResult<ControlFlow<()>> {
+    // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
 
