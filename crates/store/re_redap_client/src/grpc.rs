@@ -651,6 +651,7 @@ async fn load_static_chunks(
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+#[cfg(not(target_arch = "wasm32"))]
 async fn load_chunks(
     client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
@@ -691,6 +692,38 @@ async fn load_chunks(
         if result.is_break() {
             return Ok(ControlFlow::Break(()));
         }
+    }
+
+    re_log::trace!("Finished downloading {} chunks.", full_batch.num_rows());
+
+    Ok(ControlFlow::Continue(()))
+}
+
+/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+#[cfg(target_arch = "wasm32")]
+async fn load_chunks(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    full_batch: RecordBatch,
+) -> ApiResult<ControlFlow<()>> {
+    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+
+    // Loading all the chunks in one go is a bad idea, especially on web.
+    // So we put each load in its own request:
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut handles = Vec::with_capacity(full_batch.num_rows());
+
+    for i in 0..full_batch.num_rows() {
+        let single_row_batch = arrow::compute::take_record_batch(
+            &full_batch,
+            &arrow::array::UInt32Array::from(vec![i as u32]),
+        )
+        .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
+
+        // Can't easily spawn many and wait for all of them on wasm:
+        load_small_chunk_batch(client, &tx, &store_id, &single_row_batch).await?;
     }
 
     re_log::trace!("Finished downloading {} chunks.", full_batch.num_rows());
