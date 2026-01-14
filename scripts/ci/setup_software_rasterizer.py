@@ -348,7 +348,6 @@ def setup_swiftshader_for_macos() -> dict[str, str]:
 
     # Create ICD JSON file
     # The ICD file tells the Vulkan loader where to find the driver implementation.
-    # See: https://vulkan.lunarg.com/doc/view/latest/mac/loader_and_layer_interface.html
     icd_json = {
         "file_format_version": "1.0.0",
         "ICD": {"library_path": str(swiftshader_lib.resolve()), "api_version": "1.3.0"},
