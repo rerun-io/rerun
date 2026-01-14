@@ -308,7 +308,8 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let results = store.range_relevant_chunks(query, entity_path, component);
+        let results =
+            store.range_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
         // It is perfectly safe to cache partial range results, since missing data (if any), cannot
         // possibly affect what's already cached, it can only augment it.
         // Therefore, we do not even check for partial results here.
