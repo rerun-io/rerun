@@ -30,7 +30,7 @@ The timestamps of the individual transforms are put onto the `ros2_*` timelines,
 
 > You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
 
-To see the transforms in the viewer, you can select the entity them and add a visualizer for `TransformAxes3D` as shown in the video here.
+To see the transforms in the viewer, you can select their entity and add a visualizer for `TransformAxes3D` as shown in the video here.
 If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/howto/urdf#load-urdf-into-an-existing-recording).
 
 <video width="100%" autoplay loop muted controls>
