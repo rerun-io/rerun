@@ -23,27 +23,27 @@ In addition to the `message_log_time` and `message_publish_time` timestamps that
 
 Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
 
-### ROS 2 transforms and poses
+### ROS 2 transforms (TF)
 
 [`tf2_msgs/TFMessage`](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is converted to [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)s, with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the message's `transforms` list.
 The timestamps of the individual transforms are put onto the `ros2_*` timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
 
-> *You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).*
+> You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
+
+To see the transforms in the viewer, you can select the entity them and add a visualizer for `TransformAxes3D` as shown in the video here.
+If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/howto/urdf#load-urdf-into-an-existing-recording).
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/83f26961023d5f554175ebc48d1292e218db1212_add_axes_visualizer.mp4" type="video/mp4" />
+</video>
+
+### ROS 2 poses and frame IDs
 
 [`geometry_msgs/PoseStamped`](https://docs.ros2.org/foxy/api/geometry_msgs/msg/PoseStamped.html) is converted to [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) with a [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) on the same entity path.
-You can visualize these poses in the viewer by selecting the entity and adding a `TransformAxes3D` visualizer in the selection panel:
+Just like `Transform3D`, you can visualize these poses in the viewer by selecting the entity and adding a `TransformAxes3D` visualizer in the selection panel.
+Note that the visualization requires the parent coordinate frame of the pose to be known, i.e. part of the transform hierarchy of your data.
 
-<picture>
-  <img src="https://static.rerun.io/pose_axis_visualizer/8c819d2771b3f6f7a6c981d305019eb0364dd60c/full.png" alt="TransformAxes3D visualizer">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pose_axis_visualizer/8c819d2771b3f6f7a6c981d305019eb0364dd60c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pose_axis_visualizer/8c819d2771b3f6f7a6c981d305019eb0364dd60c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pose_axis_visualizer/8c819d2771b3f6f7a6c981d305019eb0364dd60c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pose_axis_visualizer/8c819d2771b3f6f7a6c981d305019eb0364dd60c/1200w.png">
-</picture>
-
-> **Note:** the visualization requires that the coordinate frame of the pose is known, i.e. is part of the transform hierarchy of your data.
-
-`CoordinateFrame`s are also used for other message types that are supported by the `ros2msg` layer, if they have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html).
+`CoordinateFrame`s are also used for other message types that are supported by the `ros2msg` layer, if they have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html) with a `frame_id`.
 For data that can be visualized in 3D views (e.g. point clouds), this means that the viewer takes the respective coordinate frame's transform into account and renders the data relative to it.
 
 ## ROS2 reflection
