@@ -80,7 +80,7 @@ def _component_type_to_name(component_type: ComponentSpec) -> str:
         return component_type._BATCH_TYPE._COMPONENT_TYPE
 
 
-def _normalize_to_list(value):
+def _normalize_to_sequence(value):
     """Normalize single value or list to list."""
     if isinstance(value, list):
         return value

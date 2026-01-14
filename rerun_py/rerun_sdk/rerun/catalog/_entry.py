@@ -1408,9 +1408,8 @@ class DatasetView:
         ```
 
         """
-        # Normalize to a list
-        if not isinstance(archetypes, Sequence) or isinstance(archetypes, str):
-            archetypes = [archetypes]  # type: ignore[list-item]
+        # Normalize to a sequence using the shared helper
+        archetypes = _normalize_to_sequence(archetypes)
 
         # Get column names using shared helper
         all_column_names = _get_column_names_for_archetypes(self.schema(), archetypes)
@@ -1476,9 +1475,8 @@ class DatasetView:
         ```
 
         """
-        # Normalize to a list
-        if not isinstance(component_types, Sequence) or isinstance(component_types, str):
-            component_types = [component_types]  # type: ignore[list-item]
+        # Normalize to a sequence using the shared helper
+        component_types = _normalize_to_sequence(component_types)
 
         # Get column names using shared helper
         all_column_names = _get_column_names_for_component_types(self.schema(), component_types)

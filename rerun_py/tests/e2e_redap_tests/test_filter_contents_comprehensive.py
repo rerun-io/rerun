@@ -233,8 +233,6 @@ class TestComponentColumnFiltering:
     ) -> None:
         """Mixing entity paths and column selectors raises error (for now)."""
         # Mixing requires more complex implementation, so we disallow it initially
-        import pytest
-
         with pytest.raises(ValueError, match="Cannot mix entity path patterns and column selectors"):
             test_dataset_multi_component.filter_contents([
                 "/world/camera",  # Entity path (no colon)
