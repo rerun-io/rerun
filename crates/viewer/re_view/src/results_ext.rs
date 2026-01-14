@@ -40,7 +40,7 @@ pub struct HybridRangeResults<'a> {
     pub(crate) defaults: &'a LatestAtResults,
 
     /// Hash of mappings applied to [`Self::results`].
-    pub component_mappings_hash: Hash64,
+    pub(crate) component_mappings_hash: Hash64,
 }
 
 impl HybridLatestAtResults<'_> {
