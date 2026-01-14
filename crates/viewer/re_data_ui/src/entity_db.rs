@@ -1,3 +1,4 @@
+use egui::NumExt as _;
 use jiff::SignedDuration;
 use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_byte_size::SizeBytes as _;
@@ -121,7 +122,7 @@ impl crate::DataUi for EntityDb {
 
                 let total_size_bytes = self.total_size_bytes();
                 let static_size = if self.rrd_manifest_index().has_manifest() {
-                    self.rrd_manifest_index().full_uncompressed_size().max(total_size_bytes)
+                    self.rrd_manifest_index().full_uncompressed_size().at_least(total_size_bytes)
                 } else {
                     total_size_bytes
                 };

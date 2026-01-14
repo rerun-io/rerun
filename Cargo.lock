@@ -9776,6 +9776,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_memory",
  "re_redap_client",
  "re_renderer",
  "re_sdk_types",
