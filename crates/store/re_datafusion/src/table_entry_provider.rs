@@ -65,9 +65,10 @@ impl TableEntryTableProvider {
         Self::new(client, "__entries", runtime)
     }
 
-    /// This is a convenience function
+    /// This is a convenience function.
     pub async fn into_provider(self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
-        Ok(GrpcStreamProvider::prepare(self).await?)
+        let provider = GrpcStreamProvider::prepare(self).await?;
+        Ok(provider as Arc<dyn TableProvider>)
     }
 
     #[instrument(skip(self), err)]
