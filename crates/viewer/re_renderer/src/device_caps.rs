@@ -428,9 +428,9 @@ pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
     let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
     assert!(!adapters.is_empty(), "No graphics adapter found!");
 
-    re_log::debug!("Found the following adapters:");
+    re_log::info!("Found the following graphics adapters:");
     for adapter in &adapters {
-        re_log::debug!("* {}", crate::adapter_info_summary(&adapter.get_info()));
+        re_log::info!("* {}", crate::adapter_info_summary(&adapter.get_info()));
     }
 
     // Adapters are already sorted by preferred backend by wgpu, but let's be explicit.

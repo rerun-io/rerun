@@ -318,6 +318,12 @@ static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
 fn init_shared_renderer_setup() -> SharedWgpuResources {
     let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
     let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+
+    assert!(
+        adapter.get_info().device_type == wgpu::DeviceType::Cpu || std::env::var("CI").is_err(),
+        "We require a software renderer for CI tests. GPU based ones have been unreliable in the past."
+    );
+
     let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
