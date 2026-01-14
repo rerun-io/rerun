@@ -611,7 +611,7 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
 
 /// Load only static chunks
 async fn load_static_chunks(
-    client: &mut ConnectionClient,
+    client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     rrd_manifest: re_log_encoding::RrdManifest,
@@ -652,19 +652,55 @@ async fn load_static_chunks(
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
 async fn load_chunks(
+    client: &ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    full_batch: RecordBatch,
+) -> ApiResult<ControlFlow<()>> {
+    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+
+    use futures::stream::FuturesUnordered;
+
+    // Batch requests in groups of N=32 rows.
+    const BATCH_SIZE: usize = 32;
+    let num_rows = full_batch.num_rows();
+    let mut futures = FuturesUnordered::new();
+
+    for start in (0..num_rows).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_rows);
+        let small_batch = full_batch.slice(start, end - start);
+
+        let mut client = client.clone();
+        let tx = tx.clone();
+        let store_id = store_id.clone();
+
+        futures.push(async move {
+            load_small_chunk_batch(&mut client, &tx, &store_id, &small_batch).await
+        });
+    }
+
+    while let Some(res) = futures::stream::StreamExt::next(&mut futures).await {
+        let result = res?;
+        if result.is_break() {
+            return Ok(ControlFlow::Break(()));
+        }
+    }
+
+    re_log::trace!("Finished downloading {} chunks.", num_rows);
+
+    Ok(ControlFlow::Continue(()))
+}
+
+async fn load_small_chunk_batch(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
-    batch: RecordBatch,
+    batch: &RecordBatch,
 ) -> ApiResult<ControlFlow<()>> {
-    if batch.num_rows() == 0 {
-        return Ok(ControlFlow::Continue(()));
-    }
-
-    re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
-
-    let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
+    // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
+    let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
+
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
             if tx
@@ -688,8 +724,6 @@ async fn load_chunks(
             }
         }
     }
-
-    re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
 
     Ok(ControlFlow::Continue(()))
 }
