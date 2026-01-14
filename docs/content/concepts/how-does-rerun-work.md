@@ -80,16 +80,53 @@ Data Platform -> Catalog SDK: redap
 ```
 
 
-## What ships where
+## What ships where?
 
-| Artifact          | Includes                             |
-|-------------------|--------------------------------------|
-| **CLI** (`rerun`) | Viewer, OSS Data Platform, RRD tools |
-| **Python SDK**    | Logging SDK, Catalog SDK, CLI        |
-| **Rust SDK**      | Logging SDK                          |
-| **C++ SDK**       | Logging SDK                          |
-| **Web Viewer**    | Wasm artifact (hosted separately)    |
+### Hosted web viewer
 
+The Web Viewer is available at [rerun.io/viewer](https://rerun.io/viewer).
+It's a great place to start exploring the examples.
+
+### CLI
+
+The `rerun` binary bundles multiple tools in one:
+- **Native Viewer** for visualization
+- **OSS Data Platform** server (via `rerun server`)
+- **RRD tools** for file manipulation
+- **Web Viewer** (via `rerun --serve-web`)
+
+
+The Rerun CLI can be downloaded from [GitHub](https://github.com/rerun-io/rerun/releases) or as part of the Python SDK.
+It can also be built from source with `cargo install rerun-cli --locked`.
+
+See: [CLI reference](../reference/cli.md)
+
+### Python SDK
+
+The Python SDK includes:
+- **Logging SDK**
+- **Catalog SDK**
+- **CLI**, including the Viewer (the `rerun` CLI is made avaiable by installing the `rerun-sdk` Pyhton package)
+
+See: Python SDK [installation instructions](../overview/installing-rerun/python.md) and [quick start guide](../getting-started/quick-start/python.md)
+
+### Rust SDK
+
+The Logging SDK as a Rust crate.
+
+See: Rust SDK [installation instructions](../overview/installing-rerun/rust.md) and [quick start guide](../getting-started/quick-start/rust.md)
+
+### C++ SDK
+
+The Logging SDK for C++ projects.
+
+See: C++ SDK [installation instructions](../overview/installing-rerun/cpp.md) and [quick start guide](../getting-started/quick-start/cpp.md)
+
+### The `web-viewer` and `web-viewer-react` NPM packages
+
+These NPM packages bundle the Web Viewer for inclusion on a website.
+
+See: the `web-viewer` package [reference](../reference/npm)
 
 ## Common workflows
 
