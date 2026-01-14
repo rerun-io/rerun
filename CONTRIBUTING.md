@@ -217,7 +217,7 @@ For CI / headless environments we a recent version `llvmpipe` for software rende
 On MacOS we use [`SwiftShader`](https://github.com/google/swiftshader/).
 
 ⚠️ Unfortunately, `SwiftShader`'s MSAA & texture filtering differs drastically from `llvmpipe` and
-other native renderers which is why we use a lot higher comparison treshholds on Mac.
+other native renderers which is why we use a lot higher comparison thresholds on Mac.
 -> **DO NOT** use images generated on MacOS CI as reference image, prefer those produced by our Linux runner.
 
 For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
