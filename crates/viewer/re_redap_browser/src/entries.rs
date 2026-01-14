@@ -151,10 +151,9 @@ async fn fetch_entries_and_register_tables(
         .await?;
 
     let origin_ref = &origin;
-    let runtime_ref = &runtime;
     let futures_iter = entries
         .into_iter()
-        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime_ref));
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e));
 
     let mut entries = HashMap::default();
 
@@ -162,7 +161,25 @@ async fn fetch_entries_and_register_tables(
     while let Some((details, result)) = futures_unordered.next().await {
         let id = details.id;
         let inner_result = result.map(|(inner, provider)| {
-            session_ctx.register_table(&details.name, provider).ok();
+            // Register raw provider as {name}_uncached
+            let uncached_name = format!("{}_uncached", &details.name);
+            session_ctx
+                .register_table(&uncached_name, Arc::clone(&provider))
+                .ok();
+
+            // Create cached provider that reads from the uncached table
+            let cached_provider = StreamingCacheTableProvider::from_session_table(
+                Arc::clone(&session_ctx),
+                uncached_name,
+                provider.schema(),
+                runtime.clone(),
+            );
+
+            // Register cached provider with original name
+            session_ctx
+                .register_table(&details.name, Arc::new(cached_provider))
+                .ok();
+
             inner
         });
 
@@ -196,7 +213,6 @@ fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
-    runtime: &AsyncRuntimeHandle,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     // We could also box the future but then we'd need to use `.boxed()` natively and
     // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
@@ -208,12 +224,12 @@ fn fetch_entry_details(
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(Left(Left(
-            fetch_dataset_details(client, entry.id, origin.clone(), runtime.clone())
+            fetch_dataset_details(client, entry.id, origin.clone())
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin.clone(), runtime.clone())
+            fetch_table_details(client, entry.id, origin.clone())
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -236,7 +252,6 @@ async fn fetch_dataset_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: re_uri::Origin,
-    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let result = client
         .read_dataset_entry(id)
@@ -246,13 +261,10 @@ async fn fetch_dataset_details(
             origin: origin.clone(),
         })?;
 
-    let inner_provider = SegmentTableProvider::new(client, id)
+    let table_provider = SegmentTableProvider::new(client, id)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating segment table provider"))?;
-
-    let table_provider: Arc<dyn TableProvider> =
-        Arc::new(StreamingCacheTableProvider::new(inner_provider, runtime));
 
     Ok((result, table_provider))
 }
@@ -261,25 +273,18 @@ async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: re_uri::Origin,
-    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
         table_entry,
         origin: origin.clone(),
     })?;
 
-    #[cfg(target_arch = "wasm32")]
-    let tokio_runtime = None;
-    #[cfg(not(target_arch = "wasm32"))]
-    let tokio_runtime = Some(runtime.inner().clone());
-
-    let inner_provider = TableEntryTableProvider::new(client, id, tokio_runtime)
+    // Note: For table writes, we'd need to pass a tokio runtime handle.
+    // For now, we pass None since this is read-only in the viewer context.
+    let table_provider = TableEntryTableProvider::new(client, id, None)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;
-
-    let table_provider: Arc<dyn TableProvider> =
-        Arc::new(StreamingCacheTableProvider::new(inner_provider, runtime));
 
     Ok((result, table_provider))
 }

@@ -1,9 +1,9 @@
-//! Streaming cache for DataFusion `TableProvider`s.
+//! Streaming cache for DataFusion table providers.
 //!
-//! This module provides [`StreamingCacheTableProvider`], a wrapper that caches streaming results
-//! from an inner [`TableProvider`]. It enables efficient caching where:
-//! - First scan: starts a background task that streams from inner provider while caching
-//! - Subsequent scans: returns cached batches first, then continues with new batches
+//! This module provides [`StreamingCacheTableProvider`], a `TableProvider` that caches
+//! streaming results from executing a DataFrame. It enables efficient caching where:
+//! - First scan: starts a background task that streams from DataFrame while caching
+//! - Subsequent scans: returns cached batches immediately via a MemTable
 //! - All concurrent scans share the same cache
 //! - Cancelling a consumer does NOT stop the background streaming
 
@@ -18,13 +18,14 @@ use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::Session;
 use datafusion::common::{DataFusionError, Result as DataFusionResult};
+use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::TableProviderFilterPushDown;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::prelude::Expr;
-use datafusion::{catalog::TableProvider, datasource::TableType};
+use datafusion::prelude::{DataFrame, Expr, SessionContext};
+use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt};
 use parking_lot::Mutex;
 use re_viewer_context::AsyncRuntimeHandle;
@@ -44,6 +45,8 @@ pub enum CacheState {
 
 /// Internal shared state for the streaming cache.
 struct StreamingCacheInner {
+    /// Schema of the cached data.
+    schema: SchemaRef,
     /// Cached record batches.
     cached_batches: Vec<RecordBatch>,
     /// Current state of the cache.
@@ -55,8 +58,9 @@ struct StreamingCacheInner {
 }
 
 impl StreamingCacheInner {
-    fn new() -> Self {
+    fn new(schema: SchemaRef) -> Self {
         Self {
+            schema,
             cached_batches: Vec::new(),
             state: CacheState::NotStarted,
             error: None,
@@ -73,33 +77,30 @@ impl StreamingCacheInner {
 
     /// Register a waker to be notified when data changes.
     fn register_waker(&mut self, waker: &Waker) {
-        // Check if this waker is already registered
         if !self.wakers.iter().any(|w| w.will_wake(waker)) {
             self.wakers.push(waker.clone());
         }
     }
 }
 
-/// A [`TableProvider`] that caches streaming results from an inner provider.
+/// A closure that creates a DataFrame for streaming.
+pub type DataFrameFactory = Box<dyn Fn() -> DataFusionResult<DataFrame> + Send + Sync>;
+
+/// A [`TableProvider`] that caches streaming results from a DataFrame.
 ///
-/// This provider wraps another `TableProvider` and caches the `RecordBatch`es as they
-/// stream in. On subsequent scans, it returns cached batches first, then continues
-/// streaming new batches as they arrive.
+/// This provider executes a DataFrame and caches the results as they stream in.
+/// On subsequent scans, it returns cached batches first, then continues with
+/// new batches as they arrive.
 ///
 /// # Caching Behavior
 ///
-/// - **First scan**: Triggers streaming from the inner provider. Each batch is cached.
-/// - **Subsequent scans (while streaming)**: Returns cached batches immediately, then
-///   waits for new batches as they arrive.
-/// - **After streaming complete**: Returns all cached batches directly.
-///
-/// # Cache Scope
-///
-/// The cache stores the **full table** without projection or filters. This allows
-/// different queries to share the same cached data.
+/// - **First scan**: Triggers streaming from the DataFrame. Each batch is cached.
+/// - **Subsequent scans (while streaming)**: Returns cached batches immediately,
+///   then waits for new batches as they arrive.
+/// - **After streaming complete**: Returns all cached batches via a MemTable.
 pub struct StreamingCacheTableProvider {
-    /// The wrapped table provider.
-    inner_provider: Arc<dyn TableProvider>,
+    /// Factory to create the DataFrame (called once on first scan).
+    df_factory: DataFrameFactory,
     /// Shared cache state.
     cache: Arc<Mutex<StreamingCacheInner>>,
     /// Runtime handle for spawning background tasks.
@@ -108,20 +109,49 @@ pub struct StreamingCacheTableProvider {
 
 impl fmt::Debug for StreamingCacheTableProvider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let cache = self.cache.lock();
         f.debug_struct("StreamingCacheTableProvider")
-            .field("schema", &self.inner_provider.schema())
+            .field("schema", &cache.schema)
+            .field("state", &cache.state)
+            .field("cached_batches", &cache.cached_batches.len())
             .finish_non_exhaustive()
     }
 }
 
 impl StreamingCacheTableProvider {
-    /// Create a new streaming cache wrapping the given table provider.
-    pub fn new(inner: Arc<dyn TableProvider>, runtime: AsyncRuntimeHandle) -> Self {
+    /// Create a new streaming cache table provider.
+    ///
+    /// The `df_factory` is called once on the first scan to create the DataFrame
+    /// that will be streamed and cached.
+    pub fn new(
+        schema: SchemaRef,
+        df_factory: DataFrameFactory,
+        runtime: AsyncRuntimeHandle,
+    ) -> Self {
         Self {
-            inner_provider: inner,
-            cache: Arc::new(Mutex::new(StreamingCacheInner::new())),
+            df_factory,
+            cache: Arc::new(Mutex::new(StreamingCacheInner::new(schema))),
             runtime,
         }
+    }
+
+    /// Create from a session context and table name.
+    ///
+    /// This is a convenience constructor that creates the DataFrame factory
+    /// from the session context.
+    pub fn from_session_table(
+        session_ctx: Arc<SessionContext>,
+        table_name: String,
+        schema: SchemaRef,
+        runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        let df_factory: DataFrameFactory = Box::new(move || {
+            // We need to block on the async table() call.
+            // This is safe because it's called from within an async context.
+            futures::executor::block_on(session_ctx.table(&table_name))
+        });
+
+        Self::new(schema, df_factory, runtime)
     }
 
     /// Invalidate the cache and prepare for a fresh stream on next scan.
@@ -135,91 +165,49 @@ impl StreamingCacheTableProvider {
 
     /// Check if the cache is complete (all data received).
     pub fn is_complete(&self) -> bool {
-        let cache = self.cache.lock();
-        cache.state == CacheState::Complete
+        self.cache.lock().state == CacheState::Complete
     }
 
     /// Get the current number of cached batches.
     pub fn cached_batch_count(&self) -> usize {
-        let cache = self.cache.lock();
-        cache.cached_batches.len()
+        self.cache.lock().cached_batches.len()
     }
 
     /// Get the current cache state.
     pub fn state(&self) -> CacheState {
-        let cache = self.cache.lock();
-        cache.state
-    }
-}
-
-#[async_trait]
-impl TableProvider for StreamingCacheTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
+        self.cache.lock().state
     }
 
-    fn schema(&self) -> SchemaRef {
-        self.inner_provider.schema()
-    }
-
-    fn table_type(&self) -> TableType {
-        self.inner_provider.table_type()
-    }
-
-    async fn scan(
-        &self,
-        state: &dyn Session,
-        _projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
-        _limit: Option<usize>,
-    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        // We ignore projection/filters/limit and cache the full table.
-        // The downstream DataFrame operations will apply these.
-
-        // Get the inner execution plan (full table scan)
-        let inner_plan = self.inner_provider.scan(state, None, &[], None).await?;
-
-        Ok(Arc::new(CachedExecutionPlan {
-            schema: self.schema(),
-            cache: Arc::clone(&self.cache),
-            inner_plan,
-            runtime: self.runtime.clone(),
-            properties: PlanProperties::new(
-                EquivalenceProperties::new(self.schema()),
-                Partitioning::UnknownPartitioning(1),
-                EmissionType::Incremental,
-                Boundedness::Bounded,
-            ),
-        }))
-    }
-
-    fn supports_filters_pushdown(
-        &self,
-        filters: &[&Expr],
-    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        // We don't push down filters since we cache the full table
-        Ok(vec![
-            TableProviderFilterPushDown::Unsupported;
-            filters.len()
-        ])
-    }
-}
-
-/// Execution plan that serves cached batches and streams from inner plan.
-struct CachedExecutionPlan {
-    schema: SchemaRef,
-    cache: Arc<Mutex<StreamingCacheInner>>,
-    inner_plan: Arc<dyn ExecutionPlan>,
-    runtime: AsyncRuntimeHandle,
-    properties: PlanProperties,
-}
-
-impl CachedExecutionPlan {
-    /// Background task: stream from inner plan to cache.
+    /// Background task: stream from DataFrame to cache.
     async fn stream_to_cache(
-        mut stream: SendableRecordBatchStream,
+        df_result: DataFusionResult<DataFrame>,
         cache: Arc<Mutex<StreamingCacheInner>>,
     ) {
+        let dataframe = match df_result {
+            Ok(df) => df,
+            Err(err) => {
+                let mut guard = cache.lock();
+                guard.state = CacheState::Failed;
+                guard.error = Some(err.to_string());
+                guard.wake_all();
+                return;
+            }
+        };
+
+        let stream_result = dataframe.execute_stream().await;
+
+        let mut stream = match stream_result {
+            Ok(s) => s,
+            Err(err) => {
+                let mut guard = cache.lock();
+                guard.state = CacheState::Failed;
+                guard.error = Some(err.to_string());
+                guard.wake_all();
+                return;
+            }
+        };
+
+        // Stream batches into cache
         loop {
             match stream.next().await {
                 Some(Ok(batch)) => {
@@ -245,29 +233,136 @@ impl CachedExecutionPlan {
     }
 }
 
-impl fmt::Debug for CachedExecutionPlan {
+#[async_trait]
+impl TableProvider for StreamingCacheTableProvider {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn schema(&self) -> SchemaRef {
+        self.cache.lock().schema.clone()
+    }
+
+    fn table_type(&self) -> TableType {
+        TableType::Base
+    }
+
+    async fn scan(
+        &self,
+        state: &dyn Session,
+        projection: Option<&Vec<usize>>,
+        filters: &[Expr],
+        limit: Option<usize>,
+    ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
+        enum Action {
+            UseMemTable(Vec<RecordBatch>),
+            ReturnError(String),
+            StartStreaming,
+            ReturnStreamingPlan,
+        }
+
+        let action = {
+            let mut cache = self.cache.lock();
+            match cache.state {
+                CacheState::Complete => Action::UseMemTable(cache.cached_batches.clone()),
+                CacheState::Failed => Action::ReturnError(
+                    cache
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| "Unknown error".to_string()),
+                ),
+                CacheState::NotStarted => {
+                    cache.state = CacheState::Streaming;
+                    Action::StartStreaming
+                }
+                CacheState::Streaming => Action::ReturnStreamingPlan,
+            }
+        };
+
+        match action {
+            Action::UseMemTable(batches) => {
+                let schema = self.schema();
+                let mem_table = MemTable::try_new(schema, vec![batches])?;
+                mem_table.scan(state, projection, filters, limit).await
+            }
+            Action::ReturnError(error) => Err(DataFusionError::Execution(error)),
+            Action::StartStreaming => {
+                let df_result = (self.df_factory)();
+                let cache_ref = Arc::clone(&self.cache);
+                self.runtime.spawn_future(async move {
+                    Self::stream_to_cache(df_result, cache_ref).await;
+                });
+
+                Ok(Arc::new(CachedStreamingExec::new(
+                    self.schema(),
+                    Arc::clone(&self.cache),
+                )))
+            }
+            Action::ReturnStreamingPlan => Ok(Arc::new(CachedStreamingExec::new(
+                self.schema(),
+                Arc::clone(&self.cache),
+            ))),
+        }
+    }
+
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&Expr],
+    ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
+        // We don't push down filters since we cache the full table
+        Ok(vec![
+            TableProviderFilterPushDown::Unsupported;
+            filters.len()
+        ])
+    }
+}
+
+/// Execution plan that streams from the cache.
+struct CachedStreamingExec {
+    schema: SchemaRef,
+    cache: Arc<Mutex<StreamingCacheInner>>,
+    properties: PlanProperties,
+}
+
+impl CachedStreamingExec {
+    fn new(schema: SchemaRef, cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
+        let properties = PlanProperties::new(
+            EquivalenceProperties::new(Arc::clone(&schema)),
+            Partitioning::UnknownPartitioning(1),
+            EmissionType::Incremental,
+            Boundedness::Bounded,
+        );
+        Self {
+            schema,
+            cache,
+            properties,
+        }
+    }
+}
+
+impl fmt::Debug for CachedStreamingExec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CachedExecutionPlan")
+        f.debug_struct("CachedStreamingExec")
             .field("schema", &self.schema)
             .finish_non_exhaustive()
     }
 }
 
-impl DisplayAs for CachedExecutionPlan {
+impl DisplayAs for CachedStreamingExec {
     fn fmt_as(&self, t: DisplayFormatType, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match t {
             DisplayFormatType::Default
             | DisplayFormatType::Verbose
             | DisplayFormatType::TreeRender => {
-                write!(f, "CachedExecutionPlan")
+                write!(f, "CachedStreamingExec")
             }
         }
     }
 }
 
-impl ExecutionPlan for CachedExecutionPlan {
+impl ExecutionPlan for CachedStreamingExec {
     fn name(&self) -> &str {
-        "CachedExecutionPlan"
+        "CachedStreamingExec"
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -283,120 +378,54 @@ impl ExecutionPlan for CachedExecutionPlan {
     }
 
     fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
-        vec![&self.inner_plan]
+        vec![]
     }
 
     fn with_new_children(
         self: Arc<Self>,
         children: Vec<Arc<dyn ExecutionPlan>>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
-        if children.len() != 1 {
+        if !children.is_empty() {
             return Err(DataFusionError::Internal(
-                "CachedExecutionPlan expects exactly one child".to_string(),
+                "CachedStreamingExec expects no children".to_string(),
             ));
         }
-        Ok(Arc::new(Self {
-            schema: Arc::clone(&self.schema),
-            cache: Arc::clone(&self.cache),
-            inner_plan: Arc::clone(&children[0]),
-            runtime: self.runtime.clone(),
-            properties: self.properties.clone(),
-        }))
+        Ok(self)
     }
 
     fn execute(
         &self,
         partition: usize,
-        context: Arc<TaskContext>,
+        _context: Arc<TaskContext>,
     ) -> DataFusionResult<SendableRecordBatchStream> {
         if partition != 0 {
             return Err(DataFusionError::Internal(format!(
-                "CachedExecutionPlan only supports partition 0, got {partition}"
+                "CachedStreamingExec only supports partition 0, got {partition}"
             )));
         }
 
         Ok(Box::pin(CachedRecordBatchStream::new(
             Arc::clone(&self.schema),
             Arc::clone(&self.cache),
-            Arc::clone(&self.inner_plan),
-            context,
-            self.runtime.clone(),
         )))
     }
 }
 
 /// A stream that yields cached batches, waiting for new ones as needed.
-struct CachedRecordBatchStream {
+pub struct CachedRecordBatchStream {
     schema: SchemaRef,
     cache: Arc<Mutex<StreamingCacheInner>>,
-
     /// Current read position in the cache.
     read_pos: usize,
-
-    /// Inner plan and context for spawning background task if needed.
-    inner_plan: Option<Arc<dyn ExecutionPlan>>,
-    task_context: Option<Arc<TaskContext>>,
-
-    /// Runtime handle for spawning background tasks.
-    runtime: AsyncRuntimeHandle,
-
-    /// Whether we've started the background task (if we're the first).
-    started: bool,
 }
 
 impl CachedRecordBatchStream {
-    fn new(
-        schema: SchemaRef,
-        cache: Arc<Mutex<StreamingCacheInner>>,
-        inner_plan: Arc<dyn ExecutionPlan>,
-        context: Arc<TaskContext>,
-        runtime: AsyncRuntimeHandle,
-    ) -> Self {
+    fn new(schema: SchemaRef, cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
         Self {
             schema,
             cache,
             read_pos: 0,
-            inner_plan: Some(inner_plan),
-            task_context: Some(context),
-            runtime,
-            started: false,
         }
-    }
-
-    /// Ensure the background streaming task has been started.
-    fn ensure_started(&mut self) -> DataFusionResult<()> {
-        if self.started {
-            return Ok(());
-        }
-
-        // Check if we need to start the stream, and if so, take ownership of plan/ctx
-        let should_start = {
-            let cache = self.cache.lock();
-            cache.state == CacheState::NotStarted
-        };
-
-        if should_start {
-            if let (Some(plan), Some(ctx)) = (self.inner_plan.take(), self.task_context.take()) {
-                // Execute the plan OUTSIDE the lock to avoid blocking issues
-                let inner_stream = plan.execute(0, ctx)?;
-                let cache_ref = Arc::clone(&self.cache);
-
-                // Now lock to update state and store task handle
-                let mut cache = self.cache.lock();
-
-                // Double-check state in case another stream started it
-                if cache.state == CacheState::NotStarted {
-                    cache.state = CacheState::Streaming;
-
-                    self.runtime.spawn_future(async move {
-                        CachedExecutionPlan::stream_to_cache(inner_stream, cache_ref).await;
-                    });
-                }
-            }
-        }
-
-        self.started = true;
-        Ok(())
     }
 }
 
@@ -404,20 +433,12 @@ impl Stream for CachedRecordBatchStream {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // Ensure background task is started
-        if !self.started {
-            if let Err(e) = self.ensure_started() {
-                return Poll::Ready(Some(Err(e)));
-            }
-        }
-
-        // Lock the cache and check state
         let mut cache = self.cache.lock();
 
         // If there's a batch available at our read position, return it
         if self.read_pos < cache.cached_batches.len() {
             let batch = cache.cached_batches[self.read_pos].clone();
-            drop(cache); // Release lock before mutating self
+            drop(cache);
             self.read_pos += 1;
             return Poll::Ready(Some(Ok(batch)));
         }
@@ -433,7 +454,6 @@ impl Stream for CachedRecordBatchStream {
                 Poll::Ready(Some(Err(DataFusionError::Execution(error))))
             }
             CacheState::NotStarted | CacheState::Streaming => {
-                // Register our waker and wait for more data
                 cache.register_waker(cx.waker());
                 Poll::Pending
             }
