@@ -465,8 +465,8 @@ async fn stream_segment_from_server(
 
                 match store_id.kind() {
                     StoreKind::Recording => {
-                        // We load only the static chunks, and then let the viewer ask for the rest on-demand.
-                        return load_static_chunks(client, tx, &store_id, rrd_manifest).await;
+                        re_log::debug!("Letting the viewer load chunks on-demand");
+                        return Ok(ControlFlow::Continue(()));
                     }
                     StoreKind::Blueprint => {
                         // Load all of the chunks in one go; most important first:
@@ -607,47 +607,6 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
         .column_by_name("chunk_id")
         .and_then(|array| array.as_fixed_size_binary_opt())
         .and_then(|array| ChunkId::try_slice_from_arrow(array).ok())
-}
-
-/// Load only static chunks
-async fn load_static_chunks(
-    client: &mut ConnectionClient,
-    tx: &re_log_channel::LogSender,
-    store_id: &StoreId,
-    rrd_manifest: re_log_encoding::RrdManifest,
-) -> ApiResult<ControlFlow<()>> {
-    let col_chunk_is_static = rrd_manifest
-        .col_chunk_is_static()
-        .map_err(|err| ApiError::internal(err, "RRD Manifest missing chunk_is_static column"))?;
-
-    let mut indices = vec![];
-    for (row_idx, chunk_is_static) in col_chunk_is_static.enumerate() {
-        if chunk_is_static {
-            indices.push(row_idx as u32);
-        }
-    }
-    let static_chunks = arrow::compute::take_record_batch(
-        &rrd_manifest.data,
-        &arrow::array::UInt32Array::from(indices),
-    )
-    .map_err(|err| ApiError::internal(err, "take_record_batch"))?;
-
-    re_log::debug!(
-        "Pre-fetching {} static chunks…",
-        re_format::format_uint(static_chunks.num_rows())
-    );
-    if load_chunks(client, tx, store_id, static_chunks)
-        .await?
-        .is_break()
-    {
-        return Ok(ControlFlow::Break(()));
-    }
-
-    re_log::debug!(
-        "All static chunks have been loaded. Letting the viewer manually load the rest of the chunks it wants."
-    );
-
-    Ok(ControlFlow::Break(()))
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).

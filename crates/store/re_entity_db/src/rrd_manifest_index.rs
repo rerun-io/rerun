@@ -145,6 +145,8 @@ pub struct RrdManifestIndex {
     entity_has_temporal_data_on_timeline: IntMap<re_chunk::EntityPath, IntSet<TimelineName>>,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
+    static_chunk_ids: HashSet<ChunkId>,
+
     native_static_map: re_log_encoding::RrdManifestStaticMap,
     native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
 
@@ -165,6 +167,12 @@ impl RrdManifestIndex {
 
         self.native_static_map = manifest.get_static_data_as_a_map()?;
         self.native_temporal_map = manifest.get_temporal_data_as_a_map()?;
+
+        for entity_chunks in self.native_static_map.values() {
+            for &chunk_id in entity_chunks.values() {
+                self.static_chunk_ids.insert(chunk_id);
+            }
+        }
 
         self.update_timeline_stats();
         self.update_entity_tree();
@@ -437,8 +445,11 @@ impl RrdManifestIndex {
                 .query(desired_range.into())
                 .map(|(_, chunk_id)| *chunk_id)
         };
-        let chunk_ids_in_priority_order =
-            missing_chunk_ids.chain(std::iter::once_with(prefetched_chunk_ids).flatten());
+        let chunk_ids_in_priority_order = itertools::chain!(
+            self.static_chunk_ids.iter().copied(),
+            missing_chunk_ids,
+            std::iter::once_with(prefetched_chunk_ids).flatten()
+        );
 
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
         // That's fine: they will still be missing next frame, and therefore will still be reported
