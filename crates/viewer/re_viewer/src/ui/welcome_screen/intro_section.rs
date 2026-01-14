@@ -138,7 +138,7 @@ impl IntroItem {
                     ui.label(
                         "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
                     );
-                    link(ui, "here", "https://rerun.io/");
+                    link(ui, "here", "https://rerun.io/#rerun-data-platform");
                     ui.label(" or ");
                     link(ui, "book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
                     ui.label(".");
