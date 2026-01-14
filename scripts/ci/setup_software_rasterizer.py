@@ -302,7 +302,8 @@ def setup_swiftshader_for_macos() -> dict[str, str]:
     1. Downloads libvk_swiftshader.dylib from GCloud storage
     2. Creates a Vulkan ICD (Installable Client Driver) JSON file pointing to the library
     3. Sets VK_DRIVER_FILES environment variable to use SwiftShader
-    4. Verifies the setup with vulkaninfo (if available)
+
+    Note: The Vulkan SDK must be installed separately (for the loader and vulkaninfo).
 
     Returns:
         Dictionary of environment variables to set.
@@ -371,46 +372,27 @@ def setup_swiftshader_for_macos() -> dict[str, str]:
 
 def vulkan_info(extra_env_vars: dict[str, str]) -> None:
     """Run vulkaninfo to verify the Vulkan setup."""
-    # For macOS, we don't require VULKAN_SDK since SwiftShader provides its own Vulkan implementation
-    vulkan_sdk_path = os.environ.get("VULKAN_SDK")
+    vulkan_sdk_path = os.environ["VULKAN_SDK"]
 
     env = os.environ.copy()
     env["VK_LOADER_DEBUG"] = "all"  # Enable verbose logging of vulkan loader for debugging.
     for key, value in extra_env_vars.items():
         env[key] = value
 
-    vulkaninfo_path = None
     if os.name == "nt":
-        if vulkan_sdk_path:
-            vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
+        vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
     elif sys.platform == "darwin":
-        # On macOS, try to find vulkaninfo if Vulkan SDK is installed
-        if vulkan_sdk_path:
-            vulkaninfo_path = f"{vulkan_sdk_path}/macOS/bin/vulkaninfo"
-            if not Path(vulkaninfo_path).exists():
-                vulkaninfo_path = None
-        # Also try system path
-        if vulkaninfo_path is None:
-            result = subprocess.run(["which", "vulkaninfo"], capture_output=True, text=True, check=False)
-            if result.returncode == 0:
-                vulkaninfo_path = result.stdout.strip()
+        vulkaninfo_path = f"{vulkan_sdk_path}/macOS/bin/vulkaninfo"
     else:
-        if vulkan_sdk_path:
-            vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfo"
+        vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfo"
 
-    if vulkaninfo_path and Path(vulkaninfo_path).exists():
-        print(f"\nRunning vulkaninfo to verify setup (from {vulkaninfo_path})...\n")
-        print(run([vulkaninfo_path, "--summary"], env=env).stdout)
-    else:
-        if sys.platform == "darwin":
-            # TODO(andreas): We should require vulkaninfo on macOS as well for proper verification
-            # Currently we skip it to avoid requiring Vulkan SDK installation alongside SwiftShader
-            print("\nvulkaninfo not found - skipping verification on macOS.")
-            print("To verify SwiftShader is working, install Vulkan SDK and run: vulkaninfo --summary")
-        else:
-            print("ERROR: vulkaninfo not found. Cannot verify software rasterizer setup.")
-            print("vulkaninfo is required to verify the Vulkan setup.")
-            sys.exit(1)
+    if not Path(vulkaninfo_path).exists():
+        print(f"ERROR: vulkaninfo not found at {vulkaninfo_path}")
+        print("The Vulkan SDK should be installed with vulkaninfo utility.")
+        sys.exit(1)
+
+    print(f"\nRunning vulkaninfo to verify setup (from {vulkaninfo_path})...\n")
+    print(run([vulkaninfo_path, "--summary"], env=env).stdout)
 
 
 def check_for_vulkan_sdk() -> None:
@@ -439,22 +421,21 @@ def main() -> None:
         upload_swiftshader_to_gcloud(lib_path, version)
         return
 
+    # We only use Vulkan software rasterizers right now.
+    check_for_vulkan_sdk()
+
     # Normal setup
     if os.name == "nt" and platform.machine() == "AMD64":
         # Note that we could also use WARP, the DX12 software rasterizer.
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
-        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_windows()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
-        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_linux()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform == "darwin":
-        # macOS: Use SwiftShader instead of lavapipe
-        # We don't have to install the Vulkan SDK here.
         env_vars = setup_swiftshader_for_macos()
         vulkan_info(env_vars)
     else:
