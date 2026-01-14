@@ -185,6 +185,9 @@ impl AppEnvironment {
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
+    let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
+    let backends = instance_descriptor.backends;
+
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
             // and when a poisoned surface gets recreated.
@@ -206,13 +209,14 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             }),
 
             wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                instance_descriptor: re_renderer::device_caps::instance_descriptor(force_wgpu_backend),
+                instance_descriptor,
 
-                // TODO(#8475): Install custom native adapter selector with more extensive logging and the ability to pick adapter by name
+                // TODO(#8475): Add the ability to pick adapter by name.
                 // (user may e.g. request "nvidia" or "intel" and it should just work!)
-                // ideally producing structured reasoning of why which one was picked in the process.
-                // This should live in re_renderer::config so that we can reuse it in tests & re_renderer examples.
-                native_adapter_selector: None,
+                // Should ideally produce structured reasoning of why which one was picked in the process.
+                native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface|
+                    re_renderer::device_caps::select_adapter(adapters, backends, surface)
+                )),
                 device_descriptor: std::sync::Arc::new(|adapter| re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
 
                 ..Default::default()
