@@ -347,7 +347,7 @@ impl VideoPlayer {
         // (potentially related to:) TODO(#7595): We don't necessarily have to enqueue full keyframe ranges always.
 
         // Find the keyframe of the last enqueued sample.
-        let mut keyframe_idx = if let Some(last_enqueued) = self.last_enqueued
+        let keyframe_idx = if let Some(last_enqueued) = self.last_enqueued
             && let Some(keyframe_idx) = video_description.sample_keyframe_idx(last_enqueued)
         {
             keyframe_idx
@@ -357,6 +357,7 @@ impl VideoPlayer {
             self.enqueue_keyframe_range(
                 video_description,
                 requested_keyframe_idx,
+                requested_sample_idx,
                 get_video_buffer,
             )?;
 
@@ -378,7 +379,18 @@ impl VideoPlayer {
             }
 
             // Nothing more to enqueue / reached end of video?
-            if last_enqueued + 1 == video_description.samples.next_index() {
+            if video_description
+                .samples
+                .get(last_enqueued + 1)
+                .is_none_or(|sample| matches!(sample, re_video::SampleMetadataState::Unloaded(_)))
+            {
+                // If this is a sample we expect to have return an error.
+                if last_enqueued < requested_sample_idx {
+                    return Err(VideoPlayerError::InsufficientSampleData(
+                        InsufficientSampleDataError::ExpectedSampleNotAvailable,
+                    ));
+                }
+
                 break;
             }
 
@@ -395,9 +407,9 @@ impl VideoPlayer {
                 self.enqueue_keyframe_range(
                     video_description,
                     next_keyframe_idx,
+                    requested_sample_idx,
                     get_video_buffer,
                 )?;
-                keyframe_idx = next_keyframe_idx;
             }
             // If not, enqueue its remaining samples. This happens regularly in live video streams.
             else {
@@ -406,7 +418,12 @@ impl VideoPlayer {
                     .ok_or(VideoPlayerError::BadData)?;
 
                 let range = (last_enqueued + 1)..keyframe_range.end;
-                self.enqueue_sample_range(video_description, &range, get_video_buffer)?;
+                self.enqueue_sample_range(
+                    video_description,
+                    &range,
+                    requested_sample_idx,
+                    get_video_buffer,
+                )?;
             }
         }
 
@@ -524,13 +541,19 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         keyframe_idx: KeyframeIndex,
+        requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         let sample_range = video_description
             .gop_sample_range_for_keyframe(keyframe_idx)
             .ok_or(VideoPlayerError::BadData)?;
 
-        self.enqueue_sample_range(video_description, &sample_range, get_video_buffer)
+        self.enqueue_sample_range(
+            video_description,
+            &sample_range,
+            requested_sample_idx,
+            get_video_buffer,
+        )
     }
 
     /// Enqueues sample range *within* a keyframe range.
@@ -540,6 +563,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         sample_range: &Range<SampleIndex>,
+        requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         for (sample_idx, sample) in video_description
@@ -553,9 +577,17 @@ impl VideoPlayer {
                     continue;
                 }
                 re_video::SampleMetadataState::Unloaded(_) => {
-                    return Err(VideoPlayerError::InsufficientSampleData(
-                        InsufficientSampleDataError::ExpectedSampleNotAvailable,
-                    ));
+                    // If this sample before the requested sample, we need this sample now
+                    // and error if it's unloaded.
+                    //
+                    // Otherwise we can presume this will be loaded later.
+                    if sample_idx <= requested_sample_idx {
+                        return Err(VideoPlayerError::InsufficientSampleData(
+                            InsufficientSampleDataError::ExpectedSampleNotAvailable,
+                        ));
+                    } else {
+                        return Ok(());
+                    }
                 }
             };
             let chunk = sample
