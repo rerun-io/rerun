@@ -611,7 +611,7 @@ fn chunk_id_column(batch: &RecordBatch) -> Option<&[ChunkId]> {
 
 /// Load only static chunks
 async fn load_static_chunks(
-    client: &mut ConnectionClient,
+    client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     rrd_manifest: re_log_encoding::RrdManifest,
