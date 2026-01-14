@@ -89,21 +89,22 @@ impl MessageParser for ProtobufMessageParser {
 
         let struct_builder = self.builder.values();
 
-        for (ith_arrow_field, field_builder) in
-            struct_builder.field_builders_mut().iter_mut().enumerate()
+        // Get the actual field descriptors from the schema to access their real field numbers.
+        // This is critical for schemas with gaps in field numbering (e.g., fields 1, 2, 5, 8).
+        let fields = self.message_descriptor.fields();
+
+        for (field_builder, field_desc) in
+            struct_builder.field_builders_mut().iter_mut().zip(fields)
         {
-            // Protobuf fields are 1-indexed, so we need to map the i-th builder.
-            let protobuf_number = ith_arrow_field as u32 + 1;
+            // Use the actual field number from the schema, not index-based numbering.
+            // Protobuf schemas can have gaps (e.g., fields 1, 2, 5, 8 after deprecating 3, 4).
+            let protobuf_number = field_desc.number();
 
             if let Some(val) = dynamic_message.get_field_by_number(protobuf_number) {
-                let field = dynamic_message
-                    .descriptor()
-                    .get_field(protobuf_number)
-                    .ok_or_else(|| ProtobufError::MissingField {
-                        field: protobuf_number,
-                    })?;
-                append_value(field_builder, &field, val.as_ref())?;
-                re_log::trace!("Field {}: Finished writing to builders", field.full_name());
+                append_value(field_builder, &field_desc, val.as_ref())?;
+                re_log::trace!(
+                    field_name = %field_desc.full_name(), field_number = %protobuf_number, "Finished writing to builders",
+                );
             } else {
                 append_null_to_builder(field_builder)?;
             }
@@ -469,7 +470,7 @@ impl MessageLayer for McapProtobufLayer {
 }
 
 #[cfg(test)]
-mod test {
+mod integration_tests {
     use std::io;
 
     use prost_reflect::prost::Message as _;
@@ -650,4 +651,128 @@ mod test {
 
         insta::assert_snapshot!("two_simple_rows", format!("{:-240}", &chunks[0]));
     }
+
+    /// Test for issue #12410: Test with field number gaps in the protobuf schema.
+    /// When protobuf fields have non-consecutive numbers (e.g., 1, 2, 5, 8), but we iterate
+    /// by index (0, 1, 2, 3) and map to consecutive numbers (1, 2, 3, 4), we try to access
+    /// fields that don't exist in the schema, triggering "missing protobuf field X" errors.
+    #[test]
+    fn protobuf_field_number_gaps() {
+        use prost_reflect::prost::Message as _;
+
+        // Create a protobuf schema with gaps in field numbers
+        let pool = prost_reflect::DescriptorPool::decode(
+            prost_reflect::prost_types::FileDescriptorSet {
+                file: vec![prost_reflect::prost_types::FileDescriptorProto {
+                    name: Some("test.proto".to_owned()),
+                    package: Some("test".to_owned()),
+                    message_type: vec![prost_reflect::prost_types::DescriptorProto {
+                        name: Some("MessageWithGaps".to_owned()),
+                        field: vec![
+                            prost_reflect::prost_types::FieldDescriptorProto {
+                                name: Some("name".to_owned()),
+                                number: Some(1),
+                                label: Some(1),  // LABEL_OPTIONAL
+                                r#type: Some(9), // TYPE_STRING
+                                ..Default::default()
+                            },
+                            prost_reflect::prost_types::FieldDescriptorProto {
+                                name: Some("id".to_owned()),
+                                number: Some(2),
+                                label: Some(1),
+                                r#type: Some(5), // TYPE_INT32
+                                ..Default::default()
+                            },
+                            prost_reflect::prost_types::FieldDescriptorProto {
+                                name: Some("description".to_owned()),
+                                number: Some(5), // Gap: skipping 3, 4
+                                label: Some(1),
+                                r#type: Some(9), // TYPE_STRING
+                                ..Default::default()
+                            },
+                            prost_reflect::prost_types::FieldDescriptorProto {
+                                name: Some("count".to_owned()),
+                                number: Some(8), // Gap: skipping 6, 7
+                                label: Some(1),
+                                r#type: Some(5), // TYPE_INT32
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    }],
+                    syntax: Some("proto3".to_owned()),
+                    ..Default::default()
+                }],
+            }
+            .encode_to_vec()
+            .as_slice(),
+        )
+        .expect("failed to create descriptor pool");
+
+        let message_descriptor = pool
+            .get_message_by_name("test.MessageWithGaps")
+            .expect("missing message descriptor");
+
+        println!("Message descriptor fields:");
+        for field in message_descriptor.fields() {
+            println!("  Field #{}: {}", field.number(), field.name());
+        }
+
+        let (summary, buffer) = {
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &message_descriptor, "test_topic")
+                .expect("failed to add schema and channel");
+
+            // Write 10 test messages
+            for i in 0..10 {
+                let msg = DynamicMessage::parse_text_format(
+                    message_descriptor.clone(),
+                    &format!(
+                        "name: \"Name{}\" id: {} description: \"Desc{}\" count: {}",
+                        i,
+                        i,
+                        i,
+                        i * 10
+                    ),
+                )
+                .expect("failed to parse text format");
+
+                write_message(&mut writer, channel_id, &msg, 100 + i)
+                    .expect("failed to write message");
+            }
+
+            let summary = writer.finish().expect("finishing writer failed");
+            (summary, writer.into_inner().into_inner())
+        };
+
+        // With the fix, field number gaps should be handled correctly:
+        // We create 4 builders (one per field with numbers 1, 2, 5, 8)
+        // and correctly map them to their actual protobuf field numbers.
+        // Result: All fields should be read correctly with their values intact!
+        let chunks = run_layer(&summary, buffer.as_slice());
+
+        // Verify we got all messages
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].num_rows(), 10);
+
+        // Verify the data contains actual values, not nulls
+        // (Before the fix, description and count would be null due to field mapping bug)
+        let chunk_str = format!("{:-120}", &chunks[0]);
+
+        // Check that we have actual description values (not all nulls)
+        assert!(
+            chunk_str.contains("Desc"),
+            "Field 'description' (field #5) should have values, not nulls"
+        );
+
+        // Check that we have actual count values (not all nulls)
+        assert!(
+            chunk_str.contains("count:"),
+            "Field 'count' (field #8) should have values, not nulls"
+        );
+    }
+
 }
