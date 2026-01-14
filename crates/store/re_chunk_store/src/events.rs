@@ -128,6 +128,8 @@ pub struct ChunkStoreDiff {
     /// Still, even though no physical data was ingested yet, it might be important for downstream
     /// consumers to know what kind of virtual data is being referenced from now.
     /// For example, query caches must know about pending tombstones as soon as they start being referenced.
+    ///
+    /// If this is set, all fields below are irrelevant (set to their default/empty values).
     pub rrd_manifest: Option<Arc<RrdManifest>>,
 
     /// The chunk that was added or removed.
@@ -199,7 +201,6 @@ impl ChunkStoreDiff {
         Self {
             kind: ChunkStoreDiffKind::Addition,
             rrd_manifest: Some(rrd_manifest),
-            // TODO: we need an enum for the 2 different payloads
             chunk: Arc::new(Chunk::empty(ChunkId::ZERO, "<empty>".into())),
             split_source: None,
             compacted: None,
