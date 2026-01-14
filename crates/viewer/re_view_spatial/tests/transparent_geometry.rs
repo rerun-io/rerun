@@ -7,7 +7,6 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::{FillMode, Position3D};
 use re_sdk_types::{AsComponents, RowId, archetypes};
 use re_test_context::TestContext;
-use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
@@ -91,12 +90,7 @@ fn test_transparent_geometry<A: AsComponents>(
         test_context.handle_system_commands(&harness.ctx);
 
         harness.run_steps(1);
-        harness.snapshot_options(
-            format!("transparent_{name}_{i}"),
-            &SnapshotOptions::default()
-                .threshold(4.0) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
-                .failed_pixel_count_threshold(15),
-        );
+        harness.snapshot(format!("transparent_{name}_{i}"));
     }
 }
 

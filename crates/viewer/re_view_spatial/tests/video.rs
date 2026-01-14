@@ -106,28 +106,18 @@ impl std::fmt::Display for VideoType {
         }
     }
 }
-
-fn image_diff_threshold(codec: VideoCodec) -> f32 {
+fn snapshot_options_for_codec(codec: VideoCodec, viewport_size: egui::Vec2) -> SnapshotOptions {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 | VideoCodec::H265 => 2.2,
+        VideoCodec::H264 | VideoCodec::H265 => SnapshotOptions::new()
+            .threshold(2.2)
+            .failed_pixel_count_threshold(300),
         // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => 1.2,
-
-        _ => SnapshotOptions::default().threshold,
-    }
-}
-
-fn image_failed_pixel_count_threshold(codec: VideoCodec) -> usize {
-    match codec {
-        // Despite version pinning, ffmpeg's results are quite different depending on the platform
-        // and seemingly even between runs!
-        VideoCodec::H264 | VideoCodec::H265 => 300,
-        // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => 100,
-
-        _ => SnapshotOptions::default().failed_pixel_count_threshold,
+        VideoCodec::AV1 => SnapshotOptions::new()
+            .threshold(1.2)
+            .failed_pixel_count_threshold(100),
+        _ => re_ui::testing::default_snapshot_options_for_3d(viewport_size),
     }
 }
 
@@ -309,8 +299,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     let step_dt_seconds = 1.0 / 4.0; // This is also the current egui_kittest default, but let's be explicit since we use `try_run_realtime`.
     let max_total_time_seconds = 60.0;
 
+    let viewport_size = [300.0, 200.0].into();
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d([300.0, 200.0])
+        .setup_kittest_for_rendering_3d(viewport_size)
         .with_step_dt(step_dt_seconds)
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
         .build_ui(|ui| {
@@ -336,9 +327,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         harness.try_run_realtime().unwrap();
         harness.snapshot_options(
             format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
-            &SnapshotOptions::new()
-                .threshold(image_diff_threshold(codec))
-                .failed_pixel_count_threshold(image_failed_pixel_count_threshold(codec)),
+            &snapshot_options_for_codec(codec, viewport_size),
         );
     }
 }

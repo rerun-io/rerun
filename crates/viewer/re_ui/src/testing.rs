@@ -38,10 +38,22 @@ pub fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     // How many depend on the size of the image.
     let num_total_pixels = viewport_size.x * viewport_size.y;
 
-    let broken_pixels_fraction = 4e-4; // 0.04% of pixels.
+    // TODO(andreas): As of writing SwiftShader gets MSAA wrong and has drastically different texture filtering.
+    // TODO(andreas): A more straight forward check for swiftshader would be better here.
+    let lenient_macos_ci_thresholds = cfg!(target_os = "macos") && std::env::var("CI").is_ok();
+
+    let broken_pixels_fraction = if lenient_macos_ci_thresholds {
+        0.75 / 100.0
+    } else {
+        0.04 / 100.0
+    };
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
-    let threshold = 1.0; // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
+    let threshold = if lenient_macos_ci_thresholds {
+        2.5
+    } else {
+        let threshold = 1.0; // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
+    };
 
     SnapshotOptions::default()
         .threshold(threshold)
