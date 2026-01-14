@@ -20,7 +20,7 @@ The Viewer visualizes your data. It comes in two forms:
 - **Native Viewer**: A desktop application for Linux, macOS, and Windows
 - **Web Viewer**: A Wasm application that runs in browsers
 
-Both versions include a **Chunk Store** (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
+The viewer includes a **Chunk Store** (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
 The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
 
@@ -91,9 +91,59 @@ Data Platform.Datasets -> Catalog SDK: redap
 | **Web Viewer**    | Wasm artifact (hosted separately)    |
 
 
-## Common patterns
+## Common workflows
 
-- **Stream data live** → [Logging and ingestion](logging-and-ingestion.md)
-- **Save and load recordings** → [Logging and ingestion](logging-and-ingestion.md)
-- **Query data programmatically** → [Query and transform](query-and-transform.md)
-- **Visualize from Data Platform** → [Query and transform](query-and-transform.md)
+### Stream to Viewer
+
+The simplest workflow: stream data directly from your code to the Viewer for live visualization.
+
+```d2
+direction: right
+Logging SDK -> Viewer: stream
+```
+
+Best for: development, debugging, real-time monitoring.
+
+
+
+### Save to RRD, view later
+
+Log data to `.rrd` files, then open them in the Viewer whenever needed. Files can be loaded from disk or URLs.
+
+```d2
+direction: right
+Logging SDK -> ".rrd" -> Viewer: load
+```
+
+Best for: sharing recordings, offline analysis, archiving.
+
+
+
+### Store on Data Platform
+
+Register `.rrd` files with the Data Platform for persistent, indexed storage. Query and visualize on demand.
+
+```d2
+direction: right
+".rrd" -> Data Platform: register
+Data Platform -> Viewer: redap
+Data Platform -> Catalog SDK: redap
+```
+
+Best for: large datasets, team collaboration, production pipelines.
+
+
+
+### Query and transform data
+
+Use the Catalog SDK to query data from the Data Platform, process it, and write results back. Visualization is available at any time.
+
+```d2
+direction: right
+Data Platform -> Catalog SDK: redap
+Data Platform <- Catalog SDK: redap
+Data Platform -> Viewer: redap
+```
+
+Best for: data pipelines, batch processing, ML training data preparation.
+
