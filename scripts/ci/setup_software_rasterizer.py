@@ -381,8 +381,6 @@ def vulkan_info(extra_env_vars: dict[str, str]) -> None:
 
     if os.name == "nt":
         vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
-    elif sys.platform == "darwin":
-        vulkaninfo_path = f"{vulkan_sdk_path}/macOS/bin/vulkaninfo"
     else:
         vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfo"
 
