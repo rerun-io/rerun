@@ -46,9 +46,6 @@ enum ProtobufError {
 
     #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
-
-    #[error("missing protobuf field {field}")]
-    MissingField { field: u32 },
 }
 
 impl ProtobufMessageParser {
@@ -95,8 +92,10 @@ fn append_message_fields(
         .map(|(field_desc, value)| (field_desc.number(), value))
         .collect();
 
-    for (field_builder, field_desc) in
-        struct_builder.field_builders_mut().iter_mut().zip(descriptor.fields())
+    for (field_builder, field_desc) in struct_builder
+        .field_builders_mut()
+        .iter_mut()
+        .zip(descriptor.fields())
     {
         // Use the actual field number from the schema, not index-based numbering.
         // Protobuf schemas can have gaps (e.g., fields 1, 2, 5, 8 after deprecating 3, 4).
@@ -716,11 +715,8 @@ mod integration_tests {
             )
             .expect("failed to parse text format"),
             // Message 3: has name and id, no address.
-            DynamicMessage::parse_text_format(
-                person_message.clone(),
-                "name: \"Charlie\" id: 456",
-            )
-            .expect("failed to parse text format"),
+            DynamicMessage::parse_text_format(person_message.clone(), "name: \"Charlie\" id: 456")
+                .expect("failed to parse text format"),
             // Message 4: has only name and nested address.
             DynamicMessage::parse_text_format(
                 person_message.clone(),
@@ -846,5 +842,4 @@ mod integration_tests {
 
         insta::assert_snapshot!("decode_failure_resilience", format!("{:-240}", &chunks[0]));
     }
-
 }
