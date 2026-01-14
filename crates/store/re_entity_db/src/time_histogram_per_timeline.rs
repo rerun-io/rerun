@@ -4,7 +4,6 @@ use std::ops::Bound;
 use emath::lerp;
 use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
-use re_log_encoding::RrdManifestTemporalMapEntry;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 use crate::RrdManifestIndex;
@@ -39,7 +38,7 @@ impl TimeHistogram {
         self.timeline
     }
 
-    pub fn num_events(&self) -> u64 {
+    pub fn num_rows(&self) -> u64 {
         self.hist.total_count()
     }
 
@@ -216,34 +215,21 @@ impl TimeHistogramPerTimeline {
 
     /// If we know the manifest ahead of time, we can pre-populate
     /// the histogram with a rough estimate of the final form.
-    pub fn on_rrd_manifest(
-        &mut self,
-        rrd_manifest: &re_log_encoding::RrdManifest,
-    ) -> re_log_encoding::CodecResult<()> {
+    pub fn on_rrd_manifest(&mut self, rrd_manifest_index: &RrdManifestIndex) {
         re_tracing::profile_function!();
 
-        let native_temporal_map = rrd_manifest.get_temporal_data_as_a_map()?;
+        re_log::info!("on rrd manifest");
 
-        for timelines in native_temporal_map.values() {
-            for (timeline, comps) in timelines {
+        for chunk in rrd_manifest_index.remove_chunks() {
+            for info in chunk.temporals.values() {
                 let histogram = self
                     .times
-                    .entry(*timeline.name())
-                    .or_insert_with(|| TimeHistogram::new(*timeline));
-                for chunks in comps.values() {
-                    for entry in chunks.values() {
-                        let RrdManifestTemporalMapEntry {
-                            time_range,
-                            num_rows,
-                        } = *entry;
+                    .entry(*info.timeline.name())
+                    .or_insert_with(|| TimeHistogram::new(info.timeline));
 
-                        apply_estimate(Application::Add, histogram, time_range, num_rows);
-                    }
-                }
+                apply_estimate(Application::Add, histogram, info.time_range, info.num_rows);
             }
         }
-
-        Ok(())
     }
 
     pub fn on_events(&mut self, rrd_manifest_index: &RrdManifestIndex, events: &[ChunkStoreEvent]) {
@@ -273,7 +259,7 @@ impl TimeHistogramPerTimeline {
                         ChunkStoreDiffKind::Addition => {
                             if let Some(info) =
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                                && let Some(info) = &info.temporal
+                                && let Some(info) = &info.temporals.get(timeline.name())
                             {
                                 // We added estimated value for this before, based on the rrd manifest.
                                 // Now that we have the whole chunk we need to subtract those fake values again,
@@ -293,25 +279,26 @@ impl TimeHistogramPerTimeline {
                             self.add_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.num_components() as _,
+                                event.chunk.num_components() as _,
                             );
                         }
                         ChunkStoreDiffKind::Deletion => {
                             self.remove_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.num_components() as _,
+                                event.chunk.num_components() as _,
                             );
 
                             if let Some(info) =
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                                && let Some(info) = &info.temporal
+                                && let Some(info) = info.temporals.get(timeline.name())
                             {
                                 // We GCed the full chunk, so add back the estimate:
                                 let histogram = self
                                     .times
                                     .entry(*timeline.name())
                                     .or_insert_with(|| TimeHistogram::new(*timeline));
+
                                 apply_estimate(
                                     Application::Add,
                                     histogram,
@@ -363,7 +350,7 @@ fn apply_estimate(
         let position = time_range.center();
         application.apply(histogram, position.as_i64(), num_rows as u32);
     } else {
-        let inc = (num_rows / num_pieces) as _;
+        let inc = (num_rows / num_pieces) as u32;
         for i in 0..num_pieces {
             let position = lerp(
                 time_range.min.as_f64()..=time_range.max.as_f64(),
@@ -371,14 +358,11 @@ fn apply_estimate(
             )
             .round() as i64;
 
-            match application {
-                Application::Add => {
-                    histogram.increment(position, inc);
-                }
-                Application::Remove => {
-                    histogram.decrement(position, inc);
-                }
-            }
+            application.apply(
+                histogram,
+                position,
+                inc + (i < num_rows % num_pieces) as u32,
+            );
         }
     }
 }

@@ -545,13 +545,6 @@ impl EntityDb {
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
         if let Err(err) = self
-            .time_histogram_per_timeline
-            .on_rrd_manifest(&rrd_manifest)
-        {
-            re_log::error!("Failed to ingest RRD Manifest: {err}");
-        }
-
-        if let Err(err) = self
             .storage_engine
             .write()
             .store()
@@ -563,6 +556,9 @@ impl EntityDb {
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }
+
+        self.time_histogram_per_timeline
+            .on_rrd_manifest(&self.rrd_manifest_index);
     }
 
     /// Insert new data into the store.
@@ -734,7 +730,7 @@ impl EntityDb {
         store_events
     }
 
-    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
+    pub fn gc(&self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let (store_events, stats_diff) = self.storage_engine.write().store().gc(gc_options);
@@ -744,8 +740,6 @@ impl EntityDb {
             size_bytes_dropped = re_format::format_bytes(stats_diff.total().total_size_bytes as _),
             "purged datastore"
         );
-
-        self.on_store_events(&store_events);
 
         store_events
     }

@@ -1406,8 +1406,8 @@ fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimeHistogram>) 
         }
     }
     let most_events = timelines.into_iter().max_by(|a, b| {
-        a.num_events()
-            .cmp(&b.num_events())
+        a.num_rows()
+            .cmp(&b.num_rows())
             .then_with(|| timeline_priority(&a.timeline()).cmp(&timeline_priority(&b.timeline())))
     });
 
