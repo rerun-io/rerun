@@ -58,6 +58,7 @@ re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
+re_tuid.workspace = true
 re_video = { workspace = true, default-features = true }
 
 ahash.workspace = true

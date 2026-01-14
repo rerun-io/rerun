@@ -29,5 +29,7 @@ class AbsoluteTimeRangeExt:
 
         """
 
-        self.min = converter(min)
-        self.max = converter(max)
+        self.__attrs_init__(
+            min=converter(min),
+            max=converter(max),
+        )

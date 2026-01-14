@@ -8,9 +8,10 @@ use itertools::Itertools as _;
 use re_span::Span;
 use saturating_cast::SaturatingCast as _;
 
-use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
+use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
 use crate::demux::{
-    ChromaSubsamplingModes, SamplesStatistics, VideoDeliveryMethod, VideoEncodingDetails,
+    ChromaSubsamplingModes, SampleMetadataState, SamplesStatistics, VideoDeliveryMethod,
+    VideoEncodingDetails,
 };
 use crate::h264::encoding_details_from_h264_sps;
 use crate::h265::encoding_details_from_h265_sps;
@@ -18,7 +19,11 @@ use crate::nalu::ANNEXB_NAL_START_CODE;
 use crate::{StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
-    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
+    pub fn load_mp4(
+        bytes: &[u8],
+        debug_name: &str,
+        source_id: re_tuid::Tuid,
+    ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
@@ -36,18 +41,16 @@ impl VideoDataDescription {
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
         let timescale = Timescale::new(track.timescale);
-        let mut samples = StableIndexDeque::<SampleMetadata>::with_capacity(track.samples.len());
-        let mut gops = StableIndexDeque::<GroupOfPictures>::new();
-        let mut gop_sample_start_index = 0;
+        let mut samples =
+            StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
+        let mut keyframe_indices = Vec::new();
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
             for sample in &track.samples {
-                if sample.is_sync && !samples.is_empty() {
-                    let sample_range = gop_sample_start_index..samples.next_index();
-                    gops.push_back(GroupOfPictures { sample_range });
-                    gop_sample_start_index = samples.next_index();
+                if sample.is_sync {
+                    keyframe_indices.push(samples.next_index());
                 }
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
@@ -59,16 +62,15 @@ impl VideoDataDescription {
                     len: sample.size as u32,
                 };
 
-                samples.push_back(SampleMetadata {
+                samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
-                    // There's only a single buffer, which is the raw mp4 video data.
-                    buffer_index: 0,
+                    source_id,
                     byte_span,
-                });
+                }));
             }
         }
 
@@ -79,7 +81,7 @@ impl VideoDataDescription {
                 samples
                     .iter()
                     .take(50)
-                    .map(|s| s.presentation_timestamp.0)
+                    .filter_map(|s| Some(s.sample()?.presentation_timestamp.0))
                     .collect::<Vec<_>>()
             );
             re_log::info!(
@@ -87,15 +89,9 @@ impl VideoDataDescription {
                 samples
                     .iter()
                     .take(50)
-                    .map(|s| s.decode_timestamp.0)
+                    .filter_map(|s| Some(s.sample()?.decode_timestamp.0))
                     .collect::<Vec<_>>()
             );
-        }
-
-        // Append the last GOP if there are any samples left:
-        if !samples.is_empty() {
-            let sample_range = gop_sample_start_index..samples.next_index();
-            gops.push_back(GroupOfPictures { sample_range });
         }
 
         {
@@ -103,7 +99,8 @@ impl VideoDataDescription {
             let mut samples_are_in_decode_order = true;
             for (a, b) in samples
                 .iter()
-                .tuple_windows::<(&SampleMetadata, &SampleMetadata)>()
+                .tuple_windows::<(&SampleMetadataState, &SampleMetadataState)>()
+                .filter_map(|(a, b)| Some((a.sample()?, b.sample()?)))
             {
                 samples_are_in_decode_order &= a.decode_timestamp <= b.decode_timestamp;
             }
@@ -116,7 +113,10 @@ impl VideoDataDescription {
 
         {
             re_tracing::profile_scope!("Calculate frame numbers");
-            let mut samples_sorted_by_pts = samples.iter_mut().collect::<Vec<_>>();
+            let mut samples_sorted_by_pts = samples
+                .iter_mut()
+                .filter_map(|f| f.sample_mut())
+                .collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
                 sample.frame_nr = frame_nr as u32;
@@ -148,7 +148,7 @@ impl VideoDataDescription {
                 duration: Time::new(track.duration.saturating_cast()),
             },
             samples_statistics,
-            gops,
+            keyframe_indices,
             samples,
             mp4_tracks,
         };

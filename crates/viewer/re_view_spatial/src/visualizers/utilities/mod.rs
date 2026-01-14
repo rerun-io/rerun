@@ -13,6 +13,6 @@ pub use proc_mesh_vis::{ProcMeshBatch, ProcMeshDrawableBuilder};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use textured_rect::textured_rect_from_image;
 pub use transform_retrieval::{
-    spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
-    transform_info_for_entity_or_report_error,
+    format_transform_info_result, spatial_view_kind_from_view_class,
+    transform_info_for_archetype_or_report_error,
 };

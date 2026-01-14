@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
-use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
+use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -635,8 +635,9 @@ impl LatestAtCache {
         }
 
         let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, component)
-            .into_iter()
+            .latest_at_relevant_chunks(OnMissingChunk::Report, query, entity_path, component)
+            // TODO(RR-3295): what should we do with virtual chunks here?
+            .into_iter_verbose()
             .filter_map(|chunk| {
                 let chunk = chunk.latest_at(query, component).into_unit()?;
                 chunk.index(&query.timeline()).map(|index| (index, chunk))

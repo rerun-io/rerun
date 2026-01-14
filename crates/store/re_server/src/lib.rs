@@ -4,6 +4,7 @@
 mod chunk_index;
 
 mod entrypoint;
+mod latency_layer;
 mod rerun_cloud;
 mod server;
 mod store;
