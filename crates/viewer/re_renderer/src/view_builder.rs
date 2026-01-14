@@ -551,7 +551,11 @@ impl ViewBuilder {
                 RenderMode::Beautiful => 0,
                 RenderMode::Deterministic => 1,
             },
-            padding: Default::default(),
+            framebuffer_resolution: glam::vec2(
+                config.resolution_in_pixel[0] as _,
+                config.resolution_in_pixel[1] as _,
+            )
+            .into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,

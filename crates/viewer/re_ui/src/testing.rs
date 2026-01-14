@@ -32,16 +32,16 @@ fn default_snapshot_options_for_ui() -> SnapshotOptions {
     SnapshotOptions::default().failed_pixel_count_threshold(10) // we sometimes have a few wrong pixels in text rendering in egui for unknown reasons
 }
 
-fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
+pub fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     // We sometime have "binary" failures, e.g. a pixel being categorized
     // as either inside or outside a primitive due to platform differences.
     // How many depend on the size of the image.
     let num_total_pixels = viewport_size.x * viewport_size.y;
 
-    let broken_pixels_fraction = 2e-4;
+    let broken_pixels_fraction = 4e-4; // 0.04% of pixels.
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
-    let threshold = 1.5; // Must be pretty high because of 3D grid :/
+    let threshold = 1.0; // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
 
     SnapshotOptions::default()
         .threshold(threshold)
