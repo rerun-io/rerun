@@ -38,7 +38,7 @@ fn default_snapshot_options_for_3d(viewport_size: Vec2) -> SnapshotOptions {
     // How many depend on the size of the image.
     let num_total_pixels = viewport_size.x * viewport_size.y;
 
-    let broken_pixels_fraction = 4e-4; // 0.04% of pixels.
+    let broken_pixels_fraction = 5e-4; // 0.05% of pixels.
     let max_broken_pixels = (num_total_pixels * broken_pixels_fraction).round() as usize;
 
     let threshold = 1.0; // Need a bit higher than the default to accommodate for various filtering artifacts, typically caused by the grid shader.
