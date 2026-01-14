@@ -37,6 +37,10 @@ impl Origin {
         format!("{}://{host}:{port}", scheme.as_http_scheme())
     }
 
+    pub fn format_host(&self) -> String {
+        format_host(&self.host)
+    }
+
     /// Converts the [`Origin`] to a `http` URL.
     ///
     /// In most cases you want to use [`Origin::as_url()`] instead.

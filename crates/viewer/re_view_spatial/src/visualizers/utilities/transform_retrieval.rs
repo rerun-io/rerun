@@ -25,8 +25,14 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     view_kind: SpatialViewKind,
     output: &mut VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
-    let transform_info =
-        transform_info_for_entity_or_report_error(transform_context, entity_path, output)?;
+    let result = transform_context.target_from_entity_path(entity_path.hash());
+    let transform_info = match format_transform_info_result(transform_context, result) {
+        Ok(transform_info) => transform_info,
+        Err(err_msg) => {
+            output.report_error_for(entity_path.clone(), err_msg);
+            return None;
+        }
+    };
 
     is_valid_space_for_content(
         entity_path,
@@ -39,58 +45,41 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     .then_some(transform_info)
 }
 
-/// Retrieves the transform info for the given entity.
-pub fn transform_info_for_entity_or_report_error<'a>(
-    transform_context: &'a TransformTreeContext,
-    entity_path: &EntityPath,
-    output: &mut VisualizerExecutionOutput,
-) -> Option<&'a TransformInfo> {
-    match transform_context.target_from_entity_path(entity_path.hash()) {
-        None => {
-            output.report_error_for(
-                entity_path.clone(),
-                "No transform relation known for this entity.",
-            );
-            None
-        }
+/// Formats the result of a transform retrieval into a user-friendly message.
+pub fn format_transform_info_result<'a>(
+    transform_context: &TransformTreeContext,
+    result: Option<&'a Result<TransformInfo, re_tf::TransformFromToError>>,
+) -> Result<&'a TransformInfo, String> {
+    match result {
+        None => Err("No transform relation known for this entity.".to_owned()),
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
             let src = transform_context.format_frame(*src);
             let target = transform_context.format_frame(*target);
-            output.report_error_for(
-                entity_path.clone(),
-                format!("No transform path from {src:?} to the view's origin frame ({target:?})."),
-            );
-            None
+            Err(format!(
+                "No transform path from {src:?} to the view's origin frame ({target:?})."
+            ))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
             // The target frame is the view's origin.
             // This means this could be hit if the view's origin frame doesn't show up in any data.
             let target = transform_context.format_frame(*target);
-            output.report_error_for(
-                entity_path.clone(),
-                format!("The view's origin frame {target:?} is unknown."),
-            );
-            None
+            Err(format!("The view's origin frame {target:?} is unknown."))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
             // Unclear how we'd hit this. This means that when processing transforms we encountered a coordinate frame that the transform cache didn't know about.
             // That would imply that the cache is lagging behind.
             let src = transform_context.format_frame(*src);
-            output.report_error_for(
-                entity_path.clone(),
-                format!("The entity's coordinate frame {src:?} is unknown."),
-            );
-            None
+            Err(format!("The entity's coordinate frame {src:?} is unknown."))
         }
 
-        Some(Ok(transform_info)) => Some(transform_info),
+        Some(Ok(transform_info)) => Ok(transform_info),
     }
 }
 
-fn is_valid_space_for_content(
+pub fn is_valid_space_for_content(
     entity_path: &EntityPath,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,

@@ -237,7 +237,7 @@ impl Chunk {
                 return chunk.emptied();
             };
 
-            let chunk = chunk.densified(component);
+            let (chunk, _densified) = chunk.densified(component);
 
             let chunk = if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk

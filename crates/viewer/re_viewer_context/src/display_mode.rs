@@ -86,4 +86,24 @@ impl DisplayMode {
             | Item::DataResult(_, _) => None,
         }
     }
+
+    pub fn redap_origin(&self, store_hub: &crate::StoreHub) -> Option<re_uri::Origin> {
+        match self {
+            Self::LocalTable(_) => None,
+
+            Self::LocalRecordings(store_id) => {
+                let db = store_hub.entity_db(store_id)?;
+                let source = db.data_source.as_ref()?;
+                let uri = source.redap_uri()?;
+
+                Some(uri.origin().clone())
+            }
+
+            Self::Settings(d) | Self::ChunkStoreBrowser(d) => d.redap_origin(store_hub),
+
+            Self::Loading(log_source) => log_source.redap_uri().map(|r| r.origin().clone()),
+            Self::RedapEntry(entry) => Some(entry.origin.clone()),
+            Self::RedapServer(origin) => Some(origin.clone()),
+        }
+    }
 }

@@ -1120,7 +1120,7 @@ pub trait UiExt {
 
             response
         })
-        .response
+        .inner
     }
 
     /// Show some close/maximize/minimize buttons for the native window.

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
-use re_chunk_store::RangeQuery;
+use re_chunk_store::{OnMissingChunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, Timeline};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
@@ -520,6 +520,8 @@ pub fn data_density_graph_ui(
 ) -> Option<TimeInt> {
     re_tracing::profile_function!();
 
+    let num_missing_chunk_ids_before = db.storage_engine().store().num_missing_chunk_ids();
+
     let mut data = build_density_graph(
         ui,
         time_ranges_ui,
@@ -528,6 +530,12 @@ pub fn data_density_graph_ui(
         item,
         time_ctrl.timeline()?,
         DensityGraphBuilderConfig::default(),
+    );
+
+    debug_assert_eq!(
+        num_missing_chunk_ids_before,
+        db.storage_engine().store().num_missing_chunk_ids(),
+        "DEBUG ASSERT: The density graph should not request new chunks. (This assert assumes single-threaded access to the store)."
     );
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
@@ -593,7 +601,13 @@ pub fn build_density_graph<'a>(
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component)
+                    .range_relevant_chunks(
+                        // Don't cause chunks to be downloaded just to show the density graph
+                        OnMissingChunk::Ignore,
+                        &query,
+                        &item.entity_path,
+                        component,
+                    )
                     // TODO(RR-3295): what should we do with virtual chunks here?
                     .into_iter_verbose()
                     .filter_map(|chunk| {

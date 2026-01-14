@@ -320,10 +320,13 @@ impl Chunk {
     /// If `component_pov` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
     ///
+    /// Returns `false` if the operation was a no-op (i.e. the chunk was already dense), true otherwise
+    /// (i.e. the data had to be reallocated).
+    ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn densified(&self, component_pov: ComponentIdentifier) -> Self {
+    pub fn densified(&self, component_pov: ComponentIdentifier) -> (Self, bool) {
         let Self {
             id,
             entity_path,
@@ -335,15 +338,15 @@ impl Chunk {
         } = self;
 
         if self.is_empty() {
-            return self.clone();
+            return (self.clone(), false);
         }
 
         let Some(component_list_array) = self.components.get_array(component_pov) else {
-            return self.clone();
+            return (self.clone(), false);
         };
 
         let Some(validity) = component_list_array.nulls() else {
-            return self.clone();
+            return (self.clone(), false);
         };
 
         re_tracing::profile_function!();
@@ -404,7 +407,7 @@ impl Chunk {
         #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
-        chunk
+        (chunk, true)
     }
 
     /// Empties the [`Chunk`] vertically.

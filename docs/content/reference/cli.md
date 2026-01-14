@@ -671,5 +671,10 @@ In-memory Rerun data server.
 * `-t, --table <[NAME=]TABLE_PATH>`
 > Load a lance file as a table (can be specified multiple times). You can specify only a path or provide a name such as `-t my_table=./path/to/table`.
 
+* `--latency-ms <LATENCY_MS>`
+> Artificial latency to add to each request (in milliseconds).
+>
+> [Default: `0`]
+
 * `-V, --version `
 > Print version.

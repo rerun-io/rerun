@@ -232,6 +232,14 @@ lint-typos = "typos"
 toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
 
+# uv lockfile check
+# We unset RUSTC_WRAPPER because it can interfere with uv+maturin in minimal
+# environments where we might want to run this check. The rust being used
+# internally for this check is being set up by the pep517 environment and so
+# we might run it in an environment that doesn't otherwise have or expect
+# rust to be setup.
+uv-lock-check = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
+
 # ------------------------------------------------------------------------------------------
 # Protobuf stuff:
 #

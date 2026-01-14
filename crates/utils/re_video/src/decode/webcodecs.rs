@@ -167,7 +167,8 @@ impl WebVideoDecoder {
 
         let first_frame_pts = video_descr
             .samples
-            .front()
+            .iter()
+            .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
@@ -282,7 +283,8 @@ impl AsyncDecoder for WebVideoDecoder {
         // For all we know, the first frame timestamp may have changed.
         self.first_frame_pts = video_descr
             .samples
-            .front()
+            .iter()
+            .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         let encoding_details = video_descr

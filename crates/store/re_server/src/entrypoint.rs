@@ -43,6 +43,23 @@ pub struct Args {
     /// `-t my_table=./path/to/table`
     #[clap(long = "table", short = 't', value_name = "[NAME=]TABLE_PATH")]
     pub tables: Vec<NamedPath>,
+
+    /// Artificial latency to add to each request (in milliseconds).
+    #[clap(long, default_value_t = 0)]
+    pub latency_ms: u16,
+}
+
+impl Default for Args {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".into(),
+            port: 51234,
+            datasets: vec![],
+            dataset_prefixes: vec![],
+            tables: vec![],
+            latency_ms: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +102,7 @@ impl Args {
             datasets,
             dataset_prefixes,
             tables,
+            latency_ms,
         } = self;
 
         let rerun_cloud_server = {
@@ -144,7 +162,8 @@ impl Args {
             .with_http_route(
                 "/version",
                 axum::routing::get(async move || re_build_info::build_info!().to_string()),
-            );
+            )
+            .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _));
 
         let server = server_builder.build();
 

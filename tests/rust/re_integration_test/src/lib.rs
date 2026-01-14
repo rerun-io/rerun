@@ -27,9 +27,7 @@ impl TestServer {
         let args = re_server::Args {
             host: "127.0.0.1".to_owned(),
             port,
-            datasets: vec![],
-            dataset_prefixes: vec![],
-            tables: vec![],
+            ..Default::default()
         };
         let (server_handle, _) = args
             .create_server_handle()
