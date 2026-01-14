@@ -619,6 +619,11 @@ impl StoreHub {
         caches
     }
 
+    /// Fully resets, i.e. removes, the caches for a given if there's any.
+    pub fn reset_caches_for_store(&mut self, store_id: &StoreId) {
+        self.caches_per_recording.remove(store_id);
+    }
+
     /// Change the active/visible recording id.
     ///
     /// This will also change the application-id to match the newly active recording.
