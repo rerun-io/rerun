@@ -46,7 +46,7 @@ impl PlayableVideoStream {
 struct VideoStreamCacheEntry {
     used_this_frame: AtomicBool,
     video_stream: Arc<RwLock<PlayableVideoStream>>,
-    known_chunk_offsets: BTreeMap<ChunkId, ChunkSampleRange>,
+    known_chunk_ranges: BTreeMap<ChunkId, ChunkSampleRange>,
 }
 
 impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
@@ -54,10 +54,10 @@ impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
         let Self {
             used_this_frame: _,
             video_stream,
-            known_chunk_offsets,
+            known_chunk_ranges,
         } = self;
 
-        video_stream.read().heap_size_bytes() + known_chunk_offsets.heap_size_bytes()
+        video_stream.read().heap_size_bytes() + known_chunk_ranges.heap_size_bytes()
     }
 }
 
@@ -134,7 +134,7 @@ impl VideoStreamCache {
                 occupied_entry.into_mut()
             }
             std::collections::hash_map::Entry::Vacant(vacant_entry) => {
-                let (video_descr, known_chunk_offsets) =
+                let (video_descr, known_chunk_ranges) =
                     load_video_data_from_chunks(store, entity_path, timeline)?;
 
                 let video = re_renderer::video::Video::load(
@@ -147,7 +147,7 @@ impl VideoStreamCache {
                     video_stream: Arc::new(RwLock::new(PlayableVideoStream {
                         video_renderer: video,
                     })),
-                    known_chunk_offsets,
+                    known_chunk_ranges,
                 })
             }
         };
@@ -187,7 +187,7 @@ impl VideoStreamCache {
                     if compaction
                         .srcs
                         .keys()
-                        .any(|c| entry.known_chunk_offsets.contains_key(c))
+                        .any(|c| entry.known_chunk_ranges.contains_key(c))
                     {
                         drop(video_stream);
                         self.0.remove(key);
@@ -220,7 +220,7 @@ impl VideoStreamCache {
                 if let Err(err) = read_samples_from_chunk(
                     *timeline,
                     &chunk.sorted_by_timeline_if_unsorted(timeline),
-                    &entry.known_chunk_offsets,
+                    &entry.known_chunk_ranges,
                     video_data,
                 ) {
                     match err {
@@ -249,7 +249,7 @@ impl VideoStreamCache {
                 }
             }
             re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                if let Some(known_offset) = entry.known_chunk_offsets.get(&event.chunk.id()) {
+                if let Some(known_offset) = entry.known_chunk_ranges.get(&event.chunk.id()) {
                     for (_idx, sample) in video_data.samples.iter_index_range_clamped_mut(
                         &(known_offset.first_sample..video_data.samples.next_index()),
                     ) {
