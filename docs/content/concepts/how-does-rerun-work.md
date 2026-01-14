@@ -20,7 +20,7 @@ The Viewer visualizes your data. It comes in two forms:
 - **Native Viewer**: A desktop application for Linux, macOS, and Windows
 - **Web Viewer**: A Wasm application that runs in browsers
 
-The viewer includes a **Chunk Store** (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
+The viewer includes a [**Chunk Store**](logging-and-ingestion/chunks) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
 The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
 
@@ -74,9 +74,9 @@ Catalog SDK
 Logging SDK -> Viewer.gRPC endpoint: stream
 Logging SDK -> ".rrd files": save
 ".rrd files" -> Viewer.Chunk Store: load
-".rrd files" -> Data Platform.Datasets: register
-Data Platform.Datasets -> Viewer.Chunk Store: redap
-Data Platform.Datasets -> Catalog SDK: redap
+".rrd files" -> Data Platform: register
+Data Platform -> Viewer.Chunk Store: redap
+Data Platform -> Catalog SDK: redap
 ```
 
 
