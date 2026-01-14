@@ -19,7 +19,7 @@ To run the example from the repository, run `cargo run -p dna`.
 
 ## Prerequisites
 
-We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [setup page](rust.md).
+We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [installing rust](../../overview/installing-rerun/rust.md).
 
 For this example in particular, we're going to need all of these:
 

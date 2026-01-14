@@ -16,10 +16,9 @@ High-level introduction to Rerun:
 
 Step-by-step guides to get up and running quickly:
 
-- **[Quick Start](../getting-started/quick-start.md)** - Choose your language (Python, Rust, C++) and create your first visualization
-- **[Data In](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
-- **[Data Out](../getting-started/data-out.md)** - Query and export data from Rerun recordings
-- **[Configure the Viewer](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
+- **[Log and Ingest](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
+- **[Visualize](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
+- **[Query and Transform](../getting-started/data-out.md)** - Query and export data from Rerun recordings
 - **[Troubleshooting](../getting-started/troubleshooting.md)** - Solutions to common issues
 
 ## Concepts
