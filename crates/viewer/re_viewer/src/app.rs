@@ -3082,14 +3082,38 @@ impl App {
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
+        let store_ids: Vec<_> = store_hub
+            .store_bundle()
+            .recordings()
+            .map(|db| db.store_id().clone())
+            .collect();
         // Receive in-transit chunks (previously prefetched):
-        for db in store_hub.store_bundle_mut().recordings_mut() {
+        for store_id in store_ids {
+            let db = store_hub.entity_db_mut(&store_id);
+
             if db.rrd_manifest_index.has_manifest() {
+                let mut store_events = Vec::new();
                 for chunk in db.rrd_manifest_index.resolve_pending_promises() {
-                    if let Err(err) = db.add_chunk(&std::sync::Arc::new(chunk)) {
-                        re_log::warn_once!("add_chunk failed: {err}");
+                    match db.add_chunk(&std::sync::Arc::new(chunk)) {
+                        Ok(events) => {
+                            store_events.extend(events);
+                        }
+                        Err(err) => {
+                            re_log::warn_once!("add_chunk failed: {err}");
+                        }
                     }
                 }
+
+                // Downgrade to read-only, so we can access caches.
+                let db = store_hub
+                    .entity_db(&store_id)
+                    .expect("Just queried it mutable and that was fine.");
+
+                if let Some(caches) = store_hub.active_caches() {
+                    caches.on_store_events(&store_events, db);
+                }
+
+                self.validate_loaded_events(&store_events);
 
                 if db.rrd_manifest_index.has_pending_promises() {
                     self.egui_ctx.request_repaint(); // check back for more
