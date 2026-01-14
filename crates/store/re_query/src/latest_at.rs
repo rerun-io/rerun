@@ -5,16 +5,8 @@ use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
-<<<<<<< HEAD
-use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
-use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, TimeInt};
-||||||| parent of 3ff812d236 (query cache: partial latest-at support)
-use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
-use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
-=======
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
-use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
->>>>>>> 3ff812d236 (query cache: partial latest-at support)
+use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -719,7 +711,8 @@ impl LatestAtCache {
             return (Some(cached.unit.clone()), vec![]);
         }
 
-        let results = store.latest_at_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
+        let results =
+            store.latest_at_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
         if results.is_partial() {
             // Contrary to range results, partial latest-at results cannot ever be correct on their own,
             // therefore we must give up the current query entirely.
