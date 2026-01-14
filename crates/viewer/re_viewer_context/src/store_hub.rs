@@ -619,8 +619,8 @@ impl StoreHub {
         caches
     }
 
-    /// Fully resets, i.e. removes, the caches for a given if there's any.
-    pub fn reset_caches_for_store(&mut self, store_id: &StoreId) {
+    /// Fully resets, i.e. removes, the caches for a given store if there's any.
+    pub fn clear_caches_for_store(&mut self, store_id: &StoreId) {
         self.caches_per_recording.remove(store_id);
     }
 
