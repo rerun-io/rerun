@@ -143,7 +143,7 @@ Logging SDK -> Viewer: stream
 
 Minimal example:
 
-snippet: concepts/how-does-rerun-work/log-to-grpc
+snippet: concepts/how-does-rerun-work/log_to_grpc
 
 Best for: development, debugging, real-time monitoring.
 
@@ -161,7 +161,7 @@ Logging SDK -> ".rrd": save
 
 Minimal example:
 
-snippet: concepts/how-does-rerun-work/log-to-rrd
+snippet: concepts/how-does-rerun-work/log_to_rrd
 
 And later:
 
