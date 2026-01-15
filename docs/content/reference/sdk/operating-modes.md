@@ -8,7 +8,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 In the [official examples](/examples), these different modes of operation are exposed via a standardized set of flags that we'll cover below.
 We will also demonstrate how you can achieve the same behavior in your own code.
 
-Before reading this document, you might want to familiarize yourself with the [Rerun application model](../../concepts/app-model.md).
+Before reading this document, you might want to familiarize yourself with the [Rerun application model](../../concepts/how-does-rerun-work.md).
 
 ## Operating modes
 

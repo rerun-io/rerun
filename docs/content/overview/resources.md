@@ -25,7 +25,7 @@ Step-by-step guides to get up and running quickly:
 
 Understanding the foundational concepts behind Rerun:
 
-- **[Application Model](../concepts/app-model.md)** - How Rerun applications are structured
+- **[How Does Rerun Work](../concepts/how-does-rerun-work.md)** - How Rerun applications are structured
 - **[Entity Component System](../concepts/logging-and-ingestion/entity-component.md)** - Rerun's data model
 - **[Entity Paths](../concepts/logging-and-ingestion/entity-path.md)** - Organizing your data hierarchically
 - **[Spaces and Transforms](../concepts/logging-and-ingestion/transforms.md)** - Working with coordinate systems
