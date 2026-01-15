@@ -457,8 +457,10 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
+        let chunk_byte_size_raw: &[u64] = manifest.col_chunk_byte_size_raw()?.values();
 
         let mut uncompressed_bytes_in_batch: u64 = 0;
+        let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
         let missing_chunk_ids = missing_chunk_ids.into_iter();
@@ -493,6 +495,7 @@ impl RrdManifestIndex {
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
+            let chunk_byte_size = chunk_byte_size_raw[row_idx];
             total_uncompressed_byte_budget =
                 total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
             if total_uncompressed_byte_budget == 0 {
@@ -512,6 +515,7 @@ impl RrdManifestIndex {
 
                 indices.push(row_idx);
                 uncompressed_bytes_in_batch += uncompressed_chunk_size;
+                bytes_in_batch += chunk_byte_size;
                 remote_chunk.state = LoadState::InTransit;
 
                 if max_uncompressed_bytes_per_batch < uncompressed_bytes_in_batch {
@@ -522,6 +526,7 @@ impl RrdManifestIndex {
                     self.chunk_promises.add(ChunkPromiseBatch {
                         promise: Mutex::new(Some(load_chunks(rb))),
                         size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                        size_bytes: bytes_in_batch,
                     });
                     uncompressed_bytes_in_batch = 0;
                 }
@@ -533,6 +538,7 @@ impl RrdManifestIndex {
             self.chunk_promises.add(ChunkPromiseBatch {
                 promise: Mutex::new(Some(load_chunks(rb))),
                 size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                size_bytes: bytes_in_batch,
             });
         }
 

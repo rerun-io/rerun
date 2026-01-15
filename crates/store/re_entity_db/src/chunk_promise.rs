@@ -16,6 +16,9 @@ pub struct ChunkPromiseBatch {
 
     /// Total size of all the chunks in bytes.
     pub size_bytes_uncompressed: u64,
+
+    /// Size on the wire of all the chunks in bytes.
+    pub size_bytes: u64,
 }
 
 #[derive(Clone, Copy)]
@@ -103,7 +106,7 @@ impl ChunkPromises {
                 match promise.try_take() {
                     Ok(Ok(chunks)) => {
                         all_chunks.extend(chunks);
-                        history.add(time, ByteFloat(batch.size_bytes_uncompressed as f64));
+                        history.add(time, ByteFloat(batch.size_bytes as f64));
                         false
                     }
                     Ok(Err(())) => false,
