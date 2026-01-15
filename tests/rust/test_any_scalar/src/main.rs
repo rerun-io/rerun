@@ -1,4 +1,5 @@
 //! Minimal example demonstrating different scalar types that can be visualized in the viewer.
+//! TODO(#10631): ⚠️ This is a work in progress and should eventually become an integration test.
 
 use std::f64::consts::PI;
 use std::sync::Arc;
