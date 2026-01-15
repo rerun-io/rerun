@@ -181,12 +181,6 @@ impl EncodedDepthImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("EncodedDepthImage".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -327,6 +321,13 @@ impl ::re_types_core::AsComponents for EncodedDepthImage {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for EncodedDepthImage {}
+
+impl crate::VisualizableArchetype for EncodedDepthImage {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("EncodedDepthImage").with_overrides(self)
+    }
+}
 
 impl EncodedDepthImage {
     /// Create a new `EncodedDepthImage`.

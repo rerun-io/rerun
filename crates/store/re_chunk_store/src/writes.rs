@@ -22,8 +22,10 @@ impl ChunkStore {
     ///
     /// Since no physical data is involved, no events are fired.
     /// All queries will return partial results until the missing physical data gets loaded in.
-    #[expect(clippy::needless_pass_by_value)] // we'll need it soon for lineage tracking
-    pub fn insert_rrd_manifest(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreResult<()> {
+    pub fn insert_rrd_manifest(
+        &mut self,
+        rrd_manifest: Arc<RrdManifest>,
+    ) -> ChunkStoreResult<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let Self {
@@ -166,7 +168,14 @@ impl ChunkStore {
             }
         }
 
-        Ok(())
+        Ok(ChunkStoreEvent {
+            store_id: self.id.clone(),
+            store_generation: self.generation(),
+            event_id: self
+                .event_id
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            diff: ChunkStoreDiff::rrd_manifest(rrd_manifest),
+        })
     }
 
     /// Inserts a [`Chunk`] in the store.

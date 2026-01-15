@@ -44,7 +44,8 @@ pub struct FrameUniformBuffer {
     /// GPU/driver-specific stuff like alpha-to-coverage.
     pub deterministic_rendering: u32,
 
-    pub padding: [f32; 4],
+    /// Screen resolution in pixels.
+    pub framebuffer_resolution: wgpu_buffer_types::Vec2RowPadded,
 }
 
 /// Global bindings which are always available on bind group 0 for all [`crate::renderer::Renderer`].

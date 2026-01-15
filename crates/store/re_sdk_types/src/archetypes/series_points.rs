@@ -169,12 +169,6 @@ impl SeriesPoints {
             component_type: Some("rerun.components.MarkerSize".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("SeriesPoints".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -294,6 +288,13 @@ impl ::re_types_core::AsComponents for SeriesPoints {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for SeriesPoints {}
+
+impl crate::VisualizableArchetype for SeriesPoints {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("SeriesPoints").with_overrides(self)
+    }
+}
 
 impl SeriesPoints {
     /// Create a new `SeriesPoints`.

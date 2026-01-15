@@ -12,6 +12,8 @@ from .error_utils import catch_and_log_exceptions
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any]
+
 
 class DynamicArchetype(AsComponents):
     """

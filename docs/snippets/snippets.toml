@@ -174,7 +174,7 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/app-model" = [ # Uses a non-standard logging workflow
+"concepts/how-does-rerun-work" = [ # Uses a non-standard logging workflow
   "py",
   "cpp",
   "rust",

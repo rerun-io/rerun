@@ -1,4 +1,5 @@
 name: Release
+run-name: Release (${{ inputs.release-type }})
 
 on:
   workflow_dispatch:
@@ -201,13 +202,10 @@ jobs:
           ### Next steps
           - Test the release
           - For alpha releases:
-            - [ ] Should the GH release be published for this alpha? Make a call (give extra love to alphas deployed to Rerun Cloud or when external testing is required).
-              - If yes:
-                - [ ] Edit and publish the GitHub release
+            - [ ] If a GH release should be published for this alpha (give extra love to alphas deployed to Rerun Cloud or when external testing is required):
+                - [ ] Create the GitHub release manually from the UI
                 - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
                       **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
-              - If no:
-                - [ ] Delete the GH release draft
             - [ ] Merge or close the release PR
               - **IFF** the release job succeeds and the link checker is happy, you may merge the PR.
               - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
