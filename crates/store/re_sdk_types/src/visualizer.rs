@@ -1,11 +1,22 @@
 use crate::blueprint::components as bp_components;
 use crate::{AsComponents, SerializedComponentBatch};
 
+/// A unique identifier for a visualizer instance within a view.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VisualizerId(pub uuid::Uuid);
+
+impl VisualizerId {
+    /// Create a new random visualizer ID.
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
 /// Configuration for a visualizer in Rerun.
 #[derive(Clone, Debug)]
 pub struct Visualizer {
     /// Identifies this visualizer instance uniquely within its view.
-    pub id: uuid::Uuid,
+    pub id: VisualizerId,
 
     /// The type of visualizer this is.
     pub visualizer_type: bp_components::VisualizerType,
@@ -23,7 +34,7 @@ impl Visualizer {
     /// Create a new visualizer configuration with a random id.
     pub fn new(visualizer_type: impl Into<bp_components::VisualizerType>) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: VisualizerId::random(),
             visualizer_type: visualizer_type.into(),
             overrides: Vec::new(),
             mappings: Vec::new(),
