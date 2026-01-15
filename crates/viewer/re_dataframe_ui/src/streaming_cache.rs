@@ -26,21 +26,23 @@ use re_viewer_context::AsyncRuntimeHandle;
 pub enum CacheState {
     NotStarted,
     Streaming,
-    Complete,
+    Complete(Arc<MemTable>),
     Failed(Arc<DataFusionError>),
 }
 
 /// Internal shared state for the streaming cache.
 #[derive(Debug)]
 struct StreamingCacheInner {
+    schema: SchemaRef,
     cached_batches: Vec<RecordBatch>,
     state: CacheState,
     wakers: Vec<Waker>,
 }
 
 impl StreamingCacheInner {
-    fn new() -> Self {
+    fn new(schema: SchemaRef) -> Self {
         Self {
+            schema,
             cached_batches: Vec::new(),
             state: CacheState::NotStarted,
             wakers: Vec::new(),
@@ -119,8 +121,8 @@ impl StreamingCacheTableProvider {
     ) -> Self {
         Self {
             df_factory,
-            schema,
-            cache: Mutex::new(Arc::new(Mutex::new(StreamingCacheInner::new()))),
+            schema: Arc::clone(&schema),
+            cache: Mutex::new(Arc::new(Mutex::new(StreamingCacheInner::new(schema)))),
             runtime,
         }
     }
@@ -150,12 +152,14 @@ impl StreamingCacheTableProvider {
     /// New scans will use a fresh cache.
     pub fn refresh(&self) {
         let mut cache = self.cache.lock();
-        *cache = Arc::new(Mutex::new(StreamingCacheInner::new()));
+        *cache = Arc::new(Mutex::new(StreamingCacheInner::new(Arc::clone(
+            &self.schema,
+        ))));
     }
 
     /// Check if the cache is complete (all data received).
     pub fn is_complete(&self) -> bool {
-        matches!(self.cache.lock().lock().state, CacheState::Complete)
+        matches!(self.cache.lock().lock().state, CacheState::Complete(_))
     }
 
     /// Get the current number of cached batches.
@@ -171,34 +175,18 @@ impl StreamingCacheTableProvider {
     /// Background task: stream from DataFrame to cache.
     ///
     /// Stops early if no consumers remain (detected via Arc strong count).
-    async fn stream_to_cache(df_future: DataFrameFuture, cache: Arc<Mutex<StreamingCacheInner>>) {
-        let dataframe = match df_future.await {
-            Ok(df) => df,
-            Err(err) => {
-                let mut guard = cache.lock();
-                guard.state = CacheState::Failed(Arc::new(err));
-                guard.wake_all();
-                return;
-            }
-        };
-
-        let stream_result = dataframe.execute_stream().await;
-
-        let mut stream = match stream_result {
-            Ok(s) => s,
-            Err(err) => {
-                let mut guard = cache.lock();
-                guard.state = CacheState::Failed(Arc::new(err));
-                guard.wake_all();
-                return;
-            }
-        };
+    async fn stream_to_cache(
+        df_future: DataFrameFuture,
+        cache: &Arc<Mutex<StreamingCacheInner>>,
+    ) -> DataFusionResult<()> {
+        let dataframe = df_future.await?;
+        let mut stream = dataframe.execute_stream().await?;
 
         // Stream batches into cache
         loop {
             // Stop if we're the only one holding a reference (no consumers left)
-            if Arc::strong_count(&cache) == 1 {
-                return;
+            if Arc::strong_count(cache) == 1 {
+                return Ok(());
             }
 
             match stream.next().await {
@@ -208,16 +196,17 @@ impl StreamingCacheTableProvider {
                     guard.wake_all();
                 }
                 Some(Err(err)) => {
-                    let mut guard = cache.lock();
-                    guard.state = CacheState::Failed(Arc::new(err));
-                    guard.wake_all();
-                    return;
+                    return Err(err);
                 }
                 None => {
                     let mut guard = cache.lock();
-                    guard.state = CacheState::Complete;
+                    let mem_table = MemTable::try_new(
+                        Arc::clone(&guard.schema),
+                        vec![std::mem::take(&mut guard.cached_batches)],
+                    )?;
+                    guard.state = CacheState::Complete(Arc::new(mem_table));
                     guard.wake_all();
-                    return;
+                    return Ok(());
                 }
             }
         }
@@ -246,7 +235,7 @@ impl TableProvider for StreamingCacheTableProvider {
         limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         enum Action {
-            UseMemTable(Vec<RecordBatch>),
+            UseMemTable(Arc<MemTable>),
             ReturnError(Arc<DataFusionError>),
             StartStreaming(Arc<Mutex<StreamingCacheInner>>),
             ReturnStreamingPlan(Arc<Mutex<StreamingCacheInner>>),
@@ -256,7 +245,7 @@ impl TableProvider for StreamingCacheTableProvider {
             let inner_cache = Arc::clone(&self.cache.lock());
             let mut inner = inner_cache.lock();
             match &inner.state {
-                CacheState::Complete => Action::UseMemTable(inner.cached_batches.clone()),
+                CacheState::Complete(mem_table) => Action::UseMemTable(Arc::clone(mem_table)),
                 CacheState::Failed(err) => Action::ReturnError(Arc::clone(err)),
                 CacheState::NotStarted => {
                     inner.state = CacheState::Streaming;
@@ -271,9 +260,7 @@ impl TableProvider for StreamingCacheTableProvider {
         };
 
         match action {
-            Action::UseMemTable(batches) => {
-                let schema = self.schema();
-                let mem_table = MemTable::try_new(schema, vec![batches])?;
+            Action::UseMemTable(mem_table) => {
                 mem_table.scan(state, projection, filters, limit).await
             }
             Action::ReturnError(error) => Err(DataFusionError::Shared(error)),
@@ -281,7 +268,11 @@ impl TableProvider for StreamingCacheTableProvider {
                 let df_future = (self.df_factory)();
                 let cache_ref = Arc::clone(&inner_cache);
                 self.runtime.spawn_future(async move {
-                    Self::stream_to_cache(df_future, cache_ref).await;
+                    if let Err(err) = Self::stream_to_cache(df_future, &cache_ref).await {
+                        let mut guard = cache_ref.lock();
+                        guard.state = CacheState::Failed(Arc::new(err));
+                        guard.wake_all();
+                    };
                 });
 
                 Ok(Arc::new(CachedStreamingExec::new(
@@ -436,7 +427,7 @@ impl Stream for CachedRecordBatchStream {
 
         // No more batches available - check state
         match &cache.state {
-            CacheState::Complete => Poll::Ready(None),
+            CacheState::Complete(_) => Poll::Ready(None),
             CacheState::Failed(err) => {
                 Poll::Ready(Some(Err(DataFusionError::Shared(Arc::clone(err)))))
             }
