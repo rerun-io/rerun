@@ -98,7 +98,7 @@ pub struct ChunkInfo {
     state: LoadState,
 
     /// None for static chunks
-    pub temporal: Option<TemporalChunkInfo>,
+    pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -184,7 +184,7 @@ impl RrdManifestIndex {
         self.update_chunk_intervals();
 
         for chunk_id in manifest.col_chunk_id()? {
-            self.remote_chunks.entry(chunk_id).or_default();
+            self.remote_chunks.insert(chunk_id, Default::default());
         }
 
         for timelines in self.native_temporal_map.values() {
@@ -192,11 +192,18 @@ impl RrdManifestIndex {
                 for chunks in comps.values() {
                     for (&chunk_id, entry) in chunks {
                         let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-                        chunk_info.temporal = Some(TemporalChunkInfo {
-                            timeline,
-                            time_range: entry.time_range,
-                            num_rows: entry.num_rows,
-                        });
+                        chunk_info
+                            .temporals
+                            .entry(*timeline.name())
+                            .and_modify(|info| {
+                                info.time_range = entry.time_range.union(info.time_range);
+                                info.num_rows += entry.num_rows;
+                            })
+                            .or_insert(TemporalChunkInfo {
+                                timeline,
+                                time_range: entry.time_range,
+                                num_rows: entry.num_rows,
+                            });
                     }
                 }
             }
@@ -223,6 +230,11 @@ impl RrdManifestIndex {
         self.manifest = Some(manifest);
 
         Ok(())
+    }
+
+    /// Iterate over all chunks in the manifest.
+    pub fn remote_chunks(&self) -> impl Iterator<Item = &ChunkInfo> {
+        self.remote_chunks.values()
     }
 
     /// Info about a chunk that is in the manifest
