@@ -1996,7 +1996,7 @@ impl TimePanel {
         });
 
         // Press to move time:
-        if ui.input(|i| i.pointer.primary_down())
+        if ui.input(|i| i.pointer.primary_pressed() || i.pointer.primary_down() || i.pointer.primary_released())
             // `interact_pointer_pos` is set as soon as the mouse button is down on it,
             // without having to wait for the drag to go far enough or long enough
             && response.interact_pointer_pos().is_some()
