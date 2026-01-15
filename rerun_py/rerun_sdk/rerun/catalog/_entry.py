@@ -633,98 +633,42 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
-        Return a new DatasetView filtered to the given entity paths or specific component columns.
+        Return a new DatasetView filtered to the given entity paths or component columns.
 
-        This method accepts both entity path patterns and component column selectors:
-        - **Entity path patterns** (no colon): Include all components at matching entities
-        - **Component column selectors** (with colon): Include only specific components
-
-        The format automatically detects which mode to use based on the presence of `:` in the string.
-
-        Entity path expressions support wildcards:
-        - `"/points/**"` matches all entities under /points
-        - `"-/text/**"` excludes all entities under /text
-
-        Component column selectors use the format: `"entity_path:component"`
-        - Example: `"/world/points:Position3D"`
-        - This matches the format used by blueprint APIs (ComponentColumnSelector)
+        Accepts entity path patterns (with wildcards) or component column selectors.
+        Entity paths include all components at matching entities. Column selectors
+        (format: `"entity_path:component"`) include only specific components.
 
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Can be:
-            - Single string (entity path or column selector)
-            - List of strings (can mix entity paths and column selectors)
-
-            Entity path examples:
-            - `"/points/**"` - All components at entities under /points
-            - `"/world/camera"` - All components at /world/camera
-            - `"-/text/**"` - Exclude entities under /text
-
-            Column selector examples:
-            - `"/world/points:Position3D"` - Only Position3D component at /world/points
-            - `"/world/points:Points3D:positions"` - Specific archetype component
+            Entity path pattern(s) or column selector(s):
+            - Entity path: `"/points/**"` (all components under /points)
+            - Column selector: `"/world/points:Position3D"` (specific component)
+            - Exclusion: `"-/text/**"` (exclude entities under /text)
 
         Returns
         -------
         DatasetView
-            A new view filtered to the matching entity paths/components.
-
-        Notes
-        -----
-        Edge cases and special behavior:
-
-        - **Property paths**: Entity paths starting with `"property:"` or containing
-          `"/__properties:"` are treated as entity paths (not column selectors), even
-          though they contain colons.
-        - **Mixing modes**: Cannot mix entity path patterns and column selectors in the
-          same call. Use either entity paths (wildcards allowed) OR column selectors
-          (exact paths only), not both. Raises `ValueError` if mixed.
-        - **Empty filter**: Passing an empty list `[]` returns all columns. To get an
-          empty view, filter to a non-existent path.
-        - **Invalid selectors**: Invalid column selector strings raise `ValueError` with
-          a clear error message.
+            A new view filtered to the matching entity paths or components.
 
         Examples
         --------
-        Entity path filtering (all components):
         ```python
-        # Filter to a single entity path
+        # Filter by entity path
         view = dataset.filter_contents("/points/**")
 
-        # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**", "/camera/**"])
-
-        # Exclude certain paths
-        view = dataset.filter_contents(["/points/**", "-/text/**"])
-        ```
-
-        Component column filtering (specific components):
-        ```python
         # Filter to specific components
-        view = dataset.filter_contents([
-            "/world/points:Position3D",
-            "/world/points:Color"
-        ])
+        view = dataset.filter_contents(["/world/points:Position3D", "/world/points:Color"])
 
-        # Mix entity paths and column selectors
-        view = dataset.filter_contents([
-            "/world/points:Position3D",  # Only Position3D at /world/points
-            "/world/camera"              # All components at /world/camera
-        ])
-        ```
-
-        Chaining with other filters:
-        ```python
-        view = (dataset
-            .filter_segments(["recording_0"])
-            .filter_contents(["/world/points:Position3D"]))
+        # Chain with other filters
+        view = dataset.filter_segments(["recording_0"]).filter_contents("/world/**")
         ```
 
         See Also
         --------
-        filter_archetypes : Filter to specific archetype types (higher-level filtering)
-        filter_component_types : Filter to specific component types (higher-level filtering)
+        filter_archetypes : Filter to specific archetype types
+        filter_component_types : Filter to specific component types
 
         """
 
@@ -768,17 +712,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         Return a new DatasetView filtered to the given archetypes.
 
-        This filters the dataset to only include columns belonging to the specified
-        archetype(s). You can pass archetype types directly (e.g., `rr.Points3D`)
-        or fully-qualified string names (e.g., `"rerun.archetypes.Points3D"`).
+        Filters to only include columns belonging to the specified archetype(s).
 
         Parameters
         ----------
         archetypes : str | Type[Archetype] | Sequence[str | Type[Archetype]]
-            Archetype or list of archetypes. Can be:
-            - A single archetype type (e.g., `rr.Points3D`)
-            - A fully-qualified string (e.g., `"rerun.archetypes.Points3D"`)
-            - A list of either
+            Archetype type (e.g., `rr.Points3D`), fully-qualified string
+            (e.g., `"rerun.archetypes.Points3D"`), or list of either.
 
         Returns
         -------
@@ -788,22 +728,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
-        import rerun as rr
-
-        # Filter to a single archetype using type
+        # Filter to a single archetype
         view = dataset.filter_archetypes(rr.Points3D)
-
-        # Filter using string
-        view = dataset.filter_archetypes("rerun.archetypes.Points3D")
 
         # Filter to multiple archetypes
         view = dataset.filter_archetypes([rr.Points3D, rr.Transform3D])
 
         # Chain with other filters
         view = dataset.filter_segments(["recording_0"]).filter_archetypes(rr.Points3D)
-
-        # Read filtered data
-        df = view.reader(index="frame")
         ```
 
         """
@@ -826,18 +758,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         Return a new DatasetView filtered to the given component types.
 
-        This filters the dataset to only include columns of the specified
-        component type(s). You can pass component types directly (e.g.,
-        `rr.components.Position3D`) or fully-qualified string names (e.g.,
-        `"rerun.components.Position3D"`).
+        Filters to only include columns of the specified component type(s).
 
         Parameters
         ----------
         component_types : str | Type[ComponentMixin] | Sequence[str | Type[ComponentMixin]]
-            Component type or list of component types. Can be:
-            - A single component type (e.g., `rr.components.Position3D`)
-            - A fully-qualified string (e.g., `"rerun.components.Position3D"`)
-            - A list of either
+            Component type (e.g., `rr.components.Position3D`), fully-qualified string
+            (e.g., `"rerun.components.Position3D"`), or list of either.
 
         Returns
         -------
@@ -847,23 +774,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Examples
         --------
         ```python
-        import rerun as rr
         from rerun import components
 
         # Filter to a single component type
         view = dataset.filter_component_types(components.Position3D)
-
-        # Filter using string
-        view = dataset.filter_component_types("rerun.components.Position3D")
 
         # Filter to multiple component types
         view = dataset.filter_component_types([components.Position3D, components.Color])
 
         # Chain with other filters
         view = dataset.filter_segments(["recording_0"]).filter_component_types(components.Position3D)
-
-        # Read filtered data
-        df = view.reader(index="frame")
         ```
 
         """
@@ -1266,67 +1186,31 @@ class DatasetView:
 
     def filter_contents(self, exprs: str | Sequence[str]) -> DatasetView:
         """
-        Return a new DatasetView filtered to the given entity paths or specific component columns.
+        Return a new DatasetView filtered to the given entity paths or component columns.
 
-        Filters are composed: if this view already has filters, the result is the intersection
-        of the existing filters and the new content filter.
+        Filters are composed (intersected) with any existing filters on this view.
 
-        This method accepts both entity path patterns and component column selectors:
-        - **Entity path patterns** (no colon): Include all components at matching entities
-        - **Component column selectors** (with colon): Include only specific components
-
-        The format automatically detects which mode to use based on the presence of `:` in the string.
-
-        Entity path expressions support wildcards:
-        - `"/points/**"` matches all entities under /points
-        - `"-/text/**"` excludes all entities under /text
-
-        Component column selectors use the format: `"entity_path:component"`
-        - Example: `"/world/points:Position3D"`
-        - This matches the format used by blueprint APIs (ComponentColumnSelector)
+        Accepts entity path patterns (with wildcards) or component column selectors.
+        Entity paths include all components at matching entities. Column selectors
+        (format: `"entity_path:component"`) include only specific components.
 
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Can be:
-            - Single string (entity path or column selector)
-            - List of strings (can mix entity paths and column selectors)
-
-            Entity path examples:
-            - `"/points/**"` - All components at entities under /points
-            - `"/world/camera"` - All components at /world/camera
-            - `"-/text/**"` - Exclude entities under /text
-
-            Column selector examples:
-            - `"/world/points:Position3D"` - Only Position3D component at /world/points
-            - `"/world/points:Points3D:positions"` - Specific archetype component
+            Entity path pattern(s) or column selector(s):
+            - Entity path: `"/points/**"` (all components under /points)
+            - Column selector: `"/world/points:Position3D"` (specific component)
+            - Exclusion: `"-/text/**"` (exclude entities under /text)
 
         Returns
         -------
         DatasetView
-            A new view filtered to the matching entity paths/components.
-
-        Notes
-        -----
-        Edge cases and special behavior:
-
-        - **Property paths**: Entity paths starting with `"property:"` or containing
-          `"/__properties:"` are treated as entity paths (not column selectors), even
-          though they contain colons.
-        - **Mixing modes**: Cannot mix entity path patterns and column selectors in the
-          same call. Use either entity paths (wildcards allowed) OR column selectors
-          (exact paths only), not both. Raises `ValueError` if mixed.
-        - **Empty filter**: Passing an empty list `[]` returns all columns. To get an
-          empty view, filter to a non-existent path.
-        - **Invalid selectors**: Invalid column selector strings raise `ValueError` with
-          a clear error message.
-        - **Filter composition**: When called on a DatasetView, filters are composed
-          (intersected) with any existing filters.
+            A new view filtered to the matching entity paths or components.
 
         See Also
         --------
-        filter_archetypes : Filter to specific archetype types (higher-level filtering)
-        filter_component_types : Filter to specific component types (higher-level filtering)
+        filter_archetypes : Filter to specific archetype types
+        filter_component_types : Filter to specific component types
 
         """
         if isinstance(exprs, str):
@@ -1369,16 +1253,13 @@ class DatasetView:
         """
         Return a new DatasetView filtered to the given archetypes.
 
-        Filters are composed: if this view already has filters, the result is the intersection
-        of the existing filters and the new archetype filter.
+        Filters are composed (intersected) with any existing filters on this view.
 
         Parameters
         ----------
         archetypes : str | Type[Archetype] | Sequence[str | Type[Archetype]]
-            Archetype or list of archetypes. Can be either:
-            - Fully-qualified string (e.g., "rerun.archetypes.Points3D")
-            - Archetype type (e.g., rr.Points3D)
-            - List of either
+            Archetype type (e.g., `rr.Points3D`), fully-qualified string
+            (e.g., `"rerun.archetypes.Points3D"`), or list of either.
 
         Returns
         -------
@@ -1387,29 +1268,11 @@ class DatasetView:
 
         Examples
         --------
-        Filter to Points3D using type:
-
         ```python
-        import rerun as rr
-        dataset = rr.catalog.Dataset(...)
+        # Filter to a single archetype
         view = dataset.filter_archetypes(rr.Points3D)
-        ```
 
-        Filter to multiple archetypes:
-
-        ```python
-        view = dataset.filter_archetypes([rr.Points3D, rr.Transform3D])
-        ```
-
-        Filter using fully-qualified string:
-
-        ```python
-        view = dataset.filter_archetypes("rerun.archetypes.Points3D")
-        ```
-
-        Chain with other filters:
-
-        ```python
+        # Chain with other filters
         view = dataset.filter_segments(["seg1"]).filter_archetypes(rr.Points3D)
         ```
 
@@ -1434,16 +1297,13 @@ class DatasetView:
         """
         Return a new DatasetView filtered to the given component types.
 
-        Filters are composed: if this view already has filters, the result is the intersection
-        of the existing filters and the new component type filter.
+        Filters are composed (intersected) with any existing filters on this view.
 
         Parameters
         ----------
         component_types : str | Type[ComponentMixin] | Sequence[str | Type[ComponentMixin]]
-            Component type or list of component types. Can be either:
-            - Fully-qualified string (e.g., "rerun.components.Position3D")
-            - ComponentMixin type (e.g., rr.components.Position3D)
-            - List of either
+            Component type (e.g., `rr.components.Position3D`), fully-qualified string
+            (e.g., `"rerun.components.Position3D"`), or list of either.
 
         Returns
         -------
@@ -1452,31 +1312,13 @@ class DatasetView:
 
         Examples
         --------
-        Filter to Position3D using type:
-
         ```python
-        import rerun as rr
         from rerun import components
 
-        dataset = rr.catalog.Dataset(...)
+        # Filter to a single component type
         view = dataset.filter_component_types(components.Position3D)
-        ```
 
-        Filter to multiple component types:
-
-        ```python
-        view = dataset.filter_component_types([components.Position3D, components.Color])
-        ```
-
-        Filter using fully-qualified string:
-
-        ```python
-        view = dataset.filter_component_types("rerun.components.Position3D")
-        ```
-
-        Chain with other filters:
-
-        ```python
+        # Chain with other filters
         view = dataset.filter_segments(["seg1"]).filter_component_types(components.Position3D)
         ```
 
