@@ -70,3 +70,7 @@ Please refer to the [0.28 migration guide section on catalog API overhaul](migra
 
 ## CLI
 `rerun server --addr …` has been renamed `rerun server --host …`
+
+## Overrides in blueprint files can't be imported
+
+Rerun 0.29 cannot currently load component overrides from `.rbl` files created in previous versions. Support for legacy overrides is coming soon.
