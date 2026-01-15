@@ -292,7 +292,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         .clicked()
                     {
                         // This will trigger a fresh query on the next frame.
-                        Self::refresh(runtime, ui.ctx(), Arc::clone(&session_ctx), table_ref);
+                        Self::refresh(
+                            runtime,
+                            ui.ctx().clone(),
+                            Arc::clone(&session_ctx),
+                            table_ref,
+                        );
                     }
                 });
                 return TableStatus::Error(error);
@@ -477,7 +482,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         match action {
             Some(BottomBarAction::Refresh) => {
-                Self::refresh(runtime, ui.ctx(), session_ctx, table_ref);
+                Self::refresh(runtime, ui.ctx().clone(), session_ctx, table_ref);
             }
             None => {}
         }
