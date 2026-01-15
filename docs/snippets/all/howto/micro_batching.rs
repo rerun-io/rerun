@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .spawn()?;
 
     // These 10 log calls are guaranteed be batched together, and end up in the same chunk.
-    for i in 0..10 {
+    for i in 0..9 {
         rec.log("logs", &rerun::TextLog::new(format!("log #{i}")))?;
     }
 
