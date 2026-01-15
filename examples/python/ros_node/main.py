@@ -93,7 +93,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         time = Time.from_msg(info.header.stamp)
         self.pinhole_model.from_camera_info(info)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
-        # TODO: remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
+        # TODO(michael): remove `from_fields` when Pinhole constructor patch is released: https://github.com/rerun-io/rerun/pull/12360
         rr.log(
             "rgbd_camera/camera_info",
             rr.Pinhole.from_fields(

@@ -2,7 +2,7 @@
 title = "ROS node"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
 thumbnail = "https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail_dimensions = [480, 284]
 -->
 
 A minimal example of creating a ROS node that subscribes to topics and converts the messages to Rerun log calls.
