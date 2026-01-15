@@ -126,6 +126,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         rr.log("rgbd_camera/image", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
+        # Make sure the image plane frame matches what we set in `cam_info_callback`.
         rr.log("rgbd_camera/image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def depth_callback(self, img: Image) -> None:
