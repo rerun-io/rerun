@@ -3,7 +3,7 @@
 
 #![cfg(feature = "testing")]
 
-use egui_kittest::{SnapshotError, SnapshotOptions};
+use egui_kittest::SnapshotError;
 use itertools::Itertools as _;
 use re_blueprint_tree::BlueprintTree;
 use re_blueprint_tree::data::BlueprintTreeData;
@@ -210,7 +210,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
 
     harness.run();
 
-    let options = SnapshotOptions::new().output_path(format!(
+    let options = re_ui::testing::default_snapshot_options_for_ui().output_path(format!(
         "tests/snapshots/view_structure_test/{}",
         filter_query
             .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
