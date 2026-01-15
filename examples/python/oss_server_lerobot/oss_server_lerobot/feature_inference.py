@@ -86,6 +86,8 @@ def infer_features(
     # Infer action and state dimensions by trying multiple segments
     segments_to_try = [segment_id] + [s for s in dataset.segment_ids() if s != segment_id]
 
+    print(f"Trying to infer features from segments: {segments_to_try}")
+
     if columns.action:
         action_dim = None
         for try_segment_id in segments_to_try:
@@ -98,7 +100,9 @@ def infer_features(
                     action_sample = next((v for v in action_values if v is not None), None)
                     if action_sample is not None:
                         action_dim = len(np.asarray(action_sample).flatten())
-            except Exception:
+                        break
+            except Exception as e:
+                print(f"Failed to infer action dimension from segment '{try_segment_id}': {e}")
                 continue
 
         if action_dim is None:
