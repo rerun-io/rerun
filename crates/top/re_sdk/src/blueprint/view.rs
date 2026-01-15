@@ -7,7 +7,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{
     ActiveVisualizers, MapBackground, ViewBlueprint, ViewContents, VisualizerInstruction,
 };
-use re_sdk_types::blueprint::components::{QueryExpression, ViewClass, VisualizerInstructionId};
+use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
 use re_sdk_types::{AsComponents, SerializedComponentBatch, Visualizer};
@@ -144,7 +144,7 @@ impl View {
                     )?;
                 }
 
-                visualizer_ids.push(VisualizerInstructionId(visualizer.id.0));
+                visualizer_ids.push(visualizer.id.clone());
             }
 
             // Log the active visualizers list

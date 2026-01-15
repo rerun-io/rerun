@@ -1,5 +1,4 @@
 use crate::blueprint::components as bp_components;
-use crate::datatypes::Uuid;
 use crate::{AsComponents, SerializedComponentBatch};
 
 /// Configuration for a visualizer in Rerun.
@@ -24,7 +23,7 @@ impl Visualizer {
     /// Create a new visualizer configuration with a random id.
     pub fn new(visualizer_type: impl Into<bp_components::VisualizerType>) -> Self {
         Self {
-            id: bp_components::VisualizerInstructionId(Uuid::random()),
+            id: bp_components::VisualizerInstructionId::new_random(),
             visualizer_type: visualizer_type.into(),
             overrides: Vec::new(),
             mappings: Vec::new(),

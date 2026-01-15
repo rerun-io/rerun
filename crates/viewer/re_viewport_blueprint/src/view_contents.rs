@@ -10,7 +10,7 @@ use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
     ResolvedEntityPathRule, Timeline,
 };
-use re_sdk_types::blueprint::components::QueryExpression;
+use re_sdk_types::blueprint::components::{QueryExpression, VisualizerInstructionId};
 use re_sdk_types::blueprint::{
     archetypes as blueprint_archetypes, components as blueprint_components,
 };
@@ -506,11 +506,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
             {
                 node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
-                    .map(|blueprint_instruction_id| {
-                        let instruction_id = re_viewer_context::VisualizerInstructionId::from_uuid(
-                            blueprint_instruction_id.0.into(),
-                        );
-
+                    .map(|instruction_id| {
                         let visualizer_override_path = VisualizerInstruction::override_path_for(
                             &node.data_result.override_base_path,
                             &instruction_id,
@@ -564,8 +560,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .into_iter()
                     .enumerate()
                     .map(|(index, (visualizer_type, mut component_mappings))| {
-                        let id = re_viewer_context::VisualizerInstructionId::new_deterministic(
-                            &node.data_result.entity_path,
+                        let id = VisualizerInstructionId::new_deterministic(
+                            node.data_result.entity_path.hash64(),
                             index,
                         );
 

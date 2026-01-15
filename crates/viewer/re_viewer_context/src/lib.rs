@@ -123,8 +123,7 @@ pub use self::view::{
     ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
     VisualizerComponentMapping, VisualizerComponentMappings, VisualizerExecutionErrorState,
-    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionId, VisualizerQueryInfo,
-    VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

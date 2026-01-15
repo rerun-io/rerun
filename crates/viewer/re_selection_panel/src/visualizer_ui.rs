@@ -5,6 +5,7 @@ use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -101,21 +102,20 @@ pub fn visualizer_ui_impl(
 ) {
     let override_base_path = data_result.override_base_path();
 
-    let remove_visualizer_button =
-        |ui: &mut egui::Ui, visualizer_id: &re_viewer_context::VisualizerInstructionId| {
-            let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
-            if response.clicked() {
-                let archetype = ActiveVisualizers::new(
-                    active_visualizers
-                        .iter()
-                        .filter(|v| &v.id != visualizer_id)
-                        .map(|v| v.id.0),
-                );
+    let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
+        if response.clicked() {
+            let archetype = ActiveVisualizers::new(
+                active_visualizers
+                    .iter()
+                    .filter(|v| &v.id != visualizer_id)
+                    .map(|v| v.id.0),
+            );
 
-                ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
-            }
-            response
-        };
+            ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
+        }
+        response
+    };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
         if active_visualizers.is_empty() {
@@ -725,7 +725,7 @@ fn menu_add_new_visualizer(
             // * add a visualizer type information for that new visualizer instruction
             // * add an element to the list of active visualizer ids
             let new_instruction = VisualizerInstruction::new(
-                re_viewer_context::VisualizerInstructionId::new_random(),
+                VisualizerInstructionId::new_random(),
                 *visualizer_type,
                 override_base_path,
                 re_viewer_context::VisualizerComponentMappings::default(),

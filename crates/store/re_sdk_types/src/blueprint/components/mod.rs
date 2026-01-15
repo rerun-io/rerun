@@ -64,6 +64,7 @@ mod visual_bounds2d;
 mod visual_bounds2d_ext;
 mod visualizer_component_mapping;
 mod visualizer_instruction_id;
+mod visualizer_instruction_id_ext;
 mod visualizer_type;
 mod zoom_level;
 

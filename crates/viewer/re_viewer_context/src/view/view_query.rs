@@ -6,36 +6,13 @@ use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct VisualizerInstructionId(pub uuid::Uuid);
-
-impl VisualizerInstructionId {
-    pub fn invalid() -> Self {
-        Self(uuid::Uuid::nil())
-    }
-
-    pub fn new_random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-
-    pub fn new_deterministic(entity_path: &EntityPath, index: usize) -> Self {
-        Self(uuid::Uuid::from_u64_pair(
-            entity_path.hash64(),
-            index as u64,
-        ))
-    }
-
-    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
-        Self(uuid)
-    }
-}
 
 /// A single component mapping for a visualizer instruction.
 #[derive(Clone, Debug, Hash)]
@@ -86,7 +63,7 @@ impl VisualizerInstruction {
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,
     ) -> EntityPath {
-        override_base_path.join(&EntityPath::from_single_string(id.0.to_string()))
+        override_base_path.join(&EntityPath::from_single_string(id.to_string()))
     }
 
     /// Writes component mappings and visualizer type to the blueprint store.
