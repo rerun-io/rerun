@@ -399,7 +399,7 @@ impl RrdManifestIndex {
     }
 
     pub fn has_pending_promises(&self) -> bool {
-        !self.chunk_promises.has_pending()
+        self.chunk_promises.has_pending()
     }
 
     /// Find the next candidates for prefetching.
