@@ -129,19 +129,16 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Clears all caches related to this session context and table reference.
     pub fn refresh(
         runtime: &AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        egui_ctx: egui::Context,
         session_ctx: Arc<SessionContext>,
         table_ref: impl Into<TableReference>,
     ) {
         let table_ref = table_ref.into();
-        let id = id_from_session_context_and_table(&session_ctx, &table_ref);
 
-        // Clear UI state
-        DataFusionAdapter::clear_state(egui_ctx, id);
-
-        // Clear the underlying StreamingCacheTableProvider cache if present
+        // Unfortunately, getting a TableProvider is async, so we need to spawn here:
         runtime.spawn_future(async move {
-            if let Ok(provider) = session_ctx.table_provider(table_ref).await {
+            if let Ok(provider) = session_ctx.table_provider(table_ref.clone()).await {
+                // If this is a StreamingCacheTableProvider, purge its cache
                 if let Some(cache_provider) = provider
                     .as_any()
                     .downcast_ref::<StreamingCacheTableProvider>()
@@ -149,6 +146,9 @@ impl<'a> DataFusionTableWidget<'a> {
                     cache_provider.refresh();
                 }
             }
+
+            let id = id_from_session_context_and_table(&session_ctx, &table_ref);
+            DataFusionAdapter::clear_state(&egui_ctx, id);
         });
     }
 
