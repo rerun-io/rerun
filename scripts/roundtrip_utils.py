@@ -14,10 +14,14 @@ def get_rerun_root() -> str:
     # TODO(RR-3355): Use a shared utility for this
     current = Path(__file__).resolve().parent
     while current != current.parent:
+        # Look for sentinel file
         if (current / ".RERUN_ROOT").exists():
             return str(current)
+        # Break if we reach a git root
+        if (current / ".git").exists():
+            break
         current = current.parent
-    raise FileNotFoundError("Could not find .RERUN_ROOT sentinel file in any parent directory")
+    raise FileNotFoundError(f"Could not find .RERUN_ROOT sentinel file in any parent directory under {current}")
 
 
 def run(
