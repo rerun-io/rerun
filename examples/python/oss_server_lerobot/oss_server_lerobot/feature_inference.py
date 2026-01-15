@@ -9,43 +9,13 @@ import numpy as np
 from .video_processing import infer_video_shape
 
 if TYPE_CHECKING:
-    import pyarrow as pa
     import rerun as rr
 
     from .types import ColumnSpec, ImageSpec
 
 
-def infer_feature_shape(schema_field: pa.Field, label: str) -> int:
-    """
-    Infer the feature dimension from a PyArrow schema field.
-
-    Args:
-        schema_field: PyArrow field containing the feature data
-        label: Label for error messages
-
-    Returns:
-        Feature dimension (-1 for variable length)
-
-    Raises:
-        ValueError: If column is missing or has unsupported data type
-
-    """
-    import pyarrow as pa
-
-    if schema_field is None:
-        raise ValueError(f"Column for {label} was not found.")
-
-    datatype = schema_field.type
-    if pa.types.is_fixed_size_list(datatype):
-        return datatype.list_size
-    if pa.types.is_list(datatype):
-        return -1  # Variable length
-    if pa.types.is_struct(datatype):
-        return len(datatype)
-    raise ValueError(f"Unsupported data type for {label} feature: {datatype}")
-
-
 def infer_features(
+    *,
     dataset: rr.catalog.DatasetEntry,
     segment_id: str,
     index_column: str,
@@ -94,7 +64,6 @@ def infer_features(
     for spec in image_specs:
         if spec.path not in contents:
             contents.append(spec.path)
-    view = dataset.filter_segments(segment_id).filter_contents(contents)
 
     columns_to_read = [index_column]
     if columns.action:
@@ -110,11 +79,6 @@ def infer_features(
         action_col_exists = columns.action in columns_to_read
         print(f"Action column '{columns.action}' exists: {action_col_exists}")
 
-    print("segment_id:", segment_id)
-    print("index_column:", index_column)
-    print("columns_to_read:", columns_to_read)
-    print("schema:", view.schema())
-    print("reader for index:", view.reader(index=index_column).schema())
     features = {}
 
     # Infer action and state dimensions by trying multiple segments
@@ -139,7 +103,9 @@ def infer_features(
                 continue
 
         if action_dim is None:
-            raise ValueError(f"Could not infer action dimension from any segment. Tried {len(segments_to_try)} segments.")
+            raise ValueError(
+                f"Could not infer action dimension from any segment. Tried {len(segments_to_try)} segments."
+            )
         if action_names is not None and len(action_names) != action_dim:
             raise ValueError("Action names length does not match inferred action dimension.")
         features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": action_names}
@@ -163,7 +129,9 @@ def infer_features(
                 continue
 
         if state_dim is None:
-            raise ValueError(f"Could not infer state dimension from any segment. Tried {len(segments_to_try)} segments.")
+            raise ValueError(
+                f"Could not infer state dimension from any segment. Tried {len(segments_to_try)} segments."
+            )
         if state_names is not None and len(state_names) != state_dim:
             raise ValueError("State names length does not match inferred state dimension.")
         features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": state_names}

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def extract_video_samples(
-    table: pa.Table, sample_column: str, keyframe_column: str, time_column: str
+    table: pa.Table, *, sample_column: str, keyframe_column: str, time_column: str
 ) -> tuple[list[bytes], np.ndarray, np.ndarray]:
     """
     Extract video samples, keyframe flags, and timestamps from a table.
@@ -115,6 +115,167 @@ def decode_video_frame(
     if latest_frame is None:
         raise ValueError("Failed to decode video frame for target time.")
     return np.asarray(latest_frame.to_image())
+
+
+def can_remux_video(
+    times_ns: np.ndarray,
+    target_fps: int,
+    tolerance: float = 0.05,
+) -> tuple[bool, float]:
+    """
+    Check if video can be remuxed without re-encoding.
+
+    Compares the source frame rate (inferred from timestamps) with target FPS.
+    If they match within tolerance, remuxing is possible.
+
+    Args:
+        times_ns: Timestamps in nanoseconds for each packet
+        target_fps: Target frames per second
+        tolerance: Allowed relative difference (default 5%)
+
+    Returns:
+        Tuple of (can_remux, source_fps) where:
+        - can_remux: True if source and target FPS match within tolerance
+        - source_fps: Detected source FPS
+
+    """
+    if len(times_ns) < 2:
+        return False, 0.0
+
+    # Calculate median frame interval in nanoseconds
+    intervals = np.diff(times_ns)
+    avg_interval_ns = np.median(intervals)  # Use median to handle outliers
+
+    # Convert to FPS
+    source_fps = 1_000_000_000 / avg_interval_ns
+
+    # Check if within tolerance
+    fps_diff = abs(source_fps - target_fps) / target_fps
+    can_remux = fps_diff <= tolerance
+
+    return can_remux, source_fps
+
+
+def extract_frames_at_timestamps(
+    samples: list[bytes],
+    times_ns: np.ndarray,
+    keyframes: np.ndarray,
+    target_times_ns: np.ndarray,
+    video_format: str,
+) -> list[np.ndarray]:
+    """
+    Extract frames at specific timestamps from compressed video packets.
+
+    This decodes each requested frame independently.
+
+    Args:
+        samples: List of compressed video packet bytes
+        times_ns: Timestamps in nanoseconds for each packet
+        keyframes: Boolean array indicating keyframes
+        target_times_ns: Target timestamps to extract frames at
+        video_format: Video codec format (e.g., "h264", "hevc")
+
+    Returns:
+        List of decoded frames as numpy arrays
+
+    """
+    frames = []
+    for target_time_ns in target_times_ns:
+        frame = decode_video_frame(samples, times_ns, keyframes, int(target_time_ns), video_format)
+        frames.append(frame)
+    return frames
+
+
+def remux_video_stream(
+    samples: list[bytes],
+    times_ns: np.ndarray,
+    keyframes: np.ndarray,
+    output_path: str,
+    video_format: str,
+    width: int | None = None,
+    height: int | None = None,
+    target_fps: int | None = None,
+) -> None:
+    """
+    Remux compressed video packets directly to output file without decode/encode.
+
+    This is 100-1000x faster than decoding to frames and re-encoding. Use this when:
+    - The source video FPS matches target FPS (or target_fps is None)
+    - No frame transformations are needed
+
+    Args:
+        samples: List of compressed video packet bytes from RRD
+        times_ns: Timestamps in nanoseconds for each packet
+        keyframes: Boolean array indicating keyframes
+        output_path: Path to write output video file
+        video_format: Source codec format (e.g., "h264", "hevc")
+        width: Video frame width (auto-detected if None)
+        height: Video frame height (auto-detected if None)
+        target_fps: Target FPS (if None, preserves source timing)
+
+    Raises:
+        ValueError: If remuxing fails
+
+    """
+    from pathlib import Path
+    from io import BytesIO
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Create input container from concatenated samples
+    all_samples = b"".join(samples)
+    input_buffer = BytesIO(all_samples)
+    input_container = av.open(input_buffer, format=video_format, mode="r")
+    input_stream = input_container.streams.video[0]
+
+    # Auto-detect dimensions if not provided
+    if width is None:
+        width = input_stream.width
+    if height is None:
+        height = input_stream.height
+
+    # Create output container (MP4 format)
+    output_container = av.open(output_path, mode="w", format="mp4")
+
+    # Add stream from template to preserve codec without re-encoding.
+    # Some PyAV versions don't support the template kwarg; fall back to codec name.
+    try:
+        output_stream = output_container.add_stream(template=input_stream)
+    except TypeError:
+        output_stream = output_container.add_stream(input_stream.codec_context.name)
+        if input_stream.codec_context.extradata:
+            output_stream.codec_context.extradata = input_stream.codec_context.extradata
+    output_stream.width = width
+    output_stream.height = height
+
+    if target_fps is not None:
+        output_stream.rate = target_fps
+
+    # Calculate time base from original timestamps
+    time_base = Fraction(1, 1_000_000_000)  # nanosecond precision
+    output_stream.time_base = time_base
+
+    # Remux packets with proper timestamps
+    packet_idx = 0
+    for packet in input_container.demux(input_stream):
+        if packet_idx >= len(times_ns):
+            break
+
+        # Set timestamps from RRD data
+        packet.time_base = time_base
+        packet.pts = int(times_ns[packet_idx])
+        packet.dts = packet.pts
+        packet.stream = output_stream
+
+        # Mark keyframes
+        if packet_idx < len(keyframes) and keyframes[packet_idx]:
+            packet.is_keyframe = True
+
+        output_container.mux(packet)
+        packet_idx += 1
+
+    input_container.close()
+    output_container.close()
 
 
 def infer_video_shape(
