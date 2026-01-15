@@ -10,6 +10,7 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
 use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
 
+// TODO(RR-3318):
 // pub fn supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
 //     [
 //         arrow::datatypes::DataType::Float32,
