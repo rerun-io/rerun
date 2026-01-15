@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, TimeInt};
 use re_entity_db::EntityDb;
-use re_log_types::AbsoluteTimeRange;
 use re_redap_client::{ApiResult, ConnectionClient};
 use re_viewer_context::TimeControl;
 
@@ -31,11 +30,7 @@ pub fn prefetch_chunks_for_active_recording(
         re_log_types::TimeType::Sequence => 30,
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
-
-    let desired_range = AbsoluteTimeRange::new(
-        current_time.saturating_sub(before_margin),
-        re_chunk::TimeInt::MAX, // Keep loading until the end (if we have the space for it).
-    );
+    let start_time = TimeInt::new_temporal(current_time.saturating_sub(before_margin));
 
     if !recording.rrd_manifest_index.has_manifest() {
         return None;
@@ -46,7 +41,7 @@ pub fn prefetch_chunks_for_active_recording(
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
         missing_chunk_ids,
-        desired_range,
+        start_time,
         total_uncompressed_byte_budget: total_byte_budget,
 
         // Batch small chunks together.

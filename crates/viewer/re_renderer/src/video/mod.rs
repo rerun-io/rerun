@@ -29,6 +29,15 @@ pub enum InsufficientSampleDataError {
 
     #[error("The requested frame data is not, or no longer, available.")]
     ExpectedSampleNotAvailable,
+
+    #[error("Missing samples between last decoded sample and requested sample.")]
+    MissingSamples,
+
+    #[error("Duplicate sample index encountered.")]
+    DuplicateSampleIdx,
+
+    #[error("Out of order sample index encountered.")]
+    OutOfOrderSampleIdx,
 }
 
 /// Error that can occur during playing videos.

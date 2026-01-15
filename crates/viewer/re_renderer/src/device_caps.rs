@@ -458,6 +458,72 @@ pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
     adapter
 }
 
+/// Tries to select an adapter.
+///
+/// This is very similar to wgpu-core's implementation of `DynInstance::enumerate_adapters`.
+pub fn select_adapter(
+    adapters: &[wgpu::Adapter],
+    enabled_backends: wgpu::Backends,
+    surface: Option<&wgpu::Surface<'_>>,
+) -> Result<wgpu::Adapter, String> {
+    if adapters.is_empty() {
+        return Err(format!(
+            "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
+        ));
+    }
+
+    let mut adapters = adapters.to_vec();
+
+    // Filter out adapters that can't present to the given surface.
+    if let Some(surface) = &surface {
+        adapters.retain(|adapter| {
+            let capabilities = surface.get_capabilities(adapter);
+            if capabilities.formats.is_empty() {
+                re_log::debug!(
+                    "Adapter {:?} not compatible with the window's render surface.",
+                    adapter.get_info()
+                );
+                false
+            } else {
+                true
+            }
+        });
+        if adapters.is_empty() {
+            return Err(
+                "No graphics adapter was found that is compatible with the surface.".to_owned(),
+            );
+        }
+    }
+
+    re_log::debug!("Found the following viable graphics adapters:");
+    for adapter in &adapters {
+        re_log::debug!("* {}", crate::adapter_info_summary(&adapter.get_info()));
+    }
+
+    // Adapters are already sorted by preferred backend by wgpu, but let's be explicit.
+    adapters.sort_by_key(|a| match a.get_info().backend {
+        wgpu::Backend::Metal => 0,
+        wgpu::Backend::Vulkan => 1,
+        wgpu::Backend::Dx12 => 2,
+        wgpu::Backend::Gl => 4,
+        wgpu::Backend::BrowserWebGpu => 6,
+        wgpu::Backend::Noop => 7,
+    });
+
+    // Prefer hardware adapters.
+    adapters.sort_by_key(|a| match a.get_info().device_type {
+        wgpu::DeviceType::DiscreteGpu => 0,
+        wgpu::DeviceType::IntegratedGpu => 1,
+        wgpu::DeviceType::Other | wgpu::DeviceType::VirtualGpu => 2,
+        wgpu::DeviceType::Cpu => 3,
+    });
+
+    let adapter = adapters.remove(0);
+    re_log::debug!("Picked adapter: {:?}", adapter.get_info());
+
+    Ok(adapter)
+}
+
 /// Backends that are officially supported by `re_renderer`.
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
