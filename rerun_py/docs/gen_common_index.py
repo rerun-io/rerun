@@ -593,19 +593,18 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                     bindings_class = False
                     if "rerun_bindings" in cls.canonical_path:
                         bindings_class = True
+                        # Get the docstring from the bindings package, but keep the rerun display path
                         cls = bindings_pkg[cls.canonical_path[len("rerun_bindings.") :]]
-                        class_name = cls.canonical_path
+                        # Don't overwrite class_name - keep the rerun module path for display
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:
                         if class_name.startswith(maybe_strip):
                             stripped = class_name.replace(maybe_strip, "")
                             if stripped in rerun_pkg.classes:
                                 show_class = stripped
-                    if bindings_class:
-                        show_class = class_name  # don't strip anything for bindings
-                    else:
-                        show_class = "rerun." + show_class
-                        class_name = "rerun." + class_name
+                    # Always show as rerun.* in documentation, even for bindings classes
+                    show_class = "rerun." + show_class
+                    class_name = "rerun." + class_name
                     if cls.docstring is None:
                         raise ValueError(f"No docstring for class {class_name}")
                     index_file.write(f"[`{show_class}`][{class_name}] | {cls.docstring.lines[0]}\n")
