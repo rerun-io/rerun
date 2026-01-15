@@ -34,10 +34,9 @@ impl SegmentTableProvider {
         Self { client, dataset_id }
     }
 
-    /// This is a convenience function.
+    /// This is a convenience function
     pub async fn into_provider(self) -> DataFusionResult<Arc<dyn TableProvider>> {
-        let provider = GrpcStreamProvider::prepare(self).await?;
-        Ok(provider as Arc<dyn TableProvider>)
+        Ok(GrpcStreamProvider::prepare(self).await?)
     }
 }
 

@@ -1,12 +1,3 @@
-//! Streaming cache for DataFusion table providers.
-//!
-//! This module provides [`StreamingCacheTableProvider`], a `TableProvider` that caches
-//! streaming results from executing a DataFrame. It enables efficient caching where:
-//! - First scan: starts a background task that streams from DataFrame while caching
-//! - Subsequent scans: returns cached batches immediately via a MemTable
-//! - All concurrent scans share the same cache
-//! - Cancelling a consumer does NOT stop the background streaming
-
 use std::any::Any;
 use std::fmt;
 use std::pin::Pin;
@@ -33,25 +24,17 @@ use re_viewer_context::AsyncRuntimeHandle;
 /// State of the streaming cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CacheState {
-    /// Stream has not been started yet.
     NotStarted,
-    /// Stream is actively running.
     Streaming,
-    /// Stream completed successfully.
     Complete,
-    /// Stream failed with an error.
     Failed,
 }
 
 /// Internal shared state for the streaming cache.
 struct StreamingCacheInner {
-    /// Cached record batches.
     cached_batches: Vec<RecordBatch>,
-    /// Current state of the cache.
     state: CacheState,
-    /// Error message if stream failed.
     error: Option<String>,
-    /// Wakers waiting for new data.
     wakers: Vec<Waker>,
 }
 
@@ -107,20 +90,7 @@ pub struct StreamingCacheTableProvider {
     schema: SchemaRef,
     /// Shared cache state. The outer Mutex allows swapping the inner cache on refresh.
     cache: Mutex<Arc<Mutex<StreamingCacheInner>>>,
-    /// Runtime handle for spawning background tasks.
     runtime: AsyncRuntimeHandle,
-}
-
-impl fmt::Debug for StreamingCacheTableProvider {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let inner_cache = self.cache.lock();
-        let inner = inner_cache.lock();
-        f.debug_struct("StreamingCacheTableProvider")
-            .field("schema", &self.schema)
-            .field("state", &inner.state)
-            .field("cached_batches", &inner.cached_batches.len())
-            .finish_non_exhaustive()
-    }
 }
 
 impl StreamingCacheTableProvider {
