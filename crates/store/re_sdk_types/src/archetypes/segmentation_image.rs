@@ -135,12 +135,6 @@ impl SegmentationImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("SegmentationImage".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
@@ -255,6 +249,13 @@ impl ::re_types_core::AsComponents for SegmentationImage {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for SegmentationImage {}
+
+impl crate::VisualizableArchetype for SegmentationImage {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("SegmentationImage").with_overrides(self)
+    }
+}
 
 impl SegmentationImage {
     /// Create a new `SegmentationImage`.

@@ -202,12 +202,6 @@ impl LineStrips3D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("Lines3D".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -337,6 +331,13 @@ impl ::re_types_core::AsComponents for LineStrips3D {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for LineStrips3D {}
+
+impl crate::VisualizableArchetype for LineStrips3D {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("Lines3D").with_overrides(self)
+    }
+}
 
 impl LineStrips3D {
     /// Create a new `LineStrips3D`.
