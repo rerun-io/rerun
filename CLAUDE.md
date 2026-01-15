@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) and other LLMs when working with code in this repository.
 
 ## Project overview
 
@@ -156,4 +156,5 @@ The `uv` wrapper script unsets `CONDA_PREFIX` to ensure isolation from pixi's en
 - [`BUILD.md`](BUILD.md) - Full build instructions
 - [`CODE_STYLE.md`](CODE_STYLE.md) - Code style guidelines
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
+- [`DESIGN.md`](DESIGN.md) - Guidelines for UI design, covering GUI, CLI, documentation, log messages, etc
 - [`rerun_py/README.md`](rerun_py/README.md) - Python SDK specific instructions
