@@ -63,7 +63,14 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 To add custom functionality to generated types, create `_ext` files:
 - Rust: `filename_ext.rs` (automatically imported by codegen)
 - Python: `filename_ext.py` (mixed in with generated class)
-- C++: `filename_ext.cpp` (compiled and included automatically)
+- C++: `filename_ext.cpp` (compiled and included automatically, parts of it may be marked for copy into the header by codegen)
+
+## Code conventions
+
+### General
+
+- use `…` instead of `...`
+- validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
 
 ## Architecture overview
 
