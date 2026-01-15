@@ -28,6 +28,11 @@ struct FrameUniformBuffer {
     /// boolean (0/1): set to true for snapshot tests to minimize
     /// GPU/driver-specific stuff like alpha-to-coverage.
     deterministic_rendering: u32,
+
+    /// Screen resolution in pixels.
+    framebuffer_resolution: vec2f,
+
+    _padding: vec2f,
 };
 
 @group(0) @binding(0)

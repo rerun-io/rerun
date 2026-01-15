@@ -48,19 +48,19 @@ pub fn test_modal_list_item_should_match_snapshot() {
 fn run_modal_test(
     mut make_modal: impl FnMut() -> ModalWrapper,
     mut content_ui: impl FnMut(&mut egui::Ui),
-    _test_name: &'static str,
+    test_name: &'static str,
 ) {
     let mut modal_handler = ModalHandler::default();
     modal_handler.open();
 
-    let mut harness = egui_kittest::Harness::builder()
-        .with_size(Vec2::new(700.0, 700.0))
-        .build_ui(|ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(700.0, 700.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
 
-            modal_handler.ui(ui.ctx(), &mut make_modal, |ui| content_ui(ui));
-        });
+                modal_handler.ui(ui.ctx(), &mut make_modal, |ui| content_ui(ui));
+            });
 
     harness.run();
-    harness.snapshot(_test_name);
+    harness.snapshot(test_name);
 }

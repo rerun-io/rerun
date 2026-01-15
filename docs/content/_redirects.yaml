@@ -29,6 +29,7 @@ getting-started/data-out/analyze-and-log: getting-started/data-out/analyze-and-s
 getting-started/data-out/query-data: getting-started/data-out
 
 # Concepts section (old paths moved to subfolders)
+concepts/app-model: concepts/how-does-rerun-work
 concepts/apps-and-recordings: concepts/logging-and-ingestion/apps-and-recordings
 concepts/annotation-context: concepts/visualization/annotation-context
 concepts/batches: concepts/logging-and-ingestion/batches

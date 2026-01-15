@@ -46,9 +46,6 @@ enum ProtobufError {
 
     #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
-
-    #[error("missing protobuf field {field}")]
-    MissingField { field: u32 },
 }
 
 impl ProtobufMessageParser {
@@ -56,11 +53,6 @@ impl ProtobufMessageParser {
         if message_descriptor.oneofs().len() > 0 {
             re_log::warn_once!(
                 "`oneof` in schema {} is not supported yet.",
-                message_descriptor.full_name()
-            );
-            debug_assert!(
-                message_descriptor.oneofs().len() == 0,
-                "`oneof` in schema {} is not supported yet",
                 message_descriptor.full_name()
             );
         }
@@ -73,6 +65,59 @@ impl ProtobufMessageParser {
             builder,
         }
     }
+}
+
+/// Helper function to append fields from a protobuf message to a struct builder.
+/// This handles both proto3 optional field semantics and regular proto3 fields:
+/// - For proto3 optional fields (presence tracking): append null for unset fields
+/// - For regular proto3 fields (no presence tracking): append default values for unset fields
+fn append_message_fields(
+    dynamic_message: &DynamicMessage,
+    struct_builder: &mut StructBuilder,
+) -> Result<(), ProtobufError> {
+    // Get the actual field descriptors from the schema to access their real field numbers.
+    // This is critical for schemas with gaps in field numbering (e.g., fields 1, 2, 5, 8).
+    let descriptor = dynamic_message.descriptor();
+
+    // Create a map of field number -> value for fields that were actually set.
+    // In proto3, scalar fields don't have presence tracking unless marked `optional`,
+    // so we use fields() which only returns fields that were explicitly set.
+    let set_fields: ahash::HashMap<u32, &prost_reflect::Value> = dynamic_message
+        .fields()
+        .map(|(field_desc, value)| (field_desc.number(), value))
+        .collect();
+
+    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
+    let non_oneof_fields = descriptor
+        .fields()
+        .filter(|f| f.containing_oneof().is_none());
+
+    for (field_builder, field_desc) in struct_builder
+        .field_builders_mut()
+        .iter_mut()
+        .zip(non_oneof_fields)
+    {
+        // Use the actual field number from the schema, not index-based numbering.
+        // Protobuf schemas can have gaps (e.g., fields 1, 2, 5, 8 after deprecating 3, 4).
+        let protobuf_number = field_desc.number();
+
+        if let Some(val) = set_fields.get(&protobuf_number) {
+            append_value(field_builder, &field_desc, val)?;
+        } else {
+            // For proto3 optional fields, append null for unset fields.
+            // For regular proto3 fields, append default values.
+            if field_desc.supports_presence() {
+                append_null_to_builder(field_builder)?;
+            } else {
+                // Use the default value for this field type.
+                let default_value = field_desc.default_value();
+                append_value(field_builder, &field_desc, &default_value)?;
+            }
+        }
+    }
+
+    struct_builder.append(true);
+    Ok(())
 }
 
 impl MessageParser for ProtobufMessageParser {
@@ -88,28 +133,7 @@ impl MessageParser for ProtobufMessageParser {
             )?;
 
         let struct_builder = self.builder.values();
-
-        for (ith_arrow_field, field_builder) in
-            struct_builder.field_builders_mut().iter_mut().enumerate()
-        {
-            // Protobuf fields are 1-indexed, so we need to map the i-th builder.
-            let protobuf_number = ith_arrow_field as u32 + 1;
-
-            if let Some(val) = dynamic_message.get_field_by_number(protobuf_number) {
-                let field = dynamic_message
-                    .descriptor()
-                    .get_field(protobuf_number)
-                    .ok_or_else(|| ProtobufError::MissingField {
-                        field: protobuf_number,
-                    })?;
-                append_value(field_builder, &field, val.as_ref())?;
-                re_log::trace!("Field {}: Finished writing to builders", field.full_name());
-            } else {
-                append_null_to_builder(field_builder)?;
-            }
-        }
-
-        struct_builder.append(true);
+        append_message_fields(&dynamic_message, struct_builder)?;
         self.builder.append(true);
 
         Ok(())
@@ -156,7 +180,7 @@ fn downcast_err<'a, T: std::any::Any>(
 }
 
 fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), ProtobufError> {
-    // Try to append null by downcasting to known builder types
+    // Try to append null by downcasting to known builder types.
     if let Some(b) = builder.as_any_mut().downcast_mut::<BooleanBuilder>() {
         b.append_null();
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<Int32Builder>() {
@@ -176,6 +200,12 @@ fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), Protobuf
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<BinaryBuilder>() {
         b.append_null();
     } else if let Some(b) = builder.as_any_mut().downcast_mut::<StructBuilder>() {
+        // `StructBuilder` mandates that all child arrays must share the same length as parent.
+        // When appending null to parent, we must also append to children to maintain length.
+        // Reference: https://arrow.apache.org/docs/format/Columnar.html#physical-memory-layout
+        for child_builder in b.field_builders_mut() {
+            append_null_to_builder(child_builder)?;
+        }
         b.append_null();
     } else if let Some(b) = builder
         .as_any_mut()
@@ -208,39 +238,8 @@ fn append_value(
             downcast_err::<BinaryBuilder>(builder, val)?.append_value(bytes.clone());
         }
         Value::Message(dynamic_message) => {
-            re_log::trace!(
-                "Append called on dynamic message with fields: {:?}",
-                dynamic_message
-                    .fields()
-                    .map(|(descr, _)| descr.name().to_owned())
-                    .collect::<Vec<_>>()
-            );
             let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
-            re_log::trace!(
-                "Retrieved StructBuilder with {} fields",
-                struct_builder.num_fields()
-            );
-
-            for (ith_arrow_field, field_builder) in
-                struct_builder.field_builders_mut().iter_mut().enumerate()
-            {
-                // Protobuf fields are 1-indexed, so we need to map the i-th builder.
-                let protobuf_number = ith_arrow_field as u32 + 1;
-                let val = dynamic_message
-                    .get_field_by_number(protobuf_number)
-                    .ok_or_else(|| ProtobufError::MissingField {
-                        field: protobuf_number,
-                    })?;
-                re_log::trace!("Written field ({protobuf_number}) with val: {val}");
-                let field = dynamic_message
-                    .descriptor()
-                    .get_field(protobuf_number)
-                    .ok_or_else(|| ProtobufError::MissingField {
-                        field: protobuf_number,
-                    })?;
-                append_value(field_builder, &field, val.as_ref())?;
-            }
-            struct_builder.append(true);
+            append_message_fields(dynamic_message, struct_builder)?;
         }
         Value::List(vec) => {
             re_log::trace!("Append called on a list with {} elements: {val}", vec.len(),);
@@ -273,11 +272,11 @@ fn append_value(
             let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
             let field_builders = struct_builder.field_builders_mut();
 
-            // First field is "name" (String)
+            // First field is "name" (String).
             downcast_err::<StringBuilder>(field_builders[0].as_mut(), val)?
                 .append_value(value.name());
 
-            // Second field is "value" (Int32)
+            // Second field is "value" (Int32).
             downcast_err::<Int32Builder>(field_builders[1].as_mut(), val)?.append_value(*x);
 
             struct_builder.append(true);
@@ -288,12 +287,15 @@ fn append_value(
 }
 
 fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> StructBuilder {
+    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
     let fields = message_descriptor
         .fields()
+        .filter(|f| f.containing_oneof().is_none())
         .map(|f| arrow_field_from(&f))
         .collect::<Fields>();
     let field_builders = message_descriptor
         .fields()
+        .filter(|f| f.containing_oneof().is_none())
         .map(|f| arrow_builder_from_field(&f))
         .collect::<Vec<_>>();
 
@@ -325,9 +327,10 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
             // Create a struct with "name" (String) and "value" (Int32) fields.
             // We can't use `DictionaryArray` because `concat` does not re-key, and there
             // could be protobuf schema evolution with different enum values across chunks.
+            // The child fields are nullable to support null enum values when the parent field is missing.
             let fields = Fields::from(vec![
-                Field::new("name", DataType::Utf8, false),
-                Field::new("value", DataType::Int32, false),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("value", DataType::Int32, true),
             ]);
             let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
                 Box::new(StringBuilder::new()),
@@ -347,7 +350,7 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
 fn arrow_field_from(descr: &FieldDescriptor) -> Field {
     let mut field = Field::new(descr.name(), datatype_from(descr), true);
 
-    // Add extension metadata for enum types
+    // Add extension metadata for enum types.
     if matches!(descr.kind(), Kind::Enum(_)) {
         field = field.with_metadata(
             std::iter::once((
@@ -382,9 +385,10 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
         Kind::Enum(_) => {
             // Struct with "name" (String) and "value" (Int32) fields.
             // See comment in arrow_builder_from_field for why we use a struct.
+            // The child fields are nullable to support null enum values when the parent field is missing.
             let fields = Fields::from(vec![
-                Field::new("name", DataType::Utf8, false),
-                Field::new("value", DataType::Int32, false),
+                Field::new("name", DataType::Utf8, true),
+                Field::new("value", DataType::Int32, true),
             ]);
             DataType::Struct(fields)
         }
@@ -469,13 +473,46 @@ impl MessageLayer for McapProtobufLayer {
 }
 
 #[cfg(test)]
-mod test {
+mod unit_tests {
+    use arrow::array::{Array as _, ArrayBuilder, StringBuilder, StructBuilder};
+    use arrow::datatypes::{DataType, Field, Fields};
+
+    /// Verifies that `append_null_to_builder` properly handles `StructBuilder`
+    /// by recursively appending nulls to child builders to maintain length consistency.
+    #[test]
+    fn struct_builder_null_append() {
+        // Create a StructBuilder with 2 child fields.
+        let fields = Fields::from(vec![
+            Field::new("a", DataType::Utf8, true),
+            Field::new("b", DataType::Utf8, true),
+        ]);
+        let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
+            Box::new(StringBuilder::new()),
+            Box::new(StringBuilder::new()),
+        ];
+        let mut struct_builder = StructBuilder::new(fields, field_builders);
+
+        // It should recursively append nulls to children before appending to parent.
+        for _ in 0..10 {
+            // Use our append_null_to_builder function which should handle this correctly.
+            super::append_null_to_builder(&mut struct_builder as &mut dyn ArrayBuilder)
+                .expect("append_null_to_builder should succeed");
+        }
+
+        let array = struct_builder.finish();
+        assert_eq!(array.len(), 10);
+        assert_eq!(array.null_count(), 10); // All structs are null
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
     use std::io;
 
     use prost_reflect::prost::Message as _;
     use prost_reflect::prost_types::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-        FileDescriptorProto, FileDescriptorSet, field_descriptor_proto,
+        FileDescriptorProto, FileDescriptorSet, OneofDescriptorProto, field_descriptor_proto,
     };
     use prost_reflect::{DescriptorPool, DynamicMessage, MessageDescriptor};
     use re_chunk::Chunk;
@@ -483,7 +520,14 @@ mod test {
     use crate::LayerRegistry;
     use crate::layers::McapProtobufLayer;
 
-    fn create_pool() -> DescriptorPool {
+    /// Helper to mark a field descriptor as proto3 optional.
+    fn mark_optional(mut field: FieldDescriptorProto) -> FieldDescriptorProto {
+        field.label = Some(field_descriptor_proto::Label::Optional as i32);
+        field.proto3_optional = Some(true);
+        field
+    }
+
+    fn create_pool_with_person(use_proto3_optional: bool) -> MessageDescriptor {
         let status = EnumDescriptorProto {
             name: Some("Status".into()),
             value: vec![
@@ -508,31 +552,80 @@ mod test {
             reserved_name: vec![],
         };
 
-        // Create a simple message descriptor
+        // Create a nested Address message.
+        let mut address_fields = vec![
+            FieldDescriptorProto {
+                name: Some("street".into()),
+                number: Some(1),
+                r#type: Some(field_descriptor_proto::Type::String as i32),
+                ..Default::default()
+            },
+            FieldDescriptorProto {
+                name: Some("city".into()),
+                number: Some(2),
+                r#type: Some(field_descriptor_proto::Type::String as i32),
+                ..Default::default()
+            },
+        ];
+
+        if use_proto3_optional {
+            address_fields = address_fields.into_iter().map(mark_optional).collect();
+        }
+
+        let address_message = DescriptorProto {
+            name: Some("Address".into()),
+            field: address_fields,
+            ..Default::default()
+        };
+
+        // Create field descriptors with gaps in field numbering to test handling of schemas
+        // with non-contiguous field numbers and reserved ranges between actual fields.
+        // Field 1: name, Reserved: 2-4, Field 5: id, Field 8: status, Field 9: address.
+        let mut fields = vec![
+            FieldDescriptorProto {
+                name: Some("name".into()),
+                number: Some(1),
+                r#type: Some(field_descriptor_proto::Type::String as i32),
+                ..Default::default()
+            },
+            FieldDescriptorProto {
+                name: Some("id".into()),
+                number: Some(5), // Gap: fields 2-4 are reserved.
+                r#type: Some(field_descriptor_proto::Type::Int32 as i32),
+                ..Default::default()
+            },
+            FieldDescriptorProto {
+                name: Some("status".into()),
+                number: Some(8), // Gap: fields 6-7 are missing.
+                r#type: Some(field_descriptor_proto::Type::Enum as i32),
+                type_name: Some("Status".into()),
+                ..Default::default()
+            },
+            FieldDescriptorProto {
+                name: Some("address".into()),
+                number: Some(9),
+                r#type: Some(field_descriptor_proto::Type::Message as i32),
+                type_name: Some("Address".into()),
+                ..Default::default()
+            },
+        ];
+
+        if use_proto3_optional {
+            fields = fields.into_iter().map(mark_optional).collect();
+        }
+
+        // Create a message descriptor with reserved field numbers (2, 3, 4) between actual fields.
         let person_message = DescriptorProto {
             name: Some("Person".into()),
-            field: vec![
-                FieldDescriptorProto {
-                    name: Some("name".into()),
-                    number: Some(1),
-                    r#type: Some(field_descriptor_proto::Type::String as i32),
-                    ..Default::default()
-                },
-                FieldDescriptorProto {
-                    name: Some("id".into()),
-                    number: Some(2),
-                    r#type: Some(field_descriptor_proto::Type::Int32 as i32),
-                    ..Default::default()
-                },
-                FieldDescriptorProto {
-                    name: Some("status".into()),
-                    number: Some(3),
-                    r#type: Some(field_descriptor_proto::Type::Enum as i32),
-                    type_name: Some("Status".into()),
-                    ..Default::default()
+            field: fields,
+            nested_type: vec![address_message],
+            enum_type: vec![status],
+            reserved_range: vec![
+                prost_reflect::prost_types::descriptor_proto::ReservedRange {
+                    start: Some(2),
+                    end: Some(5), // end is exclusive, so this reserves 2, 3, 4.
                 },
             ],
-            enum_type: vec![status],
             ..Default::default()
         };
 
@@ -550,7 +643,10 @@ mod test {
 
         let encoded = file_descriptor_set.encode_to_vec();
 
-        DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool")
+        let pool =
+            DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool");
+        pool.get_message_by_name("com.example.Person")
+            .expect("missing message descriptor")
     }
 
     /// Returns a channel id.
@@ -574,7 +670,7 @@ mod test {
         message: &DynamicMessage,
         timestamp: u64, // nanoseconds since epoch
     ) -> mcap::McapResult<()> {
-        // Encode the dynamic message to protobuf bytes
+        // Encode the dynamic message to protobuf bytes.
         let data = message.encode_to_vec();
 
         let header = mcap::records::MessageHeader {
@@ -606,39 +702,67 @@ mod test {
         chunks
     }
 
-    #[test]
-    fn two_simple_rows() {
-        // Writing to the MCAP buffer.
-        let (summary, buffer) = {
-            let pool = create_pool();
-            let person_message = pool
-                .get_message_by_name("com.example.Person")
-                .expect("missing message descriptor");
+    /// Helper to create test messages with various field combinations.
+    fn create_test_messages(person_message: &MessageDescriptor) -> Vec<DynamicMessage> {
+        vec![
+            // Message 1: has all fields including nested address.
+            DynamicMessage::parse_text_format(
+                person_message.clone(),
+                "name: \"Alice\" id: 123 status: 1 address: { street: \"Main St\" city: \"NYC\" }",
+            )
+            .expect("failed to parse text format"),
+            // Message 2: has name and status, with partial address (only street).
+            DynamicMessage::parse_text_format(
+                person_message.clone(),
+                "name: \"Bob\" status: 2 address: { street: \"Oak Ave\" }",
+            )
+            .expect("failed to parse text format"),
+            // Message 3: has name and id, no address.
+            DynamicMessage::parse_text_format(person_message.clone(), "name: \"Charlie\" id: 456")
+                .expect("failed to parse text format"),
+            // Message 4: has only name and nested address.
+            DynamicMessage::parse_text_format(
+                person_message.clone(),
+                "name: \"Dave\" address: { city: \"LA\" }",
+            )
+            .expect("failed to parse text format"),
+            // Message 5: has only id (name, status, and address missing).
+            {
+                let mut msg = DynamicMessage::new(person_message.clone());
+                msg.set_field_by_name("id", prost_reflect::Value::I32(789));
+                msg
+            },
+            // Message 6: has only status (name, id, and address missing).
+            {
+                let mut msg = DynamicMessage::new(person_message.clone());
+                msg.set_field_by_name("status", prost_reflect::Value::EnumNumber(1));
+                msg
+            },
+            // Message 7: empty message (all fields missing).
+            DynamicMessage::new(person_message.clone()),
+        ]
+    }
 
-            let buffer = Vec::new();
-            let cursor = io::Cursor::new(buffer);
-            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+    /// Helper to test field combinations with or without presence tracking.
+    fn test_field_combinations_helper(use_proto3_optional: bool, snapshot_name: &str) {
+        let person_message = create_pool_with_person(use_proto3_optional);
 
-            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
-                .expect("failed to add schema and channel");
+        let buffer = Vec::new();
+        let cursor = io::Cursor::new(buffer);
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
 
-            let dynamic_message_1 =
-                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Bob\"status:2")
-                    .expect("failed to parse text format");
+        let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+            .expect("failed to add schema and channel");
 
-            let dynamic_message_2 =
-                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Alice\"id:123")
-                    .expect("failed to parse text format");
-
-            write_message(&mut writer, channel_id, &dynamic_message_1, 42)
+        let messages = create_test_messages(&person_message);
+        for (idx, msg) in messages.iter().enumerate() {
+            write_message(&mut writer, channel_id, msg, 1 + idx as u64)
                 .expect("failed to write message");
-            write_message(&mut writer, channel_id, &dynamic_message_2, 43)
-                .expect("failed to write message");
+        }
 
-            let summary = writer.finish().expect("finishing writer failed");
+        let summary = writer.finish().expect("finishing writer failed");
+        let buffer = writer.into_inner().into_inner();
 
-            (summary, writer.into_inner().into_inner())
-        };
         assert_eq!(
             summary.chunk_indexes.len(),
             1,
@@ -648,6 +772,198 @@ mod test {
         let chunks = run_layer(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
-        insta::assert_snapshot!("two_simple_rows", format!("{:-240}", &chunks[0]));
+        insta::assert_snapshot!(snapshot_name, format!("{:-240}", &chunks[0]));
+    }
+
+    /// Test various field combinations with proto3 optional (presence tracking).
+    /// This includes messages with all fields, partial fields, and missing fields.
+    #[test]
+    fn field_combinations_with_presence_tracking() {
+        test_field_combinations_helper(true, "field_combinations_with_presence_tracking");
+    }
+
+    /// Test various field combinations without proto3 optional (no presence tracking).
+    /// Unset fields will show default values instead of null.
+    #[test]
+    fn field_combinations_without_presence_tracking() {
+        test_field_combinations_helper(false, "field_combinations_without_presence_tracking");
+    }
+
+    /// This test verifies that we are resilient to decode failures. When messages fail to decode,
+    /// they should be logged and skipped without causing length mismatches.
+    #[test]
+    fn decode_failure_resilience() {
+        use prost_reflect::prost::Message as _;
+
+        let (summary, buffer) = {
+            let person_message = create_pool_with_person(true);
+
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+                .expect("failed to add schema and channel");
+
+            // Write a mix of valid messages and completely invalid protobuf data.
+            for i in 0..10 {
+                let bytes = if i % 2 == 0 {
+                    // Write completely invalid protobuf data (random bytes that will fail to decode).
+                    vec![0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB]
+                } else {
+                    // Write a valid message.
+                    let msg = DynamicMessage::parse_text_format(
+                        person_message.clone(),
+                        &format!("name: \"Person{i}\" id: {i}"),
+                    )
+                    .expect("failed to parse text format");
+                    msg.encode_to_vec()
+                };
+
+                // Write the (valid or invalid) message directly.
+                writer
+                    .write_to_known_channel(
+                        &mcap::records::MessageHeader {
+                            channel_id,
+                            sequence: 0,
+                            log_time: 100 + i,
+                            publish_time: 100 + i,
+                        },
+                        &bytes,
+                    )
+                    .expect("failed to write message");
+            }
+
+            let summary = writer.finish().expect("finishing writer failed");
+            (summary, writer.into_inner().into_inner())
+        };
+
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+        // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows.
+        assert_eq!(chunks[0].num_rows(), 5);
+
+        insta::assert_snapshot!("decode_failure_resilience", format!("{:-240}", &chunks[0]));
+    }
+
+    /// TODO(#11221): Support `oneof` values in protobuf MCAP files.
+    /// This test verifies that schemas with oneof fields can be processed without errors.
+    /// Note: The oneof fields (rgb, hsv, bgr) are currently filtered out and do not appear
+    /// in the output. Only non-oneof fields (object) are included in the snapshot.
+    #[test]
+    fn simple_oneof_field() {
+        // Create a simple schema with a oneof field for color representation.
+        let file_descriptor = FileDescriptorProto {
+            name: Some("test.proto".into()),
+            package: Some("com.example".into()),
+            message_type: vec![DescriptorProto {
+                name: Some("ColorData".into()),
+                field: vec![
+                    FieldDescriptorProto {
+                        name: Some("object".into()),
+                        number: Some(1),
+                        label: Some(field_descriptor_proto::Label::Optional as i32),
+                        r#type: Some(field_descriptor_proto::Type::String as i32),
+                        ..Default::default()
+                    },
+                    // Oneof field options: rgb, hsv, or bgr.
+                    FieldDescriptorProto {
+                        name: Some("rgb".into()),
+                        number: Some(2),
+                        label: Some(field_descriptor_proto::Label::Optional as i32),
+                        r#type: Some(field_descriptor_proto::Type::String as i32),
+                        oneof_index: Some(0), // Part of oneof.
+                        ..Default::default()
+                    },
+                    FieldDescriptorProto {
+                        name: Some("hsv".into()),
+                        number: Some(3),
+                        label: Some(field_descriptor_proto::Label::Optional as i32),
+                        r#type: Some(field_descriptor_proto::Type::String as i32),
+                        oneof_index: Some(0), // Part of oneof.
+                        ..Default::default()
+                    },
+                    FieldDescriptorProto {
+                        name: Some("bgr".into()),
+                        number: Some(4),
+                        label: Some(field_descriptor_proto::Label::Optional as i32),
+                        r#type: Some(field_descriptor_proto::Type::String as i32),
+                        oneof_index: Some(0), // Part of oneof.
+                        ..Default::default()
+                    },
+                ],
+                oneof_decl: vec![OneofDescriptorProto {
+                    name: Some("color".into()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        let pool = DescriptorPool::from_file_descriptor_set(FileDescriptorSet {
+            file: vec![file_descriptor],
+        })
+        .expect("failed to create descriptor pool");
+
+        let color_message = pool
+            .get_message_by_name("com.example.ColorData")
+            .expect("failed to get ColorData message");
+
+        // Create MCAP with test messages.
+        let buffer = Vec::new();
+        let cursor = io::Cursor::new(buffer);
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+        let channel_id = add_schema_and_channel(&mut writer, &color_message, "color_topic")
+            .expect("failed to add schema and channel");
+
+        // Message 1: has object and rgb color.
+        let msg1 = DynamicMessage::parse_text_format(
+            color_message.clone(),
+            "object: \"box\" rgb: \"255,0,0\"",
+        )
+        .expect("failed to parse text format");
+
+        write_message(&mut writer, channel_id, &msg1, 1).expect("failed to write message");
+
+        // Message 2: has object and hsv color.
+        let msg2 = DynamicMessage::parse_text_format(
+            color_message.clone(),
+            "object: \"sphere\" hsv: \"120,1.0,1.0\"",
+        )
+        .expect("failed to parse text format");
+
+        write_message(&mut writer, channel_id, &msg2, 2).expect("failed to write message");
+
+        // Message 3: has object and bgr color.
+        let msg3 = DynamicMessage::parse_text_format(
+            color_message.clone(),
+            "object: \"cylinder\" bgr: \"0,0,255\"",
+        )
+        .expect("failed to parse text format");
+
+        write_message(&mut writer, channel_id, &msg3, 3).expect("failed to write message");
+
+        // Message 4: has only object (no color oneof field set).
+        let msg4 = DynamicMessage::parse_text_format(color_message.clone(), "object: \"cone\"")
+            .expect("failed to parse text format");
+
+        write_message(&mut writer, channel_id, &msg4, 4).expect("failed to write message");
+
+        let summary = writer.finish().expect("finishing writer failed");
+        let buffer = writer.into_inner().into_inner();
+
+        assert_eq!(
+            summary.chunk_indexes.len(),
+            1,
+            "there should be only one chunk"
+        );
+
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].num_rows(), 4);
+
+        insta::assert_snapshot!("simple_oneof_field", format!("{:-240}", &chunks[0]));
     }
 }

@@ -35,6 +35,7 @@ dev = [
   "requests>=2.28",
   "types-requests==2.32.4.20250913",
   "tqdm>=4.60",
+  "ty==0.0.11",
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
@@ -144,7 +145,7 @@ package = false
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
-rerun-dev-fixup = { workspace = true }
+rerun-dev-fixup = { path = "rerun_py/rerun_dev_fixup", editable = false }
 # Example packages
 air_traffic_data = { workspace = true }
 animated_urdf = { workspace = true }
@@ -193,7 +194,6 @@ structure_from_motion = { workspace = true }
 [tool.uv.workspace]
 members = [
   "rerun_py",
-  "rerun_py/rerun_dev_fixup",
   "rerun_notebook",
   # Examples
   "examples/python/air_traffic_data",
@@ -364,3 +364,33 @@ ignore_missing_imports = true
 module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
 ignore_errors = true
 ignore_missing_imports = true
+
+[tool.ty.environment]
+extra-paths = ["rerun_py", "rerun_py/rerun_sdk"]
+
+[tool.ty.src]
+include = [
+  "rerun_py/rerun_sdk/rerun",
+  "rerun_py/rerun_bindings",
+  "rerun_py/tests",
+  "rerun_notebook/src/rerun_notebook",
+  "tests/python",
+]
+
+[tool.ty.rules]
+# parsing disagrees with mypy
+unused-ignore-comment = "ignore"
+# Stricter parsing than mypy
+invalid-argument-type = "ignore"
+# this is our api draft need to figure out that config
+unresolved-import = "ignore"
+# others to burn down
+call-non-callable = "ignore"
+index-out-of-bounds = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unresolved-reference = "ignore"
+unsupported-operator = "ignore"
