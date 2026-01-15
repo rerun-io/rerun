@@ -619,9 +619,11 @@ impl StoreHub {
         caches
     }
 
-    /// Fully resets, i.e. removes, the caches for a given store if there's any.
-    pub fn clear_caches_for_store(&mut self, store_id: &StoreId) {
-        self.caches_per_recording.remove(store_id);
+    /// Get the [`Caches`] for a given store.
+    ///
+    /// Returns `None` if no caches exist for this store.
+    pub fn caches_for_store(&self, store_id: &StoreId) -> Option<&Caches> {
+        self.caches_per_recording.get(store_id)
     }
 
     /// Change the active/visible recording id.

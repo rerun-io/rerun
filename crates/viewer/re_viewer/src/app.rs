@@ -2549,22 +2549,16 @@ impl App {
 
     fn process_store_events_for_db(
         &self,
-        store_hub: &mut StoreHub,
+        store_hub: &StoreHub,
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
-        if let Some(caches) = store_hub.active_caches()
-            && &caches.store_id == store_id
-            && let Some(entity_db) = store_hub.entity_db(store_id)
+        // Keep all caches up to date, even if they're in the background.
+        // This ensures that when we switch to a different recording, the caches are already valid.
+        if let Some(entity_db) = store_hub.entity_db(store_id)
+            && let Some(caches) = store_hub.caches_for_store(store_id)
         {
-            // If there's active cahces for this store, notify about the new data, so things stay up to date.
             caches.on_store_events(store_events, entity_db);
-        } else {
-            // If there's no active caches for this store id, make sure that we don't have outdated ones around.
-            //
-            // Caches are supposed to be lazy access and fast to populate,
-            // but we don't want to pay a cost for continously updating data that we're not using right now!
-            store_hub.clear_caches_for_store(store_id);
         }
 
         self.validate_loaded_events(store_events);
