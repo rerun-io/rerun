@@ -745,7 +745,7 @@ impl ChunkStore {
     }
 
     /// Get the [`ComponentType`] and [`ArrowDataType`] for a specific [`EntityPath`] and [`ComponentIdentifier`].
-    pub fn get_component_type(
+    pub fn lookup_component_type(
         &self,
         entity_path: &EntityPath,
         component: ComponentIdentifier,

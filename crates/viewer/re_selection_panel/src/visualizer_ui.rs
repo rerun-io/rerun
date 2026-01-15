@@ -232,7 +232,7 @@ fn visualizer_components(
                     .viewer_ctx
                     .recording_engine()
                     .store()
-                    .get_component_type(&data_result.entity_path, component_id);
+                    .lookup_component_type(&data_result.entity_path, component_id);
                 component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
             })
             .collect::<Vec<_>>()
