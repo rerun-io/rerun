@@ -304,13 +304,84 @@ impl ChunkStoreSubscriber for QueryCache {
 
             let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
+                rrd_manifest,
                 chunk,
                 split_source: _, // Don't care
                 compacted,
             } = diff;
 
-            {
-                re_tracing::profile_scope!("compact events");
+            if let Some(rrd_manifest) = rrd_manifest {
+                re_tracing::profile_scope!("compact events (virtual)");
+
+                // Some virtual data was inserted into the store, we need to keep track of this information.
+                //
+                // In particular, we must know if there are pending tombstones out there, in order to properly
+                // populate the `might_require_clearing` set.
+
+                match rrd_manifest.get_static_data_as_a_map() {
+                    Ok(native_static_map) => {
+                        for (entity_path, per_component) in native_static_map {
+                            for (component, chunk_id) in per_component {
+                                compacted_events
+                                    .static_
+                                    .entry((entity_path.clone(), component))
+                                    .or_default()
+                                    .insert(chunk_id);
+                            }
+                        }
+                    }
+
+                    Err(err) => {
+                        re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
+                    }
+                }
+
+                match rrd_manifest.get_temporal_data_as_a_map() {
+                    Ok(native_temporal_map) => {
+                        for (entity_path, per_timeline) in native_temporal_map {
+                            for (timeline, per_component) in per_timeline {
+                                for (component, per_chunk) in per_component {
+                                    for (chunk_id, entry) in per_chunk {
+                                        let key = QueryCacheKey::new(
+                                            entity_path.clone(),
+                                            *timeline.name(),
+                                            component,
+                                        );
+
+                                        // latest-at
+                                        {
+                                            let data_time_min = entry.time_range.min();
+                                            compacted_events
+                                                .temporal_latest_at
+                                                .entry(key.clone())
+                                                .and_modify(|time| {
+                                                    *time = TimeInt::min(*time, data_time_min);
+                                                })
+                                                .or_insert(data_time_min);
+                                        }
+
+                                        // range
+                                        {
+                                            let compacted_events = compacted_events
+                                                .temporal_range
+                                                .entry(key)
+                                                .or_default();
+                                            compacted_events.insert(chunk_id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Err(err) => {
+                        re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
+                    }
+                }
+            } else {
+                re_tracing::profile_scope!("compact events (physical)");
+
+                // Some physical data was inserted into the store, we need to invalidate caches appropriately.
 
                 if chunk.is_static() {
                     for component_identifier in chunk.components_identifiers() {

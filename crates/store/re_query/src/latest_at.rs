@@ -77,9 +77,6 @@ impl QueryCache {
         // the data.
         let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
         {
-            // TODO(cmc): this will currently fail with stores bootstrapped directly from an RRD manifest
-            // (`ChunkStore::insert_rrd_manifest`), since virtual insertions don't trigger any kind of store
-            // events yet.
             let potential_clears = self.might_require_clearing.read();
 
             let mut clear_entity_path = entity_path.clone();
@@ -796,6 +793,7 @@ mod tests {
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber as _,
     };
+    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{EntityPath, TimePoint, Timeline};
@@ -1141,6 +1139,138 @@ mod tests {
                 assert_eq!(expected, results);
             }
         }
+    }
+
+    // Make sure we're not blind to virtual tombstones coming from RRD manifests.
+    #[test]
+    #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
+    fn partial_data_manifest_bootstrap() {
+        let entity_parent: EntityPath = "/parent".into();
+        let entity_child: EntityPath = "/parent/child".into();
+
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timepoint1 = TimePoint::from_iter([(timeline_frame, 1)]);
+        let point1 = MyPoint::new(1.0, 1.0);
+        let row_id1 = RowId::new();
+
+        let mut next_chunk_id = next_chunk_id_generator(0x1337);
+
+        let chunk1 = create_chunk_with_point(
+            next_chunk_id(),
+            row_id1,
+            entity_child.clone(),
+            timepoint1.clone(),
+            point1,
+        );
+
+        let chunk_parent_clear_flat =
+            Chunk::builder_with_id(next_chunk_id(), entity_parent.clone())
+                .with_archetype(RowId::new(), timepoint1.clone(), &Clear::flat())
+                .build()
+                .unwrap();
+
+        let rrd_manifest = {
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+                ChunkStoreConfig::ALL_DISABLED,
+            );
+
+            store.insert_chunk(&Arc::new(chunk1.clone())).unwrap();
+            store
+                .insert_chunk(&Arc::new(chunk_parent_clear_flat.clone()))
+                .unwrap();
+
+            Arc::new(store_to_rrd_manifest(&store))
+        };
+
+        let store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let store = ChunkStoreHandle::new(store);
+
+        let mut cache = QueryCache::new(store.clone());
+
+        // The store is now aware that there is a virtual tombstone pending somewhere, and so should be the cache.
+        cache.on_events(&[store.write().insert_rrd_manifest(rrd_manifest).unwrap()]);
+
+        // Load the physical data into the store, but not the tombstone.
+        cache.on_events(
+            &store
+                .write()
+                .insert_chunk(&Arc::new(chunk1.clone()))
+                .unwrap(),
+        );
+
+        let component = MyPoints::descriptor_points().component;
+        let query = LatestAtQuery::new(*timeline_frame.name(), 3);
+
+        // Even though the data is physically loaded and the tombstone isn't, the cache should know from
+        // the RRD manifest that it exists somewhere out there.
+        // Note that the tombstone isn't even recursive, but we cannot possibly know that yet.
+        {
+            let results = cache.latest_at(&query, &entity_child, [component]);
+            let expected = {
+                let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
+                results.missing = vec![chunk_parent_clear_flat.id()];
+                results
+            };
+            assert_eq!(true, results.is_partial());
+            assert_eq!(expected, results);
+        }
+
+        // Physically load the tombstone itself.
+        cache.on_events(
+            &store
+                .write()
+                .insert_chunk(&Arc::new(chunk_parent_clear_flat.clone()))
+                .unwrap(),
+        );
+
+        // Turns out the tombstone was never recursive to begin with: we expect our results back.
+        {
+            let results = cache.latest_at(&query, &entity_child, [component]);
+            let expected = {
+                let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
+                results.add(
+                    component,
+                    (TimeInt::new_temporal(1), row_id1),
+                    chunk1.clone().into_unit().unwrap(),
+                );
+                results
+            };
+            assert_eq!(false, results.is_partial());
+            assert_eq!(expected, results);
+        }
+    }
+
+    fn store_to_rrd_manifest(store: &ChunkStore) -> RrdManifest {
+        let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
+
+        let mut offset = 0;
+        for chunk in store.iter_chunks() {
+            let chunk_batch = chunk.to_chunk_batch().unwrap();
+
+            use re_byte_size::SizeBytes as _;
+            let byte_size_uncompressed = chunk.heap_size_bytes();
+
+            let uncompressed_byte_span = re_span::Span {
+                start: offset,
+                len: byte_size_uncompressed,
+            };
+
+            offset += byte_size_uncompressed;
+
+            rrd_manifest_builder
+                .append(&chunk_batch, uncompressed_byte_span, byte_size_uncompressed)
+                .unwrap();
+        }
+
+        let rrd_manifest = rrd_manifest_builder.build(store.id()).unwrap();
+        rrd_manifest.sanity_check_cheap().unwrap();
+        rrd_manifest.sanity_check_heavy().unwrap();
+
+        rrd_manifest
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

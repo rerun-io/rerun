@@ -85,13 +85,15 @@ fn arrow_tree_ui() {
     let mut results = SnapshotResults::new();
 
     for (array_name, arrow) in arrays {
-        let mut harness = egui_kittest::Harness::builder()
-            .with_size((300.0, 500.0))
-            .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
+        let mut harness = re_ui::testing::new_harness(
+            re_ui::testing::TestOptions::Gui,
+            egui::Vec2::new(300.0, 500.0),
+        )
+        .build_ui(|ui| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, Default::default(), &arrow);
-            });
+            re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, Default::default(), &arrow);
+        });
 
         harness.run();
 

@@ -318,6 +318,15 @@ static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
 fn init_shared_renderer_setup() -> SharedWgpuResources {
     let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
     let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+
+    let is_ci = std::env::var("CI").is_ok();
+    if is_ci {
+        assert!(
+            adapter.get_info().device_type == wgpu::DeviceType::Cpu,
+            "We require a software renderer for CI tests. GPU based ones have been unreliable in the past, see https://github.com/rerun-io/rerun/issues/11359."
+        );
+    }
+
     let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
@@ -523,6 +532,8 @@ impl TestContext {
         let ctx = ViewerContext {
             global_context: GlobalContext {
                 is_test: true,
+
+                memory_limit: re_memory::MemoryLimit::UNLIMITED,
 
                 app_options: &self.app_options,
                 reflection: &self.reflection,
