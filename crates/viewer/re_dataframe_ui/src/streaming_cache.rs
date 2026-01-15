@@ -185,6 +185,8 @@ impl StreamingCacheTableProvider {
     }
 
     /// Background task: stream from DataFrame to cache.
+    ///
+    /// Stops early if no consumers remain (detected via Arc strong count).
     async fn stream_to_cache(
         df_result: DataFusionResult<DataFrame>,
         cache: Arc<Mutex<StreamingCacheInner>>,
@@ -215,6 +217,11 @@ impl StreamingCacheTableProvider {
 
         // Stream batches into cache
         loop {
+            // Stop if we're the only one holding a reference (no consumers left)
+            if Arc::strong_count(&cache) == 1 {
+                return;
+            }
+
             match stream.next().await {
                 Some(Ok(batch)) => {
                     let mut guard = cache.lock();
