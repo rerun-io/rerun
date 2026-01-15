@@ -3,7 +3,7 @@ title = "Eye control"
 tags = ["Eye control", "3D", "Pinhole camera"]
 source = "https://github.com/rerun-io/eye_control_example"
 thumbnail = "https://static.rerun.io/eye_control_example/01288e2cd92ec68715258e281104701fc8908c37/480w.png"
-thumbnail_dimensions = [480, 267]
+thumbnail_dimensions = [480, 306]
 -->
 
 https://vimeo.com/1154575169?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=3048:2030
