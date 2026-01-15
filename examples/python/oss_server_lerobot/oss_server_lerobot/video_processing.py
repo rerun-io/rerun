@@ -283,6 +283,7 @@ def infer_video_shape(
     view = dataset.filter_segments(segment_id).filter_contents(spec.path)
     sample_column = f"{spec.path}:VideoStream:sample"
     df = view.reader(index=index_column).select(index_column, sample_column)
+    print(df.schema())
     table = pa.table(df)
 
     # Check if the table has any rows - if not, the segment might not have video data for this index
