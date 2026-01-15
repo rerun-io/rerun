@@ -632,7 +632,7 @@ impl EntityDb {
     }
 
     /// We call this on any changes, before returning the store events to the outsider caller.
-    fn on_store_events(&mut self, store_events: &[ChunkStoreEvent]) {
+    pub(crate) fn on_store_events(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let mut engine = self.storage_engine.write();
@@ -730,6 +730,8 @@ impl EntityDb {
         store_events
     }
 
+    /// The chunk store events are not handled within this function!
+    #[must_use]
     pub fn gc(&self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 

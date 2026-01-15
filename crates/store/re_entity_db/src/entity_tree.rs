@@ -333,7 +333,8 @@ mod tests {
             assert!(!grandchild.check_is_empty(&db.storage_engine()));
         }
 
-        let _store_events = db.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
+        let store_events = db.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
+        db.on_store_events(&store_events);
 
         {
             let parent = db
