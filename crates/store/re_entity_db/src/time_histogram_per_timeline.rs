@@ -218,9 +218,7 @@ impl TimeHistogramPerTimeline {
     pub fn on_rrd_manifest(&mut self, rrd_manifest_index: &RrdManifestIndex) {
         re_tracing::profile_function!();
 
-        re_log::info!("on rrd manifest");
-
-        for chunk in rrd_manifest_index.remove_chunks() {
+        for chunk in rrd_manifest_index.remote_chunks() {
             for info in chunk.temporals.values() {
                 let histogram = self
                     .times

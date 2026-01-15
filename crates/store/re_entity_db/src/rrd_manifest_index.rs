@@ -215,7 +215,8 @@ impl RrdManifestIndex {
         Ok(())
     }
 
-    pub fn remove_chunks(&self) -> impl Iterator<Item = &ChunkInfo> {
+    /// Iterate over all chunks in the manifest.
+    pub fn remote_chunks(&self) -> impl Iterator<Item = &ChunkInfo> {
         self.remote_chunks.values()
     }
 

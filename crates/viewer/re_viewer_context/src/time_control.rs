@@ -1405,13 +1405,13 @@ fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimeHistogram>) 
             _ => 2,                               // user-defined, highest priority
         }
     }
-    let most_events = timelines.into_iter().max_by(|a, b| {
+    let most_rows = timelines.into_iter().max_by(|a, b| {
         a.num_rows()
             .cmp(&b.num_rows())
             .then_with(|| timeline_priority(&a.timeline()).cmp(&timeline_priority(&b.timeline())))
     });
 
-    if let Some(most_events) = most_events {
+    if let Some(most_events) = most_rows {
         most_events.timeline()
     } else {
         Timeline::log_time()
