@@ -4,7 +4,7 @@ use std::path::Path;
 use re_chunk::{RowId, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, VisualizerConfiguration};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -44,10 +44,7 @@ fn setup_viewport(test_context: &mut TestContext) {
             &re_chunk::EntityPath::from("vector"),
             view_1.id,
             [
-                &VisualizerConfiguration::new(re_sdk_types::archetypes::BarChart::visualizer())
-                    .with_overrides(
-                        &re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]), // #FF9001
-                    ),
+                &re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]), // #FF9001
             ],
         );
 

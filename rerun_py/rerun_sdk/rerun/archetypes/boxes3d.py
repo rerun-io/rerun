@@ -414,5 +414,5 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
     def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype."""
+        """Creates a visualizer for this archetype, using all currently set values as overrides."""
         return Visualizer("Boxes3D", overrides=self.as_component_batches(), mappings=None)

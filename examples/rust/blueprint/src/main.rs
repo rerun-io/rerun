@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .with_origin("/")
                         .with_contents(["/**"])
                         .with_defaults(&rerun::Boxes2D::update_fields().with_radii([2.0]))
-                        .with_overrides(
+                        .with_override(
                             "rect/0",
                             &rerun::Boxes2D::update_fields().with_radii([1.0]),
                         ),

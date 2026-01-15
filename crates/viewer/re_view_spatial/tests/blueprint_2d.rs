@@ -4,7 +4,7 @@ use re_sdk_types::{Archetype as _, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId, VisualizerConfiguration};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);
@@ -110,14 +110,7 @@ fn setup_blueprint(
         );
 
         if let Some(arrow_overrides) = arrow_overrides {
-            ctx.save_visualizers(
-                &EntityPath::from("arrows"),
-                view.id,
-                [
-                    &VisualizerConfiguration::new(archetypes::Arrows2D::visualizer())
-                        .with_overrides(arrow_overrides),
-                ],
-            );
+            ctx.save_visualizers(&EntityPath::from("arrows"), view.id, [arrow_overrides]);
         }
 
         if let Some(arrow_defaults) = arrow_defaults {

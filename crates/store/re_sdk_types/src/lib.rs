@@ -303,6 +303,9 @@ pub use any_values::AnyValues;
 mod rotation3d;
 pub use rotation3d::Rotation3D;
 
+mod visualizer;
+pub use visualizer::{VisualizableArchetype, Visualizer};
+
 // Has to live here otherwise we can't export it from `re_sdk_types`.
 mod colormap_category;
 pub use colormap_category::ColormapCategory;

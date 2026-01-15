@@ -7,9 +7,7 @@ use re_sdk_types::datatypes::Angle;
 use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{
-    BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId, VisualizerConfiguration,
-};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 
 fn log_transforms(test_context: &mut TestContext, time: &TimePoint) {
@@ -233,10 +231,7 @@ fn test_transform_axes_for_explicit_transforms() {
         ctx.save_visualizers(
             &EntityPath::from("all_the_transforms"),
             view_id,
-            [
-                &VisualizerConfiguration::new(archetypes::TransformAxes3D::visualizer())
-                    .with_overrides(&archetypes::TransformAxes3D::new(1.0).with_show_frame(true)),
-            ],
+            [&archetypes::TransformAxes3D::new(1.0).with_show_frame(true)],
         );
 
         view_id

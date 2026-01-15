@@ -10,7 +10,7 @@ use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId, VisualizerConfiguration};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(300.0, 300.0);
@@ -48,14 +48,7 @@ fn setup_blueprint(
         }
 
         if let Some(color_override) = color_override {
-            ctx.save_visualizers(
-                entity_path,
-                view.id,
-                [
-                    &VisualizerConfiguration::new(archetypes::Points3D::visualizer())
-                        .with_overrides(color_override),
-                ],
-            );
+            ctx.save_visualizers(entity_path, view.id, [color_override]);
         }
 
         blueprint.add_view_at_root(view)

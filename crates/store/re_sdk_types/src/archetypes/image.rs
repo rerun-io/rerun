@@ -201,12 +201,6 @@ impl Image {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("Image".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
@@ -311,6 +305,13 @@ impl ::re_types_core::AsComponents for Image {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for Image {}
+
+impl crate::VisualizableArchetype for Image {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("Image").with_overrides(self)
+    }
+}
 
 impl Image {
     /// Create a new `Image`.

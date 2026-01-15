@@ -124,12 +124,6 @@ impl VideoStream {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("VideoStream".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -239,6 +233,13 @@ impl ::re_types_core::AsComponents for VideoStream {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for VideoStream {}
+
+impl crate::VisualizableArchetype for VideoStream {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("VideoStream").with_overrides(self)
+    }
+}
 
 impl VideoStream {
     /// Create a new `VideoStream`.

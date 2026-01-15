@@ -9,9 +9,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{
-    BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId, VisualizerConfiguration,
-};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -183,14 +181,9 @@ fn setup_blueprint(
             &EntityPath::from("plots/cos"),
             view.id,
             // Override color and markers for the `cos` plot and make it a points visualizer.
-            [
-                &VisualizerConfiguration::new(archetypes::SeriesPoints::visualizer())
-                    .with_overrides(
-                        &archetypes::SeriesPoints::default()
-                            .with_colors([(0, 255, 0)])
-                            .with_markers([components::MarkerShape::Cross]),
-                    ),
-            ],
+            [&archetypes::SeriesPoints::default()
+                .with_colors([(0, 255, 0)])
+                .with_markers([components::MarkerShape::Cross])],
         );
 
         // Override default color (should apply to the `sin` plot).

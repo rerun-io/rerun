@@ -148,12 +148,6 @@ impl GraphNodes {
             component_type: Some("rerun.components.Radius".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("GraphNodes".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -280,6 +274,13 @@ impl ::re_types_core::AsComponents for GraphNodes {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for GraphNodes {}
+
+impl crate::VisualizableArchetype for GraphNodes {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("GraphNodes").with_overrides(self)
+    }
+}
 
 impl GraphNodes {
     /// Create a new `GraphNodes`.

@@ -117,12 +117,6 @@ impl Asset3D {
             component_type: Some("rerun.components.AlbedoFactor".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("Asset3D".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -223,6 +217,13 @@ impl ::re_types_core::AsComponents for Asset3D {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for Asset3D {}
+
+impl crate::VisualizableArchetype for Asset3D {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("Asset3D").with_overrides(self)
+    }
+}
 
 impl Asset3D {
     /// Create a new `Asset3D`.
