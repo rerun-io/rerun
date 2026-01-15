@@ -259,27 +259,6 @@ class TestComponentColumnFiltering:
         assert len(component_columns) == 1
         assert component_columns[0].component == "Points3D:positions"
 
-    def test_filter_contents_works_with_column_names_for(self, test_dataset_multi_component: DatasetEntry) -> None:
-        """column_names_for() output can be passed directly to filter_contents()."""
-        # Get column names for Position3D components using column_names_for()
-        schema = test_dataset_multi_component.schema()
-        position_columns = schema.column_names_for(component_type="rerun.components.Position3D")
-
-        # Should find the position column
-        assert len(position_columns) > 0
-        assert "/world/points:Points3D:positions" in position_columns
-
-        # Use those column names directly in filter_contents()
-        view = test_dataset_multi_component.filter_contents(position_columns)
-
-        # Should have filtered to only Position3D components
-        filtered_schema = view.schema()
-        filtered_columns = filtered_schema.component_columns()
-
-        # All filtered columns should be Position3D
-        for col in filtered_columns:
-            assert col.component_type == "rerun.components.Position3D"
-
 
 class TestPropertyPathHandling:
     """Tests for property path edge cases."""

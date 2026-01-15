@@ -154,11 +154,15 @@ def _get_column_names_for_archetypes(
         … )
 
     """
+    # Convert archetype specs to fully-qualified names
+    archetype_names = {_archetype_to_name(arch) for arch in archetypes}  # type: ignore[arg-type]
+
+    # Filter component columns by archetype
     all_column_names = []
-    for archetype in archetypes:
-        archetype_name = _archetype_to_name(archetype)  # type: ignore[arg-type]
-        column_names = schema.column_names_for(archetype=archetype_name)
-        all_column_names.extend(column_names)
+    for col in schema.component_columns():
+        if col.archetype and col.archetype in archetype_names:
+            all_column_names.append(col.name)
+
     return all_column_names
 
 
@@ -215,11 +219,15 @@ def _get_column_names_for_component_types(
         … )
 
     """
+    # Convert component type specs to fully-qualified names
+    component_type_names = {_component_type_to_name(ct) for ct in component_types}  # type: ignore[arg-type]
+
+    # Filter component columns by component type
     all_column_names = []
-    for component_type in component_types:
-        component_type_name = _component_type_to_name(component_type)  # type: ignore[arg-type]
-        column_names = schema.column_names_for(component_type=component_type_name)
-        all_column_names.extend(column_names)
+    for col in schema.component_columns():
+        if col.component_type and col.component_type in component_type_names:
+            all_column_names.append(col.name)
+
     return all_column_names
 
 
@@ -717,7 +725,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         --------
         filter_archetypes : Filter to specific archetype types (higher-level filtering)
         filter_component_types : Filter to specific component types (higher-level filtering)
-        schema.column_names_for : Get column names for filtering programmatically
 
         """
 
@@ -1320,7 +1327,6 @@ class DatasetView:
         --------
         filter_archetypes : Filter to specific archetype types (higher-level filtering)
         filter_component_types : Filter to specific component types (higher-level filtering)
-        schema.column_names_for : Get column names for filtering programmatically
 
         """
         if isinstance(exprs, str):
