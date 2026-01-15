@@ -18,7 +18,7 @@ Data can be streamed directly to the Viewer, saved to `.rrd` files, or both.
 The Viewer visualizes your data. It comes in two forms:
 
 - **Native Viewer**: A desktop application for Linux, macOS, and Windows
-- **Web Viewer**: A Wasm application that runs in browsers
+- **Web Viewer**: A browser based application
 
 The viewer includes a [**Chunk Store**](logging-and-ingestion/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
