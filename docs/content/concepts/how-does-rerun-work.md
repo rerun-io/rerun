@@ -3,7 +3,7 @@ title: How does Rerun work?
 order: 0
 ---
 
-Rerun has several components that work together to log, store, and visualize multimodal data. This page explains what they are and how they connect.
+Rerun has several components manage multimodal data across its lifetime. This page explains what they are and how they connect.
 
 ## The components
 
