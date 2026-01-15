@@ -13,7 +13,7 @@ import rerun as rr
 config = rr.ChunkBatcherConfig(
     flush_num_bytes=2**63,
     flush_num_rows=10,
-    flush_tick=10,
+    flush_tick=timedelta(seconds=10),
 )
 
 rec = rr.RecordingStream("rerun_example_micro_batching", batcher_config=config)
