@@ -1,7 +1,7 @@
-use super::ExtensionClass;
+use super::docs::{quote_doc_lines, quote_obj_docs};
+use super::extension_class::ExtensionClass;
 use crate::codegen::Target;
 use crate::codegen::common::StringExt as _;
-use crate::codegen::python::{quote_doc_lines, quote_obj_docs};
 use crate::{ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter};
 
 pub fn code_for_view(
