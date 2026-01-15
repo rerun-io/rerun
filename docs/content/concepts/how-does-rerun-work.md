@@ -33,7 +33,7 @@ The Data Platform provides persistent storage and indexing for large-scale data.
 - **Datasets**: Named collections of related recordings
 - **Segments**: Individual `.rrd` files registered to a dataset
 
-Data is served via the **redap** protocol (Rerun Data Protocol).
+Data is served via the **redap** protocol (**Re**run **Da**ta **P**rotocol).
 
 The Data Platform is available as:
 - Open-source server for local development (`rerun server`)
