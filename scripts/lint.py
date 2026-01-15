@@ -1532,12 +1532,12 @@ def main() -> None:
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
-    rerun_dirpath = get_rerun_root()
-    os.chdir(rerun_dirpath)
+    rerun_root = get_rerun_root()
+    os.chdir(rerun_root)
 
     if args.files:
         for filepath in args.files:
-            filepath = os.path.join(".", os.path.relpath(filepath, rerun_dirpath))
+            filepath = os.path.join(".", os.path.relpath(filepath, rerun_root))
             filepath = str(filepath).replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
@@ -1548,15 +1548,14 @@ def main() -> None:
         repo = git.Repo(".", search_parent_directories=True)
         assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
         repo_root = Path(repo.working_tree_dir).resolve()
-        current_root = Path(rerun_dirpath).resolve()
 
         tracked_files = [item[1].path for item in repo.index.iter_blobs()]
         for filepath in tracked_files:
-            # Filter to only files under current_root (for monorepo support)
+            # Filter to only files under rerun_root (for monorepo support)
             full_path = repo_root / filepath
-            if not full_path.is_relative_to(current_root):
+            if not full_path.is_relative_to(rerun_root):
                 continue
-            filepath = "./" + str(full_path.relative_to(current_root))
+            filepath = "./" + str(full_path.relative_to(rerun_root))
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):
