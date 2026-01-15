@@ -37,8 +37,11 @@ For more information on future improved ROS support, see tracking issue: [#1527]
 
 > NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
+>
+> The commands are focused on the official ROS installation path on an Ubuntu distro, but should also work analogously if you installed ROS through [Robostack](https://robostack.github.io/index.html).
 
 This example was developed and tested on top of [ROS2 Kilted Kaiju](https://docs.ros.org/en/kilted/index.html), with [Nav2](https://docs.nav2.org/) and the Turtlebot 4 simulation example from the [nav2_bringup](https://github.com/ros-navigation/navigation2/tree/main/nav2_bringup) package.
+If you use another version of ROS, e.g. [Jazzy](https://docs.ros.org/en/jazzy/index.html), you should be able to just replace `kilted` with `jazzy` in the commands below.
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```
