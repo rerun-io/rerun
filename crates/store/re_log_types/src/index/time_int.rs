@@ -170,6 +170,13 @@ impl TimeInt {
             None => Self::STATIC,
         }
     }
+
+    pub fn saturating_sub(&self, arg: i64) -> Self {
+        match self.0 {
+            Some(t) => Self::new_temporal(t.get().saturating_sub(arg)),
+            None => Self::STATIC,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {

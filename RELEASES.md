@@ -147,7 +147,7 @@ Once the release workflow is started, it will create a pull request for the rele
 The pull request description will tell you what to do next.
 
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts and run PR checks.
-Additionally, it will spawn a second workflow (when the release artifacts have been published to PyPI, crates.io etc.) called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
+Additionally, if the release type is set to `final` or `rc`, it will spawn a second workflow (when the release artifacts have been published to PyPI, crates.io etc.) called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
 This workflow is responsible for creating [the GitHub release draft](https://github.com/rerun-io/rerun/releases) and to publish the artifacts to it.
 **Make sure this workflow also finishes!**.
 Only after it finishes successfully should you un-draft [the GitHub release](https://github.com/rerun-io/rerun/releases).
