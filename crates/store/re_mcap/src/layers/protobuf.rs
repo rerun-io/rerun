@@ -284,7 +284,7 @@ fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> Struct
     // Warn about oneof fields in this message (both top-level and nested)
     if message_descriptor.oneofs().len() > 0 {
         re_log::warn_once!(
-            "`oneof` in schema {} is not supported yet.",
+            "Ignoring {} message: Protobuf schemas containing `oneof` are not supported yet.",
             message_descriptor.full_name()
         );
     }
