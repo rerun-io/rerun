@@ -384,7 +384,7 @@ impl VideoPlayer {
                 .get(last_enqueued + 1)
                 .is_none_or(|sample| matches!(sample, re_video::SampleMetadataState::Unloaded(_)))
             {
-                // We require all samples we're enqueing before the requested
+                // We require all samples we're enqueuing before the requested
                 // sample to be present.
                 if last_enqueued < requested_sample_idx {
                     return Err(VideoPlayerError::InsufficientSampleData(
