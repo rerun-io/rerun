@@ -2996,7 +2996,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Don't apply updates for this chunk.
-        entity_db.gc(&GarbageCollectionOptions::gc_everything());
+        let _store_events = entity_db.gc(&GarbageCollectionOptions::gc_everything());
         apply_store_subscriber_events(&mut cache, &entity_db);
         let num_bytes_after_gc = cache.total_size_bytes();
         assert!(
@@ -3036,7 +3036,8 @@ mod tests {
                 .contains_key(&EntityPath::from("my_recursive_clear")),
         );
 
-        entity_db.gc(&GarbageCollectionOptions::gc_everything());
+        // Don't apply updates for this chunk.
+        let _store_events = entity_db.gc(&GarbageCollectionOptions::gc_everything());
         apply_store_subscriber_events(&mut cache, &entity_db);
 
         assert!(

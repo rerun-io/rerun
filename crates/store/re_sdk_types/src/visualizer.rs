@@ -1,11 +1,12 @@
 use crate::blueprint::components as bp_components;
+use crate::datatypes::Uuid;
 use crate::{AsComponents, SerializedComponentBatch};
 
 /// Configuration for a visualizer in Rerun.
 #[derive(Clone, Debug)]
 pub struct Visualizer {
     /// Identifies this visualizer instance uniquely within its view.
-    pub id: uuid::Uuid,
+    pub id: bp_components::VisualizerInstructionId,
 
     /// The type of visualizer this is.
     pub visualizer_type: bp_components::VisualizerType,
@@ -23,7 +24,7 @@ impl Visualizer {
     /// Create a new visualizer configuration with a random id.
     pub fn new(visualizer_type: impl Into<bp_components::VisualizerType>) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: bp_components::VisualizerInstructionId(Uuid::random()),
             visualizer_type: visualizer_type.into(),
             overrides: Vec::new(),
             mappings: Vec::new(),

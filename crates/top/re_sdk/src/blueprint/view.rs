@@ -129,7 +129,7 @@ impl View {
             for visualizer in visualizers {
                 // Log the visualizer instruction (which contains the visualizer type)
                 let visualizer_path = base_visualizer_path
-                    .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+                    .join(&EntityPath::from_single_string(visualizer.id.0.to_string()));
 
                 // TODO(RR-3255): Support mappings
                 let instruction = VisualizerInstruction::new(visualizer.visualizer_type.clone());
@@ -144,7 +144,7 @@ impl View {
                     )?;
                 }
 
-                visualizer_ids.push(VisualizerInstructionId(visualizer.id.into()));
+                visualizer_ids.push(VisualizerInstructionId(visualizer.id.0));
             }
 
             // Log the active visualizers list

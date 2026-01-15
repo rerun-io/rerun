@@ -61,7 +61,7 @@ pub trait BlueprintContext {
         let mut ids = Vec::new();
         for visualizer in visualizers {
             let visualizer = visualizer.into();
-            ids.push(visualizer.id);
+            ids.push(visualizer.id.clone());
 
             let visualizer_path = base_override_path
                 .clone()
