@@ -112,6 +112,12 @@ def main() -> None:
         action="store_true",
         help="Add any missing asset files to tests/assets/rrd/snippets",
     )
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        default=None,
+        help="Save a manifest of failing .rrd file paths to the specified file",
+    )
     parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified example(s)")
 
     args = parser.parse_args()
@@ -279,6 +285,49 @@ def main() -> None:
 
         for example, comparison, _error in errors:
             print(f"❌ {example} - {comparison} differs")
+
+        # Generate manifest of failing .rrd files if requested
+        if args.manifest:
+            manifest_path = Path(args.manifest)
+            failing_files = set()  # Use set to avoid duplicates
+
+            for example, comparison, _error in errors:
+                if comparison == "old-rrd-files":
+                    # Include both backwards compatibility file and new baseline
+                    backwards_path = example.backwards_compatibility_path()
+                    if backwards_path.exists():
+                        failing_files.add(str(backwards_path.absolute()))
+                    # Include the baseline we compared against
+                    if "rust" not in example.opt_out_entirely():
+                        failing_files.add(str(Path(example.output_path("rust")).absolute()))
+                    elif "py" not in example.opt_out_entirely():
+                        failing_files.add(str(Path(example.output_path("python")).absolute()))
+
+                elif comparison == "C++":
+                    # Include C++ output and baseline (rust or python)
+                    cpp_path = Path(example.output_path("cpp"))
+                    if cpp_path.exists():
+                        failing_files.add(str(cpp_path.absolute()))
+                    if "rust" not in example.opt_out_entirely():
+                        baseline_path = Path(example.output_path("rust"))
+                    else:
+                        baseline_path = Path(example.output_path("python"))
+                    if baseline_path.exists():
+                        failing_files.add(str(baseline_path.absolute()))
+
+                elif comparison == "Python":
+                    # Include Python output and baseline (rust)
+                    python_path = Path(example.output_path("python"))
+                    if python_path.exists():
+                        failing_files.add(str(python_path.absolute()))
+                    baseline_path = Path(example.output_path("rust"))
+                    if baseline_path.exists():
+                        failing_files.add(str(baseline_path.absolute()))
+
+            # Write manifest file
+            if failing_files:
+                manifest_path.write_text("\n".join(sorted(failing_files)) + "\n")
+                print(f"Wrote manifest of {len(failing_files)} failing .rrd files to {manifest_path}")
 
         sys.exit(1)
 

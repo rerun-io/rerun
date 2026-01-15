@@ -197,7 +197,63 @@ jobs:
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
+        run: RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build --manifest /tmp/failing_snippets_manifest.txt
+
+      - name: Prepare failing snippet artifacts
+        if: failure() && !inputs.FAST
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MANIFEST="/tmp/failing_snippets_manifest.txt"
+
+          if [ ! -f "$MANIFEST" ]; then
+            echo "No manifest file found, skipping artifact preparation"
+            exit 0
+          fi
+
+          echo "Preparing failing snippet artifacts from manifest…"
+          mkdir -p failing_snippets
+
+          count=0
+          while IFS= read -r filepath; do
+            if [ -f "$filepath" ]; then
+              # Preserve directory structure relative to known paths
+              if [[ "$filepath" == *"/docs/snippets/all/"* ]]; then
+                relpath="${filepath#*docs/snippets/all/}"
+                destdir="failing_snippets/all/$(dirname "$relpath")"
+              elif [[ "$filepath" == *"/tests/assets/rrd/snippets/"* ]]; then
+                relpath="${filepath#*tests/assets/rrd/snippets/}"
+                destdir="failing_snippets/backwards_compat/$(dirname "$relpath")"
+              else
+                # Fallback: preserve filename only
+                destdir="failing_snippets/other"
+                relpath="$(basename "$filepath")"
+              fi
+
+              mkdir -p "$destdir"
+              cp "$filepath" "$destdir/"
+              count=$((count + 1))
+            else
+              echo "Warning: File not found: $filepath"
+            fi
+          done < "$MANIFEST"
+
+          cp "$MANIFEST" failing_snippets/manifest.txt
+          echo "Prepared $count failing .rrd files for upload"
+
+          if [ $count -eq 0 ]; then
+            echo "Warning: No files were copied"
+          fi
+
+      - name: Upload failing snippet artifacts
+        uses: actions/upload-artifact@v4
+        if: failure() && !inputs.FAST
+        with:
+          name: failing-snippets-${{ inputs.PLATFORM }}
+          path: failing_snippets/
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Check the python library signatures
         run: pixi run py-check-signatures
