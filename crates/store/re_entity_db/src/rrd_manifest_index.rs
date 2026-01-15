@@ -458,6 +458,8 @@ impl RrdManifestIndex {
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );
 
+        let entity_paths = manifest.col_chunk_entity_path_raw()?;
+
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
         // That's fine: they will still be missing next frame, and therefore will still be reported
         // as such by the store.
@@ -472,12 +474,30 @@ impl RrdManifestIndex {
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
-            total_uncompressed_byte_budget =
-                total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
-            if total_uncompressed_byte_budget == 0 {
-                break; // We've already loaded too much.
-            }
+
+            if total_uncompressed_byte_budget < uncompressed_chunk_size {
+                // TODO(RR-3344): improve this error message
+                let entity_path = entity_paths.value(row_idx);
+                if cfg!(target_arch = "wasm32") {
+                    re_log::debug_once!(
+                        "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. Try the native viewer instead, or split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+                    );
+                } else {
+                    re_log::warn_once!(
+                        "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. You should increase the `--memory-limit` or try to split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+                    );
                 }
+                continue;
+            }
+
+            {
+                // Can we fit this chunk in memory?
+                total_uncompressed_byte_budget =
+                    total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
+                if total_uncompressed_byte_budget == 0 {
+                    break; // We've already loaded too much.
+                }
+            }
 
             if remote_chunk.state == LoadState::Unloaded {
                 let Ok(row_idx) = i32::try_from(row_idx) else {
