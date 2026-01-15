@@ -4,6 +4,7 @@ Shows how to configure micro-batching directly from code.
 Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
 """
 
+from datetime import timedelta
 import rerun as rr
 
 # Equivalent to configuring the following environment:
