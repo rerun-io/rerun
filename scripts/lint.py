@@ -1522,6 +1522,7 @@ def main() -> None:
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
     script_dirpath = os.path.dirname(os.path.realpath(__file__))
+    # TODO(RR-3355): Use unified utility for this in the future.
     root_dirpath = os.path.abspath(f"{script_dirpath}/..")
     os.chdir(root_dirpath)
 
