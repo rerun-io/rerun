@@ -77,7 +77,7 @@ container = av.open(data_buffer, format="h264", mode="r")
 
 start_time = times[0]
 video_stream = container.streams.video[0]
-frame = None
+frame: av.VideoFrame | None = None
 for packet, time in zip(container.demux(video_stream), times, strict=False):
     packet.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
     packet.pts = int(time - start_time)

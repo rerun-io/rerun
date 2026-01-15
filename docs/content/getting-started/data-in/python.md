@@ -18,7 +18,7 @@ At any time, you can checkout the complete code listing for this tutorial [here]
 
 ## Prerequisites
 
-We assume you have working Python and `rerun-sdk` installations. If not, check out the [setup page](../quick-start/python.md).
+We assume you have working Python and `rerun-sdk` installations. If not, check out [installing python](../../overview/installing-rerun/python.md).
 
 ## Initializing the SDK
 
@@ -40,7 +40,7 @@ from rerun.utilities import bounce_lerp
 rr.init("rerun_example_dna_abacus")
 ```
 
-Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+A stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/logging-and-ingestion/apps-and-recordings.md).
 
@@ -109,7 +109,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function with one of the built-in archetype class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function with one of the built-in archetype classes, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
@@ -312,6 +312,6 @@ For more details and potential limitations, please refer to [our blog post](http
 
 ## Closing
 
-This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
+This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes, or dig deeper into [querying your logged data](../data-out.md).

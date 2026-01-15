@@ -19,7 +19,7 @@ To run the example from the repository, run `cargo run -p dna`.
 
 ## Prerequisites
 
-We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [setup page](rust.md).
+We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [installing rust](../../overview/installing-rerun/rust.md).
 
 For this example in particular, we're going to need all of these:
 
@@ -391,4 +391,4 @@ The Viewer will block the main thread until it is closed.
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types, or dig deeper into [querying your logged data](../data-out.md).

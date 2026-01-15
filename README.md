@@ -55,9 +55,9 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </p>
 
 ## Getting started
-* [**C++**](https://www.rerun.io/docs/getting-started/quick-start/cpp)
-* [**Python**](https://www.rerun.io/docs/getting-started/quick-start/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* [**Rust**](https://www.rerun.io/docs/getting-started/quick-start/rust): `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/getting-started/data-in/cpp)
+* [**Python**](https://www.rerun.io/docs/getting-started/data-in/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/getting-started/data-in/rust): `cargo add rerun`
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.

@@ -18,4 +18,4 @@ You'll additionally need to install the [Viewer](./viewer.md).
 
 ## Next steps
 
-To start getting your own data streamed to the viewer, check out the [C++ quick start guide](../../getting-started/quick-start/cpp.md).
+To start getting your own data streamed to the viewer, check out the [C++ quick start guide](../../getting-started/data-in/cpp.md).

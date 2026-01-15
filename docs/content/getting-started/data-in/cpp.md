@@ -406,6 +406,6 @@ For more details and potential limitations, please refer to [our blog post](http
 
 ### Closing
 
-This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
+This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types, or dig deeper into [querying your logged data](../data-out.md).
