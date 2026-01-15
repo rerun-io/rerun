@@ -1,6 +1,8 @@
 use emath::History;
 use parking_lot::Mutex;
-use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
+use re_chunk_store::{
+    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+};
 use re_sorbet::TimestampMetadata;
 use saturating_cast::SaturatingCast as _;
 
@@ -77,6 +79,7 @@ impl Default for LatencyStats {
 }
 
 impl LatencyStats {
+    // TODO: review with someone familiar with the matter.
     fn on_new_chunk(
         &mut self,
         now_nanos: i64,
@@ -98,7 +101,13 @@ impl LatencyStats {
         let now = now_nanos as f64 / 1e9;
 
         // We use the chunk id for timing, so we need to get the _original_ id:
-        let original_chunk_id = diff.split_source.unwrap_or_else(|| diff.chunk.id());
+        let original_chunk_id = if let Some(ChunkDirectLineageReport::SplitFrom(chunk, _siblings)) =
+            diff.direct_lineage.as_ref()
+        {
+            chunk.id()
+        } else {
+            diff.chunk_before_processing.id()
+        };
         let chunk_creation_nanos = original_chunk_id
             .nanos_since_epoch()
             .saturating_cast::<i64>();
@@ -111,7 +120,7 @@ impl LatencyStats {
         let grpc_encoded_at_nanos = grpc_encoded_at.and_then(system_time_to_nanos);
         let grpc_decoded_at_nanos = grpc_decoded_at.and_then(system_time_to_nanos);
 
-        for row_id in diff.chunk.row_ids() {
+        for row_id in diff.chunk_before_processing.row_ids() {
             let row_creation_nanos = row_id.nanos_since_epoch().saturating_cast::<i64>();
 
             // Total:

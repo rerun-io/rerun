@@ -12,6 +12,8 @@ ChunkStore {
         num_events: 2
     }
     chunks: [
+        chunk_0000000000661EFDf2e3b19f7c045f15 (status:loaded static:no)
+            origin:<volatile> (cannot be re-fetched)
         ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         │ METADATA:                                                                                                                                                                       │
         │ * entity_path: /this/that                                                                                                                                                       │

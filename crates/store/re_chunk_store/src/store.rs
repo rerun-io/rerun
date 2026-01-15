@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
@@ -11,7 +11,7 @@ use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
-use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
+use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
@@ -458,6 +458,25 @@ pub struct ChunkStore {
     /// distinguish virtual from physical chunks.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
+    /// Keeps track of where each individual chunks, both virtual & physical, came from.
+    ///
+    /// Due to compaction, a chunk's lineage often forms a tree rather than a straight line.
+    /// The lineage tree always ends in one of two ways:
+    /// * A reference to volatile memory, from which the chunk came from, and that cannot ever be
+    ///   reached again.
+    /// * A reference to an RRD manifest, from which the chunk was virtually loaded from, and where
+    ///   it can still be reached, provided that the associated Redap server still exists.
+    ///
+    /// This is purely additive: never garbage collected.
+    pub(crate) chunks_lineage: BTreeMap<ChunkId, ChunkDirectLineage>,
+
+    // TODO: anytime a chunk gets split, it is recorded here.
+    // -> this allows us to remove these splits, should their parent chunk ever be re-inserted
+    // -> semantically, this does nothing, but performance-wise, it gets rid of a bunch of tiny
+    //    annoying overlaps
+    // -> we have to test this.
+    pub(crate) chunk_splits: HashMap<ChunkId, Vec<ChunkId>>,
+
     /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, further
     /// indexed by [`ComponentIdentifier`].
     ///
@@ -551,6 +570,8 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            chunks_lineage: self.chunks_lineage.clone(),
+            chunk_splits: self.chunk_splits.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
@@ -577,6 +598,8 @@ impl std::fmt::Display for ChunkStore {
             per_column_metadata: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
+            chunks_lineage: _,
+            chunk_splits: _,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
             temporal_physical_chunks_stats,
@@ -603,6 +626,11 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
         for chunk_id in chunk_ids_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
+                f.write_str(&indent::indent_all_by(
+                    8,
+                    format!("{}\n", self.format_lineage(chunk_id)),
+                ))?;
+
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
                     f.write_str(&indent::indent_all_by(8, format!("{chunk:chunk_width$}\n")))?;
@@ -638,6 +666,8 @@ impl ChunkStore {
             type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
+            chunks_lineage: Default::default(),
+            chunk_splits: Default::default(),
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
@@ -683,7 +713,7 @@ impl ChunkStore {
         &self.config
     }
 
-    /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.
+    /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
     pub fn iter_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
         self.chunks_per_chunk_id.values()
@@ -753,6 +783,10 @@ impl ChunkStore {
     /// new queries are run.
     /// Callers are expected to call this once per frame in order to know which chunks were missing during
     /// the previous frame.
+    ///
+    /// The returned [`ChunkId`]s can live anywhere within the lineage tree, and therefore might
+    /// not be usable for downstream consumers that did not track even compaction/split-off events.
+    /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
     pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.missing_chunk_ids.write())
     }

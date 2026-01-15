@@ -79,7 +79,6 @@ impl Chunk {
             let remaining_rows = chunk.num_rows() - start_idx;
             let chunk_size = remaining_rows.min(target_rows);
 
-            // TODO(#11971): keep track of the split chunks' lineage
             let split_chunk = chunk
                 .row_sliced_deep(start_idx, chunk_size)
                 .with_id(ChunkId::new());

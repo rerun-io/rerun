@@ -209,6 +209,26 @@ pub type RrdManifestTemporalMap = IntMap<
     IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, RrdManifestTemporalMapEntry>>>,
 >;
 
+/// The sha256 hash of an [RRD manifest's payload].
+///
+/// Can be used as a unique and/or content-addressable ID.
+///
+/// [RRD manifest's payload]: `RrdManifest::data`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RrdManifestSha256(pub [u8; 32]);
+
+impl std::fmt::Display for RrdManifestSha256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "RrdManifest#{}",
+            self.0
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>(),
+        ))
+    }
+}
+
 impl RrdManifest {
     /// High-level helper to parse [`RrdManifest`]s from raw RRD bytes.
     ///
@@ -276,6 +296,33 @@ impl RrdManifest {
         }
 
         Ok(manifests)
+    }
+
+    /// Computes the sha256 hash of the manifest's data, which can be used as a unique ID.
+    //
+    // TODO: i absolutely want to cache this though.
+    // -> and similarly, we'd like to trust that we can use col_xxx methods and native_map_yyy
+    // without them erroring on us after some point...
+    pub fn compute_sha256(&self) -> Result<RrdManifestSha256, arrow::error::ArrowError> {
+        re_tracing::profile_function!();
+
+        let data_ipc = {
+            let mut data_ipc = Vec::new();
+            let mut w =
+                arrow::ipc::writer::StreamWriter::try_new(&mut data_ipc, self.data.schema_ref())?;
+            w.write(&self.data)?;
+            data_ipc
+        };
+
+        use sha2::Digest as _;
+        let mut hash = [0u8; 32];
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&data_ipc);
+        hasher.finalize_into(sha2::digest::generic_array::GenericArray::from_mut_slice(
+            &mut hash,
+        ));
+
+        Ok(RrdManifestSha256(hash))
     }
 
     /// Computes a map-based representation of the static data in this RRD manifest.

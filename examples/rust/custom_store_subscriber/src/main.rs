@@ -100,7 +100,7 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
         for event in events {
             // update counters
             let per_component = self.counters.entry(event.store_id.clone()).or_default();
-            for component_descr in event.chunk.component_descriptors() {
+            for component_descr in event.chunk_before_processing.component_descriptors() {
                 let count = per_component.entry(component_descr.clone()).or_default();
 
                 // if first occurrence, speak!
@@ -165,7 +165,7 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
 
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
-            for (timeline, time_column) in event.chunk.timelines() {
+            for (timeline, time_column) in event.chunk_before_processing.timelines() {
                 // Remember the type of the time column:
                 self.time_column_times
                     .insert(*timeline, time_column.timeline().typ());
@@ -174,7 +174,7 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
                     // update counters
                     let per_timeline = self
                         .times
-                        .entry(event.chunk.entity_path().clone())
+                        .entry(event.chunk_before_processing.entity_path().clone())
                         .or_default();
                     let per_time = per_timeline.entry(*timeline).or_default();
                     let count = per_time.entry(time).or_default();

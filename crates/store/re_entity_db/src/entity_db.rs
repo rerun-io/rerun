@@ -641,7 +641,8 @@ impl EntityDb {
 
         let engine = engine.downgrade();
 
-        self.rrd_manifest_index.on_events(store_events);
+        self.rrd_manifest_index
+            .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
         self.time_histogram_per_timeline
@@ -655,7 +656,7 @@ impl EntityDb {
         let entity_paths_with_deletions = store_events
             .iter()
             .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
-            .map(|event| event.chunk.entity_path().clone())
+            .map(|event| event.chunk_before_processing.entity_path().clone())
             .collect();
 
         {

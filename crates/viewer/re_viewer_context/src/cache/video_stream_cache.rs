@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
-use re_chunk_store::ChunkStoreEvent;
+use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreEvent};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType};
 use re_sdk_types::archetypes::VideoStream;
@@ -159,6 +159,7 @@ impl VideoStreamCache {
         Ok(entry.video_stream.clone())
     }
 
+    // TODO: review with someone familiar
     fn handle_store_event(
         &mut self,
         event: &&ChunkStoreEvent,
@@ -183,9 +184,10 @@ impl VideoStreamCache {
                 //
                 // Compactions events are documented to happen on **addition** only.
                 // Therefore, it should be save to remove only the newest data.
-                let chunk = if let Some(compaction) = &event.compacted {
-                    if compaction
-                        .srcs
+                let chunk = if let Some(ChunkDirectLineageReport::CompactedFrom(chunks)) =
+                    &event.direct_lineage
+                {
+                    if chunks
                         .keys()
                         .any(|c| entry.known_chunk_offsets.contains_key(c))
                     {
@@ -195,11 +197,9 @@ impl VideoStreamCache {
                     }
 
                     if let Some(first_sample_with_chunk) = video_data.samples.position(|sample| {
-                        sample.sample().is_some_and(|s| {
-                            compaction
-                                .srcs
-                                .contains_key(&ChunkId::from_tuid(s.source_id))
-                        })
+                        sample
+                            .sample()
+                            .is_some_and(|s| chunks.contains_key(&ChunkId::from_tuid(s.source_id)))
                     }) {
                         // Remove all samples that are in this and future buffers.
                         video_data
@@ -210,9 +210,9 @@ impl VideoStreamCache {
                     adjust_keyframes_for_removed_samples(video_data);
 
                     // `event.chunk` is added data PRIOR to compaction.
-                    &compaction.new_chunk
+                    &event.chunk_after_processing
                 } else {
-                    &event.chunk
+                    &event.chunk_before_processing
                 };
 
                 let encoding_details_before = video_data.encoding_details.clone();
@@ -243,17 +243,21 @@ impl VideoStreamCache {
                 if encoding_details_before != video_data.encoding_details {
                     re_log::error_once!(
                         "The video stream codec details on {} changed over time, which is not supported.",
-                        event.chunk.entity_path()
+                        event.chunk_before_processing.entity_path()
                     );
                     video_renderer.reset_all_decoders();
                 }
             }
+
             re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                if let Some(known_offset) = entry.known_chunk_offsets.get(&event.chunk.id()) {
+                if let Some(known_offset) = entry
+                    .known_chunk_offsets
+                    .get(&event.chunk_before_processing.id())
+                {
                     for (_idx, sample) in video_data.samples.iter_index_range_clamped_mut(
                         &(known_offset.first_sample..video_data.samples.next_index()),
                     ) {
-                        if sample.source_id() == event.chunk.id().as_tuid() {
+                        if sample.source_id() == event.chunk_before_processing.id().as_tuid() {
                             sample.unload();
                         }
                     }
@@ -264,7 +268,7 @@ impl VideoStreamCache {
                     {
                         panic!(
                             "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                            event.chunk.entity_path()
+                            event.chunk_before_processing.entity_path()
                         );
                     }
                 }
@@ -275,7 +279,9 @@ impl VideoStreamCache {
                 else if let Some(last_invalid_sample_idx) = {
                     let iter = video_data.samples.iter_indexed();
                     iter.rev()
-                        .find(|(_, s)| s.source_id() == event.chunk.id().as_tuid())
+                        .find(|(_, s)| {
+                            s.source_id() == event.chunk_before_processing.id().as_tuid()
+                        })
                         .map(|(idx, _)| idx)
                 } {
                     video_data
@@ -288,7 +294,7 @@ impl VideoStreamCache {
                     {
                         panic!(
                             "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                            event.chunk.entity_path()
+                            event.chunk_before_processing.entity_path()
                         );
                     }
                 }
@@ -901,7 +907,7 @@ impl Cache for VideoStreamCache {
 
         for event in events {
             if !event
-                .chunk
+                .chunk_before_processing
                 .components()
                 .contains_component(sample_component)
             {
@@ -909,12 +915,12 @@ impl Cache for VideoStreamCache {
             }
 
             #[expect(clippy::iter_over_hash_type)] //  TODO(#6198): verify that this is fine
-            for timeline in event.chunk.timelines().keys() {
+            for timeline in event.chunk_before_processing.timelines().keys() {
                 self.handle_store_event(
                     event,
                     timeline,
                     &VideoStreamKey {
-                        entity_path: event.chunk.entity_path().hash(),
+                        entity_path: event.chunk_before_processing.entity_path().hash(),
                         timeline: *timeline,
                     },
                 );

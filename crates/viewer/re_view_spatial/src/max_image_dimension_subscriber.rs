@@ -82,7 +82,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 continue;
             }
 
-            let chunk = &event.diff.chunk;
+            let chunk = &event.diff.chunk_before_processing;
             let components = chunk.components();
             let entity_path = chunk.entity_path();
 

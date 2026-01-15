@@ -3,7 +3,7 @@ use std::ops::Bound;
 
 use emath::lerp;
 use re_chunk::{TimeInt, Timeline, TimelineName};
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
+use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 use crate::RrdManifestIndex;
@@ -234,13 +234,17 @@ impl TimeHistogramPerTimeline {
         re_tracing::profile_function!();
 
         for event in events {
-            let original_chunk_id = if let Some(chunk_id) = event.diff.split_source {
-                chunk_id
-            } else {
-                event.chunk.id()
-            };
+            // TODO: need to review this logic with someone familiar
+            let original_chunk_id =
+                if let Some(ChunkDirectLineageReport::SplitFrom(chunk, _siblings)) =
+                    event.diff.direct_lineage.as_ref()
+                {
+                    chunk.id() // if there is a direct parent, use that id
+                } else {
+                    event.chunk_before_processing.id() // or, use the ID of the origin, pre-processing chunk
+                };
 
-            if event.chunk.is_static() {
+            if event.chunk_before_processing.is_static() {
                 match event.kind {
                     ChunkStoreDiffKind::Addition => {
                         self.has_static = true;
@@ -250,11 +254,12 @@ impl TimeHistogramPerTimeline {
                     }
                 }
             } else {
-                for time_column in event.chunk.timelines().values() {
+                for time_column in event.chunk_before_processing.timelines().values() {
                     let times = time_column.times_raw();
                     let timeline = time_column.timeline();
                     match event.kind {
                         ChunkStoreDiffKind::Addition => {
+                            // TODO: in case of splits, this happens more than once, and then we're doomed
                             if let Some(info) =
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
                                 && let Some(info) = &info.temporals.get(timeline.name())
@@ -277,14 +282,17 @@ impl TimeHistogramPerTimeline {
                             self.add_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                event.chunk_before_processing.num_components() as _,
                             );
                         }
+
+                        // TODO: we have a problem here: we're deleting root-chunks' worth of data,
+                        // even though we might only be GCing some splits of it.
                         ChunkStoreDiffKind::Deletion => {
                             self.remove_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                event.chunk_before_processing.num_components() as _,
                             );
 
                             if let Some(info) =

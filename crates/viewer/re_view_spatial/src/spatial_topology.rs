@@ -152,8 +152,8 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
                 .entry(event.store_id.clone())
                 .or_default()
                 .on_store_diff(
-                    event.diff.chunk.entity_path(),
-                    event.diff.chunk.component_descriptors(),
+                    event.diff.chunk_before_processing.entity_path(),
+                    event.diff.chunk_before_processing.component_descriptors(),
                 );
         }
     }
