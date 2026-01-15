@@ -31,6 +31,7 @@ pub enum CacheState {
 }
 
 /// Internal shared state for the streaming cache.
+#[derive(Debug)]
 struct StreamingCacheInner {
     cached_batches: Vec<RecordBatch>,
     state: CacheState,
@@ -63,8 +64,11 @@ impl StreamingCacheInner {
     }
 }
 
-/// A closure that creates a DataFrame for streaming.
-pub type DataFrameFactory = Box<dyn Fn() -> DataFusionResult<DataFrame> + Send + Sync>;
+/// A async closure that creates a DataFrame for streaming.
+pub type DataFrameFactory = Box<dyn Fn() -> DataFrameFuture + Send + Sync>;
+
+/// A future that resolves to a DataFrame.
+pub type DataFrameFuture = Pin<Box<dyn Future<Output = DataFusionResult<DataFrame>> + Send>>;
 
 /// A [`TableProvider`] that caches streaming results from a DataFrame.
 ///
@@ -83,6 +87,7 @@ pub type DataFrameFactory = Box<dyn Fn() -> DataFusionResult<DataFrame> + Send +
 ///
 /// When `refresh()` is called, a new inner cache is created. Old streams continue
 /// reading from the old cache until completion, while new scans use the fresh cache.
+#[derive(Debug)]
 pub struct StreamingCacheTableProvider {
     /// Factory to create the DataFrame (called once on first scan).
     df_factory: DataFrameFactory,
@@ -122,9 +127,8 @@ impl StreamingCacheTableProvider {
         runtime: AsyncRuntimeHandle,
     ) -> Self {
         let df_factory: DataFrameFactory = Box::new(move || {
-            // We need to block on the async table() call.
-            // This is safe because it's called from within an async context.
-            futures::executor::block_on(session_ctx.table(&table_name))
+            let ctx = Arc::clone(&session_ctx);
+            Box::pin(async move { ctx.table(&table_name).await })
         });
 
         Self::new(schema, df_factory, runtime)
@@ -157,11 +161,8 @@ impl StreamingCacheTableProvider {
     /// Background task: stream from DataFrame to cache.
     ///
     /// Stops early if no consumers remain (detected via Arc strong count).
-    async fn stream_to_cache(
-        df_result: DataFusionResult<DataFrame>,
-        cache: Arc<Mutex<StreamingCacheInner>>,
-    ) {
-        let dataframe = match df_result {
+    async fn stream_to_cache(df_future: DataFrameFuture, cache: Arc<Mutex<StreamingCacheInner>>) {
+        let dataframe = match df_future.await {
             Ok(df) => df,
             Err(err) => {
                 let mut guard = cache.lock();
@@ -275,10 +276,9 @@ impl TableProvider for StreamingCacheTableProvider {
             }
             Action::ReturnError(error) => Err(DataFusionError::Execution(error)),
             Action::StartStreaming(inner_cache) => {
-                let df_result = (self.df_factory)();
                 let cache_ref = Arc::clone(&inner_cache);
                 self.runtime.spawn_future(async move {
-                    Self::stream_to_cache(df_result, cache_ref).await;
+                    Self::stream_to_cache((self.df_factory)(), cache_ref).await;
                 });
 
                 Ok(Arc::new(CachedStreamingExec::new(
