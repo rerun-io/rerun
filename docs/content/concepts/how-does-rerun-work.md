@@ -155,7 +155,8 @@ Log data to `.rrd` files, then open them in the Viewer whenever needed. Files ca
 
 ```d2
 direction: right
-Logging SDK -> ".rrd" -> Viewer: load
+Logging SDK -> ".rrd": save
+".rrd" -> Viewer: load
 ```
 
 Minimal example:
@@ -212,12 +213,13 @@ Data Platform -> Viewer: redap
 Minimal example of querying a dataset:
 
 ```python
+import datafusion as dfn
 import rerun as rr
 
 client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
 dataset = client.get_dataset("my_data")
-df = dataset.reader(index="log_time")  # df is a DataFusion.DataFrame
-print(df)
+df = dataset.filter_contents("/obs").reader(index="log_time")    # `df` is a DataFusion dataframe
+df.filter(dfn.col("obs:Scalars:scalars").is_not_null()).count()  # count observations in recording
 ```
 
 Best for: data pipelines, batch processing, ML training data preparation.
