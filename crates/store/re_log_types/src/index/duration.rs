@@ -66,6 +66,18 @@ impl Duration {
         )
     }
 
+    pub fn url_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            &re_format::DurationFormatOptions::default()
+                .with_spaces(false)
+                .with_always_sign(true)
+                .with_only_seconds(false)
+                .with_min_decimals(0)
+                .with_max_decimals(9)
+                .format_nanos(self.as_nanos()),
+        )
+    }
+
     /// Useful when showing dates/times on a timeline and you want it compact.
     ///
     /// When a duration is less than a second, we only show the time from the last whole second.

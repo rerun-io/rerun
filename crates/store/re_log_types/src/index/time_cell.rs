@@ -190,15 +190,13 @@ impl TimeCell {
             TimeType::Sequence => typ.format(value, timestamp_format),
         }
     }
-}
 
-// TODO(andreas): Should remove this in favor or explicit format methods above.
-impl std::fmt::Display for TimeCell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn url_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::fmt::Display as _;
         match self.typ {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => write!(f, "{}", self.value),
-            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
+            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).url_format(f),
             TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(self.value.get())
                 .format_iso()
                 .fmt(f),
@@ -243,9 +241,20 @@ mod tests {
             ),
         ];
 
+        struct UrlFormat(TimeCell);
+
+        impl std::fmt::Display for UrlFormat {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.url_format(f)
+            }
+        }
+
         for (string, cell) in test_cases {
             assert_eq!(TimeCell::from_str(string).unwrap(), cell);
-            assert_eq!(TimeCell::from_str(&cell.to_string()).unwrap(), cell);
+            assert_eq!(
+                TimeCell::from_str(&UrlFormat(cell).to_string()).unwrap(),
+                cell
+            );
         }
     }
 }
