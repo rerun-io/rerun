@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def unwrap_singleton(value: object) -> object:
@@ -17,7 +20,8 @@ def unwrap_singleton(value: object) -> object:
 
 
 def to_float32_vector(value: object, expected_dim: int, label: str) -> np.ndarray:
-    """Convert a value to a float32 numpy array with expected dimensions.
+    """
+    Convert a value to a float32 numpy array with expected dimensions.
 
     Args:
         value: Input value to convert
@@ -46,13 +50,15 @@ def to_float32_vector(value: object, expected_dim: int, label: str) -> np.ndarra
 
 
 def normalize_times(values: Iterable[object]) -> np.ndarray:
-    """Normalize time values to nanosecond precision int64.
+    """
+    Normalize time values to nanosecond precision int64.
 
     Args:
         values: Iterable of time values (datetime64, timedelta64, float, int, or Pandas Timestamp)
 
     Returns:
         Int64 array representing nanoseconds
+
     """
     times = np.asarray(list(values))
 
@@ -84,6 +90,7 @@ def make_time_grid(min_value: object, max_value: object, fps: int) -> np.ndarray
 
     Returns:
         Array of time values at regular intervals
+
     """
     min_array = np.asarray(min_value)
     if np.issubdtype(min_array.dtype, np.datetime64):
@@ -94,3 +101,28 @@ def make_time_grid(min_value: object, max_value: object, fps: int) -> np.ndarray
     if max_value <= min_value:
         return np.array([min_value], dtype=np.float64)
     return np.arange(float(min_value), float(max_value), 1.0 / fps)
+
+
+def get_entity_path(fully_qualified_column: str | None) -> str | None:
+    """
+    Extract the entity path from a fully qualified column name.
+
+    The fully qualified column format is: "entity_path:ComponentName:field_name"
+    This function extracts just the entity_path portion.
+
+    Args:
+        fully_qualified_column: Fully qualified column name (e.g., "/robot/joint_states:JointState:positions")
+
+    Returns:
+        Entity path (e.g., "/robot/joint_states"), or None if input is None
+
+    Examples:
+        >>> get_entity_path("/robot/joint_states:JointState:positions")
+        "/robot/joint_states"
+        >>> get_entity_path(None)
+        None
+
+    """
+    if fully_qualified_column is None:
+        return None
+    return fully_qualified_column.split(":")[0]
