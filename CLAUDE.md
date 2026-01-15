@@ -69,7 +69,7 @@ To add custom functionality to generated types, create `_ext` files:
 
 ### General
 
-- use `…` instead of `...`
+- use `…` instead of `...` <!-- NOLINT -->
 - validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
 
 ## Architecture overview
