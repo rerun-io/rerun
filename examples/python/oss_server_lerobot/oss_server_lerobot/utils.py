@@ -29,6 +29,7 @@ def to_float32_vector(value: object, expected_dim: int, label: str) -> np.ndarra
 
     Raises:
         ValueError: If value is None or has incorrect dimensions
+
     """
     if value is None:
         raise ValueError(f"Missing {label} value.")
@@ -58,6 +59,7 @@ def normalize_times(values: Iterable[object]) -> np.ndarray:
     # Handle Pandas Timestamp objects
     if times.dtype == object and len(times) > 0:
         import pandas as pd
+
         if isinstance(times[0], pd.Timestamp):
             # Convert Pandas Timestamps to int64 nanoseconds
             return np.array([t.value for t in times], dtype="int64")
@@ -72,7 +74,8 @@ def normalize_times(values: Iterable[object]) -> np.ndarray:
 
 
 def make_time_grid(min_value: object, max_value: object, fps: int) -> np.ndarray:
-    """Create a time grid at the specified FPS between min and max values.
+    """
+    Create a time grid at the specified FPS between min and max values.
 
     Args:
         min_value: Minimum time value
