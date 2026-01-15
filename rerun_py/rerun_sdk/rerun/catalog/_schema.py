@@ -186,7 +186,6 @@ class Schema:
         """
         return self._internal.component_types()
 
-
     def __repr__(self) -> str:
         """Return a string representation of the schema."""
         return "\n".join(repr(col) for col in self)
