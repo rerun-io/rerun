@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fractions import Fraction
 from io import BytesIO
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import av
@@ -18,37 +19,29 @@ if TYPE_CHECKING:
     from .types import ImageSpec
 
 
-def extract_video_samples(
-    table: pa.Table, *, sample_column: str, keyframe_column: str, time_column: str
-) -> tuple[list[bytes], np.ndarray, np.ndarray]:
+def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> tuple[list[bytes], np.ndarray]:
     """
-    Extract video samples, keyframe flags, and timestamps from a table.
+    Extract video samples and timestamps from a table.
 
     Args:
         table: PyArrow table containing video data
         sample_column: Name of the column containing video samples
-        keyframe_column: Name of the column containing keyframe flags
         time_column: Name of the column containing timestamps
 
     Returns:
-        Tuple of (samples, times_ns, keyframes) where:
+        Tuple of (samples, times_ns) where:
         - samples: List of video sample bytes
         - times_ns: Normalized timestamps in nanoseconds
-        - keyframes: Boolean array indicating keyframes
 
     Raises:
         ValueError: If no video samples are available
 
     """
     samples_raw = table[sample_column].to_pylist()
-    keyframes_raw = (
-        table[keyframe_column].to_pylist() if keyframe_column in table.column_names else [None] * len(samples_raw)
-    )
     times_raw = table[time_column].to_pylist()
     samples: list[bytes] = []
-    keyframes: list[bool] = []
     times: list[object] = []
-    for sample, keyframe, timestamp in zip(samples_raw, keyframes_raw, times_raw, strict=False):
+    for sample, timestamp in zip(samples_raw, times_raw, strict=False):
         sample = unwrap_singleton(sample)
         if sample is None:
             continue
@@ -57,27 +50,26 @@ def extract_video_samples(
         else:
             sample_bytes = bytes(sample)
         samples.append(sample_bytes)
-        keyframes.append(bool(unwrap_singleton(keyframe)) if keyframe is not None else False)
         times.append(timestamp)
     if not samples:
         raise ValueError("No video samples available for decoding.")
-    return samples, normalize_times(times), np.asarray(keyframes, dtype=bool)
+    return samples, normalize_times(times)
 
 
 def decode_video_frame(
     samples: list[bytes],
     times_ns: np.ndarray,
-    keyframes: np.ndarray,
     target_time_ns: int,
     video_format: str,
 ) -> np.ndarray:
     """
     Decode a single video frame at the target timestamp.
 
+    Without keyframe information, decodes from the beginning up to the target frame.
+
     Args:
         samples: List of video sample bytes
         times_ns: Timestamps in nanoseconds for each sample
-        keyframes: Boolean array indicating keyframes
         target_time_ns: Target timestamp to decode at
         video_format: Video codec format (e.g., "h264", "hevc")
 
@@ -92,20 +84,14 @@ def decode_video_frame(
     if idx < 0:
         idx = 0
 
-    keyframe_indices = np.where(keyframes)[0]
-    if keyframe_indices.size == 0:
-        keyframe_idx = 0
-    else:
-        kf_pos = np.searchsorted(keyframe_indices, idx, side="right") - 1
-        keyframe_idx = int(keyframe_indices[max(kf_pos, 0)])
-
-    sample_bytes = b"".join(samples[keyframe_idx : idx + 1])
+    # Without keyframe info, decode from the beginning
+    sample_bytes = b"".join(samples[: idx + 1])
     data_buffer = BytesIO(sample_bytes)
     container = av.open(data_buffer, format=video_format, mode="r")
     video_stream = container.streams.video[0]
-    start_time = times_ns[keyframe_idx]
+    start_time = times_ns[0]
     latest_frame = None
-    packet_times = times_ns[keyframe_idx : idx + 1]
+    packet_times = times_ns[: idx + 1]
     for packet, time_ns in zip(container.demux(video_stream), packet_times, strict=False):
         packet.time_base = Fraction(1, 1_000_000_000)
         packet.pts = int(time_ns - start_time)
@@ -159,7 +145,6 @@ def can_remux_video(
 def extract_frames_at_timestamps(
     samples: list[bytes],
     times_ns: np.ndarray,
-    keyframes: np.ndarray,
     target_times_ns: np.ndarray,
     video_format: str,
 ) -> list[np.ndarray]:
@@ -171,7 +156,6 @@ def extract_frames_at_timestamps(
     Args:
         samples: List of compressed video packet bytes
         times_ns: Timestamps in nanoseconds for each packet
-        keyframes: Boolean array indicating keyframes
         target_times_ns: Target timestamps to extract frames at
         video_format: Video codec format (e.g., "h264", "hevc")
 
@@ -181,7 +165,7 @@ def extract_frames_at_timestamps(
     """
     frames = []
     for target_time_ns in target_times_ns:
-        frame = decode_video_frame(samples, times_ns, keyframes, int(target_time_ns), video_format)
+        frame = decode_video_frame(samples, times_ns, int(target_time_ns), video_format)
         frames.append(frame)
     return frames
 
@@ -189,7 +173,6 @@ def extract_frames_at_timestamps(
 def remux_video_stream(
     samples: list[bytes],
     times_ns: np.ndarray,
-    keyframes: np.ndarray,
     output_path: str,
     video_format: str,
     width: int | None = None,
@@ -206,7 +189,6 @@ def remux_video_stream(
     Args:
         samples: List of compressed video packet bytes from RRD
         times_ns: Timestamps in nanoseconds for each packet
-        keyframes: Boolean array indicating keyframes
         output_path: Path to write output video file
         video_format: Source codec format (e.g., "h264", "hevc")
         width: Video frame width (auto-detected if None)
@@ -217,8 +199,6 @@ def remux_video_stream(
         ValueError: If remuxing fails
 
     """
-    from pathlib import Path
-    from io import BytesIO
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -267,10 +247,6 @@ def remux_video_stream(
         packet.dts = packet.pts
         packet.stream = output_stream
 
-        # Mark keyframes
-        if packet_idx < len(keyframes) and keyframes[packet_idx]:
-            packet.is_keyframe = True
-
         output_container.mux(packet)
         packet_idx += 1
 
@@ -306,7 +282,6 @@ def infer_video_shape(
 
     view = dataset.filter_segments(segment_id).filter_contents(spec.path)
     sample_column = f"{spec.path}:VideoStream:sample"
-    keyframe_column = f"{spec.path}:is_keyframe"
     df = view.reader(index=index_column).select(index_column, sample_column)
     table = pa.table(df)
 
@@ -318,7 +293,7 @@ def infer_video_shape(
             f"on this timeline, or the video data may use a different index."
         )
 
-    samples, times_ns, keyframes = extract_video_samples(table, sample_column, keyframe_column, index_column)
+    samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
     target_time_ns = int(times_ns[0])
-    decoded = decode_video_frame(samples, times_ns, keyframes, target_time_ns, video_format)
+    decoded = decode_video_frame(samples, times_ns, target_time_ns, video_format)
     return decoded.shape

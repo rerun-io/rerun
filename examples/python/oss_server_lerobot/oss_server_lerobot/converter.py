@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import rerun as rr
-from datafusion import col, functions as F
+from datafusion import col, functions as F, DataFrame as DataFusionDataFrame
 from tqdm import tqdm
 
 from .feature_inference import infer_features
-from .types import ColumnSpec, ImageSpec
+from .types import ColumnSpec, ConversionConfig, ImageSpec
 from .utils import make_time_grid, to_float32_vector, unwrap_singleton
 from .video_processing import can_remux_video, decode_video_frame, extract_video_samples, remux_video_stream
 
@@ -19,6 +19,113 @@ if TYPE_CHECKING:
     import numpy as np
     from collections.abc import Iterable
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+
+def convert_dataframe_to_episode(
+    df: DataFusionDataFrame,
+    config: ConversionConfig,
+    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]],
+    lerobot_dataset: LeRobotDataset,
+    segment_id: str,
+    features: dict[str, dict],
+) -> tuple[bool, dict | None, bool]:
+    """
+    Convert a DataFusion dataframe to a LeRobot episode.
+
+    Args:
+        df: DataFusion dataframe containing the segment data (already filtered and aligned)
+        config: Conversion configuration
+        video_data_cache: Pre-loaded video data per spec key (samples, times_ns)
+        lerobot_dataset: LeRobot dataset to add frames to
+        segment_id: ID of the segment being processed (for logging)
+        features: Feature specifications from inference
+
+    Returns:
+        Tuple of (success, remux_data, direct_saved) where:
+        - success: True if segment was processed successfully, False if skipped
+        - remux_data: Dict with remuxing info if possible, None otherwise
+        - direct_saved: True if the episode was saved without decoding video frames
+
+    """
+    action_dim = features["action"]["shape"][0] if "action" in features else None
+    state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
+
+    # Check if video remuxing is possible (when use_videos=True and FPS matches)
+    remux_data = None
+    if config.use_videos and config.image_specs:
+        all_can_remux = True
+        remux_info = {}
+        for spec in config.image_specs:
+            samples, times_ns = video_data_cache[spec.key]
+            can_remux, source_fps = can_remux_video(times_ns, config.fps)
+            if can_remux:
+                remux_info[spec.key] = {
+                    "samples": samples,
+                    "times_ns": times_ns,
+                    "source_fps": source_fps,
+                }
+                print(f"  ✓ Video '{spec.key}' can be remuxed (source: {source_fps:.2f}fps, target: {config.fps}fps)")
+            else:
+                all_can_remux = False
+                print(f"  ✗ Video '{spec.key}' requires re-encoding (source: {source_fps:.2f}fps, target: {config.fps}fps)")
+
+        if all_can_remux:
+            remux_data = {
+                "specs": config.image_specs,
+                "remux_info": remux_info,
+                "video_format": config.video_format,
+                "fps": config.fps,
+            }
+            print(f"  🚀 Fast path: will remux {len(remux_info)} video(s) directly (100-1000x faster!)")
+        else:
+            print("  ⚠️  Slow path: will decode and re-encode videos (FPS mismatch)")
+
+    table = pa.table(df)
+    if table.num_rows == 0:
+        return False, None, False
+
+    data_columns = {name: table[name].to_pylist() for name in table.column_names}
+    num_rows = table.num_rows
+
+    if config.use_videos and remux_data:
+        _save_episode_without_video_decode(
+            lerobot_dataset=lerobot_dataset,
+            data_columns=data_columns,
+            num_rows=num_rows,
+            index_column=config.index_column,
+            columns=config.columns,
+            action_dim=action_dim,
+            state_dim=state_dim,
+            task_default=config.task_default,
+            fps=config.fps,
+            remux_data=remux_data,
+        )
+        return True, None, True
+
+    # Decode video frames for the entire segment if needed
+    video_frames = _decode_video_frames_for_batch(
+        table=table,
+        index_column=config.index_column,
+        image_specs=config.image_specs,
+        video_data_cache=video_data_cache,
+        video_format=config.video_format,
+    )
+
+    for row_idx in tqdm(range(num_rows), desc=f"Frames ({segment_id})", leave=False):
+        frame = _build_frame(
+            row_idx=row_idx,
+            data_columns=data_columns,
+            columns=config.columns,
+            action_dim=action_dim,
+            state_dim=state_dim,
+            task_default=config.task_default,
+            image_specs=config.image_specs,
+            video_frames=video_frames,
+            num_rows=num_rows,
+        )
+        lerobot_dataset.add_frame(frame)
+
+    return True, remux_data, False
 
 
 def convert_rrd_dataset_to_lerobot(
@@ -254,7 +361,6 @@ def _apply_remuxed_videos(
             remux_video_stream(
                 samples=info["samples"],
                 times_ns=info["times_ns"],
-                keyframes=info["keyframes"],
                 output_path=tmp_path,
                 video_format=video_format,
                 target_fps=fps,
@@ -359,7 +465,6 @@ def _save_episode_without_video_decode(
         remux_video_stream(
             samples=info["samples"],
             times_ns=info["times_ns"],
-            keyframes=info["keyframes"],
             output_path=str(temp_path),
             video_format=video_format,
             target_fps=fps,
@@ -507,21 +612,17 @@ def _process_segment(
     action_dim = features["action"]["shape"][0] if "action" in features else None
     state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
 
-    # Load all video samples for the segment since video decoding requires access to keyframes
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray, np.ndarray]] = {}
+    # Load all video samples for the segment
+    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] = {}
     for spec in image_specs:
         sample_column = f"{spec.path}:VideoStream:sample"
-        keyframe_column = f"{spec.path}:is_keyframe"
         video_view = dataset.filter_segments(segment_id).filter_contents(spec.path)
         video_reader = video_view.reader(index=index_column)
-        try:
-            video_table = pa.table(video_reader.select(index_column, sample_column, keyframe_column))
-        except Exception:
-            video_table = pa.table(video_reader.select(index_column, sample_column))
-        samples, times_ns, keyframes = extract_video_samples(
-            video_table, sample_column=sample_column, keyframe_column=keyframe_column, time_column=index_column
+        video_table = pa.table(video_reader.select(index_column, sample_column))
+        samples, times_ns = extract_video_samples(
+            video_table, sample_column=sample_column, time_column=index_column
         )
-        video_data_cache[spec.key] = (samples, times_ns, keyframes)
+        video_data_cache[spec.key] = (samples, times_ns)
 
     # Check if video remuxing is possible (when use_videos=True and FPS matches)
     remux_data = None
@@ -529,13 +630,12 @@ def _process_segment(
         all_can_remux = True
         remux_info = {}
         for spec in image_specs:
-            samples, times_ns, keyframes = video_data_cache[spec.key]
+            samples, times_ns = video_data_cache[spec.key]
             can_remux, source_fps = can_remux_video(times_ns, fps)
             if can_remux:
                 remux_info[spec.key] = {
                     "samples": samples,
                     "times_ns": times_ns,
-                    "keyframes": keyframes,
                     "source_fps": source_fps,
                 }
                 print(f"  ✓ Video '{spec.key}' can be remuxed (source: {source_fps:.2f}fps, target: {fps}fps)")
@@ -606,7 +706,7 @@ def _decode_video_frames_for_batch(
     table: pa.Table,
     index_column: str,
     image_specs: list[ImageSpec],
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray, np.ndarray]],
+    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]],
     video_format: str,
 ) -> dict[str, list[np.ndarray]]:
     """
@@ -629,10 +729,10 @@ def _decode_video_frames_for_batch(
     if video_data_cache:
         row_times_ns = normalize_times(table[index_column].to_pylist())
         for spec in image_specs:
-            samples, times_ns, keyframes = video_data_cache[spec.key]
+            samples, times_ns = video_data_cache[spec.key]
             frames = []
             for time_ns in row_times_ns:
-                frames.append(decode_video_frame(samples, times_ns, keyframes, int(time_ns), video_format))
+                frames.append(decode_video_frame(samples, times_ns, int(time_ns), video_format))
             video_frames[spec.key] = frames
     return video_frames
 
