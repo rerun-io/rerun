@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "ROS node"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
-thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06372842/480w.png"
+thumbnail = "https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
@@ -10,11 +10,11 @@ A minimal example of creating a ROS node that subscribes to topics and converts 
 The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/1200w.png">
-  <img src="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/full.png" alt="">
+  <img src="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1200w.png">
 </picture>
 
 ## Used Rerun types
@@ -23,7 +23,7 @@ The solution here is mostly a toy example to show how ROS concepts can be mapped
 ## Background
 The [Robot Operating System (ROS)](https://www.ros.org) helps build robot applications through software libraries and tools.
 Although Rerun doesn't have native ROS support, you can easily create a basic ROS 2 Python node to subscribe to common ROS topics and log them to Rerun.
-In this example, Rerun visualizes simulation data, including robot pose, images, camera position, laser scans, point clouds, and velocities, as the [Turtlebot](http://wiki.ros.org/turtlebot3) navigates the environment.
+In this example, Rerun visualizes simulation data, including robot pose, images, camera position, laser scans, point clouds, and velocities, as the robot navigates the environment.
 
 ## Logging and visualizing with Rerun
 
@@ -38,15 +38,15 @@ For more information on future improved ROS support, see tracking issue: [#1527]
 > NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 
-This example was developed and tested on top of [ROS2 Kilted Kaiju](https://docs.ros.org/en/kilted/index.html)
-and the [turtlebot3 navigation example](https://docs.nav2.org/getting_started/index.html).
+This example was developed and tested on top of [ROS2 Kilted Kaiju](https://docs.ros.org/en/kilted/index.html), with [Nav2](https://docs.nav2.org/) and the Turtlebot 4 simulation example from the [nav2_bringup](https://github.com/ros-navigation/navigation2/tree/main/nav2_bringup) package.
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```
-sudo apt install ros-kilted-desktop ros-kilted-navigation2 ros-kilted-turtlebot3 ros-kilted-turtlebot3-gazebo
+sudo apt install ros-kilted-desktop ros-kilted-nav2-bringup
 ```
+(`ros-kilted-nav2-bringup` pulls in all the navigation and simulation packages we need as dependencies, if not installed yet)
 
-Clone the Rerun repository:
+Then clone the Rerun repository to get the example code:
 ```bash
 git clone https://github.com/rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -73,14 +73,14 @@ source /opt/ros/kilted/setup.bash
 
 ### Run the code
 
-First, in one terminal launch the nav2 turtlebot demo:
+First, in one terminal launch the Nav2 turtlebot demo:
 ```bash
 source /opt/ros/kilted/setup.bash
 
 ros2 launch nav2_bringup tb4_simulation_launch.py headless:=False
 ```
 
-As described in the nav demo, use the rviz window to initialize the pose estimate and set a navigation goal.
+This should open two windows for Gazebo and RViz. Use the RViz window to initialize the pose estimate to put the robot on the map, and set a navigation goal to let it move.
 
 You can now connect to the running ROS system by running this in a separate terminal:
 ```bash
