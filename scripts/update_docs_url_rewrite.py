@@ -148,7 +148,7 @@ def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_
     logging.info(f"\nApplying changes to URL map: {balancer_name}")
     operation = client.update(project=project, url_map=balancer_name, url_map_resource=url_map)
 
-    logging.info("Waiting for operation to complete...")
+    logging.info("Waiting for operation to complete…")
     operation.result()
 
     logging.info("✓ URL map updated successfully")
