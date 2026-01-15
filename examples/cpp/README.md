@@ -1,6 +1,6 @@
 # Rerun C++ examples
 The simplest example is [`minimal`](minimal/main.cpp). You may want to start there
-using the accompanying [`C++ Quick Start`](https://www.rerun.io/docs/getting-started/quick-start/cpp) guide.
+using the accompanying [`C++ Quick Start`](https://www.rerun.io/docs/getting-started/data-in/cpp) guide.
 
 ## Build all examples
 The CMake target `examples` is a convenient alias for building all CMake examples in one go.

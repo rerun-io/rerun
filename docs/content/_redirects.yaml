@@ -27,6 +27,10 @@ getting-started/troubleshooting: overview/installing-rerun/troubleshooting
 getting-started/installing-viewer: overview/installing-rerun/viewer
 getting-started/data-out/analyze-and-log: getting-started/data-out/analyze-and-send
 getting-started/data-out/query-data: getting-started/data-out
+getting-started/quick-start: getting-started
+getting-started/quick-start/cpp: getting-started/data-in/cpp
+getting-started/quick-start/python: getting-started/data-in/python
+getting-started/quick-start/rust: getting-started/data-in/rust
 
 # Concepts section (old paths moved to subfolders)
 concepts/app-model: concepts/how-does-rerun-work

@@ -72,7 +72,7 @@ Each layer creates different types of components on entity paths (derived from M
 
 For more information on querying data and working with archetypes, see the [Data Queries documentation](../../../howto/query-and-transform/get-data-out.md).
 
-Each of these layers contributes their own [chunks](../../chunks.md) to the Rerun-native data.
+Each of these layers contributes their own [chunks](../chunks.md) to the Rerun-native data.
 Below is a table showing the mapping between MCAP data and Rerun components:
 
 | MCAP Data        | Rerun component                 | Description                                                                   |

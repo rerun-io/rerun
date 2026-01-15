@@ -8,6 +8,10 @@ The Python SDK includes both the SDK and the Viewer, so you're ready to go with 
 -   `pip install rerun-sdk` via pip
 -   `conda install -c conda-forge rerun-sdk` via Conda
 
+Conda always comes with support for all features but if using pip you may need to specify optional features:
+-   `pip install rerun-sdk[notebook]` for the embedded notebook tools
+-   `pip install rerun-sdk[datafusion]` for the query api tools
+
 ## Next steps
 
-To start getting your own data streamed to the viewer, check out the [Python quick start guide](../../getting-started/quick-start/python.md).
+To start getting your own data streamed to the viewer, check out the [Python quick start guide](../../getting-started/data-in/python.md).
