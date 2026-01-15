@@ -11,6 +11,8 @@ pub struct GlobalContext<'a> {
     /// Used to hide non-deterministic UI elements such as the current time.
     pub is_test: bool,
 
+    pub memory_limit: re_memory::MemoryLimit,
+
     /// Global options for the whole viewer.
     pub app_options: &'a AppOptions,
 

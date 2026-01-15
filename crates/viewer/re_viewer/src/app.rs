@@ -2460,20 +2460,20 @@ impl App {
         let was_empty = entity_db.is_empty();
         let entity_db_add_result = entity_db.add_log_msg(msg);
 
-        // Downgrade to read-only, so we can access caches.
-        let entity_db = store_hub
-            .entity_db(store_id)
-            .expect("Just queried it mutable and that was fine.");
-
         match entity_db_add_result {
             Ok(store_events) => {
-                self.process_store_events_for_db(store_hub, entity_db, &store_events);
+                self.process_store_events_for_db(store_hub, store_id, &store_events);
             }
 
             Err(err) => {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             }
         }
+
+        // Need to reborrow as read-only since we passed store_hub as mutable earlier.
+        let entity_db = store_hub
+            .entity_db(store_id)
+            .expect("Just queried it mutable and that was fine.");
 
         // Note: some of the logic above is duplicated in `fn prefetch_chunks`.
         // Make sure they are kept in sync!
@@ -2550,11 +2550,14 @@ impl App {
     fn process_store_events_for_db(
         &self,
         store_hub: &StoreHub,
-        entity_db: &EntityDb,
+        store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
-        // TODO(RR-3329): Should this run for all caches?
-        if let Some(caches) = store_hub.active_caches() {
+        // Keep all caches up to date, even if they're in the background.
+        // This ensures that when we switch to a different recording, the caches are already valid.
+        if let Some(entity_db) = store_hub.entity_db(store_id)
+            && let Some(caches) = store_hub.caches_for_store(store_id)
+        {
             caches.on_store_events(store_events, entity_db);
         }
 
@@ -3123,12 +3126,12 @@ impl App {
                     }
                 }
 
-                // Downgrade to read-only, so we can access caches.
+                self.process_store_events_for_db(store_hub, &store_id, &store_events);
+
+                // Need to reborrow as read-only since we passed store_hub as mutable earlier.
                 let db = store_hub
                     .entity_db(&store_id)
                     .expect("Just queried it mutable and that was fine.");
-
-                self.process_store_events_for_db(store_hub, db, &store_events);
 
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!

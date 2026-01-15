@@ -9,7 +9,9 @@ use re_log_types::StoreId;
 /// Does memoization of different objects for the immediate mode UI.
 pub struct Caches {
     caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
-    store_id: StoreId,
+
+    /// The store for which these caches are caching data.
+    pub store_id: StoreId,
 }
 
 impl Caches {

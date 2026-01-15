@@ -377,6 +377,7 @@ impl AppState {
                     global_context: GlobalContext {
                         is_test: app_env.is_test(),
 
+                        memory_limit: startup_options.memory_limit,
                         app_options,
                         reflection,
 
@@ -423,6 +424,7 @@ impl AppState {
                     global_context: GlobalContext {
                         is_test: app_env.is_test(),
 
+                        memory_limit: startup_options.memory_limit,
                         app_options,
                         reflection,
 

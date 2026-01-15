@@ -123,12 +123,6 @@ impl BarChart {
             component_type: Some("rerun.components.Length".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("BarChart".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -237,6 +231,13 @@ impl ::re_types_core::AsComponents for BarChart {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for BarChart {}
+
+impl crate::VisualizableArchetype for BarChart {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("BarChart").with_overrides(self)
+    }
+}
 
 impl BarChart {
     /// Create a new `BarChart`.

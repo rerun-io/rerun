@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_sdk_types::datatypes::Angle;
-use re_sdk_types::{archetypes, blueprint, components};
+use re_sdk_types::{VisualizableArchetype as _, archetypes, blueprint, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -236,7 +236,10 @@ fn test_transform_axes_for_explicit_transforms() {
             transforms_override_path.clone(),
             &blueprint::archetypes::VisualizerOverrides::new([
                 // TODO(RR-3153): remove the `as_str()`.
-                archetypes::TransformAxes3D::visualizer().as_str(),
+                archetypes::TransformAxes3D::default()
+                    .visualizer()
+                    .visualizer_type
+                    .as_str(),
             ]),
         );
         ctx.save_blueprint_archetype(
