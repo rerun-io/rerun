@@ -62,6 +62,7 @@ dev = [
   "platformdirs>=4.0",
   # Script dependencies (needed for linting scripts)
   "google-cloud-storage>=2.9.0",
+  "google-cloud-compute>=1.20.0",
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
   # Needed by lerobot dataloader example

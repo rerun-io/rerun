@@ -92,29 +92,10 @@ jobs:
           process_gcloudignore: false
           parent: false
 
-      - name: "Update latest index.html"
+      - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
-          cat <<EOF > index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Redirecting</title>
-            <noscript>
-              <meta http-equiv="refresh" content="1; url=../${{ inputs.PY_DOCS_VERSION_NAME }}/" />
-            </noscript>
-            <script>
-              window.location.replace("../${{ inputs.PY_DOCS_VERSION_NAME }}/" + window.location.hash);
-            </script>
-          </head>
-          <body>
-            Redirecting to <a href="../${{ inputs.PY_DOCS_VERSION_NAME }}/">../${{ inputs.PY_DOCS_VERSION_NAME }}/</a>
-          </body>
-          </html>
-          EOF
-
-          gsutil cp ./index.html gs://rerun-docs/docs/python/stable/
+          pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.PY_DOCS_VERSION_NAME }} --language python
 
       - name: "Update versions.json"
         if: ${{ inputs.UPDATE_LATEST }}
@@ -222,26 +203,7 @@ jobs:
           process_gcloudignore: false
           parent: false
 
-      - name: "Update latest"
+      - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
-          cat <<EOF > index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Redirecting</title>
-            <noscript>
-              <meta http-equiv="refresh" content="1; url=../${{ inputs.JS_DOCS_VERSION_NAME }}/" />
-            </noscript>
-            <script>
-              window.location.replace("../${{ inputs.JS_DOCS_VERSION_NAME }}/" + window.location.hash);
-            </script>
-          </head>
-          <body>
-            Redirecting to <a href="../${{ inputs.JS_DOCS_VERSION_NAME }}/">../${{ inputs.JS_DOCS_VERSION_NAME }}/</a>
-          </body>
-          </html>
-          EOF
-
-          gsutil cp ./index.html gs://rerun-docs/docs/js/stable/
+          pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.JS_DOCS_VERSION_NAME }} --language js
