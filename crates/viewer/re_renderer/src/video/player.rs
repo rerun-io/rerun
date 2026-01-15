@@ -386,6 +386,9 @@ impl VideoPlayer {
             {
                 // We require all samples we're enqueuing before the requested
                 // sample to be present.
+                //
+                // Usually `last_enqueued` is greater than `requested_sample_idx`
+                // since we stay ahead of the requested sample as decribed above.
                 if last_enqueued < requested_sample_idx {
                     return Err(VideoPlayerError::InsufficientSampleData(
                         InsufficientSampleDataError::ExpectedSampleNotAvailable,
