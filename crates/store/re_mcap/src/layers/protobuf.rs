@@ -757,7 +757,7 @@ mod integration_tests {
     /// Helper to test field combinations with or without presence tracking.
     fn test_field_combinations_helper(use_proto3_optional: bool, snapshot_name: &str) {
         let (person_name, person_proto) = create_person_descriptor(use_proto3_optional);
-        let person_message = create_message_descriptor(vec![person_proto], &person_name);
+        let person_message = create_message_descriptor(vec![person_proto], person_name);
 
         let buffer = Vec::new();
         let cursor = io::Cursor::new(buffer);
@@ -809,7 +809,7 @@ mod integration_tests {
 
         let (summary, buffer) = {
             let (person_name, person_proto) = create_person_descriptor(true);
-            let person_message = create_message_descriptor(vec![person_proto], &person_name);
+            let person_message = create_message_descriptor(vec![person_proto], person_name);
 
             let buffer = Vec::new();
             let cursor = io::Cursor::new(buffer);
@@ -992,7 +992,7 @@ mod integration_tests {
         re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
 
         let (color_name, color_proto) = create_color_descriptor();
-        let color_message = create_message_descriptor(vec![color_proto], &color_name);
+        let color_message = create_message_descriptor(vec![color_proto], color_name);
 
         // Create MCAP with test messages.
         let buffer = Vec::new();
@@ -1032,7 +1032,7 @@ mod integration_tests {
 
         let (_, color_proto) = create_color_descriptor();
         let (scene_name, scene_proto) = create_scene_descriptor();
-        let scene_message = create_message_descriptor(vec![color_proto, scene_proto], &scene_name);
+        let scene_message = create_message_descriptor(vec![color_proto, scene_proto], scene_name);
 
         // Create MCAP with test messages.
         let buffer = Vec::new();
