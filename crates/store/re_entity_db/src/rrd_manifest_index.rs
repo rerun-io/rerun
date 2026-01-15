@@ -423,7 +423,7 @@ impl RrdManifestIndex {
             missing_chunk_ids,
             start_time,
             max_uncompressed_bytes_per_batch,
-            mut total_uncompressed_byte_budget,
+            total_uncompressed_byte_budget,
             mut max_uncompressed_bytes_in_transit,
         } = options;
 
@@ -434,6 +434,8 @@ impl RrdManifestIndex {
         let Some(chunks) = self.chunk_intervals.get(&timeline) else {
             return Err(PrefetchError::UnknownTimeline(timeline));
         };
+
+        let mut remaining_uncompressed_byte_budget = total_uncompressed_byte_budget;
 
         max_uncompressed_bytes_in_transit = max_uncompressed_bytes_in_transit
             .saturating_sub(self.chunk_promises.num_uncompressed_bytes_pending());
@@ -500,9 +502,9 @@ impl RrdManifestIndex {
 
             {
                 // Can we fit this chunk in memory?
-                total_uncompressed_byte_budget =
-                    total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
-                if total_uncompressed_byte_budget == 0 {
+                remaining_uncompressed_byte_budget =
+                    remaining_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
+                if remaining_uncompressed_byte_budget == 0 {
                     break; // We've already loaded too much.
                 }
             }
