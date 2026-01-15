@@ -3,10 +3,14 @@ use std::task::{Context, Poll};
 
 use tokio_stream::Stream;
 
-/// Merges two streams, favoring one above the other
+/// Merges two streams, favoring one above the other.
+///
+/// The merged stream only terminates when the high priority stream terminates.
+/// When the low priority stream is exhausted, we continue polling only the high priority stream.
 pub struct PriorityMerge<S1, S2> {
     high_priority: Pin<Box<S1>>,
     low_priority: Pin<Box<S2>>,
+    low_priority_done: bool,
 }
 
 impl<S1, S2> PriorityMerge<S1, S2>
@@ -18,6 +22,7 @@ where
         Self {
             high_priority: Box::pin(high_priority),
             low_priority: Box::pin(low_priority),
+            low_priority_done: false,
         }
     }
 }
@@ -30,10 +35,23 @@ where
     type Item = S1::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(item) = self.high_priority.as_mut().poll_next(cx) {
-            Poll::Ready(item)
-        } else {
-            self.low_priority.as_mut().poll_next(cx)
+        match self.high_priority.as_mut().poll_next(cx) {
+            Poll::Ready(Some(item)) => Poll::Ready(Some(item)),
+            Poll::Ready(None) => Poll::Ready(None), // High priority done = stream done
+            Poll::Pending => {
+                if self.low_priority_done {
+                    Poll::Pending
+                } else {
+                    match self.low_priority.as_mut().poll_next(cx) {
+                        Poll::Ready(Some(item)) => Poll::Ready(Some(item)),
+                        Poll::Ready(None) => {
+                            self.low_priority_done = true;
+                            Poll::Pending
+                        }
+                        Poll::Pending => Poll::Pending,
+                    }
+                }
+            }
         }
     }
 }
