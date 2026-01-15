@@ -477,14 +477,9 @@ impl RrdManifestIndex {
             if total_uncompressed_byte_budget == 0 {
                 break; // We've already loaded too much.
             }
-
-            if remote_chunk.state == LoadState::Unloaded {
-                max_uncompressed_bytes_in_transit =
-                    max_uncompressed_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
-                if max_uncompressed_bytes_in_transit == 0 {
-                    break; // We've hit our budget.
                 }
 
+            if remote_chunk.state == LoadState::Unloaded {
                 let Ok(row_idx) = i32::try_from(row_idx) else {
                     return Err(PrefetchError::BadIndex(row_idx)); // Very improbable
                 };
@@ -503,6 +498,14 @@ impl RrdManifestIndex {
                         size_bytes_uncompressed: uncompressed_bytes_in_batch,
                     });
                     uncompressed_bytes_in_batch = 0;
+                }
+
+                // We enqueue it first, then decrement the budget, ensuring that we still download
+                // big chunks that are outside the `max_uncompressed_bytes_in_transit` limit.
+                max_uncompressed_bytes_in_transit =
+                    max_uncompressed_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
+                if max_uncompressed_bytes_in_transit == 0 {
+                    break; // We've hit our budget.
                 }
             }
         }
