@@ -66,7 +66,8 @@ impl Duration {
         )
     }
 
-    pub fn url_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// Special format which avoids forbidden & special characters in a url.
+    pub fn format_url(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             &re_format::DurationFormatOptions::default()
                 .with_spaces(false)

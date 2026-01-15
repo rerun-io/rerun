@@ -48,7 +48,7 @@ impl std::fmt::Display for Fragment {
                 write!(f, "&")?;
             }
             write!(f, "when={timeline}@",)?;
-            time_cell.url_format(f)?;
+            time_cell.format_url(f)?;
             did_write = true;
         }
 
@@ -57,7 +57,7 @@ impl std::fmt::Display for Fragment {
                 write!(f, "&")?;
             }
             write!(f, "time_selection=",)?;
-            time_selection.url_format(f)?;
+            time_selection.format_url(f)?;
         }
 
         Ok(())

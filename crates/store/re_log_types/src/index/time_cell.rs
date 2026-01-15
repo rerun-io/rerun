@@ -12,6 +12,9 @@ pub struct TimeCell {
     pub value: NonMinI64,
 }
 
+// We shouldn't implement display for this as it's too ambiguous, instead create specific functions.
+static_assertions::assert_not_impl_any!(TimeCell: std::fmt::Display);
+
 impl TimeCell {
     pub const ZERO_DURATION: Self = Self {
         typ: TimeType::DurationNs,
@@ -191,12 +194,13 @@ impl TimeCell {
         }
     }
 
-    pub fn url_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// Special format which avoids forbidden & special characters in a url.
+    pub fn format_url(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Display as _;
         match self.typ {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => write!(f, "{}", self.value),
-            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).url_format(f),
+            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).format_url(f),
             TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(self.value.get())
                 .format_iso()
                 .fmt(f),
@@ -245,7 +249,7 @@ mod tests {
 
         impl std::fmt::Display for UrlFormat {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.0.url_format(f)
+                self.0.format_url(f)
             }
         }
 

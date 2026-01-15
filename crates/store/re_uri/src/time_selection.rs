@@ -9,6 +9,9 @@ pub struct TimeSelection {
     pub range: AbsoluteTimeRange,
 }
 
+// We shouldn't implement display for this as it's too ambiguous, instead create specific functions.
+static_assertions::assert_not_impl_any!(TimeSelection: std::fmt::Display);
+
 impl TimeSelection {
     pub fn format(&self, timestamp_format: re_log_types::TimestampFormat) -> String {
         format!(
@@ -18,7 +21,8 @@ impl TimeSelection {
         )
     }
 
-    pub fn url_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    /// Special format which avoids forbidden & special characters in a url.
+    pub fn format_url(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { timeline, range } = self;
 
         let min = TimeCell::new(timeline.typ(), range.min());
@@ -27,9 +31,9 @@ impl TimeSelection {
         let name = timeline.name();
         write!(f, "{name}@")?;
 
-        min.url_format(f)?;
+        min.format_url(f)?;
         write!(f, "..")?;
-        max.url_format(f)
+        max.format_url(f)
     }
 }
 
@@ -136,7 +140,7 @@ mod tests {
 
         impl std::fmt::Display for UrlFormat {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.0.url_format(f)
+                self.0.format_url(f)
             }
         }
 
