@@ -53,7 +53,7 @@ class VisualizerComponentMapping:
         Parameters
         ----------
         selector:
-            Source component name.
+            Component selector for mapping.
         target:
             Target component name.
 
@@ -65,7 +65,7 @@ class VisualizerComponentMapping:
     selector: datatypes.Utf8 = field(
         converter=_visualizer_component_mapping__selector__special_field_converter_override
     )
-    # Source component name.
+    # Component selector for mapping.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

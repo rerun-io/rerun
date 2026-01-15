@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct VisualizerComponentMapping {
-    /// Source component name.
+    /// Component selector for mapping.
     pub selector: crate::datatypes::Utf8,
 
     /// Target component name.
