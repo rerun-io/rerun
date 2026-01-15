@@ -9,9 +9,15 @@ import subprocess
 from pathlib import Path
 
 
-def get_repo_root() -> str:
-    # TODO(RR-3355): Use unified utility for this in the future.
-    return str(Path(__file__).parent.parent.resolve())
+def get_rerun_root() -> str:
+    # Search upward for .RERUN_ROOT sentinel file
+    # TODO(RR-3355): Use a shared utility for this
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / ".RERUN_ROOT").exists():
+            return str(current)
+        current = current.parent
+    raise FileNotFoundError("Could not find .RERUN_ROOT sentinel file in any parent directory")
 
 
 def run(
@@ -21,9 +27,9 @@ def run(
     timeout: int | None = None,
     cwd: str | None = None,
 ) -> None:
-    # Run from the repo root if not specify otherwise.
+    # Run from the rerun root if not specify otherwise.
     if cwd is None:
-        cwd = get_repo_root()
+        cwd = get_rerun_root()
 
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(

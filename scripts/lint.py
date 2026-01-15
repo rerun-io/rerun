@@ -45,6 +45,17 @@ double_word = re.compile(r" ([a-z]+) \1[ \.]")
 Frontmatter = dict[str, Any]
 
 
+def get_rerun_root() -> str:
+    # Search upward for .RERUN_ROOT sentinel file
+    # TODO(RR-3355): Use a shared utility for this
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / ".RERUN_ROOT").exists():
+            return str(current)
+        current = current.parent
+    raise FileNotFoundError("Could not find .RERUN_ROOT sentinel file in any parent directory")
+
+
 def is_valid_todo_part(part: str) -> bool:
     part = part.strip()
 
@@ -1521,14 +1532,12 @@ def main() -> None:
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
-    script_dirpath = os.path.dirname(os.path.realpath(__file__))
-    # TODO(RR-3355): Use unified utility for this in the future.
-    root_dirpath = os.path.abspath(f"{script_dirpath}/..")
-    os.chdir(root_dirpath)
+    rerun_dirpath = get_rerun_root()
+    os.chdir(rerun_dirpath)
 
     if args.files:
         for filepath in args.files:
-            filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
+            filepath = os.path.join(".", os.path.relpath(filepath, rerun_dirpath))
             filepath = str(filepath).replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
@@ -1539,7 +1548,7 @@ def main() -> None:
         repo = git.Repo(".", search_parent_directories=True)
         assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
         repo_root = Path(repo.working_tree_dir).resolve()
-        current_root = Path(root_dirpath).resolve()
+        current_root = Path(rerun_dirpath).resolve()
 
         tracked_files = [item[1].path for item in repo.index.iter_blobs()]
         for filepath in tracked_files:
