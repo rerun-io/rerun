@@ -56,14 +56,17 @@ fn test_select_box_instances() {
         let ui_scale = 4.0;
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0) / ui_scale)
-            .with_pixels_per_point(ui_scale)
-            .build_ui(|ui| {
-                test_context.edit_selection(|selection_state| {
-                    selection_state
-                        .set_selection(Item::InstancePath(selected_instance_path.clone()));
-                });
-                test_context.run_with_single_view(ui, view_id);
+            .with_pixels_per_point(ui_scale);
+        // Have to set options explicitly here, since `setup_kittest_for_rendering_3d` isn't aware of the ui scaling.§
+        harness.with_options(re_ui::testing::default_snapshot_options_for_3d(egui::vec2(
+            300.0, 300.0,
+        )));
+        let mut harness = harness.build_ui(|ui| {
+            test_context.edit_selection(|selection_state| {
+                selection_state.set_selection(Item::InstancePath(selected_instance_path.clone()));
             });
+            test_context.run_with_single_view(ui, view_id);
+        });
 
         let name = if selected_instance_path.instance.is_specific() {
             format!(

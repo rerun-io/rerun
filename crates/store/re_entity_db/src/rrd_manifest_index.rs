@@ -72,14 +72,15 @@ impl LoadState {
 pub struct ChunkPrefetchOptions {
     pub timeline: Timeline,
 
+    /// Start loading chunks from this time onwards,
+    /// before looping back to the start.
+    pub start_time: TimeInt,
+
     /// These chunks are required by one or more queries that are currently in-flight.
     ///
     /// We must try and download them in priority, as there are views actively waiting for them in order to
     /// properly render.
     pub missing_chunk_ids: HashSet<ChunkId>,
-
-    /// Only consider chunks overlapping this range on [`Self::timeline`].
-    pub desired_range: AbsoluteTimeRange,
 
     /// Batch together requests until we reach this size).
     pub max_uncompressed_bytes_per_batch: u64,
@@ -145,6 +146,8 @@ pub struct RrdManifestIndex {
     entity_has_temporal_data_on_timeline: IntMap<re_chunk::EntityPath, IntSet<TimelineName>>,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
+    static_chunk_ids: HashSet<ChunkId>,
+
     native_static_map: re_log_encoding::RrdManifestStaticMap,
     native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
 
@@ -165,6 +168,12 @@ impl RrdManifestIndex {
 
         self.native_static_map = manifest.get_static_data_as_a_map()?;
         self.native_temporal_map = manifest.get_temporal_data_as_a_map()?;
+
+        for entity_chunks in self.native_static_map.values() {
+            for &chunk_id in entity_chunks.values() {
+                self.static_chunk_ids.insert(chunk_id);
+            }
+        }
 
         self.update_timeline_stats();
         self.update_entity_tree();
@@ -402,7 +411,7 @@ impl RrdManifestIndex {
     }
 
     pub fn has_pending_promises(&self) -> bool {
-        !self.chunk_promises.has_pending()
+        self.chunk_promises.has_pending()
     }
 
     /// Find the next candidates for prefetching.
@@ -416,7 +425,7 @@ impl RrdManifestIndex {
         let ChunkPrefetchOptions {
             timeline,
             missing_chunk_ids,
-            desired_range,
+            start_time,
             max_uncompressed_bytes_per_batch,
             mut total_uncompressed_byte_budget,
             mut max_uncompressed_bytes_in_transit,
@@ -444,13 +453,24 @@ impl RrdManifestIndex {
         let mut indices = vec![];
 
         let missing_chunk_ids = missing_chunk_ids.into_iter();
-        let prefetched_chunk_ids = || {
+        let chunks_ids_after_time_cursor = || {
             chunks
-                .query(desired_range.into())
+                .query(start_time..=TimeInt::MAX)
                 .map(|(_, chunk_id)| *chunk_id)
         };
-        let chunk_ids_in_priority_order =
-            missing_chunk_ids.chain(std::iter::once_with(prefetched_chunk_ids).flatten());
+        let chunks_ids_before_time_cursor = || {
+            chunks
+                .query(TimeInt::MIN..=start_time.saturating_sub(1))
+                .map(|(_, chunk_id)| *chunk_id)
+        };
+        let chunk_ids_in_priority_order = itertools::chain!(
+            self.static_chunk_ids.iter().copied(),
+            missing_chunk_ids,
+            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+        );
+
+        let entity_paths = manifest.col_chunk_entity_path_raw()?;
 
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
         // That's fine: they will still be missing next frame, and therefore will still be reported
@@ -466,19 +486,32 @@ impl RrdManifestIndex {
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
-            total_uncompressed_byte_budget =
-                total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
-            if total_uncompressed_byte_budget == 0 {
-                break; // We've already loaded too much.
+
+            if total_uncompressed_byte_budget < uncompressed_chunk_size {
+                // TODO(RR-3344): improve this error message
+                let entity_path = entity_paths.value(row_idx);
+                if cfg!(target_arch = "wasm32") {
+                    re_log::debug_once!(
+                        "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. Try the native viewer instead, or split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+                    );
+                } else {
+                    re_log::warn_once!(
+                        "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. You should increase the `--memory-limit` or try to split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+                    );
+                }
+                continue;
+            }
+
+            {
+                // Can we fit this chunk in memory?
+                total_uncompressed_byte_budget =
+                    total_uncompressed_byte_budget.saturating_sub(uncompressed_chunk_size);
+                if total_uncompressed_byte_budget == 0 {
+                    break; // We've already loaded too much.
+                }
             }
 
             if remote_chunk.state == LoadState::Unloaded {
-                max_uncompressed_bytes_in_transit =
-                    max_uncompressed_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
-                if max_uncompressed_bytes_in_transit == 0 {
-                    break; // We've hit our budget.
-                }
-
                 let Ok(row_idx) = i32::try_from(row_idx) else {
                     return Err(PrefetchError::BadIndex(row_idx)); // Very improbable
                 };
@@ -497,6 +530,14 @@ impl RrdManifestIndex {
                         size_bytes_uncompressed: uncompressed_bytes_in_batch,
                     });
                     uncompressed_bytes_in_batch = 0;
+                }
+
+                // We enqueue it first, then decrement the budget, ensuring that we still download
+                // big chunks that are outside the `max_uncompressed_bytes_in_transit` limit.
+                max_uncompressed_bytes_in_transit =
+                    max_uncompressed_bytes_in_transit.saturating_sub(uncompressed_chunk_size);
+                if max_uncompressed_bytes_in_transit == 0 {
+                    break; // We've hit our budget.
                 }
             }
         }
