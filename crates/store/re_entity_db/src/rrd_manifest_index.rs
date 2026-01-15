@@ -154,6 +154,8 @@ pub struct RrdManifestIndex {
     chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
     manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
+
+    full_uncompressed_size: u64,
 }
 
 impl std::fmt::Debug for RrdManifestIndex {
@@ -211,6 +213,12 @@ impl RrdManifestIndex {
         for (row_idx, chunk_id) in chunk_id.enumerate() {
             self.manifest_row_from_chunk_id.insert(chunk_id, row_idx);
         }
+
+        self.full_uncompressed_size = manifest
+            .col_chunk_byte_size_uncompressed_raw()?
+            .values()
+            .iter()
+            .sum();
 
         self.manifest = Some(manifest);
 
@@ -665,16 +673,8 @@ impl RrdManifestIndex {
             .is_none_or(|c| c.state.is_unloaded())
     }
 
-    pub fn full_uncompressed_size(&self) -> Option<u64> {
-        re_tracing::profile_function!();
-        Some(
-            self.manifest()?
-                .col_chunk_byte_size_uncompressed_raw()
-                .ok()?
-                .values()
-                .iter()
-                .sum(),
-        )
+    pub fn full_uncompressed_size(&self) -> u64 {
+        self.full_uncompressed_size
     }
 }
 

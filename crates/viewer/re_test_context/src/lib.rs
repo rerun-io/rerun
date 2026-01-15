@@ -524,6 +524,8 @@ impl TestContext {
             global_context: GlobalContext {
                 is_test: true,
 
+                memory_limit: re_memory::MemoryLimit::UNLIMITED,
+
                 app_options: &self.app_options,
                 reflection: &self.reflection,
 
