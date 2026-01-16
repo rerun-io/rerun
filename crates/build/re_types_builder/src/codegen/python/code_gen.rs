@@ -5,14 +5,22 @@ use std::collections::{BTreeSet, HashMap};
 use itertools::Itertools as _;
 use unindent::unindent;
 
-use super::archetype_methods::{quote_clear_methods, quote_columnar_methods, quote_partial_update_methods};
+use super::archetype_methods::{
+    quote_clear_methods, quote_columnar_methods, quote_partial_update_methods,
+};
 use super::arrow::quote_arrow_support_from_obj;
-use super::docs::{lines_from_docs, quote_doc_from_fields, quote_doc_lines, quote_obj_docs, quote_union_kind_from_fields};
+use super::classmethod_decorators;
+use super::docs::{
+    lines_from_docs, quote_doc_from_fields, quote_doc_lines, quote_obj_docs,
+    quote_union_kind_from_fields,
+};
 use super::extension_class::{ExtensionClass, ExtensionClasses, FIELD_CONVERTER_SUFFIX};
 use super::init_method::quote_init_method;
 use super::object_ext::PythonObjectExt;
-use super::typing::{quote_aliases_from_object, quote_field_converter_from_field, quote_field_type_from_field, quote_union_aliases_from_object};
-use super::classmethod_decorators;
+use super::typing::{
+    quote_aliases_from_object, quote_field_converter_from_field, quote_field_type_from_field,
+    quote_union_aliases_from_object,
+};
 use crate::codegen::StringExt as _;
 use crate::objects::ObjectClass;
 use crate::{Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry};
@@ -257,7 +265,7 @@ pub fn code_for_struct(
             if let Some(visualizer_name) = visualizer_name {
                 code.push_indented(1, "", 1);
                 code.push_indented(1, "def visualizer(self) -> Visualizer:", 1);
-                code.push_indented(2, r#""""Creates a visualizer for this archetype.""""#, 1);
+                code.push_indented(2, r#""""Creates a visualizer for this archetype, using all currently set values as overrides.""""#, 1);
                 // TODO(RR-3254): Add options for mapping here
                 code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=None)"#), 1);
             }
