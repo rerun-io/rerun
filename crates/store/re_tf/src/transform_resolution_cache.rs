@@ -982,20 +982,20 @@ impl TransformResolutionCache {
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
                 // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
                 self.frame_id_registry
-                    .register_all_frames_in_chunk(&event.chunk);
+                    .register_all_frames_in_chunk(&event.chunk_before_processing);
             }
 
-            let aspects = TransformAspect::transform_aspects_of(&event.chunk);
+            let aspects = TransformAspect::transform_aspects_of(&event.chunk_before_processing);
             if aspects.is_empty() {
                 continue;
             }
 
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                self.remove_chunk(&event.chunk, aspects);
-            } else if event.diff.chunk.is_static() {
-                self.add_static_chunk(&event.chunk, aspects);
+                self.remove_chunk(&event.chunk_before_processing, aspects);
+            } else if event.diff.chunk_before_processing.is_static() {
+                self.add_static_chunk(&event.chunk_before_processing, aspects);
             } else {
-                self.add_temporal_chunk(&event.chunk, aspects);
+                self.add_temporal_chunk(&event.chunk_before_processing, aspects);
             }
         }
     }

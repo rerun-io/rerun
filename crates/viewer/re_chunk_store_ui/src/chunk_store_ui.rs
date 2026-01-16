@@ -85,7 +85,15 @@ impl DatastoreUi {
         }
         .show(ui, |ui| {
             let exit_focused_chunk = if let Some(focused_chunk) = &mut self.focused_chunk {
-                focused_chunk.ui(ui, timestamp_format)
+                focused_chunk.ui(
+                    ui,
+                    timestamp_format,
+                    match self.store_kind {
+                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Blueprint => ctx.blueprint.storage_engine(),
+                    }
+                    .store(),
+                )
             } else {
                 self.chunk_store_ui(
                     ui,
