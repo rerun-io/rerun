@@ -35,6 +35,7 @@ re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder", "stream_from_http"] }
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
+re_memory.workspace = true
 re_query.workspace = true
 re_redap_client.workspace = true
 re_renderer = { workspace = true, features = ["serde"] }

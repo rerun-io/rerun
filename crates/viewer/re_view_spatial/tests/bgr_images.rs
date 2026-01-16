@@ -61,7 +61,7 @@ fn run_bgr_test<T: ImageChannelType>(
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         &snapshot_name,
-        egui::vec2(160.0, 120.0),
+        egui::vec2(300.0, 200.0),
         None,
     ));
 }

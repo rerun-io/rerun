@@ -24,6 +24,9 @@ pub struct HybridLatestAtResults<'a> {
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
+
+    /// Hash of mappings applied to [`Self::results`].
+    pub component_mappings_hash: Hash64,
 }
 
 /// Wrapper that contains the results of a range query with possible overrides.
@@ -35,6 +38,9 @@ pub struct HybridRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
     pub(crate) defaults: &'a LatestAtResults,
+
+    /// Hash of mappings applied to [`Self::results`].
+    pub(crate) component_mappings_hash: Hash64,
 }
 
 impl HybridLatestAtResults<'_> {
@@ -136,7 +142,7 @@ impl HybridResults<'_> {
                         .filter_map(|chunk| chunk.row_id()),
                 );
 
-                Hash64::hash(&indices)
+                Hash64::hash((&indices, r.component_mappings_hash))
             }
 
             Self::Range(_, r) => {
@@ -163,7 +169,7 @@ impl HybridResults<'_> {
                         .flat_map(|chunk| chunk.component_row_ids(*component))
                 }));
 
-                Hash64::hash(&indices)
+                Hash64::hash((&indices, r.component_mappings_hash))
             }
         }
     }

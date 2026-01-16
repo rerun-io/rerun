@@ -17,12 +17,13 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
-    QueryContext, RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _,
+    QueryContext, RecommendedView, RecommendedVisualizers, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
+use smallvec::SmallVec;
 
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
@@ -321,7 +322,7 @@ impl ViewClass for SpatialView3D {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
@@ -342,7 +343,7 @@ impl ViewClass for SpatialView3D {
             .collect();
 
         // Start with all the entities which are both indicated and visualizable.
-        let mut enabled_visualizers: SmallVisualizerSet = indicated
+        let mut enabled_visualizers: SmallVec<[ViewSystemIdentifier; 4]> = indicated
             .intersection(&visualizable)
             .copied()
             .copied()
@@ -356,7 +357,7 @@ impl ViewClass for SpatialView3D {
             }
         }
 
-        enabled_visualizers
+        RecommendedVisualizers::default_many(enabled_visualizers)
     }
 
     fn spawn_heuristics(

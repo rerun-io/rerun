@@ -172,7 +172,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         re_sdk_types::blueprint::components::ViewMaximized::name(),
         re_sdk_types::blueprint::components::ViewOrigin::name(),
         re_sdk_types::blueprint::components::ViewerRecommendationHash::name(),
-        re_sdk_types::blueprint::components::VisualizerOverride::name(),
+        re_sdk_types::blueprint::components::VisualizerInstructionId::name(),
     ]
     .into_iter()
     // Exclude components that have custom test cases.

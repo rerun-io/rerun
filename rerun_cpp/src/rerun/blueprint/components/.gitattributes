@@ -60,6 +60,5 @@ visible_time_range.hpp linguist-generated=true
 visual_bounds2d.hpp linguist-generated=true
 visualizer_component_mapping.hpp linguist-generated=true
 visualizer_instruction_id.hpp linguist-generated=true
-visualizer_override.hpp linguist-generated=true
 visualizer_type.hpp linguist-generated=true
 zoom_level.hpp linguist-generated=true

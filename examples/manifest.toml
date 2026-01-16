@@ -46,6 +46,7 @@ examples = [
   "rgbd",
   "nv12",
   "imu_signals",
+  "mcap",
   "eye_control",
 ]
 
@@ -132,6 +133,7 @@ examples = [
   "blueprint_stocks",
   "arflow",
   "air_traffic_data",
+  "mcap",
 ]
 
 [categories.feature-showcase]

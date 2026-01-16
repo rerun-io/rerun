@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-
 import rerun as rr
 
-rr.init("rerun_example_native_sync")
+rr.init("rerun_example_log_to_rrd")
 
 # Open a local file handle to stream the data into.
 rr.save("/tmp/my_recording.rrd")

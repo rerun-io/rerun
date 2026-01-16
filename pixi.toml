@@ -297,7 +297,13 @@ py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini 
 py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook scripts/ tests/python/ docs/snippets/ --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
-py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
+py-lint-rerun-ty = "uv run ty check"
+py-lint = { depends-on = [
+  "py-lint-non-sdk",
+  "py-lint-rerun",
+  "py-lint-nb-rerun",
+  "py-lint-rerun-ty",
+] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
@@ -427,7 +433,7 @@ py-plot-dashboard = { cmd = "uvpy tests/python/plot_dashboard_stress/main.py", d
 
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "cargo run --locked -p re_dev_tools -- search-index"
+search-index = "uv run --group docs cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally (uses mkdocs from uv docs dependency group)
 py-docs-serve = "uv run --group docs mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
@@ -530,6 +536,7 @@ taplo = "=0.9.1"
 tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
+ty = "==0.0.11"
 typing_extensions = ">4.5"
 typos = ">=1.37.2"
 urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)

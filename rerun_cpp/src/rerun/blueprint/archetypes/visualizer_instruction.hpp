@@ -50,18 +50,12 @@ namespace rerun::blueprint::archetypes {
         VisualizerInstruction& operator=(const VisualizerInstruction& other) = default;
         VisualizerInstruction& operator=(VisualizerInstruction&& other) = default;
 
-        explicit VisualizerInstruction(
-            rerun::blueprint::components::VisualizerType _visualizer_type,
-            Collection<rerun::blueprint::components::VisualizerComponentMapping> _component_map
+        explicit VisualizerInstruction(rerun::blueprint::components::VisualizerType _visualizer_type
         )
             : visualizer_type(ComponentBatch::from_loggable(
                                   std::move(_visualizer_type), Descriptor_visualizer_type
               )
-                                  .value_or_throw()),
-              component_map(
-                  ComponentBatch::from_loggable(std::move(_component_map), Descriptor_component_map)
-                      .value_or_throw()
-              ) {}
+                                  .value_or_throw()) {}
 
         /// Update only some specific fields of a `VisualizerInstruction`.
         static VisualizerInstruction update_fields() {

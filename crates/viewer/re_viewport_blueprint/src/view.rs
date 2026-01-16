@@ -450,25 +450,24 @@ impl ViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::sync::Arc;
 
     use ahash::HashSet;
-    use re_chunk::{ComponentIdentifier, RowId};
+    use re_chunk::RowId;
+    use re_log_types::TimePoint;
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
-    use re_log_types::{StoreKind, TimePoint};
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
-        ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
+        IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
+        VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
     use crate::view_contents::DataQueryPropertyResolver;
 
     #[test]
-    fn test_component_overrides() {
+    fn test_visible_interactive_overrides() {
         let mut test_ctx = TestContext::new();
         let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
 
@@ -514,14 +513,12 @@ mod tests {
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
         let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
-        let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
 
         struct Scenario {
-            blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
-            expected_overrides: HashMap<EntityPath, HashSet<ComponentIdentifier>>,
+            base_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
             expected_hidden: HashSet<EntityPath>,
             expected_non_interactive: HashSet<EntityPath>,
         }
@@ -529,36 +526,27 @@ mod tests {
         let scenarios: Vec<Scenario> = vec![
             // No overrides.
             Scenario {
-                blueprint_overrides: Vec::new(),
-                expected_overrides: HashMap::default(),
+                base_overrides: Vec::new(),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: HashSet::default(),
             },
             // Set a single individual.
             Scenario {
-                blueprint_overrides: vec![(
+                base_overrides: vec![(
                     "parent".into(),
                     Box::new(
                         MyPoints::default().with_labels([MyLabel("parent_individual".to_owned())]),
                     ),
                 )],
-                expected_overrides: HashMap::from([(
-                    "parent".into(),
-                    std::iter::once(MyPoints::descriptor_labels().component).collect(),
-                )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: HashSet::default(),
             },
             // Hide everything.
             Scenario {
-                blueprint_overrides: vec![(
+                base_overrides: vec![(
                     "parent".into(),
                     Box::new(EntityBehavior::new().with_visible(false)),
                 )],
-                expected_overrides: HashMap::from([(
-                    "parent".into(),
-                    std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
-                )]),
                 expected_hidden: [
                     "parent/skipped/grandchild".into(),
                     "parent/skipped".into(),
@@ -571,7 +559,7 @@ mod tests {
             },
             // Hide part of the tree.
             Scenario {
-                blueprint_overrides: vec![
+                base_overrides: vec![
                     (
                         "parent".into(),
                         Box::new(EntityBehavior::new().with_visible(false)),
@@ -581,16 +569,6 @@ mod tests {
                         Box::new(EntityBehavior::new().with_visible(true)),
                     ),
                 ],
-                expected_overrides: HashMap::from([
-                    (
-                        "parent".into(),
-                        std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        std::iter::once(EntityBehavior::descriptor_visible().component).collect(),
-                    ),
-                ]),
                 expected_hidden: ["parent".into(), "parent/child".into()]
                     .into_iter()
                     .collect(),
@@ -598,14 +576,10 @@ mod tests {
             },
             // Make everything non-interactive.
             Scenario {
-                blueprint_overrides: vec![(
+                base_overrides: vec![(
                     "parent".into(),
                     Box::new(EntityBehavior::new().with_interactive(false)),
                 )],
-                expected_overrides: HashMap::from([(
-                    "parent".into(),
-                    HashSet::from_iter([EntityBehavior::descriptor_interactive().component]),
-                )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: [
                     "parent/skipped/grandchild".into(),
@@ -618,7 +592,7 @@ mod tests {
             },
             // Make part of the tree non-interactive.
             Scenario {
-                blueprint_overrides: vec![
+                base_overrides: vec![
                     (
                         "parent".into(),
                         Box::new(EntityBehavior::new().with_interactive(false)),
@@ -628,18 +602,6 @@ mod tests {
                         Box::new(EntityBehavior::new().with_interactive(true)),
                     ),
                 ],
-                expected_overrides: HashMap::from([
-                    (
-                        "parent".into(),
-                        std::iter::once(EntityBehavior::descriptor_interactive().component)
-                            .collect(),
-                    ),
-                    (
-                        "parent/skipped".into(),
-                        std::iter::once(EntityBehavior::descriptor_interactive().component)
-                            .collect(),
-                    ),
-                ]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: ["parent".into(), "parent/child".into()]
                     .into_iter()
@@ -650,8 +612,7 @@ mod tests {
         for (
             i,
             Scenario {
-                blueprint_overrides,
-                expected_overrides,
+                base_overrides,
                 expected_hidden,
                 expected_non_interactive,
             },
@@ -682,8 +643,10 @@ mod tests {
                 };
 
             // log override components as instructed.
-            for (entity_path, batch) in blueprint_overrides {
-                add_to_blueprint(&override_root.join(&entity_path), batch.as_ref());
+            for (entity_path, batch) in base_overrides {
+                let base_override_path =
+                    ViewContents::base_override_path_for_entity(view.id, &entity_path);
+                add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
             // Set up a store query and update the overrides.
@@ -698,35 +661,6 @@ mod tests {
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
-
-                let component_overrides = &result.property_overrides.component_overrides;
-                let mut expected_overrides = expected_overrides
-                    .get(&result.entity_path)
-                    .cloned()
-                    .unwrap_or_default();
-
-                for (component, override_path) in component_overrides {
-                    assert_eq!(
-                        override_path.store_kind,
-                        StoreKind::Blueprint,
-                        "Scenario {i}"
-                    );
-
-                    assert!(
-                        expected_overrides.remove(component),
-                        "Scenario {i}: expected override for {component} at {override_path:?} but got none"
-                    );
-
-                    assert_eq!(
-                        override_path,
-                        &OverridePath {
-                            store_kind: StoreKind::Blueprint,
-                            path: override_root.join(&node.data_result.entity_path),
-                        },
-                        "Scenario {i}"
-                    );
-                }
-                assert!(expected_overrides.is_empty(), "Scenario {i}");
 
                 assert_eq!(
                     result.is_visible(),

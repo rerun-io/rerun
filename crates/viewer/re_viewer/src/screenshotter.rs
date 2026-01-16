@@ -101,6 +101,7 @@ impl Screenshotter {
             }
         } else {
             egui_ctx.copy_image(image.clone());
+            re_log::info!("Screenshot copied to clipboard");
         }
     }
 }

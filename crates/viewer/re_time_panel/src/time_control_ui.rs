@@ -35,8 +35,8 @@ impl TimeControlUi {
                                     timeline.name().as_str(),
                                     egui::Atom::grow(),
                                     egui::RichText::new(format!(
-                                        "{} events",
-                                        re_format::format_uint(histogram.num_events())
+                                        "{} rows",
+                                        re_format::format_uint(histogram.num_rows())
                                     ))
                                     .size(10.0)
                                     .color(ui.tokens().text_subdued),

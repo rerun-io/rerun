@@ -234,12 +234,6 @@ impl Boxes3D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("Boxes3D".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -403,6 +397,13 @@ impl ::re_types_core::AsComponents for Boxes3D {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for Boxes3D {}
+
+impl crate::VisualizableArchetype for Boxes3D {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("Boxes3D").with_overrides(self)
+    }
+}
 
 impl Boxes3D {
     /// Create a new `Boxes3D`.

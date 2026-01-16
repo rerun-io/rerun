@@ -9,5 +9,5 @@ table VisualizerInstruction (
   visualizer_type: rerun.blueprint.components.VisualizerType ("attr.rerun.component_required", order: 100);
 
   /// The component mapping pairs.
-  component_map: [rerun.blueprint.components.VisualizerComponentMapping] ("attr.rerun.component_optional", order: 200);
+  component_map: [rerun.blueprint.components.VisualizerComponentMapping] ("attr.rerun.component_optional", nullable, order: 200);
 }

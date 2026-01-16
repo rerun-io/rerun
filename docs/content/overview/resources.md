@@ -10,23 +10,22 @@ This page provides an overview of how the Rerun documentation is organized to he
 High-level introduction to Rerun:
 
 - **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun's data platform for Physical AI
-- **[Installing the Viewer](installing-viewer.md)** - Get Rerun installed on your system
+- **[Installing the Viewer](installing-rerun/viewer.md)** - Get Rerun installed on your system
 
 ## Getting started
 
 Step-by-step guides to get up and running quickly:
 
-- **[Quick Start](../getting-started/quick-start.md)** - Choose your language (Python, Rust, C++) and create your first visualization
-- **[Data In](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
-- **[Data Out](../getting-started/data-out.md)** - Query and export data from Rerun recordings
-- **[Configure the Viewer](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
-- **[Troubleshooting](../getting-started/troubleshooting.md)** - Solutions to common issues
+- **[Log and Ingest](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
+- **[Visualize](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
+- **[Query and Transform](../getting-started/data-out.md)** - Query and export data from Rerun recordings
+- **[Troubleshooting](../overview/installing-rerun/troubleshooting.md)** - Solutions to common issues
 
 ## Concepts
 
 Understanding the foundational concepts behind Rerun:
 
-- **[Application Model](../concepts/app-model.md)** - How Rerun applications are structured
+- **[How Does Rerun Work](../concepts/how-does-rerun-work.md)** - How Rerun applications are structured
 - **[Entity Component System](../concepts/logging-and-ingestion/entity-component.md)** - Rerun's data model
 - **[Entity Paths](../concepts/logging-and-ingestion/entity-path.md)** - Organizing your data hierarchically
 - **[Spaces and Transforms](../concepts/logging-and-ingestion/transforms.md)** - Working with coordinate systems

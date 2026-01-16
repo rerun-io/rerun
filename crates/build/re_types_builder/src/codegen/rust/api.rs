@@ -1120,17 +1120,13 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         })
         .collect_vec();
 
-    let visualizer_override = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
-        let doc_lines = ["Returns the visualizer type name that corresponds to this archetype."];
-        let doc_attrs = doc_lines.iter().map(|line| {
-            quote! { #[doc = #line] }
-        });
-
+    let visualizer_trait_impl = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
         quote! {
-            #(#doc_attrs)*
-            #[inline]
-            pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-                crate::blueprint::components::VisualizerType(#visualizer.into())
+            impl crate::VisualizableArchetype for #name {
+                #[inline]
+                fn visualizer(&self) -> crate::Visualizer {
+                    crate::Visualizer::new(#visualizer).with_overrides(self)
+                }
             }
         }
     });
@@ -1196,8 +1192,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
     quote! {
         impl #name {
             #(#all_descriptor_methods)*
-
-            #visualizer_override
         }
 
         static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_required_descriptors]> =
@@ -1274,6 +1268,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         }
 
         impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+
+        #visualizer_trait_impl
     }
 }
 

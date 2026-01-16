@@ -152,18 +152,13 @@ impl ::re_types_core::ArchetypeReflectionMarker for VisualizerInstruction {}
 impl VisualizerInstruction {
     /// Create a new `VisualizerInstruction`.
     #[inline]
-    pub fn new(
-        visualizer_type: impl Into<crate::blueprint::components::VisualizerType>,
-        component_map: impl IntoIterator<
-            Item = impl Into<crate::blueprint::components::VisualizerComponentMapping>,
-        >,
-    ) -> Self {
+    pub fn new(visualizer_type: impl Into<crate::blueprint::components::VisualizerType>) -> Self {
         Self {
             visualizer_type: try_serialize_field(
                 Self::descriptor_visualizer_type(),
                 [visualizer_type],
             ),
-            component_map: try_serialize_field(Self::descriptor_component_map(), component_map),
+            component_map: None,
         }
     }
 

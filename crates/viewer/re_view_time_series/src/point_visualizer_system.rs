@@ -42,6 +42,19 @@ impl VisualizerSystem for SeriesPointsSystem {
         query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
 
         query_info
+
+        // TODO(RR-3318): Enable this.
+        // VisualizerQueryInfo {
+        //     relevant_archetype: archetypes::SeriesPoints::name().into(),
+        //     required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+        //         supported_datatypes().into_iter().collect(),
+        //     ),
+        //     queried: archetypes::Scalars::all_components()
+        //         .iter()
+        //         .chain(archetypes::SeriesPoints::all_components().iter())
+        //         .cloned()
+        //         .collect(),
+        // }
     }
 
     fn execute(
@@ -73,12 +86,14 @@ impl SeriesPointsSystem {
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results = query.iter_visualizer_instruction_for(Self::identifier());
 
         for result in data_results
             .collect_vec()
             .par_iter()
-            .map(|data_result| Self::load_series(ctx, query, time_per_pixel, data_result))
+            .map(|(data_result, instruction)| {
+                Self::load_series(ctx, query, time_per_pixel, data_result, instruction)
+            })
             .collect::<Vec<_>>()
         {
             match result {
@@ -102,6 +117,7 @@ impl SeriesPointsSystem {
         view_query: &ViewQuery<'_>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
+        instruction: &re_viewer_context::VisualizerInstruction,
     ) -> Result<Vec<PlotSeries>, LoadSeriesError> {
         re_tracing::profile_function!();
 
@@ -127,6 +143,7 @@ impl SeriesPointsSystem {
                 data_result,
                 archetypes::Scalars::all_component_identifiers()
                     .chain(archetypes::SeriesPoints::all_component_identifiers()),
+                instruction,
             );
 
             // If we have no scalars, we can't do anything.
@@ -185,6 +202,7 @@ impl SeriesPointsSystem {
                 data_result,
                 archetypes::SeriesPoints::all_component_identifiers(),
                 query_shadowed_components,
+                Some(instruction),
             );
 
             collect_colors(

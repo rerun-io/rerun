@@ -39,7 +39,8 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;
@@ -51,6 +52,7 @@ impl VisualizerSystem for TensorSystem {
                 data_result,
                 Tensor::all_component_identifiers(),
                 query_shadowed_defaults,
+                Some(instruction),
             );
 
             let Some(all_tensor_chunks) =

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ class Visualizer:
             TODO(RR-3254): Currently unused - implement mapping functionality
 
         """
+        self.id = uuid.uuid4()
         self.visualizer_type = visualizer_type
         self.overrides = overrides
         self.mappings = mappings or []

@@ -241,7 +241,8 @@ impl VisualizerSystem for CamerasVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             let query_shadowed_components = false;
@@ -252,6 +253,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 data_result,
                 Pinhole::all_component_identifiers(),
                 query_shadowed_components,
+                Some(instruction),
             );
 
             // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the

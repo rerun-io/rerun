@@ -64,7 +64,7 @@ mod visual_bounds2d;
 mod visual_bounds2d_ext;
 mod visualizer_component_mapping;
 mod visualizer_instruction_id;
-mod visualizer_override;
+mod visualizer_instruction_id_ext;
 mod visualizer_type;
 mod zoom_level;
 
@@ -117,6 +117,5 @@ pub use self::visible_time_range::VisibleTimeRange;
 pub use self::visual_bounds2d::VisualBounds2D;
 pub use self::visualizer_component_mapping::VisualizerComponentMapping;
 pub use self::visualizer_instruction_id::VisualizerInstructionId;
-pub use self::visualizer_override::VisualizerOverride;
 pub use self::visualizer_type::VisualizerType;
 pub use self::zoom_level::ZoomLevel;

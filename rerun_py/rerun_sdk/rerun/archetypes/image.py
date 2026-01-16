@@ -298,7 +298,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
     def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype."""
+        """Creates a visualizer for this archetype, using all currently set values as overrides."""
         return Visualizer("Image", overrides=self.as_component_batches(), mappings=None)
 
     # __array__ can be found in image_ext.py

@@ -74,14 +74,20 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 .lookup_result_by_path(ctx.target_entity_path.hash())
                 .cloned()
                 .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&visualizers::CamerasVisualizer::identifier())
+                    // TODO(andreas): What if there's several camera visualizers?
+                    if let Some(camera_visualizer_instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instruction| {
+                            instruction.visualizer_type
+                                == visualizers::CamerasVisualizer::identifier()
+                        })
                     {
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<archetypes::Pinhole>(
                                 ctx.view_ctx,
                                 ctx.query,
+                                Some(camera_visualizer_instruction),
                             );
 
                         Some(
@@ -148,6 +154,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
                         &query,
+                        None,
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
@@ -189,6 +196,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                             ctx.view_ctx,
                             &query,
                             archetypes::CoordinateFrame::descriptor_frame().component,
+                            None,
                         )
                         .get_mono::<components::TransformFrameId>(
                             archetypes::CoordinateFrame::descriptor_frame().component,

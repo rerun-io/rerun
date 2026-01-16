@@ -209,12 +209,6 @@ impl VideoFrameReference {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("VideoFrameReference".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -329,6 +323,13 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for VideoFrameReference {}
+
+impl crate::VisualizableArchetype for VideoFrameReference {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("VideoFrameReference").with_overrides(self)
+    }
+}
 
 impl VideoFrameReference {
     /// Create a new `VideoFrameReference`.
