@@ -2,7 +2,7 @@
 title = "LeRobot dataset curation using OSS Rerun server"
 tags = ["Robotics", "MCAP", "LeRobot", "Dataset", "Server"]
 channel = "main"
-thumbnail = "https://static.rerun.io/oss-server-lerobot/placeholder/480w.png"
+thumbnail = "https://static.rerun.io/rerun-export/placeholder/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
@@ -11,11 +11,11 @@ thumbnail_dimensions = [480, 480]
 Also make sure to add the proper thumbnail images once available!
 
 <!-- <picture>
-  <img src="https://static.rerun.io/oss-server-lerobot/placeholder/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/oss-server-lerobot/placeholder/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/oss-server-lerobot/placeholder/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/oss-server-lerobot/placeholder/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/oss-server-lerobot/placeholder/1200w.png">
+  <img src="https://static.rerun.io/rerun-export/placeholder/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-export/placeholder/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-export/placeholder/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-export/placeholder/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-export/placeholder/1200w.png">
 </picture> -->
 
 An example of how to use the OSS Rerun server to inspect and prepare MCAP recordings for training by constructing a LeRobot v3 dataset.
@@ -37,7 +37,7 @@ This example ships a CLI that reads a directory of `.rrd` recordings via the OSS
 at a target FPS, and writes a LeRobot v3 dataset to disk.
 
 ```bash
-oss_server_lerobot \
+rerun_export \
   --rrd-dir /path/to/rrds \
   --output /tmp/lerobot_dataset \
   --dataset-name robot_runs \

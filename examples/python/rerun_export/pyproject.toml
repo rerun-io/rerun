@@ -1,5 +1,5 @@
 [project]
-name = "oss_server_lerobot"
+name = "rerun_export"
 version = "0.1.0"
 readme = "README.md"
 dependencies = [
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-oss_server_lerobot = "oss_server_lerobot.__main__:main"
+rerun_export = "rerun_export.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

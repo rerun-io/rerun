@@ -45,9 +45,10 @@ members = [
     "objectron",
     "open-photogrammetry-format",
     "openstreetmap-data",
-    "oss-server-lerobot",
     "plots",
     "raw-mesh",
+    "rerun-dev-fixup",
+    "rerun-export",
     "rerun-notebook",
     "rerun-sdk",
     "rerun-workspace",
@@ -3978,41 +3979,6 @@ wheels = [
 ]
 
 [[package]]
-name = "oss-server-lerobot"
-version = "0.1.0"
-source = { editable = "examples/python/oss_server_lerobot" }
-dependencies = [
-    { name = "av" },
-    { name = "datafusion" },
-    { name = "lerobot" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pandas" },
-    { name = "pillow" },
-    { name = "pyarrow" },
-    { name = "rerun-sdk" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "tqdm" },
-    { name = "tyro" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "av" },
-    { name = "datafusion" },
-    { name = "lerobot" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pillow" },
-    { name = "pyarrow" },
-    { name = "rerun-sdk", editable = "rerun_py" },
-    { name = "scipy" },
-    { name = "tqdm" },
-    { name = "tyro", specifier = ">=1.0.5" },
-]
-
-[[package]]
 name = "overrides"
 version = "7.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5170,6 +5136,41 @@ dependencies = [
 requires-dist = [{ name = "sitecustomize-entrypoints" }]
 
 [[package]]
+name = "rerun-export"
+version = "0.1.0"
+source = { editable = "examples/python/rerun_export" }
+dependencies = [
+    { name = "av" },
+    { name = "datafusion" },
+    { name = "lerobot" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "pyarrow" },
+    { name = "rerun-sdk" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm" },
+    { name = "tyro" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "av" },
+    { name = "datafusion" },
+    { name = "lerobot" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "pyarrow" },
+    { name = "rerun-sdk", editable = "rerun_py" },
+    { name = "scipy" },
+    { name = "tqdm" },
+    { name = "tyro", specifier = ">=1.0.5" },
+]
+
+[[package]]
 name = "rerun-notebook"
 version = "0.29.0a1+dev"
 source = { editable = "rerun_notebook" }
@@ -5326,10 +5327,10 @@ examples = [
     { name = "open-photogrammetry-format" },
     { name = "opencv-python" },
     { name = "openstreetmap-data" },
-    { name = "oss-server-lerobot" },
     { name = "plots" },
     { name = "polars" },
     { name = "raw-mesh" },
+    { name = "rerun-export" },
     { name = "rgbd" },
     { name = "rrt-star" },
     { name = "segment-anything" },
@@ -5438,10 +5439,10 @@ examples = [
     { name = "open-photogrammetry-format", editable = "examples/python/open_photogrammetry_format" },
     { name = "opencv-python", specifier = ">=4.6" },
     { name = "openstreetmap-data", editable = "examples/python/openstreetmap_data" },
-    { name = "oss-server-lerobot", editable = "examples/python/oss_server_lerobot" },
     { name = "plots", editable = "examples/python/plots" },
     { name = "polars", specifier = ">=0.12.0" },
     { name = "raw-mesh", editable = "examples/python/raw_mesh" },
+    { name = "rerun-export", editable = "examples/python/rerun_export" },
     { name = "rgbd", editable = "examples/python/rgbd" },
     { name = "rrt-star", editable = "examples/python/rrt_star" },
     { name = "segment-anything", git = "https://github.com/facebookresearch/segment-anything.git" },
