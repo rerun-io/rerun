@@ -10873,7 +10873,6 @@ dependencies = [
  "bytes",
  "chrono",
  "comfy-table",
- "crossbeam",
  "datafusion",
  "datafusion-ffi",
  "document-features",

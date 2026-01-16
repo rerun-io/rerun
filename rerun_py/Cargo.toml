@@ -81,7 +81,6 @@ arrow = { workspace = true, features = ["pyarrow"] }
 bytes.workspace = true
 chrono.workspace = true #TODO(#9317): migrate to jiff
 comfy-table.workspace = true
-crossbeam.workspace = true
 datafusion.workspace = true
 datafusion-ffi.workspace = true
 document-features.workspace = true
