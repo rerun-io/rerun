@@ -17,7 +17,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::prelude::{DataFrame, Expr, SessionContext};
 use datafusion::{catalog::TableProvider, datasource::MemTable};
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt as _};
 use parking_lot::Mutex;
 use re_viewer_context::AsyncRuntimeHandle;
 
@@ -64,36 +64,39 @@ impl StreamingCacheInner {
     }
 }
 
-/// A async closure that creates a DataFrame for streaming.
+/// An async closure that creates a [`DataFrame`] for streaming.
 pub type DataFrameFactory = Box<dyn Fn() -> DataFrameFuture + Send + Sync>;
 
-/// A future that resolves to a DataFrame.
+/// A future that resolves to a [`DataFrame`].
 pub type DataFrameFuture = Pin<Box<dyn Future<Output = DataFusionResult<DataFrame>> + Send>>;
 
-/// A [`TableProvider`] that caches streaming results from a DataFrame.
+/// A [`TableProvider`] that caches streaming results from a [`DataFrame`].
 ///
-/// This provider executes a DataFrame and caches the results as they stream in.
+/// This provider executes a [`DataFrame`] and caches the results as they stream in.
 /// On subsequent scans, it returns cached batches first, then continues with
 /// new batches as they arrive.
 ///
 /// # Caching Behavior
 ///
-/// - **First scan**: Triggers streaming from the DataFrame. Each batch is cached.
+/// - **First scan**: Triggers streaming from the [`DataFrame`]. Each batch is cached.
 /// - **Subsequent scans (while streaming)**: Returns cached batches immediately,
 ///   then waits for new batches as they arrive.
-/// - **After streaming complete**: Returns all cached batches via a MemTable.
+/// - **After streaming complete**: Returns all cached batches via a [`MemTable`].
 ///
 /// # Refresh Behavior
 ///
 /// When `refresh()` is called, a new inner cache is created. Old streams continue
 /// reading from the old cache until completion, while new scans use the fresh cache.
 pub struct StreamingCacheTableProvider {
-    /// Factory to create the DataFrame (called once on first scan).
+    /// Factory to create the [`DataFrame`] (called once on first scan).
     df_factory: DataFrameFactory,
+
     /// Schema for the cached data.
     schema: SchemaRef,
+
     /// Shared cache state. The outer Mutex allows swapping the inner cache on refresh.
     cache: Mutex<Arc<Mutex<StreamingCacheInner>>>,
+
     runtime: AsyncRuntimeHandle,
 }
 
@@ -112,7 +115,7 @@ impl fmt::Debug for StreamingCacheTableProvider {
 impl StreamingCacheTableProvider {
     /// Create a new streaming cache table provider.
     ///
-    /// The `df_factory` is called once on the first scan to create the DataFrame
+    /// The `df_factory` is called once on the first scan to create the [`DataFrame`]
     /// that will be streamed and cached.
     pub fn new(
         schema: SchemaRef,
@@ -129,7 +132,7 @@ impl StreamingCacheTableProvider {
 
     /// Create from a session context and table name.
     ///
-    /// This is a convenience constructor that creates the DataFrame factory
+    /// This is a convenience constructor that creates the [`DataFrame`] factory
     /// from the session context.
     pub fn from_session_table(
         session_ctx: Arc<SessionContext>,
@@ -172,9 +175,9 @@ impl StreamingCacheTableProvider {
         self.cache.lock().lock().state.clone()
     }
 
-    /// Background task: stream from DataFrame to cache.
+    /// Background task: stream from [`DataFrame`] to cache.
     ///
-    /// Stops early if no consumers remain (detected via Arc strong count).
+    /// Stops early if no consumers remain (detected via `Arc` strong count).
     async fn stream_to_cache(
         df_future: DataFrameFuture,
         cache: &Arc<Mutex<StreamingCacheInner>>,
@@ -272,7 +275,7 @@ impl TableProvider for StreamingCacheTableProvider {
                         let mut guard = cache_ref.lock();
                         guard.state = CacheState::Failed(Arc::new(err));
                         guard.wake_all();
-                    };
+                    }
                 });
 
                 Ok(Arc::new(CachedStreamingExec::new(inner_cache)))
@@ -329,7 +332,7 @@ impl DisplayAs for CachedStreamingExec {
 }
 
 impl ExecutionPlan for CachedStreamingExec {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CachedStreamingExec"
     }
 
@@ -355,7 +358,7 @@ impl ExecutionPlan for CachedStreamingExec {
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         if !children.is_empty() {
             return Err(DataFusionError::Internal(
-                "CachedStreamingExec expects no children".to_string(),
+                "CachedStreamingExec expects no children".to_owned(),
             ));
         }
         Ok(self)
@@ -381,6 +384,7 @@ impl ExecutionPlan for CachedStreamingExec {
 /// A stream that yields cached batches, waiting for new ones as needed.
 pub struct CachedRecordBatchStream {
     cache: Arc<Mutex<StreamingCacheInner>>,
+
     /// Current read position in the cache.
     read_pos: usize,
 }
