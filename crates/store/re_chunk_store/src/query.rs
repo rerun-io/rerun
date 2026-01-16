@@ -8,11 +8,8 @@ use saturating_cast::SaturatingCast as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
-use saturating_cast::SaturatingCast as _;
 
-use crate::store::ChunkIdSetPerTime;
 use crate::{ChunkStore, OnMissingChunk};
-
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
