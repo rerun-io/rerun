@@ -8,7 +8,7 @@ use re_sdk_types::blueprint::archetypes::{MapBackground, ViewBlueprint, ViewCont
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
-use re_sdk_types::{AsComponents, SerializedComponentBatch};
+use re_sdk_types::{AsComponents, SerializedComponentBatch, Visualizer};
 
 /// A view in the blueprint.
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub struct View {
     pub(crate) visible: Option<bool>,
     pub(crate) properties: HashMap<String, Vec<SerializedComponentBatch>>,
     pub(crate) defaults: Vec<Vec<SerializedComponentBatch>>,
-    pub(crate) overrides: HashMap<EntityPath, Vec<Vec<SerializedComponentBatch>>>,
+    pub(crate) overrides: HashMap<EntityPath, Vec<Visualizer>>,
 }
 
 impl Default for View {
@@ -57,16 +57,16 @@ impl View {
         self.defaults.push(archetype.as_serialized_batches());
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add visualizer overrides for a specific entity.
     pub(crate) fn add_overrides(
         &mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) {
         self.overrides
             .entry(entity_path.into())
             .or_default()
-            .push(archetype.as_serialized_batches());
+            .extend(visualizers.into_iter().map(Into::into));
     }
 
     /// Log this view to the blueprint stream.
@@ -118,19 +118,47 @@ impl View {
         }
 
         // Log overrides
-        for (entity_path, override_batches_list) in &self.overrides {
-            let override_path = format!(
-                "{}/ViewContents/overrides/{}",
-                self.blueprint_path(),
-                entity_path
-            );
-            for override_batches in override_batches_list {
-                stream.log_serialized_batches(
-                    override_path.clone(),
-                    false,
-                    override_batches.iter().cloned(),
-                )?;
+        for (entity_path, visualizers) in &self.overrides {
+            // TODO(andreas): Use this once the new blueprint override paths are in place.
+            // let base_visualizer_path =
+            //     ViewContents::blueprint_base_visualizer_path_for_entity(self.id, entity_path);
+            let visualizer_path = self
+                .blueprint_path()
+                .join(&EntityPath::from("ViewContents/overrides").join(entity_path));
+
+            //let mut visualizer_ids = Vec::new();
+
+            for visualizer in visualizers {
+                // TODO(andreas): Use this once the new blueprint override paths are in place.
+                // Log the visualizer instruction (which contains the visualizer type)
+                // let visualizer_path = base_visualizer_path
+                //     .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+
+                // TODO(RR-3255): Support mappings
+                // TODO(andreas): Use this once the new blueprint override paths are in place.
+                // let instruction = VisualizerInstruction::new(visualizer.visualizer_type.clone());
+                // stream.log(visualizer_path.clone(), &instruction)?;
+
+                // Log the overrides if any
+                if !visualizer.overrides.is_empty() {
+                    stream.log_serialized_batches(
+                        visualizer_path.clone(),
+                        false,
+                        visualizer.overrides.iter().cloned(),
+                    )?;
+                }
+
+                //visualizer_ids.push(VisualizerInstructionId(visualizer.id.into()));
             }
+
+            // Log the active visualizers list
+            // TODO(andreas): Use this once the new blueprint override paths are in place.
+            // if !visualizer_ids.is_empty() {
+            //     stream.log(
+            //         base_visualizer_path,
+            //         &ActiveVisualizers::new(visualizer_ids),
+            //     )?;
+            // }
         }
 
         Ok(())
@@ -174,13 +202,22 @@ impl TimeSeriesView {
         self
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
     pub fn with_overrides(
         mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) -> Self {
-        self.0.add_overrides(entity_path, archetype);
+        self.0.add_overrides(entity_path, visualizers);
         self
     }
 }
@@ -222,13 +259,22 @@ impl Spatial2DView {
         self
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
     pub fn with_overrides(
         mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) -> Self {
-        self.0.add_overrides(entity_path, archetype);
+        self.0.add_overrides(entity_path, visualizers);
         self
     }
 }
@@ -270,13 +316,22 @@ impl Spatial3DView {
         self
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
     pub fn with_overrides(
         mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) -> Self {
-        self.0.add_overrides(entity_path, archetype);
+        self.0.add_overrides(entity_path, visualizers);
         self
     }
 }
@@ -318,13 +373,22 @@ impl MapView {
         self
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
     pub fn with_overrides(
         mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) -> Self {
-        self.0.add_overrides(entity_path, archetype);
+        self.0.add_overrides(entity_path, visualizers);
         self
     }
 
@@ -376,13 +440,22 @@ impl TextDocumentView {
         self
     }
 
-    /// Add an override archetype for a specific entity.
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
     pub fn with_overrides(
         mut self,
         entity_path: impl Into<EntityPath>,
-        archetype: &dyn AsComponents,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
     ) -> Self {
-        self.0.add_overrides(entity_path, archetype);
+        self.0.add_overrides(entity_path, visualizers);
         self
     }
 }

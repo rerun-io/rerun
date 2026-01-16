@@ -28,7 +28,7 @@ Rerun provides an integrated solution for working with multimodal temporal data:
 
 **Query and export:** Extract clean [dataframes](../howto/query-and-transform/get-data-out.md) for analysis in Pandas, Polars, or DuckDB. Use recordings to create datasets for training and evaluating your models.
 
-**Flexible ingestion:** Load data from your code via the [SDK](../getting-started/quick-start.md), from storage formats like [MCAP](../howto/logging-and-ingestion/mcap.md), or from proprietary log formats. [Extend Rerun](../howto/extend.md) when you need custom types or visualizations.
+**Flexible ingestion:** Load data from your code via the [SDK](../getting-started/data-in.md), from storage formats like [MCAP](../howto/logging-and-ingestion/mcap.md), or from proprietary log formats. [Extend Rerun](../howto/extend.md) when you need custom types or visualizations.
 
 ## Who is Rerun for?
 
@@ -60,7 +60,7 @@ To set clear expectations:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/1200w.png">
 </picture>
 
-1. Use the [Rerun SDK](../getting-started/quick-start.md) to [log multimodal data](../getting-started/data-in.md) from your code or load it from storage
+1. Use the [Rerun SDK](../getting-started/data-in.md) to [log multimodal data](../getting-started/data-in.md) from your code or load it from storage
 2. View live or recorded data in the standalone viewer or [embedded in your app](../howto/integrations/embed-web.md)
 3. Build layouts and [customize visualizations](../getting-started/configure-the-viewer.md) interactively in the UI or through the SDK
 4. [Query recordings](../getting-started/data-out.md) to get clean dataframes into tools like Pandas, Polars, or DuckDB
@@ -72,7 +72,7 @@ We also offer a commercial data platform for teams that need collaborative datas
 
 Ready to speed up your iteration cycle?
 
-- [Quick start guide](../getting-started/quick-start.md) - Get up and running in minutes
+- [Quick start guide](../getting-started.md) - Get up and running in minutes
 - [Examples](https://rerun.io/examples) - See Rerun in action with real data
 - [Concepts](../concepts.md) - Learn how Rerun works under the hood
 

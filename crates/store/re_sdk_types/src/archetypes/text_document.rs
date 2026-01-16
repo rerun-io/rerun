@@ -129,12 +129,6 @@ impl TextDocument {
             component_type: Some("rerun.components.MediaType".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("TextDocument".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -221,6 +215,13 @@ impl ::re_types_core::AsComponents for TextDocument {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for TextDocument {}
+
+impl crate::VisualizableArchetype for TextDocument {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("TextDocument").with_overrides(self)
+    }
+}
 
 impl TextDocument {
     /// Create a new `TextDocument`.

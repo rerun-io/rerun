@@ -37,3 +37,4 @@ thiserror.workspace = true
 [dev-dependencies]
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }
+re_log = { workspace = true, features = ["setup"] }

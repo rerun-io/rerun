@@ -1,10 +1,10 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
 use re_sdk_types::archetypes::{self, Scalars};
-use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::components;
 use re_sdk_types::datatypes::{self, TimeRange};
+use re_sdk_types::{VisualizableArchetype as _, blueprint};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -184,7 +184,10 @@ fn setup_blueprint(
             // Override which visualizer to use for the `cos` plot.
             &blueprint::archetypes::VisualizerOverrides::new([
                 // TODO(RR-3153): remove the `as_str()`.
-                archetypes::SeriesPoints::visualizer().as_str(),
+                archetypes::SeriesPoints::default()
+                    .visualizer()
+                    .visualizer_type
+                    .as_str(),
             ]),
         );
         ctx.save_blueprint_archetype(

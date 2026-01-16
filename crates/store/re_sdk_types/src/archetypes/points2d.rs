@@ -242,12 +242,6 @@ impl Points2D {
             component_type: Some("rerun.components.KeypointId".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("Points2D".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -392,6 +386,13 @@ impl ::re_types_core::AsComponents for Points2D {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for Points2D {}
+
+impl crate::VisualizableArchetype for Points2D {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("Points2D").with_overrides(self)
+    }
+}
 
 impl Points2D {
     /// Create a new `Points2D`.

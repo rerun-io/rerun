@@ -10,6 +10,7 @@ enum Rounding {
 
 /// Format a duration as e.g. `3.2s` or `1h 42m`.
 pub struct DurationFormatOptions {
+    spaces: bool,
     only_seconds: bool,
     always_sign: bool,
     min_decimals: usize,
@@ -20,6 +21,7 @@ pub struct DurationFormatOptions {
 impl Default for DurationFormatOptions {
     fn default() -> Self {
         Self {
+            spaces: true,
             only_seconds: true,
             always_sign: false,
             min_decimals: 1,
@@ -30,6 +32,12 @@ impl Default for DurationFormatOptions {
 }
 
 impl DurationFormatOptions {
+    /// If true, insert spaces after units.
+    pub fn with_spaces(mut self, spaces: bool) -> Self {
+        self.spaces = spaces;
+        self
+    }
+
     /// If true, format 63 seconds as `63s`. If false, format it as `1m3s`
     pub fn with_only_seconds(mut self, only_seconds: bool) -> Self {
         self.only_seconds = only_seconds;
@@ -94,6 +102,7 @@ impl DurationFormatOptions {
         const SEC_PER_DAY: u64 = 24 * SEC_PER_HOUR;
 
         let Self {
+            spaces,
             only_seconds,
             always_sign,
             mut min_decimals,
@@ -194,7 +203,7 @@ impl DurationFormatOptions {
 
             let minutes = secs_remaining / SEC_PER_MINUTE;
             if minutes > 0 {
-                if did_write {
+                if spaces && did_write {
                     front.push(' '.to_string());
                 }
                 front.push(format!("{minutes}m"));
@@ -203,7 +212,7 @@ impl DurationFormatOptions {
             }
 
             if secs_remaining > 0 || !back_rev.is_empty() || !did_write {
-                if did_write {
+                if spaces && did_write {
                     front.push(' '.to_string());
                 }
                 back_rev.push(format_uint(secs_remaining));
