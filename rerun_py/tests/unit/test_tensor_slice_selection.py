@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import itertools
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
 from .common_arrays import none_empty_or_value
+
+if TYPE_CHECKING:
+    from rerun.blueprint.datatypes import TensorDimensionIndexSliderArrayLike
 
 
 def test_tensor_slice_selection() -> None:
@@ -53,7 +56,7 @@ def test_tensor_slice_selection() -> None:
         width = cast("rr.datatypes.TensorDimensionSelectionLike | None", width)
         height = cast("rr.datatypes.TensorDimensionSelectionLike | None", height)
         indices = cast("rr.datatypes.TensorDimensionIndexSelectionArrayLike | None", indices)
-        slider = cast("rr.blueprint.datatypes.TensorDimensionIndexSliderArrayLike | None", slider)
+        slider = cast("TensorDimensionIndexSliderArrayLike | None", slider)
 
         print(
             f"rr.TensorSliceSelection(\n"
