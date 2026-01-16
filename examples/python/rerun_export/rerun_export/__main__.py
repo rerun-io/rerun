@@ -13,11 +13,11 @@ from datafusion import col, functions as F
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from tqdm import tqdm
 
-from .converter import convert_dataframe_to_episode, apply_remuxed_videos
-from .feature_inference import infer_features
-from .types import LeRobotConversionConfig, VideoSpec
-from .utils import make_time_grid
-from .video_processing import extract_video_samples
+from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
+from rerun_export.lerobot.feature_inference import infer_features
+from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+from rerun_export.lerobot.video_processing import extract_video_samples
+from rerun_export.utils import make_time_grid
 
 if TYPE_CHECKING:
     import numpy as np

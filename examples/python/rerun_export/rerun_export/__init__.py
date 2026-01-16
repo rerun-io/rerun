@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .types import VideoSpec
+import rerun_export.lerobot as lerobot
 
-__all__ = ["VideoSpec"]
+__all__ = ["lerobot"]

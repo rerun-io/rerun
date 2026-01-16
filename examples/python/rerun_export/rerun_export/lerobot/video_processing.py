@@ -11,12 +11,12 @@ import av
 import numpy as np
 import pyarrow as pa
 
-from .utils import normalize_times, unwrap_singleton
+from rerun_export.utils import normalize_times, unwrap_singleton
 
 if TYPE_CHECKING:
     import rerun as rr
 
-    from .types import VideoSpec
+    from rerun_export.lerobot.types import VideoSpec
 
 
 def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> tuple[list[bytes], np.ndarray]:
