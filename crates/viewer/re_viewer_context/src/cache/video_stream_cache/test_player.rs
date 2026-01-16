@@ -1,4 +1,4 @@
-use std::{iter::once, ops::Range};
+use std::{iter::once, ops::Range, sync::Arc};
 
 use re_log_types::external::re_tuid::Tuid;
 use re_renderer::video::{
@@ -8,7 +8,7 @@ use re_video::{
     AsyncDecoder, Receiver, SampleIndex, SampleMetadataState, Sender, Time, VideoDataDescription,
 };
 
-use crate::VideoStreamProcessingError;
+use crate::{SharablePlayableVideoStream, VideoStreamProcessingError};
 
 struct TestDecoder {
     sender: Sender<Result<re_video::Frame, re_video::DecodeError>>,
@@ -58,20 +58,63 @@ struct TestVideoPlayer {
     video: VideoPlayer,
     sample_rx: Receiver<SampleIndex>,
     video_descr: VideoDataDescription,
+    video_descr_source: Option<Box<dyn Fn() -> VideoDataDescription>>,
     time: f64,
 }
 
 impl TestVideoPlayer {
-    fn play(&mut self, range: Range<f64>, time_step: f64) -> Result<(), VideoPlayerError> {
-        eprintln!(
-            "Playing from {} to {} at {}s steps",
-            range.start, range.end, time_step
+    fn from_descr(video_descr: VideoDataDescription) -> Self {
+        let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
+        let video = VideoPlayer::new_with_encoder(
+            VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
+                Ok(Box::new(TestDecoder {
+                    sample_tx,
+                    min_num_samples_to_enqueue_ahead: 2,
+                    sender,
+                }))
+            })
+            .unwrap(),
         );
 
+        Self {
+            video,
+            sample_rx,
+            video_descr,
+            video_descr_source: None,
+            time: 0.0,
+        }
+    }
+
+    fn from_stream(stream: SharablePlayableVideoStream) -> Self {
+        let video_descr_source =
+            Box::new(move || stream.read_arc().video_renderer.data_descr().clone());
+        let mut this = Self::from_descr(video_descr_source());
+
+        this.video_descr_source = Some(video_descr_source);
+
+        this
+    }
+
+    fn play(&mut self, range: Range<f64>, time_step: f64) -> Result<(), VideoPlayerError> {
+        self.play_with_buffer(range, time_step, &|_| &[])
+    }
+
+    fn play_with_buffer<'a>(
+        &mut self,
+        range: Range<f64>,
+        time_step: f64,
+        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+    ) -> Result<(), VideoPlayerError> {
+        if let Some(source) = &self.video_descr_source {
+            self.video_descr = source();
+
+            dbg!(&self.video_descr.samples);
+            dbg!(&self.video_descr.keyframe_indices);
+        }
         self.time = range.start;
         for i in 0..((range.end - self.time) / time_step).next_down().floor() as i32 {
             let time = self.time + i as f64 * time_step;
-            self.frame_at(time)?;
+            self.frame_at(time, get_buffer)?;
         }
 
         self.time = range.end;
@@ -79,14 +122,16 @@ impl TestVideoPlayer {
         Ok(())
     }
 
-    fn frame_at(&mut self, time: f64) -> Result<(), VideoPlayerError> {
-        eprintln!("  frame_at {time}");
-
+    fn frame_at<'a>(
+        &mut self,
+        time: f64,
+        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+    ) -> Result<(), VideoPlayerError> {
         self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
             &self.video_descr,
             &mut |_, _| Ok(()),
-            &|_| &[],
+            get_buffer,
         )?;
 
         Ok(())
@@ -205,18 +250,6 @@ fn keyframe(time: f64) -> SampleMetadataState {
 fn create_video(
     samples: impl IntoIterator<Item = SampleMetadataState>,
 ) -> Result<TestVideoPlayer, VideoStreamProcessingError> {
-    let (sample_tx, sample_rx) = re_video::channel("test_player");
-    let video = VideoPlayer::new_with_encoder(
-        VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
-            Ok(Box::new(TestDecoder {
-                sample_tx,
-                min_num_samples_to_enqueue_ahead: 2,
-                sender,
-            }))
-        })
-        .unwrap(),
-    );
-
     let mut samples: re_video::StableIndexDeque<SampleMetadataState> =
         samples.into_iter().collect();
 
@@ -260,12 +293,7 @@ fn create_video(
         timescale: None,
     };
 
-    Ok(TestVideoPlayer {
-        video,
-        sample_rx,
-        video_descr,
-        time: 0.0,
-    })
+    Ok(TestVideoPlayer::from_descr(video_descr))
 }
 
 fn test_simple_video(mut video: TestVideoPlayer, count: usize, dt: f64, max_time: f64) {
@@ -408,6 +436,23 @@ fn player_with_skips() {
     video.expect_decoded_samples(expected_indices);
 }
 
+#[track_caller]
+fn assert_loading(err: Result<(), VideoPlayerError>) {
+    let err = err.unwrap_err();
+    assert!(
+        matches!(
+            err,
+            VideoPlayerError::InsufficientSampleData(
+                InsufficientSampleDataError::ExpectedSampleNotAvailable
+            )
+        ),
+        "Expected {:?} got {err:?}",
+        VideoPlayerError::InsufficientSampleData(
+            InsufficientSampleDataError::ExpectedSampleNotAvailable
+        )
+    );
+}
+
 #[test]
 fn player_with_unloaded() {
     #[track_caller]
@@ -489,4 +534,237 @@ fn player_with_unloaded() {
     video.play(18.0..24.0, 1.0).unwrap();
 
     video.expect_decoded_samples(0..24);
+}
+
+impl TestVideoPlayer {
+    fn play_store(
+        &mut self,
+        range: Range<f64>,
+        time_step: f64,
+        store: &re_entity_db::EntityDb,
+    ) -> Result<(), VideoPlayerError> {
+        let storage_engine = store.storage_engine();
+        self.play_with_buffer(range, time_step, &|tuid| {
+            let buffer = storage_engine
+                .store()
+                .chunk(&re_chunk::ChunkId::from_tuid(tuid))
+                .and_then(|chunk| {
+                    let raw = chunk.raw_component_array(
+                        re_sdk_types::archetypes::VideoStream::descriptor_sample().component,
+                    )?;
+
+                    let (_offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(raw)?;
+
+                    Some(buffer.as_slice())
+                });
+
+            buffer.unwrap_or(&[])
+        })
+    }
+}
+
+#[test]
+fn player_with_cache() {
+    use crate::{Cache as _, VideoStreamCache};
+    use re_chunk::{Chunk, RowId, TimeInt, Timeline};
+    use re_entity_db::EntityDb;
+    use re_log_encoding::RrdManifestBuilder;
+    use re_log_types::StoreId;
+    use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
+
+    const STREAM_ENTITY: &str = "stream";
+    const TIMELINE_NAME: &str = "video";
+
+    fn workspace_dir() -> std::path::PathBuf {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+            .unwrap()
+            .to_path_buf()
+    }
+
+    fn pixi_ffmpeg_path() -> std::path::PathBuf {
+        workspace_dir().join(if cfg!(target_os = "windows") {
+            ".pixi/envs/default/Library/bin/ffmpeg.exe"
+        } else {
+            ".pixi/envs/default/Library/bin/ffmpeg"
+        })
+    }
+
+    fn create_codec_chunk() -> Chunk {
+        let mut builder = Chunk::builder(STREAM_ENTITY);
+
+        builder = builder.with_archetype(
+            RowId::new(),
+            [(
+                Timeline::new_duration(TIMELINE_NAME),
+                TimeInt::from_secs(0.0),
+            )],
+            &VideoStream::new(VideoCodec::AV1),
+        );
+
+        builder.build().unwrap()
+    }
+
+    fn frames(time: f64) -> Chunk {
+        // Small 64x64 AV1 keyframe for testing (generated with ffmpeg)
+        // This contains a Sequence Header OBU followed by a keyframe
+        #[rustfmt::skip]
+        let keyframe_data: &[u8] = &[
+            0x12, 0x00, 0x0A, 0x0A, 0x00, 0x00, 0x00, 0x02, 0xAF, 0xFF, 0x9F, 0xFF, 0x30, 0x08, 0x32, 0x14,
+            0x10, 0x00, 0xC0, 0x00, 0x00, 0x02, 0x80, 0x00, 0x00, 0x0A, 0x05, 0x76, 0xA4, 0xD6, 0x2F, 0x1F,
+            0xFA, 0x1E, 0x3C, 0xD8,
+        ];
+
+        // This would need a valid AV1 sequence with a non-keyframe
+        // For now, we just test that invalid/incomplete data doesn't panic
+        let frame_data: &[u8] = &[
+            // Just a sequence header without a keyframe
+            0x0A, 0x0B, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+        ];
+
+        let timeline = Timeline::new_duration(TIMELINE_NAME);
+        Chunk::builder(STREAM_ENTITY)
+            .with_archetype(
+                RowId::new(),
+                [(timeline, TimeInt::from_secs(time))],
+                &VideoStream::update_fields().with_sample(keyframe_data),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, TimeInt::from_secs(time + 0.25))],
+                &VideoStream::update_fields().with_sample(frame_data),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, TimeInt::from_secs(time + 0.5))],
+                &VideoStream::update_fields().with_sample(frame_data),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, TimeInt::from_secs(time + 0.75))],
+                &VideoStream::update_fields().with_sample(frame_data),
+            )
+            .build()
+            .unwrap()
+    }
+
+    fn create_chunks() -> Vec<Arc<Chunk>> {
+        (0..10)
+            .map(|i| frames(i as f64))
+            .chain(once(create_codec_chunk()))
+            .map(Arc::new)
+            .collect()
+    }
+
+    fn build_manifest_with_unloaded_chunks(
+        store_id: StoreId,
+        chunks: &[Arc<Chunk>],
+    ) -> re_log_encoding::RrdManifest {
+        let mut builder = RrdManifestBuilder::default();
+        let mut byte_offset = 0u64;
+
+        for chunk in chunks {
+            let arrow_msg = chunk.to_arrow_msg().unwrap();
+            let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
+
+            // Use mock byte sizes for testing (actual values only matter for file-based loading)
+            let chunk_byte_size = 1000u64;
+            let chunk_byte_size_uncompressed = 2000u64;
+
+            let byte_span = re_span::Span {
+                start: byte_offset,
+                len: chunk_byte_size,
+            };
+
+            builder
+                .append(&chunk_batch, byte_span, chunk_byte_size_uncompressed)
+                .unwrap();
+
+            byte_offset += chunk_byte_size;
+        }
+
+        builder.build(store_id).unwrap()
+    }
+
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let entity = re_chunk::EntityPath::from(STREAM_ENTITY);
+
+    let chunks = create_chunks();
+
+    let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), &chunks);
+
+    store.add_rrd_manifest_message(manifest);
+
+    // Use pixi ffmpeg install if available.
+    let pixi_ffmpeg_path = pixi_ffmpeg_path();
+
+    let ffmpeg_path = if pixi_ffmpeg_path.exists() {
+        re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
+
+        Some(pixi_ffmpeg_path)
+    } else {
+        // End up using system install. Fine usually, no need to force a pixi environment here.
+        re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
+
+        None
+    };
+
+    let load_chunks = |store: &mut EntityDb, cache: &mut VideoStreamCache, chunk_idx: &[usize]| {
+        let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
+
+        for idx in chunk_idx {
+            dbg!(idx);
+            dbg!(chunks[*idx].id());
+            store_events.extend(store.add_chunk(&chunks[*idx]).unwrap());
+        }
+
+        dbg!(
+            store
+                .storage_engine()
+                .store()
+                .iter_chunks()
+                .map(|c| c.id())
+                .collect::<Vec<_>>()
+        );
+
+        cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
+    };
+
+    // load codec chunk, and chunk #4
+    load_chunks(&mut store, &mut cache, &[chunks.len() - 1, 4]);
+
+    let video_stream = cache
+        .entry(
+            &store,
+            &entity,
+            TIMELINE_NAME.into(),
+            re_video::DecodeSettings {
+                hw_acceleration: Default::default(),
+                ffmpeg_path,
+            },
+        )
+        .unwrap();
+
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    assert_loading(player.play_store(6.0..10.0, 0.25, &store));
+
+    player.play_store(4.0..4.75, 0.25, &store).unwrap();
+
+    player.expect_decoded_samples(16..19);
+
+    load_chunks(&mut store, &mut cache, &[0, 1]);
+
+    player.play_store(0.0..1.75, 0.25, &store).unwrap();
+
+    load_chunks(&mut store, &mut cache, &[2, 3]);
+
+    player.play_store(1.75..4.75, 0.25, &store).unwrap();
+
+    player.expect_decoded_samples(0..19);
 }
