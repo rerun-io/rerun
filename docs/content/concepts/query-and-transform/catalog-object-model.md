@@ -82,7 +82,7 @@ Catalog: {
 
 Object Store: {
   shape: cylinder
-  
+
   "recording_a.rrd": {
     shape: page
   }
