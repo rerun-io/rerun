@@ -7,7 +7,7 @@ The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
 ## Getting started
 
-Read the [getting started guide](https://www.rerun.io/docs/getting-started/quick-start/cpp) on how to use the Rerun C++ SDK.
+Read the [getting started guide](https://www.rerun.io/docs/getting-started/data-in/cpp) on how to use the Rerun C++ SDK.
 
 ### Logging
 
@@ -68,7 +68,7 @@ From a build system perspective, the SDK consists of three dependencies:
   * This includes **both** source and header files!
   * To avoid compatibility issues across different platforms, compiler versions and C++ standard library versions
 we recommend to build the C++ SDK directly from source.
-Note that this also what happens when you follow the CMake setup in the [quickstart guide](https://www.rerun.io/docs/getting-started/quick-start/cpp).
+Note that this also what happens when you follow the CMake setup in the [quickstart guide](https://www.rerun.io/docs/getting-started/data-in/cpp).
 * [rerun_c](https://github.com/rerun-io/rerun/tree/latest/crates/top/rerun_c/) static libraries
   * Rerun C is a minimal C SDK and forms the bridge to the shared Rust codebase
   * Due to the rigidity of the C ABI and lack of complex standard library types in the interface,

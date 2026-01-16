@@ -744,6 +744,19 @@ impl ChunkStore {
         })
     }
 
+    /// Get the [`ComponentType`] and [`ArrowDataType`] for a specific [`EntityPath`] and [`ComponentIdentifier`].
+    pub fn lookup_component_type(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> Option<(Option<ComponentType>, ArrowDataType)> {
+        let (component_descr, _, datatype) = self
+            .per_column_metadata
+            .get(entity_path)
+            .and_then(|per_identifier| per_identifier.get(&component))?;
+        Some((component_descr.component_type, datatype.clone()))
+    }
+
     /// Returns the set of [`ChunkId`]s that were detected as missing since the last time since method was called.
     ///
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be

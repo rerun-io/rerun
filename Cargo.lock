@@ -9994,6 +9994,7 @@ dependencies = [
  "re_log_types",
  "re_tuid",
  "serde",
+ "static_assertions",
  "thiserror 2.0.17",
  "url",
 ]
@@ -12104,6 +12105,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test_any_scalar"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "re_log",
+ "rerun",
 ]
 
 [[package]]

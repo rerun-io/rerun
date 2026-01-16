@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .active_visualizers import ActiveVisualizers
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
@@ -36,9 +37,9 @@ from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
 from .visualizer_instruction import VisualizerInstruction
-from .visualizer_overrides import VisualizerOverrides
 
 __all__ = [
+    "ActiveVisualizers",
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
@@ -73,5 +74,4 @@ __all__ = [
     "VisibleTimeRanges",
     "VisualBounds2D",
     "VisualizerInstruction",
-    "VisualizerOverrides",
 ]

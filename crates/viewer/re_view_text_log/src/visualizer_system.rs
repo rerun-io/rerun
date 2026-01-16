@@ -51,8 +51,10 @@ impl VisualizerSystem for TextLogSystem {
             re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            self.process_entity(ctx, &query, data_result);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            self.process_visualizer_instruction(ctx, &query, data_result, instruction);
         }
 
         {
@@ -66,11 +68,12 @@ impl VisualizerSystem for TextLogSystem {
 }
 
 impl TextLogSystem {
-    fn process_entity(
+    fn process_visualizer_instruction(
         &mut self,
         ctx: &ViewContext<'_>,
         query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
+        instruction: &re_viewer_context::VisualizerInstruction,
     ) {
         re_tracing::profile_function!();
 
@@ -80,6 +83,7 @@ impl TextLogSystem {
             query,
             data_result,
             TextLog::all_component_identifiers(),
+            instruction,
         );
 
         let Some(all_text_chunks) =

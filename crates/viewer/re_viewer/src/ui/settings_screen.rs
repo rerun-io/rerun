@@ -146,7 +146,10 @@ fn settings_screen_ui_impl(
 }
 
 fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOptions) {
-    let ExperimentalAppOptions { stream_mode } = experimental;
+    let ExperimentalAppOptions {
+        stream_mode,
+        component_mapping,
+    } = experimental;
 
     let mut larger_than_ram = *stream_mode == StreamMode::OnDemand;
     ui.re_checkbox(&mut larger_than_ram, "Larger-than-RAM streaming");
@@ -159,6 +162,16 @@ fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOption
     if larger_than_ram {
         ui.warning_label("This is an experimental feature that is not yet fully supported.");
     }
+
+    ui.re_checkbox(
+            component_mapping,
+            "Component mapping ui"
+        )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "Enables an experimental UI for mapping components to different visualizations in the visualizer section of the selection view.",
+            );
+        });
 }
 
 fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {

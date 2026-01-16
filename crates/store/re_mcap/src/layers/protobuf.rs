@@ -50,13 +50,6 @@ enum ProtobufError {
 
 impl ProtobufMessageParser {
     fn new(num_rows: usize, message_descriptor: MessageDescriptor) -> Self {
-        if message_descriptor.oneofs().len() > 0 {
-            re_log::warn_once!(
-                "`oneof` in schema {} is not supported yet.",
-                message_descriptor.full_name()
-            );
-        }
-
         let struct_builder = struct_builder_from_message(&message_descriptor);
         let builder = FixedSizeListBuilder::with_capacity(struct_builder, 1, num_rows);
 
@@ -288,6 +281,14 @@ fn append_value(
 
 fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> StructBuilder {
     // TODO(#11221): Support `oneof` values in protobuf MCAP files.
+    // Warn about oneof fields in this message (both top-level and nested)
+    if message_descriptor.oneofs().len() > 0 {
+        re_log::warn_once!(
+            "Ignoring {} message: Protobuf schemas containing `oneof` are not supported yet.",
+            message_descriptor.full_name()
+        );
+    }
+
     let fields = message_descriptor
         .fields()
         .filter(|f| f.containing_oneof().is_none())
@@ -376,8 +377,10 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
         Kind::String => DataType::Utf8,
         Kind::Bytes => DataType::Binary,
         Kind::Message(message_descriptor) => {
+            // TODO(#11221): Support `oneof` values in protobuf MCAP files.
             let fields = message_descriptor
                 .fields()
+                .filter(|f| f.containing_oneof().is_none())
                 .map(|f| arrow_field_from(&f))
                 .collect::<Fields>();
             DataType::Struct(fields)
@@ -508,6 +511,7 @@ mod unit_tests {
 #[cfg(test)]
 mod integration_tests {
     use std::io;
+    use std::sync::mpsc::Receiver;
 
     use prost_reflect::prost::Message as _;
     use prost_reflect::prost_types::{
@@ -516,6 +520,7 @@ mod integration_tests {
     };
     use prost_reflect::{DescriptorPool, DynamicMessage, MessageDescriptor};
     use re_chunk::Chunk;
+    use re_log::LogMsg;
 
     use crate::LayerRegistry;
     use crate::layers::McapProtobufLayer;
@@ -527,7 +532,30 @@ mod integration_tests {
         field
     }
 
-    fn create_pool_with_person(use_proto3_optional: bool) -> MessageDescriptor {
+    /// Helper to create a [`MessageDescriptor`] from a list of [`DescriptorProto`].
+    /// Takes a list of message descriptors and the fully qualified name of the message to extract.
+    fn create_message_descriptor(
+        message_protos: Vec<DescriptorProto>,
+        full_name: &str,
+    ) -> MessageDescriptor {
+        let file_descriptor = FileDescriptorProto {
+            name: Some("test.proto".into()),
+            package: Some("com.example".into()),
+            message_type: message_protos,
+            syntax: Some("proto3".into()),
+            ..Default::default()
+        };
+
+        let pool = DescriptorPool::from_file_descriptor_set(FileDescriptorSet {
+            file: vec![file_descriptor],
+        })
+        .expect("failed to create descriptor pool");
+
+        pool.get_message_by_name(full_name)
+            .expect("failed to get message descriptor")
+    }
+
+    fn create_person_descriptor(use_proto3_optional: bool) -> (&'static str, DescriptorProto) {
         let status = EnumDescriptorProto {
             name: Some("Status".into()),
             value: vec![
@@ -615,7 +643,7 @@ mod integration_tests {
         }
 
         // Create a message descriptor with reserved field numbers (2, 3, 4) between actual fields.
-        let person_message = DescriptorProto {
+        let person_proto = DescriptorProto {
             name: Some("Person".into()),
             field: fields,
             nested_type: vec![address_message],
@@ -629,24 +657,7 @@ mod integration_tests {
             ..Default::default()
         };
 
-        let file_proto = FileDescriptorProto {
-            name: Some("person.proto".into()),
-            package: Some("com.example".into()),
-            message_type: vec![person_message],
-            syntax: Some("proto3".into()),
-            ..Default::default()
-        };
-
-        let file_descriptor_set = FileDescriptorSet {
-            file: vec![file_proto],
-        };
-
-        let encoded = file_descriptor_set.encode_to_vec();
-
-        let pool =
-            DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool");
-        pool.get_message_by_name("com.example.Person")
-            .expect("missing message descriptor")
+        ("com.example.Person", person_proto)
     }
 
     /// Returns a channel id.
@@ -745,7 +756,8 @@ mod integration_tests {
 
     /// Helper to test field combinations with or without presence tracking.
     fn test_field_combinations_helper(use_proto3_optional: bool, snapshot_name: &str) {
-        let person_message = create_pool_with_person(use_proto3_optional);
+        let (person_name, person_proto) = create_person_descriptor(use_proto3_optional);
+        let person_message = create_message_descriptor(vec![person_proto], person_name);
 
         let buffer = Vec::new();
         let cursor = io::Cursor::new(buffer);
@@ -796,7 +808,8 @@ mod integration_tests {
         use prost_reflect::prost::Message as _;
 
         let (summary, buffer) = {
-            let person_message = create_pool_with_person(true);
+            let (person_name, person_proto) = create_person_descriptor(true);
+            let person_message = create_message_descriptor(vec![person_proto], person_name);
 
             let buffer = Vec::new();
             let cursor = io::Cursor::new(buffer);
@@ -846,69 +859,140 @@ mod integration_tests {
         insta::assert_snapshot!("decode_failure_resilience", format!("{:-240}", &chunks[0]));
     }
 
-    /// TODO(#11221): Support `oneof` values in protobuf MCAP files.
-    /// This test verifies that schemas with oneof fields can be processed without errors.
-    /// Note: The oneof fields (rgb, hsv, bgr) are currently filtered out and do not appear
-    /// in the output. Only non-oneof fields (object) are included in the snapshot.
-    #[test]
-    fn simple_oneof_field() {
-        // Create a simple schema with a oneof field for color representation.
-        let file_descriptor = FileDescriptorProto {
-            name: Some("test.proto".into()),
-            package: Some("com.example".into()),
-            message_type: vec![DescriptorProto {
-                name: Some("ColorData".into()),
-                field: vec![
-                    FieldDescriptorProto {
-                        name: Some("object".into()),
-                        number: Some(1),
-                        label: Some(field_descriptor_proto::Label::Optional as i32),
-                        r#type: Some(field_descriptor_proto::Type::String as i32),
-                        ..Default::default()
-                    },
-                    // Oneof field options: rgb, hsv, or bgr.
-                    FieldDescriptorProto {
-                        name: Some("rgb".into()),
-                        number: Some(2),
-                        label: Some(field_descriptor_proto::Label::Optional as i32),
-                        r#type: Some(field_descriptor_proto::Type::String as i32),
-                        oneof_index: Some(0), // Part of oneof.
-                        ..Default::default()
-                    },
-                    FieldDescriptorProto {
-                        name: Some("hsv".into()),
-                        number: Some(3),
-                        label: Some(field_descriptor_proto::Label::Optional as i32),
-                        r#type: Some(field_descriptor_proto::Type::String as i32),
-                        oneof_index: Some(0), // Part of oneof.
-                        ..Default::default()
-                    },
-                    FieldDescriptorProto {
-                        name: Some("bgr".into()),
-                        number: Some(4),
-                        label: Some(field_descriptor_proto::Label::Optional as i32),
-                        r#type: Some(field_descriptor_proto::Type::String as i32),
-                        oneof_index: Some(0), // Part of oneof.
-                        ..Default::default()
-                    },
-                ],
-                oneof_decl: vec![OneofDescriptorProto {
-                    name: Some("color".into()),
+    fn create_color_descriptor() -> (&'static str, DescriptorProto) {
+        let color_proto = DescriptorProto {
+            name: Some("Color".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("object".into()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
                     ..Default::default()
-                }],
+                },
+                // Oneof field options: rgb, hsv, or bgr.
+                FieldDescriptorProto {
+                    name: Some("rgb".into()),
+                    number: Some(2),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    oneof_index: Some(0), // Part of oneof.
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("hsv".into()),
+                    number: Some(3),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    oneof_index: Some(0), // Part of oneof.
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("bgr".into()),
+                    number: Some(4),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    oneof_index: Some(0), // Part of oneof.
+                    ..Default::default()
+                },
+            ],
+            oneof_decl: vec![OneofDescriptorProto {
+                name: Some("color".into()),
                 ..Default::default()
             }],
             ..Default::default()
         };
 
-        let pool = DescriptorPool::from_file_descriptor_set(FileDescriptorSet {
-            file: vec![file_descriptor],
-        })
-        .expect("failed to create descriptor pool");
+        ("com.example.Color", color_proto)
+    }
 
-        let color_message = pool
-            .get_message_by_name("com.example.ColorData")
-            .expect("failed to get ColorData message");
+    fn create_scene_descriptor() -> (&'static str, DescriptorProto) {
+        let scene_proto = DescriptorProto {
+            name: Some("Scene".into()),
+            field: vec![
+                // Regular struct field containing Color (which has oneof inside).
+                FieldDescriptorProto {
+                    name: Some("object".into()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::Message as i32),
+                    type_name: Some("Color".into()),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        ("com.example.Scene", scene_proto)
+    }
+
+    fn create_color_test_messages(color_message: &MessageDescriptor) -> Vec<DynamicMessage> {
+        vec![
+            // Message 1: object and rgb color.
+            DynamicMessage::parse_text_format(
+                color_message.clone(),
+                "object: \"box\" rgb: \"255,0,0\"",
+            )
+            .expect("failed to parse text format"),
+            // Message 2: object and hsv color.
+            DynamicMessage::parse_text_format(
+                color_message.clone(),
+                "object: \"sphere\" hsv: \"120,1.0,1.0\"",
+            )
+            .expect("failed to parse text format"),
+            // Message 3: only object (no color oneof field set).
+            DynamicMessage::parse_text_format(color_message.clone(), "object: \"cone\"")
+                .expect("failed to parse text format"),
+        ]
+    }
+
+    fn create_scene_test_messages(scene_message: &MessageDescriptor) -> Vec<DynamicMessage> {
+        vec![
+            // Message 1: scene with nested Color using rgb.
+            DynamicMessage::parse_text_format(
+                scene_message.clone(),
+                "object: { object: \"cube\" rgb: \"128,64,32\" }",
+            )
+            .expect("failed to parse text format"),
+            // Message 2: scene with nested Color using bgr.
+            DynamicMessage::parse_text_format(
+                scene_message.clone(),
+                "object: { object: \"pyramid\" bgr: \"0,255,0\" }",
+            )
+            .expect("failed to parse text format"),
+        ]
+    }
+
+    fn check_single_warning(log_rx: &Receiver<LogMsg>) {
+        // Verify warning was emitted
+        let warning = log_rx
+            .try_recv()
+            .expect("Expected warning for oneof field in message");
+        assert_eq!(warning.level, re_log::Level::Warn);
+        assert!(
+            warning.msg.contains("oneof"),
+            "Expected warning to mention 'oneof', but got: {}",
+            warning.msg
+        );
+
+        // Verify no additional warnings
+        assert!(
+            log_rx.try_recv().is_err(),
+            "Expected exactly one warning, but found additional warnings"
+        );
+    }
+
+    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
+    /// This test verifies that top-level `oneof` fields triggers a warning and are filtered out.
+    #[test]
+    fn oneof_top_level() {
+        // Setup logging to capture warnings
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
+
+        let (color_name, color_proto) = create_color_descriptor();
+        let color_message = create_message_descriptor(vec![color_proto], color_name);
 
         // Create MCAP with test messages.
         let buffer = Vec::new();
@@ -918,52 +1002,62 @@ mod integration_tests {
         let channel_id = add_schema_and_channel(&mut writer, &color_message, "color_topic")
             .expect("failed to add schema and channel");
 
-        // Message 1: has object and rgb color.
-        let msg1 = DynamicMessage::parse_text_format(
-            color_message.clone(),
-            "object: \"box\" rgb: \"255,0,0\"",
-        )
-        .expect("failed to parse text format");
-
-        write_message(&mut writer, channel_id, &msg1, 1).expect("failed to write message");
-
-        // Message 2: has object and hsv color.
-        let msg2 = DynamicMessage::parse_text_format(
-            color_message.clone(),
-            "object: \"sphere\" hsv: \"120,1.0,1.0\"",
-        )
-        .expect("failed to parse text format");
-
-        write_message(&mut writer, channel_id, &msg2, 2).expect("failed to write message");
-
-        // Message 3: has object and bgr color.
-        let msg3 = DynamicMessage::parse_text_format(
-            color_message.clone(),
-            "object: \"cylinder\" bgr: \"0,0,255\"",
-        )
-        .expect("failed to parse text format");
-
-        write_message(&mut writer, channel_id, &msg3, 3).expect("failed to write message");
-
-        // Message 4: has only object (no color oneof field set).
-        let msg4 = DynamicMessage::parse_text_format(color_message.clone(), "object: \"cone\"")
-            .expect("failed to parse text format");
-
-        write_message(&mut writer, channel_id, &msg4, 4).expect("failed to write message");
+        let messages = create_color_test_messages(&color_message);
+        for (i, msg) in messages.iter().enumerate() {
+            write_message(&mut writer, channel_id, msg, (i + 1) as u64)
+                .expect("failed to write message");
+        }
 
         let summary = writer.finish().expect("finishing writer failed");
         let buffer = writer.into_inner().into_inner();
 
-        assert_eq!(
-            summary.chunk_indexes.len(),
-            1,
-            "there should be only one chunk"
-        );
+        let chunks = run_layer(&summary, buffer.as_slice());
+
+        check_single_warning(&log_rx);
+
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].num_rows(), 3);
+
+        insta::assert_snapshot!("oneof_top_level", format!("{:-240}", &chunks[0]));
+    }
+
+    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
+    /// This test verifies that nested `oneof` fields triggers a warning and are filtered out.
+    #[test]
+    fn oneof_nested() {
+        // Setup logging to capture warnings
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
+
+        let (_, color_proto) = create_color_descriptor();
+        let (scene_name, scene_proto) = create_scene_descriptor();
+        let scene_message = create_message_descriptor(vec![color_proto, scene_proto], scene_name);
+
+        // Create MCAP with test messages.
+        let buffer = Vec::new();
+        let cursor = io::Cursor::new(buffer);
+        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+        let channel_id = add_schema_and_channel(&mut writer, &scene_message, "scene_topic")
+            .expect("failed to add schema and channel");
+
+        let messages = create_scene_test_messages(&scene_message);
+        for (i, msg) in messages.iter().enumerate() {
+            write_message(&mut writer, channel_id, msg, (i + 1) as u64)
+                .expect("failed to write message");
+        }
+
+        let summary = writer.finish().expect("finishing writer failed");
+        let buffer = writer.into_inner().into_inner();
 
         let chunks = run_layer(&summary, buffer.as_slice());
-        assert_eq!(chunks.len(), 1);
-        assert_eq!(chunks[0].num_rows(), 4);
 
-        insta::assert_snapshot!("simple_oneof_field", format!("{:-240}", &chunks[0]));
+        check_single_warning(&log_rx);
+
+        assert_eq!(chunks.len(), 1); // One chunk for scene_topic
+        assert_eq!(chunks[0].num_rows(), 2);
+
+        insta::assert_snapshot!("oneof_nested", format!("{:-240}", &chunks[0]));
     }
 }

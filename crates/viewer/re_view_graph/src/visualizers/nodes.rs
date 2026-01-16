@@ -70,11 +70,13 @@ impl VisualizerSystem for NodeVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphNodes>(
                     ctx,
                     &timeline_query,
+                    Some(instruction),
                 );
 
             let all_nodes =

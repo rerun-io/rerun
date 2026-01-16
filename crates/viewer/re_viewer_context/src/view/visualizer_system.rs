@@ -184,7 +184,7 @@ impl VisualizerCollection {
     }
 
     #[inline]
-    pub fn get_by_identifier(
+    pub fn get_by_type_identifier(
         &self,
         name: ViewSystemIdentifier,
     ) -> Result<&dyn VisualizerSystem, ViewSystemExecutionError> {

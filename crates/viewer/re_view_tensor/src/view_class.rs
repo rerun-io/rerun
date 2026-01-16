@@ -15,10 +15,10 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-    PerVisualizerInViewClass, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
-    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
-    suggest_view_for_each_entity,
+    PerVisualizerInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
+    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -101,7 +101,7 @@ Set the displayed dimensions in a selection panel.",
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> re_viewer_context::SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
@@ -111,9 +111,9 @@ Set the displayed dimensions in a selection panel.",
             .get(&TensorSystem::identifier())
             .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            std::iter::once(TensorSystem::identifier()).collect()
+            RecommendedVisualizers::default(TensorSystem::identifier())
         } else {
-            Default::default()
+            RecommendedVisualizers::empty()
         }
     }
 

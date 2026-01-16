@@ -3,9 +3,12 @@ use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
+use re_sdk_types::blueprint::archetypes as bp_archetypes;
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
-use crate::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
+use crate::{
+    CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewId, ViewerContext,
+};
 
 #[inline]
 pub fn blueprint_timeline() -> TimelineName {
@@ -43,14 +46,68 @@ pub trait BlueprintContext {
 
     fn blueprint_query(&self) -> &LatestAtQuery;
 
+    fn save_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        view_id: ViewId,
+        visualizers: impl IntoIterator<Item = impl Into<re_sdk_types::Visualizer>>,
+    ) {
+        let base_override_path =
+            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+                view_id.uuid(),
+                entity_path,
+            );
+
+        let mut ids = Vec::new();
+        for visualizer in visualizers {
+            let visualizer = visualizer.into();
+            ids.push(visualizer.id.clone());
+
+            let visualizer_path = base_override_path
+                .clone()
+                .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+
+            let mut instruction =
+                bp_archetypes::VisualizerInstruction::new(visualizer.visualizer_type.clone());
+            if !visualizer.mappings.is_empty() {
+                instruction = instruction.with_component_map(visualizer.mappings.clone());
+            }
+
+            self.save_blueprint_archetypes(
+                visualizer_path,
+                std::iter::once(&instruction as &dyn AsComponents).chain(
+                    visualizer
+                        .overrides
+                        .iter()
+                        .map(|batch| batch as &dyn AsComponents),
+                ),
+            );
+        }
+
+        self.save_blueprint_archetype(
+            base_override_path,
+            &bp_archetypes::ActiveVisualizers::new(ids),
+        );
+    }
+
     fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
+        self.save_blueprint_archetypes(entity_path, std::iter::once(components));
+    }
+
+    fn save_blueprint_archetypes<'a>(
+        &self,
+        entity_path: EntityPath,
+        archetypes: impl IntoIterator<Item = &'a dyn AsComponents>,
+    ) {
         let blueprint = self.current_blueprint();
         let timepoint = blueprint_timepoint_for_writes(blueprint);
 
-        let chunk = match Chunk::builder(entity_path)
-            .with_archetype(RowId::new(), timepoint.clone(), components)
-            .build()
-        {
+        let mut chunk_builder = Chunk::builder(entity_path);
+        for archetype in archetypes {
+            chunk_builder = chunk_builder.with_archetype_auto_row(timepoint.clone(), archetype);
+        }
+
+        let chunk = match chunk_builder.build() {
             Ok(chunk) => chunk,
             Err(err) => {
                 re_log::error_once!("Failed to create Chunk for blueprint components: {err}");

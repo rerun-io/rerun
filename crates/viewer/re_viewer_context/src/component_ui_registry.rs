@@ -838,11 +838,6 @@ impl ComponentUiRegistry {
         allow_multiline: bool,
     ) -> bool {
         re_tracing::profile_function!(component_descr.display_name());
-        let EditTarget {
-            store_id,
-            timepoint,
-            entity_path,
-        } = target;
 
         // We use the component type to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
@@ -864,6 +859,11 @@ impl ComponentUiRegistry {
                 raw_current_value,
                 EditOrView::Edit,
             ) {
+                let EditTarget {
+                    store_id,
+                    timepoint,
+                    entity_path,
+                } = target;
                 ctx.append_array_to_store(
                     store_id,
                     timepoint,

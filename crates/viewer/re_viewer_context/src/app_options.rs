@@ -162,12 +162,18 @@ pub struct ExperimentalAppOptions {
     /// If `true`, we stream in only the chunks we need, as we need it.
     /// And we load the RRD manifest.
     pub stream_mode: StreamMode,
+
+    /// Enables experimental component mapping ui.
+    ///
+    /// TODO(RR-3338): Enable component mappings UI
+    pub component_mapping: bool,
 }
 
 impl Default for ExperimentalAppOptions {
     fn default() -> Self {
         Self {
             stream_mode: StreamMode::FullLoad,
+            component_mapping: false,
         }
     }
 }

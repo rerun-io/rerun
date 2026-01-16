@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+active_visualizers.py linguist-generated=true
 background.py linguist-generated=true
 container_blueprint.py linguist-generated=true
 dataframe_query.py linguist-generated=true
@@ -36,4 +37,3 @@ viewport_blueprint.py linguist-generated=true
 visible_time_ranges.py linguist-generated=true
 visual_bounds2d.py linguist-generated=true
 visualizer_instruction.py linguist-generated=true
-visualizer_overrides.py linguist-generated=true

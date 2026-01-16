@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::IntSet;
 use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
-use re_log_types::StoreKind;
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;
@@ -14,33 +14,100 @@ use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
-/// Path to a specific entity in a specific store used for overrides.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct OverridePath {
-    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `ChunkStore` but
-    // might still be ambiguous when we have multiple stores active at a time.
-    pub store_kind: StoreKind,
-    pub path: EntityPath,
+/// A single component mapping for a visualizer instruction.
+#[derive(Clone, Debug, Hash)]
+pub struct VisualizerComponentMapping {
+    pub selector: ComponentIdentifier,
+    pub target: ComponentIdentifier,
 }
 
-impl OverridePath {
-    pub fn blueprint_path(path: EntityPath) -> Self {
-        Self {
-            store_kind: StoreKind::Blueprint,
-            path,
-        }
-    }
-}
+/// A list of component mappings for a visualizer instruction.
+pub type VisualizerComponentMappings = SmallVec<[VisualizerComponentMapping; 2]>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PropertyOverrides {
-    /// An alternative store and entity path to use for the specified component.
+#[derive(Clone, Debug)]
+pub struct VisualizerInstruction {
+    pub id: VisualizerInstructionId,
+
+    pub visualizer_type: ViewSystemIdentifier,
+
+    /// The blueprint path to the override values for this visualizer instruction.
+    pub override_path: EntityPath,
+
+    /// List of components that have overrides for this visualizer instruction.
     ///
     /// Note that this does *not* take into account tree propagation of any special components
     /// like `Visible`, `Interactive` or transform components.
-    // TODO(jleibs): Consider something like `tinymap` for this.
-    // TODO(andreas): Should be a `Cow` to not do as many clones.
-    pub component_overrides: IntMap<ComponentIdentifier, OverridePath>,
+    pub component_overrides: IntSet<ComponentIdentifier>,
+
+    /// List of component mapping pairs.
+    pub component_mappings: VisualizerComponentMappings,
+}
+
+impl VisualizerInstruction {
+    pub fn new(
+        id: VisualizerInstructionId,
+        visualizer_type: ViewSystemIdentifier,
+        override_base_path: &EntityPath,
+        component_mappings: VisualizerComponentMappings,
+    ) -> Self {
+        Self {
+            override_path: Self::override_path_for(override_base_path, &id),
+            id,
+            visualizer_type,
+            component_overrides: IntSet::default(),
+            component_mappings,
+        }
+    }
+
+    pub fn override_path_for(
+        override_base_path: &EntityPath,
+        id: &VisualizerInstructionId,
+    ) -> EntityPath {
+        override_base_path.join(&EntityPath::from_single_string(id.to_string()))
+    }
+
+    /// Writes component mappings and visualizer type to the blueprint store.
+    pub fn write_instruction_to_blueprint(&self, ctx: &ViewerContext<'_>) {
+        let new_visualizer_instruction =
+            re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(
+                self.visualizer_type.as_str(),
+            )
+            // We always have ti write the component map because it we may need to clear out old mappings.
+            // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
+            .with_component_map(self.component_mappings.iter().map(|mapping| {
+                re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
+                    selector: mapping.selector.as_str().into(),
+                    target: mapping.target.as_str().into(),
+                }
+            }));
+
+        ctx.save_blueprint_archetype(self.override_path.clone(), &new_visualizer_instruction);
+    }
+}
+
+/// This is the primary mechanism through which data is passed to a `View`.
+///
+/// It contains everything necessary to properly use this data in the context of the
+/// `ViewSystem`s that it is a part of.
+#[derive(Clone, Debug)]
+pub struct DataResult {
+    /// Where to retrieve the data from.
+    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
+    // multi-RRD or blueprint-static data references.
+    pub entity_path: EntityPath,
+
+    /// There are any visualizers that can run on this data result.
+    pub any_visualizers_available: bool,
+
+    /// Which `ViewSystems`s to pass the `DataResult` to.
+    // pub visualizers: SmallVisualizerSet,
+    pub visualizer_instructions: SmallVec<[VisualizerInstruction; 1]>,
+
+    /// If true, this path is not actually included in the query results and is just here
+    /// because of a common prefix.
+    ///
+    /// If this is true, `visualizers` must be empty.
+    pub tree_prefix_only: bool,
 
     /// Whether the entity is visible.
     ///
@@ -54,7 +121,7 @@ pub struct PropertyOverrides {
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply to the individual entity only.
-    pub override_path: EntityPath,
+    pub override_base_path: EntityPath,
 
     /// What range is queried on the chunk store.
     ///
@@ -62,36 +129,22 @@ pub struct PropertyOverrides {
     pub query_range: QueryRange,
 }
 
-pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
-
-/// This is the primary mechanism through which data is passed to a `View`.
-///
-/// It contains everything necessary to properly use this data in the context of the
-/// `ViewSystem`s that it is a part of.
-#[derive(Clone, Debug)]
-pub struct DataResult {
-    /// Where to retrieve the data from.
-    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
-    // multi-RRD or blueprint-static data references.
-    pub entity_path: EntityPath,
-
-    /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub visualizers: SmallVisualizerSet,
-
-    /// If true, this path is not actually included in the query results and is just here
-    /// because of a common prefix.
-    ///
-    /// If this is true, `visualizers` must be empty.
-    pub tree_prefix_only: bool,
-
-    /// The accumulated property overrides for this `DataResult`.
-    pub property_overrides: PropertyOverrides,
-}
-
 impl DataResult {
+    /// The override path for this data result.
+    ///
+    /// This is **not** the override path for a concrete visualizer instruction yet.
+    /// Refer to [`VisualizerInstruction::override_path`] for that.
+    ///
+    /// There are certain special "overrides" that are global to the entire entity (in the context of a view).
+    /// Some of them are:
+    /// - `EntityBehavior` (visible, interactive)
+    /// - `CoordinateFrame`
+    /// - `VisibleTimeRanges`
+    ///
+    /// All other overrides, are specific to a visualizer instruction and should use [`VisualizerInstruction::override_path`].
     #[inline]
-    pub fn override_path(&self) -> &EntityPath {
-        &self.property_overrides.override_path
+    pub fn override_base_path(&self) -> &EntityPath {
+        &self.override_base_path
     }
 
     /// Overrides the `visible` behavior such that the given value becomes set next frame.
@@ -107,7 +160,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_visible().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_visible().component) {
             let parent_visibility = self
                 .entity_path
                 .parent()
@@ -116,7 +169,7 @@ impl DataResult {
 
             if parent_visibility == new_value {
                 ctx.clear_blueprint_component(
-                    self.property_overrides.override_path.clone(),
+                    self.override_base_path.clone(),
                     EntityBehavior::descriptor_visible(),
                 );
                 return;
@@ -124,7 +177,7 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            self.property_overrides.override_path.clone(),
+            self.override_base_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_visible(new_value),
         );
     }
@@ -142,7 +195,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_interactive().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_interactive().component) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
@@ -151,7 +204,7 @@ impl DataResult {
 
             if parent_interactivity == new_value {
                 ctx.clear_blueprint_component(
-                    self.property_overrides.override_path.clone(),
+                    self.override_base_path.clone(),
                     EntityBehavior::descriptor_interactive(),
                 );
                 return;
@@ -159,30 +212,17 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            self.property_overrides.override_path.clone(),
+            self.override_base_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_interactive(new_value),
         );
     }
 
-    fn has_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
-        self.property_overrides
-            .component_overrides
-            .get(&component)
-            .is_some_and(|OverridePath { store_kind, path }| {
-                match store_kind {
-                    StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
-                        ctx.blueprint_query,
-                        path,
-                        [component],
-                    ),
-                    StoreKind::Recording => {
-                        ctx.recording()
-                            .latest_at(&ctx.current_query(), path, [component])
-                    }
-                }
-                .get(component)
-                .is_some()
-            })
+    fn has_base_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
+        ctx.store_context
+            .blueprint
+            .latest_at(ctx.blueprint_query, &self.override_base_path, [component])
+            .get(component)
+            .is_some()
     }
 
     /// Shorthand for checking for visibility on data overrides.
@@ -191,7 +231,7 @@ impl DataResult {
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self) -> bool {
-        self.property_overrides.visible
+        self.visible
     }
 
     /// Shorthand for checking for interactivity on data overrides.
@@ -200,12 +240,12 @@ impl DataResult {
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_interactive(&self) -> bool {
-        self.property_overrides.interactive
+        self.interactive
     }
 
     /// Returns the query range for this data result.
     pub fn query_range(&self) -> &QueryRange {
-        &self.property_overrides.query_range
+        &self.query_range
     }
 }
 
@@ -238,10 +278,10 @@ pub struct ViewQuery<'s> {
 
 impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visible_data_results<'a>(
+    pub fn iter_visualizer_instruction_for<'a>(
         &'a self,
         visualizer: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = &'a DataResult>
+    ) -> impl Iterator<Item = (&'a DataResult, &'a VisualizerInstruction)> + 'a
     where
         's: 'a,
     {
@@ -249,7 +289,18 @@ impl<'s> ViewQuery<'s> {
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
-                    results.iter().filter(|result| result.is_visible()).copied(),
+                    results
+                        .iter()
+                        .filter(|result| result.is_visible())
+                        .flat_map(move |result| {
+                            result
+                                .visualizer_instructions
+                                .iter()
+                                .filter_map(move |instruction| {
+                                    (instruction.visualizer_type == visualizer)
+                                        .then_some((*result, instruction))
+                                })
+                        }),
                 )
             },
         )

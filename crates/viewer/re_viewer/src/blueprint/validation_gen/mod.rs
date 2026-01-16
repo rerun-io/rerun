@@ -53,7 +53,6 @@ pub use re_sdk_types::blueprint::components::VisibleTimeRange;
 pub use re_sdk_types::blueprint::components::VisualBounds2D;
 pub use re_sdk_types::blueprint::components::VisualizerComponentMapping;
 pub use re_sdk_types::blueprint::components::VisualizerInstructionId;
-pub use re_sdk_types::blueprint::components::VisualizerOverride;
 pub use re_sdk_types::blueprint::components::VisualizerType;
 pub use re_sdk_types::blueprint::components::ZoomLevel;
 
@@ -110,7 +109,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<VisualBounds2D>(blueprint)
         && validate_component::<VisualizerComponentMapping>(blueprint)
         && validate_component::<VisualizerInstructionId>(blueprint)
-        && validate_component::<VisualizerOverride>(blueprint)
         && validate_component::<VisualizerType>(blueprint)
         && validate_component::<ZoomLevel>(blueprint)
 }

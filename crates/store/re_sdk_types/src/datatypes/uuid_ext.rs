@@ -1,5 +1,15 @@
 use super::Uuid;
 
+impl Uuid {
+    /// Generate a new random UUID.
+    #[inline]
+    pub fn random() -> Self {
+        Self {
+            bytes: *uuid::Uuid::new_v4().as_bytes(),
+        }
+    }
+}
+
 impl From<Uuid> for uuid::Uuid {
     #[inline]
     fn from(uuid: Uuid) -> Self {
