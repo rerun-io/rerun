@@ -111,7 +111,7 @@ examples = [
   "objectron",
   "open_photogrammetry_format",
   "openstreetmap_data",
-  "oss_server_lerobot",
+  "rerun_export",
   "plots",
   "raw_mesh",
   "rgbd",
@@ -187,7 +187,7 @@ nv12 = { workspace = true }
 objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
-oss_server_lerobot = { workspace = true }
+rerun_export = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -241,7 +241,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
-  "examples/python/oss_server_lerobot",
+  "examples/python/rerun_export",
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
