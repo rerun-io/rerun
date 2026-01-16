@@ -169,12 +169,21 @@ impl<T> AsyncSender<T> {
         }
 
         // Normal case: wait until we have room
+        let mut logged_backpressure = false;
         loop {
             {
                 let mut current = self.shared.current_bytes.lock();
                 if *current + size_bytes <= capacity {
                     *current += size_bytes;
                     break;
+                }
+                if !logged_backpressure {
+                    logged_backpressure = true;
+                    re_log::debug_once!(
+                        "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
+                        self.shared.debug_name,
+                        re_format::format_bytes(capacity as f64),
+                    );
                 }
             }
             self.shared.space_available.notified().await;
