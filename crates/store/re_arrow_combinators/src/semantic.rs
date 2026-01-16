@@ -22,6 +22,7 @@ use crate::{Error, Transform};
 pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
     _from_offset: PhantomData<O1>,
     _to_offset: PhantomData<O2>,
+
     /// This transform is specifically intended for contiguous byte data,
     /// so we default to non-nullable lists.
     nullable: bool,
