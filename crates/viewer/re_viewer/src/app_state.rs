@@ -322,10 +322,15 @@ impl AppState {
                 // Execute the queries for every `View`
                 let query_results = {
                     re_tracing::profile_scope!("query_results");
+
+                    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
                     viewport_ui
                         .blueprint
                         .views
                         .values()
+                        .collect::<Vec<_>>()
+                        .into_par_iter()
                         .map(|view| {
                             // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
                             // but we don't have access to `ViewerContext` just yet.
