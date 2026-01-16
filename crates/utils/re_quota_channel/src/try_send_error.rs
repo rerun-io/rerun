@@ -1,4 +1,4 @@
-/// Error returned by [`crate::Sender::try_send`].
+/// Error returned by [`crate::Sender::try_send`] and [`crate::AsyncSender::try_send`].
 #[derive(Debug)]
 pub enum TrySendError<T> {
     /// The channel's byte capacity is full.
