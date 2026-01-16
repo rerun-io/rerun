@@ -10902,6 +10902,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_protos",
+ "re_quota_channel",
  "re_redap_client",
  "re_sdk",
  "re_server",

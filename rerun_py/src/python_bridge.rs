@@ -52,8 +52,8 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
-type GarbageSender = crossbeam::channel::Sender<ArrowRecordBatch>;
-type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
+type GarbageSender = re_quota_channel::Sender<ArrowRecordBatch>;
+type GarbageReceiver = re_quota_channel::Receiver<ArrowRecordBatch>;
 
 /// ## Release Callbacks
 ///
@@ -78,7 +78,7 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
 static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> =
-    LazyLock::new(crossbeam::channel::unbounded);
+    LazyLock::new(|| re_quota_channel::channel("python_garbage_queue", 512 * 1024 * 1024));
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
 ///
