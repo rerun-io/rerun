@@ -325,7 +325,7 @@ impl<T> Receiver<T> {
     /// This can be useful for use with `crossbeam::select!`.
     ///
     /// WARNING: if you receive a message directly from this receiver,
-    /// you must manually call `on_receive` to update the byte count!
+    /// you must manually call [`Self::manual_on_receive`] to update the byte count!
     pub fn inner(&self) -> &crossbeam::channel::Receiver<SizedMessage<T>> {
         &self.rx
     }

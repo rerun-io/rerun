@@ -9075,6 +9075,7 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
+ "re_byte_size",
  "re_log_encoding",
  "re_log_types",
  "re_tracing",

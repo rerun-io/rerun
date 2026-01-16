@@ -433,7 +433,6 @@ impl ChunkBatcher {
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
-    #[expect(clippy::needless_pass_by_value)]
     pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
         let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
             Some(cap) => crossbeam::channel::bounded(cap as _),
