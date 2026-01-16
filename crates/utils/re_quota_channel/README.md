@@ -2,8 +2,8 @@
 
 Part of the [Rerun](https://github.com/rerun-io/rerun) project.
 
-[![Latest version](https://img.shields.io/crates/v/re_capabilities.svg)](https://crates.io/crates/re_capabilities)
-[![Documentation](https://docs.rs/re_capabilities/badge.svg)](https://docs.rs/re_capabilities)
+[![Latest version](https://img.shields.io/crates/v/re_quota_channel.svg)](https://crates.io/crates/re_quota_channel)
+[![Documentation](https://docs.rs/re_quota_channel/badge.svg)](https://docs.rs/re_quota_channel)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
@@ -28,7 +28,7 @@ let (tx, rx) = channel::<Vec<u8>>("my_channel", 1_000_000);
 
 // Send a message with its size
 let data = vec![0u8; 1000];
-tx.send(data.clone(), data.len() as u64).unwrap();
+tx.send(data.clone()).unwrap();
 
 // Receive the message
 let received = rx.recv().unwrap();

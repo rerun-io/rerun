@@ -109,6 +109,14 @@ where
         self.send_with_size(msg, size_bytes).await
     }
 
+    /// Try to send a message without awaiting.
+    ///
+    /// Returns an error if the channel is full (by byte count) or disconnected.
+    pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
+        let size_bytes = msg.total_size_bytes();
+        self.try_send_with_size(msg, size_bytes)
+    }
+
     /// Send a message, blocking the current thread until space is available.
     ///
     /// This is a synchronous wrapper around [`Self::send`] that blocks using tokio's
@@ -212,7 +220,7 @@ impl<T> AsyncSender<T> {
     /// Try to send a message without awaiting.
     ///
     /// Returns an error if the channel is full (by byte count) or disconnected.
-    pub fn try_send(&self, msg: T, size_bytes: u64) -> Result<(), TrySendError<T>> {
+    pub fn try_send_with_size(&self, msg: T, size_bytes: u64) -> Result<(), TrySendError<T>> {
         let capacity = self.shared.capacity_bytes;
 
         let mut current = self.shared.current_bytes.lock();
@@ -421,10 +429,10 @@ mod tests {
         let (tx, _rx) = async_channel::<String>("test".to_owned(), 100);
 
         // First message fits
-        assert!(tx.try_send("hello".to_owned(), 80).is_ok());
+        assert!(tx.try_send_with_size("hello".to_owned(), 80).is_ok());
 
         // Second message doesn't fit
-        let result = tx.try_send("world".to_owned(), 80);
+        let result = tx.try_send_with_size("world".to_owned(), 80);
         assert!(result.is_err());
         assert!(result.unwrap_err().is_full());
     }
@@ -434,7 +442,7 @@ mod tests {
         let (tx, mut rx) = async_channel::<String>("test".to_owned(), 100);
 
         // Oversized message should succeed when channel is empty (via try_send)
-        assert!(tx.try_send("huge".to_owned(), 200).is_ok());
+        assert!(tx.try_send_with_size("huge".to_owned(), 200).is_ok());
         assert_eq!(rx.recv().await.unwrap(), "huge");
     }
 
