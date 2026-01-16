@@ -10448,6 +10448,8 @@ dependencies = [
  "re_renderer",
  "re_rvl",
  "re_sdk_types",
+ "re_sorbet",
+ "re_span",
  "re_string_interner",
  "re_tf",
  "re_tracing",
