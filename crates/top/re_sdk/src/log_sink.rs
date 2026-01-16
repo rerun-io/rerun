@@ -158,8 +158,7 @@ impl LogSink for MultiSink {
             mut flush_num_bytes,
             mut flush_num_rows,
             mut chunk_max_rows_if_unsorted,
-            mut max_commands_in_flight,
-            mut max_chunks_in_flight,
+            mut max_bytes_in_flight,
         } = ChunkBatcherConfig::DEFAULT;
 
         // Use a mix of the existing sinks thus that we flush *less* often.
@@ -172,8 +171,7 @@ impl LogSink for MultiSink {
             flush_num_rows = flush_num_rows.max(config.flush_num_rows);
             chunk_max_rows_if_unsorted =
                 chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
-            max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
-            max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
+            max_bytes_in_flight = max_bytes_in_flight.max(config.max_bytes_in_flight);
         }
 
         ChunkBatcherConfig {
@@ -181,8 +179,7 @@ impl LogSink for MultiSink {
             flush_num_bytes,
             flush_num_rows,
             chunk_max_rows_if_unsorted,
-            max_commands_in_flight,
-            max_chunks_in_flight,
+            max_bytes_in_flight,
         }
     }
 }
