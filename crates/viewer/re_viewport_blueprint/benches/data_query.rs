@@ -81,7 +81,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
 
         group.bench_function("include_all", |b| {
             b.iter(|| {
-                view_contents.execute_query(
+                view_contents.build_data_result_tree(
                     &ctx,
                     &view_class_registry,
                     &blueprint_query,
@@ -110,7 +110,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
 
         group.bench_function("complex_filter", |b| {
             b.iter(|| {
-                view_contents.execute_query(
+                view_contents.build_data_result_tree(
                     &ctx,
                     &view_class_registry,
                     &blueprint_query,

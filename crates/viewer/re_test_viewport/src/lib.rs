@@ -93,7 +93,7 @@ impl TestContextExt for TestContext {
 
                             let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
-                            let mut data_query_result = view_blueprint.contents.execute_query(
+                            let mut data_query_result = view_blueprint.contents.build_data_result_tree(
                                 ctx.store_context,
                                 class_registry,
                                 ctx.blueprint_query,

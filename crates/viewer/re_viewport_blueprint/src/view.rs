@@ -689,7 +689,7 @@ mod tests {
         let mut result = None;
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
-            let mut query_result = view.contents.execute_query(
+            let mut query_result = view.contents.build_data_result_tree(
                 ctx.store_context,
                 &test_ctx.view_class_registry,
                 &test_ctx.blueprint_query,

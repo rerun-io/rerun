@@ -257,7 +257,7 @@ impl ViewContents {
     /// Note that this result will not have any resolved overrides. Those can
     /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
     /// the result.
-    pub fn execute_query(
+    pub fn build_data_result_tree(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
@@ -901,7 +901,7 @@ mod tests {
                 EntityPathFilter::parse_forgiving(filter).resolve_forgiving(&space_env),
             );
 
-            let query_result = contents.execute_query(
+            let query_result = contents.build_data_result_tree(
                 &ctx,
                 &view_class_registry,
                 &LatestAtQuery::latest(blueprint_timeline()),

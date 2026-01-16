@@ -350,7 +350,7 @@ impl AppState {
 
                             (
                                 view.id,
-                                view.contents.execute_query(
+                                view.contents.build_data_result_tree(
                                     store_context,
                                     view_class_registry,
                                     &blueprint_query,
