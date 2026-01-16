@@ -39,14 +39,14 @@ def _suppress_ffmpeg_output() -> None:
             os.close(old_stderr_fd)
 
 
-def _parse_video_specs(raw_specs: list[str], video_format: str) -> list[VideoSpec]:
+def _parse_video_specs(raw_specs: list[str]) -> list[VideoSpec]:
     specs: list[VideoSpec] = []
     for raw_spec in raw_specs:
         parts = raw_spec.split(":")
         if len(parts) != 2:
             raise ValueError("Video spec must be formatted as key:path (videostream only).")
         key, path = parts
-        specs.append(VideoSpec(key=key, path=path, video_format=video_format))
+        specs.append(VideoSpec(key=key, path=path))
     return specs
 
 
@@ -82,7 +82,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--use-images", action="store_true", help="Store images inline instead of videos.")
     parser.add_argument("--action-names", default=None, help="Comma-separated action names.")
     parser.add_argument("--state-names", default=None, help="Comma-separated state names.")
-    parser.add_argument("--video-format", default="h264", help="Video stream codec format for decoding.")
     return parser.parse_args()
 
 
@@ -253,7 +252,7 @@ def main() -> None:
         pass
 
     args = _parse_args()
-    video_specs = _parse_video_specs(args.video, args.video_format)
+    video_specs = _parse_video_specs(args.video)
     repo_id = args.repo_id or args.dataset_name
 
     if args.action is None or args.state is None:
@@ -267,7 +266,6 @@ def main() -> None:
         task=args.task,
         videos=video_specs,
         use_videos=not args.use_images,
-        video_format=args.video_format,
         action_names=_parse_name_list(args.action_names),
         state_names=_parse_name_list(args.state_names),
         task_default=args.task_default,
