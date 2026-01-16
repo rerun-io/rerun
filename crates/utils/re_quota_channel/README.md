@@ -34,9 +34,7 @@ tx.send(data.clone(), data.len() as u64).unwrap();
 let received = rx.recv().unwrap();
 ```
 
-## Special Cases
+## Special cases
 
-- If a message is larger than the total channel capacity, a warning is logged and the channel
-  waits until it's completely empty before sending (to minimize memory usage).
-- Each channel has a `debug_name` that is used in log messages to help identify which channel
-  is experiencing backpressure.
+If a message is larger than the total channel capacity, a warning is logged and the channel
+waits until it's completely empty before sending (to minimize memory usage).
