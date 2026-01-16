@@ -33,12 +33,14 @@ all-features = true
 [dependencies]
 re_arrow_util.workspace = true
 re_auth = { workspace = true, features = ["oauth"] }
+re_byte_size.workspace = true
 re_chunk.workspace = true
+re_format.workspace = true
+re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_protos.workspace = true
-re_log_channel.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use arrow::array::{AsArray as _, RecordBatch};
 use arrow::error::ArrowError;
 use re_auth::client::AuthDecorator;
+use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId};
 use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_types::{
@@ -451,6 +452,10 @@ async fn stream_segment_from_server(
         match manifest_result {
             Ok(rrd_manifest) => {
                 re_log::debug_once!("The server supports larger-than-RAM");
+                re_log::debug_once!(
+                    "Downloaded RRD manifest; {} (deflated)",
+                    re_format::format_bytes(rrd_manifest.total_size_bytes() as _)
+                );
 
                 if tx
                     .send(DataSourceMessage::RrdManifest(
