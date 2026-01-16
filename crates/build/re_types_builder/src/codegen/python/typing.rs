@@ -6,8 +6,8 @@ use super::extension_class::ExtensionClasses;
 use super::object_ext::PythonObjectExt;
 use crate::codegen::StringExt as _;
 use crate::{
-    ElementType, Object, ObjectField, ObjectKind, Objects, Type, ATTR_PYTHON_ALIASES,
-    ATTR_PYTHON_ARRAY_ALIASES,
+    ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ElementType, Object, ObjectField, ObjectKind,
+    Objects, Type,
 };
 
 /// Returns type name as string and whether it was force unwrapped.
@@ -304,7 +304,7 @@ pub fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
-        } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
+        } else if from.starts_with(format!("rerun.{scope}.archetypes").as_str()) {
             format!("from ...{scope} import archetypes as {scope}_archetypes") // NOLINT
         } else if from.is_empty() {
             format!("from . import {class}")

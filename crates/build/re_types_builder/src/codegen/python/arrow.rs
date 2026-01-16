@@ -11,7 +11,7 @@ use super::typing::quote_field_type_from_field;
 use crate::codegen::StringExt as _;
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 use crate::{
-    Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry, ATTR_PYTHON_ALIASES,
+    ATTR_PYTHON_ALIASES, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
 };
 
 /// Arrow support objects
@@ -488,7 +488,10 @@ return pa.UnionArray.from_buffers(
     }
 }
 
-pub fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing: bool) -> String {
+pub fn quote_local_batch_type_imports(
+    fields: &[ObjectField],
+    current_obj_is_testing: bool,
+) -> String {
     let mut code = String::new();
 
     for field in fields {

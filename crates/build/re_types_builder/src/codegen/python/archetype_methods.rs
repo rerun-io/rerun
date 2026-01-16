@@ -59,7 +59,11 @@ pub fn quote_component_field_mapping(obj: &Object) -> String {
         .join(",\n")
 }
 
-pub fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
+pub fn quote_partial_update_methods(
+    reporter: &Reporter,
+    obj: &Object,
+    objects: &Objects,
+) -> String {
     let name = &obj.name;
 
     let parameters = obj

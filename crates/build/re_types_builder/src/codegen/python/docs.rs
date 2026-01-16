@@ -3,8 +3,8 @@
 use itertools::Itertools as _;
 
 use super::typing::quote_field_type_from_field;
-use crate::codegen::common::{Example, ExampleInfo, collect_snippets_for_api_docs};
 use crate::codegen::Target;
+use crate::codegen::common::{Example, ExampleInfo, collect_snippets_for_api_docs};
 use crate::objects::State;
 use crate::{Docs, Object, ObjectField, Objects, Reporter};
 

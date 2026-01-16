@@ -190,7 +190,11 @@ impl PythonCodeGenerator {
             let mut code = String::new();
             code.push_indented(0, format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_indented(0, format!("# Based on {:?}.", crate::format_path(source_path)), 2);
+                code.push_indented(
+                    0,
+                    format!("# Based on {:?}.", crate::format_path(source_path)),
+                    2,
+                );
 
                 if obj.kind != ObjectKind::View {
                     // View type extension isn't implemented yet (shouldn't be hard though to add if needed).
