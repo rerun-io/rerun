@@ -282,6 +282,7 @@ async fn fetch_dataset_details(
     Ok((result, table_provider))
 }
 
+#[cfg_attr(target_arch = "wasm32", expect(unused_variables))]
 async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
