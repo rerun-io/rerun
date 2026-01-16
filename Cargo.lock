@@ -10034,6 +10034,7 @@ dependencies = [
  "re_byte_size",
  "re_log",
  "re_mp4",
+ "re_quota_channel",
  "re_rav1d",
  "re_span",
  "re_tracing",

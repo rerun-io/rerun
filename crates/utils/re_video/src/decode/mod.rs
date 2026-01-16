@@ -126,6 +126,12 @@ pub enum DecodeError {
     BadBitsPerComponent(usize),
 }
 
+impl re_byte_size::SizeBytes for DecodeError {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl DecodeError {
     pub fn should_request_more_frames(&self) -> bool {
         // Decoders often (not always!) recover from errors and will succeed eventually.
@@ -206,7 +212,7 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: crate::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(clippy::allow_attributes, unused_variables, clippy::needless_return)] // With some feature flags
 
@@ -309,6 +315,21 @@ pub struct Chunk {
     /// Typically the time difference in presentation timestamp to the next sample.
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
+}
+
+impl re_byte_size::SizeBytes for Chunk {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            is_sync: _,
+            data,
+            sample_idx: _,
+            frame_nr: _,
+            decode_timestamp: _,
+            presentation_timestamp: _,
+            duration: _,
+        } = self;
+        data.heap_size_bytes()
+    }
 }
 
 /// Data for a decoded frame on native targets.
