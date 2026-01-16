@@ -7,7 +7,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 use re_viewport::execute_systems_for_view;
-use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
@@ -100,9 +100,18 @@ impl TestContextExt for TestContext {
                                 &visualizable_entities_for_view,
                             );
 
-                            let resolver = DataQueryPropertyResolver::new(
-                                view_blueprint,
+
+                            let query_range = view_blueprint.query_range(
+                                ctx.blueprint_db(),
+                                ctx.blueprint_query,
+                                ctx.time_ctrl.timeline(),
                                 class_registry,
+                                self.view_states.lock().get_mut_or_create(*view_id, class),
+                            );
+
+                            let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                                &query_range,
+                                class,
                                 &visualizable_entities_for_view,
                                 ctx.indicated_entities_per_visualizer,
                             );
@@ -111,9 +120,7 @@ impl TestContextExt for TestContext {
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
                                 ctx.time_ctrl.timeline(),
-                                class_registry,
                                 &mut data_query_result,
-                                self.view_states.lock().get_mut_or_create(*view_id, class),
                             );
 
                             query_results.insert(*view_id, data_query_result);

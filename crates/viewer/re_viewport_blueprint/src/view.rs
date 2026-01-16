@@ -459,12 +459,13 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
-        VisualizableEntities, VisualizableReason,
+        PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder, VisualizableEntities,
+        VisualizableReason,
     };
 
+    use crate::DataQueryPropertyResolver;
+
     use super::*;
-    use crate::view_contents::DataQueryPropertyResolver;
 
     #[test]
     fn test_visible_interactive_overrides() {
@@ -513,9 +514,6 @@ mod tests {
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
         let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
-
-        // Things needed to resolve properties:
-        let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
 
         struct Scenario {
             base_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
@@ -649,15 +647,7 @@ mod tests {
                 add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
-            // Set up a store query and update the overrides.
-            let resolver = DataQueryPropertyResolver::new(
-                &view,
-                &test_ctx.view_class_registry,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
-            let query_result =
-                update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
+            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities);
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
@@ -684,7 +674,6 @@ mod tests {
         test_ctx: &TestContext,
         view: &ViewBlueprint,
         visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
-        resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 
@@ -703,13 +692,26 @@ mod tests {
                     .expect("view class should be registered"),
             );
 
-            resolver.update_overrides(
+            let query_range = view.query_range(
                 ctx.blueprint_db(),
+                ctx.blueprint_query(),
+                ctx.time_ctrl.timeline(),
+                ctx.view_class_registry,
+                view_state,
+            );
+
+            let resolver = DataQueryPropertyResolver::new(
+                &query_range,
+                view.class(ctx.view_class_registry),
+                visualizable_entities,
+                ctx.indicated_entities_per_visualizer,
+            );
+
+            resolver.update_overrides(
+                ctx.store_context.blueprint,
                 ctx.blueprint_query,
                 ctx.time_ctrl.timeline(),
-                ctx.view_class_registry(),
                 &mut query_result,
-                view_state,
             );
 
             result = Some(query_result.clone());

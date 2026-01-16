@@ -908,9 +908,17 @@ fn update_overrides(
                 let visualizable_entities =
                     ctx.collect_visualizable_entities_for_view_class(view.class_identifier());
 
-                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                    view,
+                let query_range = view.query_range(
+                    ctx.blueprint_db(),
+                    ctx.blueprint_query(),
+                    ctx.time_ctrl.timeline(),
                     ctx.view_class_registry,
+                    view_state,
+                );
+
+                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                    &query_range,
+                    view.class(ctx.view_class_registry),
                     &visualizable_entities,
                     ctx.indicated_entities_per_visualizer,
                 );
@@ -919,9 +927,7 @@ fn update_overrides(
                     ctx.store_context.blueprint,
                     ctx.blueprint_query,
                     ctx.time_ctrl.timeline(),
-                    ctx.view_class_registry,
                     &mut query_result,
-                    view_state,
                 );
 
                 (view.id, query_result)

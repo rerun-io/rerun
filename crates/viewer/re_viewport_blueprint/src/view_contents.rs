@@ -17,9 +17,9 @@ use re_sdk_types::blueprint::{
 use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewClassRegistry,
-    ViewId, ViewState, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizerComponentMapping, VisualizerComponentMappings, VisualizerInstruction,
+    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewId,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMapping,
+    VisualizerComponentMappings, VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -262,16 +262,14 @@ impl ViewContents {
         ctx: &re_viewer_context::StoreContext<'_>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
-        visualizable_entities_for_visualizer_systems: &PerVisualizerInViewClass<
-            VisualizableEntities,
-        >,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
         let visualizers_per_entity =
-            Self::visualizers_per_entity(visualizable_entities_for_visualizer_systems);
+            Self::visualizers_per_entity(visualizable_entities_per_visualizer);
 
         let executor = QueryExpressionEvaluator {
             visualizers_per_entity: &visualizers_per_entity,
@@ -300,7 +298,7 @@ impl ViewContents {
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
-            for (visualizer, entities) in visualizable_entities_for_visualizer_systems.iter() {
+            for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
                 if entities.is_empty() {
                     continue;
                 }
@@ -430,27 +428,22 @@ impl QueryExpressionEvaluator<'_> {
 }
 
 pub struct DataQueryPropertyResolver<'a> {
-    view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-    view: &'a ViewBlueprint,
+    view_query_range: &'a QueryRange,
+    view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
 impl<'a> DataQueryPropertyResolver<'a> {
     pub fn new(
-        view: &'a ViewBlueprint,
-        view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+        view_query_range: &'a QueryRange,
+        view_class: &'a dyn re_viewer_context::ViewClass,
         visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> Self {
-        debug_assert_eq!(
-            view.class_identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         Self {
-            view_class_registry,
-            view,
+            view_query_range,
+            view_class,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
         }
@@ -547,14 +540,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .collect();
             } else {
                 // Otherwise ask the `ViewClass` to choose.
-                let recommended_visualizers = self
-                    .view
-                    .class(self.view_class_registry)
-                    .choose_default_visualizers(
-                        &node.data_result.entity_path,
-                        self.visualizable_entities_per_visualizer,
-                        self.indicated_entities_per_visualizer,
-                    );
+                let recommended_visualizers = self.view_class.choose_default_visualizers(
+                    &node.data_result.entity_path,
+                    self.visualizable_entities_per_visualizer,
+                    self.indicated_entities_per_visualizer,
+                );
                 node.data_result.visualizer_instructions = recommended_visualizers
                     .0
                     .into_iter()
@@ -704,20 +694,12 @@ impl<'a> DataQueryPropertyResolver<'a> {
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: Option<&Timeline>,
-        view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
-        view_state: &dyn ViewState,
     ) {
         re_tracing::profile_function!();
 
         if let Some(root) = query_result.tree.root_handle() {
-            let default_query_range = self.view.query_range(
-                blueprint,
-                blueprint_query,
-                active_timeline,
-                view_class_registry,
-                view_state,
-            );
+            let default_query_range = self.view_query_range;
             let parent_visible = true;
             let parent_interactive = true;
 
@@ -727,7 +709,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 active_timeline,
                 query_result,
                 root,
-                &default_query_range,
+                default_query_range,
                 parent_visible,
                 parent_interactive,
             );
@@ -743,7 +725,9 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
-    use re_viewer_context::{Caches, StoreContext, VisualizableReason, blueprint_timeline};
+    use re_viewer_context::{
+        Caches, StoreContext, ViewClassRegistry, VisualizableReason, blueprint_timeline,
+    };
 
     use super::*;
 
