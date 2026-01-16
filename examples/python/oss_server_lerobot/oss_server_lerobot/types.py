@@ -3,29 +3,56 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .utils import get_entity_path
 
+if TYPE_CHECKING:
+    import numpy as np
+
 
 @dataclass(frozen=True)
-class ImageSpec:
+class FeatureSpec:
+    """Typed feature specification for LeRobot datasets."""
+
+    dtype: str
+    shape: tuple[int, ...]
+    names: list[str] | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {"dtype": self.dtype, "shape": self.shape, "names": self.names}
+
+
+@dataclass(frozen=True)
+class RemuxInfo:
+    """Typed remuxing details for a single video stream."""
+
+    samples: list[bytes]
+    times_ns: np.ndarray
+    source_fps: float
+
+
+@dataclass(frozen=True)
+class RemuxData:
+    """Typed remuxing payload passed between conversion steps."""
+
+    specs: list[VideoSpec]
+    remux_info: dict[str, RemuxInfo]
+    fps: int
+
+
+@dataclass(frozen=True)
+class VideoSpec:
     """Specification for a video stream in the dataset."""
 
     key: str
     path: str
+    video_format: str = "h264"
+    vcodec: str = "libx264"
 
 
 @dataclass(frozen=True)
-class ColumnSpec:
-    """Column names for action, state, and task data."""
-
-    action: str | None
-    state: str | None
-    task: str | None
-
-
-@dataclass(frozen=True)
-class ConversionConfig:
+class LeRobotConversionConfig:
     """Configuration for converting RRD data to LeRobot format."""
 
     # Output configuration
@@ -33,10 +60,12 @@ class ConversionConfig:
     index_column: str
 
     # Column specifications
-    columns: ColumnSpec
+    action: str
+    state: str
+    task: str
 
     # Image/video specifications
-    image_specs: list[ImageSpec]
+    videos: list[VideoSpec]
     use_videos: bool
     video_format: str
     vcodec: str
@@ -61,25 +90,23 @@ class ConversionConfig:
         contents = []
         reference_path = None
 
-        if self.columns.action:
-            entity_path = get_entity_path(self.columns.action)
+        entity_path = get_entity_path(self.action)
+        contents.append(entity_path)
+        if reference_path is None:
+            reference_path = entity_path
+
+        entity_path = get_entity_path(self.state)
+        if entity_path not in contents:
             contents.append(entity_path)
-            if reference_path is None:
-                reference_path = entity_path
+        if reference_path is None:
+            reference_path = entity_path
 
-        if self.columns.state:
-            entity_path = get_entity_path(self.columns.state)
-            if entity_path not in contents:
-                contents.append(entity_path)
-            if reference_path is None:
-                reference_path = entity_path
-
-        if self.columns.task:
-            entity_path = get_entity_path(self.columns.task)
+        if self.task:
+            entity_path = get_entity_path(self.task)
             if entity_path not in contents:
                 contents.append(entity_path)
 
-        for spec in self.image_specs:
+        for spec in self.videos:
             if spec.path not in contents:
                 contents.append(spec.path)
 

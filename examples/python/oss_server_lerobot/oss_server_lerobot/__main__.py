@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from pathlib import Path
+import os
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -11,9 +13,9 @@ from datafusion import col, functions as F
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from tqdm import tqdm
 
-from .converter import convert_dataframe_to_episode
+from .converter import convert_dataframe_to_episode, apply_remuxed_videos
 from .feature_inference import infer_features
-from .types import ColumnSpec, ConversionConfig, ImageSpec
+from .types import LeRobotConversionConfig, VideoSpec
 from .utils import make_time_grid
 from .video_processing import extract_video_samples
 
@@ -21,14 +23,30 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-def _parse_image_specs(raw_specs: list[str]) -> list[ImageSpec]:
-    specs: list[ImageSpec] = []
+@contextmanager
+def _suppress_ffmpeg_output() -> None:
+    with open(os.devnull, "w") as devnull:
+        old_stdout_fd = os.dup(1)
+        old_stderr_fd = os.dup(2)
+        try:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+            yield
+        finally:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stdout_fd)
+            os.close(old_stderr_fd)
+
+
+def _parse_image_specs(raw_specs: list[str], video_format: str, vcodec: str) -> list[VideoSpec]:
+    specs: list[VideoSpec] = []
     for raw_spec in raw_specs:
         parts = raw_spec.split(":")
         if len(parts) != 2:
             raise ValueError("Image spec must be formatted as key:path (videostream only).")
         key, path = parts
-        specs.append(ImageSpec(key=key, path=path))
+        specs.append(VideoSpec(key=key, path=path, video_format=video_format, vcodec=vcodec))
     return specs
 
 
@@ -74,7 +92,7 @@ def convert_with_dataframes(
     output_dir: Path,
     dataset_name: str,
     repo_id: str,
-    config: ConversionConfig,
+    config: LeRobotConversionConfig,
     segments: list[str] | None = None,
     max_segments: int | None = None,
 ) -> None:
@@ -102,9 +120,6 @@ def convert_with_dataframes(
         raise ValueError(f"RRD directory does not exist or is not a directory: {rrd_dir}")
     if output_dir.exists():
         raise ValueError(f"Output directory already exists: {output_dir}")
-    if config.columns.action is None and config.columns.state is None and not config.image_specs:
-        raise ValueError("At least one of action_column, state_column, or image_specs must be provided.")
-
     with rr.server.Server(datasets={dataset_name: rrd_dir}) as server:
         client = server.client()
         dataset = client.get_dataset(name=dataset_name)
@@ -118,20 +133,15 @@ def convert_with_dataframes(
         features = infer_features(
             dataset=dataset,
             segment_id=segment_ids[0],
-            index_column=config.index_column,
-            columns=config.columns,
-            image_specs=config.image_specs,
-            use_videos=config.use_videos,
-            action_names=config.action_names,
-            state_names=config.state_names,
-            video_format=config.video_format,
+            config=config,
         )
+        features_dict = {key: spec.to_dict() for key, spec in features.items()}
 
         # Create LeRobot dataset
         lerobot_dataset = LeRobotDataset.create(
             repo_id=repo_id,
             fps=config.fps,
-            features=features,
+            features=features_dict,
             root=output_dir,
             use_videos=config.use_videos,
             video_backend=config.vcodec,
@@ -187,17 +197,15 @@ def convert_with_dataframes(
 
                 # Apply filters
                 filters = []
-                if config.columns.action:
-                    filters.append(col(config.columns.action).is_not_null())
-                if config.columns.state:
-                    filters.append(col(config.columns.state).is_not_null())
+                filters.append(col(config.action).is_not_null())
+                filters.append(col(config.state).is_not_null())
                 if filters:
                     df = df.filter(*filters)
 
                 # Load video data cache
 
                 video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] = {}
-                for spec in config.image_specs:
+                for spec in config.videos:
                     sample_column = f"{spec.path}:VideoStream:sample"
                     video_view = dataset.filter_segments(segment_id).filter_contents(spec.path)
                     video_reader = video_view.reader(index=config.index_column)
@@ -211,8 +219,8 @@ def convert_with_dataframes(
 
                 # Convert the dataframe to an episode
                 success, remux_data, direct_saved = convert_dataframe_to_episode(
-                    df=df,
-                    config=config,
+                    df,
+                    config,
                     video_data_cache=video_data_cache,
                     lerobot_dataset=lerobot_dataset,
                     segment_id=segment_id,
@@ -221,13 +229,12 @@ def convert_with_dataframes(
 
                 if success and not direct_saved:
                     episode_index = lerobot_dataset.episode_buffer["episode_index"]
-                    lerobot_dataset.save_episode()
+                    with _suppress_ffmpeg_output():
+                        lerobot_dataset.save_episode()
 
-                    # Apply remuxed videos if possible
-                    if config.use_videos and remux_data:
-                        from .converter import _apply_remuxed_videos
-
-                        _apply_remuxed_videos(lerobot_dataset, episode_index, remux_data)
+                        # Apply remuxed videos if possible
+                        if config.use_videos and remux_data:
+                            apply_remuxed_videos(lerobot_dataset, episode_index, remux_data)
 
             except Exception as e:
                 print(f"Error processing segment {segment_id}: {e}")
@@ -240,17 +247,27 @@ def convert_with_dataframes(
 
 
 def main() -> None:
+    try:
+        import av
+
+        av.logging.set_level(av.logging.PANIC)
+    except Exception:
+        pass
+
     args = _parse_args()
-    image_specs = _parse_image_specs(args.video)
+    image_specs = _parse_image_specs(args.video, args.video_format, args.vcodec)
     repo_id = args.repo_id or args.dataset_name
 
-    columns = ColumnSpec(action=args.action, state=args.state, task=args.task)
+    if args.action is None or args.state is None:
+        raise ValueError("--action and --state must be provided.")
 
-    config = ConversionConfig(
+    config = LeRobotConversionConfig(
         fps=args.fps,
         index_column=args.index,
-        columns=columns,
-        image_specs=image_specs,
+        action=args.action,
+        state=args.state,
+        task=args.task,
+        videos=image_specs,
         use_videos=not args.use_images,
         video_format=args.video_format,
         vcodec=args.vcodec,
