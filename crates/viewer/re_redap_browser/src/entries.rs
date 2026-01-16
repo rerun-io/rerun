@@ -151,9 +151,10 @@ async fn fetch_entries_and_register_tables(
         .await?;
 
     let origin_ref = &origin;
+    let runtime_ref = &runtime;
     let futures_iter = entries
         .into_iter()
-        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e));
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime_ref));
 
     let mut entries = HashMap::default();
 
@@ -224,6 +225,7 @@ fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
+    runtime: &AsyncRuntimeHandle,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     // We could also box the future but then we'd need to use `.boxed()` natively and
     // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
@@ -240,7 +242,7 @@ fn fetch_entry_details(
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin.clone())
+            fetch_table_details(client, entry.id, origin.clone(), runtime)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -284,15 +286,19 @@ async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: re_uri::Origin,
+    runtime: &AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
         table_entry,
         origin: origin.clone(),
     })?;
 
-    // Note: For table writes, we'd need to pass a tokio runtime handle.
-    // For now, we pass None since this is read-only in the viewer context.
-    let table_provider = TableEntryTableProvider::new(client, id, None)
+    #[cfg(target_arch = "wasm32")]
+    let runtime = None;
+    #[cfg(not(target_arch = "wasm32"))]
+    let runtime = Some(runtime.inner().clone());
+
+    let table_provider = TableEntryTableProvider::new(client, id, runtime)
         .into_provider()
         .await
         .map_err(|err| ApiError::internal(err, "failed creating table-entry table provider"))?;
