@@ -52,7 +52,13 @@ impl MemoryLimit {
 
     /// The limit can either be absolute (e.g. "16GB") or relative (e.g. "50%").
     pub fn parse(limit: &str) -> Result<Self, String> {
-        if let Some(percentage) = limit.strip_suffix('%') {
+        if limit == "0" {
+            // Let's be explicit: zero means zero,
+            // not "unlimited" or any such shenanigans.
+            Ok(Self::from_bytes(0))
+        } else if matches!(limit, "unlimited" | "none" | "max" | "∞") {
+            Ok(Self::UNLIMITED)
+        } else if let Some(percentage) = limit.strip_suffix('%') {
             let percentage = percentage
                 .parse::<f32>()
                 .map_err(|_err| format!("expected e.g. '50%', got {limit:?}"))?;
