@@ -186,33 +186,27 @@ impl StreamingCacheTableProvider {
         let mut stream = dataframe.execute_stream().await?;
 
         // Stream batches into cache
-        loop {
-            // Stop if we're the only one holding a reference (no consumers left)
+        while let Some(result) = stream.next().await {
+            let batch = result?;
+
+            let mut guard = cache.lock();
+            guard.cached_batches.push(batch);
+            guard.wake_all();
+
             if Arc::strong_count(cache) == 1 {
+                // No more readers - stop streaming
                 return Ok(());
             }
-
-            match stream.next().await {
-                Some(Ok(batch)) => {
-                    let mut guard = cache.lock();
-                    guard.cached_batches.push(batch);
-                    guard.wake_all();
-                }
-                Some(Err(err)) => {
-                    return Err(err);
-                }
-                None => {
-                    let mut guard = cache.lock();
-                    let mem_table = MemTable::try_new(
-                        Arc::clone(&guard.schema),
-                        vec![std::mem::take(&mut guard.cached_batches)],
-                    )?;
-                    guard.state = CacheState::Complete(Arc::new(mem_table));
-                    guard.wake_all();
-                    return Ok(());
-                }
-            }
         }
+
+        // Stream complete - build MemTable for efficient future scans
+        let mut guard = cache.lock();
+        // We can't mem::take the barches since some readers might still be in progress
+        let batches = guard.cached_batches.clone();
+        let mem_table = MemTable::try_new(Arc::clone(&guard.schema), vec![batches])?;
+        guard.state = CacheState::Complete(Arc::new(mem_table));
+        guard.wake_all();
+        Ok(())
     }
 }
 
