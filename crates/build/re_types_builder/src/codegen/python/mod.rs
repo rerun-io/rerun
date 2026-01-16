@@ -17,7 +17,7 @@ use unindent::unindent;
 
 use self::codegen::{code_for_enum, code_for_struct, code_for_union};
 use self::extension_class::{ExtensionClass, ExtensionClasses};
-use self::object_ext::PythonObjectExt;
+use self::object_ext::PythonObjectExt as _;
 use self::typing::{quote_import_clauses_from_field, quote_import_clauses_from_fqname};
 use self::views::code_for_view;
 use crate::codegen::{StringExt as _, autogen_warning};
