@@ -17,6 +17,9 @@ use re_video::{DecodeSettings, StableIndexDeque};
 
 use crate::{Cache, CacheMemoryReport};
 
+#[cfg(test)]
+mod test_player;
+
 /// Video stream from the store, ready for playback.
 ///
 /// This is compromised of:
