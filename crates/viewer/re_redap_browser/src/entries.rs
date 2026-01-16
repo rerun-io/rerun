@@ -237,12 +237,12 @@ fn fetch_entry_details(
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(Left(Left(
-            fetch_dataset_details(client, entry.id, origin.clone())
+            fetch_dataset_details(client, entry.id, origin)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin.clone(), runtime)
+            fetch_table_details(client, entry.id, origin, runtime)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -264,7 +264,7 @@ fn fetch_entry_details(
 async fn fetch_dataset_details(
     mut client: ConnectionClient,
     id: EntryId,
-    origin: re_uri::Origin,
+    origin: &re_uri::Origin,
 ) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let result = client
         .read_dataset_entry(id)
@@ -286,7 +286,7 @@ async fn fetch_dataset_details(
 async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
-    origin: re_uri::Origin,
+    origin: &re_uri::Origin,
     runtime: &AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
