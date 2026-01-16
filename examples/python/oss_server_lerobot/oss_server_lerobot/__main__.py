@@ -39,14 +39,14 @@ def _suppress_ffmpeg_output() -> None:
             os.close(old_stderr_fd)
 
 
-def _parse_image_specs(raw_specs: list[str], video_format: str, vcodec: str) -> list[VideoSpec]:
+def _parse_video_specs(raw_specs: list[str], video_format: str) -> list[VideoSpec]:
     specs: list[VideoSpec] = []
     for raw_spec in raw_specs:
         parts = raw_spec.split(":")
         if len(parts) != 2:
-            raise ValueError("Image spec must be formatted as key:path (videostream only).")
+            raise ValueError("Video spec must be formatted as key:path (videostream only).")
         key, path = parts
-        specs.append(VideoSpec(key=key, path=path, video_format=video_format, vcodec=vcodec))
+        specs.append(VideoSpec(key=key, path=path, video_format=video_format))
     return specs
 
 
@@ -82,7 +82,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--use-images", action="store_true", help="Store images inline instead of videos.")
     parser.add_argument("--action-names", default=None, help="Comma-separated action names.")
     parser.add_argument("--state-names", default=None, help="Comma-separated state names.")
-    parser.add_argument("--vcodec", default="libsvtav1", help="Video codec for LeRobot encoding.")
     parser.add_argument("--video-format", default="h264", help="Video stream codec format for decoding.")
     return parser.parse_args()
 
@@ -144,7 +143,6 @@ def convert_with_dataframes(
             features=features_dict,
             root=output_dir,
             use_videos=config.use_videos,
-            video_backend=config.vcodec,
         )
 
         # Process each segment
@@ -255,7 +253,7 @@ def main() -> None:
         pass
 
     args = _parse_args()
-    image_specs = _parse_image_specs(args.video, args.video_format, args.vcodec)
+    video_specs = _parse_video_specs(args.video, args.video_format)
     repo_id = args.repo_id or args.dataset_name
 
     if args.action is None or args.state is None:
@@ -267,10 +265,9 @@ def main() -> None:
         action=args.action,
         state=args.state,
         task=args.task,
-        videos=image_specs,
+        videos=video_specs,
         use_videos=not args.use_images,
         video_format=args.video_format,
-        vcodec=args.vcodec,
         action_names=_parse_name_list(args.action_names),
         state_names=_parse_name_list(args.state_names),
         task_default=args.task_default,
