@@ -1,6 +1,6 @@
 //! Selection utilities for quota channels.
 
-use crate::{Receiver, RecvError};
+use super::{Receiver, RecvError};
 
 pub use crossbeam::channel::{SelectTimeoutError, TrySelectError};
 
@@ -209,7 +209,7 @@ impl SelectedOperation<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::channel;
+    use crate::sync::channel;
 
     use super::*;
 

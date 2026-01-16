@@ -9325,10 +9325,12 @@ name = "re_quota_channel"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
+ "futures",
  "parking_lot",
  "re_byte_size",
  "re_format",
  "re_log",
+ "tokio",
 ]
 
 [[package]]
