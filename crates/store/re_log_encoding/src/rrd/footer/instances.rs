@@ -5,6 +5,7 @@ use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
+use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
@@ -185,6 +186,18 @@ pub struct RrdManifest {
     // TODO(cmc): should we slap a sorbet:version on this? that probably should be part of the sorbet ABI as
     // much as anything else?
     pub data: arrow::array::RecordBatch,
+}
+
+impl re_byte_size::SizeBytes for RrdManifest {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            store_id,
+            sorbet_schema,
+            sorbet_schema_sha256: _,
+            data,
+        } = self;
+        store_id.heap_size_bytes() + sorbet_schema.heap_size_bytes() + data.heap_size_bytes()
+    }
 }
 
 /// A map based representation of the static data within an [`RrdManifest`].
