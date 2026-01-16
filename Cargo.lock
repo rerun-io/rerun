@@ -9077,6 +9077,7 @@ dependencies = [
  "re_byte_size",
  "re_log_encoding",
  "re_log_types",
+ "re_quota_channel",
  "re_tracing",
  "re_uri",
  "serde",

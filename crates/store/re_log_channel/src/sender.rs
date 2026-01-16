@@ -4,14 +4,14 @@ use crate::{Channel, DataSourceMessage, LogSource, SendError, SmartMessage, Smar
 
 #[derive(Clone)]
 pub struct LogSender {
-    tx: crossbeam::channel::Sender<SmartMessage>,
+    tx: re_quota_channel::Sender<SmartMessage>,
     source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
 
 impl LogSender {
     pub(crate) fn new(
-        tx: crossbeam::channel::Sender<SmartMessage>,
+        tx: re_quota_channel::Sender<SmartMessage>,
         source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {

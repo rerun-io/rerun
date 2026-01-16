@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
 use super::LogReceiver;
@@ -120,7 +119,7 @@ impl LogReceiverSet {
             return Err(RecvError);
         }
 
-        let mut sel = Select::new();
+        let mut sel = re_quota_channel::Select::new();
         for r in rx.iter() {
             sel.recv(r.inner());
         }
@@ -141,7 +140,7 @@ impl LogReceiverSet {
             return None;
         }
 
-        let mut sel = Select::new();
+        let mut sel = re_quota_channel::Select::new();
         for r in rx.iter() {
             sel.recv(r.inner());
         }
@@ -176,7 +175,7 @@ impl LogReceiverSet {
             return None;
         }
 
-        let mut sel = Select::new();
+        let mut sel = re_quota_channel::Select::new();
         for r in rx.iter() {
             sel.recv(r.inner());
         }

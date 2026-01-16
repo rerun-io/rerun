@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use crate::{Channel, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
-    rx: crossbeam::channel::Receiver<SmartMessage>,
+    rx: re_quota_channel::Receiver<SmartMessage>,
     channel: Arc<Channel>,
     source: Arc<LogSource>,
     connected: AtomicBool,
@@ -13,7 +13,7 @@ pub struct LogReceiver {
 
 impl LogReceiver {
     pub(crate) fn new(
-        rx: crossbeam::channel::Receiver<SmartMessage>,
+        rx: re_quota_channel::Receiver<SmartMessage>,
         channel: Arc<Channel>,
         source: Arc<LogSource>,
     ) -> Self {
@@ -83,7 +83,7 @@ impl LogReceiver {
         Ok(msg)
     }
 
-    pub(crate) fn inner(&self) -> &crossbeam::channel::Receiver<SmartMessage> {
+    pub(crate) fn inner(&self) -> &re_quota_channel::Receiver<SmartMessage> {
         &self.rx
     }
 
