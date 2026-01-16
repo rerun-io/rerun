@@ -1,4 +1,5 @@
-from .converter import convert_rrd_dataset_to_lerobot
-from .types import ColumnSpec, ImageSpec
+from __future__ import annotations
 
-__all__ = ["ImageSpec", "ColumnSpec", "convert_rrd_dataset_to_lerobot"]
+from .types import VideoSpec
+
+__all__ = ["VideoSpec"]

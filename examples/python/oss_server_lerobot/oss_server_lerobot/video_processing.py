@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 
 import av
 import numpy as np
+import pyarrow as pa
 
 from .utils import normalize_times, unwrap_singleton
 
 if TYPE_CHECKING:
-    import pyarrow as pa
     import rerun as rr
 
-    from .types import ImageSpec
+    from .types import VideoSpec
 
 
 def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> tuple[list[bytes], np.ndarray]:
@@ -57,6 +57,7 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
 
 
 def decode_video_frame(
+    *,
     samples: list[bytes],
     times_ns: np.ndarray,
     target_time_ns: int,
@@ -142,37 +143,10 @@ def can_remux_video(
     return can_remux, source_fps
 
 
-def extract_frames_at_timestamps(
-    samples: list[bytes],
-    times_ns: np.ndarray,
-    target_times_ns: np.ndarray,
-    video_format: str,
-) -> list[np.ndarray]:
-    """
-    Extract frames at specific timestamps from compressed video packets.
-
-    This decodes each requested frame independently.
-
-    Args:
-        samples: List of compressed video packet bytes
-        times_ns: Timestamps in nanoseconds for each packet
-        target_times_ns: Target timestamps to extract frames at
-        video_format: Video codec format (e.g., "h264", "hevc")
-
-    Returns:
-        List of decoded frames as numpy arrays
-
-    """
-    frames = []
-    for target_time_ns in target_times_ns:
-        frame = decode_video_frame(samples, times_ns, int(target_time_ns), video_format)
-        frames.append(frame)
-    return frames
-
-
 def remux_video_stream(
     samples: list[bytes],
     times_ns: np.ndarray,
+    *,
     output_path: str,
     video_format: str,
     width: int | None = None,
@@ -258,8 +232,7 @@ def infer_video_shape(
     dataset: rr.catalog.DatasetEntry,
     segment_id: str,
     index_column: str,
-    spec: ImageSpec,
-    video_format: str,
+    spec: VideoSpec,
 ) -> tuple[int, int, int]:
     """
     Infer video frame shape by decoding the first frame.
@@ -269,8 +242,6 @@ def infer_video_shape(
         segment_id: ID of the segment to read from
         index_column: Name of the index/timeline column
         spec: Image specification for the video stream
-        video_format: Video codec format
-
     Returns:
         Tuple of (height, width, channels)
 
@@ -278,12 +249,10 @@ def infer_video_shape(
         ValueError: If no video samples are found in the segment
 
     """
-    import pyarrow as pa
 
     view = dataset.filter_segments(segment_id).filter_contents(spec.path)
     sample_column = f"{spec.path}:VideoStream:sample"
     df = view.reader(index=index_column).select(index_column, sample_column)
-    print(df.schema())
     table = pa.table(df)
 
     # Check if the table has any rows - if not, the segment might not have video data for this index
@@ -291,10 +260,12 @@ def infer_video_shape(
         raise ValueError(
             f"No video data found in segment '{segment_id}' for path '{spec.path}' "
             f"using index '{index_column}'. The segment may not contain video data "
-            f"on this timeline, or the video data may use a different index."
+            "on this timeline, or the video data may use a different index."
         )
 
     samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
     target_time_ns = int(times_ns[0])
-    decoded = decode_video_frame(samples, times_ns, target_time_ns, video_format)
+    decoded = decode_video_frame(
+        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=spec.video_format
+    )
     return decoded.shape
