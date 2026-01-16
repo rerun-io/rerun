@@ -7,7 +7,6 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;
 use crate::{
@@ -22,7 +21,7 @@ pub struct VisualizerComponentMapping {
 }
 
 /// A list of component mappings for a visualizer instruction.
-pub type VisualizerComponentMappings = SmallVec<[VisualizerComponentMapping; 2]>;
+pub type VisualizerComponentMappings = Vec<VisualizerComponentMapping>;
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -92,16 +91,13 @@ impl VisualizerInstruction {
 #[derive(Clone, Debug)]
 pub struct DataResult {
     /// Where to retrieve the data from.
-    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
-    // multi-RRD or blueprint-static data references.
     pub entity_path: EntityPath,
 
     /// There are any visualizers that can run on this data result.
     pub any_visualizers_available: bool,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    // pub visualizers: SmallVisualizerSet,
-    pub visualizer_instructions: SmallVec<[VisualizerInstruction; 1]>,
+    pub visualizer_instructions: Vec<VisualizerInstruction>,
 
     /// If true, this path is not actually included in the query results and is just here
     /// because of a common prefix.
