@@ -7,6 +7,8 @@ use re_renderer::video::{
 };
 use re_video::{AsyncDecoder, SampleIndex, SampleMetadataState, Time, VideoDataDescription};
 
+use crate::VideoStreamProcessingError;
+
 struct TestDecoder {
     sender: Sender<Result<re_video::Frame, re_video::DecodeError>>,
     sample_tx: Sender<SampleIndex>,
@@ -188,7 +190,9 @@ fn keyframe(time: f64) -> SampleMetadataState {
     })
 }
 
-fn create_video(samples: impl IntoIterator<Item = SampleMetadataState>) -> TestVideoPlayer {
+fn create_video(
+    samples: impl IntoIterator<Item = SampleMetadataState>,
+) -> Result<TestVideoPlayer, VideoStreamProcessingError> {
     let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
     let video = VideoPlayer::new_with_encoder(
         VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
@@ -227,8 +231,7 @@ fn create_video(samples: impl IntoIterator<Item = SampleMetadataState>) -> TestV
             last_sample: samples.next_index() - 1,
         },
         &mut samples,
-    )
-    .unwrap();
+    )?;
 
     let video_descr = VideoDataDescription {
         delivery_method: re_video::VideoDeliveryMethod::Stream {
@@ -245,12 +248,12 @@ fn create_video(samples: impl IntoIterator<Item = SampleMetadataState>) -> TestV
         timescale: None,
     };
 
-    TestVideoPlayer {
+    Ok(TestVideoPlayer {
         video,
         sample_rx,
         video_descr,
         time: 0.0,
-    }
+    })
 }
 
 fn test_simple_video(mut video: TestVideoPlayer, count: usize, dt: f64, max_time: f64) {
@@ -276,7 +279,7 @@ fn player_all_keyframes() {
     let count = 10;
     let dt = 0.1;
     let max_time = count as f64 * dt;
-    let video = create_video((0..count).map(|t| keyframe(t as f64 * dt)));
+    let video = create_video((0..count).map(|t| keyframe(t as f64 * dt))).unwrap();
 
     test_simple_video(video, count, dt, max_time);
 }
@@ -286,7 +289,8 @@ fn player_one_keyframe() {
     let count = 10;
     let dt = 0.1;
     let max_time = count as f64 * dt;
-    let video = create_video(once(keyframe(0.0)).chain((1..count).map(|t| frame(t as f64 * dt))));
+    let video =
+        create_video(once(keyframe(0.0)).chain((1..count).map(|t| frame(t as f64 * dt)))).unwrap();
 
     test_simple_video(video, count, dt, max_time);
 }
@@ -304,7 +308,8 @@ fn player_keyframes_then_frames() {
         } else {
             frame(time)
         }
-    }));
+    }))
+    .unwrap();
 
     test_simple_video(video, count, dt, max_time);
 }
@@ -328,9 +333,23 @@ fn player_irregular() {
         frame(2221.0),
     ];
     let count = samples.len();
-    let video = create_video(samples);
+    let video = create_video(samples).unwrap();
 
     test_simple_video(video, count, 0.1, 2500.0);
+}
+
+#[test]
+fn player_unsorted() {
+    let samples = [keyframe(0.0), keyframe(1.0), keyframe(2.0), keyframe(1.0)];
+    let Err(err) = create_video(samples) else {
+        panic!("Video creation shouldn't succeed for unordered samples");
+    };
+
+    assert!(
+        matches!(err, VideoStreamProcessingError::OutOfOrderSamples),
+        "Expected {} got {err}",
+        VideoStreamProcessingError::OutOfOrderSamples
+    );
 }
 
 #[test]
@@ -368,7 +387,7 @@ fn player_with_skips() {
         .map(|(idx, _)| idx)
         .collect();
 
-    let mut video = create_video(samples);
+    let mut video = create_video(samples).unwrap();
 
     video.play(0.0..1.0, 0.1).unwrap();
 
@@ -402,7 +421,8 @@ fn player_with_unloaded() {
         frame(5.25),
         frame(5.5),
         frame(5.75),
-    ]);
+    ])
+    .unwrap();
 
     #[track_caller]
     fn assert_loading(err: Result<(), VideoPlayerError>) {
