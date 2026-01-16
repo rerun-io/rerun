@@ -30,6 +30,8 @@ class RemuxInfo:
     samples: list[bytes]
     times_ns: np.ndarray
     source_fps: float
+    width: int | None = None
+    height: int | None = None
 
 
 @dataclass(frozen=True)
