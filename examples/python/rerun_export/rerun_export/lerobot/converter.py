@@ -66,21 +66,9 @@ def convert_dataframe_to_episode(
         remux_info: dict[str, RemuxInfo] = {}
         for spec in config.videos:
             samples, times_ns = video_data_cache[spec.key]
-            feature_key = f"observation.images.{spec.key}"
-            feature_spec = features.get(feature_key)
-            video_height = video_width = None
-            if feature_spec is not None and feature_spec.shape:
-                if len(feature_spec.shape) >= 2:
-                    video_height, video_width = int(feature_spec.shape[0]), int(feature_spec.shape[1])
             can_remux, source_fps = can_remux_video(times_ns, config.fps)
             if can_remux:
-                remux_info[spec.key] = RemuxInfo(
-                    samples=samples,
-                    times_ns=times_ns,
-                    source_fps=source_fps,
-                    width=video_width,
-                    height=video_height,
-                )
+                remux_info[spec.key] = RemuxInfo(samples=samples, times_ns=times_ns, source_fps=source_fps)
             else:
                 raise ValueError(
                     f"Video cannot be remuxed yet: spec={spec.key} source_fps={source_fps:.2f} target_fps={config.fps}"
@@ -221,8 +209,6 @@ def apply_remuxed_videos(
                 times_ns=info.times_ns,
                 output_path=tmp_path,
                 video_format=spec.video_format,
-                width=info.width,
-                height=info.height,
                 target_fps=remux_data.fps,
             )
 
@@ -331,8 +317,6 @@ def _save_episode_without_video_decode(
                 times_ns=info.times_ns,
                 output_path=str(temp_path),
                 video_format=spec.video_format,
-                width=info.width,
-                height=info.height,
                 target_fps=fps,
             )
 

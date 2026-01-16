@@ -183,16 +183,10 @@ def remux_video_stream(
     input_stream = input_container.streams.video[0]
 
     # Auto-detect dimensions if not provided
-    if width is None or width <= 0:
+    if width is None:
         width = input_stream.width
-    if height is None or height <= 0:
+    if height is None:
         height = input_stream.height
-    if width in (None, 0) or height in (None, 0):
-        raise ValueError(
-            "Video dimensions are missing from the encoded stream. "
-            "Provide width/height when calling remux_video_stream (e.g. from inferred feature shapes) "
-            "or ensure SPS/PPS metadata is present."
-        )
 
     # Create output container (MP4 format)
     output_container = av.open(output_path, mode="w", format="mp4")
@@ -203,12 +197,10 @@ def remux_video_stream(
         output_stream = output_container.add_stream(template=input_stream)
     except TypeError:
         output_stream = output_container.add_stream(input_stream.codec_context.name)
-    if not output_stream.codec_context.extradata and input_stream.codec_context.extradata:
-        output_stream.codec_context.extradata = input_stream.codec_context.extradata
+        if input_stream.codec_context.extradata:
+            output_stream.codec_context.extradata = input_stream.codec_context.extradata
     output_stream.width = width
     output_stream.height = height
-    output_stream.codec_context.width = width
-    output_stream.codec_context.height = height
 
     if target_fps is not None:
         output_stream.rate = target_fps
