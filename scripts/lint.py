@@ -1560,6 +1560,7 @@ def main() -> None:
             if not full_path.is_relative_to(rerun_root):
                 continue
             filepath = "./" + str(full_path.relative_to(rerun_root))
+            filepath = filepath.replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):
