@@ -52,6 +52,7 @@ disallowed-methods = [
   { path = "crossbeam::channel::Receiver::iter", reason = "Cannot block on Web" },
   { path = "crossbeam::channel::Receiver::recv_timeout", reason = "Cannot block on Web" },
   { path = "crossbeam::channel::Receiver::recv", reason = "Cannot block on Web" },
+  { path = "crossbeam::channel::unbounded", reason = "Use bounded channels to avoid unbounded memory growth. See re_quota_channel." },
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
