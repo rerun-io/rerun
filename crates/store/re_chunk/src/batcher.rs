@@ -659,9 +659,8 @@ fn batching_thread(
     // so that the next tick will not unnecessarily fire early.
     let mut skip_next_tick = false;
 
-    use crossbeam::select;
     loop {
-        select! {
+        crossbeam::select! {
             recv(rx_cmd) -> cmd => {
                 let Ok(cmd) = cmd else {
                     // All command senders are gone, which can only happen if the

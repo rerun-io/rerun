@@ -326,11 +326,11 @@ impl<T> Receiver<T> {
     ///
     /// WARNING: if you receive a message directly from this receiver,
     /// you must manually call `on_receive` to update the byte count!
-    pub fn manual_inner(&self) -> &crossbeam::channel::Receiver<SizedMessage<T>> {
+    pub fn inner(&self) -> &crossbeam::channel::Receiver<SizedMessage<T>> {
         &self.rx
     }
 
-    /// For use with [`manual_inner`]: notify the channel that a message of the given size
+    /// For use with [`Self::inner`]: notify the channel that a message of the given size
     /// has been received, so that the byte count can be updated.
     pub fn manual_on_receive(&self, size_bytes: u64) {
         let mut current = self.shared.current_bytes.lock();

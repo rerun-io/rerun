@@ -47,14 +47,14 @@ macro_rules! select {
         let __rx1 = &$rx1;
         let __rx2 = &$rx2;
         ::crossbeam::channel::select! {
-            recv(__rx1.manual_inner()) -> __result => {
+            recv(__rx1.inner()) -> __result => {
                 let $res1 = __result.map(|__sized| {
                     __rx1.manual_on_receive(__sized.size_bytes);
                     __sized.msg
                 });
                 $body1
             }
-            recv(__rx2.manual_inner()) -> __result => {
+            recv(__rx2.inner()) -> __result => {
                 let $res2 = __result.map(|__sized| {
                     __rx2.manual_on_receive(__sized.size_bytes);
                     __sized.msg
@@ -72,14 +72,14 @@ macro_rules! select {
         let __rx1 = &$rx1;
         let __rx2 = &$rx2;
         ::crossbeam::channel::select! {
-            recv(__rx1.manual_inner()) -> __result => {
+            recv(__rx1.inner()) -> __result => {
                 let $res1 = __result.map(|__sized| {
                     __rx1.manual_on_receive(__sized.size_bytes);
                     __sized.msg
                 });
                 $body1
             }
-            recv(__rx2.manual_inner()) -> __result => {
+            recv(__rx2.inner()) -> __result => {
                 let $res2 = __result.map(|__sized| {
                     __rx2.manual_on_receive(__sized.size_bytes);
                     __sized.msg
@@ -139,7 +139,7 @@ impl<'a> Select<'a> {
     ///
     /// Returns the index of the added operation.
     pub fn recv<T>(&mut self, rx: &'a Receiver<T>) -> usize {
-        self.inner.recv(rx.manual_inner())
+        self.inner.recv(rx.inner())
     }
 
     /// Blocks until one of the registered operations becomes ready.
@@ -198,7 +198,7 @@ impl SelectedOperation<'_> {
     ///
     /// This properly handles byte accounting by calling `manual_on_receive`.
     pub fn recv<T>(self, rx: &Receiver<T>) -> Result<T, RecvError> {
-        self.inner.recv(rx.manual_inner()).map(|sized| {
+        self.inner.recv(rx.inner()).map(|sized| {
             rx.manual_on_receive(sized.size_bytes);
             sized.msg
         })

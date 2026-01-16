@@ -8560,7 +8560,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_quota_channel",
  "re_sorbet",
  "re_span",
  "re_tracing",
