@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from rerun_export.utils import get_entity_path
 
 if TYPE_CHECKING:
+    import datafusion as dfn
     import numpy as np
 
 
@@ -65,14 +66,17 @@ class LeRobotConversionConfig:
 
     # Image/video specifications
     videos: list[VideoSpec]
-    use_videos: bool
+    use_videos: bool = True
 
     # Feature names
-    action_names: list[str] | None
-    state_names: list[str] | None
+    action_names: list[str] | None = None
+    state_names: list[str] | None = None
 
     # Task configuration
-    task_default: str = "No language instruction defined."
+    task_default: str = "task"
+
+    dataset: dfn.DataFrame | None = None
+    segment_id: str | None = None
 
     def get_filter_list(self) -> tuple[list[str], str | None]:
         """
