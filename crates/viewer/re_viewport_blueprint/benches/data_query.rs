@@ -12,8 +12,8 @@ use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    Caches, PerVisualizerInViewClass, StoreContext, ViewClassRegistry, VisualizableEntities,
-    VisualizableReason, blueprint_timeline,
+    Caches, PerVisualizer, PerVisualizerInViewClass, QueryRange, StoreContext, ViewClassRegistry,
+    VisualizableEntities, VisualizableReason, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
 
@@ -55,6 +55,20 @@ fn query_tree_many_entities(c: &mut Criterion) {
     group.throughput(criterion::Throughput::Elements(num_entities as _));
 
     let (recording, visualizable_entities) = build_entity_tree(view_class_id);
+    let indicated_entities = PerVisualizer(
+        // Indicate everything.
+        visualizable_entities
+            .per_visualizer
+            .iter()
+            .map(|(v, e)| {
+                (
+                    *v,
+                    re_viewer_context::IndicatedEntities(e.keys().cloned().collect()),
+                )
+            })
+            .collect(),
+    );
+
     let blueprint = EntityDb::new(StoreId::random(
         re_log_types::StoreKind::Blueprint,
         "bench_app",
@@ -70,6 +84,8 @@ fn query_tree_many_entities(c: &mut Criterion) {
 
     let view_class_registry = ViewClassRegistry::default();
     let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+    let active_timeline = Timeline::new_sequence("frame");
+    let query_range = QueryRange::LatestAt;
 
     // Benchmark with simple include-all filter
     {
@@ -83,9 +99,12 @@ fn query_tree_many_entities(c: &mut Criterion) {
             b.iter(|| {
                 view_contents.build_data_result_tree(
                     &ctx,
+                    Some(&active_timeline),
                     &view_class_registry,
                     &blueprint_query,
+                    &query_range,
                     &visualizable_entities,
+                    &indicated_entities,
                 )
             });
         });
@@ -112,9 +131,12 @@ fn query_tree_many_entities(c: &mut Criterion) {
             b.iter(|| {
                 view_contents.build_data_result_tree(
                     &ctx,
+                    Some(&active_timeline),
                     &view_class_registry,
                     &blueprint_query,
+                    &query_range,
                     &visualizable_entities,
+                    &indicated_entities,
                 )
             });
         });

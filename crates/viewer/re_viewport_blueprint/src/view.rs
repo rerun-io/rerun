@@ -463,8 +463,6 @@ mod tests {
         VisualizableReason,
     };
 
-    use crate::DataQueryPropertyResolver;
-
     use super::*;
 
     #[test]
@@ -678,12 +676,6 @@ mod tests {
         let mut result = None;
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
-            let mut query_result = view.contents.build_data_result_tree(
-                ctx.store_context,
-                &test_ctx.view_class_registry,
-                &test_ctx.blueprint_query,
-                visualizable_entities,
-            );
             let mut view_states = ViewStates::default();
             let view_state = view_states.get_mut_or_create(
                 view.id,
@@ -700,21 +692,15 @@ mod tests {
                 view_state,
             );
 
-            let resolver = DataQueryPropertyResolver::new(
+            result = Some(view.contents.build_data_result_tree(
+                ctx.store_context,
+                ctx.time_ctrl.timeline(),
+                &test_ctx.view_class_registry,
+                &test_ctx.blueprint_query,
                 &query_range,
-                view.class(ctx.view_class_registry),
                 visualizable_entities,
                 ctx.indicated_entities_per_visualizer,
-            );
-
-            resolver.update_overrides(
-                ctx.store_context.blueprint,
-                ctx.blueprint_query,
-                ctx.time_ctrl.timeline(),
-                &mut query_result,
-            );
-
-            result = Some(query_result.clone());
+            ));
         });
 
         result.expect("result should be set with a processed query result")

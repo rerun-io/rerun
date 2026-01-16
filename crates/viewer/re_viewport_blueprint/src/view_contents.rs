@@ -260,9 +260,12 @@ impl ViewContents {
     pub fn build_data_result_tree(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
+        active_timeline: Option<&Timeline>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
+        query_range: &QueryRange,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -317,12 +320,29 @@ impl ViewContents {
             )
         };
 
-        DataQueryResult {
+        let mut query_result = DataQueryResult {
             tree: DataResultTree::new(data_results, root_handle),
             num_matching_entities,
             num_visualized_entities,
             component_defaults,
-        }
+        };
+
+        // TODO(andreas): integrate with `add_entity_tree_to_data_results_recursive` above.
+        let resolver = DataQueryPropertyResolver::new(
+            query_range,
+            view_class_registry.get_class_or_log_error(self.view_class_identifier),
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
+        );
+
+        resolver.update_overrides(
+            ctx.blueprint,
+            blueprint_query,
+            active_timeline,
+            &mut query_result,
+        );
+
+        query_result
     }
 
     fn visualizers_per_entity(
@@ -427,7 +447,7 @@ impl QueryExpressionEvaluator<'_> {
     }
 }
 
-pub struct DataQueryPropertyResolver<'a> {
+struct DataQueryPropertyResolver<'a> {
     view_query_range: &'a QueryRange,
     view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
@@ -885,11 +905,16 @@ mod tests {
                 EntityPathFilter::parse_forgiving(filter).resolve_forgiving(&space_env),
             );
 
+            let query_range = QueryRange::LatestAt;
+
             let query_result = contents.build_data_result_tree(
                 &ctx,
+                Some(&timeline_frame),
                 &view_class_registry,
                 &LatestAtQuery::latest(blueprint_timeline()),
+                &query_range,
                 &visualizable_entities_for_visualizer_systems,
+                &PerVisualizer::default(),
             );
 
             let mut visited = vec![];

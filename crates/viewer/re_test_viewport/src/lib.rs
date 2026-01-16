@@ -93,14 +93,6 @@ impl TestContextExt for TestContext {
 
                             let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
-                            let mut data_query_result = view_blueprint.contents.build_data_result_tree(
-                                ctx.store_context,
-                                class_registry,
-                                ctx.blueprint_query,
-                                &visualizable_entities_for_view,
-                            );
-
-
                             let query_range = view_blueprint.query_range(
                                 ctx.blueprint_db(),
                                 ctx.blueprint_query,
@@ -109,18 +101,14 @@ impl TestContextExt for TestContext {
                                 self.view_states.lock().get_mut_or_create(*view_id, class),
                             );
 
-                            let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                            let data_query_result = view_blueprint.contents.build_data_result_tree(
+                                ctx.store_context,
+                                ctx.time_ctrl.timeline(),
+                                class_registry,
+                                ctx.blueprint_query,
                                 &query_range,
-                                class,
                                 &visualizable_entities_for_view,
                                 ctx.indicated_entities_per_visualizer,
-                            );
-
-                            resolver.update_overrides(
-                                ctx.store_context.blueprint,
-                                ctx.blueprint_query,
-                                ctx.time_ctrl.timeline(),
-                                &mut data_query_result,
                             );
 
                             query_results.insert(*view_id, data_query_result);
