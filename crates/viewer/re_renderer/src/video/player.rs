@@ -420,7 +420,7 @@ impl VideoPlayer {
             // If not, enqueue its remaining samples. This happens regularly in live video streams.
             else {
                 let keyframe_range = video_description
-                    .gop_sample_range_for_keyframe(dbg!(keyframe_idx))
+                    .gop_sample_range_for_keyframe(keyframe_idx)
                     .ok_or(VideoPlayerError::BadData)?;
 
                 let range = (last_enqueued + 1)..keyframe_range.end;
@@ -551,7 +551,7 @@ impl VideoPlayer {
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         let sample_range = video_description
-            .gop_sample_range_for_keyframe(dbg!(keyframe_idx))
+            .gop_sample_range_for_keyframe(keyframe_idx)
             .ok_or(VideoPlayerError::BadData)?;
 
         self.enqueue_sample_range(
@@ -578,10 +578,6 @@ impl VideoPlayer {
         {
             let sample = match sample {
                 re_video::SampleMetadataState::Present(sample) => sample,
-                re_video::SampleMetadataState::Skip(_) => {
-                    self.last_enqueued = Some(sample_idx);
-                    continue;
-                }
                 re_video::SampleMetadataState::Unloaded(_) => {
                     // If this sample before the requested sample, we need this sample now
                     // and error if it's unloaded.
@@ -597,7 +593,7 @@ impl VideoPlayer {
                 }
             };
             let chunk = sample
-                .get(get_video_buffer, dbg!(sample_idx))
+                .get(get_video_buffer, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
             self.sample_decoder.decode(chunk)?;
 

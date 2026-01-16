@@ -384,6 +384,7 @@ fn load_video_data_from_chunks(
 
     load_known_chunk_ranges(
         &mut video_descr,
+        store.storage_engine().store(),
         &mut known_chunk_ranges,
         known_chunks,
         &sorted_samples,
@@ -567,9 +568,12 @@ fn read_samples_from_known_chunk(
         });
     }
 
-    // Mark the remaining ones as skipped.
-    for (_idx, sample) in samples_iter {
-        *sample = re_video::SampleMetadataState::Skip(chunk.id().as_tuid());
+    for (idx, _sample) in samples_iter {
+        debug_assert!(
+            false,
+            "Known video sample chunk '{:?}' didn't fill up pre-allocated sample {idx}",
+            chunk.entity_path()
+        );
     }
 
     let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= known_range.last_sample);
@@ -664,9 +668,6 @@ fn update_sample_durations(
     for sample_idx in start..=end {
         let sample = match &samples[sample_idx] {
             re_video::SampleMetadataState::Present(sample) => sample,
-            re_video::SampleMetadataState::Skip(_) => {
-                continue;
-            }
             re_video::SampleMetadataState::Unloaded(_) => {
                 last_present_sample = None;
                 continue;
@@ -724,11 +725,8 @@ fn read_samples_from_new_chunk(
     let mut previous_max_presentation_timestamp = samples
         .iter()
         .rev()
-        .find_map(|s| match s {
-            re_video::SampleMetadataState::Present(s) => Some(Some(s)),
-            re_video::SampleMetadataState::Skip(_) => None,
-            re_video::SampleMetadataState::Unloaded(_) => Some(None),
-        })
+        .map(|s| s.sample())
+        .next()
         .flatten()
         .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
 
@@ -933,6 +931,7 @@ impl re_byte_size::MemUsageTreeCapture for VideoStreamCache {
 /// `loaded_chunks` should be sorted by start time, and internally sorted on `timeline`.
 fn load_known_chunk_ranges(
     data_descr: &mut re_video::VideoDataDescription,
+    store: &re_chunk_store::ChunkStore,
     known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
     chunks_from_manifest: &BTreeMap<ChunkId, re_log_encoding::RrdManifestTemporalMapEntry>,
     mut loaded_chunks: &[re_chunk::Chunk],
@@ -948,9 +947,16 @@ fn load_known_chunk_ranges(
     let mut loaded_samples_timepoint_iterators = Vec::new();
 
     let sample_component = VideoStream::descriptor_sample().component;
-    // TODO: Should collect rrd manifest ids
-    let all_loaded_chunks: ahash::HashSet<re_chunk::ChunkId> =
-        loaded_chunks.iter().map(|c| c.id()).collect();
+    let all_loaded_chunks: ahash::HashSet<re_chunk::ChunkId> = loaded_chunks
+        .iter()
+        .flat_map(|c| {
+            store
+                .find_root_rrd_manifests(&c.id())
+                .into_iter()
+                .map(|(id, _)| id)
+        })
+        .collect();
+
     for next_chunk in chunk_timepoints.map(Some).chain(std::iter::once(None)) {
         let next_timepoint = next_chunk
             .map(|(_, e)| e.time_range.min)

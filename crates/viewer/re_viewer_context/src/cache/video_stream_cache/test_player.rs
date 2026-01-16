@@ -208,10 +208,6 @@ fn unloaded() -> SampleMetadataState {
     SampleMetadataState::Unloaded(Tuid::new())
 }
 
-fn skip() -> SampleMetadataState {
-    SampleMetadataState::Skip(Tuid::new())
-}
-
 /// A P-Frame
 fn frame(time: f64) -> SampleMetadataState {
     let time = Time::from_secs(time, re_video::Timescale::NANOSECOND);
@@ -392,48 +388,6 @@ fn player_unsorted() {
         "Expected {} got {err}",
         VideoStreamProcessingError::OutOfOrderSamples
     );
-}
-
-#[test]
-fn player_with_skips() {
-    let samples = [
-        keyframe(0.0),
-        frame(0.1),
-        frame(0.2),
-        skip(),
-        keyframe(0.3),
-        frame(0.4),
-        skip(),
-        skip(),
-        keyframe(0.5),
-        frame(0.6),
-        skip(),
-        skip(),
-        skip(),
-        frame(0.7),
-        skip(),
-        frame(0.8),
-        skip(),
-        keyframe(0.9),
-        skip(),
-        skip(),
-        frame(1.0),
-        skip(),
-        skip(),
-    ];
-
-    let expected_indices: Vec<_> = samples
-        .iter()
-        .enumerate()
-        .filter(|(_, s)| s.sample().is_some())
-        .map(|(idx, _)| idx)
-        .collect();
-
-    let mut video = create_video(samples).unwrap();
-
-    video.play(0.0..1.0, 0.1).unwrap();
-
-    video.expect_decoded_samples(expected_indices);
 }
 
 #[track_caller]

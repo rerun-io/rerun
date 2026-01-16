@@ -303,9 +303,6 @@ impl VideoDataDescription {
                         return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
                     }
                 }
-                SampleMetadataState::Skip(_) => {
-                    return Err(format!("Keyframe {keyframe} refers to a skipped sample"));
-                }
                 SampleMetadataState::Unloaded(_) => {
                     return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
                 }
@@ -877,10 +874,6 @@ pub enum SampleMetadataState {
     /// Sample is present and contains video data.
     Present(SampleMetadata),
 
-    /// Sample is marked as skip, this can happen if a source chunk has null rows for
-    /// the sample component.
-    Skip(Tuid),
-
     /// The source for this sample hasn't arrived yet.
     Unloaded(Tuid),
 }
@@ -889,14 +882,14 @@ impl SampleMetadataState {
     pub fn sample(&self) -> Option<&SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Skip(_) | Self::Unloaded(_) => None,
+            Self::Unloaded(_) => None,
         }
     }
 
     pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Skip(_) | Self::Unloaded(_) => None,
+            Self::Unloaded(_) => None,
         }
     }
 
@@ -907,7 +900,7 @@ impl SampleMetadataState {
     pub fn source_id(&self) -> Tuid {
         match self {
             Self::Present(sample) => sample.source_id,
-            Self::Skip(id) | Self::Unloaded(id) => *id,
+            Self::Unloaded(id) => *id,
         }
     }
 }
@@ -916,7 +909,7 @@ impl re_byte_size::SizeBytes for SampleMetadataState {
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
-            Self::Skip(c) | Self::Unloaded(c) => c.heap_size_bytes(),
+            Self::Unloaded(c) => c.heap_size_bytes(),
         }
     }
 }
