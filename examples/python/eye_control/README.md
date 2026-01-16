@@ -6,24 +6,13 @@ thumbnail = "https://static.rerun.io/eye_control_example/01288e2cd92ec68715258e2
 thumbnail_dimensions = [480, 306]
 -->
 
-https://vimeo.com/1154575169?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=3048:2030
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/d75d85d16b70cf6e7863367cd716c10e5725f852_eye_control_example_kth_rpl.mp4" type="video/mp4" />
+</video>
 
-
-https://vimeo.com/1154575685?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2800:1788
-
-<picture>
- <img src="media/eye_control_example_kth_rpl_1024.gif" alt="">
- <source media="(max-width: 480px)" srcset="media/eye_control_example_kth_rpl_480.gif">
- <source media="(max-width: 768px)" srcset="media/eye_control_example_kth_rpl_768.gif">
- <source media="(max-width: 1024px)" srcset="media/eye_control_example_kth_rpl_1024.gif">
-</picture>
-
-<picture>
- <img src="media/eye_control_example_ntu_viral_1024.gif" alt="">
- <source media="(max-width: 480px)" srcset="media/eye_control_example_ntu_viral_480.gif">
- <source media="(max-width: 768px)" srcset="media/eye_control_example_ntu_viral_768.gif">
- <source media="(max-width: 1024px)" srcset="media/eye_control_example_ntu_viral_1024.gif">
-</picture>
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/7ef9a59523051d45c25de02e6a844e7179e205d2_eye_control_example_ntu_viral.mp4" type="video/mp4" />
+</video>
 
 ## Used Rerun types
 
