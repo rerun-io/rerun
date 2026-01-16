@@ -400,7 +400,6 @@ call-non-callable = "ignore"
 # TODO(astral-sh/ty/#2501)
 index-out-of-bounds = "ignore"
 invalid-assignment = "ignore"
-invalid-return-type = "ignore"
 no-matching-overload = "ignore"
 unresolved-attribute = "ignore"
 unresolved-reference = "ignore"
