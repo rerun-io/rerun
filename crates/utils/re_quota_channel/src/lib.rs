@@ -4,7 +4,7 @@ mod try_send_error;
 
 pub mod sync;
 
-pub use self::sync::{
+pub use sync::{
     Receiver, RecvError, RecvTimeoutError, Select, SelectTimeoutError, SelectedOperation,
     SendError, Sender, TryRecvError, TrySelectError, channel,
 };
