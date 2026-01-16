@@ -53,7 +53,9 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+re_log_encoding.workspace = true
 re_sdk_types.workspace = true
+re_span.workspace = true
 
 bytemuck.workspace = true
 criterion.workspace = true

@@ -994,7 +994,7 @@ fn code_for_struct(
             if let Some(visualizer_name) = visualizer_name {
                 code.push_indented(1, "", 1);
                 code.push_indented(1, "def visualizer(self) -> Visualizer:", 1);
-                code.push_indented(2, r#""""Creates a visualizer for this archetype.""""#, 1);
+                code.push_indented(2, r#""""Creates a visualizer for this archetype, using all currently set values as overrides.""""#, 1);
                 // TODO(RR-3254): Add options for mapping here
                 code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=None)"#), 1);
             }

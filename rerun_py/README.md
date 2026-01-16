@@ -38,7 +38,7 @@ rr.log("points3d", rr.Points3D(positions, colors=colors))
 ## Resources
 * [Examples](https://www.rerun.io/examples)
 * [Python API docs](https://ref.rerun.io/docs/python)
-* [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
+* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 * [Discord Server](https://discord.com/invite/Gcm8BbTaAj)

@@ -177,12 +177,6 @@ impl SeriesLines {
             component_type: Some("rerun.components.AggregationPolicy".into()),
         }
     }
-
-    /// Returns the visualizer type name that corresponds to this archetype.
-    #[inline]
-    pub fn visualizer() -> crate::blueprint::components::VisualizerType {
-        crate::blueprint::components::VisualizerType("SeriesLines".into())
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -303,6 +297,13 @@ impl ::re_types_core::AsComponents for SeriesLines {
 }
 
 impl ::re_types_core::ArchetypeReflectionMarker for SeriesLines {}
+
+impl crate::VisualizableArchetype for SeriesLines {
+    #[inline]
+    fn visualizer(&self) -> crate::Visualizer {
+        crate::Visualizer::new("SeriesLines").with_overrides(self)
+    }
+}
 
 impl SeriesLines {
     /// Create a new `SeriesLines`.

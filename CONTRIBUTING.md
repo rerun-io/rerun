@@ -214,9 +214,13 @@ For best practices & unexpected sources of image differences refer to the [egui_
 Just like for drawing the viewer itself, drawing for comparison tests requires a `wgpu` compatible driver.
 As of writing comparison tests are only run via Vulkan & Metal.
 For CI / headless environments we a recent version `llvmpipe` for software rendering on Linux & Windows.
-On MacOS we currently always use hardware rendering.
-For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
+On MacOS we use [`SwiftShader`](https://github.com/google/swiftshader/).
 
+⚠️ Unfortunately, `SwiftShader`'s MSAA & texture filtering differs drastically from `llvmpipe` and
+other native renderers which is why we use a lot higher comparison thresholds on Mac.
+-> **DO NOT** use images generated on MacOS CI as reference image, prefer those produced by our Linux runner.
+
+For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
 
 
 ### Python tests
