@@ -27,7 +27,7 @@ dev = [
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
   "ruff==0.12.10",
-  "mypy==1.14.1",
+  "mypy==1.19.1",
   "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
   "pandas>=2.0",
