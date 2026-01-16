@@ -8977,6 +8977,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_quota_channel",
  "re_sorbet",
  "re_tracing",
  "re_uri",
