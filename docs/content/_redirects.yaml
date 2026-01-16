@@ -34,7 +34,7 @@ getting-started/quick-start/rust: getting-started/data-in/rust
 
 # Concepts section (old paths moved to subfolders)
 concepts/app-model: concepts/how-does-rerun-work
-concepts/apps-and-recordings: concepts/logging-and-ingestion/recordings-and-datasets
+concepts/apps-and-recordings: concepts/logging-and-ingestion/recordings
 concepts/annotation-context: concepts/visualization/annotation-context
 concepts/batches: concepts/logging-and-ingestion/batches
 concepts/blueprint: concepts/visualization/blueprints

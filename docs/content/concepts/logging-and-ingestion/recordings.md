@@ -1,34 +1,41 @@
 ---
-title: Recordings and datasets
+title: Recordings
 order: 100
 ---
-
-TODO: I, again, changed my mind. name this file "Recordings" / recordings.md
 
 Rerun organizes data at two levels: **recordings** from the Logging SDK, and **datasets** managed by the Data Platform. These concepts connect when recordings are registered to datasets.
 
 ## Recordings
 
 In general, a recording is a semantic collection of related data, with some associated metadata.
-From the logging perspective, in its simplest form, a recording can be thought of as a single `.rrd` file (although Rerun data can also be directly streamed TODO link to how-does-rerun-work#stream-to-viewer). At logging time, recordings are identified by a _Recording ID_ and _Application ID_. What these mean in different contexts is explained below.
+From the logging perspective, in its simplest form, a recording can be thought of as a single `.rrd` file (although Rerun data can also be [directly streamed](../how-does-rerun-work.md#stream-to-viewer)). At logging time, recordings are identified by a _Recording ID_ and _Application ID_. What these mean in different contexts is explained below.
 
 ### Logical vs physical recordings
 
-The recording-file analogy comes short of describing how the Rerun Viewer handles data.
+The recording/file analogy comes short of describing how the Rerun Viewer handles data.
 
 When the viewer receives data, whether by loading a `.rrd` file or an incoming logging stream, it pools the corresponding data by recording ID and application ID.
-This can be thought of a logical recording, even though its source might be, for example, multiple `.rrd` files.
+This can be thought of as a logical recording, even though its source might be, e.g.,  multiple `.rrd` files.
 This implicit merging semantics also implies that, from the perspective of the viewer, recordings are never "completed."
 They can always be appended to with new data.
-This enables distributed logging workflows (see TODO link paragraph below)
+This enables the [distributed logging workflows](#distributed-recordings) described below.
 
 In its UI, the viewer presents (logical) recordings sharing the same application ID as related.
-In particular, they share the same blueprint (TODO link).
+In particular, they share the same [blueprint](../visualization/blueprints.md).
 
 
 ### Recordings on the data platform
 
-TODO move here the succint description of how recording are in the dataplatofrm, with link to document 2
+The data platform has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
+
+In a nutshell, datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
+For example, it can be multiple recordings of the same robotic task.
+
+Populating a dataset happens by registering recordings to it using the Catalog SDK.
+Its recording ID becomes the segment ID.
+
+Segments can contain multiple _layers_ idenfified by their name, each backed by a `.rrd` file.
+This again allows pooling multiple physical recordings into a single (logical) segment.
 
 
 ### Distributed recordings
@@ -60,7 +67,7 @@ Application IDs are used by the Viewer when loading recordings directly (not via
 - Different recordings share the same blueprint if they share the same Application ID
 - Recordings are grouped by Application ID in the Viewer UI
 
-Application IDs are disregarded when registering recordings to the Data Platform. See [Datasets](#datasets) below.
+As stated above, application IDs are disregarded when registering recordings to the Data Platform. See [Recordings on the data platform](#recordings-on-the-data-platform) above.
 
 Check out the API to learn more about SDK initialization:
 - [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
@@ -70,26 +77,13 @@ Check out the API to learn more about SDK initialization:
 
 ## Recording IDs
 
-By default, a random Recording ID is generated each time you start logging. You can optionally specify a recording ID when initializing the SDK—this is required for [distributed recordings](#distributed-recordings).
+By default, a random Recording ID is generated each time you start logging.
+This means that, by default, separate logging sessions will produce separate (logical) recording when loaded in the viewer, and separate segments when registered to a dataset.
 
-When a recording is registered to the Data Platform, its recording ID becomes the segment ID.
+You can override the default recording ID when initializing the SDK (or the recording stream):
 
-<!-- TOOD(RR-2168): update this section when segment id override is available -->
+snippet: tutorials/custom-recording-id
 
+This enables the distributed logging workflow described above, as well as assigning specific segment ID for recordings to be registered to datasets.
 
-TODO: the following content needs to be moved up
-## Datasets
-
-Datasets are collections of recordings managed by the Data Platform. They provide persistent storage and indexing for large-scale data.
-
-- Each dataset has a unique name within a catalog
-- Blueprints attach to datasets—all recordings in a dataset share the same blueprint
-
-### Segments and layers
-
-When registered, a recording becomes a _segment_ in the dataset:
-- The Recording ID is used as the Segment ID
-- The Application ID is not used—the blueprint comes from the dataset instead
-- Segments can contain multiple _layers_ (for derived data, updates)
-
-For a detailed explanation of the Data Platform's object model, see [Catalog object model](../query-and-transform/catalog-object-model.md).
+<!-- TODO(RR-2168): update this section when segment id override is available -->

@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Among other things, a stable [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [recordings and datasets](../../concepts/logging-and-ingestion/recordings-and-datasets.md).
+Check out the reference to learn more about how Rerun deals with [recordings and datasets](../../concepts/logging-and-ingestion/recordings.md).
 
 ## Logging our first points
 

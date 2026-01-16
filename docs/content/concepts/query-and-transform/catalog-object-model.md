@@ -3,7 +3,7 @@ title: Catalog object model
 order: 50
 ---
 
-This page covers the Data Platform's object model. For logging and recording basics, see [Recordings and datasets](../logging-and-ingestion/recordings-and-datasets.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
+This page covers the Data Platform's object model. For logging and recording basics, see [Recordings](../logging-and-ingestion/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
 
 
 ## Catalog

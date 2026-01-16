@@ -35,7 +35,7 @@ Understanding the foundational concepts behind Rerun:
 - **[Static Data](../concepts/logging-and-ingestion/static.md)** - Data that exists across all timelines
 - **[Query Semantics](../concepts/logging-and-ingestion/latest-at.md)** - How Rerun resolves data queries
 - **[Annotation Context](../concepts/visualization/annotation-context.md)** - Shared styling and labels
-- **[Recordings and Datasets](../concepts/logging-and-ingestion/recordings-and-datasets.md)** - Managing recordings, application IDs, and datasets
+- **[Recordings](../concepts/logging-and-ingestion/recordings.md)** - Managing recordings, application IDs, and the data platform
 - **[Visualizers and Overrides](../concepts/visualization/visualizers-and-overrides.md)** - Customizing rendering
 - **[Chunks](../concepts/logging-and-ingestion/chunks.md)** - Internal storage mechanism (advanced)
 
