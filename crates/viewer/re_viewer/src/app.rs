@@ -183,14 +183,18 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        {
-            let command_sender = command_channel.0.clone();
-            re_auth::credentials::subscribe_auth_changes(move |user| {
-                command_sender.send_system(SystemCommand::OnAuthChanged(
-                    user.map(|user| AuthContext { email: user.email }),
-                ));
-            });
-            // Call get_token once so the auth state is initialized.
+        let connection_registry = connection_registry
+            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
+
+        let command_sender = command_channel.0.clone();
+        re_auth::credentials::subscribe_auth_changes(move |user| {
+            command_sender.send_system(SystemCommand::OnAuthChanged(
+                user.map(|user| AuthContext { email: user.email }),
+            ));
+        });
+
+        // Call get_token once so the auth state is initialized unless we're not supposed to use stored credentials.
+        if connection_registry.should_use_stored_credentials() {
             tokio_runtime.spawn_future(async move {
                 re_auth::credentials::CliCredentialsProvider::new()
                     .get_token()
@@ -199,10 +203,8 @@ impl App {
             });
         }
 
-        let connection_registry = connection_registry
-            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
-
-        if let Some(storage) = creation_context.storage
+        if connection_registry.should_use_stored_credentials()
+            && let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
         {
             connection_registry.load_tokens(tokens);
