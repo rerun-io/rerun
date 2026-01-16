@@ -16,7 +16,7 @@ use super::docs::{
 };
 use super::extension_class::{ExtensionClass, ExtensionClasses, FIELD_CONVERTER_SUFFIX};
 use super::init_method::quote_init_method;
-use super::object_ext::PythonObjectExt;
+use super::object_ext::PythonObjectExt as _;
 use super::typing::{
     quote_aliases_from_object, quote_field_converter_from_field, quote_field_type_from_field,
     quote_union_aliases_from_object,

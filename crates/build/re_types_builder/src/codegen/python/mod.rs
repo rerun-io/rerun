@@ -2,7 +2,7 @@
 
 mod archetype_methods;
 mod arrow;
-mod code_gen;
+mod codegen;
 mod docs;
 mod extension_class;
 mod init_method;
@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, HashSet};
 use camino::Utf8PathBuf;
 use unindent::unindent;
 
-use self::code_gen::{code_for_enum, code_for_struct, code_for_union};
+use self::codegen::{code_for_enum, code_for_struct, code_for_union};
 use self::extension_class::{ExtensionClass, ExtensionClasses};
 use self::object_ext::PythonObjectExt;
 use self::typing::{quote_import_clauses_from_field, quote_import_clauses_from_fqname};

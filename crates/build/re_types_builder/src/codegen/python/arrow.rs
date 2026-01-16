@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use unindent::unindent;
 
 use super::extension_class::{ExtensionClass, NATIVE_TO_PA_ARRAY_METHOD};
-use super::object_ext::PythonObjectExt;
+use super::object_ext::PythonObjectExt as _;
 use super::typing::quote_field_type_from_field;
 use crate::codegen::StringExt as _;
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};

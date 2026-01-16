@@ -3,7 +3,7 @@
 use unindent::unindent;
 
 use super::extension_class::ExtensionClasses;
-use super::object_ext::PythonObjectExt;
+use super::object_ext::PythonObjectExt as _;
 use crate::codegen::StringExt as _;
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ElementType, Object, ObjectField, ObjectKind,
