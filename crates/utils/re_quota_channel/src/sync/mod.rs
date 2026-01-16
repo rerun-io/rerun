@@ -17,8 +17,8 @@ pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvErro
 mod select;
 pub use select::{Select, SelectTimeoutError, SelectedOperation, TrySelectError};
 
-pub use crate::try_send_error::TrySendError;
 pub use crate::SizedMessage;
+pub use crate::try_send_error::TrySendError;
 
 struct SharedState {
     debug_name: String,
@@ -116,8 +116,15 @@ impl<T> Sender<T> {
 
         // Normal case: wait until we have room
         let mut current = self.shared.current_bytes.lock();
-        while capacity < *current + size_bytes {
-            self.shared.space_available.wait(&mut current);
+        if capacity < *current + size_bytes {
+            re_log::debug_once!(
+                "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
+                self.shared.debug_name,
+                re_format::format_bytes(capacity as f64),
+            );
+            while capacity < *current + size_bytes {
+                self.shared.space_available.wait(&mut current);
+            }
         }
 
         *current += size_bytes;
