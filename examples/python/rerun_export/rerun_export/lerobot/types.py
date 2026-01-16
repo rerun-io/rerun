@@ -66,17 +66,17 @@ class LeRobotConversionConfig:
 
     # Image/video specifications
     videos: list[VideoSpec]
-    use_videos: bool
+    use_videos: bool = True
 
     # Feature names
-    action_names: list[str] | None
-    state_names: list[str] | None
+    action_names: list[str] | None = None
+    state_names: list[str] | None = None
 
     # Task configuration
-    task_default: str
+    task_default: str = "task"
 
-    dataset: dfn.DataFrame
-    segment_id: str
+    dataset: dfn.DataFrame | None = None
+    segment_id: str | None = None
 
     def get_filter_list(self) -> tuple[list[str], str | None]:
         """
