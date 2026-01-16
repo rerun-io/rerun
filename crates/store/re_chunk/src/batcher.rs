@@ -125,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -235,7 +235,7 @@ impl ChunkBatcherConfig {
     ///
     /// See [`Self::ENV_FLUSH_TICK`], [`Self::ENV_FLUSH_NUM_BYTES`], [`Self::ENV_FLUSH_NUM_BYTES`].
     pub fn apply_env(&self) -> ChunkBatcherResult<Self> {
-        let mut new = self.clone();
+        let mut new = *self;
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_TICK) {
             let flush_duration_secs: f64 =
@@ -449,10 +449,7 @@ impl ChunkBatcher {
             const NAME: &str = "ChunkBatcher::cmds_to_chunks";
             std::thread::Builder::new()
                 .name(NAME.into())
-                .spawn({
-                    let config = config.clone();
-                    move || batching_thread(config, hooks, rx_cmd, tx_chunk)
-                })
+                .spawn(move || batching_thread(config, hooks, rx_cmd, tx_chunk))
                 .map_err(|err| ChunkBatcherError::SpawnThread {
                     name: NAME,
                     err: Box::new(err),
