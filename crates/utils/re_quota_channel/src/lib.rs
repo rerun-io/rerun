@@ -11,6 +11,9 @@ use parking_lot::{Condvar, Mutex};
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
+mod select;
+pub use select::{Select, SelectTimeoutError, SelectedOperation, TrySelectError};
+
 // ----------------------------------------------------------------------------
 
 /// A message together with its size in bytes.
@@ -366,92 +369,6 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
     (sender, receiver)
 }
 
-/// Wait on two receivers and execute whichever branch becomes ready first.
-///
-/// This is a simplified version of `crossbeam::select!` that only supports
-/// two `recv` operations. It properly handles the byte accounting by calling
-/// `manual_on_receive` after each successful receive.
-///
-/// # Syntax
-///
-/// ```ignore
-/// select! {
-///     recv(rx1) -> result => { /* handle result */ },
-///     recv(rx2) -> result => { /* handle result */ },
-/// }
-/// ```
-///
-/// # Example
-///
-/// ```
-/// use re_quota_channel::{channel, select};
-///
-/// let (tx1, rx1) = channel::<i32>("chan1", 1024);
-/// let (tx2, rx2) = channel::<String>("chan2", 1024);
-///
-/// tx1.send_with_size(42, 8).unwrap();
-///
-/// select! {
-///     recv(rx1) -> res => {
-///         assert_eq!(res.unwrap(), 42);
-///     },
-///     recv(rx2) -> res => {
-///         panic!("unexpected");
-///     },
-/// }
-/// ```
-#[macro_export]
-macro_rules! select {
-    (
-        recv($rx1:expr) -> $res1:tt => $body1:block
-        recv($rx2:expr) -> $res2:tt => $body2:block
-    ) => {{
-        let __rx1 = &$rx1;
-        let __rx2 = &$rx2;
-        ::crossbeam::channel::select! {
-            recv(__rx1.manual_inner()) -> __result => {
-                let $res1 = __result.map(|__sized| {
-                    __rx1.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body1
-            }
-            recv(__rx2.manual_inner()) -> __result => {
-                let $res2 = __result.map(|__sized| {
-                    __rx2.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body2
-            }
-        }
-    }};
-
-    // Also support comma-separated format
-    (
-        recv($rx1:expr) -> $res1:tt => $body1:expr,
-        recv($rx2:expr) -> $res2:tt => $body2:expr $(,)?
-    ) => {{
-        let __rx1 = &$rx1;
-        let __rx2 = &$rx2;
-        ::crossbeam::channel::select! {
-            recv(__rx1.manual_inner()) -> __result => {
-                let $res1 = __result.map(|__sized| {
-                    __rx1.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body1
-            }
-            recv(__rx2.manual_inner()) -> __result => {
-                let $res2 = __result.map(|__sized| {
-                    __rx2.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body2
-            }
-        }
-    }};
-}
-
 // ----------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -544,43 +461,5 @@ mod tests {
         // Wait for the send to complete
         handle.join().unwrap();
         assert!(send_completed.load(Ordering::SeqCst));
-    }
-
-    #[test]
-    fn test_select() {
-        let (tx1, rx1) = channel::<i32>("chan1".to_owned(), 1000);
-        let (tx2, rx2) = channel::<String>("chan2".to_owned(), 1000);
-
-        // Send to first channel
-        tx1.send_with_size(42, 8).unwrap();
-
-        // Select should return from first channel
-        crate::select! {
-            recv(rx1) -> res => {
-                assert_eq!(res.unwrap(), 42);
-            },
-            recv(rx2) -> _res => {
-                panic!("expected rx1, got rx2");
-            },
-        }
-
-        // Byte accounting should be updated
-        assert_eq!(rx1.current_bytes(), 0);
-
-        // Now send to second channel
-        tx2.send_with_size("hello".to_owned(), 100).unwrap();
-
-        // Select should return from second channel
-        crate::select! {
-            recv(rx1) -> _res => {
-                panic!("expected rx2, got rx1");
-            },
-            recv(rx2) -> res => {
-                assert_eq!(res.unwrap(), "hello");
-            },
-        }
-
-        // Byte accounting should be updated
-        assert_eq!(rx2.current_bytes(), 0);
     }
 }
