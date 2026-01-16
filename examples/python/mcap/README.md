@@ -6,7 +6,9 @@ thumbnail = "https://static.rerun.io/mcap_example/7a3207652fa411979a96d5c5a25a43
 thumbnail_dimensions = [480, 305]
 -->
 
-https://vimeo.com/1152501098?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2864:1840
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/d69eb734367556854dcb167f8b8f8f9f6d3760e0_mcap_example.mp4" type="video/mp4" />
+</video>
 
 ## Background
 
