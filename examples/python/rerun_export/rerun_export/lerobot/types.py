@@ -66,7 +66,6 @@ class LeRobotConversionConfig:
     # Image/video specifications
     videos: list[VideoSpec]
     use_videos: bool
-    video_format: str
 
     # Feature names
     action_names: list[str] | None
