@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyarrow as pa
 
-from .types import FeatureSpec, LeRobotConversionConfig
-from .video_processing import infer_video_shape
+from rerun_export.lerobot.types import FeatureSpec, LeRobotConversionConfig
+from rerun_export.lerobot.video_processing import infer_video_shape
 
 if TYPE_CHECKING:
     import rerun as rr

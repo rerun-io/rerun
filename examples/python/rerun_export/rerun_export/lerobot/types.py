@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .utils import get_entity_path
+from rerun_export.utils import get_entity_path
 
 if TYPE_CHECKING:
     import numpy as np

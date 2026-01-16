@@ -15,9 +15,9 @@ from lerobot.datasets.compute_stats import compute_episode_stats
 from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
 
-from .types import FeatureSpec, LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSpec
-from .utils import normalize_times, to_float32_vector, unwrap_singleton
-from .video_processing import can_remux_video, decode_video_frame, remux_video_stream
+from rerun_export.lerobot.types import FeatureSpec, LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSpec
+from rerun_export.lerobot.video_processing import can_remux_video, decode_video_frame, remux_video_stream
+from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
     import datafusion as df
@@ -360,7 +360,7 @@ def _decode_video_frames_for_batch(
         Dictionary mapping spec key to list of decoded frames
 
     """
-    from .utils import normalize_times
+    from rerun_export.utils import normalize_times
 
     video_frames: dict[str, list[np.ndarray]] = {}
     if video_data_cache:
