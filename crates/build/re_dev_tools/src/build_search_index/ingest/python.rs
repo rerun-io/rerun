@@ -15,14 +15,39 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     // run `mkdocs` to generate documentation, which also produces a `objects.inv` file
     // this file contains every documented item and a URL to where it is documented
     progress.set("mkdocs build", ctx.is_tty());
-    Command::new("mkdocs")
+    let mkdocs_config = ctx.workspace_root().join("rerun_py/mkdocs.yml");
+    println!("Running mkdocs build with config: {mkdocs_config}");
+    println!(
+        "Current working directory: {:?}",
+        std::env::current_dir().unwrap_or_default()
+    );
+
+    let mkdocs_result = Command::new("mkdocs")
         .with_arg("build")
         .with_arg("-f")
-        .with_arg(ctx.workspace_root().join("rerun_py/mkdocs.yml"))
-        .output()?;
+        .with_arg(&mkdocs_config)
+        .output();
+
+    match mkdocs_result {
+        Ok(_) => println!("mkdocs build completed successfully"),
+        Err(err) => {
+            eprintln!("Failed to run mkdocs build:");
+            eprintln!("  Error: {err}");
+            eprintln!("  Config file: {mkdocs_config}");
+            eprintln!("  Config file exists: {}", mkdocs_config.exists());
+            if let Ok(cwd) = std::env::current_dir() {
+                eprintln!("  Working directory: {cwd:?}");
+            }
+            return Err(err);
+        }
+    }
 
     // run `sphobjinv` to convert the `objects.inv` file into JSON, and fully resolve all links/names
     progress.set("sphobjinv convert", ctx.is_tty());
+    let objects_inv_path = ctx.workspace_root().join("rerun_py/site/objects.inv");
+    println!("Looking for objects.inv at: {objects_inv_path}");
+    println!("objects.inv exists: {}", objects_inv_path.exists());
+
     let inv: Inventory = Command::new("sphobjinv")
         .with_args(["convert", "json", "--expand"])
         .with_cwd(ctx.workspace_root())
