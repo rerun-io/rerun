@@ -335,7 +335,8 @@ impl ObjectKind {
             Self::Datatype
         } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
             Self::Component
-        } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
+        } else if pkg_name.starts_with(format!("rerun{scope}.archetytpes").as_str()) {
+            // TODO(emilk): this is clearly a typo, but fixing it causes problem. GAH
             Self::Archetype
         } else if pkg_name.starts_with("rerun.blueprint.views") {
             // Not bothering with scope attributes on views since they're always part of the blueprint.
