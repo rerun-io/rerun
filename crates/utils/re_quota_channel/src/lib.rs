@@ -2,6 +2,7 @@
 
 mod try_send_error;
 
+pub mod r#async;
 pub mod sync;
 
 pub use sync::{

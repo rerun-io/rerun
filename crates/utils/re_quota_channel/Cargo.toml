@@ -26,3 +26,10 @@ re_log.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+futures.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
