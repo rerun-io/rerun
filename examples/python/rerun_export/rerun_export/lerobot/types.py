@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from rerun_export.utils import get_entity_path
+import datafusion as dfn
 
 if TYPE_CHECKING:
     import numpy as np
@@ -19,7 +20,7 @@ class FeatureSpec:
     shape: tuple[int, ...]
     names: list[str] | None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, str | tuple[int, ...] | list[str] | None]:
         return {"dtype": self.dtype, "shape": self.shape, "names": self.names}
 
 
@@ -73,6 +74,9 @@ class LeRobotConversionConfig:
 
     # Task configuration
     task_default: str
+
+    dataset: dfn.DataFrame
+    segment_id: str
 
     def get_filter_list(self) -> tuple[list[str], str | None]:
         """

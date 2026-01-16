@@ -16,7 +16,12 @@ from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
 
 from rerun_export.lerobot.types import FeatureSpec, LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSpec
-from rerun_export.lerobot.video_processing import can_remux_video, decode_video_frame, remux_video_stream
+from rerun_export.lerobot.video_processing import (
+    can_remux_video,
+    decode_video_frame,
+    extract_video_samples,
+    remux_video_stream,
+)
 from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
@@ -28,10 +33,10 @@ def convert_dataframe_to_episode(
     df: df.DataFrame,
     config: LeRobotConversionConfig,
     *,
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]],
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
     features: dict[str, FeatureSpec],
+    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] | None = None,
 ) -> tuple[bool, RemuxData | None, bool]:
     """
     Convert a DataFusion dataframe to a LeRobot episode.
@@ -59,6 +64,22 @@ def convert_dataframe_to_episode(
 
     if state_dim is None:
         raise ValueError("State feature specification is missing.")
+
+    if video_data_cache is None:
+        print("Collecting video samples...")
+        video_data_cache = {}
+        for spec in config.videos:
+            print("   - ", spec.path)
+            sample_column = f"{spec.path}:VideoStream:sample"
+            video_view = config.dataset.filter_segments(config.segment_id).filter_contents(spec.path)
+            video_reader = video_view.reader(index=config.index_column)
+            video_table = pa.table(video_reader.select(config.index_column, sample_column))
+            samples, times_ns = extract_video_samples(
+                video_table,
+                sample_column=sample_column,
+                time_column=config.index_column,
+            )
+            video_data_cache[spec.key] = (samples, times_ns)
 
     # Check if video remuxing is possible (when use_videos=True and FPS matches)
     remux_data: RemuxData | None = None

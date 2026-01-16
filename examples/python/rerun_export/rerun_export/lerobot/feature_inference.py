@@ -60,7 +60,7 @@ def infer_features(
     if config.task:
         columns_to_read.append(config.task)
 
-    features: dict[str, FeatureSpec] = {}
+    features: dict[str, dict[str, object]] = {}
 
     # Infer action and state dimensions by trying multiple segments
     segments_to_try = [segment_id] + [s for s in dataset.segment_ids() if s != segment_id]
@@ -84,7 +84,7 @@ def infer_features(
         raise ValueError(f"Could not infer action dimension from any segment. Tried {len(segments_to_try)} segments.")
     if config.action_names is not None and len(config.action_names) != action_dim:
         raise ValueError("Action names length does not match inferred action dimension.")
-    features["action"] = FeatureSpec(dtype="float32", shape=(action_dim,), names=config.action_names)
+    features["action"] = FeatureSpec(dtype="float32", shape=(action_dim,), names=config.action_names).to_dict()
 
     state_dim = None
     for try_segment_id in segments_to_try:
@@ -105,7 +105,7 @@ def infer_features(
         raise ValueError(f"Could not infer state dimension from any segment. Tried {len(segments_to_try)} segments.")
     if config.state_names is not None and len(config.state_names) != state_dim:
         raise ValueError("State names length does not match inferred state dimension.")
-    features["observation.state"] = FeatureSpec(dtype="float32", shape=(state_dim,), names=config.state_names)
+    features["observation.state"] = FeatureSpec(dtype="float32", shape=(state_dim,), names=config.state_names).to_dict()
 
     for spec in config.videos:
         # Video specs need to find a segment with actual video data on the specified index
@@ -133,7 +133,7 @@ def infer_features(
             dtype="video" if config.use_videos else "image",
             shape=shape,
             names=["height", "width", "channels"],
-        )
+        ).to_dict()
 
     return features
 
