@@ -10,6 +10,20 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
 use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
 
+// TODO(RR-3318):
+// pub fn supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
+//     [
+//         arrow::datatypes::DataType::Float32,
+//         arrow::datatypes::DataType::Float64,
+//         arrow::datatypes::DataType::Int8,
+//         arrow::datatypes::DataType::Int32,
+//         arrow::datatypes::DataType::Int64,
+//         arrow::datatypes::DataType::UInt8,
+//         arrow::datatypes::DataType::UInt32,
+//         arrow::datatypes::DataType::UInt64,
+//     ]
+// }
+
 /// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,

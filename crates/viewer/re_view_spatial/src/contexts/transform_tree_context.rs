@@ -17,6 +17,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;
 
+use crate::visualizers::CamerasVisualizer;
+
 type FrameIdHashMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 type ChildFramesPerEntity = IntMap<EntityPathHash, IntSet<TransformFrameIdHash>>;
 
@@ -219,6 +221,7 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result,
                     [transform_frame_id_component],
                     query_shadowed_components,
+                    None, // Coordinate frame is not visualizer-specific.
                 )
             })
             .collect::<Vec<_>>();
@@ -500,20 +503,44 @@ fn lookup_image_plane_distance(
     entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
 ) -> f64 {
-    let plane_distance_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
+    let plane_dist_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
     **ctx
         .query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
-        .cloned()
         .map(|data_result| {
-            data_result
-                .latest_at_with_blueprint_resolved_data_for_component(
-                    ctx,
-                    latest_at_query,
-                    plane_distance_component,
-                )
-                .get_mono_with_fallback::<ImagePlaneDistance>(plane_distance_component)
+            // If there's any pinhole that could have an override for this use it.
+            // TODO(andreas): But what if there's many pinholes visualizers?
+            if let Some(visualizer_instruction) = data_result
+                .visualizer_instructions
+                .iter()
+                .find(|instruction| instruction.visualizer_type == CamerasVisualizer::identifier())
+            {
+                data_result
+                    .latest_at_with_blueprint_resolved_data_for_component(
+                        ctx,
+                        latest_at_query,
+                        plane_dist_component,
+                        Some(visualizer_instruction),
+                    )
+                    .get_mono_with_fallback::<ImagePlaneDistance>(plane_dist_component)
+            } else {
+                ctx.viewer_ctx
+                    .recording_engine()
+                    .cache()
+                    .latest_at(
+                        latest_at_query,
+                        &data_result.entity_path,
+                        [plane_dist_component],
+                    )
+                    .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
+                    .unwrap_or_else(|| {
+                        typed_fallback_for(
+                            &ctx.query_context(data_result, latest_at_query),
+                            plane_dist_component,
+                        )
+                    })
+            }
         })
         .unwrap_or_default() as _
 }
@@ -559,6 +586,7 @@ impl EntityTransformIdMapping {
                 origin_data_result,
                 [transform_frame_id_component],
                 query_shadowed_components,
+                None,
             );
 
             mapping.determine_frame_id_mapping_for(ctx, &results);
@@ -657,7 +685,7 @@ mod tests {
                     RecommendedView::new_single_entity("some/path"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"some/path".into()),
+                    ViewContents::base_override_path_for_entity(view_id, &"some/path".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
@@ -675,7 +703,7 @@ mod tests {
                     RecommendedView::new_single_entity("has_frame"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"has_frame".into()),
+                    ViewContents::base_override_path_for_entity(view_id, &"has_frame".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id

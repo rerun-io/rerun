@@ -4,7 +4,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use re_log_types::EntityPath;
-use re_sdk_types::blueprint::archetypes::{MapBackground, ViewBlueprint, ViewContents};
+use re_sdk_types::blueprint::archetypes::{
+    ActiveVisualizers, MapBackground, ViewBlueprint, ViewContents, VisualizerInstruction,
+};
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
@@ -119,46 +121,39 @@ impl View {
 
         // Log overrides
         for (entity_path, visualizers) in &self.overrides {
-            // TODO(andreas): Use this once the new blueprint override paths are in place.
-            // let base_visualizer_path =
-            //     ViewContents::blueprint_base_visualizer_path_for_entity(self.id, entity_path);
-            let visualizer_path = self
-                .blueprint_path()
-                .join(&EntityPath::from("ViewContents/overrides").join(entity_path));
+            let base_visualizer_path =
+                ViewContents::blueprint_base_visualizer_path_for_entity(self.id, entity_path);
 
-            //let mut visualizer_ids = Vec::new();
+            let mut visualizer_ids = Vec::new();
 
             for visualizer in visualizers {
-                // TODO(andreas): Use this once the new blueprint override paths are in place.
                 // Log the visualizer instruction (which contains the visualizer type)
-                // let visualizer_path = base_visualizer_path
-                //     .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+                let visualizer_path = base_visualizer_path
+                    .join(&EntityPath::from_single_string(visualizer.id.0.to_string()));
 
                 // TODO(RR-3255): Support mappings
-                // TODO(andreas): Use this once the new blueprint override paths are in place.
-                // let instruction = VisualizerInstruction::new(visualizer.visualizer_type.clone());
-                // stream.log(visualizer_path.clone(), &instruction)?;
+                let instruction = VisualizerInstruction::new(visualizer.visualizer_type.clone());
+                stream.log(visualizer_path.clone(), &instruction)?;
 
                 // Log the overrides if any
                 if !visualizer.overrides.is_empty() {
                     stream.log_serialized_batches(
-                        visualizer_path.clone(),
+                        visualizer_path,
                         false,
                         visualizer.overrides.iter().cloned(),
                     )?;
                 }
 
-                //visualizer_ids.push(VisualizerInstructionId(visualizer.id.into()));
+                visualizer_ids.push(visualizer.id.clone());
             }
 
             // Log the active visualizers list
-            // TODO(andreas): Use this once the new blueprint override paths are in place.
-            // if !visualizer_ids.is_empty() {
-            //     stream.log(
-            //         base_visualizer_path,
-            //         &ActiveVisualizers::new(visualizer_ids),
-            //     )?;
-            // }
+            if !visualizer_ids.is_empty() {
+                stream.log(
+                    base_visualizer_path,
+                    &ActiveVisualizers::new(visualizer_ids),
+                )?;
+            }
         }
 
         Ok(())

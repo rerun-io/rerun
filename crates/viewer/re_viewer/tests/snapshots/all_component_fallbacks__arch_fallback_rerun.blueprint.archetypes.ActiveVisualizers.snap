@@ -2,5 +2,4 @@
 source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-visualizer_type: []
-component_map: [{selector: , target: }]
+instruction_ids: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]

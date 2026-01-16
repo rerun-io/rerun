@@ -374,6 +374,29 @@ impl Chunk {
             && *timelines == other.timelines
             && components.0 == other.components.0
     }
+
+    /// Clones the chunk and renames a component.
+    ///
+    /// Note: archetype information and component type information is lost.
+    pub fn with_renamed_component(
+        &self,
+        selector: ComponentIdentifier,
+        target: ComponentIdentifier,
+    ) -> Self {
+        let mut new_chunk = self.clone();
+        if let Some(old_entry) = new_chunk.components.remove(&selector) {
+            new_chunk.components.insert(SerializedComponentColumn {
+                descriptor: ComponentDescriptor {
+                    component: target,
+                    archetype: None,
+                    component_type: None,
+                },
+                list_array: old_entry.list_array,
+            });
+        }
+
+        new_chunk
+    }
 }
 
 impl Clone for Chunk {

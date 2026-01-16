@@ -58,7 +58,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
         let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
         let latest_at = view_query.latest_at_query();
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let entity_path = &data_result.entity_path;
 
             let Some(transform_info) = transform_info_for_archetype_or_report_error(
@@ -89,6 +91,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 ctx,
                 &latest_at,
                 VideoStream::descriptor_opacity().component,
+                Some(instruction),
             );
             let all_opacities = opacity_result.iter_as(
                 view_query.timeline,

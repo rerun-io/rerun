@@ -21,8 +21,8 @@ namespace rerun::blueprint::datatypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VisualizerComponentMapping {
-        /// Source component name.
-        rerun::datatypes::Utf8 source;
+        /// Component selector for mapping.
+        rerun::datatypes::Utf8 selector;
 
         /// Target component name.
         rerun::datatypes::Utf8 target;

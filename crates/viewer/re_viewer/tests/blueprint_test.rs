@@ -40,13 +40,13 @@ fn setup_viewport(test_context: &mut TestContext) {
 
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         // Set the color override for the bar chart view.
-        let color_override =
-            re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
-        let override_path = re_viewport_blueprint::ViewContents::override_path_for_entity(
-            view_1.id,
+        ctx.save_visualizers(
             &re_chunk::EntityPath::from("vector"),
+            view_1.id,
+            [
+                &re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]), // #FF9001
+            ],
         );
-        ctx.save_blueprint_archetype(override_path.clone(), &color_override);
 
         // Set the timeline for the dataframe view.
         let query = re_view_dataframe::Query::from_blueprint(ctx, view_2.id);
