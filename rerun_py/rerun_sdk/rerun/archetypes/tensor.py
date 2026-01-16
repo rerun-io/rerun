@@ -63,6 +63,7 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
         self.__attrs_init__(
             data=None,
             value_range=None,
+            opacity=None,
         )
 
     @classmethod
@@ -79,6 +80,7 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
         clear_unset: bool = False,
         data: datatypes.TensorDataLike | None = None,
         value_range: datatypes.Range1DLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
     ) -> Tensor:
         """
         Update only some specific fields of a `Tensor`.
@@ -101,6 +103,10 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
             in the contents of the tensor.
             E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
             the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        opacity:
+            Opacity of the tensor for 2D views.
+
+            Only applied when the tensor is displayed as a 2D slice.
 
         """
 
@@ -109,6 +115,7 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
             kwargs = {
                 "data": data,
                 "value_range": value_range,
+                "opacity": opacity,
             }
 
             if clear_unset:
@@ -131,6 +138,7 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
         *,
         data: datatypes.TensorDataArrayLike | None = None,
         value_range: datatypes.Range1DArrayLike | None = None,
+        opacity: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -156,6 +164,10 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
             in the contents of the tensor.
             E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
             the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        opacity:
+            Opacity of the tensor for 2D views.
+
+            Only applied when the tensor is displayed as a 2D slice.
 
         """
 
@@ -164,13 +176,14 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
             inst.__attrs_init__(
                 data=data,
                 value_range=value_range,
+                opacity=opacity,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"Tensor:data": data, "Tensor:value_range": value_range}
+        kwargs = {"Tensor:data": data, "Tensor:value_range": value_range, "Tensor:opacity": opacity}
         columns = []
 
         for batch in batches:
@@ -225,6 +238,17 @@ class Tensor(TensorExt, Archetype, VisualizableArchetype):
     # in the contents of the tensor.
     # E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     # the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    opacity: components.OpacityBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
+    )
+    # Opacity of the tensor for 2D views.
+    #
+    # Only applied when the tensor is displayed as a 2D slice.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

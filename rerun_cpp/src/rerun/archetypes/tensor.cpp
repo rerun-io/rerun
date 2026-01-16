@@ -13,17 +13,22 @@ namespace rerun::archetypes {
         archetype.value_range =
             ComponentBatch::empty<rerun::components::ValueRange>(Descriptor_value_range)
                 .value_or_throw();
+        archetype.opacity =
+            ComponentBatch::empty<rerun::components::Opacity>(Descriptor_opacity).value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> Tensor::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (data.has_value()) {
             columns.push_back(data.value().partitioned(lengths_).value_or_throw());
         }
         if (value_range.has_value()) {
             columns.push_back(value_range.value().partitioned(lengths_).value_or_throw());
+        }
+        if (opacity.has_value()) {
+            columns.push_back(opacity.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -34,6 +39,9 @@ namespace rerun::archetypes {
         }
         if (value_range.has_value()) {
             return columns(std::vector<uint32_t>(value_range.value().length(), 1));
+        }
+        if (opacity.has_value()) {
+            return columns(std::vector<uint32_t>(opacity.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -46,13 +54,16 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.data.has_value()) {
             cells.push_back(archetype.data.value());
         }
         if (archetype.value_range.has_value()) {
             cells.push_back(archetype.value_range.value());
+        }
+        if (archetype.opacity.has_value()) {
+            cells.push_back(archetype.opacity.value());
         }
 
         return rerun::take_ownership(std::move(cells));

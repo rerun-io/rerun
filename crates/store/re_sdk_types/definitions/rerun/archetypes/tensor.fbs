@@ -36,4 +36,9 @@ table Tensor (
   /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
   /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
   value_range: rerun.components.ValueRange ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// Opacity of the tensor for 2D views.
+  ///
+  /// Only applied when the tensor is displayed as a 2D slice.
+  opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
 }

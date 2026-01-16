@@ -3152,6 +3152,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                         is_required: false,
                     },
+                    ArchetypeFieldReflection {
+                        name: "opacity",
+                        display_name: "Opacity",
+                        component_type: "rerun.components.Opacity".into(),
+                        docstring_md: "Opacity of the tensor for 2D views.\n\nOnly applied when the tensor is displayed as a 2D slice.",
+                        is_required: false,
+                    },
                 ],
             },
         ),

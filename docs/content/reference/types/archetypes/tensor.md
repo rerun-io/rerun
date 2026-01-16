@@ -11,6 +11,7 @@ An N-dimensional array of numbers.
 
 ### Optional
 * `value_range`: [`ValueRange`](../components/value_range.md)
+* `opacity`: [`Opacity`](../components/opacity.md)
 
 
 ## Can be shown in

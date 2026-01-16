@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from rerun.datatypes.range1d import Range1DLike
+    from rerun.datatypes.float32 import Float32Like
 
     from ..datatypes import TensorDataLike
     from ..datatypes.tensor_data_ext import TensorLike
@@ -22,6 +23,7 @@ class TensorExt:
         *,
         dim_names: Sequence[str] | None = None,
         value_range: Range1DLike | None = None,
+        opacity: Float32Like | None = None,
     ) -> None:
         """
         Construct a `Tensor` archetype.
@@ -46,6 +48,10 @@ class TensorExt:
             The range of values to use for colormapping.
 
             If not specified, the range will be estimated from the data.
+        opacity:
+            Opacity of the tensor for 2D views.
+
+            Only applied when the tensor is displayed as a 2D slice.
 
         """
         from ..datatypes import TensorData
@@ -56,7 +62,7 @@ class TensorExt:
             elif dim_names is not None:
                 data = TensorData(buffer=data.buffer, dim_names=dim_names)
 
-            self.__attrs_init__(data=data, value_range=value_range)
+            self.__attrs_init__(data=data, value_range=value_range, opacity=opacity)
             return
 
         self.__attrs_clear__()

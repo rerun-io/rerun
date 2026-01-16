@@ -10219,6 +10219,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "half",
+ "macaw",
  "ndarray",
  "re_chunk_store",
  "re_data_ui",

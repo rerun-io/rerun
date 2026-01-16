@@ -234,6 +234,7 @@ fn try_show_zoomed_image_region(
             colormapped_texture.clone(),
             egui::TextureOptions::NEAREST,
             interaction_id.debug_label("zoomed_region"),
+            None,
         )?;
     }
 
@@ -293,6 +294,7 @@ fn try_show_zoomed_image_region(
                 colormapped_texture,
                 egui::TextureOptions::NEAREST,
                 interaction_id.debug_label("single_pixel"),
+                None,
             )
         })
         .inner?;

@@ -70,6 +70,11 @@ pub struct Tensor {
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
     pub value_range: Option<SerializedComponentBatch>,
+
+    /// Opacity of the tensor for 2D views.
+    ///
+    /// Only applied when the tensor is displayed as a 2D slice.
+    pub opacity: Option<SerializedComponentBatch>,
 }
 
 impl Tensor {
@@ -96,6 +101,18 @@ impl Tensor {
             component_type: Some("rerun.components.ValueRange".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    ///
+    /// The corresponding component is [`crate::components::Opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Tensor".into()),
+            component: "Tensor:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -104,15 +121,26 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [Tensor::descriptor_value_range()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            Tensor::descriptor_value_range(),
+            Tensor::descriptor_opacity(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
-    std::sync::LazyLock::new(|| [Tensor::descriptor_data(), Tensor::descriptor_value_range()]);
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            Tensor::descriptor_data(),
+            Tensor::descriptor_value_range(),
+            Tensor::descriptor_opacity(),
+        ]
+    });
 
 impl Tensor {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for Tensor {
@@ -161,7 +189,14 @@ impl ::re_types_core::Archetype for Tensor {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_value_range())
             });
-        Ok(Self { data, value_range })
+        let opacity = arrays_by_descr
+            .get(&Self::descriptor_opacity())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
+        Ok(Self {
+            data,
+            value_range,
+            opacity,
+        })
     }
 }
 
@@ -169,10 +204,14 @@ impl ::re_types_core::AsComponents for Tensor {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.data.clone(), self.value_range.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.data.clone(),
+            self.value_range.clone(),
+            self.opacity.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -192,6 +231,7 @@ impl Tensor {
         Self {
             data: try_serialize_field(Self::descriptor_data(), [data]),
             value_range: None,
+            opacity: None,
         }
     }
 
@@ -213,6 +253,10 @@ impl Tensor {
             value_range: Some(SerializedComponentBatch::new(
                 crate::components::ValueRange::arrow_empty(),
                 Self::descriptor_value_range(),
+            )),
+            opacity: Some(SerializedComponentBatch::new(
+                crate::components::Opacity::arrow_empty(),
+                Self::descriptor_opacity(),
             )),
         }
     }
@@ -242,6 +286,9 @@ impl Tensor {
             self.value_range
                 .map(|value_range| value_range.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.opacity
+                .map(|opacity| opacity.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -256,7 +303,12 @@ impl Tensor {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_data = self.data.as_ref().map(|b| b.array.len());
         let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
-        let len = None.or(len_data).or(len_value_range).unwrap_or(0);
+        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_data)
+            .or(len_value_range)
+            .or(len_opacity)
+            .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
 
@@ -312,11 +364,35 @@ impl Tensor {
         self.value_range = try_serialize_field(Self::descriptor_value_range(), value_range);
         self
     }
+
+    /// Opacity of the tensor for 2D views.
+    ///
+    /// Only applied when the tensor is displayed as a 2D slice.
+    #[inline]
+    pub fn with_opacity(mut self, opacity: impl Into<crate::components::Opacity>) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), [opacity]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Opacity`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_opacity`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_opacity(
+        mut self,
+        opacity: impl IntoIterator<Item = impl Into<crate::components::Opacity>>,
+    ) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), opacity);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Tensor {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes() + self.value_range.heap_size_bytes()
+        self.data.heap_size_bytes()
+            + self.value_range.heap_size_bytes()
+            + self.opacity.heap_size_bytes()
     }
 }
