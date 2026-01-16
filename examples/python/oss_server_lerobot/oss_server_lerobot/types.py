@@ -48,7 +48,6 @@ class VideoSpec:
     key: str
     path: str
     video_format: str = "h264"
-    vcodec: str = "libx264"
 
 
 @dataclass(frozen=True)
@@ -68,7 +67,6 @@ class LeRobotConversionConfig:
     videos: list[VideoSpec]
     use_videos: bool
     video_format: str
-    vcodec: str
 
     # Feature names
     action_names: list[str] | None
