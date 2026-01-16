@@ -137,7 +137,6 @@ def convert_rrd_dataset_to_lerobot(
             segment_id=segment_ids[0],
             config=config,
         )
-        features_dict = {key: spec.to_dict() for key, spec in features.items()}
 
         # Create LeRobot dataset
         lerobot_dataset = LeRobotDataset.create(

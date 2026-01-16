@@ -28,10 +28,10 @@ def convert_dataframe_to_episode(
     df: df.DataFrame,
     config: LeRobotConversionConfig,
     *,
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]],
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
-    features: dict[str, FeatureSpec],
+    features: dict[str, dict[str, object]],
+    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] | None = None,
 ) -> tuple[bool, RemuxData | None, bool]:
     """
     Convert a DataFusion dataframe to a LeRobot episode.
@@ -51,8 +51,8 @@ def convert_dataframe_to_episode(
         - direct_saved: True if the episode was saved without decoding video frames
 
     """
-    action_dim = features["action"].shape[0] if "action" in features else None
-    state_dim = features["observation.state"].shape[0] if "observation.state" in features else None
+    action_dim = features["action"]["shape"][0] if "action" in features else None
+    state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
 
     if action_dim is None:
         raise ValueError("Action feature specification is missing.")
