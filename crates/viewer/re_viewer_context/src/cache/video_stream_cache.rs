@@ -179,6 +179,7 @@ impl VideoStreamCache {
         video_data.delivery_method = re_video::VideoDeliveryMethod::new_stream();
 
         match event.kind {
+            // TODO: Handle split & compaction.
             re_chunk_store::ChunkStoreDiffKind::Addition => {
                 // If this came with a compaction, throw out all samples and tracked keyframes that were compacted
                 // away and restart there. This is a bit slower than re-using all the data, but much simpler and
@@ -250,7 +251,7 @@ impl VideoStreamCache {
                     video_renderer.reset_all_decoders();
                 }
             }
-
+            // TODO: Restore to rrd manifest chunk id?
             re_chunk_store::ChunkStoreDiffKind::Deletion => {
                 if let Some(known_offset) = entry
                     .known_chunk_ranges
@@ -947,6 +948,7 @@ fn load_known_chunk_ranges(
     let mut loaded_samples_timepoint_iterators = Vec::new();
 
     let sample_component = VideoStream::descriptor_sample().component;
+    // TODO: Should collect rrd manifest ids
     let all_loaded_chunks: ahash::HashSet<re_chunk::ChunkId> =
         loaded_chunks.iter().map(|c| c.id()).collect();
     for next_chunk in chunk_timepoints.map(Some).chain(std::iter::once(None)) {
