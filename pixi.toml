@@ -433,7 +433,7 @@ py-plot-dashboard = { cmd = "uvpy tests/python/plot_dashboard_stress/main.py", d
 
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "cargo run --locked -p re_dev_tools -- search-index"
+search-index = "uv run --group docs cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally (uses mkdocs from uv docs dependency group)
 py-docs-serve = "uv run --group docs mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
