@@ -7,7 +7,10 @@
 
 use std::sync::Arc;
 
-use parking_lot::{Condvar, Mutex};
+use parking_lot::Mutex;
+
+#[cfg(not(target_arch = "wasm32"))]
+use parking_lot::Condvar;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
@@ -259,6 +262,7 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T> {
     /// Receive a message, blocking until one is available.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn recv(&self) -> Result<T, RecvError> {
         let sized_msg = self.rx.recv()?;
         self.manual_on_receive(sized_msg.size_bytes);
@@ -266,6 +270,7 @@ impl<T> Receiver<T> {
     }
 
     /// Receive a message with a timeout.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn recv_timeout(&self, timeout: std::time::Duration) -> Result<T, RecvTimeoutError> {
         let sized_msg = self.rx.recv_timeout(timeout)?;
         self.manual_on_receive(sized_msg.size_bytes);
@@ -310,6 +315,7 @@ impl<T> Receiver<T> {
     }
 
     /// Create an iterator that receives messages.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
         std::iter::from_fn(|| self.recv().ok())
     }
