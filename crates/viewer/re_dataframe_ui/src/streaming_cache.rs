@@ -275,15 +275,11 @@ impl TableProvider for StreamingCacheTableProvider {
                     };
                 });
 
-                Ok(Arc::new(CachedStreamingExec::new(
-                    self.schema(),
-                    inner_cache,
-                )))
+                Ok(Arc::new(CachedStreamingExec::new(inner_cache)))
             }
-            Action::ReturnStreamingPlan(inner_cache) => Ok(Arc::new(CachedStreamingExec::new(
-                self.schema(),
-                inner_cache,
-            ))),
+            Action::ReturnStreamingPlan(inner_cache) => {
+                Ok(Arc::new(CachedStreamingExec::new(inner_cache)))
+            }
         }
     }
 
@@ -301,44 +297,34 @@ impl TableProvider for StreamingCacheTableProvider {
 
 /// Execution plan that streams from the cache.
 struct CachedStreamingExec {
-    schema: SchemaRef,
     cache: Arc<Mutex<StreamingCacheInner>>,
     properties: PlanProperties,
 }
 
 impl CachedStreamingExec {
-    fn new(schema: SchemaRef, cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
+    fn new(cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
+        let schema = Arc::clone(&cache.lock().schema);
         let properties = PlanProperties::new(
-            EquivalenceProperties::new(Arc::clone(&schema)),
+            EquivalenceProperties::new(schema),
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
         );
-        Self {
-            schema,
-            cache,
-            properties,
-        }
+        Self { cache, properties }
     }
 }
 
 impl fmt::Debug for CachedStreamingExec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CachedStreamingExec")
-            .field("schema", &self.schema)
+            .field("schema", &self.cache.lock().schema)
             .finish_non_exhaustive()
     }
 }
 
 impl DisplayAs for CachedStreamingExec {
-    fn fmt_as(&self, t: DisplayFormatType, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match t {
-            DisplayFormatType::Default
-            | DisplayFormatType::Verbose
-            | DisplayFormatType::TreeRender => {
-                write!(f, "CachedStreamingExec")
-            }
-        }
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CachedStreamingExec")
     }
 }
 
@@ -352,7 +338,7 @@ impl ExecutionPlan for CachedStreamingExec {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.schema)
+        Arc::clone(&self.cache.lock().schema)
     }
 
     fn properties(&self) -> &PlanProperties {
@@ -386,28 +372,22 @@ impl ExecutionPlan for CachedStreamingExec {
             )));
         }
 
-        Ok(Box::pin(CachedRecordBatchStream::new(
-            Arc::clone(&self.schema),
-            Arc::clone(&self.cache),
-        )))
+        Ok(Box::pin(CachedRecordBatchStream::new(Arc::clone(
+            &self.cache,
+        ))))
     }
 }
 
 /// A stream that yields cached batches, waiting for new ones as needed.
 pub struct CachedRecordBatchStream {
-    schema: SchemaRef,
     cache: Arc<Mutex<StreamingCacheInner>>,
     /// Current read position in the cache.
     read_pos: usize,
 }
 
 impl CachedRecordBatchStream {
-    fn new(schema: SchemaRef, cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
-        Self {
-            schema,
-            cache,
-            read_pos: 0,
-        }
+    fn new(cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
+        Self { cache, read_pos: 0 }
     }
 }
 
@@ -441,6 +421,6 @@ impl Stream for CachedRecordBatchStream {
 
 impl RecordBatchStream for CachedRecordBatchStream {
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.schema)
+        Arc::clone(&self.cache.lock().schema)
     }
 }
