@@ -893,10 +893,6 @@ impl SampleMetadataState {
         }
     }
 
-    pub fn unload(&mut self) {
-        *self = Self::Unloaded(self.source_id());
-    }
-
     pub fn source_id(&self) -> Tuid {
         match self {
             Self::Present(sample) => sample.source_id,

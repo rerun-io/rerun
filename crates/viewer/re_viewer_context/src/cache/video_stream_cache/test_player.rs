@@ -107,9 +107,6 @@ impl TestVideoPlayer {
     ) -> Result<(), VideoPlayerError> {
         if let Some(source) = &self.video_descr_source {
             self.video_descr = source();
-
-            dbg!(&self.video_descr.samples);
-            dbg!(&self.video_descr.keyframe_indices);
         }
         self.time = range.start;
         for i in 0..((range.end - self.time) / time_step).next_down().floor() as i32 {
@@ -529,23 +526,6 @@ fn player_with_cache() {
     const STREAM_ENTITY: &str = "stream";
     const TIMELINE_NAME: &str = "video";
 
-    fn workspace_dir() -> std::path::PathBuf {
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
-            .unwrap()
-            .to_path_buf()
-    }
-
-    fn pixi_ffmpeg_path() -> std::path::PathBuf {
-        workspace_dir().join(if cfg!(target_os = "windows") {
-            ".pixi/envs/default/Library/bin/ffmpeg.exe"
-        } else {
-            ".pixi/envs/default/Library/bin/ffmpeg"
-        })
-    }
-
     fn create_codec_chunk() -> Chunk {
         let mut builder = Chunk::builder(STREAM_ENTITY);
 
@@ -652,44 +632,23 @@ fn player_with_cache() {
 
     let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), &chunks);
 
+    let manifest_chunks = manifest.col_chunk_id().unwrap().collect::<Vec<_>>();
+
     store.add_rrd_manifest_message(manifest);
-
-    // Use pixi ffmpeg install if available.
-    let pixi_ffmpeg_path = pixi_ffmpeg_path();
-
-    let ffmpeg_path = if pixi_ffmpeg_path.exists() {
-        re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
-
-        Some(pixi_ffmpeg_path)
-    } else {
-        // End up using system install. Fine usually, no need to force a pixi environment here.
-        re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
-
-        None
-    };
 
     let load_chunks = |store: &mut EntityDb, cache: &mut VideoStreamCache, chunk_idx: &[usize]| {
         let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
 
-        for idx in chunk_idx {
-            dbg!(idx);
-            dbg!(chunks[*idx].id());
-            store_events.extend(store.add_chunk(&chunks[*idx]).unwrap());
-        }
+        for &idx in chunk_idx {
+            assert_eq!(manifest_chunks[idx], chunks[idx].id());
 
-        dbg!(
-            store
-                .storage_engine()
-                .store()
-                .iter_chunks()
-                .map(|c| c.id())
-                .collect::<Vec<_>>()
-        );
+            store_events.extend(store.add_chunk(&chunks[idx]).unwrap());
+        }
 
         cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
     };
 
-    // load codec chunk, and chunk #4
+    // load codec chunk, and a sample chunk
     load_chunks(&mut store, &mut cache, &[chunks.len() - 1, 4]);
 
     let video_stream = cache
@@ -699,7 +658,7 @@ fn player_with_cache() {
             TIMELINE_NAME.into(),
             re_video::DecodeSettings {
                 hw_acceleration: Default::default(),
-                ffmpeg_path,
+                ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
             },
         )
         .unwrap();
