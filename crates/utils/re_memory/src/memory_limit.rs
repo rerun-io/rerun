@@ -62,14 +62,28 @@ impl MemoryLimit {
             let percentage = percentage
                 .parse::<f32>()
                 .map_err(|_err| format!("expected e.g. '50%', got {limit:?}"))?;
+
+            if percentage < 0.0 || 100.0 < percentage {
+                return Err(format!(
+                    "percentage must be between 0 and 100, got {percentage}"
+                ));
+            }
+
             let fraction = percentage / 100.0;
             Ok(Self::from_fraction_of_total(fraction))
         } else {
-            re_format::parse_bytes(limit)
-                .map(|max_bytes| Self {
-                    max_bytes: Some(max_bytes.max(0) as _),
-                })
-                .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
+            let num_bytes = re_format::parse_bytes(limit)
+                .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))?;
+
+            if num_bytes < 0 {
+                return Err(format!(
+                    "memory limit must be non-negative, got {num_bytes}"
+                ));
+            }
+
+            Ok(Self {
+                max_bytes: Some(num_bytes as u64),
+            })
         }
     }
 
@@ -109,5 +123,63 @@ impl std::str::FromStr for MemoryLimit {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_unlimited() {
+        assert_eq!(MemoryLimit::parse("unlimited"), Ok(MemoryLimit::UNLIMITED));
+        assert_eq!(MemoryLimit::parse("none"), Ok(MemoryLimit::UNLIMITED));
+        assert_eq!(MemoryLimit::parse("max"), Ok(MemoryLimit::UNLIMITED));
+        assert_eq!(MemoryLimit::parse("∞"), Ok(MemoryLimit::UNLIMITED));
+    }
+
+    #[test]
+    fn test_parse_zero() {
+        assert_eq!(MemoryLimit::parse("0"), Ok(MemoryLimit::from_bytes(0)));
+    }
+
+    #[test]
+    fn test_parse_bytes() {
+        assert_eq!(MemoryLimit::parse("123B"), Ok(MemoryLimit::from_bytes(123)));
+        assert_eq!(MemoryLimit::parse("1kB"), Ok(MemoryLimit::from_bytes(1000)));
+        assert_eq!(
+            MemoryLimit::parse("1KiB"),
+            Ok(MemoryLimit::from_bytes(1024))
+        );
+        assert_eq!(
+            MemoryLimit::parse("1MB"),
+            Ok(MemoryLimit::from_bytes(1000 * 1000))
+        );
+        assert_eq!(
+            MemoryLimit::parse("1GB"),
+            Ok(MemoryLimit::from_bytes(1000 * 1000 * 1000))
+        );
+        assert_eq!(
+            MemoryLimit::parse("1GiB"),
+            Ok(MemoryLimit::from_bytes(1024 * 1024 * 1024))
+        );
+    }
+
+    #[test]
+    fn test_parse_percentage() {
+        let limit_50 = MemoryLimit::parse("50%");
+        assert!(limit_50.is_ok());
+        let limit_100 = MemoryLimit::parse("100%");
+        assert!(limit_100.is_ok());
+    }
+
+    #[test]
+    fn test_parse_invalid() {
+        assert!(MemoryLimit::parse("").is_err());
+        assert!(MemoryLimit::parse("foobar").is_err());
+        assert!(MemoryLimit::parse("1023").is_err(), "Missing unit");
+        assert!(MemoryLimit::parse("-1").is_err());
+        assert!(MemoryLimit::parse("-1GB").is_err());
+        assert!(MemoryLimit::parse("-10%").is_err());
     }
 }

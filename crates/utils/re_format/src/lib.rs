@@ -643,6 +643,7 @@ pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
 fn test_parse_bytes_base10() {
     let test_cases = [
         ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1000B", 1_000),
         ("1kB", 1_000),
@@ -693,6 +694,7 @@ pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
 fn test_parse_bytes_base2() {
     let test_cases = [
         ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1023B", 1_023),
         ("1024B", 1_024),
@@ -724,6 +726,7 @@ fn test_parse_bytes() {
     let test_cases = [
         // base10
         ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1000B", 1_000),
         ("1kB", 1_000),
