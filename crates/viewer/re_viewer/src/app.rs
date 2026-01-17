@@ -3115,7 +3115,10 @@ impl App {
 
             if db.rrd_manifest_index.has_manifest() {
                 let mut store_events = Vec::new();
-                for chunk in db.rrd_manifest_index.resolve_pending_promises() {
+                for chunk in db
+                    .rrd_manifest_index
+                    .resolve_pending_promises(self.egui_ctx.time())
+                {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
                             store_events.extend(events);
