@@ -870,6 +870,55 @@ impl Iterator for TreeIterator<'_> {
 }
 
 // ----------------------------------------------------------------------------
+// SizeBytes implementation
+
+impl re_byte_size::SizeBytes for Int64Histogram {
+    fn heap_size_bytes(&self) -> u64 {
+        self.root.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for Node {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::BranchNode(node) => node.heap_size_bytes(),
+            Self::SparseLeaf(sparse) => sparse.heap_size_bytes(),
+            Self::DenseLeaf(dense) => dense.heap_size_bytes(),
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for BranchNode {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            total_count: _,
+            children,
+        } = self;
+
+        let mut total = 0;
+        for child in children.iter().flatten() {
+            total += child.as_ref().total_size_bytes();
+        }
+        total
+    }
+}
+
+impl re_byte_size::SizeBytes for SparseLeaf {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { addrs, counts } = self;
+
+        // SmallVec has heap data when it exceeds inline capacity
+        addrs.heap_size_bytes() + counts.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for DenseLeaf {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // DenseLeaf is a fixed-size array on the stack
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
