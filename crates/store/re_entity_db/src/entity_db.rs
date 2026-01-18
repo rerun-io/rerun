@@ -1081,27 +1081,20 @@ impl re_byte_size::SizeBytes for EntityDb {
 impl MemUsageTreeCapture for EntityDb {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         let Self {
-            store_id,
-            enable_viewer_indexes: _,
-            data_source,
             rrd_manifest_index,
-            set_store_info,
-            last_modified_at,
-            latest_row_id,
-            entity_path_from_hash,
             time_histogram_per_timeline,
             storage_engine,
-            stats,
-        } = self;
+            entity_path_from_hash: _, // TODO: implement this
 
-        // Explicitly ignore small fields
-        _ = store_id;
-        _ = data_source;
-        _ = set_store_info;
-        _ = last_modified_at;
-        _ = latest_row_id;
-        _ = stats;
-        _ = entity_path_from_hash; // IntMap doesn't implement SizeBytes
+            // Small:
+            store_id: _,
+            enable_viewer_indexes: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
+            latest_row_id: _,
+            stats: _,
+        } = self;
 
         let mut node = MemUsageNode::new();
 
