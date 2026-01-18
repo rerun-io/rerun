@@ -5,6 +5,7 @@ use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree};
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
@@ -2197,9 +2198,10 @@ impl App {
     }
 
     fn memory_panel_ui(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let frame = egui::Frame {
@@ -2215,6 +2217,7 @@ impl App {
                 self.memory_panel.ui(
                     ui,
                     &self.startup_options.memory_limit,
+                    mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
                 );
@@ -2265,6 +2268,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
         storage_context: &StorageContext<'_>,
+        mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -2290,7 +2294,7 @@ impl App {
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
+                self.memory_panel_ui(ui, gpu_resource_stats, mem_usage_tree, store_stats);
 
                 self.egui_debug_panel_ui(ui);
 
@@ -3277,6 +3281,12 @@ impl eframe::App for App {
                 .add(egui_ctx.input(|i| i.time), seconds);
         }
 
+        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
+        // is opened.
+        let mem_usage_tree = self
+            .memory_panel_open
+            .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
+
         #[cfg(target_arch = "wasm32")]
         if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
@@ -3464,6 +3474,7 @@ impl eframe::App for App {
                 &gpu_resource_stats,
                 store_context.as_ref(),
                 &storage_context,
+                mem_usage_tree,
                 store_stats.as_ref(),
             );
 
@@ -3898,5 +3909,15 @@ fn handle_time_ctrl_event(
 
     if let Some(time) = response.time_change {
         events.on_time_update(recording, time);
+    }
+}
+
+impl MemUsageTreeCapture for App {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+        let mut node = MemUsageNode::new();
+        // rx_log doesn't implement MemUsageTreeCapture yet, so we skip it
+        node.add("store_hub", self.store_hub.capture_mem_usage_tree());
+        node.into_tree()
     }
 }

@@ -61,6 +61,7 @@ testing = ["dep:egui_kittest", "dep:tokio", "re_ui/testing", "re_analytics/testi
 re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
+re_byte_size.workspace = true
 re_capabilities.workspace = true
 re_chunk_store_ui.workspace = true
 re_chunk_store.workspace = true
@@ -78,6 +79,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder", "stream_from_http"] }
 re_log_types.workspace = true
+re_memory_view.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
 re_recording_panel.workspace = true

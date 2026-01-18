@@ -13,10 +13,31 @@ use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 // ----------------------------------------------------------------------------
 
+/// Which view to show in the memory panel.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum MemoryViewTab {
+    Stats,
+
+    #[default]
+    Flamegraph,
+    TimeGraph,
+}
+
+impl MemoryViewTab {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Stats => "Stats",
+            Self::Flamegraph => "Flamegraph",
+            Self::TimeGraph => "Time Graph",
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct MemoryPanel {
     history: MemoryHistory,
     memory_purge_times: Vec<f64>,
+    selected_tab: MemoryViewTab,
 }
 
 impl MemoryPanel {
@@ -37,9 +58,10 @@ impl MemoryPanel {
     }
 
     pub fn ui(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
+        mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
     ) {
@@ -48,21 +70,46 @@ impl MemoryPanel {
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
 
-        egui::SidePanel::left("not_the_plot")
-            .resizable(false)
-            .min_width(250.0)
-            .default_width(300.0)
-            .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
-            });
-
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.label("🗠 Rerun Viewer memory use over time");
-            self.plot(ui, limit);
+        // Tab selector at the top
+        ui.horizontal(|ui| {
+            ui.selectable_value(
+                &mut self.selected_tab,
+                MemoryViewTab::Stats,
+                MemoryViewTab::Stats.label(),
+            );
+            ui.selectable_value(
+                &mut self.selected_tab,
+                MemoryViewTab::Flamegraph,
+                MemoryViewTab::Flamegraph.label(),
+            );
+            ui.selectable_value(
+                &mut self.selected_tab,
+                MemoryViewTab::TimeGraph,
+                MemoryViewTab::TimeGraph.label(),
+            );
         });
+
+        ui.separator();
+
+        match self.selected_tab {
+            MemoryViewTab::Stats => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::detailed_stats(ui, limit, gpu_resource_stats, store_stats);
+                    });
+            }
+            MemoryViewTab::Flamegraph => {
+                memory_tree_ui(ui, mem_usage_tree);
+            }
+            MemoryViewTab::TimeGraph => {
+                ui.label("🗠 Rerun Viewer memory use over time");
+                self.plot(ui, limit);
+            }
+        }
     }
 
-    fn left_side(
+    fn detailed_stats(
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -538,15 +585,18 @@ fn summarize_callstack(callstack: &str) -> String {
         ("w_store::store::ComponentBucket>::archive", "archive"),
         ("ChunkStore>::insert", "ChunkStore"),
         ("EntityDb", "EntityDb"),
-        ("EntityDb", "EntityDb"),
         ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),
         ("::TimePoint>::deserialize", "TimePoint"),
         ("ImageCache", "ImageCache"),
         ("gltf", "gltf"),
+        ("tokio::sync::broadcast::channel", "channel"),
+        ("grpc", "grpc"),
         ("image::image", "image"),
+        ("ImageDecodeCache", "ImageDecodeCache"),
         ("epaint::text::text_layout", "text_layout"),
         ("egui_wgpu", "egui_wgpu"),
+        ("decode_arrow", "decode_arrow"),
         ("wgpu_hal", "wgpu_hal"),
         ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
@@ -573,4 +623,40 @@ fn summarize_callstack(callstack: &str) -> String {
     }
 
     all_summaries.join(", ")
+}
+
+pub fn memory_tree_ui(ui: &mut egui::Ui, tree: Option<re_byte_size::NamedMemUsageTree>) {
+    let Some(mut tree) = tree else {
+        ui.label("No memory usage tree available.");
+        return;
+    };
+
+    let re_memory::MemoryUse { resident, counted } = re_memory::MemoryUse::capture();
+
+    let show_counted = true;
+    let show_rss = false; // This is sometimes huge, because… unknown reasons
+
+    if show_counted && let Some(counted) = counted {
+        tree = re_byte_size::NamedMemUsageTree::new(
+            "counted",
+            re_byte_size::MemUsageNode::new()
+                .with_named_child(tree)
+                .with_total_size_bytes(counted),
+        );
+    }
+
+    if show_rss && let Some(resident) = resident {
+        tree = re_byte_size::NamedMemUsageTree::new(
+            "RSS",
+            re_byte_size::MemUsageNode::new()
+                .with_named_child(tree)
+                .with_total_size_bytes(resident),
+        );
+    }
+
+    egui::ScrollArea::vertical()
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            re_memory_view::memory_flamegraph_ui(ui, &tree);
+        });
 }
