@@ -5,6 +5,7 @@ use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -1115,5 +1116,55 @@ impl StoreHub {
             store_stats,
             table_stats,
         }
+    }
+}
+
+impl MemUsageTreeCapture for StoreHub {
+    #[expect(clippy::iter_over_hash_type)]
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self {
+            store_bundle,
+            table_stores,
+            caches_per_recording,
+
+            // Small stuff:
+            persistence: _,
+            active_recording_or_table: _,
+            active_application_id: _,
+            default_blueprint_by_app_id: _,
+            active_blueprint_by_app_id: _,
+            data_source_order: _,
+            should_enable_heuristics_by_app_id: _,
+            blueprint_last_save: _,
+            blueprint_last_gc: _,
+        } = self;
+
+        let mut node = MemUsageNode::new();
+
+        // store_bundle: EntityDbs (recordings and blueprints)
+        let mut store_bundle_node = MemUsageNode::new();
+        for entity_db in store_bundle.entity_dbs() {
+            let name = format!("{:?}", entity_db.store_id());
+            store_bundle_node.add(name, entity_db.capture_mem_usage_tree());
+        }
+        node.add("store_bundle", store_bundle_node.into_tree());
+
+        // table_stores
+        let mut table_stores_node = MemUsageNode::new();
+        for (table_id, table_store) in table_stores {
+            let name = format!("{table_id:?}");
+            table_stores_node.add(name, MemUsageTree::Bytes(table_store.total_size_bytes()));
+        }
+        node.add("table_stores", table_stores_node.into_tree());
+
+        // caches_per_recording
+        let mut caches_node = MemUsageNode::new();
+        for (store_id, caches) in caches_per_recording {
+            let name = format!("{store_id:?}");
+            caches_node.add(name, caches.capture_mem_usage_tree());
+        }
+        node.add("caches_per_recording", caches_node.into_tree());
+
+        node.into_tree()
     }
 }
