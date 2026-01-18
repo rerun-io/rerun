@@ -69,7 +69,7 @@ impl SizeBytes for TransformDatabaseStoreCache {
 
 impl Cache for TransformDatabaseStoreCache {
     fn name(&self) -> &'static str {
-        "Transform Database"
+        "TransformDatabaseStoreCache"
     }
 
     fn purge_memory(&mut self) {

@@ -111,7 +111,7 @@ where
     VideoLoadError: Send + Sync,
 {
     fn name(&self) -> &'static str {
-        "Video Assets"
+        "VideoAssetCache"
     }
 
     fn begin_frame(&mut self) {

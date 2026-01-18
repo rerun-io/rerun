@@ -24,7 +24,7 @@ impl ImageStatsCache {
 
 impl Cache for ImageStatsCache {
     fn name(&self) -> &'static str {
-        "Image Stats"
+        "ImageStatsCache"
     }
 
     fn purge_memory(&mut self) {

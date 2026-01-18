@@ -875,7 +875,7 @@ impl Cache for VideoStreamCache {
     }
 
     fn name(&self) -> &'static str {
-        "Video Streams"
+        "VideoStreamCache"
     }
 
     fn purge_memory(&mut self) {

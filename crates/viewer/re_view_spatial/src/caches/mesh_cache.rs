@@ -114,7 +114,7 @@ impl MeshCache {
 
 impl Cache for MeshCache {
     fn name(&self) -> &'static str {
-        "Meshes"
+        "MeshCache"
     }
 
     fn begin_frame(&mut self) {

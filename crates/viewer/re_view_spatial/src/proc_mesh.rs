@@ -215,7 +215,7 @@ impl WireframeCache {
 
 impl Cache for WireframeCache {
     fn name(&self) -> &'static str {
-        "Proc Mesh Wireframes"
+        "WireframeCache"
     }
 
     fn purge_memory(&mut self) {
@@ -513,7 +513,7 @@ impl Cache for SolidCache {
     }
 
     fn name(&self) -> &'static str {
-        "Proc Mesh Solids"
+        "SolidCache"
     }
 
     fn vram_usage(&self) -> re_byte_size::MemUsageTree {

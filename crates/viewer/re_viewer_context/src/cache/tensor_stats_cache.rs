@@ -29,7 +29,7 @@ impl TensorStatsCache {
 
 impl Cache for TensorStatsCache {
     fn name(&self) -> &'static str {
-        "Tensor Stats"
+        "TensorStatsCache"
     }
 
     fn purge_memory(&mut self) {

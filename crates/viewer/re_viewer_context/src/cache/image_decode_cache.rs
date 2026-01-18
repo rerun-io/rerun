@@ -263,7 +263,7 @@ where
     ImageLoadError: Send + Sync,
 {
     fn name(&self) -> &'static str {
-        "Image Decodings"
+        "ImageDecodeCache"
     }
 
     fn begin_frame(&mut self) {
