@@ -10,6 +10,9 @@ pub use crossbeam::channel::{SelectTimeoutError, TrySelectError};
 /// two `recv` operations. It properly handles the byte accounting by calling
 /// `manual_on_receive` after each successful receive.
 ///
+/// **Note:** This macro blocks until one of the receivers is ready, so it is
+/// **not available on wasm32**.
+///
 /// # Syntax
 ///
 /// ```ignore
@@ -38,54 +41,43 @@ pub use crossbeam::channel::{SelectTimeoutError, TrySelectError};
 ///     },
 /// }
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! select {
+    // Without comma separator (for block syntax) - forward to comma version
     (
         recv($rx1:expr) -> $res1:tt => $body1:block
         recv($rx2:expr) -> $res2:tt => $body2:block
-    ) => {{
-        let __rx1 = &$rx1;
-        let __rx2 = &$rx2;
-        ::crossbeam::channel::select! {
-            recv(__rx1.inner()) -> __result => {
-                let $res1 = __result.map(|__sized| {
-                    __rx1.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body1
-            }
-            recv(__rx2.inner()) -> __result => {
-                let $res2 = __result.map(|__sized| {
-                    __rx2.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
-                $body2
-            }
+    ) => {
+        $crate::select! {
+            recv($rx1) -> $res1 => $body1,
+            recv($rx2) -> $res2 => $body2,
         }
-    }};
+    };
 
-    // Also support comma-separated format
+    // With comma separator - the main implementation
     (
-        recv($rx1:expr) -> $res1:tt => $body1:expr,
-        recv($rx2:expr) -> $res2:tt => $body2:expr $(,)?
+        recv($rx1:expr) -> $res1:tt => $body1:tt,
+        recv($rx2:expr) -> $res2:tt => $body2:tt $(,)?
     ) => {{
-        let __rx1 = &$rx1;
-        let __rx2 = &$rx2;
-        ::crossbeam::channel::select! {
-            recv(__rx1.inner()) -> __result => {
-                let $res1 = __result.map(|__sized| {
-                    __rx1.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
+        let rx1 = &$rx1;
+        let rx2 = &$rx2;
+
+        let mut sel = $crate::Select::new();
+        sel.recv(rx1);
+        sel.recv(rx2);
+
+        let oper = sel.select();
+        match oper.index() {
+            0 => {
+                let $res1 = oper.recv(rx1);
                 $body1
             }
-            recv(__rx2.inner()) -> __result => {
-                let $res2 = __result.map(|__sized| {
-                    __rx2.manual_on_receive(__sized.size_bytes);
-                    __sized.msg
-                });
+            1 => {
+                let $res2 = oper.recv(rx2);
                 $body2
             }
+            _ => unreachable!(),
         }
     }};
 }
@@ -95,6 +87,9 @@ macro_rules! select {
 /// A dynamic selection interface for receiving from multiple quota channels.
 ///
 /// This wraps [`crossbeam::channel::Select`] and provides proper byte accounting.
+///
+/// **Note:** Blocking select operations are **not available on wasm32**.
+/// Use [`Select::try_select`] for non-blocking operations on wasm.
 ///
 /// # Example
 ///
@@ -145,6 +140,9 @@ impl<'a> Select<'a> {
     /// Blocks until one of the registered operations becomes ready.
     ///
     /// Returns a `SelectedOperation` that can be used to complete the receive.
+    ///
+    /// **Note:** Not available on wasm32 - use [`Self::try_select`] instead.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn select(&mut self) -> SelectedOperation<'a> {
         SelectedOperation {
             inner: self.inner.select(),
@@ -163,6 +161,9 @@ impl<'a> Select<'a> {
     /// Blocks until one of the registered operations becomes ready or times out.
     ///
     /// Returns a `SelectedOperation` if one becomes ready within the timeout.
+    ///
+    /// **Note:** Not available on wasm32 - use [`Self::try_select`] instead.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn select_timeout(
         &mut self,
         timeout: std::time::Duration,
