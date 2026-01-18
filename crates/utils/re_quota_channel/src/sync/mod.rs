@@ -88,8 +88,31 @@ impl<T> Sender<T> {
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
         let capacity = self.shared.capacity_bytes;
 
-        // Special case: message is larger than total capacity
-        if capacity < size_bytes {
+        if size_bytes <= capacity {
+            // Normal case: wait until we have room
+
+            {
+                let mut current = self.shared.current_bytes.lock();
+
+                if capacity < *current + size_bytes {
+                    re_log::debug_once!(
+                        "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
+                        self.shared.debug_name,
+                        re_format::format_bytes(capacity as f64),
+                    );
+                    while capacity < *current + size_bytes {
+                        self.shared.space_available.wait(&mut current);
+                    }
+                }
+
+                *current += size_bytes;
+            }
+
+            self.tx
+                .send(SizedMessage { msg, size_bytes })
+                .map_err(|err| SendError(err.0.msg))
+        } else {
+            // Special case: message is larger than total capacity
             re_log::debug_once!(
                 "{}: Message size ({}) exceeds channel capacity ({}). \
                  Waiting for channel to empty before sending.",
@@ -98,61 +121,42 @@ impl<T> Sender<T> {
                 re_format::format_bytes(capacity as f64),
             );
 
-            // Wait until the channel is completely empty
-            let mut current = self.shared.current_bytes.lock();
-            while 0 < *current {
-                self.shared.space_available.wait(&mut current);
+            {
+                // Wait until the channel is completely empty
+                let mut current = self.shared.current_bytes.lock();
+                while 0 < *current {
+                    self.shared.space_available.wait(&mut current);
+                }
+
+                // Now send (we'll temporarily exceed capacity, but that's expected)
+                *current += size_bytes;
             }
 
-            // Now send (we'll temporarily exceed capacity, but that's expected)
-            *current += size_bytes;
-            drop(current);
-
-            return self
-                .tx
+            self.tx
                 .send(SizedMessage { msg, size_bytes })
-                .map_err(|err| SendError(err.0.msg));
+                .map_err(|err| SendError(err.0.msg))
         }
-
-        // Normal case: wait until we have room
-        let mut current = self.shared.current_bytes.lock();
-        if capacity < *current + size_bytes {
-            re_log::debug_once!(
-                "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
-                self.shared.debug_name,
-                re_format::format_bytes(capacity as f64),
-            );
-            while capacity < *current + size_bytes {
-                self.shared.space_available.wait(&mut current);
-            }
-        }
-
-        *current += size_bytes;
-        drop(current);
-
-        self.tx
-            .send(SizedMessage { msg, size_bytes })
-            .map_err(|err| SendError(err.0.msg))
     }
 
     #[cfg(target_arch = "wasm32")]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
         let capacity = self.shared.capacity_bytes;
 
-        let mut current = self.shared.current_bytes.lock();
-        let new_total = *current + size_bytes;
+        {
+            let mut current = self.shared.current_bytes.lock();
+            let new_total = *current + size_bytes;
 
-        if capacity < new_total {
-            re_log::debug_once!(
-                "{}: Channel byte budget ({}) exceeded. \
-                 Cannot block on web, sending anyway.",
-                self.shared.debug_name,
-                re_format::format_bytes(capacity as f64),
-            );
+            if capacity < new_total {
+                re_log::debug_once!(
+                    "{}: Channel byte budget ({}) exceeded. \
+                    Cannot block on web; sending anyway.",
+                    self.shared.debug_name,
+                    re_format::format_bytes(capacity as f64),
+                );
+            }
+
+            *current = new_total;
         }
-
-        *current = new_total;
-        drop(current);
 
         self.tx
             .send(SizedMessage { msg, size_bytes })
@@ -165,15 +169,16 @@ impl<T> Sender<T> {
     pub fn try_send(&self, msg: T, size_bytes: u64) -> Result<(), TrySendError<T>> {
         let capacity = self.shared.capacity_bytes;
 
-        let mut current = self.shared.current_bytes.lock();
+        {
+            let mut current = self.shared.current_bytes.lock();
 
-        // Check if we have room (allow oversized messages if channel is empty)
-        if capacity < *current + size_bytes && 0 < *current {
-            return Err(TrySendError::Full(msg));
+            // Check if we have room (allow oversized messages if channel is empty)
+            if capacity < *current + size_bytes && 0 < *current {
+                return Err(TrySendError::Full(msg));
+            }
+
+            *current += size_bytes;
         }
-
-        *current += size_bytes;
-        drop(current);
 
         self.tx
             .send(SizedMessage { msg, size_bytes })
@@ -293,12 +298,13 @@ impl<T> Receiver<T> {
     /// For use with [`Self::inner`]: notify the channel that a message of the given size
     /// has been received, so that the byte count can be updated.
     pub fn manual_on_receive(&self, size_bytes: u64) {
-        let mut current = self.shared.current_bytes.lock();
-        *current = current.saturating_sub(size_bytes);
+        {
+            let mut current = self.shared.current_bytes.lock();
+            *current = current.saturating_sub(size_bytes);
+        }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            drop(current);
             self.shared.space_available.notify_all();
         }
     }
