@@ -1080,6 +1080,8 @@ impl re_byte_size::SizeBytes for EntityDb {
 
 impl MemUsageTreeCapture for EntityDb {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         let Self {
             rrd_manifest_index,
             time_histogram_per_timeline,

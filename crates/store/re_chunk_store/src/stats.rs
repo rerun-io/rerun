@@ -345,6 +345,8 @@ impl ChunkStore {
 
 impl MemUsageTreeCapture for ChunkStore {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         let mut node = MemUsageNode::new();
 
         for entity_path in self.all_entities_sorted() {
@@ -364,6 +366,8 @@ impl ChunkStore {
     ///
     /// Includes both static and temporal data.
     pub fn entity_stats(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
         let mut stats = self.entity_stats_static(entity_path);
         for timeline in self.timelines().keys() {
             stats += self.entity_stats_on_timeline(entity_path, timeline);

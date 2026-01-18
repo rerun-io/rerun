@@ -42,6 +42,7 @@ impl Caches {
     }
 
     pub fn memory_reports(&self) -> HashMap<&'static str, CacheMemoryReport> {
+        re_tracing::profile_function!();
         self.caches
             .lock()
             .values()
@@ -191,6 +192,8 @@ impl MemUsageTreeCapture for CacheMemoryReport {
 
 impl MemUsageTreeCapture for Caches {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         let mut node = re_byte_size::MemUsageNode::new();
 
         let mut reports: Vec<_> = self.memory_reports().into_iter().collect();

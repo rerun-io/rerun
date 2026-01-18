@@ -1122,6 +1122,8 @@ impl StoreHub {
 impl MemUsageTreeCapture for StoreHub {
     #[expect(clippy::iter_over_hash_type)]
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         let Self {
             store_bundle,
             table_stores,

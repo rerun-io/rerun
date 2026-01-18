@@ -53,6 +53,8 @@ impl TransformDatabaseStoreCache {
 
 impl SizeBytes for TransformDatabaseStoreCache {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             initialized,
             transform_cache,
@@ -72,6 +74,7 @@ impl Cache for TransformDatabaseStoreCache {
     }
 
     fn memory_report(&self) -> CacheMemoryReport {
+        re_tracing::profile_function!();
         CacheMemoryReport {
             bytes_cpu: self.total_size_bytes(),
             bytes_gpu: None,
