@@ -1136,13 +1136,34 @@ impl MemUsageTreeCapture for StoreHub {
 
         let mut node = MemUsageNode::new();
 
-        // store_bundle: EntityDbs (recordings and blueprints)
-        let mut store_bundle_node = MemUsageNode::new();
+        // Collect all store IDs from both store_bundle and caches_per_recording
+        let mut all_store_ids = std::collections::BTreeSet::new();
         for entity_db in store_bundle.entity_dbs() {
-            let name = format!("{:?}", entity_db.store_id());
-            store_bundle_node.add(name, entity_db.capture_mem_usage_tree());
+            all_store_ids.insert(entity_db.store_id().clone());
         }
-        node.add("store_bundle", store_bundle_node.into_tree());
+        for store_id in caches_per_recording.keys() {
+            all_store_ids.insert(store_id.clone());
+        }
+
+        // Group stores by recording ID, combining EntityDb and Caches
+        let mut stores_node = MemUsageNode::new();
+        for store_id in all_store_ids {
+            let recording_id = format!("{store_id:?}");
+            let mut recording_node = MemUsageNode::new();
+
+            // Add EntityDb if it exists
+            if let Some(entity_db) = store_bundle.get(&store_id) {
+                recording_node.add("EntityDb", entity_db.capture_mem_usage_tree());
+            }
+
+            // Add Caches if they exist for this store
+            if let Some(caches) = caches_per_recording.get(&store_id) {
+                recording_node.add("Caches", caches.capture_mem_usage_tree());
+            }
+
+            stores_node.add(recording_id, recording_node.into_tree());
+        }
+        node.add("stores", stores_node.into_tree());
 
         // table_stores
         let mut table_stores_node = MemUsageNode::new();
@@ -1150,15 +1171,7 @@ impl MemUsageTreeCapture for StoreHub {
             let name = format!("{table_id:?}");
             table_stores_node.add(name, MemUsageTree::Bytes(table_store.total_size_bytes()));
         }
-        node.add("table_stores", table_stores_node.into_tree());
-
-        // caches_per_recording
-        let mut caches_node = MemUsageNode::new();
-        for (store_id, caches) in caches_per_recording {
-            let name = format!("{store_id:?}");
-            caches_node.add(name, caches.capture_mem_usage_tree());
-        }
-        node.add("caches_per_recording", caches_node.into_tree());
+        node.add("TableStores", table_stores_node.into_tree());
 
         node.into_tree()
     }
