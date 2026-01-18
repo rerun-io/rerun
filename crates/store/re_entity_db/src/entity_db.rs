@@ -1082,6 +1082,7 @@ impl MemUsageTreeCapture for EntityDb {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         let Self {
             store_id,
+            enable_viewer_indexes: _,
             data_source,
             rrd_manifest_index,
             set_store_info,
@@ -1109,8 +1110,14 @@ impl MemUsageTreeCapture for EntityDb {
         node.add("chunk_store", store.capture_mem_usage_tree());
         drop(storage_engine_guard);
 
-        node.add("time_histogram_per_timeline", time_histogram_per_timeline.capture_mem_usage_tree());
-        node.add("rrd_manifest_index", rrd_manifest_index.capture_mem_usage_tree());
+        node.add(
+            "time_histogram_per_timeline",
+            time_histogram_per_timeline.capture_mem_usage_tree(),
+        );
+        node.add(
+            "rrd_manifest_index",
+            rrd_manifest_index.capture_mem_usage_tree(),
+        );
 
         node.into_tree()
     }
