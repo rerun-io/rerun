@@ -576,6 +576,8 @@ pub fn memory_tree_ui(
             "Learn more",
             "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html?speculative-link",
         );
+
+        #[expect(dead_code)]
         fn foo(_: &dyn re_byte_size::MemUsageTreeCapture) {
             // This function is only here so we remember to update the link above if the trait name changes.
         }
