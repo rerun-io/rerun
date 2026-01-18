@@ -37,6 +37,7 @@ pub struct MemoryPanel {
     history: MemoryHistory,
     memory_purge_times: Vec<f64>,
     selected_tab: MemoryViewTab,
+    include_rss_in_flamegraph: bool,
 }
 
 impl MemoryPanel {
@@ -99,7 +100,7 @@ impl MemoryPanel {
                     });
             }
             MemoryViewTab::Flamegraph => {
-                memory_tree_ui(ui, mem_usage_tree);
+                memory_tree_ui(ui, mem_usage_tree, &mut self.include_rss_in_flamegraph);
             }
             MemoryViewTab::TimeGraph => {
                 ui.label("🗠 Rerun Viewer memory use over time");
@@ -563,7 +564,33 @@ fn summarize_callstack(callstack: &str) -> String {
     all_summaries.join(", ")
 }
 
-pub fn memory_tree_ui(ui: &mut egui::Ui, tree: Option<re_byte_size::NamedMemUsageTree>) {
+pub fn memory_tree_ui(
+    ui: &mut egui::Ui,
+    tree: Option<re_byte_size::NamedMemUsageTree>,
+    include_rss: &mut bool,
+) {
+    // Add explanation at the top
+    ui.horizontal(|ui| {
+        ui.label("Memory flamegraph visualizing the memory usage tree.");
+        ui.hyperlink_to(
+            "Learn more",
+            "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html?speculative-link",
+        );
+        fn foo(_: &dyn re_byte_size::MemUsageTreeCapture) {
+            // This function is only here so we remember to update the link above if the trait name changes.
+        }
+    });
+
+    ui.label("💡 Tip: Double-click to reset view, scroll to zoom, drag to pan.");
+
+    // Add checkbox to control RSS inclusion
+    ui.horizontal(|ui| {
+        ui.re_checkbox(include_rss, "Include RSS")
+            .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory in RAM, but may be very large due to memory mapped files and shared libraries.");
+    });
+
+    ui.separator();
+
     let Some(mut tree) = tree else {
         ui.label("No memory usage tree available.");
         return;
@@ -572,7 +599,6 @@ pub fn memory_tree_ui(ui: &mut egui::Ui, tree: Option<re_byte_size::NamedMemUsag
     let re_memory::MemoryUse { resident, counted } = re_memory::MemoryUse::capture();
 
     let show_counted = true;
-    let show_rss = false; // This is sometimes huge, because… unknown reasons
 
     if show_counted && let Some(counted) = counted {
         tree = re_byte_size::NamedMemUsageTree::new(
@@ -583,7 +609,7 @@ pub fn memory_tree_ui(ui: &mut egui::Ui, tree: Option<re_byte_size::NamedMemUsag
         );
     }
 
-    if show_rss && let Some(resident) = resident {
+    if *include_rss && let Some(resident) = resident {
         tree = re_byte_size::NamedMemUsageTree::new(
             "RSS",
             re_byte_size::MemUsageNode::new()
