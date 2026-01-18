@@ -1,7 +1,4 @@
 //! A mpsc channel that applies backpressure based on byte size.
-//!
-//! This crate provides both synchronous channel implementations
-//! that apply backpressure based on the total byte size of messages in the channel.
 
 mod try_send_error;
 

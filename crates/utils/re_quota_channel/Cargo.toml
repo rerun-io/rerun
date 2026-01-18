@@ -1,7 +1,7 @@
 [package]
 name = "re_quota_channel"
 authors.workspace = true
-description = "A crossbeam channel wrapper that applies backpressure based on byte size."
+description = "A channel that applies backpressure based on byte size."
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -26,10 +26,3 @@ re_log.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-futures.workspace = true
-tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync"] }
-
-[dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros", "time"] }
