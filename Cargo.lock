@@ -9024,6 +9024,7 @@ dependencies = [
  "criterion",
  "insta",
  "mimalloc",
+ "re_byte_size",
  "smallvec",
  "static_assertions",
 ]

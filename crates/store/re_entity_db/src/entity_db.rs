@@ -2,6 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
@@ -1074,6 +1075,44 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
+    }
+}
+
+impl MemUsageTreeCapture for EntityDb {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self {
+            store_id,
+            data_source,
+            rrd_manifest_index,
+            set_store_info,
+            last_modified_at,
+            latest_row_id,
+            entity_path_from_hash,
+            time_histogram_per_timeline,
+            storage_engine,
+            stats,
+        } = self;
+
+        // Explicitly ignore small fields
+        _ = store_id;
+        _ = data_source;
+        _ = set_store_info;
+        _ = last_modified_at;
+        _ = latest_row_id;
+        _ = stats;
+        _ = entity_path_from_hash; // IntMap doesn't implement SizeBytes
+
+        let mut node = MemUsageNode::new();
+
+        let storage_engine_guard = storage_engine.read();
+        let store = storage_engine_guard.store();
+        node.add("chunk_store", store.capture_mem_usage_tree());
+        drop(storage_engine_guard);
+
+        node.add("time_histogram_per_timeline", time_histogram_per_timeline.capture_mem_usage_tree());
+        node.add("rrd_manifest_index", rrd_manifest_index.capture_mem_usage_tree());
+
+        node.into_tree()
     }
 }
 

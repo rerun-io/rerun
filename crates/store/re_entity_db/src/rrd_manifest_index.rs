@@ -7,7 +7,7 @@ use arrow::compute::take_record_batch;
 use emath::NumExt as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
@@ -723,5 +723,63 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
         StoreKind::Blueprint => {
             // We edit blueprint by generating new chunks in the viewer.
         }
+    }
+}
+
+impl MemUsageTreeCapture for RrdManifestIndex {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+
+        let Self {
+            manifest,
+            remote_chunks,
+            chunk_promises,
+            parents,
+            timelines,
+            entity_tree,
+            entity_has_temporal_data_on_timeline,
+            entity_has_static_data,
+            static_chunk_ids,
+            native_static_map,
+            native_temporal_map,
+            chunk_intervals,
+            manifest_row_from_chunk_id,
+            full_uncompressed_size,
+        } = self;
+
+        // Explicitly ignore fields that contribute negligibly to memory or don't implement SizeBytes
+        _ = manifest; // RrdManifest doesn't implement SizeBytes
+        _ = chunk_promises; // ChunkPromises is mostly futures/promises
+        _ = native_static_map; // RrdManifestStaticMap doesn't implement SizeBytes
+        _ = native_temporal_map; // RrdManifestTemporalMap doesn't implement SizeBytes
+        _ = remote_chunks; // ChunkInfo doesn't implement SizeBytes
+        _ = chunk_intervals; // SortedRangeMap doesn't implement SizeBytes
+        _ = entity_tree; // EntityTree doesn't implement MemUsageTreeCapture yet
+        _ = full_uncompressed_size; // Just a u64
+
+        let mut node = re_byte_size::MemUsageNode::new();
+        node.add("parents", MemUsageTree::Bytes(parents.total_size_bytes()));
+        node.add(
+            "timelines",
+            MemUsageTree::Bytes(timelines.total_size_bytes()),
+        );
+        node.add(
+            "entity_has_temporal_data_on_timeline",
+            MemUsageTree::Bytes(entity_has_temporal_data_on_timeline.total_size_bytes()),
+        );
+        node.add(
+            "entity_has_static_data",
+            MemUsageTree::Bytes(entity_has_static_data.total_size_bytes()),
+        );
+        node.add(
+            "static_chunk_ids",
+            MemUsageTree::Bytes(static_chunk_ids.total_size_bytes()),
+        );
+        node.add(
+            "manifest_row_from_chunk_id",
+            MemUsageTree::Bytes(manifest_row_from_chunk_id.total_size_bytes()),
+        );
+
+        node.into_tree()
     }
 }
