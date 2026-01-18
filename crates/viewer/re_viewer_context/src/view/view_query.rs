@@ -31,6 +31,10 @@ pub struct VisualizerInstruction {
     pub visualizer_type: ViewSystemIdentifier,
 
     /// The blueprint path to the override values for this visualizer instruction.
+    ///
+    /// # Example
+    /// For an entity at `/world/camera`, this path is:
+    /// `/view/{view_id}/ViewContents/overrides/world/camera/visualizers/{instruction_id}`
     pub override_path: EntityPath,
 
     /// List of components that have overrides for this visualizer instruction.
@@ -121,7 +125,23 @@ pub struct DataResult {
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply to the individual entity only.
+    ///
+    /// # Example
+    /// For an entity at `/world/camera`, the override base path might be:
+    /// `/view/{view_id}/ViewContents/overrides/world/camera/visualizers`
+    ///
+    /// A visualizer instruction's override path would then be a child of this, e.g.:
+    /// `/view/{view_id}/ViewContents/overrides/world/camera/visualizers/{instruction_id}`
     pub override_base_path: EntityPath,
+
+    /// Location of the legacy override path for this data result.
+    ///
+    /// This is the path where overrides were stored in pre-0.29 blueprints.
+    ///
+    /// # Example
+    /// For an entity at `/world/camera`, this path is:
+    /// `/view/{view_id}/ViewContents/overrides/world/camera`
+    pub legacy_override_path: EntityPath,
 
     /// What range is queried on the chunk store.
     ///

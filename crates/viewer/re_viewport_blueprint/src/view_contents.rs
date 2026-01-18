@@ -108,6 +108,13 @@ impl ViewContents {
         )
     }
 
+    pub fn legacy_override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
+        blueprint_archetypes::ViewContents::blueprint_legacy_override_path_for_entity(
+            id.uuid(),
+            entity_path,
+        )
+    }
+
     /// Attempt to load a [`ViewContents`] from the blueprint store.
     pub fn from_db_or_default(
         view_id: ViewId,
@@ -419,6 +426,10 @@ impl QueryExpressionEvaluator<'_> {
                         self.view_id,
                         entity_path,
                     ),
+                    legacy_override_path: ViewContents::legacy_override_path_for_entity(
+                        self.view_id,
+                        entity_path,
+                    ),
                     query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
                 },
                 children,
@@ -602,6 +613,32 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         )
                     })
                     .collect();
+            }
+        }
+
+        // Import legacy overrides from pre-0.29 blueprints.
+        println!(
+            "Importing legacy overrides from: {:?}",
+            node.data_result.legacy_override_path
+        );
+        for component in blueprint
+            .storage_engine()
+            .store()
+            .all_components_for_entity(&node.data_result.legacy_override_path)
+            .unwrap_or_default()
+        {
+            if let Some(component_data) = blueprint
+                        .storage_engine()
+                        .cache()
+                        .latest_at(blueprint_query, &node.data_result.legacy_override_path, [component])
+                        .component_batch_raw(component) &&
+                    // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
+                     !component_data.is_empty()
+            {
+                println!("Found override for component: {:?}", component);
+                for instruction in &mut node.data_result.visualizer_instructions {
+                    instruction.component_overrides.insert(component);
+                }
             }
         }
 

@@ -36,4 +36,17 @@ impl ViewContents {
             .join(entity_path)
             .join(&EntityPath::from_single_string(Self::VISUALIZERS_PREFIX))
     }
+
+    /// Legacy override path for a given entity in a given view.
+    ///
+    /// Before 0.29, overrides were stored directly at this path (without the `/visualizers/{id}` suffix).
+    /// This method is used for importing override values from old blueprints.
+    pub fn blueprint_legacy_override_path_for_entity(
+        view_id: uuid::Uuid,
+        entity_path: &EntityPath,
+    ) -> EntityPath {
+        Self::blueprint_entity_path_for_view_id(view_id)
+            .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
+            .join(entity_path)
+    }
 }
