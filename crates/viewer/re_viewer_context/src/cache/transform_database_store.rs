@@ -7,7 +7,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_tf::{TransformForest, TransformResolutionCache};
 
-use super::{Cache, CacheMemoryReport};
+use super::Cache;
 
 /// Stores a [`TransformResolutionCache`] for each recording.
 ///
@@ -68,22 +68,13 @@ impl SizeBytes for TransformDatabaseStoreCache {
 }
 
 impl Cache for TransformDatabaseStoreCache {
+    fn name(&self) -> &'static str {
+        "Transform Database"
+    }
+
     fn purge_memory(&mut self) {
         // Can't purge memory from the transform cache right now and even if we could, there's
         // no point to it since we can't build it up in a more compact fashion yet.
-    }
-
-    fn memory_report(&self) -> CacheMemoryReport {
-        re_tracing::profile_function!();
-        CacheMemoryReport {
-            bytes_cpu: self.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        "Transform Database"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
@@ -97,5 +88,11 @@ impl Cache for TransformDatabaseStoreCache {
         self.transform_cache
             .write()
             .process_store_events(events.iter().copied());
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for TransformDatabaseStoreCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.total_size_bytes())
     }
 }

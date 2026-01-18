@@ -7,7 +7,7 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::datatypes::TensorData;
 
-use crate::{Cache, CacheMemoryReport, TensorStats};
+use crate::{Cache, TensorStats};
 
 /// Caches tensor stats.
 ///
@@ -28,20 +28,12 @@ impl TensorStatsCache {
 }
 
 impl Cache for TensorStatsCache {
-    fn purge_memory(&mut self) {
-        // Purging the tensor stats is not worth it - these are very small objects!
-    }
-
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
     fn name(&self) -> &'static str {
         "Tensor Stats"
+    }
+
+    fn purge_memory(&mut self) {
+        // Purging the tensor stats is not worth it - these are very small objects!
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
@@ -68,5 +60,11 @@ impl Cache for TensorStatsCache {
 
         self.0
             .retain(|cache_key, _per_key| !cache_keys.contains(cache_key));
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for TensorStatsCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }

@@ -15,7 +15,7 @@ use re_video::DecodeSettings;
 
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
-use crate::{Cache, CacheMemoryReport};
+use crate::Cache;
 
 // ----------------------------------------------------------------------------
 
@@ -110,6 +110,10 @@ where
     Video: Send + Sync,
     VideoLoadError: Send + Sync,
 {
+    fn name(&self) -> &'static str {
+        "Video Assets"
+    }
+
     fn begin_frame(&mut self) {
         re_tracing::profile_function!();
 
@@ -131,14 +135,6 @@ where
         }
     }
 
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
     fn purge_memory(&mut self) {
         // We aggressively purge all unused video data every frame.
         // The expectation here is that parsing video data is fairly fast,
@@ -149,15 +145,22 @@ where
         // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
-    fn name(&self) -> &'static str {
-        "Video Assets"
-    }
-
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let cache_key_removed = filter_blob_removed_events(events);
         self.0
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for VideoAssetCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    Video: Send + Sync,
+    VideoLoadError: Send + Sync,
+{
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }

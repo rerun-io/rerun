@@ -5,7 +5,6 @@ use re_memory::{MemoryLimit, MemoryUse};
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
-use re_viewer_context::CacheMemoryReport;
 use re_viewer_context::store_hub::StoreHubStats;
 
 use super::memory_history::MemoryHistory;
@@ -148,75 +147,16 @@ impl MemoryPanel {
 
                         ui.separator();
                         ui.collapsing("Viewer Caches", |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(format!(
-                                    "CPU Memory: {}",
-                                    format_bytes(store_stats.viewer_cache_size as f64)
-                                ));
-                                let gpu_memory = store_stats
-                                    .cache_memory_reports
-                                    .values()
-                                    .map(|report| report.bytes_gpu.unwrap_or_default())
-                                    .sum::<u64>();
-                                if gpu_memory > 0 {
-                                    ui.label(format!(
-                                        "GPU Memory: {}",
-                                        format_bytes(gpu_memory as f64)
-                                    ));
-                                }
-                            });
-                            let mut display_caches =
-                                store_stats.cache_memory_reports.iter().collect::<Vec<_>>();
+                            ui.label(format!(
+                                "GPU Memory: {}",
+                                format_bytes(store_stats.cache_vram_usage.size_bytes() as f64)
+                            ));
 
-                            // Iterating a hash map doesn't give us a consistent ordering so we sort by name here.
-                            display_caches.sort_by_key(|(name, _)| *name);
-
-                            for (name, report) in display_caches {
-                                ui.collapsing(*name, |ui| {
-                                    Self::cache_memory_report(ui, name, report);
-                                });
-                            }
+                            // TODO(emilk): in the future we could have a VRAM flamegraph here
                         });
                     });
                 }
             });
-        }
-    }
-
-    fn cache_memory_report(ui: &mut egui::Ui, name: &str, report: &CacheMemoryReport) {
-        ui.horizontal(|ui| {
-            ui.label(format!(
-                "CPU Memory: {}",
-                format_bytes(report.bytes_cpu as f64)
-            ));
-            if let Some(bytes_gpu) = report.bytes_gpu {
-                ui.label(format!("GPU Memory: {}", format_bytes(bytes_gpu as f64)));
-            }
-        });
-
-        if !report.per_cache_item_info.is_empty() {
-            egui::ScrollArea::vertical()
-                .max_height(200.0)
-                .id_salt(name)
-                .show(ui, |ui| {
-                    egui::Grid::new(format!("{name} grid"))
-                        .num_columns(3)
-                        .show(ui, |ui| {
-                            ui.label(egui::RichText::new("Name").underline());
-                            ui.label(egui::RichText::new("Memory (CPU)").underline());
-                            ui.label(egui::RichText::new("Memory (GPU)").underline());
-                            ui.end_row();
-
-                            for item in &report.per_cache_item_info {
-                                ui.label(&item.item_name);
-                                ui.label(format_bytes(item.bytes_cpu as f64));
-                                if let Some(bytes_gpu) = item.bytes_gpu {
-                                    ui.label(format_bytes(bytes_gpu as f64));
-                                }
-                                ui.end_row();
-                            }
-                        })
-                });
         }
     }
 
@@ -563,7 +503,6 @@ impl MemoryPanel {
                     counted_blueprints,
                     counted_recordings,
                     counted_query_caches,
-                    counted_viewer_caches,
                     counted_table_stores,
                 } = &self.history;
 
@@ -573,7 +512,6 @@ impl MemoryPanel {
                 plot_ui.line(to_line("Blueprints", counted_blueprints).width(1.5));
                 plot_ui.line(to_line("Recordings", counted_recordings).width(1.5));
                 plot_ui.line(to_line("Query caches", counted_query_caches).width(1.5));
-                plot_ui.line(to_line("Viewer caches", counted_viewer_caches).width(1.5));
                 plot_ui.line(to_line("Table stores", counted_table_stores).width(1.5));
             });
     }

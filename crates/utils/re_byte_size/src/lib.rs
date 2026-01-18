@@ -8,8 +8,10 @@ mod smallvec_sizes;
 mod std_sizes;
 mod tuple_sizes;
 
-pub use bookkeeping_btreemap::BookkeepingBTreeMap;
-pub use mem_usage_tree::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
+pub use self::bookkeeping_btreemap::BookkeepingBTreeMap;
+pub use self::mem_usage_tree::{
+    MemUsageNode, MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree,
+};
 
 // ---
 

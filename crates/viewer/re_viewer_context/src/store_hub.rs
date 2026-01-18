@@ -18,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,
-    TableStore, TableStores,
+    BlueprintUndoState, Caches, RecordingOrTable, StorageContext, StoreContext, TableStore,
+    TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings
@@ -119,11 +119,8 @@ pub struct StoreStats {
     /// These are the query caches.
     pub query_cache_stats: QueryCachesStats,
 
-    /// Memory reports for caches.
-    pub cache_memory_reports: HashMap<&'static str, CacheMemoryReport>,
-
-    /// CPU memory of the viewer caches, e.g. image decode caches etc.
-    pub viewer_cache_size: u64,
+    /// VRAM usage by different caches
+    pub cache_vram_usage: MemUsageTree,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -1086,9 +1083,9 @@ impl StoreHub {
         for store in store_bundle.entity_dbs() {
             let store_id = store.store_id();
             let engine = store.storage_engine();
-            let cache_memory_reports = caches_per_recording
+            let cache_vram_usage = caches_per_recording
                 .get(store_id)
-                .map(|caches| caches.memory_reports())
+                .map(|caches| caches.vram_usage())
                 .unwrap_or_default();
             store_stats.insert(
                 store_id.clone(),
@@ -1096,11 +1093,7 @@ impl StoreHub {
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),
-                    viewer_cache_size: cache_memory_reports
-                        .values()
-                        .map(|report| report.bytes_cpu)
-                        .sum(),
-                    cache_memory_reports,
+                    cache_vram_usage,
                 },
             );
         }
