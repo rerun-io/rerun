@@ -80,6 +80,7 @@ examples = [
   "detect_and_track_objects",
   "face_tracking",
   "annotation_gradio",
+  "sam3d_body",
   "prompt_depth_anything",
   "sam2_depthanything",
   "ocr",
