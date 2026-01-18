@@ -13,9 +13,9 @@ use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::components::MediaType;
 use re_video::DecodeSettings;
 
+use crate::Cache;
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
-use crate::Cache;
 
 // ----------------------------------------------------------------------------
 
@@ -24,6 +24,9 @@ struct Entry {
 
     /// Keeps failed loads around, so we can don't try again and again.
     video: Arc<Result<Video, VideoLoadError>>,
+
+    /// Debug name for this video entry (typically the entity path).
+    debug_name: String,
 }
 
 impl re_byte_size::SizeBytes for Entry {
@@ -31,11 +34,13 @@ impl re_byte_size::SizeBytes for Entry {
         let Self {
             used_this_frame: _,
             video,
+            debug_name,
         } = self;
-        match video.as_ref() {
-            Ok(video) => video.heap_size_bytes(),
-            Err(_) => 100, // close enough
-        }
+        debug_name.len() as u64
+            + match video.as_ref() {
+                Ok(video) => video.heap_size_bytes(),
+                Err(_) => 100, // close enough
+            }
     }
 }
 
@@ -89,10 +94,11 @@ impl VideoAssetCache {
                     // For video assets we use the row-id as the source identifier.
                     blob_row_id.as_tuid(),
                 )
-                .map(|data| Video::load(debug_name, data, decode_settings));
+                .map(|data| Video::load(debug_name.clone(), data, decode_settings));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
+                    debug_name,
                 }
             });
 
@@ -161,6 +167,24 @@ where
     VideoLoadError: Send + Sync,
 {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
-        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        // Collect all entries with their debug names and sizes
+        let mut items: Vec<_> = self
+            .0
+            .values()
+            .flat_map(|per_key| per_key.values())
+            .map(|entry| {
+                let size = entry.heap_size_bytes();
+                (entry.debug_name.as_str(), size)
+            })
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(b.0));
+
+        for (debug_name, size) in items {
+            node.add(debug_name, re_byte_size::MemUsageTree::Bytes(size));
+        }
+
+        node.with_total_size_bytes(self.0.total_size_bytes())
     }
 }
