@@ -36,11 +36,7 @@ impl re_byte_size::SizeBytes for Entry {
             video,
             debug_name,
         } = self;
-        debug_name.len() as u64
-            + match video.as_ref() {
-                Ok(video) => video.heap_size_bytes(),
-                Err(_) => 100, // close enough
-            }
+        debug_name.len() as u64 + video.heap_size_bytes()
     }
 }
 

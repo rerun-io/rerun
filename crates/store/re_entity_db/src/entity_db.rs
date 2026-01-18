@@ -1100,11 +1100,10 @@ impl MemUsageTreeCapture for EntityDb {
 
         let mut node = MemUsageNode::new();
 
-        {
-            let storage_engine_guard = storage_engine.read();
-            let store = storage_engine_guard.store();
-            node.add("chunk_store", store.capture_mem_usage_tree());
-        }
+        node.add(
+            "chunk_store",
+            storage_engine.read().capture_mem_usage_tree(),
+        );
 
         node.add(
             "entity_path_from_hash",
