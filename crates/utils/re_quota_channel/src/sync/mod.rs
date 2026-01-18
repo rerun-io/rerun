@@ -315,7 +315,6 @@ impl<T> Receiver<T> {
 ///   backpressure is applied. On native platforms, [`Sender::send`] will block
 ///   when this limit is reached. On `wasm32`, a warning is logged but sending continues.
 pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender<T>, Receiver<T>) {
-    #[expect(clippy::disallowed_methods)] // We bound it manually, to max byte size
     let (tx, rx) = crossbeam::channel::unbounded();
 
     let shared = Arc::new(SharedState {
