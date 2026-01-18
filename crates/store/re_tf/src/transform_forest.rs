@@ -368,6 +368,8 @@ impl TransformForest {
 
 impl SizeBytes for TransformForest {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             roots,
             root_from_frame,
