@@ -93,6 +93,12 @@ impl Default for ChunkStoreConfig {
     }
 }
 
+impl re_byte_size::SizeBytes for ChunkStoreConfig {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl ChunkStoreConfig {
     /// Default configuration, applicable to most use cases, according to empirical testing.
     pub const DEFAULT: Self = Self {
@@ -274,6 +280,20 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
+impl re_byte_size::SizeBytes for ChunkIdSetPerTime {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            max_interval_length,
+            per_start_time,
+            per_end_time,
+        } = self;
+
+        max_interval_length.heap_size_bytes()
+            + per_start_time.heap_size_bytes()
+            + per_end_time.heap_size_bytes()
+    }
+}
+
 pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentIdentifier, ChunkIdSetPerTime>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimeline =
@@ -314,6 +334,16 @@ pub struct ColumnMetadataState {
     /// This is purely additive: once false, it will always be false. Even in case of garbage
     /// collection.
     pub is_semantically_empty: bool,
+}
+
+impl re_byte_size::SizeBytes for ColumnMetadataState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            is_semantically_empty,
+        } = self;
+
+        is_semantically_empty.heap_size_bytes()
+    }
 }
 
 /// Incremented on each edit.

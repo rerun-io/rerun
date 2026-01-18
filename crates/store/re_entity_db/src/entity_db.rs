@@ -2,7 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
@@ -1086,7 +1086,7 @@ impl MemUsageTreeCapture for EntityDb {
             rrd_manifest_index,
             time_histogram_per_timeline,
             storage_engine,
-            entity_path_from_hash: _, // TODO: implement this
+            entity_path_from_hash,
 
             // Small:
             store_id: _,
@@ -1100,10 +1100,16 @@ impl MemUsageTreeCapture for EntityDb {
 
         let mut node = MemUsageNode::new();
 
-        let storage_engine_guard = storage_engine.read();
-        let store = storage_engine_guard.store();
-        node.add("chunk_store", store.capture_mem_usage_tree());
-        drop(storage_engine_guard);
+        {
+            let storage_engine_guard = storage_engine.read();
+            let store = storage_engine_guard.store();
+            node.add("chunk_store", store.capture_mem_usage_tree());
+        }
+
+        node.add(
+            "entity_path_from_hash",
+            MemUsageTree::Bytes(entity_path_from_hash.total_size_bytes()),
+        );
 
         node.add(
             "time_histogram_per_timeline",

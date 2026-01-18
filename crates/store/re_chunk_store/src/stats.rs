@@ -112,6 +112,13 @@ pub struct ChunkStoreChunkStats {
     pub num_events: u64,
 }
 
+impl SizeBytes for ChunkStoreChunkStats {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl std::fmt::Display for ChunkStoreChunkStats {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -343,6 +350,55 @@ impl ChunkStore {
     }
 }
 
+impl SizeBytes for ChunkStore {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        let Self {
+            chunks_per_chunk_id,
+            static_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity_per_component,
+            id,
+            config,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunk_ids_per_min_row_id,
+            temporal_physical_chunks_stats,
+            static_chunks_stats,
+            missing_chunk_ids,
+            insert_id,
+            gc_id,
+            event_id: _, // no heap data
+        } = self;
+
+        // Avoid the amortizing effects of Arc::total_size_bytes:
+        let chunks_size = chunks_per_chunk_id
+            .iter()
+            .map(|(chunk_id, chunk)| {
+                chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
+            })
+            .sum::<u64>();
+
+        chunks_size
+            + static_chunk_ids_per_entity.heap_size_bytes()
+            + temporal_chunk_ids_per_entity.heap_size_bytes()
+            + temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+            + id.heap_size_bytes()
+            + config.heap_size_bytes()
+            + time_type_registry.heap_size_bytes()
+            + type_registry.heap_size_bytes()
+            + per_column_metadata.heap_size_bytes()
+            + chunk_ids_per_min_row_id.heap_size_bytes()
+            + temporal_physical_chunks_stats.heap_size_bytes()
+            + static_chunks_stats.heap_size_bytes()
+            + missing_chunk_ids.heap_size_bytes()
+            + insert_id.heap_size_bytes()
+            + gc_id.heap_size_bytes()
+    }
+}
+
 impl MemUsageTreeCapture for ChunkStore {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         re_tracing::profile_function!();
@@ -357,7 +413,7 @@ impl MemUsageTreeCapture for ChunkStore {
             );
         }
 
-        node.into_tree()
+        node.with_total_size_bytes(self.total_size_bytes())
     }
 }
 
@@ -369,8 +425,32 @@ impl ChunkStore {
         re_tracing::profile_function!();
 
         let mut stats = self.entity_stats_static(entity_path);
-        for timeline in self.timelines().keys() {
-            stats += self.entity_stats_on_timeline(entity_path, timeline);
+
+        if false {
+            // this double-counts the chunks that contain multiple timelines, which is most of them.
+            for timeline in self.timelines().keys() {
+                stats += self.entity_stats_on_timeline(entity_path, timeline);
+            }
+        } else {
+            let mut all_chunk_ids = ahash::HashSet::<re_chunk::ChunkId>::default();
+
+            for timeline in self.timelines().keys() {
+                // stats += self.entity_stats_on_timeline(entity_path, timeline);
+                if let Some(temporal_chunk_ids_per_timeline) =
+                    self.temporal_chunk_ids_per_entity.get(entity_path)
+                    && let Some(chunk_id_sets) = temporal_chunk_ids_per_timeline.get(timeline)
+                {
+                    for chunk_ids_set in chunk_id_sets.per_start_time.values() {
+                        all_chunk_ids.extend(chunk_ids_set.iter());
+                    }
+                }
+            }
+
+            for chunk_id in all_chunk_ids {
+                if let Some(chunk) = self.chunks_per_chunk_id.get(&chunk_id) {
+                    stats += ChunkStoreChunkStats::from_chunk(chunk);
+                }
+            }
         }
         stats
     }

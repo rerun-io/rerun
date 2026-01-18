@@ -583,13 +583,10 @@ pub fn memory_tree_ui(
         }
     });
 
-    ui.label("💡 Tip: Double-click to reset view, scroll to zoom, drag to pan.");
+    ui.label("Double-click to reset view, scroll to zoom, drag to pan.");
 
-    // Add checkbox to control RSS inclusion
-    ui.horizontal(|ui| {
-        ui.re_checkbox(include_rss, "Include RSS")
-            .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory in RAM, but may be very large due to memory mapped files and shared libraries.");
-    });
+    ui.re_checkbox(include_rss, "Include RSS")
+        .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory in RAM, but may be very large due to memory mapped files and shared libraries.");
 
     ui.separator();
 
@@ -600,9 +597,9 @@ pub fn memory_tree_ui(
 
     let re_memory::MemoryUse { resident, counted } = re_memory::MemoryUse::capture();
 
-    let show_counted = true;
+    let include_counted = true; // What our allocator counts. Perfectly accurate.
 
-    if show_counted && let Some(counted) = counted {
+    if include_counted && let Some(counted) = counted {
         tree = re_byte_size::NamedMemUsageTree::new(
             "counted",
             re_byte_size::MemUsageNode::new()

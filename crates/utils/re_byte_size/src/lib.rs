@@ -3,6 +3,7 @@
 mod arrow_sizes;
 mod bookkeeping_btreemap;
 mod mem_usage_tree;
+mod parking_lot_sizes;
 mod primitive_sizes;
 mod smallvec_sizes;
 mod std_sizes;

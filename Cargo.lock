@@ -8520,6 +8520,7 @@ dependencies = [
  "arrow",
  "glam",
  "half",
+ "parking_lot",
  "smallvec",
 ]
 
