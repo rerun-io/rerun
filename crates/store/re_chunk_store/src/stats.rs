@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_byte_size::SizeBytes;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes};
 use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
@@ -340,5 +340,34 @@ impl ChunkStore {
                 self.num_temporal_events_for_component_on_timeline(timeline, entity_path, component)
             })
             .sum()
+    }
+}
+
+impl MemUsageTreeCapture for ChunkStore {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let mut node = MemUsageNode::new();
+
+        for entity_path in self.all_entities_sorted() {
+            let entity_stats = self.entity_stats(&entity_path);
+            node.add(
+                entity_path.to_string(),
+                MemUsageTree::Bytes(entity_stats.total_size_bytes),
+            );
+        }
+
+        node.into_tree()
+    }
+}
+
+impl ChunkStore {
+    /// Total *physical* stats for an entity across all timelines.
+    ///
+    /// Includes both static and temporal data.
+    pub fn entity_stats(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
+        let mut stats = self.entity_stats_static(entity_path);
+        for timeline in self.timelines().keys() {
+            stats += self.entity_stats_on_timeline(entity_path, timeline);
+        }
+        stats
     }
 }
