@@ -64,30 +64,48 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
         state.auto_fit(total_size, rect.width());
     }
 
-    // Handle zoom and pan input
+    // Handle zoom and pan input - only if mouse is hovering over the flamegraph
     let input = ui.input(|i| i.clone());
+    let is_hovering = input
+        .pointer
+        .hover_pos()
+        .is_some_and(|pos| rect.contains(pos));
 
-    // Handle zoom with scroll wheel (Ctrl/Cmd + scroll or pinch gesture)
-    let zoom_delta = input.zoom_delta_2d();
-    if zoom_delta != egui::Vec2::splat(1.0) {
-        let zoom_factor = f32::midpoint(zoom_delta.x, zoom_delta.y);
-        state.zoom *= zoom_factor;
-        state.zoom = state.zoom.clamp(1e-9, 1e3);
-        state.auto_fit = false; // Disable auto-fit on user zoom
+    if is_hovering {
+        // Handle zoom with scroll wheel (Ctrl/Cmd + scroll or pinch gesture)
+        let zoom_factor = input.zoom_delta();
+        if zoom_factor != 1.0 {
+            // Get mouse position relative to the flamegraph
+            if let Some(pointer_pos) = input.pointer.hover_pos() {
+                // Calculate which byte offset the mouse is currently over (before zoom)
+                let mouse_x_relative = pointer_pos.x - rect.min.x;
+                let mouse_byte_pos = -(state.pan_bytes) + (mouse_x_relative / state.zoom) as f64;
+
+                // Apply zoom
+                state.zoom *= zoom_factor;
+                state.zoom = state.zoom.clamp(1e-9, 1.0);
+
+                // Adjust pan so that the same byte position remains under the mouse
+                // After zoom: mouse_x_relative = (mouse_byte_pos - (-pan_bytes)) * new_zoom
+                // Solving for new pan_bytes:
+                state.pan_bytes = -(mouse_byte_pos - (mouse_x_relative / state.zoom) as f64);
+            } else {
+                // No mouse position, just zoom without adjusting pan
+                state.zoom *= zoom_factor;
+                state.zoom = state.zoom.clamp(1e-9, 1.0);
+            }
+
+            state.auto_fit = false; // Disable auto-fit on user zoom
+        }
+
+        // Handle pan with smooth scroll
+        let scroll_delta = input.smooth_scroll_delta;
+        if scroll_delta.x != 0.0 {
+            // Convert UI points to bytes for panning
+            state.pan_bytes += (scroll_delta.x / state.zoom) as f64;
+            state.auto_fit = false; // Disable auto-fit on user pan
+        }
     }
-
-    // Handle pan with smooth scroll
-    let scroll_delta = input.smooth_scroll_delta;
-    if scroll_delta.x != 0.0 {
-        // Convert UI points to bytes for panning
-        state.pan_bytes += (scroll_delta.x / state.zoom) as f64;
-        state.auto_fit = false; // Disable auto-fit on user pan
-    }
-
-    // Clamp pan to reasonable bounds
-    state.pan_bytes = state
-        .pan_bytes
-        .clamp(-(total_size as f64 * 0.5), total_size as f64 * 0.5);
 
     // Render the flamegraph
     let x_start_bytes = -(state.pan_bytes);
@@ -197,12 +215,17 @@ fn render_flamegraph_node(
             .with(x_offset_bytes as u64);
         let response = ui.interact(node_rect, id, egui::Sense::hover());
         response.on_hover_ui(|ui| {
-            ui.label(format!("Name: {name}"));
-            ui.label(format!(
-                "Size: {}",
-                re_format::format_bytes(size_bytes as f64)
-            ));
-            ui.label(format!("Depth: {}", depth as usize));
+            egui::Grid::new("flamegraph_tooltip_grid")
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("Name");
+                    ui.label(name);
+                    ui.end_row();
+
+                    ui.label("Size");
+                    ui.label(re_format::format_bytes(size_bytes as f64));
+                    ui.end_row();
+                });
         });
     }
 
