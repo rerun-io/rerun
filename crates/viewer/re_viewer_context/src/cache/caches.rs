@@ -2,6 +2,7 @@ use std::any::TypeId;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
@@ -155,5 +156,50 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Useful for creating data that may be based on the information we get in the rrd manifest.
     fn on_rrd_manifest(&mut self, entity_db: &EntityDb) {
         _ = entity_db;
+    }
+}
+
+impl MemUsageTreeCapture for CacheMemoryReport {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self {
+            bytes_cpu,
+            bytes_gpu,
+            per_cache_item_info,
+        } = self;
+
+        let mut node = re_byte_size::MemUsageNode::new();
+        node.add("cpu", MemUsageTree::Bytes(*bytes_cpu));
+        if let Some(gpu_bytes) = bytes_gpu {
+            node.add("gpu", MemUsageTree::Bytes(*gpu_bytes));
+        }
+
+        // Add per-item breakdown
+        if !per_cache_item_info.is_empty() {
+            for item in per_cache_item_info {
+                let mut item_node = re_byte_size::MemUsageNode::new();
+                item_node.add("cpu", MemUsageTree::Bytes(item.bytes_cpu));
+                if let Some(gpu_bytes) = item.bytes_gpu {
+                    item_node.add("gpu", MemUsageTree::Bytes(gpu_bytes));
+                }
+                node.add(item.item_name.clone(), item_node.into_tree());
+            }
+        }
+
+        node.into_tree()
+    }
+}
+
+impl MemUsageTreeCapture for Caches {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut reports: Vec<_> = self.memory_reports().into_iter().collect();
+        reports.sort_by_key(|(cache_name, _)| *cache_name);
+
+        for (cache_name, report) in reports {
+            node.add(cache_name, report.capture_mem_usage_tree());
+        }
+
+        node.into_tree()
     }
 }
