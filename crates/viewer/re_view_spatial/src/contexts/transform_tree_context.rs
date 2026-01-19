@@ -619,7 +619,14 @@ impl EntityTransformIdMapping {
                     );
                     fallback
                 },
-                |frame_id| TransformFrameIdHash::new(&frame_id),
+                |frame_id| {
+                    if results.results.component_mono_raw_with_log_level(re_log::Level::Debug, transform_frame_id_component).is_none() {
+                        re_log::warn_once!(
+                            "Entity {:?} has multiple `CoordinateFrame` instances, which is not supported. Using the first one.",
+                            results.data_result.entity_path,
+                        );
+                    }
+                    TransformFrameIdHash::new(&frame_id)},
             );
 
         let entity_path_hash = results.data_result.entity_path.hash();
