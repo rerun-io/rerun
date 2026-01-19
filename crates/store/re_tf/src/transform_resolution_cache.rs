@@ -723,8 +723,8 @@ impl TreeTransformsForChildFrame {
 
         events
             .frame_transforms
-            .mutate_entry_before(
-                &query.at().inc(),
+            .mutate_latest_at(
+                &query.at(),
                 |time_of_last_update_to_this_frame, frame_transform| {
                     // Separate check to work around borrow checker issues.
                     if frame_transform == &CachedTransformValue::Invalidated {
@@ -782,8 +782,8 @@ impl TreeTransformsForChildFrame {
 
         events
             .pinhole_projections
-            .mutate_entry_before(
-                &query.at().inc(),
+            .mutate_latest_at(
+                &query.at(),
                 |time_of_last_update_to_this_frame, pinhole_projection| {
                     // Separate check to work around borrow checker issues.
                     if pinhole_projection == &CachedTransformValue::Invalidated {
@@ -904,7 +904,7 @@ impl PoseTransformForEntity {
         let mut poses_per_time = self.poses_per_time.lock();
 
         poses_per_time
-            .mutate_entry_before(&query.at().inc(), |_t, pose_transform| {
+            .mutate_latest_at(&query.at(), |_t, pose_transform| {
                 // Separate check to work around borrow checker issues.
                 if pose_transform == &CachedTransformValue::Invalidated {
                     *pose_transform =

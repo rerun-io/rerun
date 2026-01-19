@@ -94,11 +94,11 @@ where
         }
     }
 
-    /// Finds and mutates the last entry before `key`.
+    /// Finds and mutates the last entry smalelr or equalts to the given `key`.
     ///
-    /// Equivalent to `.range_mut(..key).next_back()` but with automatic size tracking.
-    /// Returns the mutator's return value, or `None` if no entry exists before `key`.
-    pub fn mutate_entry_before<Ret>(
+    /// Equivalent to `.range_mut(..=key).next_back()` but with automatic size tracking.
+    /// Returns the mutator's return value, or `None` if no entry exists <= `key`.
+    pub fn mutate_latest_at<Ret>(
         &mut self,
         key: &K,
         mut mutator: impl FnMut(&K, &mut V) -> Ret,
@@ -107,7 +107,7 @@ where
         K: Clone,
     {
         // Find the last key before the given key (need to clone it to avoid borrow issues)
-        let (key, value) = self.map.range_mut(..key).next_back()?;
+        let (key, value) = self.map.range_mut(..=key).next_back()?;
 
         // Measure size before mutation
         let size_before = value.total_size_bytes();
@@ -361,8 +361,7 @@ mod tests {
         map.insert(30, vec!["thirty".to_owned()]);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Mutate entry before 25 (should mutate entry at 20)
-        let result = map.mutate_entry_before(&25, |key, vec| {
+        let result = map.mutate_latest_at(&20, |key, vec| {
             assert_eq!(*key, 20);
             vec.push("added".to_owned());
             *key
@@ -371,7 +370,7 @@ mod tests {
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
         // Mutate entry before 100 (should mutate entry at 30)
-        let result = map.mutate_entry_before(&100, |key, vec| {
+        let result = map.mutate_latest_at(&100, |key, vec| {
             assert_eq!(*key, 30);
             vec.clear();
             *key
@@ -380,7 +379,7 @@ mod tests {
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
         // Try to mutate entry before 5 (should return None)
-        let result = map.mutate_entry_before(&5, |_key, vec| {
+        let result = map.mutate_latest_at(&5, |_key, vec| {
             vec.push("should not happen".to_owned());
         });
         assert_eq!(result, None);
