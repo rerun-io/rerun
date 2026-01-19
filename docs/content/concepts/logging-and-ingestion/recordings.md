@@ -55,7 +55,7 @@ Rerun recordings are stored in `.rrd` files. [Blueprints](../visualization/bluep
 
 ## Application IDs
 
-Rerun recordings also have an _application ID_ in their metadata.
+Rerun recordings have an _application ID_ in their metadata.
 Application IDs are arbitrary user-defined strings set when initializing the SDK:
 
 snippet: tutorials/custom-application-id
