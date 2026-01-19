@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
@@ -324,10 +324,10 @@ impl ViewClass for TimeSeriesView {
                         re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
                             components
                                 .iter()
-                                .any(|c| {
-                                    // If it's a builtin type, it has to be a `Scalars` datatype. For non-builtin types we allow for anything compatible.
-                                    *c == Scalars::descriptor_scalars().component
-                                        || !ctx.reflection().component_identifiers.contains_key(c)
+                                .any(|(_, match_kind)| {
+                                    // It has to have the native semantics for this though!
+                                    *match_kind
+                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
                                 })
                                 .then_some(ent)
                         }
@@ -418,7 +418,7 @@ impl ViewClass for TimeSeriesView {
 
                     // Extract physical component from the visualizable reason
                     if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
-                        for physical_component in components {
+                        for (physical_component, _) in components {
                             mappings.push(VisualizerComponentMapping {
                                 selector: Scalars::descriptor_scalars().component,
                                 target: *physical_component,
@@ -443,7 +443,7 @@ impl ViewClass for TimeSeriesView {
             if let Some(Some(VisualizableReason::DatatypeMatchAny { components })) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
             {
-                for physical_component in components {
+                for (physical_component, _) in components {
                     mappings.push(VisualizerComponentMapping {
                         selector: *physical_component,
                         target: Scalars::descriptor_scalars().component,

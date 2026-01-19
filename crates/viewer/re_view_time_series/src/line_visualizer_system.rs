@@ -34,12 +34,12 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
 
 impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        // TODO(RR-3318): Enable this.
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesLines::name().into(),
-            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                series_supported_datatypes().into_iter().collect(),
-            ),
+            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+                native_type: archetypes::Scalars::descriptor_scalars().component_type,
+                physical_types: series_supported_datatypes().into_iter().collect(),
+            },
             queried: archetypes::Scalars::all_components()
                 .iter()
                 .chain(archetypes::SeriesLines::all_components().iter())

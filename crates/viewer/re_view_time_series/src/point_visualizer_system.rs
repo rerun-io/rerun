@@ -37,9 +37,10 @@ impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesPoints::name().into(),
-            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                series_supported_datatypes().into_iter().collect(),
-            ),
+            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+                native_type: archetypes::Scalars::descriptor_scalars().component_type,
+                physical_types: series_supported_datatypes().into_iter().collect(),
+            },
             queried: archetypes::Scalars::all_components()
                 .iter()
                 .chain(archetypes::SeriesPoints::all_components().iter())
