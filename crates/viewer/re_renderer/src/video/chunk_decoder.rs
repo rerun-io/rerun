@@ -67,7 +67,7 @@ impl re_byte_size::SizeBytes for VideoSampleDecoder {
         let Self {
             debug_name,
             decoder: _,        // TODO(emilk): maybe we should count this
-            frame_receiver: _, // TODO(RR-3366): we should definetly count this
+            frame_receiver: _, // TODO(RR-3366): we should definitely count this
             decoder_output,
             latest_sample_idx: _,
         } = self;

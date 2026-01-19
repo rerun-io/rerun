@@ -32,7 +32,7 @@ impl FlamegraphState {
     fn auto_fit(&mut self, total_size: u64, available_width: f32) {
         if 0 < total_size && 0.0 < available_width {
             // Calculate zoom to fit all content with
-            const PADDING_FACTOR: f32 = 0.01; // Leave some padding on eaither side
+            const PADDING_FACTOR: f32 = 0.01; // Leave some padding on either side
             self.zoom = (available_width * (1.0 - 2.0 * PADDING_FACTOR)) / total_size as f32;
             self.pan_bytes = PADDING_FACTOR as f64 * total_size as f64;
         }
