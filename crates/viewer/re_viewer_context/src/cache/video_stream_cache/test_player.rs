@@ -85,7 +85,7 @@ impl TestVideoPlayer {
     }
 
     #[track_caller]
-    fn expect_encoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
+    fn expect_decoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
         let received = self.sample_rx.try_iter().collect::<Vec<_>>();
         let expected = samples.into_iter().collect::<Vec<_>>();
 
@@ -259,19 +259,19 @@ fn create_video(
 fn test_simple_video(mut video: TestVideoPlayer, count: usize, dt: f64, max_time: f64) {
     video.play(0.0..max_time, dt).unwrap();
 
-    video.expect_encoded_samples(0..count);
+    video.expect_decoded_samples(0..count);
 
     // try again at 0.5x speed.
 
     video.play(0.0..max_time, dt * 0.5).unwrap();
 
-    video.expect_encoded_samples(0..count);
+    video.expect_decoded_samples(0..count);
 
     // and at 2x speed.
 
     video.play(0.0..max_time, dt * 2.0).unwrap();
 
-    video.expect_encoded_samples(0..count);
+    video.expect_decoded_samples(0..count);
 }
 
 #[test]
@@ -391,39 +391,11 @@ fn player_with_skips() {
 
     video.play(0.0..1.0, 0.1).unwrap();
 
-    video.expect_encoded_samples(expected_indices);
+    video.expect_decoded_samples(expected_indices);
 }
 
 #[test]
 fn player_with_unloaded() {
-    let mut video = create_video([
-        keyframe(0.0),
-        frame(0.25),
-        frame(0.5),
-        frame(0.75),
-        unloaded(),
-        unloaded(),
-        unloaded(),
-        unloaded(),
-        keyframe(2.0),
-        frame(2.25),
-        frame(2.5),
-        frame(2.75),
-        keyframe(3.0),
-        frame(3.25),
-        frame(3.5),
-        frame(3.75),
-        unloaded(),
-        unloaded(),
-        unloaded(),
-        unloaded(),
-        keyframe(5.0),
-        frame(5.25),
-        frame(5.5),
-        frame(5.75),
-    ])
-    .unwrap();
-
     #[track_caller]
     fn assert_loading(err: Result<(), VideoPlayerError>) {
         let err = err.unwrap_err();
@@ -441,38 +413,66 @@ fn player_with_unloaded() {
         );
     }
 
-    assert_loading(video.play(1.0..2.0, 0.25));
+    let mut video = create_video([
+        keyframe(0.),
+        frame(1.),
+        frame(2.),
+        frame(3.),
+        unloaded(),
+        unloaded(),
+        unloaded(),
+        unloaded(),
+        keyframe(8.),
+        frame(9.),
+        frame(10.),
+        frame(11.),
+        keyframe(12.),
+        frame(13.),
+        frame(14.),
+        frame(15.),
+        unloaded(),
+        unloaded(),
+        unloaded(),
+        unloaded(),
+        keyframe(20.),
+        frame(21.),
+        frame(22.),
+        frame(23.),
+    ])
+    .unwrap();
 
-    video.expect_encoded_samples([]);
+    video.expect_decoded_samples([]);
 
-    video.play(0.0..0.75, 0.25).unwrap();
-    video.expect_encoded_samples(0..3);
+    video.play(0.0..3.0, 1.0).unwrap();
+    video.expect_decoded_samples(0..3);
 
-    video.play(2.0..3.75, 0.25).unwrap();
-    video.expect_encoded_samples(8..15);
+    assert_loading(video.play(4.0..8.0, 1.0));
 
-    video.play(5.0..6.0, 0.25).unwrap();
-    video.expect_encoded_samples(20..24);
+    video.play(8.0..15.0, 1.0).unwrap();
+    video.expect_decoded_samples(8..15);
+
+    video.play(20.0..24.0, 1.0).unwrap();
+    video.expect_decoded_samples(20..24);
 
     // Play & load progressively
-    video.play(0.0..0.75, 0.25).unwrap();
+    video.play(0.0..3.0, 1.0).unwrap();
 
-    video.set_sample(4, keyframe(1.0));
-    video.set_sample(5, frame(1.25));
-    video.set_sample(6, frame(1.5));
-    video.set_sample(7, frame(1.75));
+    video.set_sample(4, keyframe(4.));
+    video.set_sample(5, frame(5.));
+    video.set_sample(6, frame(6.));
+    video.set_sample(7, frame(7.));
 
-    video.play(1.0..3.75, 0.25).unwrap();
+    video.play(4.0..15.0, 1.0).unwrap();
 
-    video.set_sample(16, keyframe(4.0));
-    video.set_sample(17, frame(4.25));
+    video.set_sample(16, keyframe(16.));
+    video.set_sample(17, frame(17.));
 
-    video.play(4.0..4.25, 0.25).unwrap();
+    video.play(16.0..17.0, 1.0).unwrap();
 
-    video.set_sample(18, frame(4.5));
-    video.set_sample(19, frame(4.75));
+    video.set_sample(18, frame(18.));
+    video.set_sample(19, frame(19.));
 
-    video.play(4.5..6.0, 0.25).unwrap();
+    video.play(18.0..24.0, 1.0).unwrap();
 
-    video.expect_encoded_samples(0..24);
+    video.expect_decoded_samples(0..24);
 }
