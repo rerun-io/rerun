@@ -573,6 +573,7 @@ fn load_chunks(store: &mut EntityDb, cache: &mut super::VideoStreamCache, chunks
     let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
 
     for chunk in chunks {
+        eprintln!("\nload: {}", chunk.id().short_string());
         store_events.extend(store.add_chunk(chunk).unwrap());
     }
 

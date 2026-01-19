@@ -275,7 +275,7 @@ fn handle_deletion(
     timeline: &Timeline,
     video_data: &mut re_video::VideoDataDescription,
     chunk: &Arc<re_chunk::Chunk>,
-    known_ranges: &BTreeMap<ChunkId, ChunkSampleRange>,
+    known_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
 ) -> Result<(), VideoStreamProcessingError> {
     let Some(known_range) = known_ranges.get(&chunk.id()) else {
         // We don't have any samples of this chunk, so just ignore it.
@@ -383,13 +383,24 @@ fn handle_deletion(
                     samples.next()
                 };
 
-                let Some((_idx, sample)) = sample else {
+                let Some((idx, sample)) = sample else {
                     return Err(VideoStreamProcessingError::OutOfOrderSamples);
                 };
 
                 if sample.source_id() != chunk.id().as_tuid() {
                     continue;
                 }
+
+                known_ranges
+                    .entry(chunk_id)
+                    .and_modify(|range| {
+                        range.first_sample = range.first_sample.min(idx);
+                        range.last_sample = range.last_sample.max(idx);
+                    })
+                    .or_insert(ChunkSampleRange {
+                        first_sample: idx,
+                        last_sample: idx,
+                    });
 
                 *sample = re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid());
             }
