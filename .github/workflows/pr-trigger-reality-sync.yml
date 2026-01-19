@@ -1,0 +1,102 @@
+name: PR Trigger Reality Sync
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  trigger-import:
+    # Only run on PR comments (not issue comments)
+    # Only run if comment contains the trigger phrase
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@rerun-bot reality-sync')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: |
+            reality
+            rerun
+
+      - name: Check if commenter has write access
+        id: check-member
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          COMMENTER="${{ github.event.comment.user.login }}"
+          REPO="${{ github.repository }}"
+
+          # Check if user has write or admin permission on this repo
+          # This works for both user-owned and org-owned repositories
+          PERMISSION=$(gh api "repos/$REPO/collaborators/$COMMENTER/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+
+          echo "User $COMMENTER has permission: $PERMISSION"
+
+          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "User $COMMENTER is authorized (permission: $PERMISSION)"
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "User $COMMENTER is NOT authorized (permission: $PERMISSION)"
+          fi
+
+      - name: Post unauthorized message
+        if: steps.check-member.outputs.authorized == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "Sorry, only organization members can trigger the sync CI."
+
+      - name: Get PR details
+        if: steps.check-member.outputs.authorized == 'true'
+        id: pr-details
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          PR_DATA=$(gh pr view ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body)
+
+          echo "pr_number=$(echo "$PR_DATA" | jq -r '.number')" >> $GITHUB_OUTPUT
+          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
+          echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
+          echo "pr_title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
+
+          # Store body in file (handles multiline and special characters)
+          echo "$PR_DATA" | jq -r '.body // ""' > /tmp/pr_body.txt
+
+          # Determine if this is from a fork
+          # Compare head repo with the repo where this action is running
+          HEAD_FULL="${{ github.event.client_payload.head_owner }}/${{ github.event.client_payload.head_repo }}"
+          if [ "$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')/$(echo "$PR_DATA" | jq -r '.headRepository.name')" = "${{ github.repository }}" ]; then
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_fork=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger reality sync workflow
+        if: steps.check-member.outputs.authorized == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/rerun-io/reality/dispatches \
+            -f event_type=sync-import-pr \
+            -f "client_payload[repo]=rerun" \
+            -f "client_payload[pr_number]=${{ steps.pr-details.outputs.pr_number }}" \
+            -f "client_payload[head_ref]=${{ steps.pr-details.outputs.head_ref }}" \
+            -f "client_payload[head_owner]=${{ steps.pr-details.outputs.head_owner }}" \
+            -f "client_payload[head_repo]=${{ steps.pr-details.outputs.head_repo }}" \
+            -f "client_payload[pr_title]=${{ steps.pr-details.outputs.pr_title }}" \
+            -f "client_payload[is_fork]=${{ steps.pr-details.outputs.is_fork }}" \
+            -f "client_payload[triggered_by]=${{ github.event.comment.user.login }}" \
+            --raw-field "client_payload[pr_body]=$(cat /tmp/pr_body.txt)"
