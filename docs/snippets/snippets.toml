@@ -87,7 +87,7 @@ features = [
   [
     "Query dataframes",
     [
-      "reference/dataframe_query",
+      "concepts/query-and-transform/dataframe_query_example",
       "reference/dataframe_view_query",
     ],
   ],
@@ -344,7 +344,7 @@ backwards_check = [
   # TODO(#5521): log VisualBounds2D in all languages
   "py",
 ]
-"concepts/query-and-transform/dataframe_query" = [ # OSS server query example, doesn't generate rrds
+"concepts/query-and-transform/dataframe_query_example" = [ # OSS server query example, doesn't generate rrds
   "cpp",
   "py",
   "rust",

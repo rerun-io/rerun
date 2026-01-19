@@ -27,12 +27,12 @@ Let's use an example to illustrate how dataframe queries work.
 Dataframe queries run against datasets stored on a [Data Platform](../how-does-rerun-work.md#data-platform), an open-source implementation of which ships with Rerun.
 We can create a demo recording and load it into a temporary local catalog using the following code:
 
-snippet: concepts/query-and-transform/dataframe_query[setup]
+snippet: concepts/query-and-transform/dataframe_query_example[setup]
 
 
 We can then perform a dataframe query:
 
-snippet: concepts/query-and-transform/dataframe_query[query]
+snippet: concepts/query-and-transform/dataframe_query_example[query]
 
 
 This should produce an output similar to:
