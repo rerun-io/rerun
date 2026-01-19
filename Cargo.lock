@@ -9074,6 +9074,7 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
+ "re_byte_size",
  "re_log_encoding",
  "re_log_types",
  "re_tracing",
@@ -9319,6 +9320,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_quota_channel"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "crossbeam",
+ "parking_lot",
+ "re_byte_size",
+ "re_format",
+ "re_log",
+]
+
+[[package]]
 name = "re_rav1d"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9408,7 +9420,9 @@ dependencies = [
  "jiff",
  "re_arrow_util",
  "re_auth",
+ "re_byte_size",
  "re_chunk",
+ "re_format",
  "re_log",
  "re_log_channel",
  "re_log_encoding",

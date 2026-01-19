@@ -827,7 +827,7 @@ impl EntityDb {
 
             let mut chunks: Vec<Arc<Chunk>> = engine
                 .store()
-                .iter_chunks()
+                .iter_physical_chunks()
                 .filter(move |chunk| {
                     if chunk.is_static() {
                         return true; // always keep all static data
@@ -908,7 +908,7 @@ impl EntityDb {
         }
 
         let engine = self.storage_engine.read();
-        for chunk in engine.store().iter_chunks() {
+        for chunk in engine.store().iter_physical_chunks() {
             new_db.add_chunk(&Arc::clone(chunk))?;
         }
 

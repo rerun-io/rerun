@@ -701,7 +701,7 @@ mod tests {
         for pivot in [0, NUM_CHUNKS / 2, NUM_CHUNKS] {
             let mut store = setup_store();
 
-            assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+            assert_eq!(NUM_CHUNKS as usize, store.num_physical_chunks());
             for _ in 0..3 {
                 // Call `store.gc()` more than once just to make sure nothing weird happens with
                 // all the shadow indices left by the first call.
@@ -710,7 +710,7 @@ mod tests {
                     ..GarbageCollectionOptions::gc_everything()
                 });
             }
-            assert_eq!(0, store.num_chunks());
+            assert_eq!(0, store.num_physical_chunks());
         }
     }
 }

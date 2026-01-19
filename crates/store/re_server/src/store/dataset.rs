@@ -364,7 +364,7 @@ impl Dataset {
             let store = layer.store_handle();
 
             let mut offset = 0;
-            for chunk in store.read().iter_chunks() {
+            for chunk in store.read().iter_physical_chunks() {
                 let chunk_batch = chunk
                     .to_chunk_batch()
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;

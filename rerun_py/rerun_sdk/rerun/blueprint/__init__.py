@@ -41,6 +41,7 @@ from .archetypes import (
     TextLogColumns as TextLogColumns,
     TextLogFormat as TextLogFormat,
     TextLogRows as TextLogRows,
+    TimeAxis as TimeAxis,
     VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
 )

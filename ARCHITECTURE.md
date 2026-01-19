@@ -229,7 +229,6 @@ Update instructions:
 | re_case              | Case conversions, the way Rerun likes them                                           |
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error             | Helpers for handling errors.                                                         |
-| re_rvl               | Codecs for depth compression including RVL and PNG.                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
@@ -237,7 +236,9 @@ Update instructions:
 | re_mcap              | Convert MCAP into Rerun-compatible data.                                             |
 | re_memory            | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap              |
+| re_quota_channel     | A mpsc channel that applies backpressure based on byte size                          |
 | re_ros_msg           | Parsing and deserializing ROS   messages                                             |
+| re_rvl               | Codecs for depth compression including RVL and PNG.                                  |
 | re_span              | An integer range that always has a non-negative length                               |
 | re_string_interner   | Yet another string interning library                                                 |
 | re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                      |

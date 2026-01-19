@@ -42,7 +42,7 @@ rr.init("rerun_example_dna_abacus")
 
 A stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/logging-and-ingestion/apps-and-recordings.md).
+Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/logging-and-ingestion/recordings.md).
 
 ## Starting the Viewer
 
@@ -90,7 +90,7 @@ rr.log("dna/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 ```
 
 Run your script once again and you should now see this scene in the viewer.
-Note that if the Viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../../concepts/logging-and-ingestion/apps-and-recordings.md).
+Note that if the Viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../../concepts/logging-and-ingestion/recordings.md).
 
 <picture>
   <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">

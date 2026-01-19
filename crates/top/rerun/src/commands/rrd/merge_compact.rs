@@ -237,7 +237,7 @@ fn merge_and_compact(
 
         let num_chunks_before = entity_dbs
             .values()
-            .map(|db| db.storage_engine().store().num_chunks() as u64)
+            .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
             .sum::<u64>();
         let mut num_chunks_after = 0;
         entity_dbs = entity_dbs
@@ -248,11 +248,11 @@ fn merge_and_compact(
                 let engine = unsafe { db.storage_engine_raw() };
 
                 let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
-                for chunk in engine.read().store().iter_chunks() {
+                for chunk in engine.read().store().iter_physical_chunks() {
                     store.insert_chunk(chunk)?;
                 }
 
-                num_chunks_after += store.num_chunks() as u64;
+                num_chunks_after += store.num_physical_chunks() as u64;
                 *engine.write().store() = store;
 
                 Ok::<_, ChunkStoreError>((store_id, db))
