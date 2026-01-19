@@ -895,11 +895,11 @@ impl re_byte_size::SizeBytes for BranchNode {
             children,
         } = self;
 
-        let mut total = 0;
-        for child in children.iter().flatten() {
-            total += child.as_ref().total_size_bytes();
-        }
-        total
+        children
+            .iter()
+            .flatten()
+            .map(|c| c.total_size_bytes())
+            .sum()
     }
 }
 

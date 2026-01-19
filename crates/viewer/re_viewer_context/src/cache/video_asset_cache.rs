@@ -36,7 +36,7 @@ impl re_byte_size::SizeBytes for Entry {
             video,
             debug_name,
         } = self;
-        debug_name.len() as u64 + video.heap_size_bytes()
+        debug_name.heap_size_bytes() + video.heap_size_bytes()
     }
 }
 
@@ -156,12 +156,7 @@ where
     }
 }
 
-impl re_byte_size::MemUsageTreeCapture for VideoAssetCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    Video: Send + Sync,
-    VideoLoadError: Send + Sync,
-{
+impl re_byte_size::MemUsageTreeCapture for VideoAssetCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         let mut node = re_byte_size::MemUsageNode::new();
 

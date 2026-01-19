@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes};
@@ -403,55 +404,20 @@ impl MemUsageTreeCapture for ChunkStore {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         re_tracing::profile_function!();
 
+        let mut memory_per_entity: BTreeMap<EntityPath, u64> = Default::default();
+
+        for chunk in self.chunks_per_chunk_id.values() {
+            let entity_path = chunk.entity_path();
+            let entry = memory_per_entity.entry(entity_path.clone()).or_default();
+            *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc
+        }
+
         let mut node = MemUsageNode::new();
 
-        for entity_path in self.all_entities_sorted() {
-            let entity_stats = self.entity_stats(&entity_path);
-            node.add(
-                entity_path.to_string(),
-                MemUsageTree::Bytes(entity_stats.total_size_bytes),
-            );
+        for (entity_path, size) in memory_per_entity {
+            node.add(entity_path.to_string(), MemUsageTree::Bytes(size));
         }
 
         node.with_total_size_bytes(self.total_size_bytes())
-    }
-}
-
-impl ChunkStore {
-    /// Total *physical* stats for an entity across all timelines.
-    ///
-    /// Includes both static and temporal data.
-    pub fn entity_stats(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
-        re_tracing::profile_function!();
-
-        let mut stats = self.entity_stats_static(entity_path);
-
-        if false {
-            // this double-counts the chunks that contain multiple timelines, which is most of them.
-            for timeline in self.timelines().keys() {
-                stats += self.entity_stats_on_timeline(entity_path, timeline);
-            }
-        } else {
-            let mut all_chunk_ids = ahash::HashSet::<re_chunk::ChunkId>::default();
-
-            for timeline in self.timelines().keys() {
-                // stats += self.entity_stats_on_timeline(entity_path, timeline);
-                if let Some(temporal_chunk_ids_per_timeline) =
-                    self.temporal_chunk_ids_per_entity.get(entity_path)
-                    && let Some(chunk_id_sets) = temporal_chunk_ids_per_timeline.get(timeline)
-                {
-                    for chunk_ids_set in chunk_id_sets.per_start_time.values() {
-                        all_chunk_ids.extend(chunk_ids_set.iter());
-                    }
-                }
-            }
-
-            for chunk_id in all_chunk_ids {
-                if let Some(chunk) = self.chunks_per_chunk_id.get(&chunk_id) {
-                    stats += ChunkStoreChunkStats::from_chunk(chunk);
-                }
-            }
-        }
-        stats
     }
 }

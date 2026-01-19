@@ -31,10 +31,10 @@ impl FlamegraphState {
     /// Auto-fit the view to show all content.
     fn auto_fit(&mut self, total_size: u64, available_width: f32) {
         if 0 < total_size && 0.0 < available_width {
-            // Calculate zoom to fit all content with some padding
-            const PADDING_FACTOR: f32 = 0.95; // Leave 5% padding on sides
-            self.zoom = (available_width * PADDING_FACTOR) / total_size as f32;
-            self.pan_bytes = 0.0;
+            // Calculate zoom to fit all content with
+            const PADDING_FACTOR: f32 = 0.01; // Leave some padding on eaither side
+            self.zoom = (available_width * (1.0 - 2.0 * PADDING_FACTOR)) / total_size as f32;
+            self.pan_bytes = PADDING_FACTOR as f64 * total_size as f64;
         }
     }
 }
@@ -112,8 +112,7 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
     let x_end_bytes = x_start_bytes + (rect.width() / state.zoom) as f64;
     render_flamegraph_node(
         ui,
-        &tree.value,
-        &tree.name,
+        tree,
         state,
         rect,
         total_size,
@@ -128,8 +127,7 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
 #[expect(clippy::too_many_arguments)]
 fn render_flamegraph_node(
     ui: &mut egui::Ui,
-    tree: &MemUsageTree,
-    name: &str,
+    tree: &NamedMemUsageTree,
     state: &FlamegraphState,
     rect: egui::Rect,
     total_size: u64,
@@ -142,7 +140,7 @@ fn render_flamegraph_node(
     const ROW_SPACING: f32 = 1.0;
     const TEXT_PADDING: f32 = 4.0;
 
-    let size_bytes = tree.size_bytes();
+    let size_bytes = tree.value.size_bytes();
     if size_bytes == 0 {
         return;
     }
@@ -189,7 +187,11 @@ fn render_flamegraph_node(
 
         // Draw text if there's space
         if TEXT_PADDING * 2.0 < width_ui {
-            let text = format!("{} {}", re_format::format_bytes(size_bytes as f64), name);
+            let text = format!(
+                "{} {}",
+                re_format::format_bytes(size_bytes as f64),
+                tree.name
+            );
 
             let text_rect = node_rect.shrink(TEXT_PADDING);
             let text_color = if 384 < color.r() as u16 + color.g() as u16 + color.b() as u16 {
@@ -219,7 +221,7 @@ fn render_flamegraph_node(
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("Name");
-                    ui.label(name);
+                    ui.label(&tree.name);
                     ui.end_row();
 
                     ui.label("Size");
@@ -230,19 +232,13 @@ fn render_flamegraph_node(
     }
 
     // Render children recursively
-    if let MemUsageTree::Node(node) = tree {
+    if let MemUsageTree::Node(node) = &tree.value {
         let mut child_x_offset = x_offset_bytes;
 
         for child in node.children() {
-            let child_size = child.value.size_bytes();
-            if child_size == 0 {
-                continue;
-            }
-
             render_flamegraph_node(
                 ui,
-                &child.value,
-                &child.name,
+                child,
                 state,
                 rect,
                 total_size,
@@ -252,13 +248,12 @@ fn render_flamegraph_node(
                 x_end_bytes,
             );
 
-            child_x_offset += child_size as f64;
+            child_x_offset += child.size_bytes() as f64;
         }
     }
 }
 
 /// Generate a color based on the fraction of total memory used.
-/// Larger fractions get warmer colors (red), smaller fractions get cooler colors (blue/green).
 #[expect(
     clippy::disallowed_methods,
     reason = "Programmatic color generation for flamegraph visualization"

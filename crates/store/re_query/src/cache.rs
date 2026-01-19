@@ -177,7 +177,7 @@ impl MemUsageTreeCapture for QueryCache {
                 "might_require_clearing",
                 might_require_clearing.total_size_bytes(),
             )
-            // TODO: this seems to be over-estimating a lot?
+            // TODO(RR-3366): this seems to be over-estimating a lot?
             // Maybe double-counting chunks or other arrow data?
             // .with_child(
             //     "latest_at_per_cache_key",

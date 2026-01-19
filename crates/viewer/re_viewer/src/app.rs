@@ -3281,8 +3281,7 @@ impl eframe::App for App {
                 .add(egui_ctx.input(|i| i.time), seconds);
         }
 
-        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
-        // is opened.
+        // NOTE: Memory stats can be very costly to compute, so only do so if the memory panel is opened.
         let mem_usage_tree = self
             .memory_panel_open
             .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
@@ -3916,7 +3915,7 @@ impl MemUsageTreeCapture for App {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         re_tracing::profile_function!();
         let mut node = MemUsageNode::new();
-        // rx_log doesn't implement MemUsageTreeCapture yet, so we skip it
+        // TODO(RR-3366): add rx_log
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
         node.into_tree()
     }

@@ -19,6 +19,7 @@ enum MemoryViewTab {
 
     #[default]
     Flamegraph,
+
     TimeGraph,
 }
 
@@ -586,7 +587,7 @@ pub fn memory_tree_ui(
     ui.label("Double-click to reset view, scroll to zoom, drag to pan.");
 
     ui.re_checkbox(include_rss, "Include RSS")
-        .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory in RAM, but may be very large due to memory mapped files and shared libraries.");
+        .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory use as reported by the OS. This may be a lot bigger than what is actually _used_ because our allocator (mimalloc) retains pages in case they are needed again.");
 
     ui.separator();
 
