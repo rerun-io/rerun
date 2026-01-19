@@ -42,7 +42,7 @@ These episodes within datasets are called _segments_, which are identified by a 
 Segments are added to datasets by the process of _registering_ a `.rrd` (typically stored in some object store such as S3) to the dataset using the Catalog SDK.
 The recording ID of the `.rrd` file is used as segment ID.
 
-`.rrd`s registered to a given segment are organized by layers, identified by a layer name.
+Recordings registered to a given segment are organized by layers, identified by a layer name.
 By default, the `"base"` layer name is used.
 Registering two `.rrd` files with the same recording ID (that is, with the same segment ID) to the same dataset, and using the same layer name, will result in the second `.rrd` overwriting the first.
 Additive registration can be achieved by using different layer names for different `.rrd`s with the same recording ID/segment ID.
