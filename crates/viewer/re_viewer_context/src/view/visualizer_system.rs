@@ -53,10 +53,9 @@ pub enum RequiredComponents {
 
     /// Entity must have _any one_ of these physical Arrow data types.
     ///
-    /// One type is still earmarked as "native" to allow influencing heuristics.
     /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
     AnyPhysicalDatatype {
-        native_type: Option<ComponentType>,
+        semantic_type: ComponentType,
         physical_types: DatatypeSet,
     },
 }

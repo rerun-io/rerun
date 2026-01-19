@@ -58,7 +58,7 @@ struct AnyComponentRequirement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AnyPhysicalDatatypeRequirement {
-    native_datatype: Option<ComponentType>,
+    semantic_type: ComponentType,
     relevant_datatypes: DatatypeSet,
 }
 
@@ -128,10 +128,10 @@ impl From<RequiredComponents> for Requirement {
             RequiredComponents::AllComponents(components) => Self::AllComponents(components.into()),
             RequiredComponents::AnyComponent(components) => Self::AnyComponent(components.into()),
             RequiredComponents::AnyPhysicalDatatype {
-                native_type: native,
+                semantic_type,
                 physical_types,
             } => Self::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
-                native_datatype: native,
+                semantic_type,
                 relevant_datatypes: physical_types,
             }),
         }
@@ -331,7 +331,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     }
                 }
                 Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
-                    native_datatype,
+                    semantic_type,
                     relevant_datatypes,
                 }) => {
                     // Entity must have any of the required components
@@ -345,15 +345,20 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     {
                         let is_physical_match =
                             relevant_datatypes.contains(&list_array.value_type());
-                        let is_semantic_match = native_datatype.is_some()
-                            && descriptor.component_type == *native_datatype;
+                        let is_semantic_match = descriptor.component_type == Some(*semantic_type);
+
                         let match_kind = match (is_physical_match, is_semantic_match) {
                             (false, false) => None,
                             (true, false) => Some(DatatypeMatchKind::PhysicalDatatypeOnly),
                             (true, true) => Some(DatatypeMatchKind::NativeSemantics),
+
                             (false, true) => {
-                                // We assume the physical datatype of any semantic match is also acceptable even if it wasn't listed explicitly.
-                                Some(DatatypeMatchKind::NativeSemantics)
+                                re_log::warn_once!(
+                                    "Component {:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {:?} for this semantic type.",
+                                    descriptor.component,
+                                    list_array.value_type()
+                                );
+                                None
                             }
                         };
 
