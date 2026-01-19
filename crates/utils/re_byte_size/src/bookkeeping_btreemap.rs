@@ -246,25 +246,21 @@ mod tests {
     fn test_insert_bookkeeping() {
         let mut map: BookkeepingBTreeMap<u64, String> = BookkeepingBTreeMap::new();
 
-        // Insert first entry
         let old = map.insert(1, "hello".to_owned());
         assert_eq!(old, None);
         assert_eq!(map.len(), 1);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Insert second entry
         let old = map.insert(2, "world".to_owned());
         assert_eq!(old, None);
         assert_eq!(map.len(), 2);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Replace first entry with larger value
         let old = map.insert(1, "hello, this is much longer!".to_owned());
         assert_eq!(old, Some("hello".to_owned()));
         assert_eq!(map.len(), 2);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Replace with smaller value
         let old = map.insert(1, "hi".to_owned());
         assert_eq!(old, Some("hello, this is much longer!".to_owned()));
         assert_eq!(map.len(), 2);
@@ -280,19 +276,16 @@ mod tests {
         map.insert(3, "three".to_owned());
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Remove middle entry
         let removed = map.remove(&2);
         assert_eq!(removed, Some("two".to_owned()));
         assert_eq!(map.len(), 2);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Remove non-existent entry
         let removed = map.remove(&99);
         assert_eq!(removed, None);
         assert_eq!(map.len(), 2);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Remove remaining entries
         map.remove(&1);
         map.remove(&3);
         assert_eq!(map.heap_size_bytes(), 0);
@@ -303,7 +296,6 @@ mod tests {
     fn test_extend_bookkeeping() {
         let mut map: BookkeepingBTreeMap<u64, String> = BookkeepingBTreeMap::new();
 
-        // Extend with new entries
         map.extend(vec![
             (1, "one".to_owned()),
             (2, "two".to_owned()),
@@ -312,7 +304,6 @@ mod tests {
         assert_eq!(map.len(), 3);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Extend with overlapping entries (should replace)
         map.extend(vec![(2, "TWO".to_owned()), (4, "four".to_owned())]);
         assert_eq!(map.len(), 4);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
@@ -322,28 +313,24 @@ mod tests {
     fn test_mutate_entry_bookkeeping() {
         let mut map: BookkeepingBTreeMap<u64, Vec<String>> = BookkeepingBTreeMap::new();
 
-        // Mutate non-existent entry (should insert default and mutate it)
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.push("hello".to_owned());
         });
         assert_eq!(map.len(), 1);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Mutate existing entry by adding elements
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.push("world".to_owned());
         });
         assert_eq!(map.len(), 1);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Mutate by removing elements
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.pop();
         });
         assert_eq!(map.len(), 1);
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Mutate by clearing
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.clear();
         });
@@ -355,7 +342,6 @@ mod tests {
     fn test_mutate_entry_before_bookkeeping() {
         let mut map: BookkeepingBTreeMap<u64, Vec<String>> = BookkeepingBTreeMap::new();
 
-        // Populate map
         map.insert(10, vec!["ten".to_owned()]);
         map.insert(20, vec!["twenty".to_owned()]);
         map.insert(30, vec!["thirty".to_owned()]);
@@ -369,7 +355,6 @@ mod tests {
         assert_eq!(result, Some(20));
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Mutate entry before 100 (should mutate entry at 30)
         let result = map.mutate_latest_at(&100, |key, vec| {
             assert_eq!(*key, 30);
             vec.clear();
@@ -378,7 +363,6 @@ mod tests {
         assert_eq!(result, Some(30));
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
-        // Try to mutate entry before 5 (should return None)
         let result = map.mutate_latest_at(&5, |_key, vec| {
             vec.push("should not happen".to_owned());
         });
@@ -394,7 +378,6 @@ mod tests {
         map.insert(1, "one".to_owned());
         map.insert(2, "two".to_owned());
 
-        // Test iter returns items in sorted order
         let items: Vec<_> = map.iter().collect();
         assert_eq!(items.len(), 3);
         assert_eq!(*items[0].0, 1);
@@ -409,7 +392,6 @@ mod tests {
         map.insert(2, "two".to_owned());
         map.insert(1, "one".to_owned());
 
-        // Test IntoIterator implementation
         let items: Vec<_> = (&map).into_iter().collect();
         assert_eq!(items.len(), 2);
         assert_eq!(*items[0].0, 1);
@@ -428,8 +410,6 @@ mod tests {
         assert_eq!(map1.len(), map2.len());
         assert_eq!(map1.heap_size_bytes(), map2.heap_size_bytes());
         assert_eq!(map1, map2);
-
-        // Verify bookkeeping is correct in clone
         assert_eq!(map2.heap_size_bytes(), total_size_bytes_of_map(&map2));
     }
 
@@ -459,7 +439,6 @@ mod tests {
         map.insert(1, "one".to_owned());
         map.insert(2, "two".to_owned());
 
-        // Test as_map returns the correct BTreeMap
         let inner_map = map.as_map();
         assert_eq!(inner_map.len(), 2);
         assert_eq!(inner_map.get(&1), Some(&"one".to_owned()));
@@ -468,14 +447,12 @@ mod tests {
 
     #[test]
     fn test_with_pod_types() {
-        // Test with POD (Plain Old Data) types that have zero heap size
         let mut map: BookkeepingBTreeMap<u64, u64> = BookkeepingBTreeMap::new();
 
         map.insert(1, 100);
         map.insert(2, 200);
         map.insert(3, 300);
 
-        // For POD types, heap_size_bytes should equal total_size_bytes
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
 
         map.remove(&2);
@@ -484,7 +461,6 @@ mod tests {
 
     #[test]
     fn test_bookkeeping_stress() {
-        // Stress test with many operations
         let mut map: BookkeepingBTreeMap<u64, Vec<String>> = BookkeepingBTreeMap::new();
 
         for i in 0..100 {
@@ -492,7 +468,6 @@ mod tests {
             assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
         }
 
-        // Mutate some entries
         for i in (0..100).step_by(5) {
             map.mutate_entry(i, Vec::new(), |vec| {
                 vec.push(format!("extra_{i}"));
@@ -500,13 +475,11 @@ mod tests {
             assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
         }
 
-        // Remove some entries
         for i in (0..100).step_by(3) {
             map.remove(&i);
             assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
         }
 
-        // Final check
         assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
     }
 }
