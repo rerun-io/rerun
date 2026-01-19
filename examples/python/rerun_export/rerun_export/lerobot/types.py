@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 from rerun_export.utils import get_entity_path
 
@@ -12,20 +12,15 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-@dataclass(frozen=True)
-class FeatureSpec:
+class FeatureSpec(TypedDict):
     """Typed feature specification for LeRobot datasets."""
 
     dtype: str
     shape: tuple[int, ...]
     names: list[str] | None
 
-    def to_dict(self) -> dict[str, object]:
-        return {"dtype": self.dtype, "shape": self.shape, "names": self.names}
 
-
-@dataclass(frozen=True)
-class RemuxInfo:
+class RemuxInfo(TypedDict):
     """Typed remuxing details for a single video stream."""
 
     samples: list[bytes]
@@ -33,8 +28,7 @@ class RemuxInfo:
     source_fps: float
 
 
-@dataclass(frozen=True)
-class RemuxData:
+class RemuxData(TypedDict):
     """Typed remuxing payload passed between conversion steps."""
 
     specs: list[VideoSpec]
@@ -42,13 +36,12 @@ class RemuxData:
     fps: int
 
 
-@dataclass(frozen=True)
-class VideoSpec:
+class VideoSpec(TypedDict):
     """Specification for a video stream in the dataset."""
 
     key: str
     path: str
-    video_format: str = "h264"
+    video_format: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -108,7 +101,7 @@ class LeRobotConversionConfig:
                 contents.append(entity_path)
 
         for spec in self.videos:
-            if spec.path not in contents:
-                contents.append(spec.path)
+            if spec["path"] not in contents:
+                contents.append(spec["path"])
 
         return contents, reference_path

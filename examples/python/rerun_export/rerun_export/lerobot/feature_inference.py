@@ -48,14 +48,14 @@ def infer_features(
         if task_path not in contents:
             contents.append(task_path)
     for spec in config.videos:
-        if spec.path not in contents:
-            contents.append(spec.path)
+        if spec["path"] not in contents:
+            contents.append(spec["path"])
 
     columns_to_read = [config.index_column]
     columns_to_read.append(config.action)
 
     # TODO(gijsd): do we want to handle this like this?
-    if config.state != config.action:  # Avoid duplicates
+    if config.state != config.action:
         columns_to_read.append(config.state)
     if config.task:
         columns_to_read.append(config.task)
@@ -84,7 +84,7 @@ def infer_features(
         raise ValueError(f"Could not infer action dimension from any segment. Tried {len(segments_to_try)} segments.")
     if config.action_names is not None and len(config.action_names) != action_dim:
         raise ValueError("Action names length does not match inferred action dimension.")
-    features["action"] = FeatureSpec(dtype="float32", shape=(action_dim,), names=config.action_names)
+    features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": config.action_names}
 
     state_dim = None
     for try_segment_id in segments_to_try:
@@ -105,7 +105,7 @@ def infer_features(
         raise ValueError(f"Could not infer state dimension from any segment. Tried {len(segments_to_try)} segments.")
     if config.state_names is not None and len(config.state_names) != state_dim:
         raise ValueError("State names length does not match inferred state dimension.")
-    features["observation.state"] = FeatureSpec(dtype="float32", shape=(state_dim,), names=config.state_names)
+    features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": config.state_names}
 
     for spec in config.videos:
         # Video specs need to find a segment with actual video data on the specified index
@@ -121,19 +121,19 @@ def infer_features(
                 if try_segment_id == segments_to_try[-1]:
                     # Last segment, re-raise the error
                     raise ValueError(
-                        f"Could not find any segment with video data for '{spec.path}' "
+                        f"Could not find any segment with video data for '{spec['path']}' "
                         f"using index '{config.index_column}'. Tried {len(segments_to_try)} segments."
                     ) from e
                 continue
 
         if shape is None:
-            raise ValueError(f"Could not infer video shape for '{spec.path}' using index '{config.index_column}'. ")
+            raise ValueError(f"Could not infer video shape for '{spec['path']}' using index '{config.index_column}'. ")
 
-        features[f"observation.images.{spec.key}"] = FeatureSpec(
-            dtype="video" if config.use_videos else "image",
-            shape=shape,
-            names=["height", "width", "channels"],
-        )
+        features[f"observation.images.{spec['key']}"] = {
+            "dtype": "video" if config.use_videos else "image",
+            "shape": shape,
+            "names": ["height", "width", "channels"],
+        }
 
     return features
 
@@ -184,7 +184,7 @@ def infer_features_from_dataframe(
             action_dim = len(np.asarray(action_sample).flatten())
             if action_names is not None and len(action_names) != action_dim:
                 raise ValueError("Action names length does not match inferred action dimension.")
-            features["action"] = FeatureSpec(dtype="float32", shape=(action_dim,), names=action_names)
+            features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": action_names}
 
     # Infer state dimension
     if state in table.column_names:
@@ -194,14 +194,14 @@ def infer_features_from_dataframe(
             state_dim = len(np.asarray(state_sample).flatten())
             if state_names is not None and len(state_names) != state_dim:
                 raise ValueError("State names length does not match inferred state dimension.")
-            features["observation.state"] = FeatureSpec(dtype="float32", shape=(state_dim,), names=state_names)
+            features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": state_names}
 
     # Add image features using pre-computed shapes
     for key, shape in image_shapes.items():
-        features[f"observation.images.{key}"] = FeatureSpec(
-            dtype="video" if use_videos else "image",
-            shape=shape,
-            names=["height", "width", "channels"],
-        )
+        features[f"observation.images.{key}"] = {
+            "dtype": "video" if use_videos else "image",
+            "shape": shape,
+            "names": ["height", "width", "channels"],
+        }
 
     return features

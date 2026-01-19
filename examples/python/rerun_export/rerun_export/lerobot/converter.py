@@ -65,16 +65,16 @@ def convert_dataframe_to_episode(
     if config.use_videos and config.videos:
         remux_info: dict[str, RemuxInfo] = {}
         for spec in config.videos:
-            samples, times_ns = video_data_cache[spec.key]
+            samples, times_ns = video_data_cache[spec["key"]]
             can_remux, source_fps = can_remux_video(times_ns, config.fps)
             if can_remux:
-                remux_info[spec.key] = RemuxInfo(samples=samples, times_ns=times_ns, source_fps=source_fps)
+                remux_info[spec["key"]] = {"samples": samples, "times_ns": times_ns, "source_fps": source_fps}
             else:
                 raise ValueError(
-                    f"Video cannot be remuxed yet: spec={spec.key} source_fps={source_fps:.2f} target_fps={config.fps}"
+                    f"Video cannot be remuxed yet: spec={spec['key']} source_fps={source_fps:.2f} target_fps={config.fps}"
                 )
 
-        remux_data = RemuxData(specs=config.videos, remux_info=remux_info, fps=config.fps)
+        remux_data = {"specs": config.videos, "remux_info": remux_info, "fps": config.fps}
 
     table = pa.table(df)
     if table.num_rows == 0:
@@ -185,19 +185,19 @@ def apply_remuxed_videos(
 
     """
 
-    for spec in remux_data.specs:
-        if spec.key not in remux_data.remux_info:
+    for spec in remux_data["specs"]:
+        if spec["key"] not in remux_data["remux_info"]:
             continue
 
-        info = remux_data.remux_info[spec.key]
-        video_key = f"observation.images.{spec.key}"
+        info = remux_data["remux_info"][spec["key"]]
+        video_key = f"observation.images.{spec['key']}"
 
         # Construct the video file path ourselves (can't use get_video_file_path yet)
         video_path = _get_video_path_for_episode(lerobot_dataset, episode_index, video_key)
 
         # Check if the video file was created by LeRobot
         if not video_path.exists():
-            print(f"    WARNING: Video not found at {video_path}, skipping remux for '{spec.key}'")
+            print(f"    WARNING: Video not found at {video_path}, skipping remux for '{spec['key']}'")
             continue
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -205,11 +205,11 @@ def apply_remuxed_videos(
 
         try:
             remux_video_stream(
-                samples=info.samples,
-                times_ns=info.times_ns,
+                samples=info["samples"],
+                times_ns=info["times_ns"],
                 output_path=tmp_path,
-                video_format=spec.video_format,
-                target_fps=remux_data.fps,
+                video_format=spec.get("video_format", "h264"),
+                target_fps=remux_data["fps"],
             )
 
             # Replace the encoded video with the remuxed one
@@ -217,7 +217,7 @@ def apply_remuxed_videos(
             print(f"    ✓ Replaced encoded video with remuxed version: {video_path}")
 
         except Exception as e:
-            print(f"    ✗ Failed to remux '{spec.key}': {e}")
+            print(f"    ✗ Failed to remux '{spec['key']}': {e}")
             import traceback
 
             traceback.print_exc()
@@ -254,7 +254,8 @@ def _save_episode_without_video_decode(
                 os.close(old_stderr_fd)
 
     episode_index = lerobot_dataset.meta.total_episodes
-    task_values = data_columns.get(config.task, [None] * num_rows) if config.task else [None] * num_rows
+    task_col = config.task
+    task_values = data_columns.get(task_col, [None] * num_rows) if task_col else [None] * num_rows
 
     tasks: list[str] = []
     for task_value in task_values:
@@ -298,25 +299,25 @@ def _save_episode_without_video_decode(
     episode_metadata = lerobot_dataset._save_episode_data(episode_buffer)
 
     video_metadata: dict[str, object] = {}
-    specs = remux_data.specs
-    remux_info = remux_data.remux_info
-    fps = remux_data.fps
+    specs = remux_data["specs"]
+    remux_info = remux_data["remux_info"]
+    fps = remux_data["fps"]
 
     for spec in specs:
-        info = remux_info.get(spec.key)
+        info = remux_info.get(spec["key"])
         if info is None:
             continue
 
-        video_key = f"observation.images.{spec.key}"
+        video_key = f"observation.images.{spec['key']}"
         temp_dir = Path(tempfile.mkdtemp(dir=lerobot_dataset.root))
         temp_path = temp_dir / f"{video_key.replace('.', '_')}_{episode_index:03d}.mp4"
 
         with _suppress_ffmpeg_output():
             remux_video_stream(
-                samples=info.samples,
-                times_ns=info.times_ns,
+                samples=info["samples"],
+                times_ns=info["times_ns"],
                 output_path=str(temp_path),
-                video_format=spec.video_format,
+                video_format=spec.get("video_format", "h264"),
                 target_fps=fps,
             )
 
@@ -366,15 +367,15 @@ def _decode_video_frames_for_batch(
     if video_data_cache:
         row_times_ns = normalize_times(table[index_column].to_pylist())
         for spec in videos:
-            samples, times_ns = video_data_cache[spec.key]
+            samples, times_ns = video_data_cache[spec["key"]]
             frames = []
             for time_ns in row_times_ns:
                 frames.append(
                     decode_video_frame(
-                        samples=samples, times_ns=times_ns, target_time_ns=int(time_ns), video_format=spec.video_format
+                        samples=samples, times_ns=times_ns, target_time_ns=int(time_ns), video_format=spec.get("video_format", "h264")
                     )
                 )
-            video_frames[spec.key] = frames
+            video_frames[spec["key"]] = frames
     return video_frames
 
 
@@ -422,7 +423,8 @@ def _build_frame(
     )
 
     # Add task
-    task_value = data_columns.get(config.task, [None] * num_rows)[row_idx] if config.task else None
+    task_col = config.task
+    task_value = data_columns.get(task_col, [None] * num_rows)[row_idx] if task_col else None
     task_value = unwrap_singleton(task_value)
     if task_value is None:
         task = config.task_default
@@ -434,7 +436,7 @@ def _build_frame(
 
     # Add video frames
     for spec in config.videos:
-        image = video_frames[spec.key][row_idx]
-        frame[f"observation.images.{spec.key}"] = image
+        image = video_frames[spec["key"]][row_idx]
+        frame[f"observation.images.{spec['key']}"] = image
 
     return frame

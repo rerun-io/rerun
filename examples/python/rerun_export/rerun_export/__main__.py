@@ -142,7 +142,7 @@ def convert_rrd_dataset_to_lerobot(
         lerobot_dataset = LeRobotDataset.create(
             repo_id=repo_id,
             fps=config.fps,
-            features=features_dict,
+            features=features,
             root=output_dir,
             use_videos=config.use_videos,
         )
@@ -206,8 +206,8 @@ def convert_rrd_dataset_to_lerobot(
 
                 video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] = {}
                 for spec in config.videos:
-                    sample_column = f"{spec.path}:VideoStream:sample"
-                    video_view = dataset.filter_segments(segment_id).filter_contents(spec.path)
+                    sample_column = f"{spec['path']}:VideoStream:sample"
+                    video_view = dataset.filter_segments(segment_id).filter_contents(spec["path"])
                     video_reader = video_view.reader(index=config.index_column)
                     video_table = pa.table(video_reader.select(config.index_column, sample_column))
                     samples, times_ns = extract_video_samples(
@@ -215,7 +215,7 @@ def convert_rrd_dataset_to_lerobot(
                         sample_column=sample_column,
                         time_column=config.index_column,
                     )
-                    video_data_cache[spec.key] = (samples, times_ns)
+                    video_data_cache[spec["key"]] = (samples, times_ns)
 
                 # Convert the dataframe to an episode
                 success, remux_data, direct_saved = convert_dataframe_to_episode(

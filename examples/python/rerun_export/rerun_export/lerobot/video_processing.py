@@ -250,15 +250,15 @@ def infer_video_shape(
 
     """
 
-    view = dataset.filter_segments(segment_id).filter_contents(spec.path)
-    sample_column = f"{spec.path}:VideoStream:sample"
+    view = dataset.filter_segments(segment_id).filter_contents(spec["path"])
+    sample_column = f"{spec['path']}:VideoStream:sample"
     df = view.reader(index=index_column).select(index_column, sample_column)
     table = pa.table(df)
 
     # Check if the table has any rows - if not, the segment might not have video data for this index
     if table.num_rows == 0:
         raise ValueError(
-            f"No video data found in segment '{segment_id}' for path '{spec.path}' "
+            f"No video data found in segment '{segment_id}' for path '{spec['path']}' "
             f"using index '{index_column}'. The segment may not contain video data "
             "on this timeline, or the video data may use a different index."
         )
@@ -266,6 +266,6 @@ def infer_video_shape(
     samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
     target_time_ns = int(times_ns[0])
     decoded = decode_video_frame(
-        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=spec.video_format
+        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=spec.get("video_format", "h264")
     )
     return decoded.shape
