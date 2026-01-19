@@ -28,7 +28,7 @@ In particular, they share the same [blueprint](../visualization/blueprints.md).
 
 The Data Platform has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
 
-In a nutshell, datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
+Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
 For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
