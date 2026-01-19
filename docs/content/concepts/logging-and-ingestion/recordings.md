@@ -68,7 +68,7 @@ Application IDs are used by the Viewer when loading recordings directly (not via
 - Different recordings share the same blueprint if they share the same application ID
 - Recordings are grouped by application ID in the Viewer UI
 
-As stated above, application IDs are disregarded when registering recordings to the Data Platform. See [Recordings on the Data Platform](#recordings-on-the-data-platform) above.
+As stated above, application IDs are discarded when registering recordings to the Data Platform. See [Recordings on the Data Platform](#recordings-on-the-data-platform) above.
 
 Check out the API to learn more about SDK initialization:
 - [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
