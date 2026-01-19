@@ -14,12 +14,12 @@ use crate::ArrowBatchMetadata;
 /// Ordered chronologically.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::EnumIter)]
 pub enum TimestampLocation {
-    /// Time of log call. Encoded in [`re_chunk::RowId`].
+    /// Time of log call. Encoded in [`re_types_core::RowId`].
     Log,
 
     /// When the batcher has created the chunk.
     ///
-    /// Encoded in [`re_chunk::ChunkId`].
+    /// Encoded in [`re_types_core::ChunkId`].
     ChunkCreation,
 
     /// When was this batch sent by the SDK gRPC log sink?
