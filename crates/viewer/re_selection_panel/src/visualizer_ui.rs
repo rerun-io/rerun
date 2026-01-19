@@ -598,8 +598,8 @@ fn source_component_ui(
                                 save_component_mapping(
                                     ctx,
                                     instruction,
-                                    component_descr.component,
                                     option.into(),
+                                    component_descr.component,
                                 );
                             }
                         }
@@ -612,26 +612,15 @@ fn source_component_ui(
 fn save_component_mapping(
     ctx: &ViewContext<'_>,
     instruction: &VisualizerInstruction,
-    target_component: ComponentIdentifier,
     selector: ComponentIdentifier,
+    target: ComponentIdentifier,
 ) {
     let mut updated_instruction = instruction.clone();
 
     // Set or override the mapping
-    if let Some(orig_mapping) = updated_instruction
-        .component_mappings
-        .iter_mut()
-        .find(|m| m.target == target_component)
-    {
-        orig_mapping.selector = selector;
-    } else {
-        updated_instruction.component_mappings.push(
-            re_viewer_context::VisualizerComponentMapping {
-                selector,
-                target: target_component,
-            },
-        );
-    }
+    updated_instruction
+        .set_mapping(re_viewer_context::VisualizerComponentMapping { selector, target });
+
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 }

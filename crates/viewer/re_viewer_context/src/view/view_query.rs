@@ -39,6 +39,8 @@ pub struct VisualizerInstruction {
     pub component_overrides: IntSet<ComponentIdentifier>,
 
     /// List of component mapping pairs.
+    ///
+    /// Guaranteed to be unique on `target`.
     pub component_mappings: VisualizerComponentMappings,
 }
 
@@ -55,6 +57,20 @@ impl VisualizerInstruction {
             visualizer_type,
             component_overrides: IntSet::default(),
             component_mappings,
+        }
+    }
+
+    /// Adds a mapping, ensuring that all targets are unique.
+    // TODO(andreas): Just store it as a `BTreeMap` from target to selector?
+    pub fn set_mapping(&mut self, mapping: VisualizerComponentMapping) {
+        if let Some(target_component) = self
+            .component_mappings
+            .iter_mut()
+            .find(|m| m.target == mapping.target)
+        {
+            target_component.selector = mapping.selector;
+        } else {
+            self.component_mappings.push(mapping);
         }
     }
 
