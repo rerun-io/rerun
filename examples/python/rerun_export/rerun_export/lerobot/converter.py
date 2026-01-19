@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -69,17 +68,12 @@ def convert_dataframe_to_episode(
     if state_dim is None:
         raise ValueError("State feature specification is missing.")
 
-    cache_start_time = time.perf_counter()
     cached_df = df.cache()
-    print(f"  Cached dataframe in {time.perf_counter() - cache_start_time:.2f} seconds")
-
-    load_video_start_time = time.perf_counter()
     video_data_cache = load_video_samples(
         df=cached_df,
         index_column=config.index_column,
         videos=config.videos,
     )
-    print(f"  Loaded video samples in {time.perf_counter() - load_video_start_time:.2f} seconds")
     df = cached_df.filter(dfn.col(config.action).is_not_null())
     table = pa.table(df)
     if table.num_rows == 0:
