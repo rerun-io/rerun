@@ -33,7 +33,7 @@ For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
 Populating a dataset happens by registering recordings using the Catalog SDK.
-Its recording ID becomes the segment ID, and its application ID is disregarded.
+Its recording ID becomes the segment ID, and its application ID is discarded.
 
 Segments can contain multiple _layers_ identified by their name, each backed by a `.rrd` file.
 This again allows pooling multiple physical recordings into a single (logical) segment.
