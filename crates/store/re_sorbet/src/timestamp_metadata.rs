@@ -141,8 +141,8 @@ impl TimestampMetadata {
                 && let Some(value) = metadata.get(key)
                 && let Some(timestamp) = parse_timestamp(value.as_str())
             {
-                        map.insert(location, timestamp);
-                    }
+                map.insert(location, timestamp);
+            }
         }
 
         Self(map)
