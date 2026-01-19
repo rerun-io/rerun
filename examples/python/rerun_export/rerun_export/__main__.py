@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import av
-
-av.logging.set_level(av.logging.PANIC)
-
 import argparse
+import os
+import time
 from contextlib import contextmanager
 from pathlib import Path
-import os
-from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import rerun as rr
@@ -19,12 +15,9 @@ from tqdm import tqdm
 
 from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
-from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSampleData, VideoSpec
 from rerun_export.lerobot.video_processing import extract_video_samples
 from rerun_export.utils import make_time_grid
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 @contextmanager
@@ -131,12 +124,31 @@ def convert_rrd_dataset_to_lerobot(
         if not segment_ids:
             raise ValueError("No segments found in the dataset.")
 
-        # Infer features using the dataset (needs to probe multiple segments)
+        # Query a representative segment for feature inference
+        inference_segment_id = segment_ids[0]
+        contents, reference_path = config.get_filter_list()
+
+        # Build list of all columns needed for feature inference
+        inference_columns = [config.index_column, config.action, config.state]
+        if config.task:
+            inference_columns.append(config.task)
+        for spec in config.videos:
+            inference_columns.append(f"{spec['path']}:VideoStream:sample")
+
+        # Query all columns from one segment
+        inference_view = dataset.filter_segments(inference_segment_id).filter_contents(contents)
+        inference_reader = inference_view.reader(index=config.index_column)
+        inference_table = pa.table(inference_reader.select(*inference_columns))
+
+        print("Infering features from segment:", inference_segment_id)
+        start_time = time.time()
+        # Infer features from the pre-queried table
         features = infer_features(
-            dataset=dataset,
-            segment_id=segment_ids[0],
+            table=inference_table,
             config=config,
         )
+        end_time = time.time()
+        print(f"Inferring features took {end_time - start_time:.2f} seconds")
 
         # Create LeRobot dataset
         lerobot_dataset = LeRobotDataset.create(
@@ -202,9 +214,9 @@ def convert_rrd_dataset_to_lerobot(
                 if filters:
                     df = df.filter(*filters)
 
-                # Load video data cache
-
-                video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] = {}
+                # Load video data cache from separate readers (video data is NOT aligned to the time grid)
+                # We need unaligned/raw video samples for remuxing, so we query them separately
+                video_data_cache: dict[str, VideoSampleData] = {}
                 for spec in config.videos:
                     sample_column = f"{spec['path']}:VideoStream:sample"
                     video_view = dataset.filter_segments(segment_id).filter_contents(spec["path"])

@@ -9,6 +9,8 @@ import numpy as np
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    import numpy.typing as npt
+
 
 def unwrap_singleton(value: object) -> object:
     """Unwrap single-element lists or arrays to their scalar value."""
@@ -19,7 +21,7 @@ def unwrap_singleton(value: object) -> object:
     return value
 
 
-def to_float32_vector(value: object, expected_dim: int, label: str) -> np.ndarray:
+def to_float32_vector(value: object, expected_dim: int, label: str) -> npt.NDArray[np.float32]:
     """
     Convert a value to a float32 numpy array with expected dimensions.
 
@@ -49,7 +51,7 @@ def to_float32_vector(value: object, expected_dim: int, label: str) -> np.ndarra
     return array
 
 
-def normalize_times(values: Iterable[object]) -> np.ndarray:
+def normalize_times(values: Iterable[object]) -> npt.NDArray[np.int64]:
     """
     Normalize time values to nanosecond precision int64.
 
@@ -79,7 +81,7 @@ def normalize_times(values: Iterable[object]) -> np.ndarray:
     return times.astype("int64")
 
 
-def make_time_grid(min_value: object, max_value: object, fps: int) -> np.ndarray:
+def make_time_grid(min_value: object, max_value: object, fps: int) -> npt.NDArray:
     """
     Create a time grid at the specified FPS between min and max values.
 

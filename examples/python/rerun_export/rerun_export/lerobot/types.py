@@ -5,11 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
+import numpy as np
+import numpy.typing as npt
+
 from rerun_export.utils import get_entity_path
 
 if TYPE_CHECKING:
     import datafusion as dfn
-    import numpy as np
+
+VideoSampleData = tuple[list[bytes], npt.NDArray[np.int64]]
 
 
 class FeatureSpec(TypedDict):
@@ -24,7 +28,7 @@ class RemuxInfo(TypedDict):
     """Typed remuxing details for a single video stream."""
 
     samples: list[bytes]
-    times_ns: np.ndarray
+    times_ns: npt.NDArray[np.int64]
     source_fps: float
 
 

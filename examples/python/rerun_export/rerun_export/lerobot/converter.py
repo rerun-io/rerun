@@ -10,18 +10,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from lerobot.datasets.compute_stats import compute_episode_stats
 from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
 
-from rerun_export.lerobot.types import FeatureSpec, LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSpec
 from rerun_export.lerobot.video_processing import can_remux_video, decode_video_frame, remux_video_stream
 from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
     import datafusion as df
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    from rerun_export.lerobot.types import LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSampleData, VideoSpec
 
 
 def convert_dataframe_to_episode(
@@ -31,7 +33,7 @@ def convert_dataframe_to_episode(
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
     features: dict[str, dict[str, object]],
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]] | None = None,
+    video_data_cache: dict[str, VideoSampleData] | None = None,
 ) -> tuple[bool, RemuxData | None, bool]:
     """
     Convert a DataFusion dataframe to a LeRobot episode.
@@ -275,7 +277,7 @@ def _save_episode_without_video_decode(
     start_index = lerobot_dataset.meta.total_frames
     times_ns = normalize_times(data_columns[config.index_column])
     times_s = (times_ns - times_ns[0]) / 1_000_000_000.0
-    episode_buffer: dict[str, np.ndarray] = {
+    episode_buffer: dict[str, npt.NDArray] = {
         "timestamp": times_s.astype(np.float32),
         "frame_index": np.arange(num_rows, dtype=np.int64),
         "episode_index": np.full((num_rows,), episode_index, dtype=np.int64),
@@ -347,8 +349,8 @@ def _decode_video_frames_for_batch(
     *,
     index_column: str,
     videos: list[VideoSpec],
-    video_data_cache: dict[str, tuple[list[bytes], np.ndarray]],
-) -> dict[str, list[np.ndarray]]:
+    video_data_cache: dict[str, VideoSampleData],
+) -> dict[str, list[npt.NDArray]]:
     """
     Decode video frames for a batch of rows.
 
@@ -363,7 +365,7 @@ def _decode_video_frames_for_batch(
     """
     from rerun_export.utils import normalize_times
 
-    video_frames: dict[str, list[np.ndarray]] = {}
+    video_frames: dict[str, list[npt.NDArray]] = {}
     if video_data_cache:
         row_times_ns = normalize_times(table[index_column].to_pylist())
         for spec in videos:
@@ -372,7 +374,10 @@ def _decode_video_frames_for_batch(
             for time_ns in row_times_ns:
                 frames.append(
                     decode_video_frame(
-                        samples=samples, times_ns=times_ns, target_time_ns=int(time_ns), video_format=spec.get("video_format", "h264")
+                        samples=samples,
+                        times_ns=times_ns,
+                        target_time_ns=int(time_ns),
+                        video_format=spec.get("video_format", "h264"),
                     )
                 )
             video_frames[spec["key"]] = frames
@@ -386,7 +391,7 @@ def _build_frame(
     config: LeRobotConversionConfig,
     action_dim: int,
     state_dim: int,
-    video_frames: dict[str, list[np.ndarray]],
+    video_frames: dict[str, list[npt.NDArray]],
     num_rows: int,
 ) -> dict[str, object]:
     """

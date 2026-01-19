@@ -14,12 +14,15 @@ import pyarrow as pa
 from rerun_export.utils import normalize_times, unwrap_singleton
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     import rerun as rr
 
-    from rerun_export.lerobot.types import VideoSpec
+    from rerun_export.lerobot.types import VideoSampleData, VideoSpec
 
 
-def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> tuple[list[bytes], np.ndarray]:
+def extract_video_samples(
+    table: pa.Table, *, sample_column: str, time_column: str
+) -> VideoSampleData:
     """
     Extract video samples and timestamps from a table.
 
@@ -59,10 +62,10 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
 def decode_video_frame(
     *,
     samples: list[bytes],
-    times_ns: np.ndarray,
+    times_ns: npt.NDArray[np.int64],
     target_time_ns: int,
     video_format: str,
-) -> np.ndarray:
+) -> npt.NDArray[np.uint8]:
     """
     Decode a single video frame at the target timestamp.
 
@@ -105,7 +108,7 @@ def decode_video_frame(
 
 
 def can_remux_video(
-    times_ns: np.ndarray,
+    times_ns: npt.NDArray[np.int64],
     target_fps: int,
     tolerance: float = 0.05,
 ) -> tuple[bool, float]:
@@ -145,7 +148,7 @@ def can_remux_video(
 
 def remux_video_stream(
     samples: list[bytes],
-    times_ns: np.ndarray,
+    times_ns: npt.NDArray[np.int64],
     *,
     output_path: str,
     video_format: str,
@@ -228,6 +231,48 @@ def remux_video_stream(
     output_container.close()
 
 
+def infer_video_shape_from_table(
+    table: pa.Table,
+    *,
+    sample_column: str,
+    index_column: str,
+    video_format: str = "h264",
+) -> tuple[int, int, int]:
+    """
+    Infer video frame shape from a pre-queried PyArrow table.
+
+    Args:
+        table: PyArrow table containing video sample data
+        sample_column: Fully qualified sample column name (e.g., "path:VideoStream:sample")
+        index_column: Name of the index/timeline column
+        video_format: Video codec format (default: "h264")
+
+    Returns:
+        Tuple of (height, width, channels)
+
+    Raises:
+        ValueError: If no video samples are found or shape cannot be inferred
+
+    """
+    # Check if the table has any rows
+    if table.num_rows == 0:
+        raise ValueError(
+            f"No video data found in table for column '{sample_column}'. "
+            "The table may be empty or not contain video data on this timeline."
+        )
+
+    # Check if sample column exists
+    if sample_column not in table.column_names:
+        raise ValueError(f"Sample column '{sample_column}' not found in table. Available columns: {table.column_names}")
+
+    samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
+    target_time_ns = int(times_ns[0])
+    decoded = decode_video_frame(
+        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=video_format
+    )
+    return decoded.shape
+
+
 def infer_video_shape(
     dataset: rr.catalog.DatasetEntry,
     segment_id: str,
@@ -255,17 +300,17 @@ def infer_video_shape(
     df = view.reader(index=index_column).select(index_column, sample_column)
     table = pa.table(df)
 
-    # Check if the table has any rows - if not, the segment might not have video data for this index
-    if table.num_rows == 0:
+    try:
+        return infer_video_shape_from_table(
+            table,
+            sample_column=sample_column,
+            index_column=index_column,
+            video_format=spec.get("video_format", "h264"),
+        )
+    except ValueError as e:
+        # Re-raise with more context about the segment
         raise ValueError(
             f"No video data found in segment '{segment_id}' for path '{spec['path']}' "
             f"using index '{index_column}'. The segment may not contain video data "
             "on this timeline, or the video data may use a different index."
-        )
-
-    samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
-    target_time_ns = int(times_ns[0])
-    decoded = decode_video_frame(
-        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=spec.get("video_format", "h264")
-    )
-    return decoded.shape
+        ) from e
