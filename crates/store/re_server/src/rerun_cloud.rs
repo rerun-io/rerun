@@ -1166,7 +1166,7 @@ impl RerunCloudService for RerunCloudHandler {
                 } else {
                     store_handle
                         .read()
-                        .iter_chunks()
+                        .iter_physical_chunks()
                         .map(Clone::clone)
                         .collect()
                 };
@@ -1713,7 +1713,7 @@ fn get_chunks_for_query(
         }
         (None, None) => store_handle
             .read()
-            .iter_chunks()
+            .iter_physical_chunks()
             .map(Clone::clone)
             .collect(),
     }

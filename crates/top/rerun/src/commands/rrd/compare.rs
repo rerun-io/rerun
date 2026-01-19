@@ -212,7 +212,7 @@ fn load_chunks(
         store.application_id().clone(),
         engine
             .store()
-            .iter_chunks()
+            .iter_physical_chunks()
             .filter_map(|c| {
                 if ignore_chunks_without_components {
                     (c.num_components() > 0).then_some(c.clone())

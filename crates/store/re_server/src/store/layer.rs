@@ -43,7 +43,7 @@ impl Layer {
     pub fn size_bytes(&self) -> u64 {
         self.store_handle
             .read()
-            .iter_chunks()
+            .iter_physical_chunks()
             .map(|chunk| chunk.heap_size_bytes())
             .sum()
     }

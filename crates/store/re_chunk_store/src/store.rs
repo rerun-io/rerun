@@ -683,9 +683,9 @@ impl ChunkStore {
         &self.config
     }
 
-    /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.
+    /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
-    pub fn iter_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
+    pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
         self.chunks_per_chunk_id.values()
     }
 

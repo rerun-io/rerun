@@ -248,7 +248,7 @@ fn merge_and_compact(
                 let engine = unsafe { db.storage_engine_raw() };
 
                 let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
-                for chunk in engine.read().store().iter_chunks() {
+                for chunk in engine.read().store().iter_physical_chunks() {
                     store.insert_chunk(chunk)?;
                 }
 
