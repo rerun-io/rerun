@@ -263,11 +263,6 @@ backwards_check = [
   "rust",
   "py",
 ]
-"reference/dataframe_query" = [ # No output
-  "cpp",
-  "rust",
-  "py",
-]
 "reference/dataframe_save_blueprint" = [ # No output
   "cpp",
   "rust",
@@ -348,6 +343,11 @@ backwards_check = [
 "concepts/different_data_per_timeline" = [
   # TODO(#5521): log VisualBounds2D in all languages
   "py",
+]
+"concepts/query-and-transform/dataframe_query" = [ # OSS server query example, doesn't generate rrds
+  "cpp",
+  "py",
+  "rust",
 ]
 "concepts/viscomp-base" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
