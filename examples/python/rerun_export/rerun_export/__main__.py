@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import av
+
+av.logging.set_level(av.logging.PANIC)
+
 import argparse
 from contextlib import contextmanager
 from pathlib import Path
@@ -67,7 +71,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-id", default=None, help="LeRobot repo id (defaults to dataset name).")
     parser.add_argument("--fps", type=int, required=True, help="Target dataset FPS.")
     parser.add_argument("--index", default="real_time", help="Timeline to align on (e.g. real_time).")
-    parser.add_argument("--task-default", default="task", help="Fallback task label when missing.")
     parser.add_argument("--action", default=None, help="Fully qualified action column (e.g. 'path:Component:field').")
     parser.add_argument("--state", default=None, help="Fully qualified state column (e.g. 'path:Component:field').")
     parser.add_argument("--task", default=None, help="Fully qualified task column (e.g. 'path:Component:field').")
@@ -85,7 +88,8 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def convert_with_dataframes(
+def convert_rrd_dataset_to_lerobot(
+    *,
     rrd_dir: Path,
     output_dir: Path,
     dataset_name: str,
@@ -95,7 +99,7 @@ def convert_with_dataframes(
     max_segments: int | None = None,
 ) -> None:
     """
-    Convert RRD dataset to LeRobot using DataFusion dataframes.
+    Convert RRD dataset to LeRobot using the OSS server.
 
     This function handles:
     1. Server connection and dataset access
@@ -244,13 +248,6 @@ def convert_with_dataframes(
 
 
 def main() -> None:
-    try:
-        import av
-
-        av.logging.set_level(av.logging.PANIC)
-    except Exception:
-        pass
-
     args = _parse_args()
     video_specs = _parse_video_specs(args.video)
     repo_id = args.repo_id or args.dataset_name
@@ -268,10 +265,9 @@ def main() -> None:
         use_videos=not args.use_images,
         action_names=_parse_name_list(args.action_names),
         state_names=_parse_name_list(args.state_names),
-        task_default=args.task_default,
     )
 
-    convert_with_dataframes(
+    convert_rrd_dataset_to_lerobot(
         rrd_dir=args.rrd_dir,
         output_dir=args.output,
         dataset_name=args.dataset_name,

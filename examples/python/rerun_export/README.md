@@ -48,9 +48,3 @@ rerun_export \
   --task-path /language_instruction \
   --image front:/camera/front:raw
 ```
-
-Notes:
-- Use `--image` multiple times to add more cameras (format: `key:path:kind`, where `kind` is `raw`, `compressed`, or `video`).
-- By default, `--action-path` and `--state-path` assume the standard `Scalars:scalars` archetype. To specify custom archetypes, include the full column path with colons (e.g., `--action-path /robot_right/joint_states:schemas.proto.JointState:joint_positions`).
-- If your schema differs, override column names with `--action-column`, `--state-column`, or `--task-column`.
-- For non-H.264 video streams, set `video_format` on the `VideoSpec`.

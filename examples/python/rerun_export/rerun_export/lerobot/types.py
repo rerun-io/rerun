@@ -72,7 +72,7 @@ class LeRobotConversionConfig:
     state_names: list[str] | None
 
     # Task configuration
-    task_default: str
+    task_default: str = "No language instruction defined."
 
     def get_filter_list(self) -> tuple[list[str], str | None]:
         """
