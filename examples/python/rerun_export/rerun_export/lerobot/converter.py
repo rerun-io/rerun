@@ -16,11 +16,17 @@ from lerobot.datasets.compute_stats import compute_episode_stats
 from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
 
-from rerun_export.lerobot.video_processing import can_remux_video, decode_video_frame, remux_video_stream
+from rerun_export.lerobot.video_processing import (
+    can_remux_video,
+    decode_video_frame,
+    load_video_samples,
+    remux_video_stream,
+)
 from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
     import datafusion as df
+    import rerun as rr
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
     from rerun_export.lerobot.types import LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSampleData, VideoSpec
@@ -33,6 +39,7 @@ def convert_dataframe_to_episode(
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
     features: dict[str, dict[str, object]],
+    dataset: rr.catalog.DatasetEntry | None = None,
     video_data_cache: dict[str, VideoSampleData] | None = None,
 ) -> tuple[bool, RemuxData | None, bool]:
     """
@@ -41,7 +48,9 @@ def convert_dataframe_to_episode(
     Args:
         df: DataFusion dataframe containing the segment data (already filtered and aligned)
         config: Conversion configuration
-        video_data_cache: Pre-loaded video data per spec key (samples, times_ns)
+        video_data_cache: Pre-loaded video data per spec key (samples, times_ns).
+            If None, it will be loaded from the catalog dataset.
+        dataset: Rerun catalog dataset entry used to load video samples when cache is missing
         lerobot_dataset: LeRobot dataset to add frames to
         segment_id: ID of the segment being processed (for logging)
         features: Feature specifications from inference
@@ -62,6 +71,20 @@ def convert_dataframe_to_episode(
     if state_dim is None:
         raise ValueError("State feature specification is missing.")
 
+    table = pa.table(df)
+    if table.num_rows == 0:
+        return False, None, False
+
+    if video_data_cache is None and config.videos:
+        if dataset is None:
+            raise ValueError("video_data_cache is required when dataset is not provided for video sample loading.")
+        video_data_cache = load_video_samples(
+            dataset,
+            segment_id,
+            index_column=config.index_column,
+            videos=config.videos,
+        )
+
     # Check if video remuxing is possible (when use_videos=True and FPS matches)
     remux_data: RemuxData | None = None
     if config.use_videos and config.videos:
@@ -77,10 +100,6 @@ def convert_dataframe_to_episode(
                 )
 
         remux_data = {"specs": config.videos, "remux_info": remux_info, "fps": config.fps}
-
-    table = pa.table(df)
-    if table.num_rows == 0:
-        return False, None, False
 
     data_columns = {name: table[name].to_pylist() for name in table.column_names}
     num_rows = table.num_rows
@@ -382,6 +401,35 @@ def _decode_video_frames_for_batch(
                 )
             video_frames[spec["key"]] = frames
     return video_frames
+
+
+def _build_video_data_cache_from_table(
+    table: pa.Table,
+    *,
+    index_column: str,
+    videos: list[VideoSpec],
+) -> dict[str, VideoSampleData]:
+    """
+    Build a video data cache from columns already present in a table.
+
+    This fallback uses the table's aligned samples, which are unsuitable for remuxing.
+    """
+    from rerun_export.lerobot.video_processing import extract_video_samples
+
+    video_data_cache: dict[str, VideoSampleData] = {}
+    for spec in videos:
+        sample_column = f"{spec['path']}:VideoStream:sample"
+        if sample_column not in table.column_names:
+            raise ValueError(
+                f"Sample column '{sample_column}' not found in table. Available columns: {table.column_names}"
+            )
+        samples, times_ns = extract_video_samples(
+            table,
+            sample_column=sample_column,
+            time_column=index_column,
+        )
+        video_data_cache[spec["key"]] = (samples, times_ns)
+    return video_data_cache
 
 
 def _build_frame(

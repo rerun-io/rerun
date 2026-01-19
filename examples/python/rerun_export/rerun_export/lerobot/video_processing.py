@@ -20,9 +20,7 @@ if TYPE_CHECKING:
     from rerun_export.lerobot.types import VideoSampleData, VideoSpec
 
 
-def extract_video_samples(
-    table: pa.Table, *, sample_column: str, time_column: str
-) -> VideoSampleData:
+def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> VideoSampleData:
     """
     Extract video samples and timestamps from a table.
 
@@ -57,6 +55,66 @@ def extract_video_samples(
     if not samples:
         raise ValueError("No video samples available for decoding.")
     return samples, normalize_times(times)
+
+
+def load_video_samples(
+    dataset: rr.catalog.DatasetEntry,
+    segment_id: str,
+    *,
+    index_column: str,
+    videos: list[VideoSpec],
+) -> dict[str, VideoSampleData]:
+    """
+    Load unaligned video samples for a segment from the catalog dataset.
+
+    Args:
+        dataset: Rerun catalog dataset entry
+        segment_id: ID of the segment to read from
+        index_column: Timeline column name
+        videos: Video stream specifications
+
+    Returns:
+        Dictionary mapping spec key to (samples, times_ns)
+
+    """
+    video_data_cache: dict[str, VideoSampleData] = {}
+    for spec in videos:
+        sample_column = f"{spec['path']}:VideoStream:sample"
+        video_view = dataset.filter_segments(segment_id).filter_contents(spec["path"])
+        video_reader = video_view.reader(index=index_column)
+        video_table = pa.table(video_reader.select(index_column, sample_column))
+        samples, times_ns = extract_video_samples(
+            video_table,
+            sample_column=sample_column,
+            time_column=index_column,
+        )
+        video_data_cache[spec["key"]] = (samples, times_ns)
+    return video_data_cache
+
+
+def extract_first_video_sample(
+    table: pa.Table, *, sample_column: str, time_column: str
+) -> tuple[bytes, npt.NDArray[np.int64]]:
+    """
+    Extract the first available video sample and timestamp from a table.
+
+    This avoids materializing full columns for large tables when only a single
+    sample is needed (e.g., for shape inference).
+    """
+    for batch in table.select([sample_column, time_column]).to_batches():
+        sample_array = batch.column(0)
+        time_array = batch.column(1)
+        for row_idx in range(batch.num_rows):
+            sample = unwrap_singleton(sample_array[row_idx].as_py())
+            if sample is None:
+                continue
+            if isinstance(sample, np.ndarray):
+                sample_bytes = sample.tobytes()
+            else:
+                sample_bytes = bytes(sample)
+            timestamp = time_array[row_idx].as_py()
+            return sample_bytes, normalize_times([timestamp])
+    raise ValueError("No video samples available for decoding.")
 
 
 def decode_video_frame(
@@ -265,10 +323,10 @@ def infer_video_shape_from_table(
     if sample_column not in table.column_names:
         raise ValueError(f"Sample column '{sample_column}' not found in table. Available columns: {table.column_names}")
 
-    samples, times_ns = extract_video_samples(table, sample_column=sample_column, time_column=index_column)
+    sample_bytes, times_ns = extract_first_video_sample(table, sample_column=sample_column, time_column=index_column)
     target_time_ns = int(times_ns[0])
     decoded = decode_video_frame(
-        samples=samples, times_ns=times_ns, target_time_ns=target_time_ns, video_format=video_format
+        samples=[sample_bytes], times_ns=times_ns, target_time_ns=target_time_ns, video_format=video_format
     )
     return decoded.shape
 

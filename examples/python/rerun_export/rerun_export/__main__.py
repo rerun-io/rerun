@@ -15,8 +15,8 @@ from tqdm import tqdm
 
 from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
-from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSampleData, VideoSpec
-from rerun_export.lerobot.video_processing import extract_video_samples
+from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+from rerun_export.lerobot.video_processing import load_video_samples
 from rerun_export.utils import make_time_grid
 
 
@@ -115,6 +115,7 @@ def convert_rrd_dataset_to_lerobot(
         raise ValueError(f"RRD directory does not exist or is not a directory: {rrd_dir}")
     if output_dir.exists():
         raise ValueError(f"Output directory already exists: {output_dir}")
+
     with rr.server.Server(datasets={dataset_name: rrd_dir}) as server:
         client = server.client()
         dataset = client.get_dataset(name=dataset_name)
@@ -216,18 +217,12 @@ def convert_rrd_dataset_to_lerobot(
 
                 # Load video data cache from separate readers (video data is NOT aligned to the time grid)
                 # We need unaligned/raw video samples for remuxing, so we query them separately
-                video_data_cache: dict[str, VideoSampleData] = {}
-                for spec in config.videos:
-                    sample_column = f"{spec['path']}:VideoStream:sample"
-                    video_view = dataset.filter_segments(segment_id).filter_contents(spec["path"])
-                    video_reader = video_view.reader(index=config.index_column)
-                    video_table = pa.table(video_reader.select(config.index_column, sample_column))
-                    samples, times_ns = extract_video_samples(
-                        video_table,
-                        sample_column=sample_column,
-                        time_column=config.index_column,
-                    )
-                    video_data_cache[spec["key"]] = (samples, times_ns)
+                video_data_cache = load_video_samples(
+                    dataset,
+                    segment_id,
+                    index_column=config.index_column,
+                    videos=config.videos,
+                )
 
                 # Convert the dataframe to an episode
                 success, remux_data, direct_saved = convert_dataframe_to_episode(
