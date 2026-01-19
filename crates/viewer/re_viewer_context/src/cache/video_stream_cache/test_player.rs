@@ -754,6 +754,19 @@ fn cache_with_streaming() {
 const BIG_AV1_KEYFRAME: &[u8] = include_bytes!("big_av1_keyframe");
 const BIG_AV1_INTER_FRAME: &[u8] = include_bytes!("big_av1_inter_frame");
 
+#[track_caller]
+fn assert_splits_happened(store: EntityDb) {
+    let engine = store.storage_engine();
+    let store = engine.store();
+
+    assert!(
+        store
+            .iter_chunks()
+            .any(|c| { store.descends_from_a_split(&c.id()) }),
+        "This test is testing how the video cache handles splits, but no split happened"
+    );
+}
+
 #[test]
 fn cache_with_streaming_big() {
     let mut cache = VideoStreamCache::default();
@@ -799,6 +812,8 @@ fn cache_with_streaming_big() {
         .unwrap();
 
     player.expect_decoded_samples(0..sample_count as SampleIndex);
+
+    assert_splits_happened(store);
 }
 
 #[test]
@@ -847,4 +862,6 @@ fn cache_with_manifest_big() {
 
     let samples_per_chunk = samples_per_chunk as usize;
     player.expect_decoded_samples(samples_per_chunk..samples_per_chunk * 2 - 1);
+
+    assert_splits_happened(store);
 }
