@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
@@ -21,7 +21,8 @@ use re_viewer_context::{
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    VisualizableEntities, VisualizableReason, VisualizerComponentMapping,
+    VisualizerComponentMappings,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -392,9 +393,6 @@ impl ViewClass for TimeSeriesView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        use re_sdk_types::archetypes::Scalars;
-        use re_viewer_context::{VisualizableReason, VisualizerComponentMapping};
-
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
                 .iter()
@@ -406,27 +404,20 @@ impl ViewClass for TimeSeriesView {
 
         let mut visualizers_with_mappings: IntMap<
             ViewSystemIdentifier,
-            re_viewer_context::VisualizerComponentMappings,
+            VisualizerComponentMappings,
         > = available_visualizers
             .iter()
             .filter_map(|(visualizer, reason_opt)| {
+                // Filter out entities that weren't indicated.
+                // We later fall back on to line visualizers for those.
                 if indicated_entities_per_visualizer
-                    .get(visualizer)
-                    .is_some_and(|matching_list| matching_list.contains(entity_path))
+                    .get(visualizer)?
+                    .contains(entity_path)
                 {
-                    let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-                    // Extract physical component from the visualizable reason
-                    if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
-                        for (physical_component, _) in components {
-                            mappings.push(VisualizerComponentMapping {
-                                selector: Scalars::descriptor_scalars().component,
-                                target: *physical_component,
-                            });
-                        }
-                    }
-
-                    Some((*visualizer, mappings))
+                    Some((
+                        *visualizer,
+                        required_component_mapping_from_visualizable_reason(*reason_opt),
+                    ))
                 } else {
                     None
                 }
@@ -435,22 +426,12 @@ impl ViewClass for TimeSeriesView {
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
         if visualizers_with_mappings.is_empty()
-            && available_visualizers.contains_key(&SeriesLinesSystem::identifier())
-        {
-            let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-            // Extract physical component from the visualizable reason for the fallback visualizer
-            if let Some(Some(VisualizableReason::DatatypeMatchAny { components })) =
+            && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
-            {
-                for (physical_component, _) in components {
-                    mappings.push(VisualizerComponentMapping {
-                        selector: *physical_component,
-                        target: Scalars::descriptor_scalars().component,
-                    });
-                }
-            }
-
+        {
+            let mappings = required_component_mapping_from_visualizable_reason(
+                *series_line_visualizable_reason,
+            );
             visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
         }
 
@@ -874,6 +855,40 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
+
+fn required_component_mapping_from_visualizable_reason(
+    reason_opt: Option<&VisualizableReason>,
+) -> VisualizerComponentMappings {
+    let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
+        return VisualizerComponentMappings::default();
+    };
+
+    let target_component = Scalars::descriptor_scalars().component;
+
+    let mut first_native_semantic_match = None;
+    for (physical_component, match_kind) in components {
+        if first_native_semantic_match.is_none()
+            && *match_kind == re_viewer_context::DatatypeMatchKind::NativeSemantics
+        {
+            first_native_semantic_match = Some(*physical_component);
+        }
+        if first_native_semantic_match.is_some() && physical_component == &target_component {
+            // Perfect match, don't do any mapping.
+            return VisualizerComponentMappings::default();
+        }
+    }
+
+    let selected_source = if let Some(native_semantic_match) = first_native_semantic_match {
+        native_semantic_match
+    } else {
+        components.first().0
+    };
+
+    vec![VisualizerComponentMapping {
+        selector: selected_source,
+        target: target_component,
+    }]
 }
 
 fn draw_time_cursor(
