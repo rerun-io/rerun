@@ -803,16 +803,18 @@ mod tests {
         // Now add legacy override data at the legacy path.
         let legacy_override_path =
             ViewContents::legacy_override_path_for_entity(view.id, &entity_path);
-        let blueprint_store = test_ctx.active_blueprint();
 
         // Write a MyLabel component to the legacy override path (simulating pre-0.29 blueprint).
-        let legacy_override =
-            MyPoints::default().with_labels([MyLabel("legacy_override".to_owned())]);
-        let chunk = Chunk::builder(legacy_override_path.clone())
-            .with_archetype(RowId::new(), TimePoint::default(), &legacy_override)
-            .build()
-            .unwrap();
-        blueprint_store.add_chunk(&Arc::new(chunk)).unwrap();
+        {
+            let blueprint_store = test_ctx.active_blueprint();
+            let legacy_override =
+                MyPoints::default().with_labels([MyLabel("legacy_override".to_owned())]);
+            let chunk = Chunk::builder(legacy_override_path.clone())
+                .with_archetype(RowId::new(), TimePoint::default(), &legacy_override)
+                .build()
+                .unwrap();
+            blueprint_store.add_chunk(&Arc::new(chunk)).unwrap();
+        }
 
         // Run the query again with legacy overrides in place.
         {
@@ -848,6 +850,29 @@ mod tests {
                 true
             });
             assert!(found_entity, "Test entity should be in query results");
+        }
+
+        // Verify the actual override value can be retrieved from the legacy path.
+        {
+            let blueprint_query = test_ctx.blueprint_query.clone();
+            let blueprint_store = test_ctx.active_blueprint();
+            let labels_component = MyPoints::descriptor_labels().component;
+            let override_value = blueprint_store
+                .storage_engine()
+                .cache()
+                .latest_at(&blueprint_query, &legacy_override_path, [labels_component])
+                .component_batch::<MyLabel>(labels_component)
+                .expect("Should be able to retrieve the legacy override value");
+
+            assert_eq!(
+                override_value.len(),
+                1,
+                "Expected exactly one label override"
+            );
+            assert_eq!(
+                override_value[0].0, "legacy_override",
+                "Legacy override value should match what was written"
+            );
         }
     }
 }
