@@ -1,1 +1,2 @@
 sync.png filter=lfs diff=lfs merge=lfs -text
+sync2.png filter=lfs diff=lfs merge=lfs -text
