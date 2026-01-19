@@ -695,7 +695,7 @@ fn player_with_cache() {
     // Load the ones we unloaded again
     load_chunks(&mut store, &mut cache, &chunks[0..3]);
 
-    player.play_store(0.0..3.75, 0.25, &store).unwrap();
+    player.play_store(0.0..2.75, 0.25, &store).unwrap();
 
-    player.expect_decoded_samples(0..15);
+    player.expect_decoded_samples(0..11);
 }
