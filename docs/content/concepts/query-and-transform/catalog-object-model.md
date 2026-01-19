@@ -24,7 +24,7 @@ The id is immutable, but the name can be changed provided it remains unique.
 ## Table entries
 
 Table entries model a single table of data.
-They use the [Arrow data model](https://arrow.apache.org/docs/format/Columnar.html), so a table is logically equivalent to an [Arrow table](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html), or, equivalently, an ordered collection of [Arrow record batches](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html).
+They use the [Arrow data model](https://arrow.apache.org/docs/format/Columnar.html), so a table is logically equivalent to an [Arrow table](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html).
 As a result, tables possess an [Arrow schema](https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html).
 
 Tables support the following mutation operations through the Catalog SDK:
