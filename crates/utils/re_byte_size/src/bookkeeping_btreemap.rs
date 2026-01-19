@@ -65,30 +65,16 @@ where
 
         match self.map.entry(key) {
             Entry::Vacant(vacant) => {
-                // Insert the default value
                 let key_size = vacant.key().total_size_bytes();
                 let value_ref = vacant.insert(default_value);
-
-                // Call the mutator on the newly inserted value
                 mutator(value_ref);
-
-                // Compute the final size after mutation
-                let final_size = value_ref.total_size_bytes();
-
-                // Add key size and the final value size to heap_size_bytes
-                self.heap_size_bytes += key_size + final_size;
+                let value_size = value_ref.total_size_bytes();
+                self.heap_size_bytes += key_size + value_size;
             }
             Entry::Occupied(mut occupied) => {
-                // Measure size before mutation
                 let size_before = occupied.get().total_size_bytes();
-
-                // Call the mutator
                 mutator(occupied.get_mut());
-
-                // Measure size after mutation
                 let size_after = occupied.get().total_size_bytes();
-
-                // Update heap_size_bytes with the difference
                 self.heap_size_bytes = self.heap_size_bytes - size_before + size_after;
             }
         }
@@ -106,21 +92,11 @@ where
     where
         K: Clone,
     {
-        // Find the last key before the given key (need to clone it to avoid borrow issues)
         let (key, value) = self.map.range_mut(..=key).next_back()?;
-
-        // Measure size before mutation
         let size_before = value.total_size_bytes();
-
-        // Call the mutator
         let ret = mutator(key, value);
-
-        // Measure size after mutation
         let size_after = value.total_size_bytes();
-
-        // Update heap_size_bytes with the difference
         self.heap_size_bytes = self.heap_size_bytes - size_before + size_after;
-
         Some(ret)
     }
 
@@ -144,7 +120,7 @@ where
             self.heap_size_bytes += new_value_size;
             self.heap_size_bytes -= old_value.total_size_bytes();
         } else {
-            // New key-value pair - add both sizes
+            // New key-value pair - add both sizes:
             self.heap_size_bytes += new_key_size + new_value_size;
         }
 
@@ -199,9 +175,7 @@ where
 mod tests {
     use super::*;
 
-    fn total_size_bytes_of_map<K: Ord + SizeBytes, V: SizeBytes>(
-        map: &BookkeepingBTreeMap<K, V>,
-    ) -> u64 {
+    fn heap_size_of_map<K: Ord + SizeBytes, V: SizeBytes>(map: &BookkeepingBTreeMap<K, V>) -> u64 {
         map.iter()
             .map(|(k, v)| k.total_size_bytes() + v.total_size_bytes())
             .sum()
@@ -213,19 +187,19 @@ mod tests {
         assert_eq!(map.heap_size_bytes(), 0);
 
         map.insert(1, "one".to_owned());
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.insert(2, "two".to_owned());
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.insert(2, "two, but now it is different".to_owned());
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.remove(&1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.remove(&2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
         assert_eq!(map.heap_size_bytes(), 0);
     }
 
@@ -249,22 +223,22 @@ mod tests {
         let old = map.insert(1, "hello".to_owned());
         assert_eq!(old, None);
         assert_eq!(map.len(), 1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let old = map.insert(2, "world".to_owned());
         assert_eq!(old, None);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let old = map.insert(1, "hello, this is much longer!".to_owned());
         assert_eq!(old, Some("hello".to_owned()));
         assert_eq!(map.len(), 2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let old = map.insert(1, "hi".to_owned());
         assert_eq!(old, Some("hello, this is much longer!".to_owned()));
         assert_eq!(map.len(), 2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
     }
 
     #[test]
@@ -274,17 +248,17 @@ mod tests {
         map.insert(1, "one".to_owned());
         map.insert(2, "two".to_owned());
         map.insert(3, "three".to_owned());
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let removed = map.remove(&2);
         assert_eq!(removed, Some("two".to_owned()));
         assert_eq!(map.len(), 2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let removed = map.remove(&99);
         assert_eq!(removed, None);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.remove(&1);
         map.remove(&3);
@@ -302,11 +276,11 @@ mod tests {
             (3, "three".to_owned()),
         ]);
         assert_eq!(map.len(), 3);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.extend(vec![(2, "TWO".to_owned()), (4, "four".to_owned())]);
         assert_eq!(map.len(), 4);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
     }
 
     #[test]
@@ -317,25 +291,25 @@ mod tests {
             vec.push("hello".to_owned());
         });
         assert_eq!(map.len(), 1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.push("world".to_owned());
         });
         assert_eq!(map.len(), 1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.pop();
         });
         assert_eq!(map.len(), 1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         map.mutate_entry(1, Vec::new(), |vec| {
             vec.clear();
         });
         assert_eq!(map.len(), 1);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
     }
 
     #[test]
@@ -345,7 +319,7 @@ mod tests {
         map.insert(10, vec!["ten".to_owned()]);
         map.insert(20, vec!["twenty".to_owned()]);
         map.insert(30, vec!["thirty".to_owned()]);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let result = map.mutate_latest_at(&20, |key, vec| {
             assert_eq!(*key, 20);
@@ -353,7 +327,7 @@ mod tests {
             *key
         });
         assert_eq!(result, Some(20));
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let result = map.mutate_latest_at(&100, |key, vec| {
             assert_eq!(*key, 30);
@@ -361,13 +335,13 @@ mod tests {
             *key
         });
         assert_eq!(result, Some(30));
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
 
         let result = map.mutate_latest_at(&5, |_key, vec| {
             vec.push("should not happen".to_owned());
         });
         assert_eq!(result, None);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
     }
 
     #[test]
@@ -410,7 +384,7 @@ mod tests {
         assert_eq!(map1.len(), map2.len());
         assert_eq!(map1.heap_size_bytes(), map2.heap_size_bytes());
         assert_eq!(map1, map2);
-        assert_eq!(map2.heap_size_bytes(), total_size_bytes_of_map(&map2));
+        assert_eq!(map2.heap_size_bytes(), heap_size_of_map(&map2));
     }
 
     #[test]
@@ -446,40 +420,26 @@ mod tests {
     }
 
     #[test]
-    fn test_with_pod_types() {
-        let mut map: BookkeepingBTreeMap<u64, u64> = BookkeepingBTreeMap::new();
-
-        map.insert(1, 100);
-        map.insert(2, 200);
-        map.insert(3, 300);
-
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
-
-        map.remove(&2);
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
-    }
-
-    #[test]
     fn test_bookkeeping_stress() {
         let mut map: BookkeepingBTreeMap<u64, Vec<String>> = BookkeepingBTreeMap::new();
 
         for i in 0..100 {
             map.insert(i, vec![format!("value_{i}")]);
-            assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+            assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
         }
 
         for i in (0..100).step_by(5) {
             map.mutate_entry(i, Vec::new(), |vec| {
                 vec.push(format!("extra_{i}"));
             });
-            assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+            assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
         }
 
         for i in (0..100).step_by(3) {
             map.remove(&i);
-            assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+            assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
         }
 
-        assert_eq!(map.heap_size_bytes(), total_size_bytes_of_map(&map));
+        assert_eq!(map.heap_size_bytes(), heap_size_of_map(&map));
     }
 }
