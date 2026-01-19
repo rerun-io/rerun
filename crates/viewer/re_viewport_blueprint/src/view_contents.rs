@@ -257,6 +257,7 @@ impl ViewContents {
     /// Note that this result will not have any resolved overrides. Those can
     /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
     /// the result.
+    #[expect(clippy::too_many_arguments)]
     pub fn build_data_result_tree(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
