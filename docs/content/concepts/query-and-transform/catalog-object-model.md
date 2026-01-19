@@ -36,10 +36,10 @@ Thanks to [DataFusion](https://datafusion.apache.org/), tables also support most
 
 ## Datasets
 
-Dataset entries model a collection of Rerun data organized in "episodes," such as recorded runs of a given robotic task.
+Dataset entries model a collection of Rerun data organized in episodes such as recorded runs of a given robotic task.
 These episodes within datasets are called _segments_, which are identified by a segment ID.
 
-Segments are added to datasets by the process of _registering_ a `.rrd` (typically stored in some object store such as S3) to the dataset using the Catalog SDK.
+Segments are added to datasets by the process of _registering_ a [recording](../logging-and-ingestion/recordings.md) (typically stored in some object store such as S3) to the dataset using the Catalog SDK.
 The recording ID of the `.rrd` file is used as its segment ID.
 
 Recordings registered to a given segment are organized by layers, identified by a layer name.
