@@ -2064,7 +2064,7 @@ fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
     };
 
     let store = rrd.store.read();
-    for chunk in store.iter_chunks() {
+    for chunk in store.iter_physical_chunks() {
         recording.send_chunk((**chunk).clone());
     }
 }

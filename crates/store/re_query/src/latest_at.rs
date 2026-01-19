@@ -1248,7 +1248,7 @@ mod tests {
         let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
 
         let mut offset = 0;
-        for chunk in store.iter_chunks() {
+        for chunk in store.iter_physical_chunks() {
             let chunk_batch = chunk.to_chunk_batch().unwrap();
 
             use re_byte_size::SizeBytes as _;

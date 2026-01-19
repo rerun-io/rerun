@@ -102,7 +102,7 @@ impl InMemoryStore {
 
                     for chunk_key in chunk_keys {
                         let chunk = store_handle
-                            .chunk(&chunk_key.chunk_id)
+                            .physical_chunk(&chunk_key.chunk_id)
                             .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
 
                         result.push((store_id.clone(), Arc::clone(chunk)));

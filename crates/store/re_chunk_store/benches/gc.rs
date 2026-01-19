@@ -45,9 +45,9 @@ fn gc(c: &mut Criterion) {
         b.iter_batched(
             || store.clone(),
             |mut store| {
-                assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+                assert_eq!(NUM_CHUNKS as usize, store.num_physical_chunks());
                 store.gc(&GarbageCollectionOptions::gc_everything());
-                assert_eq!(0, store.num_chunks());
+                assert_eq!(0, store.num_physical_chunks());
             },
             criterion::BatchSize::PerIteration,
         );
@@ -57,7 +57,7 @@ fn gc(c: &mut Criterion) {
         b.iter_batched(
             || store.clone(),
             |mut store| {
-                assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+                assert_eq!(NUM_CHUNKS as usize, store.num_physical_chunks());
                 store.gc(&GarbageCollectionOptions {
                     furthest_from: Some((
                         TimelineName::log_tick(),
@@ -65,7 +65,7 @@ fn gc(c: &mut Criterion) {
                     )),
                     ..GarbageCollectionOptions::gc_everything()
                 });
-                assert_eq!(0, store.num_chunks());
+                assert_eq!(0, store.num_physical_chunks());
             },
             criterion::BatchSize::PerIteration,
         );

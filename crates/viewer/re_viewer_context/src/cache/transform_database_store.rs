@@ -32,7 +32,7 @@ impl TransformDatabaseStoreCache {
             self.initialized = true; // There can't be a race here since we have `&mut self``.
             self.transform_cache
                 .write()
-                .add_chunks(entity_db.storage_engine().store().iter_chunks());
+                .add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
         }
 
         self.transform_cache.read_arc()

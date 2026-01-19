@@ -132,7 +132,7 @@ impl DatastoreUi {
         //
 
         let chunk_iterator = match &self.chunk_list_mode {
-            ChunkListMode::All => Either::Left(chunk_store.iter_chunks().map(Arc::clone)),
+            ChunkListMode::All => Either::Left(chunk_store.iter_physical_chunks().map(Arc::clone)),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
