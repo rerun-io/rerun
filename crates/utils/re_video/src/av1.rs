@@ -130,6 +130,7 @@ fn chroma_mode_from_color_config(config: &scuffle_av1::seq::ColorConfig) -> Chro
 }
 
 /// Small 64x64 AV1 keyframe for testing (generated with ffmpeg)
+///
 /// This contains a Sequence Header OBU followed by a keyframe
 pub const AV1_TEST_KEYFRAME: &[u8] = &[
     0x12, 0x00, 0x0A, 0x0A, 0x00, 0x00, 0x00, 0x02, 0xAF, 0xFF, 0x9F, 0xFF, 0x30, 0x08, 0x32, 0x14,
@@ -137,9 +138,9 @@ pub const AV1_TEST_KEYFRAME: &[u8] = &[
     0xFA, 0x1E, 0x3C, 0xD8,
 ];
 
-/// AV1 inter-frame (non-keyframe) for testing - `frame_type=1` (`INTER_FRAME`)
-/// Contains: Temporal Delimiter OBU + Frame OBU with inter-frame
-/// Note: This frame depends on the keyframe for decoding (references prior state)
+/// AV1 inter-frame (non-keyframe) for testing (generated with ffmpeg)
+///
+/// This contains temporal Delimiter OBU + Frame OBU with inter-frame
 pub const AV1_TEST_INTER_FRAME: &[u8] = &[
     0x12, 0x00, 0x32, 0x12, 0x30, 0x03, 0xC0, 0x80, 0x00, 0x00, 0x06, 0xC0, 0x00, 0x00, 0x02, 0x80,
     0x00, 0x00, 0x80, 0x00, 0x99, 0x10,
@@ -151,7 +152,7 @@ mod test {
 
     #[test]
     fn test_detect_av1_keyframe_start() {
-        let result = detect_av1_keyframe_start(super::AV1_KEYFRAME);
+        let result = detect_av1_keyframe_start(super::AV1_TEST_KEYFRAME);
 
         match result {
             Ok(GopStartDetection::StartOfGop(details)) => {

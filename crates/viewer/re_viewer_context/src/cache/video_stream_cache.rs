@@ -241,9 +241,6 @@ impl VideoStreamCache {
             );
         }
 
-        if result.is_ok() {
-            log_samples(entity_db, &video_data.samples);
-        }
         if encoding_details_before != video_data.encoding_details {
             re_log::error_once!(
                 "The video stream codec details on {} changed over time, which is not supported.",
@@ -530,11 +527,17 @@ fn handle_split_chunk_addition(
 
     let mut chunk_sample_iterators = ChunkSampleIterators::default();
 
-    for chunk in std::iter::once(original_chunk).chain(siblings) {
+    let mut count = 0;
+    for chunk in std::iter::once(chunk).chain(siblings) {
         if let Some(samples) = ChunkSamples::from_chunk(chunk, timeline) {
+            count += samples.samples.len();
             chunk_sample_iterators.add_chunk(samples);
         }
     }
+
+    dbg!(count);
+
+    let mut i = 0;
 
     chunk_sample_iterators.handle_samples(
         known_chunk_ranges,
@@ -542,9 +545,11 @@ fn handle_split_chunk_addition(
         |next_sample| {
             if let Some((idx, sample)) = samples.next() {
                 *sample = next_sample;
+                i += 1;
 
                 idx
             } else {
+                dbg!(i);
                 debug_assert!(
                     false,
                     "Split chunks ended up with more samples than the original chunk?"
@@ -635,9 +640,7 @@ fn load_video_data_from_chunks(
         entity_path,
         [sample_component, codec_component],
     );
-    let sample_chunks = query_results
-        .get_required(sample_component)
-        .map_err(|_err| VideoStreamProcessingError::NoVideoSamplesFound)?;
+    let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
     let codec_chunks = query_results
         .get_required(codec_component)
         .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
@@ -719,8 +722,6 @@ fn load_video_data_from_chunks(
             }
         }
     }
-
-    log_samples(store, &video_descr.samples);
 
     Ok((video_descr, known_chunk_ranges))
 }

@@ -2,20 +2,23 @@ use std::{iter::once, ops::Range, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
 use re_byte_size::SizeBytes as _;
-use re_chunk::{Chunk, TimeInt};
+use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
 use re_log_encoding::{RrdManifest, RrdManifestBuilder};
 use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
 };
+use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
 use re_video::{
     AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, AsyncDecoder, Receiver, SampleIndex,
     SampleIndex, SampleMetadataState, SampleMetadataState, Sender, Time, Time,
     VideoDataDescription, VideoDataDescription,
 };
 
-use crate::{Cache as _, SharablePlayableVideoStream, VideoStreamProcessingError};
+use crate::{
+    Cache as _, SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+};
 
 struct TestDecoder {
     sender: Sender<Result<re_video::Frame, re_video::DecodeError>>,
@@ -580,91 +583,103 @@ fn load_chunks(store: &mut EntityDb, cache: &mut super::VideoStreamCache, chunks
     cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
 }
 
-#[test]
-fn player_with_cache() {
-    use crate::VideoStreamCache;
-    use re_chunk::{Chunk, RowId, Timeline};
-    use re_log_types::StoreId;
-    use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
+fn codec_chunk() -> Chunk {
+    let mut builder = Chunk::builder(STREAM_ENTITY);
 
-    fn create_codec_chunk() -> Chunk {
-        let mut builder = Chunk::builder(STREAM_ENTITY);
+    builder = builder.with_archetype(
+        RowId::new(),
+        [(
+            Timeline::new_duration(TIMELINE_NAME),
+            TimeInt::from_secs(0.0),
+        )],
+        &VideoStream::new(VideoCodec::AV1),
+    );
 
+    builder.build().unwrap()
+}
+
+fn video_chunks(
+    keyframe: &[u8],
+    inter_frame: &[u8],
+    start_time: f64,
+    dt: f64,
+    gop_count: u64,
+    samples_per_gop: u64,
+) -> Chunk {
+    let timeline = Timeline::new_duration(TIMELINE_NAME);
+    let mut builder = Chunk::builder(STREAM_ENTITY);
+
+    for i in 0..gop_count {
+        let gop_start_time = start_time + (i * samples_per_gop) as f64 * dt;
         builder = builder.with_archetype(
             RowId::new(),
-            [(
-                Timeline::new_duration(TIMELINE_NAME),
-                TimeInt::from_secs(0.0),
-            )],
-            &VideoStream::new(VideoCodec::AV1),
+            [(timeline, TimeInt::from_secs(gop_start_time))],
+            &VideoStream::update_fields().with_sample(keyframe),
         );
 
-        builder.build().unwrap()
-    }
-
-    fn frames(time: f64) -> Chunk {
-        let timeline = Timeline::new_duration(TIMELINE_NAME);
-        Chunk::builder(STREAM_ENTITY)
-            .with_archetype(
+        for i in 1..samples_per_gop {
+            let time = gop_start_time + i as f64 * dt;
+            builder = builder.with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time))],
-                &VideoStream::update_fields().with_sample(AV1_TEST_KEYFRAME),
-            )
-            .with_archetype(
-                RowId::new(),
-                [(timeline, TimeInt::from_secs(time + 0.25))],
-                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
-            )
-            .with_archetype(
-                RowId::new(),
-                [(timeline, TimeInt::from_secs(time + 0.5))],
-                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
-            )
-            .with_archetype(
-                RowId::new(),
-                [(timeline, TimeInt::from_secs(time + 0.75))],
-                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
-            )
-            .build()
-            .unwrap()
+                &VideoStream::update_fields().with_sample(inter_frame),
+            );
+        }
     }
 
-    fn create_chunks() -> Vec<Arc<Chunk>> {
-        (0..10)
-            .map(|i| frames(i as f64))
-            .chain(once(create_codec_chunk()))
-            .map(Arc::new)
-            .collect()
-    }
+    builder.build().unwrap()
+}
 
-    let mut cache = VideoStreamCache::default();
-
-    let mut store = EntityDb::new(StoreId::recording("test", "test"));
-
-    let entity = re_chunk::EntityPath::from(STREAM_ENTITY);
-
-    let chunks = create_chunks();
-
-    let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), &chunks);
-
-    store.add_rrd_manifest_message(manifest);
-
-    // load codec chunk
-    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
-
-    load_chunks(&mut store, &mut cache, &chunks[4..5]);
-
-    let video_stream = cache
+fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePlayableVideoStream {
+    cache
         .entry(
-            &store,
-            &entity,
+            store,
+            &re_chunk::EntityPath::from(STREAM_ENTITY),
             TIMELINE_NAME.into(),
             re_video::DecodeSettings {
                 hw_acceleration: Default::default(),
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
             },
         )
-        .unwrap();
+        .unwrap()
+}
+
+fn load_into_rrd_manifest(store: &mut EntityDb, chunks: &[Arc<Chunk>]) {
+    let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), chunks);
+
+    store.add_rrd_manifest_message(manifest);
+}
+
+#[test]
+fn cache_with_manifest() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunks: Vec<_> = (0..10)
+        .map(|i| {
+            video_chunks(
+                AV1_TEST_KEYFRAME,
+                AV1_TEST_INTER_FRAME,
+                i as f64,
+                0.25,
+                1,
+                4,
+            )
+        })
+        .chain(once(codec_chunk()))
+        .map(Arc::new)
+        .collect();
+
+    load_into_rrd_manifest(&mut store, &chunks);
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+
+    // Load some chunks.
+    load_chunks(&mut store, &mut cache, &chunks[4..5]);
 
     let mut player = TestVideoPlayer::from_stream(video_stream);
 
@@ -693,9 +708,143 @@ fn player_with_cache() {
     player.expect_decoded_samples(20..27);
 
     // Load the ones we unloaded again
-    load_chunks(&mut store, &mut cache, &chunks[0..3]);
+    load_chunks(&mut store, &mut cache, &chunks[0..4]);
 
-    player.play_store(0.0..2.75, 0.25, &store).unwrap();
+    player.play_store(0.0..6.75, 0.25, &store).unwrap();
 
-    player.expect_decoded_samples(0..11);
+    player.expect_decoded_samples(0..27);
+}
+
+#[test]
+fn cache_with_streaming() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunks: Vec<_> = (0..10)
+        .map(|i| {
+            video_chunks(
+                AV1_TEST_KEYFRAME,
+                AV1_TEST_INTER_FRAME,
+                i as f64,
+                0.25,
+                1,
+                4,
+            )
+        })
+        .chain(once(codec_chunk()))
+        .map(Arc::new)
+        .collect();
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load all sample chunks.
+    load_chunks(&mut store, &mut cache, &chunks[0..10]);
+
+    player.play_store(0.0..10.0, 0.25, &store).unwrap();
+
+    player.expect_decoded_samples(0..40);
+}
+
+// Test with more data per chunk to trigger splitting.
+const BIG_AV1_KEYFRAME: &[u8] = include_bytes!("big_av1_keyframe");
+const BIG_AV1_INTER_FRAME: &[u8] = include_bytes!("big_av1_inter_frame");
+
+#[test]
+fn cache_with_streaming_big() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunk_count = 4;
+    let gops_per_chunk = 10;
+    let samples_per_gop = 200;
+
+    let dt = 0.1;
+
+    let samples_per_chunk = gops_per_chunk * samples_per_gop;
+    let sample_count = chunk_count * samples_per_chunk;
+    let time_per_chunk = samples_per_chunk as f64 * dt;
+
+    let chunks: Vec<_> = (0..chunk_count)
+        .map(|i| {
+            video_chunks(
+                BIG_AV1_KEYFRAME,
+                BIG_AV1_INTER_FRAME,
+                i as f64 * time_per_chunk,
+                dt,
+                gops_per_chunk,
+                samples_per_gop,
+            )
+        })
+        .chain(once(codec_chunk()))
+        .map(Arc::new)
+        .collect();
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load all sample chunks.
+    load_chunks(&mut store, &mut cache, &chunks[0..4]);
+
+    player
+        .play_store(0.0..sample_count as f64 * dt, dt, &store)
+        .unwrap();
+
+    player.expect_decoded_samples(0..sample_count as SampleIndex);
+}
+
+#[test]
+fn cache_with_manifest_big() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunk_count = 4;
+    let gops_per_chunk = 10;
+    let samples_per_gop = 200;
+
+    let dt = 0.1;
+    let samples_per_chunk = gops_per_chunk * samples_per_gop;
+    let time_per_chunk = samples_per_chunk as f64 * dt;
+
+    let chunks: Vec<_> = (0..chunk_count)
+        .map(|i| {
+            video_chunks(
+                BIG_AV1_KEYFRAME,
+                BIG_AV1_INTER_FRAME,
+                time_per_chunk * i as f64,
+                dt,
+                gops_per_chunk,
+                samples_per_gop,
+            )
+        })
+        .chain(once(codec_chunk()))
+        .map(Arc::new)
+        .collect();
+
+    load_into_rrd_manifest(&mut store, &chunks);
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load all sample chunks.
+    load_chunks(&mut store, &mut cache, &chunks[1..2]);
+
+    player
+        .play_store(time_per_chunk..time_per_chunk * 2.0 - dt, dt, &store)
+        .unwrap();
+
+    let samples_per_chunk = samples_per_chunk as usize;
+    player.expect_decoded_samples(samples_per_chunk..samples_per_chunk * 2 - 1);
 }
