@@ -37,6 +37,8 @@ impl SinkFlushError {
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static + std::any::Any {
     /// Send this log message.
+    ///
+    /// This should optionally block in order to apply backpressure.
     fn send(&self, msg: LogMsg);
 
     /// Send all these log messages.
@@ -553,8 +555,8 @@ impl Default for GrpcSink {
 }
 
 impl LogSink for GrpcSink {
-    fn send(&self, msg: LogMsg) {
-        self.client.send(msg);
+    fn send(&self, log_msg: LogMsg) {
+        self.client.send_blocking(log_msg);
     }
 
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
