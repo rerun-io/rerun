@@ -695,9 +695,9 @@ impl ChunkStore {
         self.chunks_per_chunk_id.get(id)
     }
 
-    /// Get the number of chunks.
+    /// Get the number of *physical* chunks in the store.
     #[inline]
-    pub fn num_chunks(&self) -> usize {
+    pub fn num_physical_chunks(&self) -> usize {
         self.chunks_per_chunk_id.len()
     }
 

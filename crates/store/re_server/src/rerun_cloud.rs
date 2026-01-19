@@ -1150,7 +1150,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
             move |(segment_id, layer_name, store_handle)| {
-                let num_chunks = store_handle.read().num_chunks();
+                let num_chunks = store_handle.read().num_physical_chunks();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_segment_ids = Vec::with_capacity(num_chunks);

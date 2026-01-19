@@ -37,7 +37,7 @@ impl Layer {
     }
 
     pub fn num_chunks(&self) -> u64 {
-        self.store_handle.read().num_chunks() as u64
+        self.store_handle.read().num_physical_chunks() as u64
     }
 
     pub fn size_bytes(&self) -> u64 {
