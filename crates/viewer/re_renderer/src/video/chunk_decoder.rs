@@ -2,8 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crossbeam::channel::{Receiver, Sender};
-use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
+use re_video::{Chunk, Frame, FrameContent, Receiver, Sender, Time, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
@@ -85,7 +84,8 @@ impl VideoSampleDecoder {
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
-        let (decoder_output_sender, frame_receiver) = crossbeam::channel::unbounded();
+        let (decoder_output_sender, frame_receiver) =
+            re_video::channel(format!("{debug_name}-VideoSampleDecoder"));
         let decoder = make_decoder(decoder_output_sender)?;
 
         Ok(Self {

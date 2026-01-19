@@ -1,11 +1,12 @@
 use std::{iter::once, ops::Range};
 
-use crossbeam::channel::{Receiver, Sender};
 use re_log_types::external::re_tuid::Tuid;
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
 };
-use re_video::{AsyncDecoder, SampleIndex, SampleMetadataState, Time, VideoDataDescription};
+use re_video::{
+    AsyncDecoder, Receiver, SampleIndex, SampleMetadataState, Sender, Time, VideoDataDescription,
+};
 
 use crate::VideoStreamProcessingError;
 
@@ -62,6 +63,11 @@ struct TestVideoPlayer {
 
 impl TestVideoPlayer {
     fn play(&mut self, range: Range<f64>, time_step: f64) -> Result<(), VideoPlayerError> {
+        eprintln!(
+            "Playing from {} to {} at {}s steps",
+            range.start, range.end, time_step
+        );
+
         self.time = range.start;
         for i in 0..((range.end - self.time) / time_step).next_down().floor() as i32 {
             let time = self.time + i as f64 * time_step;
@@ -74,6 +80,8 @@ impl TestVideoPlayer {
     }
 
     fn frame_at(&mut self, time: f64) -> Result<(), VideoPlayerError> {
+        eprintln!("  frame_at {time}");
+
         self.video.frame_at(
             Time::from_secs(time, re_video::Timescale::NANOSECOND),
             &self.video_descr,
@@ -86,6 +94,8 @@ impl TestVideoPlayer {
 
     #[track_caller]
     fn expect_decoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
+        eprintln!("  expect_decoded_samples…");
+
         let received = self.sample_rx.try_iter().collect::<Vec<_>>();
         let expected = samples.into_iter().collect::<Vec<_>>();
 
@@ -97,6 +107,8 @@ impl TestVideoPlayer {
     }
 
     fn set_sample(&mut self, idx: SampleIndex, mut sample: SampleMetadataState) {
+        eprintln!("  set_sample {idx}…");
+
         if let Some(sample) = sample.sample_mut() {
             sample.frame_nr = idx as u32;
             sample.decode_timestamp = re_video::Time::from_secs(
@@ -193,7 +205,7 @@ fn keyframe(time: f64) -> SampleMetadataState {
 fn create_video(
     samples: impl IntoIterator<Item = SampleMetadataState>,
 ) -> Result<TestVideoPlayer, VideoStreamProcessingError> {
-    let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
+    let (sample_tx, sample_rx) = re_video::channel("test_player");
     let video = VideoPlayer::new_with_encoder(
         VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
             Ok(Box::new(TestDecoder {
@@ -257,6 +269,8 @@ fn create_video(
 }
 
 fn test_simple_video(mut video: TestVideoPlayer, count: usize, dt: f64, max_time: f64) {
+    re_log::setup_logging();
+
     video.play(0.0..max_time, dt).unwrap();
 
     video.expect_decoded_samples(0..count);

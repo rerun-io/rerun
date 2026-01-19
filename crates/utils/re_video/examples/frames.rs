@@ -48,7 +48,7 @@ fn main() {
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
-    let (output_sender, output_receiver) = crossbeam::channel::unbounded();
+    let (output_sender, output_receiver) = re_video::channel("video_output");
 
     let output_thread = std::thread::Builder::new()
         .name("output".to_owned())

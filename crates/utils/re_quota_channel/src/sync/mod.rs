@@ -31,7 +31,6 @@ struct SharedState {
     ///
     /// Used to ensure fair access to the channel among multiple senders,
     /// preventing starvation.
-    #[cfg(not(target_arch = "wasm32"))] // single-threaded
     active_sender: FairMutex<()>,
 
     /// Protected by mutex for use with condvar.
@@ -157,7 +156,7 @@ impl<T> Sender<T> {
         let capacity = self.shared.capacity_bytes;
 
         {
-            let mut current = self.shared.current_bytes.lock();
+            let mut current = self.shared.bytes_in_flight.lock();
             let new_total = *current + size_bytes;
 
             if capacity < new_total {
@@ -324,6 +323,13 @@ impl<T> Receiver<T> {
             self.shared.less_bytes_in_flight.notify_all();
         }
     }
+
+    /// A non-blocking iterator over messages in the channel.
+    ///
+    /// Each call to next returns a message if there is one ready to be received. The iterator never blocks waiting for the next message.
+    pub fn try_iter(&self) -> impl Iterator<Item = T> + '_ {
+        std::iter::from_fn(|| self.try_recv().ok())
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -349,7 +355,6 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
 
         capacity_bytes,
 
-        #[cfg(not(target_arch = "wasm32"))]
         active_sender: FairMutex::new(()),
 
         bytes_in_flight: Mutex::new(0),
@@ -460,5 +465,27 @@ mod tests {
         // Wait for the send to complete
         handle.join().unwrap();
         assert!(send_completed.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_try_iter() {
+        let (tx, rx) = channel::<u32>("test".to_owned(), 1000);
+
+        // Send some messages
+        tx.send_with_size(1, 10).unwrap();
+        tx.send_with_size(2, 10).unwrap();
+        tx.send_with_size(3, 10).unwrap();
+
+        // Collect all messages using try_iter
+        let messages: Vec<u32> = rx.try_iter().collect();
+        assert_eq!(messages, vec![1, 2, 3]);
+
+        // Channel should be empty now
+        assert!(rx.is_empty());
+        assert_eq!(rx.current_bytes(), 0);
+
+        // try_iter on empty channel should yield no items
+        let messages: Vec<u32> = rx.try_iter().collect();
+        assert_eq!(messages, Vec::<u32>::new());
     }
 }
