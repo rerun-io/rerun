@@ -40,8 +40,8 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
         ValueError: If no video samples are available
 
     """
-    samples_raw = table[sample_column].to_pylist()
-    times_raw = table[time_column].to_pylist()
+    samples_raw = table[sample_column].to_numpy()
+    times_raw = table[time_column].to_numpy()
     samples: list[bytes] = []
     times: list[object] = []
     for sample, timestamp in zip(samples_raw, times_raw, strict=False):
