@@ -155,7 +155,7 @@ impl VideoSampleDecoder {
             if latest_sample_idx + 1 == sample_idx {
                 // All good!
             } else if latest_sample_idx < sample_idx {
-                return Err(InsufficientSampleDataError::MissingSamples.into());
+                // This is okay with skips included.
             } else if sample_idx == latest_sample_idx {
                 return Err(InsufficientSampleDataError::DuplicateSampleIdx.into());
             } else {
