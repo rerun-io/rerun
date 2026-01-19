@@ -617,10 +617,6 @@ impl<'a> DataQueryPropertyResolver<'a> {
         }
 
         // Import legacy overrides from pre-0.29 blueprints.
-        println!(
-            "Importing legacy overrides from: {:?}",
-            node.data_result.legacy_override_path
-        );
         for component in blueprint
             .storage_engine()
             .store()
@@ -628,14 +624,16 @@ impl<'a> DataQueryPropertyResolver<'a> {
             .unwrap_or_default()
         {
             if let Some(component_data) = blueprint
-                        .storage_engine()
-                        .cache()
-                        .latest_at(blueprint_query, &node.data_result.legacy_override_path, [component])
-                        .component_batch_raw(component) &&
-                    // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
-                     !component_data.is_empty()
+                .storage_engine()
+                .cache()
+                .latest_at(
+                    blueprint_query,
+                    &node.data_result.legacy_override_path,
+                    [component],
+                )
+                .component_batch_raw(component)
+                && !component_data.is_empty()
             {
-                println!("Found override for component: {:?}", component);
                 for instruction in &mut node.data_result.visualizer_instructions {
                     instruction.component_overrides.insert(component);
                 }

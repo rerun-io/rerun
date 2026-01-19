@@ -460,7 +460,7 @@ mod tests {
     use re_test_context::TestContext;
     use re_viewer_context::{
         IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
-        VisualizableEntities, VisualizableReason,
+        ViewSystemIdentifier, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -716,5 +716,138 @@ mod tests {
         });
 
         result.expect("result should be set with a processed query result")
+    }
+
+    /// Tests that legacy overrides (pre-0.29 format) are imported correctly into visualizer instructions.
+    ///
+    /// Before 0.29, overrides were stored directly at `/view/{id}/ViewContents/overrides/{entity}`.
+    /// Now they are stored at `/view/{id}/ViewContents/overrides/{entity}/visualizers/{instruction_id}`.
+    /// This test verifies that the migration logic reads from the legacy path and populates
+    /// `component_overrides` in visualizer instructions.
+    #[test]
+    fn test_legacy_override_import() {
+        let mut test_ctx = TestContext::new();
+        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
+        let mut indicated_entities = PerVisualizer::<IndicatedEntities>::default();
+
+        // Set up a store DB with some entities.
+        let entity_path: EntityPath = "test_entity".into();
+        test_ctx.log_entity(entity_path.clone(), |builder| {
+            builder.with_component_batches(
+                RowId::new(),
+                TimePoint::default(),
+                [(
+                    MyPoints::descriptor_points(),
+                    &[MyPoint::new(1.0, 2.0)] as _,
+                )],
+            )
+        });
+
+        // Make the entity visualizable and indicated with Points3D visualizer.
+        // Both are required for choose_default_visualizers to select a visualizer.
+        let visualizer_id: ViewSystemIdentifier = "Points3D".into();
+        visualizable_entities
+            .0
+            .entry(visualizer_id)
+            .or_insert_with(|| {
+                VisualizableEntities(
+                    std::iter::once((entity_path.clone(), VisualizableReason::Always)).collect(),
+                )
+            });
+        indicated_entities
+            .0
+            .entry(visualizer_id)
+            .or_insert_with(|| IndicatedEntities(std::iter::once(entity_path.clone()).collect()));
+
+        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
+            view_class_identifier: ViewClassPlaceholder::identifier(),
+            per_visualizer: visualizable_entities.0.clone(),
+        };
+
+        // Create a view that includes the entity.
+        test_ctx.register_view_class::<ViewClassPlaceholder>();
+        let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
+
+        let indicated_entities_per_visualizer = indicated_entities;
+
+        // First, run without legacy overrides to verify no overrides are present.
+        {
+            let resolver = DataQueryPropertyResolver::new(
+                &view,
+                &test_ctx.view_class_registry,
+                &visualizable_entities,
+                &indicated_entities_per_visualizer,
+            );
+            let query_result =
+                update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
+
+            // Find the data result for our test entity.
+            let mut found_entity = false;
+            query_result.tree.visit(&mut |node| {
+                if node.data_result.entity_path == entity_path {
+                    found_entity = true;
+                    // Without legacy overrides, no component_overrides should be present.
+                    for instruction in &node.data_result.visualizer_instructions {
+                        assert!(
+                            instruction.component_overrides.is_empty(),
+                            "Expected no overrides without legacy data, but found: {:?}",
+                            instruction.component_overrides
+                        );
+                    }
+                }
+                true
+            });
+            assert!(found_entity, "Test entity should be in query results");
+        }
+
+        // Now add legacy override data at the legacy path.
+        let legacy_override_path =
+            ViewContents::legacy_override_path_for_entity(view.id, &entity_path);
+        let blueprint_store = test_ctx.active_blueprint();
+
+        // Write a MyLabel component to the legacy override path (simulating pre-0.29 blueprint).
+        let legacy_override =
+            MyPoints::default().with_labels([MyLabel("legacy_override".to_owned())]);
+        let chunk = Chunk::builder(legacy_override_path.clone())
+            .with_archetype(RowId::new(), TimePoint::default(), &legacy_override)
+            .build()
+            .unwrap();
+        blueprint_store.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Run the query again with legacy overrides in place.
+        {
+            let resolver = DataQueryPropertyResolver::new(
+                &view,
+                &test_ctx.view_class_registry,
+                &visualizable_entities,
+                &indicated_entities_per_visualizer,
+            );
+            let query_result =
+                update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
+
+            // Find the data result for our test entity and verify legacy overrides were imported.
+            let mut found_entity = false;
+            query_result.tree.visit(&mut |node| {
+                if node.data_result.entity_path == entity_path {
+                    found_entity = true;
+                    // Each visualizer instruction should have the legacy component in its overrides.
+                    assert!(
+                        !node.data_result.visualizer_instructions.is_empty(),
+                        "Expected at least one visualizer instruction"
+                    );
+                    for instruction in &node.data_result.visualizer_instructions {
+                        assert!(
+                            instruction
+                                .component_overrides
+                                .contains(&MyPoints::descriptor_labels().component),
+                            "Legacy override component should be imported. Found overrides: {:?}",
+                            instruction.component_overrides
+                        );
+                    }
+                }
+                true
+            });
+            assert!(found_entity, "Test entity should be in query results");
+        }
     }
 }
