@@ -362,9 +362,15 @@ impl ArchetypeFieldReflection {
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
             component_type: Some(self.component_type),
-            component: format!("{}:{}", archetype_name.short_name(), self.name).into(),
+            component: self.component(archetype_name),
             archetype: Some(archetype_name),
         }
+    }
+
+    /// Returns the component identifier for this field.
+    #[inline]
+    pub fn component(&self, archetype_name: ArchetypeName) -> ComponentIdentifier {
+        format!("{}:{}", archetype_name.short_name(), self.name).into()
     }
 }
 

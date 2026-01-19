@@ -15,7 +15,7 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerSystem,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -451,6 +451,7 @@ fn visualizer_components(
                 &entity_components_with_datatype,
                 component_descr,
                 instruction,
+                &query_info,
             );
         };
 
@@ -503,6 +504,7 @@ fn source_component_ui(
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
+    query_info: &VisualizerQueryInfo,
 ) {
     if !ctx.viewer_ctx.app_options().experimental.component_mapping {
         return;
@@ -512,20 +514,42 @@ fn source_component_ui(
         return;
     };
 
-    // Get the underlying Arrow datatype of the target component.
-    let Some(target_component_datatype) = ctx
-        .viewer_ctx
-        .reflection()
-        .components
-        .get(target_component_type)
-    else {
-        return;
+    let reflection = ctx.viewer_ctx.reflection();
+
+    let is_required_component = if let Some(component_archetype) = component_descr.archetype
+        && let Some(archetype_reflection) = reflection.archetypes.get(&component_archetype)
+        && archetype_reflection
+            .required_fields()
+            .any(|field| field.component(component_archetype) == component_descr.component)
+    {
+        true
+    } else {
+        false
     };
 
     // Collect suitable source components with the same datatype as the target component.
+
+    // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
+    // casting in some special cases. Eventually this should always be the case.
+    let allowed_physical_types = if is_required_component
+        && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+            semantic_type: _,
+            physical_types,
+        } = &query_info.required
+    {
+        physical_types.clone()
+    } else {
+        // Get arrow datatype of the target component.
+        let Some(target_component_reflection) = reflection.components.get(target_component_type)
+        else {
+            return;
+        };
+        std::iter::once(target_component_reflection.datatype.clone()).collect()
+    };
+
     let all_source_options = entity_components_with_datatype
         .iter()
-        .filter(|entity_component| entity_component.1 == target_component_datatype.datatype)
+        .filter(|entity_component| allowed_physical_types.contains(&entity_component.1))
         .map(|entity_component| entity_component.0.as_str())
         .collect::<Vec<_>>();
     if all_source_options.is_empty() {
