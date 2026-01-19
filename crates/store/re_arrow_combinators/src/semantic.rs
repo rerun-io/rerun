@@ -22,6 +22,10 @@ use crate::{Error, Transform};
 pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
     _from_offset: PhantomData<O1>,
     _to_offset: PhantomData<O2>,
+
+    /// This transform is specifically intended for contiguous byte data,
+    /// so we default to non-nullable lists.
+    nullable: bool,
 }
 
 impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> BinaryToListUInt8<O1, O2> {
@@ -60,7 +64,7 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
         let offsets = arrow::buffer::OffsetBuffer::new(new_offsets?.into());
 
         let list = Self::Target::new(
-            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            Arc::new(Field::new_list_field(DataType::UInt8, self.nullable)),
             offsets,
             Arc::new(uint8_array),
             source.nulls().cloned(),

@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_sdk_types::datatypes::Angle;
-use re_sdk_types::{VisualizableArchetype as _, archetypes, blueprint, components};
+use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -180,11 +180,11 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity_with_coo
 
         // Override green and blue frames:
         ctx.save_blueprint_archetype(
-            ViewContents::override_path_for_entity(view_id, &"green".into()),
+            ViewContents::base_override_path_for_entity(view_id, &"green".into()),
             &archetypes::CoordinateFrame::new("green_frame"),
         );
         ctx.save_blueprint_archetype(
-            ViewContents::override_path_for_entity(view_id, &"blue".into()),
+            ViewContents::base_override_path_for_entity(view_id, &"blue".into()),
             &archetypes::CoordinateFrame::new("blue_frame"),
         );
 
@@ -228,23 +228,10 @@ fn test_transform_axes_for_explicit_transforms() {
         setup_camera(ctx, view_id);
 
         // Override (set) the `TransformAxes3DVisualizer`
-        let transforms_override_path = ViewContents::override_path_for_entity(
-            view_id,
+        ctx.save_visualizers(
             &EntityPath::from("all_the_transforms"),
-        );
-        ctx.save_blueprint_archetype(
-            transforms_override_path.clone(),
-            &blueprint::archetypes::VisualizerOverrides::new([
-                // TODO(RR-3153): remove the `as_str()`.
-                archetypes::TransformAxes3D::default()
-                    .visualizer()
-                    .visualizer_type
-                    .as_str(),
-            ]),
-        );
-        ctx.save_blueprint_archetype(
-            transforms_override_path,
-            &archetypes::TransformAxes3D::new(1.0).with_show_frame(true),
+            view_id,
+            [&archetypes::TransformAxes3D::new(1.0).with_show_frame(true)],
         );
 
         view_id

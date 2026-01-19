@@ -23,6 +23,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Single visualizer override the visualizers for an entity.
 ///
+/// For details see [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers].
+///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 #[repr(transparent)]

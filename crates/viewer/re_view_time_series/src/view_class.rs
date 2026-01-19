@@ -1,11 +1,11 @@
 use egui::ahash::{HashMap, HashSet};
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
@@ -17,7 +17,7 @@ use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    PerVisualizerInViewClass, QueryRange, RecommendedView, SmallVisualizerSet,
+    PerVisualizerInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
@@ -317,9 +317,24 @@ impl ViewClass for TimeSeriesView {
             .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
         {
-            indicated_entities
-                .0
-                .extend(maybe_visualizable.keys().cloned());
+            indicated_entities.0.extend(
+                maybe_visualizable
+                    .iter()
+                    .filter_map(|(ent, reason)| match reason {
+                        re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
+                            components
+                                .iter()
+                                .any(|c| {
+                                    // If it's a builtin type, it has to be a `Scalars` datatype. For non-builtin types we allow for anything compatible.
+                                    *c == Scalars::descriptor_scalars().component
+                                        || !ctx.reflection().component_identifiers.contains_key(c)
+                                })
+                                .then_some(ent)
+                        }
+                        _ => Some(ent),
+                    })
+                    .cloned(),
+            );
         }
 
         // Ensure we don't modify this list anymore before we check the `include_entity`.
@@ -376,27 +391,42 @@ impl ViewClass for TimeSeriesView {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
-        let available_visualizers: HashSet<&ViewSystemIdentifier> =
+    ) -> RecommendedVisualizers {
+        use re_sdk_types::archetypes::Scalars;
+        use re_viewer_context::{VisualizableReason, VisualizerComponentMapping};
+
+        let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains_key(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
+                    ents.get(entity_path)
+                        .map(|reason| (*visualizer, Some(reason)))
                 })
                 .collect();
 
-        let mut visualizers: SmallVisualizerSet = available_visualizers
+        let mut visualizers_with_mappings: IntMap<
+            ViewSystemIdentifier,
+            re_viewer_context::VisualizerComponentMappings,
+        > = available_visualizers
             .iter()
-            .filter_map(|visualizer| {
+            .filter_map(|(visualizer, reason_opt)| {
                 if indicated_entities_per_visualizer
-                    .get(*visualizer)
+                    .get(visualizer)
                     .is_some_and(|matching_list| matching_list.contains(entity_path))
                 {
-                    Some(**visualizer)
+                    let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
+
+                    // Extract physical component from the visualizable reason
+                    if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
+                        for physical_component in components {
+                            mappings.push(VisualizerComponentMapping {
+                                selector: Scalars::descriptor_scalars().component,
+                                target: *physical_component,
+                            });
+                        }
+                    }
+
+                    Some((*visualizer, mappings))
                 } else {
                     None
                 }
@@ -404,13 +434,27 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers.is_empty()
-            && available_visualizers.contains(&SeriesLinesSystem::identifier())
+        if visualizers_with_mappings.is_empty()
+            && available_visualizers.contains_key(&SeriesLinesSystem::identifier())
         {
-            visualizers.insert(0, SeriesLinesSystem::identifier());
+            let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
+
+            // Extract physical component from the visualizable reason for the fallback visualizer
+            if let Some(Some(VisualizableReason::DatatypeMatchAny { components })) =
+                available_visualizers.get(&SeriesLinesSystem::identifier())
+            {
+                for physical_component in components {
+                    mappings.push(VisualizerComponentMapping {
+                        selector: *physical_component,
+                        target: Scalars::descriptor_scalars().component,
+                    });
+                }
+            }
+
+            visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
         }
 
-        visualizers
+        RecommendedVisualizers(visualizers_with_mappings)
     }
 
     fn ui(
@@ -962,7 +1006,7 @@ fn update_series_visibility_overrides_from_plot(
             continue;
         };
 
-        let override_path = result.override_path();
+        let override_path = result.override_base_path();
         let descriptor = match series.kind {
             PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
             PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),

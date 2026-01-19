@@ -1,8 +1,11 @@
+use arrow::datatypes::DataType;
 use itertools::Itertools as _;
-use re_chunk::RowId;
+use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
-use re_sdk_types::blueprint::archetypes::VisualizerOverrides;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -11,7 +14,8 @@ use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item}
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState, VisualizerSystem,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
+    VisualizerInstruction, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -32,9 +36,13 @@ pub fn visualizer_ui(
         return;
     };
     let all_visualizers = ctx.new_visualizer_collection();
-    let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
-    let available_inactive_visualizers =
-        available_inactive_visualizers(ctx, &data_result, &active_visualizers);
+    let active_visualizers: Vec<_> = data_result
+        .visualizer_instructions
+        .iter()
+        .cloned()
+        .sorted_by_key(|instr| instr.visualizer_type)
+        .collect();
+    let available_visualizers = available_inactive_visualizers(ctx, &data_result);
 
     let button = ui
         .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
@@ -44,10 +52,10 @@ pub fn visualizer_ui(
                 ui,
                 &data_result,
                 &active_visualizers,
-                &available_inactive_visualizers,
+                &available_visualizers,
             );
         })
-        .enabled(!available_inactive_visualizers.is_empty())
+        .enabled(!available_visualizers.is_empty())
         .on_hover_text("Add additional visualizers")
         .on_disabled_hover_text("No additional visualizers available");
 
@@ -88,23 +96,23 @@ pub fn visualizer_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
+    active_visualizers: &[VisualizerInstruction],
     all_visualizers: &VisualizerCollection,
     visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
 ) {
-    let override_path = data_result.override_path();
+    let override_base_path = data_result.override_base_path();
 
-    let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
+    let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
-            let archetype = VisualizerOverrides::new(
+            let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
-                    .filter(|v| *v != &vis_name)
-                    .map(|v| v.as_str()),
+                    .filter(|v| &v.id != visualizer_id)
+                    .map(|v| v.id.0),
             );
 
-            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
+            ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
         }
         response
     };
@@ -118,17 +126,18 @@ pub fn visualizer_ui_impl(
             );
         }
 
-        for &visualizer_id in active_visualizers {
-            ui.push_id(visualizer_id, |ui| {
+        for (index, visualizer_instruction) in active_visualizers.iter().enumerate() {
+            let visualizer_type = visualizer_instruction.visualizer_type;
+
+            ui.push_id(index, |ui| {
                 // List all components that the visualizer may consume.
-                if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
+                if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
-                    let error_string =
-                        visualizer_errors
-                            .get(&visualizer_id)
-                            .and_then(|error_state| {
-                                error_state.error_string_for(&data_result.entity_path)
-                            });
+                    let error_string = visualizer_errors
+                        .get(&visualizer_type) // TODO(RR-3304): track errors per visualizer id, not per visualizer type.
+                        .and_then(|error_state| {
+                            error_state.error_string_for(&data_result.entity_path)
+                        });
 
                     ui.list_item()
                         .with_y_offset(1.0)
@@ -137,7 +146,7 @@ pub fn visualizer_ui_impl(
                         .show_flat(
                             ui,
                             list_item::LabelContent::new(
-                                egui::RichText::new(format!("{visualizer_id}"))
+                                egui::RichText::new(format!("{visualizer_type}"))
                                     .size(10.0)
                                     .color(
                                         design_tokens_of_visuals(ui.visuals())
@@ -146,7 +155,7 @@ pub fn visualizer_ui_impl(
                             )
                             .min_desired_width(150.0)
                             .with_buttons(|ui| {
-                                remove_visualizer_button(ui, visualizer_id);
+                                remove_visualizer_button(ui, &visualizer_instruction.id);
                             })
                             .with_always_show_buttons(true),
                         );
@@ -155,16 +164,16 @@ pub fn visualizer_ui_impl(
                         ui.error_label(error_string);
                     }
 
-                    visualizer_components(ctx, ui, data_result, visualizer);
+                    visualizer_components(ctx, ui, data_result, visualizer, visualizer_instruction);
                 } else {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new(format!(
-                            "{visualizer_id} (unknown visualizer)"
+                            "{visualizer_type} (unknown visualizer type)"
                         ))
                         .weak(true)
                         .min_desired_width(150.0)
                         .with_buttons(|ui| {
-                            remove_visualizer_button(ui, visualizer_id);
+                            remove_visualizer_button(ui, &visualizer_instruction.id);
                         })
                         .with_always_show_buttons(true),
                     );
@@ -189,6 +198,7 @@ fn visualizer_components(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
+    instruction: &VisualizerInstruction,
 ) {
     let query_info = visualizer.visualizer_query_info();
 
@@ -204,7 +214,29 @@ fn visualizer_components(
         data_result,
         query_info.queried_components(),
         query_shadowed_defaults,
+        Some(instruction),
     );
+
+    // Query all components of the entity so we can show them in the source component mapping UI.
+    let entity_components_with_datatype = {
+        let components = ctx
+            .viewer_ctx
+            .recording_engine()
+            .store()
+            .all_components_for_entity_sorted(&data_result.entity_path)
+            .unwrap_or_default();
+        components
+            .into_iter()
+            .filter_map(|component_id| {
+                let component_type = ctx
+                    .viewer_ctx
+                    .recording_engine()
+                    .store()
+                    .lookup_component_type(&data_result.entity_path, component_id);
+                component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+            })
+            .collect::<Vec<_>>()
+    };
 
     // TODO(andreas): Should we show required components in a special way?
     for component_descr in sorted_component_list_by_archetype_for_ui(
@@ -252,7 +284,7 @@ fn visualizer_components(
                 ),
             };
 
-        let override_path = data_result.override_path();
+        let override_path = &instruction.override_path;
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -410,6 +442,16 @@ fn visualizer_components(
                     );
                 });
             }
+
+            // Source component (if available).
+            // TODO(RR-3338): Implement a new source componentselector UI.
+            source_component_ui(
+                ctx,
+                ui,
+                &entity_components_with_datatype,
+                component_descr,
+                instruction,
+            );
         };
 
         let default_open = false;
@@ -453,6 +495,98 @@ fn visualizer_components(
             });
         }
     }
+}
+
+fn source_component_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
+    component_descr: &ComponentDescriptor,
+    instruction: &VisualizerInstruction,
+) {
+    if !ctx.viewer_ctx.app_options().experimental.component_mapping {
+        return;
+    }
+
+    let Some(target_component_type) = &component_descr.component_type else {
+        return;
+    };
+
+    // Get the underlying Arrow datatype of the target component.
+    let Some(target_component_datatype) = ctx
+        .viewer_ctx
+        .reflection()
+        .components
+        .get(target_component_type)
+    else {
+        return;
+    };
+
+    // Collect suitable source components with the same datatype as the target component.
+    let all_source_options = entity_components_with_datatype
+        .iter()
+        .filter(|entity_component| entity_component.1 == target_component_datatype.datatype)
+        .map(|entity_component| entity_component.0.as_str())
+        .collect::<Vec<_>>();
+    if all_source_options.is_empty() {
+        return;
+    }
+
+    ui.push_id("source_component", |ui| {
+        let component_map = instruction
+            .component_mappings
+            .iter()
+            .find(|mapping| mapping.target == component_descr.component);
+
+        ui.list_item_flat_noninteractive(
+            list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+                // Get the current source component from the component mapping.
+                let current = component_map.map_or_else(|| "", |mapping| mapping.selector.as_str());
+
+                egui::ComboBox::new("source_component_combo_box", "")
+                    .selected_text(current)
+                    .show_ui(ui, |ui| {
+                        for option in std::iter::once("").chain(all_source_options.into_iter()) {
+                            if ui.button(option).clicked() {
+                                save_component_mapping(
+                                    ctx,
+                                    instruction,
+                                    component_descr.component,
+                                    option.into(),
+                                );
+                            }
+                        }
+                    });
+            }),
+        );
+    });
+}
+
+fn save_component_mapping(
+    ctx: &ViewContext<'_>,
+    instruction: &VisualizerInstruction,
+    target_component: ComponentIdentifier,
+    selector: ComponentIdentifier,
+) {
+    let mut updated_instruction = instruction.clone();
+
+    // Set or override the mapping
+    if let Some(orig_mapping) = updated_instruction
+        .component_mappings
+        .iter_mut()
+        .find(|m| m.target == target_component)
+    {
+        orig_mapping.selector = selector;
+    } else {
+        updated_instruction.component_mappings.push(
+            re_viewer_context::VisualizerComponentMapping {
+                selector,
+                target: target_component,
+            },
+        );
+    }
+    // TODO(andreas): Don't write the type if it hasn't changed
+    updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 }
 
 fn editable_blueprint_component_list_item(
@@ -578,24 +712,53 @@ fn menu_add_new_visualizer(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
-    inactive_visualizers: &[ViewSystemIdentifier],
+    active_visualizers: &[VisualizerInstruction],
+    available_visualizers: &[ViewSystemIdentifier],
 ) {
-    let override_path = data_result.override_path();
+    let override_base_path = data_result.override_base_path();
 
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    // Present an option to enable any visualizer that isn't already enabled.
-    for viz in inactive_visualizers {
-        if ui.button(viz.as_str()).clicked() {
-            let archetype = VisualizerOverrides::new(
+    for visualizer_type in available_visualizers {
+        if ui.button(visualizer_type.as_str()).clicked() {
+            // To add a visualizer we have to do two things:
+            // * add a visualizer type information for that new visualizer instruction
+            // * add an element to the list of active visualizer ids
+            let new_instruction = VisualizerInstruction::new(
+                VisualizerInstructionId::new_random(),
+                *visualizer_type,
+                override_base_path,
+                re_viewer_context::VisualizerComponentMappings::default(),
+            );
+            let active_visualizer_archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
-                    .chain(std::iter::once(viz))
-                    .map(|v| v.as_str()),
+                    .map(|v| &v.id)
+                    .chain(std::iter::once(&new_instruction.id))
+                    .map(|v| v.0),
             );
 
-            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
+            // If this is the first time we log `ActiveVisualizers`, we have to write out the instructions for all
+            // visualizers which would be entirely heuristically generated at this point!
+            let did_not_yet_persist_active_visualizers = ctx
+                .blueprint_db()
+                .latest_at(
+                    ctx.blueprint_query(),
+                    override_base_path,
+                    ActiveVisualizers::all_components()
+                        .iter()
+                        .map(|c| c.component),
+                )
+                .components
+                .is_empty();
+            if did_not_yet_persist_active_visualizers {
+                for instruction in active_visualizers {
+                    instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+                }
+            }
+
+            ctx.save_blueprint_archetype(override_base_path.clone(), &active_visualizer_archetype);
+            new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 
             ui.close();
         }
@@ -606,16 +769,12 @@ fn menu_add_new_visualizer(
 fn available_inactive_visualizers(
     ctx: &ViewContext<'_>,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
 ) -> Vec<ViewSystemIdentifier> {
     let view_class = ctx.view_class_entry();
 
     ctx.viewer_ctx
         .iter_visualizable_entities_for_view_class(view_class.identifier)
-        .filter(|(vis, visualizable_ents)| {
-            visualizable_ents.contains_key(&data_result.entity_path)
-                && !active_visualizers.contains(vis)
-        })
+        .filter(|(_, visualizable_ents)| visualizable_ents.contains_key(&data_result.entity_path))
         .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()

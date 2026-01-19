@@ -46,9 +46,14 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results = data_result
-                .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results = data_result.latest_at_with_blueprint_resolved_data::<BarChart>(
+                ctx,
+                &timeline_query,
+                Some(instruction),
+            );
 
             let Some(tensor) = results.get_required_mono::<components::TensorData>(
                 BarChart::descriptor_values().component,

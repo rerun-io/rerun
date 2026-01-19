@@ -4,6 +4,7 @@ use std::ops::RangeInclusive;
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
+use emath::NumExt as _;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
@@ -414,12 +415,32 @@ impl RrdManifestIndex {
     }
 
     /// See if we have received any new chunks since last call.
-    pub fn resolve_pending_promises(&mut self) -> Vec<Chunk> {
-        self.chunk_promises.resolve_pending()
+    pub fn resolve_pending_promises(&mut self, time: f64) -> Vec<Chunk> {
+        self.chunk_promises.resolve_pending(time)
     }
 
     pub fn has_pending_promises(&self) -> bool {
         self.chunk_promises.has_pending()
+    }
+
+    pub fn chunk_bandwidth(&self) -> Option<f64> {
+        self.chunk_promises
+            .download_size_history
+            .bandwidth()
+            .map(|b| b.0)
+    }
+
+    pub fn chunk_bandwidth_data_age(&self, time: f64) -> f64 {
+        self.chunk_promises
+            .download_size_history
+            .iter()
+            .last()
+            .map(|(t, _)| {
+                let age = time - t;
+
+                (age / self.chunk_promises.download_size_history.max_age() as f64).at_most(1.0)
+            })
+            .unwrap_or(1.0)
     }
 
     /// Find the next candidates for prefetching.
@@ -458,8 +479,10 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
+        let chunk_byte_size_raw: &[u64] = manifest.col_chunk_byte_size_raw()?.values();
 
         let mut uncompressed_bytes_in_batch: u64 = 0;
+        let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
         let missing_chunk_ids = missing_chunk_ids.into_iter();
@@ -493,6 +516,7 @@ impl RrdManifestIndex {
 
             let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
 
+            let chunk_byte_size = chunk_byte_size_raw[row_idx];
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
@@ -528,6 +552,7 @@ impl RrdManifestIndex {
 
                 indices.push(row_idx);
                 uncompressed_bytes_in_batch += uncompressed_chunk_size;
+                bytes_in_batch += chunk_byte_size;
                 remote_chunk.state = LoadState::InTransit;
 
                 if max_uncompressed_bytes_per_batch < uncompressed_bytes_in_batch {
@@ -538,6 +563,7 @@ impl RrdManifestIndex {
                     self.chunk_promises.add(ChunkPromiseBatch {
                         promise: Mutex::new(Some(load_chunks(rb))),
                         size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                        size_bytes: bytes_in_batch,
                     });
                     uncompressed_bytes_in_batch = 0;
                 }
@@ -557,6 +583,7 @@ impl RrdManifestIndex {
             self.chunk_promises.add(ChunkPromiseBatch {
                 promise: Mutex::new(Some(load_chunks(rb))),
                 size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                size_bytes: bytes_in_batch,
             });
         }
 

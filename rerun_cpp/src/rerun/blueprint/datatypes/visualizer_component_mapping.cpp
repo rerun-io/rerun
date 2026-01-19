@@ -14,7 +14,7 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::datatypes::VisualizerComponentMapping>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("source", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
+            arrow::field("selector", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
             arrow::field("target", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
         });
         return datatype;
@@ -63,7 +63,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
                     field_builder,
-                    &elements[elem_idx].source,
+                    &elements[elem_idx].selector,
                     1
                 ));
             }

@@ -29,8 +29,7 @@ pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    DataResultQuery, latest_at_with_blueprint_resolved_data, query_overrides,
-    range_with_blueprint_resolved_data,
+    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 pub use results_ext::{
     HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,

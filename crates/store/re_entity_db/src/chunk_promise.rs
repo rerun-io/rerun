@@ -16,14 +16,52 @@ pub struct ChunkPromiseBatch {
 
     /// Total size of all the chunks in bytes.
     pub size_bytes_uncompressed: u64,
+
+    /// Size on the wire of all the chunks in bytes.
+    pub size_bytes: u64,
+}
+
+#[derive(Clone, Copy)]
+pub struct ByteFloat(pub f64);
+
+impl std::iter::Sum for ByteFloat {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        Self(iter.fold(0.0, |acc, item| acc + item.0))
+    }
+}
+
+impl std::ops::Mul<f32> for ByteFloat {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self(self.0 * rhs as f64)
+    }
+}
+
+impl std::ops::Div<f32> for ByteFloat {
+    type Output = Self;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        Self(self.0 / rhs as f64)
+    }
 }
 
 /// In-progress downloads of chunks.
 ///
 /// Used for larger-than-RAM streaming.
-#[derive(Default)]
 pub struct ChunkPromises {
     batches: Vec<ChunkPromiseBatch>,
+
+    pub download_size_history: emath::History<ByteFloat>,
+}
+
+impl Default for ChunkPromises {
+    fn default() -> Self {
+        Self {
+            batches: Vec::new(),
+            download_size_history: emath::History::new(0..50, 2.0),
+        }
+    }
 }
 
 static_assertions::assert_impl_all!(ChunkPromises: Sync);
@@ -35,6 +73,12 @@ impl Clone for ChunkPromises {
         // In practice, the `Clone` feature is only used for tests.
         Self {
             batches: Vec::new(),
+
+            download_size_history: {
+                let mut h = self.download_size_history.clone();
+                h.clear();
+                h
+            },
         }
     }
 }
@@ -49,17 +93,20 @@ impl ChunkPromises {
     }
 
     /// See if we have received any new chunks since last call.
-    pub fn resolve_pending(&mut self) -> Vec<Chunk> {
+    pub fn resolve_pending(&mut self, time: f64) -> Vec<Chunk> {
         re_tracing::profile_function!();
 
         let mut all_chunks = Vec::new();
 
+        let history = &mut self.download_size_history;
+        history.flush(time);
         self.batches.retain_mut(|batch| {
             let mut promise_opt = batch.promise.lock();
             if let Some(promise) = promise_opt.take() {
                 match promise.try_take() {
                     Ok(Ok(chunks)) => {
                         all_chunks.extend(chunks);
+                        history.add(time, ByteFloat(batch.size_bytes as f64));
                         false
                     }
                     Ok(Err(())) => false,

@@ -13,6 +13,8 @@
 namespace rerun::blueprint::components {
     /// **Component**: Single visualizer override the visualizers for an entity.
     ///
+    /// For details see `archetypes::ActiveVisualizers`.
+    ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VisualizerInstructionId {

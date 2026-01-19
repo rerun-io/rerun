@@ -46,6 +46,8 @@ examples = [
   "rgbd",
   "nv12",
   "imu_signals",
+  "mcap",
+  "eye_control",
 ]
 
 [categories.generative-vision]
@@ -131,6 +133,7 @@ examples = [
   "blueprint_stocks",
   "arflow",
   "air_traffic_data",
+  "mcap",
 ]
 
 [categories.feature-showcase]
@@ -159,6 +162,7 @@ examples = [
   "raw_mesh",
   "air_traffic_data",
   "imu_signals",
+  "eye_control",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
