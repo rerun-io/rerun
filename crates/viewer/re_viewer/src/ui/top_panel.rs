@@ -443,7 +443,6 @@ fn panel_buttons_r2l(
 
     if let Some(auth) = &app.state.auth_state
         && !app.is_screenshotting()
-        && !app.app_env().is_test()
     {
         let rect_id = Id::new("user_icon_rect");
         let user_icon_size = 16.0;
