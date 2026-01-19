@@ -683,8 +683,14 @@ fn load_video_data_from_chunks(
 
     for chunk in &sorted_samples {
         let Some(known_range) = known_chunk_ranges.get(&chunk.id()) else {
-            assert!(
-                !cfg!(debug_assertions),
+            // If this chunk had any samples on the current timeline `known_chunk_ranges`
+            // should contain it.
+            debug_assert!(
+                chunk
+                    .iter_component_timepoints(sample_component)
+                    .filter(|t| t.get(&timeline).is_some())
+                    .count()
+                    == 0,
                 "[DEBUG] We just made sure this chunk's range was registered"
             );
             continue;
