@@ -662,7 +662,12 @@ impl EntityDb {
 
         let mut engine = self.storage_engine.write();
 
+        // The query cache isn't specific to the viewer. Always update it.
         engine.cache().on_events(store_events);
+
+        if !self.enable_viewer_indexes {
+            return;
+        }
 
         let engine = engine.downgrade();
 
