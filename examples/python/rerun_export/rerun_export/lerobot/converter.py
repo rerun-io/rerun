@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from datafusion import col
 from lerobot.datasets.compute_stats import compute_episode_stats
 from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
@@ -68,6 +69,8 @@ def convert_dataframe_to_episode(
 
     if state_dim is None:
         raise ValueError("State feature specification is missing.")
+
+    df = df.filter(col(config.action).is_not_null())
 
     table = pa.table(df)
     if table.num_rows == 0:
