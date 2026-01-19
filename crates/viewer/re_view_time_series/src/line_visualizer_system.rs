@@ -39,9 +39,10 @@ impl VisualizerSystem for SeriesLinesSystem {
         if app_options.experimental.component_mapping {
             VisualizerQueryInfo {
                 relevant_archetype: archetypes::SeriesLines::name().into(),
-                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                    util::supported_datatypes().into_iter().collect(),
-                ),
+                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+                    native_type: archetypes::Scalars::descriptor_scalars().component_type,
+                    physical_types: util::series_supported_datatypes().into_iter().collect(),
+                },
                 queried: archetypes::Scalars::all_components()
                     .iter()
                     .chain(archetypes::SeriesLines::all_components().iter())
