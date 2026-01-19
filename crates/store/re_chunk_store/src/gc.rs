@@ -209,33 +209,29 @@ impl ChunkStore {
             "GC done"
         );
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
-            {
-                if cfg!(debug_assertions) {
-                    let any_event_other_than_deletion = events
-                        .iter()
-                        .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
-                    assert!(!any_event_other_than_deletion);
-                }
-
-                Self::on_events(&events);
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+        {
+            if cfg!(debug_assertions) {
+                let any_event_other_than_deletion = events
+                    .iter()
+                    .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
+                assert!(!any_event_other_than_deletion);
             }
+        }
 
-            events
-        } else {
-            Vec::new()
-        };
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
 
         (events, stats_before - stats_after)
     }
