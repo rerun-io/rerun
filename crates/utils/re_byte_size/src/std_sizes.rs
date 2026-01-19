@@ -132,6 +132,16 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     }
 }
 
+impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Ok(value) => value.heap_size_bytes(),
+            Err(err) => err.heap_size_bytes(),
+        }
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

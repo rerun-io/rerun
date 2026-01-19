@@ -125,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -235,7 +235,7 @@ impl ChunkBatcherConfig {
     ///
     /// See [`Self::ENV_FLUSH_TICK`], [`Self::ENV_FLUSH_NUM_BYTES`], [`Self::ENV_FLUSH_NUM_BYTES`].
     pub fn apply_env(&self) -> ChunkBatcherResult<Self> {
-        let mut new = self.clone();
+        let mut new = *self;
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_TICK) {
             let flush_duration_secs: f64 =
@@ -433,7 +433,6 @@ impl ChunkBatcher {
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
-    #[expect(clippy::needless_pass_by_value)]
     pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
         let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
             Some(cap) => crossbeam::channel::bounded(cap as _),
@@ -449,10 +448,7 @@ impl ChunkBatcher {
             const NAME: &str = "ChunkBatcher::cmds_to_chunks";
             std::thread::Builder::new()
                 .name(NAME.into())
-                .spawn({
-                    let config = config.clone();
-                    move || batching_thread(config, hooks, rx_cmd, tx_chunk)
-                })
+                .spawn(move || batching_thread(config, hooks, rx_cmd, tx_chunk))
                 .map_err(|err| ChunkBatcherError::SpawnThread {
                     name: NAME,
                     err: Box::new(err),
@@ -662,9 +658,8 @@ fn batching_thread(
     // so that the next tick will not unnecessarily fire early.
     let mut skip_next_tick = false;
 
-    use crossbeam::select;
     loop {
-        select! {
+        crossbeam::select! {
             recv(rx_cmd) -> cmd => {
                 let Ok(cmd) = cmd else {
                     // All command senders are gone, which can only happen if the

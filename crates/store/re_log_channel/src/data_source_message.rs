@@ -26,6 +26,17 @@ pub enum DataSourceMessage {
     UiCommand(DataSourceUiCommand),
 }
 
+impl re_byte_size::SizeBytes for DataSourceMessage {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::RrdManifest(_, manifest) => manifest.heap_size_bytes(),
+            Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
+            Self::TableMsg(table_msg) => table_msg.heap_size_bytes(),
+            Self::UiCommand(_) => 0,
+        }
+    }
+}
+
 impl_into_enum!(LogMsg, DataSourceMessage, LogMsg);
 impl_into_enum!(TableMsg, DataSourceMessage, TableMsg);
 impl_into_enum!(DataSourceUiCommand, DataSourceMessage, UiCommand);

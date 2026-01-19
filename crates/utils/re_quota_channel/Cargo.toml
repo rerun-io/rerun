@@ -1,7 +1,7 @@
 [package]
-name = "re_log_channel"
+name = "re_quota_channel"
 authors.workspace = true
-description = "An in-memory channel of Rerun data messages."
+description = "A channel that applies backpressure based on byte size."
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -18,14 +18,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+
 [dependencies]
 re_byte_size.workspace = true
-re_log_encoding.workspace = true
-re_log_types.workspace = true
-re_tracing.workspace = true
-re_uri.workspace = true
+re_format.workspace = true
+re_log.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
-serde.workspace = true
-thiserror.workspace = true
