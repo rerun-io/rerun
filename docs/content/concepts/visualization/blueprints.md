@@ -32,7 +32,7 @@ In general, if you can modify an aspect of how something looks through the Viewe
 
 ## Application IDs: binding blueprints to data
 
-The [Application ID](../logging-and-ingestion/apps-and-recordings.md) is how blueprints connect to your data. This is a critical concept:
+The [Application ID](../logging-and-ingestion/recordings.md) is how blueprints connect to your data. This is a critical concept:
 
 **All recordings that share the same Application ID will use the same blueprint.**
 
