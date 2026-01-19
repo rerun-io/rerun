@@ -1,16 +1,21 @@
 use std::{iter::once, ops::Range, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
-use re_byte_size::SizeBytes;
-use re_log_types::external::re_tuid::Tuid;
+use re_byte_size::SizeBytes as _;
+use re_chunk::{Chunk, TimeInt};
+use re_entity_db::EntityDb;
+use re_log_encoding::{RrdManifest, RrdManifestBuilder};
+use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
 };
 use re_video::{
-    AsyncDecoder, Receiver, SampleIndex, SampleMetadataState, Sender, Time, VideoDataDescription,
+    AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, AsyncDecoder, Receiver, SampleIndex,
+    SampleIndex, SampleMetadataState, SampleMetadataState, Sender, Time, Time,
+    VideoDataDescription, VideoDataDescription,
 };
 
-use crate::{SharablePlayableVideoStream, VideoStreamProcessingError};
+use crate::{Cache as _, SharablePlayableVideoStream, VideoStreamProcessingError};
 
 struct TestDecoder {
     sender: Sender<Result<re_video::Frame, re_video::DecodeError>>,
@@ -516,17 +521,70 @@ impl TestVideoPlayer {
     }
 }
 
+fn build_manifest_with_unloaded_chunks(store_id: StoreId, chunks: &[Arc<Chunk>]) -> RrdManifest {
+    let mut builder = RrdManifestBuilder::default();
+    let mut byte_offset = 0u64;
+
+    for chunk in chunks {
+        let arrow_msg = chunk.to_arrow_msg().unwrap();
+        let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
+
+        let chunk_byte_size = chunk.total_size_bytes();
+
+        let byte_span = re_span::Span {
+            start: byte_offset,
+            len: chunk_byte_size,
+        };
+
+        builder
+            .append(&chunk_batch, byte_span, chunk_byte_size)
+            .unwrap();
+
+        byte_offset += chunk_byte_size;
+    }
+
+    builder.build(store_id).unwrap()
+}
+
+const STREAM_ENTITY: &str = "/stream";
+const TIMELINE_NAME: &str = "video";
+
+fn unload_chunks(store: &EntityDb, cache: &mut super::VideoStreamCache, keep_range: Range<f64>) {
+    let store_events = store.gc(&re_chunk_store::GarbageCollectionOptions {
+        target: re_chunk_store::GarbageCollectionTarget::Everything,
+        time_budget: std::time::Duration::from_secs(u64::MAX),
+        protect_latest: 0,
+        protected_time_ranges: std::iter::once((
+            re_chunk::TimelineName::new(TIMELINE_NAME),
+            AbsoluteTimeRange::new(
+                TimeInt::from_secs(keep_range.start),
+                TimeInt::from_secs(keep_range.end.next_down()),
+            ),
+        ))
+        .collect(),
+        furthest_from: None,
+        perform_deep_deletions: false,
+    });
+
+    cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
+}
+
+fn load_chunks(store: &mut EntityDb, cache: &mut super::VideoStreamCache, chunks: &[Arc<Chunk>]) {
+    let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
+
+    for chunk in chunks {
+        store_events.extend(store.add_chunk(chunk).unwrap());
+    }
+
+    cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
+}
+
 #[test]
 fn player_with_cache() {
-    use crate::{Cache as _, VideoStreamCache};
-    use re_chunk::{Chunk, RowId, TimeInt, Timeline};
-    use re_entity_db::EntityDb;
-    use re_log_encoding::RrdManifestBuilder;
+    use crate::VideoStreamCache;
+    use re_chunk::{Chunk, RowId, Timeline};
     use re_log_types::StoreId;
     use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
-
-    const STREAM_ENTITY: &str = "/stream";
-    const TIMELINE_NAME: &str = "video";
 
     fn create_codec_chunk() -> Chunk {
         let mut builder = Chunk::builder(STREAM_ENTITY);
@@ -544,43 +602,27 @@ fn player_with_cache() {
     }
 
     fn frames(time: f64) -> Chunk {
-        // Small 64x64 AV1 keyframe for testing (generated with ffmpeg)
-        // This contains a Sequence Header OBU followed by a keyframe
-        #[rustfmt::skip]
-        let keyframe_data: &[u8] = &[
-            0x12, 0x00, 0x0A, 0x0A, 0x00, 0x00, 0x00, 0x02, 0xAF, 0xFF, 0x9F, 0xFF, 0x30, 0x08, 0x32, 0x14,
-            0x10, 0x00, 0xC0, 0x00, 0x00, 0x02, 0x80, 0x00, 0x00, 0x0A, 0x05, 0x76, 0xA4, 0xD6, 0x2F, 0x1F,
-            0xFA, 0x1E, 0x3C, 0xD8,
-        ];
-
-        // This would need a valid AV1 sequence with a non-keyframe
-        // For now, we just test that invalid/incomplete data doesn't panic
-        let frame_data: &[u8] = &[
-            // Just a sequence header without a keyframe
-            0x0A, 0x0B, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
-        ];
-
         let timeline = Timeline::new_duration(TIMELINE_NAME);
         Chunk::builder(STREAM_ENTITY)
             .with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time))],
-                &VideoStream::update_fields().with_sample(keyframe_data),
+                &VideoStream::update_fields().with_sample(AV1_TEST_KEYFRAME),
             )
             .with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time + 0.25))],
-                &VideoStream::update_fields().with_sample(frame_data),
+                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
             )
             .with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time + 0.5))],
-                &VideoStream::update_fields().with_sample(frame_data),
+                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
             )
             .with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time + 0.75))],
-                &VideoStream::update_fields().with_sample(frame_data),
+                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
             )
             .build()
             .unwrap()
@@ -594,34 +636,6 @@ fn player_with_cache() {
             .collect()
     }
 
-    fn build_manifest_with_unloaded_chunks(
-        store_id: StoreId,
-        chunks: &[Arc<Chunk>],
-    ) -> re_log_encoding::RrdManifest {
-        let mut builder = RrdManifestBuilder::default();
-        let mut byte_offset = 0u64;
-
-        for chunk in chunks {
-            let arrow_msg = chunk.to_arrow_msg().unwrap();
-            let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
-
-            let chunk_byte_size = chunk.total_size_bytes();
-
-            let byte_span = re_span::Span {
-                start: byte_offset,
-                len: chunk_byte_size,
-            };
-
-            builder
-                .append(&chunk_batch, byte_span, chunk_byte_size)
-                .unwrap();
-
-            byte_offset += chunk_byte_size;
-        }
-
-        builder.build(store_id).unwrap()
-    }
-
     let mut cache = VideoStreamCache::default();
 
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
@@ -632,24 +646,12 @@ fn player_with_cache() {
 
     let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), &chunks);
 
-    let manifest_chunks = manifest.col_chunk_id().unwrap().collect::<Vec<_>>();
-
     store.add_rrd_manifest_message(manifest);
 
-    let load_chunks = |store: &mut EntityDb, cache: &mut VideoStreamCache, chunk_idx: &[usize]| {
-        let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
 
-        for &idx in chunk_idx {
-            assert_eq!(manifest_chunks[idx], chunks[idx].id());
-
-            store_events.extend(store.add_chunk(&chunks[idx]).unwrap());
-        }
-
-        cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
-    };
-
-    // load codec chunk, and a sample chunk
-    load_chunks(&mut store, &mut cache, &[chunks.len() - 1, 4]);
+    load_chunks(&mut store, &mut cache, &chunks[4..5]);
 
     let video_stream = cache
         .entry(
@@ -671,13 +673,28 @@ fn player_with_cache() {
 
     player.expect_decoded_samples(16..19);
 
-    load_chunks(&mut store, &mut cache, &[0, 1]);
+    load_chunks(&mut store, &mut cache, &chunks[0..2]);
 
     player.play_store(0.0..1.75, 0.25, &store).unwrap();
 
-    load_chunks(&mut store, &mut cache, &[2, 3]);
+    load_chunks(&mut store, &mut cache, &chunks[2..4]);
 
     player.play_store(1.75..4.75, 0.25, &store).unwrap();
 
     player.expect_decoded_samples(0..19);
+
+    unload_chunks(&store, &mut cache, 4.0..5.0);
+
+    load_chunks(&mut store, &mut cache, &chunks[4..7]);
+
+    player.play_store(4.75..6.75, 0.25, &store).unwrap();
+
+    player.expect_decoded_samples(20..27);
+
+    // Load the ones we unloaded again
+    load_chunks(&mut store, &mut cache, &chunks[0..3]);
+
+    player.play_store(0.0..3.75, 0.25, &store).unwrap();
+
+    player.expect_decoded_samples(0..15);
 }

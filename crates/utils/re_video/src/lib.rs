@@ -10,6 +10,7 @@ mod nalu;
 mod stable_index_deque;
 mod time;
 
+pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
 pub use decode::{
     AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
     FrameContent, FrameInfo, FrameResult, PixelFormat, Result as DecodeResult,

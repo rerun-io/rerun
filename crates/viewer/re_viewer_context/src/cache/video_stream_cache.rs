@@ -241,6 +241,9 @@ impl VideoStreamCache {
             );
         }
 
+        if result.is_ok() {
+            log_samples(entity_db, &video_data.samples);
+        }
         if encoding_details_before != video_data.encoding_details {
             re_log::error_once!(
                 "The video stream codec details on {} changed over time, which is not supported.",
@@ -430,10 +433,6 @@ fn handle_compacted_chunk_addition(
             unseen_chunks.push(old_chunk);
         }
     }
-    let reused_chunks: Vec<_> = old_chunks
-        .iter()
-        .filter_map(|(id, c)| known_chunk_ranges.remove(id).zip(Some(c)))
-        .collect();
 
     if reused_chunks.is_empty() {
         return read_samples_from_new_chunk(timeline, chunk, video_data, known_chunk_ranges);
@@ -562,6 +561,40 @@ fn handle_split_chunk_addition(
     }
 }
 
+// TODO: Remove
+fn log_samples(
+    store: &re_entity_db::EntityDb,
+    samples: &re_video::StableIndexDeque<re_video::SampleMetadataState>,
+) {
+    eprintln!(
+        "\nSamples:\n{}",
+        samples
+            .iter_indexed()
+            .map(|(idx, s)| {
+                let sources: Vec<_> = store
+                    .storage_engine()
+                    .store()
+                    .find_root_rrd_manifests(&re_chunk::ChunkId::from_tuid(s.source_id()))
+                    .into_iter()
+                    .map(|(c, _)| c.short_string())
+                    .collect();
+
+                let l = s.sample().map(|_| "*").unwrap_or(" ");
+
+                let own = s.source_id().short_string();
+                if let [single] = sources.as_slice()
+                    && single == &own
+                {
+                    format!("{l}{idx:5} @ {own}",)
+                } else {
+                    format!("{l}{idx:5} @ {own}: {}", sources.join(", "))
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
 fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
@@ -647,40 +680,6 @@ fn load_video_data_from_chunks(
         timeline,
     );
 
-    let binding = store.storage_engine();
-    let store = binding.store();
-    eprintln!(
-        "{}",
-        video_descr
-            .samples
-            .iter_indexed()
-            .map(|(idx, s)| {
-                let sources: Vec<_> = store
-                    .find_root_rrd_manifests(&ChunkId::from_tuid(s.source_id()))
-                    .into_iter()
-                    .map(|(c, _)| c.short_string())
-                    .collect();
-
-                if sources.is_empty() {
-                    eprintln!(
-                        "{}",
-                        store.format_lineage(&ChunkId::from_tuid(s.source_id()))
-                    );
-                }
-
-                let own = s.source_id().short_string();
-                if let [single] = sources.as_slice()
-                    && single == &own
-                {
-                    format!("#{idx}@{own}",)
-                } else {
-                    format!("#{idx}@{own}: {}", sources.join(", "))
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-
     for chunk in &sorted_samples {
         let Some(known_range) = known_chunk_ranges.get(&chunk.id()) else {
             // If this chunk had any samples on the current timeline `known_chunk_ranges`
@@ -709,6 +708,8 @@ fn load_video_data_from_chunks(
             }
         }
     }
+
+    log_samples(store, &video_descr.samples);
 
     Ok((video_descr, known_chunk_ranges))
 }
