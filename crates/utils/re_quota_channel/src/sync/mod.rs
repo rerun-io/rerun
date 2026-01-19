@@ -31,7 +31,6 @@ struct SharedState {
     ///
     /// Used to ensure fair access to the channel among multiple senders,
     /// preventing starvation.
-    #[cfg(not(target_arch = "wasm32"))] // single-threaded
     active_sender: FairMutex<()>,
 
     /// Protected by mutex for use with condvar.
@@ -157,7 +156,7 @@ impl<T> Sender<T> {
         let capacity = self.shared.capacity_bytes;
 
         {
-            let mut current = self.shared.current_bytes.lock();
+            let mut current = self.shared.bytes_in_flight.lock();
             let new_total = *current + size_bytes;
 
             if capacity < new_total {
@@ -349,7 +348,6 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
 
         capacity_bytes,
 
-        #[cfg(not(target_arch = "wasm32"))]
         active_sender: FairMutex::new(()),
 
         bytes_in_flight: Mutex::new(0),
