@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from datafusion import col
+import datafusion as dfn
 from lerobot.datasets.compute_stats import compute_episode_stats
 from lerobot.datasets.utils import update_chunk_file_indices
 from tqdm import tqdm
@@ -26,15 +26,13 @@ from rerun_export.lerobot.video_processing import (
 from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
-    import datafusion as df
-    import rerun as rr
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
     from rerun_export.lerobot.types import LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSampleData, VideoSpec
 
 
 def convert_dataframe_to_episode(
-    df: df.DataFrame,
+    df: dfn.DataFrame,
     config: LeRobotConversionConfig,
     *,
     lerobot_dataset: LeRobotDataset,
@@ -70,18 +68,16 @@ def convert_dataframe_to_episode(
     if state_dim is None:
         raise ValueError("State feature specification is missing.")
 
-    df = df.filter(col(config.action).is_not_null())
+    video_data_cache = load_video_samples(
+        df=df,
+        index_column=config.index_column,
+        videos=config.videos,
+    )
+    df = df.filter(dfn.col(config.action).is_not_null())
 
     table = pa.table(df)
     if table.num_rows == 0:
         return False, None, False
-
-    video_data_cache = load_video_samples(
-        config.dataset,
-        segment_id,
-        index_column=config.index_column,
-        videos=config.videos,
-    )
 
     # Check if video remuxing is possible (when use_videos=True and FPS matches)
     remux_data: RemuxData | None = None

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import av
+import datafusion as dfn
 import numpy as np
 import pyarrow as pa
 
@@ -58,8 +59,7 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
 
 
 def load_video_samples(
-    dataset: rr.catalog.DatasetEntry,
-    segment_id: str,
+    df: dfn.DataFrame,
     *,
     index_column: str,
     videos: list[VideoSpec],
@@ -80,9 +80,8 @@ def load_video_samples(
     video_data_cache: dict[str, VideoSampleData] = {}
     for spec in videos:
         sample_column = f"{spec['path']}:VideoStream:sample"
-        video_view = dataset.filter_segments(segment_id).filter_contents(spec["path"])
-        video_reader = video_view.reader(index=index_column)
-        video_table = pa.table(video_reader.select(index_column, sample_column))
+        video_view = df.filter(dfn.col(sample_column).is_not_null())
+        video_table = pa.table(video_view.select(index_column, sample_column))
         samples, times_ns = extract_video_samples(
             video_table,
             sample_column=sample_column,
