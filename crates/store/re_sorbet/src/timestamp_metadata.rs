@@ -39,7 +39,7 @@ impl TimestampLocation {
     /// The last step of the pipeline
     pub const LAST: Self = Self::Ingest;
 
-    /// Get the arrow recordbartch metadata key associated with this timestamp location.
+    /// Get the arrow recordbatch metadata key associated with this timestamp location.
     ///
     /// Returns `None` for timestamp locations that are not recorded in metadata.
     pub fn metadata_key(&self) -> Option<&'static str> {
