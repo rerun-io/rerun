@@ -2,7 +2,6 @@ use std::collections::hash_map::Entry;
 use std::sync::LazyLock;
 
 use ahash::HashMap;
-use crossbeam::channel::Sender;
 use js_sys::{Function, Uint8Array};
 use re_mp4::StsdBoxContent;
 use smallvec::SmallVec;
@@ -15,8 +14,8 @@ use web_sys::{
 
 use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
 use crate::{
-    DecodeError, FrameResult, Time, Timescale, VideoCodec, VideoDataDescription,
-    VideoEncodingDetails,
+    DecodeError, FrameResult, Sender, Time, Timescale, TryRecvError, VideoCodec,
+    VideoDataDescription, VideoEncodingDetails,
 };
 
 #[derive(Clone)]
@@ -53,6 +52,12 @@ enum OutputCallbackMessage {
     },
 }
 
+impl re_byte_size::SizeBytes for OutputCallbackMessage {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 pub struct WebVideoDecoder {
     codec: VideoCodec,
 
@@ -61,7 +66,7 @@ pub struct WebVideoDecoder {
 
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: Sender<FrameResult>,
 
     output_callback_tx: Sender<OutputCallbackMessage>,
 }
@@ -155,7 +160,7 @@ impl WebVideoDecoder {
     pub fn new(
         video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
-        output_sender: crossbeam::channel::Sender<FrameResult>,
+        output_sender: Sender<FrameResult>,
     ) -> Result<Self, WebError> {
         // Web APIs insist on microsecond timestamps throughout.
         // If we don't have a timescale, assume a 30fps video where time units are frames.
@@ -357,9 +362,10 @@ impl AsyncDecoder for WebVideoDecoder {
 }
 
 fn init_video_decoder(
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: Sender<FrameResult>,
 ) -> Result<(web_sys::VideoDecoder, Sender<OutputCallbackMessage>), WebError> {
-    let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
+    let (output_callback_tx, output_callback_rx) =
+        re_quota_channel::channel("web_callbacks", 1024 * 1024);
 
     let on_output = {
         let output_sender = output_sender.clone();
@@ -395,12 +401,12 @@ fn init_video_decoder(
                         pending_frame_infos.clear();
                     }
 
-                    Err(crossbeam::channel::TryRecvError::Empty) => {
+                    Err(TryRecvError::Empty) => {
                         // Done, received all messages.
                         break;
                     }
 
-                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                    Err(TryRecvError::Disconnected) => {
                         // We're probably shutting down.
                         return;
                     }

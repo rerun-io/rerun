@@ -216,7 +216,7 @@ impl DatasetChunkIndexes {
             let indexes = self.indexes.read().await;
             let store = store.read();
 
-            for chunk in store.iter_chunks() {
+            for chunk in store.iter_physical_chunks() {
                 if let Some(entity_indexes) = indexes.get(chunk.entity_path()) {
                     // Find components by iterating on indexes (lower cardinality)
                     for (name, index) in entity_indexes {
@@ -297,7 +297,7 @@ impl DatasetChunkIndexes {
         for (segment_id, segment) in dataset.segments() {
             for (layer_name, layer) in segment.layers() {
                 let store = layer.store_handle().read();
-                for chunk in store.iter_chunks() {
+                for chunk in store.iter_physical_chunks() {
                     if chunk.entity_path() == entity_path
                         && chunk.components().0.contains_key(component)
                     {

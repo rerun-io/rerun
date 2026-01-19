@@ -427,13 +427,17 @@ pub fn spawn_with_recv(
             };
             match msg {
                 Ok(mut log_msg) => {
-                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
-                    // Note that this function is only called by the viewer
-                    // (that's what the message-receiver is connected to).
-                    log_msg.insert_arrow_record_batch_metadata(
-                        re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
-                        re_sorbet::timestamp_metadata::now_timestamp(),
-                    );
+                    if let Some(metadata_key) =
+                        re_sorbet::TimestampLocation::IPCDecode.metadata_key()
+                    {
+                        // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
+                        // Note that this function is only called by the viewer
+                        // (that's what the message-receiver is connected to).
+                        log_msg.insert_arrow_record_batch_metadata(
+                            metadata_key.to_owned(),
+                            re_sorbet::timestamp_metadata::now_timestamp(),
+                        );
+                    }
 
                     if channel_log_tx.send(log_msg).is_err() {
                         re_log::debug!(

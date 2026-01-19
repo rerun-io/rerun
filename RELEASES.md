@@ -84,6 +84,8 @@ Once the branch has been created, push it to the remote repository.
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
+In GitHub we have a `consider-patch` label that we put on PRs that we might want to include in the release.
+
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
 
 :warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked,
@@ -98,6 +100,8 @@ git cherry-pick 0.x.z..docs-latest
 Where `z` is the previous patch number.
 
 Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include, which is fine.
+
+After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
 
 ### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
 
@@ -167,6 +171,8 @@ first place.
 - For an alpha release, it's should be merged _if and only if_ the release job was successful.
   Otherwise, do not merge, as this could introduce breakage across the repository, such as in documentation links.
   If needed, cherry-pick any additional commits made back to `main`.
+
+Make sure the `consider-patch` label on GitHub is up-to-date. For a full release, this usually means removing it from all PRs.
 
 ### 9. Optional: write a post mortem about the release
 

@@ -43,7 +43,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let store = stores.into_values().next().unwrap();
         // Skip the first chunk, as it represents the `RecordingInfo`.
-        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
+        let chunks = store.iter_physical_chunks().skip(1).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();

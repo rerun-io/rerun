@@ -867,6 +867,15 @@ pub struct TableMsg {
     pub data: ArrowRecordBatch,
 }
 
+impl re_byte_size::SizeBytes for TableMsg {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { id: _, data } = self;
+
+        data.heap_size_bytes()
+    }
+}
+
 impl TableMsg {
     pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
         self.data.schema_metadata_mut().insert(key, value);

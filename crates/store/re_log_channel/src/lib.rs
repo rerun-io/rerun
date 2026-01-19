@@ -278,3 +278,13 @@ impl SmartMessage {
         }
     }
 }
+
+impl re_byte_size::SizeBytes for SmartMessage {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { source: _, payload } = self;
+        match payload {
+            SmartMessagePayload::Msg(msg) => msg.heap_size_bytes(),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(..) => 0,
+        }
+    }
+}
