@@ -36,3 +36,6 @@ thiserror.workspace = true
 web-time.workspace = true
 
 # Keep this crate simple, with few dependencies.
+
+[dev-dependencies]
+re_chunk.workspace = true
