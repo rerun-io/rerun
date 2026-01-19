@@ -23,3 +23,7 @@ egui.workspace = true
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["default_fonts", "wgpu"] }
 wgpu.workspace = true # Enable our default features
+
+
+[package.metadata.cargo-shear]
+ignored = ["wgpu"] # Used to get our default features so the example app works
