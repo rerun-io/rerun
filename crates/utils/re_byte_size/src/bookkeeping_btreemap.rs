@@ -94,7 +94,7 @@ where
         }
     }
 
-    /// Finds and mutates the last entry smalelr or equalts to the given `key`.
+    /// Finds and mutates the last entry smaller or equal to the given `key`.
     ///
     /// Equivalent to `.range_mut(..=key).next_back()` but with automatic size tracking.
     /// Returns the mutator's return value, or `None` if no entry exists <= `key`.
