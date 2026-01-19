@@ -115,6 +115,20 @@ This differs from the table model, where the schema is defined upfront (_schema-
 
 In this context, the schema of a dataset is the union of schemas of its segments, which themselves are the union of the schemas of their layers.
 
+```d2
+grid-rows: 3
+grid-gap: 10
+
+"my_dataset schema": { width: 400; style.fill: "${d2-config.theme-overrides.B5}" }
+
+"segment_a schema".width: 200
+"segment_b schema".width: 200
+
+base1: "base\nschema" { width: 95; style.fill: "${d2-config.theme-overrides.N5}" }
+extra: "extra\nschema" { width: 95; style.fill: "${d2-config.theme-overrides.N5}" }
+base2: "base\nschema" { width: 200; style.fill: "${d2-config.theme-overrides.N5}" }
+```
+
 Datasets maintain a minimal level of schema self-consistency.
 Registering a `.rrd` whose schema is incompatible with the current dataset schema will result in an error.
 In this context, _incompatible_ means that the schema of the new `.rrd` contains a column for the same entity, archetype, and component, but with a different Arrow type.
@@ -124,4 +138,6 @@ Such an occurrence is rare, and practically impossible when using standard Rerun
 ### Blueprints
 
 A dataset can be assigned a blueprint.
+This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
+A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
