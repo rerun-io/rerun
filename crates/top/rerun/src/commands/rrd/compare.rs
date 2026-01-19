@@ -182,8 +182,10 @@ fn load_chunks(
         stores
             .entry(msg.store_id().clone())
             .or_insert_with(|| {
+                let enable_viewer_indexes = false; // that would just slow us down for no reason
                 re_entity_db::EntityDb::with_store_config(
                     msg.store_id().clone(),
+                    enable_viewer_indexes,
                     // We must make sure not to do any store-side compaction during comparisons, or
                     // this will result in flaky roundtrips in some instances.
                     re_chunk_store::ChunkStoreConfig::ALL_DISABLED,

@@ -1207,8 +1207,10 @@ mod tests {
     #[test]
     fn video_stream_cache_from_chunk_per_frame() {
         let mut cache = VideoStreamCache::default();
+        let enable_viewer_indexes = false;
         let mut store = re_entity_db::EntityDb::with_store_config(
             StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            enable_viewer_indexes,
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");
@@ -1247,8 +1249,10 @@ mod tests {
             println!("compaction enabled: {compaction_enabled}");
 
             let mut cache = VideoStreamCache::default();
+            let enable_viewer_indexes = true;
             let mut store = re_entity_db::EntityDb::with_store_config(
                 StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+                enable_viewer_indexes,
                 if compaction_enabled {
                     re_chunk_store::ChunkStoreConfig::DEFAULT
                 } else {
@@ -1307,8 +1311,10 @@ mod tests {
     #[test]
     fn video_stream_cache_from_chunk_per_frame_with_gc() {
         let mut cache = VideoStreamCache::default();
+        let enable_viewer_indexes = true;
         let mut store = re_entity_db::EntityDb::with_store_config(
             StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            enable_viewer_indexes,
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");

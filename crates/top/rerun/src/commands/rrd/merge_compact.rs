@@ -194,8 +194,10 @@ fn merge_and_compact(
                 if let Err(err) = entity_dbs
                     .entry(msg.store_id().clone())
                     .or_insert_with(|| {
+                        let enable_viewer_indexes = false; // that would just slow us down for no reason
                         re_entity_db::EntityDb::with_store_config(
                             msg.store_id().clone(),
+                            enable_viewer_indexes,
                             store_config.clone(),
                         )
                     })
