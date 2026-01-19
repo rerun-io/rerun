@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use parking_lot::Mutex;
+use parking_lot::{FairMutex, Mutex};
 
 #[cfg(not(target_arch = "wasm32"))]
 use parking_lot::Condvar;
@@ -21,15 +21,25 @@ pub use crate::SizedMessage;
 pub use crate::try_send_error::TrySendError;
 
 struct SharedState {
+    /// Debug name for logging.
     debug_name: String,
+
+    /// Total capacity in bytes. Never changes.
     capacity_bytes: u64,
 
+    /// Whomever holds this is allowed to send (if there is space available).
+    ///
+    /// Used to ensure fair access to the channel among multiple senders,
+    /// preventing starvation.
+    #[cfg(not(target_arch = "wasm32"))] // single-threaded
+    active_sender: FairMutex<()>,
+
     /// Protected by mutex for use with condvar.
-    current_bytes: Mutex<u64>,
+    bytes_in_flight: Mutex<u64>,
 
     /// Signaled when bytes decrease (i.e., when a message is received).
     #[cfg(not(target_arch = "wasm32"))]
-    space_available: Condvar,
+    less_bytes_in_flight: Condvar,
 }
 
 // ----------------------------------------------------------------------------
@@ -84,28 +94,31 @@ impl<T> Sender<T> {
         self.send_impl(msg, size_bytes)
     }
 
+    // Blocking version for native
     #[cfg(not(target_arch = "wasm32"))]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
+        let _sender_lock = self.shared.active_sender.lock();
+
         let capacity = self.shared.capacity_bytes;
 
         if size_bytes <= capacity {
             // Normal case: wait until we have room
 
             {
-                let mut current = self.shared.current_bytes.lock();
+                let mut bytes_in_flight = self.shared.bytes_in_flight.lock();
 
-                if capacity < *current + size_bytes {
+                if capacity < *bytes_in_flight + size_bytes {
                     re_log::debug_once!(
                         "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
                         self.shared.debug_name,
                         re_format::format_bytes(capacity as f64),
                     );
-                    while capacity < *current + size_bytes {
-                        self.shared.space_available.wait(&mut current);
+                    while capacity < *bytes_in_flight + size_bytes {
+                        self.shared.less_bytes_in_flight.wait(&mut bytes_in_flight);
                     }
                 }
 
-                *current += size_bytes;
+                *bytes_in_flight += size_bytes;
             }
 
             self.tx
@@ -123,13 +136,13 @@ impl<T> Sender<T> {
 
             {
                 // Wait until the channel is completely empty
-                let mut current = self.shared.current_bytes.lock();
-                while 0 < *current {
-                    self.shared.space_available.wait(&mut current);
+                let mut bytes_in_flight = self.shared.bytes_in_flight.lock();
+                while 0 < *bytes_in_flight {
+                    self.shared.less_bytes_in_flight.wait(&mut bytes_in_flight);
                 }
 
                 // Now send (we'll temporarily exceed capacity, but that's expected)
-                *current += size_bytes;
+                *bytes_in_flight += size_bytes;
             }
 
             self.tx
@@ -138,6 +151,7 @@ impl<T> Sender<T> {
         }
     }
 
+    // Non-blocking version for web
     #[cfg(target_arch = "wasm32")]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
         let capacity = self.shared.capacity_bytes;
@@ -167,10 +181,12 @@ impl<T> Sender<T> {
     ///
     /// Returns an error if the channel is full (by byte count) or disconnected.
     pub fn try_send(&self, msg: T, size_bytes: u64) -> Result<(), TrySendError<T>> {
+        let _sender_lock = self.shared.active_sender.lock();
+
         let capacity = self.shared.capacity_bytes;
 
         {
-            let mut current = self.shared.current_bytes.lock();
+            let mut current = self.shared.bytes_in_flight.lock();
 
             // Check if we have room (allow oversized messages if channel is empty)
             if capacity < *current + size_bytes && 0 < *current {
@@ -182,7 +198,7 @@ impl<T> Sender<T> {
 
         self.tx
             .send(SizedMessage { msg, size_bytes })
-            .map_err(|err| TrySendError::Disconnected(err.0.msg))
+            .map_err(|SendError(SizedMessage { msg, .. })| TrySendError::Disconnected(msg))
     }
 
     /// Returns the debug name of the channel.
@@ -206,7 +222,7 @@ impl<T> Sender<T> {
     /// Returns the current byte usage in the channel.
     #[inline]
     pub fn current_bytes(&self) -> u64 {
-        *self.shared.current_bytes.lock()
+        *self.shared.bytes_in_flight.lock()
     }
 
     /// Returns the byte capacity of the channel.
@@ -270,7 +286,7 @@ impl<T> Receiver<T> {
     /// Returns the current byte usage in the channel.
     #[inline]
     pub fn current_bytes(&self) -> u64 {
-        *self.shared.current_bytes.lock()
+        *self.shared.bytes_in_flight.lock()
     }
 
     /// Returns the byte capacity of the channel.
@@ -299,13 +315,13 @@ impl<T> Receiver<T> {
     /// has been received, so that the byte count can be updated.
     pub fn manual_on_receive(&self, size_bytes: u64) {
         {
-            let mut current = self.shared.current_bytes.lock();
+            let mut current = self.shared.bytes_in_flight.lock();
             *current = current.saturating_sub(size_bytes);
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            self.shared.space_available.notify_all();
+            self.shared.less_bytes_in_flight.notify_all();
         }
     }
 }
@@ -313,6 +329,11 @@ impl<T> Receiver<T> {
 // ----------------------------------------------------------------------------
 
 /// Create a new byte-bounded channel.
+///
+/// # Caveats
+/// Sending has significant overhead compared to a normal bounded channel.
+///
+/// It optimized for few senders sending large messages,
 ///
 /// # Arguments
 ///
@@ -325,10 +346,16 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
 
     let shared = Arc::new(SharedState {
         debug_name: debug_name.into(),
+
         capacity_bytes,
-        current_bytes: Mutex::new(0),
+
         #[cfg(not(target_arch = "wasm32"))]
-        space_available: Condvar::new(),
+        active_sender: FairMutex::new(()),
+
+        bytes_in_flight: Mutex::new(0),
+
+        #[cfg(not(target_arch = "wasm32"))]
+        less_bytes_in_flight: Condvar::new(),
     });
 
     let sender = Sender {
