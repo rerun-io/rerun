@@ -356,3 +356,10 @@ mod tests {
         Ok(())
     }
 }
+
+impl re_byte_size::SizeBytes for EntityTree {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { path, children } = self;
+        path.heap_size_bytes() + children.heap_size_bytes()
+    }
+}

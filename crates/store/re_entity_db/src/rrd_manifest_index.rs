@@ -104,6 +104,16 @@ pub struct ChunkInfo {
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
+impl re_byte_size::SizeBytes for ChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            state: _,
+            temporals,
+        } = self;
+        temporals.heap_size_bytes()
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TemporalChunkInfo {
     pub timeline: Timeline,
@@ -116,6 +126,12 @@ pub struct TemporalChunkInfo {
     /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
     /// entry it might be less, since chunks allow sparse components.
     pub num_rows: u64,
+}
+
+impl re_byte_size::SizeBytes for TemporalChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
@@ -733,7 +749,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
         let Self {
             manifest,
             remote_chunks,
-            chunk_promises,
+            chunk_promises: _, // not yet implemented
             parents,
             timelines,
             entity_tree,
@@ -744,41 +760,35 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             native_temporal_map,
             chunk_intervals,
             manifest_row_from_chunk_id,
-            full_uncompressed_size,
+            full_uncompressed_size: _,
         } = self;
 
-        // Explicitly ignore fields that contribute negligibly to memory or don't implement SizeBytes
-        _ = manifest; // RrdManifest doesn't implement SizeBytes
-        _ = chunk_promises; // ChunkPromises is mostly futures/promises
-        _ = native_static_map; // RrdManifestStaticMap doesn't implement SizeBytes
-        _ = native_temporal_map; // RrdManifestTemporalMap doesn't implement SizeBytes
-        _ = remote_chunks; // ChunkInfo doesn't implement SizeBytes
-        _ = chunk_intervals; // SortedRangeMap doesn't implement SizeBytes
-        _ = entity_tree; // EntityTree doesn't implement MemUsageTreeCapture yet
-        _ = full_uncompressed_size; // Just a u64
-
         let mut node = re_byte_size::MemUsageNode::new();
-        node.add("parents", MemUsageTree::Bytes(parents.total_size_bytes()));
+        node.add("chunk_intervals", chunk_intervals.total_size_bytes());
         node.add(
-            "timelines",
-            MemUsageTree::Bytes(timelines.total_size_bytes()),
+            "entity_has_static_data",
+            entity_has_static_data.total_size_bytes(),
         );
         node.add(
             "entity_has_temporal_data_on_timeline",
-            MemUsageTree::Bytes(entity_has_temporal_data_on_timeline.total_size_bytes()),
+            entity_has_temporal_data_on_timeline.total_size_bytes(),
         );
-        node.add(
-            "entity_has_static_data",
-            MemUsageTree::Bytes(entity_has_static_data.total_size_bytes()),
-        );
-        node.add(
-            "static_chunk_ids",
-            MemUsageTree::Bytes(static_chunk_ids.total_size_bytes()),
-        );
+        node.add("entity_tree", entity_tree.total_size_bytes());
         node.add(
             "manifest_row_from_chunk_id",
-            MemUsageTree::Bytes(manifest_row_from_chunk_id.total_size_bytes()),
+            manifest_row_from_chunk_id.total_size_bytes(),
         );
+        node.add("manifest", manifest.total_size_bytes());
+        node.add("native_static_map", native_static_map.total_size_bytes());
+        node.add(
+            "native_temporal_map",
+            native_temporal_map.total_size_bytes(),
+        );
+        node.add("parents", parents.total_size_bytes());
+        node.add("remote_chunks", remote_chunks.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("timelines", timelines.total_size_bytes());
 
         node.into_tree()
     }

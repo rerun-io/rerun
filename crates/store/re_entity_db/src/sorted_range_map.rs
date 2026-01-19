@@ -13,6 +13,17 @@ pub struct SortedRangeMap<K, V> {
     max_end: Vec<K>,
 }
 
+impl<K, V> re_byte_size::SizeBytes for SortedRangeMap<K, V>
+where
+    K: re_byte_size::SizeBytes + Ord + Copy,
+    V: re_byte_size::SizeBytes,
+{
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { entries, max_end } = self;
+        entries.heap_size_bytes() + max_end.heap_size_bytes()
+    }
+}
+
 impl<K: Ord + Copy, V> SortedRangeMap<K, V> {
     pub fn new(mut entries: Vec<(RangeInclusive<K>, V)>) -> Self {
         entries.sort_by(|a, b| a.0.start().cmp(b.0.start()));

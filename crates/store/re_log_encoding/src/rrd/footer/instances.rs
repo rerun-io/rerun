@@ -196,6 +196,7 @@ impl re_byte_size::SizeBytes for RrdManifest {
             sorbet_schema_sha256: _,
             data,
         } = self;
+
         store_id.heap_size_bytes() + sorbet_schema.heap_size_bytes() + data.heap_size_bytes()
     }
 }
@@ -214,6 +215,12 @@ pub struct RrdManifestTemporalMapEntry {
     /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
     /// entry it might be less, since chunks allow sparse components.
     pub num_rows: u64,
+}
+
+impl re_byte_size::SizeBytes for RrdManifestTemporalMapEntry {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
 }
 
 /// A map based representation of the temporal data within an [`RrdManifest`].
