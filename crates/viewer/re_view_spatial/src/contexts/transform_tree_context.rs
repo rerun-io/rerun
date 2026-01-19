@@ -620,9 +620,10 @@ impl EntityTransformIdMapping {
                     fallback
                 },
                 |frame_id| {
-                    if results.results.component_mono_raw_with_log_level(re_log::Level::Debug, transform_frame_id_component).is_none() {
+                    let is_mono = results.results.component_mono_raw_quiet(transform_frame_id_component).is_some();
+                    if !is_mono {
                         re_log::warn_once!(
-                            "Entity {:?} has multiple `CoordinateFrame` instances, which is not supported. Using the first one.",
+                            "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
                             results.data_result.entity_path,
                         );
                     }
