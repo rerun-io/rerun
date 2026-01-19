@@ -16,7 +16,7 @@ This page aims to explain this in detail.
 The recording/file analogy comes short of describing how the Rerun Viewer handles data.
 
 When the Viewer receives data, whether by loading a `.rrd` file or an incoming logging stream, it pools the corresponding data by recording ID and application ID.
-This can be thought of as a logical recording, even though its source might be, e.g., multiple `.rrd` files.
+This can be thought of as a logical recording, even though its source might be multiple files.
 This implicit merging semantics also implies that, from the perspective of the Viewer, recordings are never "completed."
 They can always be appended to with new data.
 This enables the [distributed logging workflows](#distributed-recordings) described below.
