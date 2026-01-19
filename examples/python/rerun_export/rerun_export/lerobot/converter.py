@@ -268,7 +268,15 @@ def _save_episode_without_video_decode(
                 os.close(old_stdout_fd)
                 os.close(old_stderr_fd)
 
-    episode_index = lerobot_dataset.meta.total_episodes
+    if lerobot_dataset.episode_buffer is None:
+        lerobot_dataset.episode_buffer = lerobot_dataset.create_episode_buffer()
+    episode_index = lerobot_dataset.episode_buffer["episode_index"]
+    if isinstance(episode_index, np.ndarray):
+        episode_index = int(episode_index.item())
+    else:
+        episode_index = int(episode_index)
+    if lerobot_dataset.meta.total_episodes != episode_index:
+        lerobot_dataset.meta.info["total_episodes"] = episode_index
     task_col = config.task
     task_values = data_columns.get(task_col, [None] * num_rows) if task_col else [None] * num_rows
 
@@ -354,7 +362,7 @@ def _save_episode_without_video_decode(
         ep_stats,
         episode_metadata,
     )
-    lerobot_dataset.episode_buffer = lerobot_dataset.create_episode_buffer()
+    lerobot_dataset.episode_buffer = lerobot_dataset.create_episode_buffer(episode_index + 1)
 
 
 def _decode_video_frames_for_batch(
