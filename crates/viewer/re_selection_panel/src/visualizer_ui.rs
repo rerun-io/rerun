@@ -239,7 +239,7 @@ fn visualizer_components(
     };
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_descr in sorted_component_list_by_archetype_for_ui(
+    for unmapped_component_descr in sorted_component_list_by_archetype_for_ui(
         ctx.viewer_ctx.reflection(),
         query_info.queried.iter().cloned(),
     )
@@ -248,26 +248,38 @@ fn visualizer_components(
     {
         // TODO(andreas): What about annotation context?
 
-        let component = component_descr.component;
+        let target_component = unmapped_component_descr.component;
+
+        // Have to apply component mappings if there are any for this component.
+        let mapped_component = instruction
+            .component_mappings
+            .iter()
+            .find(|mapping| mapping.target == unmapped_component_descr.component)
+            .map_or(unmapped_component_descr.component, |mapping| {
+                mapping.selector
+            });
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(component);
-        let raw_override = result_override.and_then(|c| c.non_empty_component_batch_raw(component));
+        let result_override = query_result.overrides.get(target_component);
+        let raw_override =
+            result_override.and_then(|c| c.non_empty_component_batch_raw(target_component));
 
-        let result_store = query_result.results.get(component);
-        let raw_store = result_store.and_then(|c| c.non_empty_component_batch_raw(component));
+        let result_store = query_result.results.get(mapped_component);
+        let raw_store =
+            result_store.and_then(|c| c.non_empty_component_batch_raw(mapped_component));
 
-        let result_default = query_result.defaults.get(component);
-        let raw_default = result_default.and_then(|c| c.non_empty_component_batch_raw(component));
+        let result_default = query_result.defaults.get(target_component);
+        let raw_default =
+            result_default.and_then(|c| c.non_empty_component_batch_raw(target_component));
 
         // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = query_ctx
             .viewer_ctx()
             .component_fallback_registry
             .fallback_for(
-                component_descr.component,
-                component_descr.component_type,
+                target_component,
+                unmapped_component_descr.component_type,
                 &query_ctx,
             );
 
@@ -300,31 +312,46 @@ fn visualizer_components(
                         entity_path: override_path.clone(),
                     },
                     raw_current_value.as_ref(),
-                    component_descr.clone(),
+                    unmapped_component_descr.clone(),
                     multiline,
                 )
             {
                 // TODO(andreas): Unfortunately, display ui needs db & query. (fix that!)
                 // In fact some display UIs will struggle since they try to query additional data from the store.
                 // so we have to figure out what store and path things come from.
-                let (query, db, entity_path, latest_at_unit) = match value_source {
+                let (query, db, component_path_latest_at) = match value_source {
                     ValueSource::Override => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
-                        override_path.clone(),
-                        result_override.expect("This value was validated earlier."),
+                        re_data_ui::ComponentPathLatestAtResults {
+                            component_path: ComponentPath::new(
+                                override_path.clone(),
+                                target_component,
+                            ),
+                            unit: result_override.expect("This value was validated earlier."),
+                        },
                     ),
                     ValueSource::Store => (
                         &store_query,
                         ctx.recording(),
-                        data_result.entity_path.clone(),
-                        result_store.expect("This value was validated earlier."),
+                        re_data_ui::ComponentPathLatestAtResults {
+                            component_path: ComponentPath::new(
+                                data_result.entity_path.clone(),
+                                mapped_component,
+                            ),
+                            unit: result_store.expect("This value was validated earlier."),
+                        },
                     ),
                     ValueSource::Default => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
-                        ViewBlueprint::defaults_path(ctx.view_id),
-                        result_default.expect("This value was validated earlier."),
+                        re_data_ui::ComponentPathLatestAtResults {
+                            component_path: ComponentPath::new(
+                                ViewBlueprint::defaults_path(ctx.view_id),
+                                target_component,
+                            ),
+                            unit: result_default.expect("This value was validated earlier."),
+                        },
                     ),
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
@@ -336,7 +363,7 @@ fn visualizer_components(
                             &store_query,
                             ctx.recording(),
                             &data_result.entity_path,
-                            component_descr,
+                            unmapped_component_descr,
                             current_value_row_id,
                             raw_current_value.as_ref(),
                         );
@@ -344,11 +371,7 @@ fn visualizer_components(
                     }
                 };
 
-                re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_descr.component),
-                    unit: latest_at_unit,
-                }
-                .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
+                component_path_latest_at.data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
             }
         };
 
@@ -365,7 +388,7 @@ fn visualizer_components(
                         ui,
                         "Override",
                         override_path.clone(),
-                        component_descr,
+                        unmapped_component_descr,
                         *row_id,
                         raw_override.as_ref(),
                     )
@@ -381,7 +404,7 @@ fn visualizer_components(
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_descr.component,
+                                    unmapped_component_descr.component,
                                 ),
                                 unit,
                             }
@@ -406,7 +429,7 @@ fn visualizer_components(
                         ui,
                         "Default",
                         ViewBlueprint::defaults_path(ctx.view_id),
-                        component_descr,
+                        unmapped_component_descr,
                         *row_id,
                         raw_default.as_ref(),
                     )
@@ -429,7 +452,7 @@ fn visualizer_components(
                                 &store_query,
                                 ctx.recording(),
                                 &data_result.entity_path,
-                                component_descr,
+                                unmapped_component_descr,
                                 None,
                                 raw_fallback.as_ref(),
                             );
@@ -449,7 +472,7 @@ fn visualizer_components(
                 ctx,
                 ui,
                 &entity_components_with_datatype,
-                component_descr,
+                unmapped_component_descr,
                 instruction,
                 &query_info,
             );
@@ -461,12 +484,12 @@ fn visualizer_components(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(component),
+                ui.make_persistent_id(target_component),
                 default_open,
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
                     // since usually archetypes match 1:1 with visualizers.
-                    component_descr.archetype_field_name(),
+                    unmapped_component_descr.archetype_field_name(),
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
@@ -474,7 +497,7 @@ fn visualizer_components(
                     menu_more(
                         ctx,
                         ui,
-                        component_descr.clone(),
+                        unmapped_component_descr.clone(),
                         override_path,
                         &raw_override.clone().map(|(_, raw_override)| raw_override),
                         raw_default.clone().map(|(_, raw_override)| raw_override),
@@ -489,7 +512,7 @@ fn visualizer_components(
             )
             .item_response;
 
-        if let Some(component_type) = component_descr.component_type {
+        if let Some(component_type) = unmapped_component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
                 component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
@@ -530,7 +553,7 @@ fn source_component_ui(
     // Collect suitable source components with the same datatype as the target component.
 
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
-    // casting in some special cases. Eventually this should always be the case.
+    // casting in some special cases. Eventually this should always be the case, leaving us always with a list of valid physical types that we filter on.
     let allowed_physical_types = if is_required_component
         && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
             semantic_type: _,
