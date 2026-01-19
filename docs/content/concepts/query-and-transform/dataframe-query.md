@@ -16,7 +16,7 @@ Dataframe queries are designed to bridge this gap. They allow you to query arbit
 
 Dataframe queries can be used in two contexts:
 
-- **In the Viewer**: The [dataframe view](../visualization/dataframe-view.md) displays query results as a table, useful for inspecting raw values and debugging.
+- **In the Viewer**: The [dataframe view](../../reference/types/views/dataframe_view.md) displays query results as a table, useful for inspecting raw values and debugging.
 - **Via the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry) object provides [`reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.reader) and filtering methods for programmatic access.
 
 
@@ -170,5 +170,5 @@ For a complete example, see the [Time-align data](../../howto/query-and-transfor
 ## Additional resources
 
 - [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/)
-- [Dataframe view](../visualization/dataframe-view.md) for visualizing query results in the Viewer
+- [Dataframe view](../../reference/types/views/dataframe_view.md) for visualizing query results in the Viewer
 - [Query semantics & partial updates](../logging-and-ingestion/latest-at.md) for understanding latest-at and range queries

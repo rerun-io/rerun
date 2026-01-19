@@ -8,7 +8,7 @@
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
-"DataframeQuery" = ["reference/dataframe_save_blueprint"]
+"DataframeQuery" = ["howto/visualization/save_blueprint"]
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -263,7 +263,7 @@ backwards_check = [
   "rust",
   "py",
 ]
-"reference/dataframe_save_blueprint" = [ # No output
+"howto/visualization/save_blueprint" = [ # No output
   "cpp",
   "rust",
   "py",
@@ -273,7 +273,7 @@ backwards_check = [
   "rust",
   "py",
 ]
-"reference/dataframe_view_query_external" = [ # No output
+"howto/visualization/load_blueprint" = [ # No output
   "cpp",
   "rust",
   "py",
