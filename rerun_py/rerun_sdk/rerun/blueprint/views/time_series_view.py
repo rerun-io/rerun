@@ -78,6 +78,13 @@ class TimeSeriesView(View):
                 ),
                 rrb.TimeSeriesView(
                     origin="/trig",
+                    axis_x=rrb.TimeAxis(
+                        view_range=rr.TimeRange(
+                            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-100),
+                            end=rrb.TimeRangeBoundary.cursor_relative(seconds=100),
+                        ),
+                        zoom_lock=True,
+                    ),
                     # Configure the legend.
                     plot_legend=rrb.PlotLegend(visible=True),
                     background=rrb.archetypes.PlotBackground(color=[128, 128, 128], show_grid=False),
