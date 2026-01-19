@@ -479,8 +479,6 @@ impl TransformsForChildFrameEvents {
 
 impl SizeBytes for TransformsForChildFrameEvents {
     fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
         let Self {
             frame_transforms,
             pinhole_projections,
@@ -848,8 +846,6 @@ impl Clone for PoseTransformForEntity {
 
 impl SizeBytes for PoseTransformForEntity {
     fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
         let Self {
             entity_path,
             poses_per_time,
