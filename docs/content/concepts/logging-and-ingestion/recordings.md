@@ -50,7 +50,7 @@ You can learn more about this in the [shared recordings guide](../../howto/loggi
 
 ### Storage formats
 
-Rerun recordings are typically stored in `.rrd` files. [Blueprints](../visualization/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
+Rerun recordings are stored in `.rrd` files. [Blueprints](../visualization/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
 
 
 ## Application IDs
