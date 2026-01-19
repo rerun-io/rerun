@@ -102,7 +102,7 @@ pub struct ConnectionRegistryHandle {
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
-    /// it lives outside the RwLock.
+    /// it lives outside the `RwLock`.
     use_stored_credentials: bool,
 }
 
