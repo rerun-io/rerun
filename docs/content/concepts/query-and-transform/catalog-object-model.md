@@ -107,7 +107,7 @@ Layers are immutable and can only be overwritten by registering a new `.rrd` fil
 
 ### Schema
 
-Datasets are based on the Rerun data model, which essentially consists of a collection of [chunks](../logging-and-ingestion/chunks.md) of Arrow data.
+Datasets are based on the Rerun data model, which consists of a collection of [chunks](../logging-and-ingestion/chunks.md) of Arrow data.
 These chunks hold data for various [entities and components](../logging-and-ingestion/entity-component.md) corresponding to various indexes (or [timelines](../logging-and-ingestion/timelines.md)).
 A given collection of chunks, say, a dataset segment, defines an Arrow schema.
 We refer to this as _schema-on-read_, because the schema proceeds from the data, and not the other way around.
