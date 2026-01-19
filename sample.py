@@ -32,15 +32,23 @@ def main() -> None:
         # Add manual transforms (based on entity paths)
         log_disjoint_transforms(rec)
         # Connect our two trees
-        #   First make / root instead of #tf
-        rec.log("/", rr.CoordinateFrame("root"), static=True)
-        #   Then connect / to to entity_path_prefix/<urdf_root> via name
-        rec.log("/", rr.Transform3D(translation=[0., 0., 0.], parent_frame="root", child_frame="base"), static=True)
-        #   Then connect /world to / via mixed names and entity paths
-        rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], parent_frame="root",), static=True)
+        if True:
+            #   First make / root instead of #tf
+            rec.log("/", rr.CoordinateFrame("root"), static=True)
+            #   Then connect / to to entity_path_prefix/<urdf_root> via name
+            rec.log("/", rr.Transform3D(translation=[0., 0., 0.], parent_frame="root", child_frame="base"), static=True)
+            #   Then connect /world to / via mixed names and entity paths
+            rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], parent_frame="root",), static=True)
         # This appears to not work because each entity can only have one coordinate frame
         if False:
             rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], parent_frame="world", child_frame="base"), rr.CoordinateFrame("world"), static=True)
+        if False:
+            # didn't work
+            #rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], parent_frame="tf#/world", child_frame="base"), static=True)
+            # didn't work
+            #rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], child_frame="base"), static=True)
+            # didn't work
+            #rec.log("/world", rr.Transform3D(translation=[0., 0., 0.], parent_frame="base"), static=True)
 
         rec.set_time("frame", sequence=0)
         rec.log("/world/depth_1/depth_2/camera", rr.Image((255 * np.random.rand(480, 640)).astype(np.uint8)))
