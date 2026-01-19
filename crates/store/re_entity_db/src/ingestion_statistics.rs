@@ -119,7 +119,8 @@ impl LatencyStats {
 }
 
 fn row_id_timestamp(chunk: &Chunk) -> Option<SystemTime> {
-    // TODO: use first, last, or average over all row ids?
+    // We rather arbitrarily take the first row id's timestamp.
+    // TODO(emilk): use first, last, or average over all row ids?
     chunk
         .row_ids()
         .next()
