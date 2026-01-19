@@ -39,8 +39,6 @@ def convert_dataframe_to_episode(
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
     features: dict[str, dict[str, object]],
-    dataset: rr.catalog.DatasetEntry | None = None,
-    video_data_cache: dict[str, VideoSampleData] | None = None,
 ) -> tuple[bool, RemuxData | None, bool]:
     """
     Convert a DataFusion dataframe to a LeRobot episode.
@@ -75,15 +73,12 @@ def convert_dataframe_to_episode(
     if table.num_rows == 0:
         return False, None, False
 
-    if video_data_cache is None and config.videos:
-        if dataset is None:
-            raise ValueError("video_data_cache is required when dataset is not provided for video sample loading.")
-        video_data_cache = load_video_samples(
-            dataset,
-            segment_id,
-            index_column=config.index_column,
-            videos=config.videos,
-        )
+    video_data_cache = load_video_samples(
+        config.dataset,
+        segment_id,
+        index_column=config.index_column,
+        videos=config.videos,
+    )
 
     # Check if video remuxing is possible (when use_videos=True and FPS matches)
     remux_data: RemuxData | None = None

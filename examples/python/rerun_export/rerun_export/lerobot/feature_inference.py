@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -40,7 +39,6 @@ def infer_features(
     if config.action not in table.column_names:
         raise ValueError(f"Action column '{config.action}' not found in table. Available columns: {table.column_names}")
 
-    action_start = time.perf_counter()
     action_values = table[config.action].to_pylist()
     action_sample = next((v for v in action_values if v is not None), None)
     if action_sample is None:
@@ -50,13 +48,11 @@ def infer_features(
     if config.action_names is not None and len(config.action_names) != action_dim:
         raise ValueError("Action names length does not match inferred action dimension.")
     features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": config.action_names}
-    print(f"Inferred feature shape for 'action' in {time.perf_counter() - action_start:.4f}s")
 
     # Infer state dimension
     if config.state not in table.column_names:
         raise ValueError(f"State column '{config.state}' not found in table. Available columns: {table.column_names}")
 
-    state_start = time.perf_counter()
     state_values = table[config.state].to_pylist()
     state_sample = next((v for v in state_values if v is not None), None)
     if state_sample is None:
@@ -66,14 +62,12 @@ def infer_features(
     if config.state_names is not None and len(config.state_names) != state_dim:
         raise ValueError("State names length does not match inferred state dimension.")
     features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": config.state_names}
-    print(f"Inferred feature shape for 'observation.state' in {time.perf_counter() - state_start:.4f}s")
 
     # Infer video shapes
     for spec in config.videos:
         sample_column = f"{spec['path']}:VideoStream:sample"
         video_format = spec.get("video_format", "h264")
 
-        video_start = time.perf_counter()
         try:
             shape = infer_video_shape_from_table(
                 table=table,
@@ -90,6 +84,5 @@ def infer_features(
             "shape": shape,
             "names": ["height", "width", "channels"],
         }
-        print(f"Inferred feature shape for '{feature_key}' in {time.perf_counter() - video_start:.4f}s")
 
     return features

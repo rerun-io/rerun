@@ -214,21 +214,10 @@ def convert_rrd_dataset_to_lerobot(
                 filters.append(col(config.state).is_not_null())
                 if filters:
                     df = df.filter(*filters)
-
-                # Load video data cache from separate readers (video data is NOT aligned to the time grid)
-                # We need unaligned/raw video samples for remuxing, so we query them separately
-                video_data_cache = load_video_samples(
-                    dataset,
-                    segment_id,
-                    index_column=config.index_column,
-                    videos=config.videos,
-                )
-
                 # Convert the dataframe to an episode
                 success, remux_data, direct_saved = convert_dataframe_to_episode(
                     df,
                     config,
-                    video_data_cache=video_data_cache,
                     lerobot_dataset=lerobot_dataset,
                     segment_id=segment_id,
                     features=features,
