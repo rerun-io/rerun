@@ -10022,7 +10022,6 @@ dependencies = [
  "cfg_aliases",
  "criterion",
  "cros-codecs",
- "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
  "h264-reader",

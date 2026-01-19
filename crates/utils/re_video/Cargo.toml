@@ -51,7 +51,6 @@ re_tuid.workspace = true
 ahash.workspace = true
 bit-vec.workspace = true
 cros-codecs.workspace = true
-crossbeam.workspace = true
 econtext.workspace = true
 h264-reader.workspace = true
 itertools.workspace = true
