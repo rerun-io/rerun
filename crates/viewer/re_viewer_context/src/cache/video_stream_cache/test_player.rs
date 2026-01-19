@@ -87,7 +87,7 @@ impl TestVideoPlayer {
 
     #[track_caller]
     fn expect_decoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
-        let received = self.sample_rx.iter().collect::<Vec<_>>();
+        let received = self.sample_rx.try_iter().collect::<Vec<_>>();
         let expected = samples.into_iter().collect::<Vec<_>>();
 
         if let Some((e, r)) = expected.iter().zip(received.iter()).find(|(a, b)| a != b) {
