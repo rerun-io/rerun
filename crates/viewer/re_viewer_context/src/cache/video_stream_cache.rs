@@ -1441,6 +1441,18 @@ fn load_known_chunk_ranges(
             }
         }
     }
+
+    loaded_samples_timepoint_iterators.handle_samples(
+        known_chunk_ranges,
+        |_| true,
+        |sample| {
+            let idx = data_descr.samples.next_index();
+
+            data_descr.samples.push_back(sample);
+
+            idx
+        },
+    );
 }
 
 /// Adjust keyframes for removed samples.

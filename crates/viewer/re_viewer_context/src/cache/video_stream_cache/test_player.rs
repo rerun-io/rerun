@@ -1,5 +1,7 @@
 use std::{iter::once, ops::Range, sync::Arc};
 
+use crossbeam::channel::{Receiver, Sender};
+use re_byte_size::SizeBytes;
 use re_log_types::external::re_tuid::Tuid;
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
@@ -523,7 +525,7 @@ fn player_with_cache() {
     use re_log_types::StoreId;
     use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
 
-    const STREAM_ENTITY: &str = "stream";
+    const STREAM_ENTITY: &str = "/stream";
     const TIMELINE_NAME: &str = "video";
 
     fn create_codec_chunk() -> Chunk {
@@ -603,9 +605,7 @@ fn player_with_cache() {
             let arrow_msg = chunk.to_arrow_msg().unwrap();
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
 
-            // Use mock byte sizes for testing (actual values only matter for file-based loading)
-            let chunk_byte_size = 1000u64;
-            let chunk_byte_size_uncompressed = 2000u64;
+            let chunk_byte_size = chunk.total_size_bytes();
 
             let byte_span = re_span::Span {
                 start: byte_offset,
@@ -613,7 +613,7 @@ fn player_with_cache() {
             };
 
             builder
-                .append(&chunk_batch, byte_span, chunk_byte_size_uncompressed)
+                .append(&chunk_batch, byte_span, chunk_byte_size)
                 .unwrap();
 
             byte_offset += chunk_byte_size;
