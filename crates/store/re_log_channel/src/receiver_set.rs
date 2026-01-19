@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use super::LogReceiver;
-use crate::{LogSource, RecvError, SmartMessage};
+use crate::{LogReceiver, LogSource, SmartMessage};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::RecvError;
 
 /// A set of connected [`LogReceiver`]s.
 ///
@@ -108,6 +110,7 @@ impl LogReceiverSet {
 
     /// Blocks until a message is ready to be received,
     /// or we are empty.
+    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
     pub fn recv(&self) -> Result<SmartMessage, RecvError> {
         re_tracing::profile_function!();
 
@@ -162,6 +165,7 @@ impl LogReceiverSet {
         None
     }
 
+    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
