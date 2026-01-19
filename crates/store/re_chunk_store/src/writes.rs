@@ -621,25 +621,21 @@ impl ChunkStore {
             }
         }
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
 
+        if self.config.enable_changelog {
             Self::on_events(&events);
-
-            events
-        } else {
-            Vec::new()
-        };
+        }
 
         Ok(events)
     }
@@ -894,25 +890,23 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
+        let events: Vec<_> = dropped_static_chunks
+            .into_iter()
+            .chain(dropped_temporal_chunks)
+            .map(ChunkStoreDiff::deletion)
+            .map(|diff| ChunkStoreEvent {
+                store_id: id.clone(),
+                store_generation: generation.clone(),
+                event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+
         if self.config.enable_changelog {
-            let events: Vec<_> = dropped_static_chunks
-                .into_iter()
-                .chain(dropped_temporal_chunks)
-                .map(ChunkStoreDiff::deletion)
-                .map(|diff| ChunkStoreEvent {
-                    store_id: id.clone(),
-                    store_generation: generation.clone(),
-                    event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
-
             Self::on_events(&events);
-
-            events
-        } else {
-            Vec::new()
         }
+
+        events
     }
 }
 
