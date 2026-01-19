@@ -707,15 +707,9 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
 
         let mut previous = 0.0;
 
-        for (&location, &latency_sec) in &secs_since_log {
-            let label = match location {
-                TimestampLocation::Log => "log call",
-                TimestampLocation::ChunkCreation => "batch creation",
-                TimestampLocation::IPCEncode => "encode and transmit",
-                TimestampLocation::IPCDecode => "receive and decode",
-                TimestampLocation::Ingest => "ingest into viewer",
-            };
+        ui.label(TimestampLocation::Log.to_string());
 
+        for (&location, &latency_sec) in &secs_since_log {
             if location == TimestampLocation::Log {
                 debug_assert_eq!(latency_sec, 0.0);
             } else {
@@ -725,8 +719,8 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
                 ui.label(small_and_weak("↓"));
                 latency_label(ui, latency_since_previous);
                 ui.label(small_and_weak("|"));
+                ui.label(location.to_string());
             }
-            ui.label(label);
         }
     });
 }

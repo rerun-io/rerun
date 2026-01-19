@@ -114,8 +114,6 @@ impl LatencyStats {
             }
         }
 
-        dbg!(&secs_since_log);
-
         LatencySnapshot { secs_since_log }
     }
 }

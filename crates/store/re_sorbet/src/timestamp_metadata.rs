@@ -32,6 +32,19 @@ pub enum TimestampLocation {
     Ingest,
 }
 
+impl std::fmt::Display for TimestampLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Log => "log call",
+            Self::ChunkCreation => "batch creation",
+            Self::IPCEncode => "encode and transmit",
+            Self::IPCDecode => "receive and decode",
+            Self::Ingest => "ingest into viewer",
+        };
+        write!(f, "{s}")
+    }
+}
+
 impl TimestampLocation {
     /// The first step of the pipeline
     pub const FIRST: Self = Self::Log;
@@ -99,12 +112,14 @@ pub struct TimestampMetadata(BTreeMap<TimestampLocation, web_time::SystemTime>);
 impl Deref for TimestampMetadata {
     type Target = BTreeMap<TimestampLocation, web_time::SystemTime>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for TimestampMetadata {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

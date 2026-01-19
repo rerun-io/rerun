@@ -8940,7 +8940,6 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
- "saturating_cast",
  "serde",
  "similar-asserts",
  "static_assertions",
