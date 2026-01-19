@@ -90,7 +90,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
 
     for entry in view_class_registry.iter_registry() {
         // We consider a view class to be recommended if all selected entities are
-        // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
+        // "visualizable" with it through a native type.
+        // By "visualizable" we mean that either the entity itself, or any
         // of its sub-entities, are visualizable.
 
         let covered = entities_of_interest.iter().all(|candidate_entity| {
@@ -100,8 +101,21 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
                     visualizable_entities
                         .0
                         .iter()
-                        .any(|(visualizable_entity, _reason)| {
+                        .any(|(visualizable_entity, reason)| {
+                            let has_reason_for_recommendation = match reason {
+                                re_viewer_context::VisualizableReason::DatatypeMatchAny {
+                                    components,
+                                } => components.iter().any(|(_, match_kind)| {
+                                    *match_kind
+                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
+                                }),
+                                re_viewer_context::VisualizableReason::Always
+                                | re_viewer_context::VisualizableReason::ExactMatchAll
+                                | re_viewer_context::VisualizableReason::ExactMatchAny => true,
+                            };
+
                             visualizable_entity.starts_with(candidate_entity)
+                                && has_reason_for_recommendation
                         })
                 })
         });
