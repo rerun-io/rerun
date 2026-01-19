@@ -689,9 +689,9 @@ impl ChunkStore {
         self.chunks_per_chunk_id.values()
     }
 
-    /// Get a chunk based on its ID.
+    /// Get a *physical* chunk based on its ID.
     #[inline]
-    pub fn chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+    pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         self.chunks_per_chunk_id.get(id)
     }
 
