@@ -11,7 +11,7 @@ Flamegraph visualization for memory usage trees.
 
 This crate provides an interactive flamegraph widget for visualizing `MemUsageTree` structures from re_byte_size.
 
-## Running the Demo
+## Running the demo
 
 To see the flamegraph in action, run the demo application:
 

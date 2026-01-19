@@ -137,13 +137,15 @@ Update instructions:
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
 | re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
-| re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_chunk_store_ui      | A chunk store browser UI.                                                                                  |
 | re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
+| re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
+| re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
+| re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
 | re_view                | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart      | A View that shows a single bar chart.                                                                      |
 | re_view_dataframe      | A View that shows the data contained in entities in a table.                                               |
@@ -154,7 +156,6 @@ Update instructions:
 | re_view_text_document  | A simple View that shows a single text box.                                                                |
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
 | re_view_time_series    | A View that shows plots over Rerun timelines.                                                              |
-| re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
 | re_viewer              | The Rerun Viewer                                                                                           |
 | re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 
