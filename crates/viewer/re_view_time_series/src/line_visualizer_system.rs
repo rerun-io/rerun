@@ -3,6 +3,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::{Component as _, components};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
@@ -37,7 +38,7 @@ impl VisualizerSystem for SeriesLinesSystem {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesLines::name().into(),
             required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-                native_type: archetypes::Scalars::descriptor_scalars().component_type,
+                semantic_type: components::Scalar::name(),
                 physical_types: series_supported_datatypes().into_iter().collect(),
             },
             queried: archetypes::Scalars::all_components()

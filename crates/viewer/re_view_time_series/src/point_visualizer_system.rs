@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
-use re_sdk_types::components::{Color, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, Component as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
@@ -38,7 +38,7 @@ impl VisualizerSystem for SeriesPointsSystem {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesPoints::name().into(),
             required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-                native_type: archetypes::Scalars::descriptor_scalars().component_type,
+                semantic_type: components::Scalar::name(),
                 physical_types: series_supported_datatypes().into_iter().collect(),
             },
             queried: archetypes::Scalars::all_components()
