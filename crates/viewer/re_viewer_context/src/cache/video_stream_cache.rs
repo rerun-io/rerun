@@ -105,7 +105,7 @@ pub enum VideoStreamProcessingError {
     #[error("Received video samples were not in chronological order.")]
     OutOfOrderSamples,
 
-    #[error("Chunks changed unexpectidly")]
+    #[error("Chunks changed unexpectedly")]
     UnexpectedChunkChanges,
 }
 
@@ -1430,8 +1430,9 @@ fn load_known_chunk_ranges(
                 let idx = data_descr.samples.next_index();
 
                 // If we have loaded everything for this chunk for the rrd we don't insert any samples for it.
-                // TODO: Not necessarily correct to always allocate the missing count at this
-                // timepoint. But don't think we have the info to place it better.
+                // NOTE: Not necessarily correct to always allocate the missing count at this
+                // timepoint. But don't think we have the info to place it better. If this ends up being wrong the cache entry will reset
+                // when we get the data and can rebuild it correctly then.
                 if let Some(count) = rrd_entry.num_rows.checked_sub(
                     loaded_chunks_counts
                         .get(&next_chunk_id)

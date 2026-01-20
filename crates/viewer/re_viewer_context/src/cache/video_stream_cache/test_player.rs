@@ -402,7 +402,7 @@ fn assert_loading(err: Result<(), VideoPlayerError>) {
                 InsufficientSampleDataError::ExpectedSampleNotAvailable
             )
         ),
-        "Expected {:?} got {err:?}",
+        "Expected {} got {err}",
         VideoPlayerError::InsufficientSampleData(
             InsufficientSampleDataError::ExpectedSampleNotAvailable
         )
@@ -419,7 +419,7 @@ fn assert_no_samples_before(err: Result<(), VideoPlayerError>) {
                 InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
             )
         ),
-        "Expected {:?} got {err:?}",
+        "Expected {} got {err}",
         VideoPlayerError::InsufficientSampleData(
             InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
         )
