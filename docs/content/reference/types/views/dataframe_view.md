@@ -6,7 +6,9 @@ title: "DataframeView"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A view to display any data in a tabular form.
 
-Any data from the store can be shown, using a flexibly, user-configurable query.
+Any data from the store can be shown, using a flexible, user-configurable query.
+
+See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries?speculative-link) to learn more about the query model.
 
 ## Properties
 
