@@ -53,13 +53,13 @@ impl Cache for TensorStatsCache {
                 let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
                 let contains_tensor_data = || {
                     event
-                        .chunk
+                        .chunk_before_processing
                         .components()
                         .contains_component(Tensor::descriptor_data().component)
                 };
 
                 if is_deletion() && contains_tensor_data() {
-                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
+                    Either::Left(event.chunk_before_processing.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }

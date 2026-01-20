@@ -314,11 +314,11 @@ impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
     fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
         for event in events {
             if event
-                .chunk
+                .chunk_before_processing
                 .components()
                 .contains_key(&archetypes::AnnotationContext::descriptor_context().component)
             {
-                let path = event.chunk.entity_path();
+                let path = event.chunk_before_processing.entity_path();
                 match event.diff.kind {
                     ChunkStoreDiffKind::Addition => {
                         self.entities_with_annotation_context.insert(path.clone());

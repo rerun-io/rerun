@@ -3,8 +3,8 @@ use std::sync::{Arc, OnceLock};
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_chunk_store::{
-    Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
-    PerStoreChunkSubscriber,
+    Chunk, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreEvent,
+    ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
@@ -149,22 +149,20 @@ impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if let Some(re_chunk_store::ChunkCompactionReport {
-                srcs: compacted_chunks,
-                new_chunk,
-            }) = &event.diff.compacted
+            if let Some(ChunkDirectLineageReport::CompactedFrom(chunks)) =
+                &event.diff.direct_lineage
             {
-                for removed_chunk in compacted_chunks.values() {
+                for removed_chunk in chunks.values() {
                     self.remove_chunk(removed_chunk);
                 }
-                self.add_chunk(new_chunk);
+                self.add_chunk(&event.diff.chunk_after_processing);
             } else {
                 match event.diff.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
-                        self.add_chunk(&event.chunk);
+                        self.add_chunk(&event.chunk_after_processing);
                     }
                     re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                        self.remove_chunk(&event.chunk);
+                        self.remove_chunk(&event.chunk_after_processing);
                     }
                 }
             }

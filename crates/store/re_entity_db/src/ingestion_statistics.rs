@@ -70,13 +70,20 @@ impl LatencyStats {
             system_time_from_nanos(now_nanos as u64),
         );
 
-        let Some(log_time) = row_id_timestamp(&diff.chunk) else {
+        let Some(log_time) = row_id_timestamp(&diff.chunk_before_processing) else {
             return;
         };
         chunk_timestamps.insert(TimestampLocation::Log, log_time);
 
         // We use the chunk id for timing, so we need to get the _original_ id:
-        let original_chunk_id = diff.split_source.unwrap_or_else(|| diff.chunk.id());
+        let original_chunk_id =
+            if let Some(re_chunk_store::ChunkDirectLineageReport::SplitFrom(chunk, _siblings)) =
+                diff.direct_lineage.as_ref()
+            {
+                chunk.id()
+            } else {
+                diff.chunk_before_processing.id()
+            };
         chunk_timestamps.insert(
             TimestampLocation::ChunkCreation,
             system_time_from_nanos(original_chunk_id.nanos_since_epoch()),

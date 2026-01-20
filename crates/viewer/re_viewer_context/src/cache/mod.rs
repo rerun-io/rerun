@@ -38,13 +38,13 @@ fn filter_blob_removed_events(
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 itertools::Either::Left(
                     event
-                        .chunk
+                        .chunk_before_processing
                         .component_descriptors()
                         .filter(|descr| {
                             descr.component_type == Some(re_sdk_types::components::Blob::name())
                         })
                         .flat_map(|descr| {
-                            event.chunk.row_ids().map(move |row_id| {
+                            event.chunk_before_processing.row_ids().map(move |row_id| {
                                 crate::StoredBlobCacheKey::new(row_id, descr.component)
                             })
                         }),

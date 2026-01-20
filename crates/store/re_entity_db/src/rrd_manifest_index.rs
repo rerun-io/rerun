@@ -5,11 +5,11 @@ use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use emath::NumExt as _;
-use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
+
 use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
-use re_chunk_store::ChunkStoreEvent;
+use re_chunk_store::{ChunkStore, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
@@ -81,7 +81,9 @@ pub struct ChunkPrefetchOptions {
     ///
     /// We must try and download them in priority, as there are views actively waiting for them in order to
     /// properly render.
-    pub missing_chunk_ids: HashSet<ChunkId>,
+    ///
+    /// Only remote chunk IDs make sense here. Local IDs will be ignored.
+    pub missing_remote_chunk_ids: HashSet<ChunkId>,
 
     /// Batch together requests until we reach this size).
     pub max_uncompressed_bytes_per_batch: u64,
@@ -118,8 +120,9 @@ pub struct TemporalChunkInfo {
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
-/// This is constructed from an [`RrdManifest`], which is what
-/// the server sends to the client/viewer.
+/// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
+//
+// TODO(RR-3383): support multiple manifests per index.
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
@@ -135,10 +138,6 @@ pub struct RrdManifestIndex {
     remote_chunks: HashMap<ChunkId, ChunkInfo>,
 
     chunk_promises: ChunkPromises,
-
-    /// The chunk store may split large chunks and merge (compact) small ones.
-    /// When we later drop a chunk, we need to know which other chunks to invalidate.
-    parents: HashMap<ChunkId, HashSet<ChunkId>>,
 
     /// Full time range per timeline
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
@@ -354,7 +353,7 @@ impl RrdManifestIndex {
         chunk_info.state = LoadState::Loaded;
     }
 
-    pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
+    pub fn on_events(&mut self, store: &ChunkStore, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         if self.manifest.is_none() {
@@ -362,15 +361,34 @@ impl RrdManifestIndex {
         }
 
         for event in store_events {
-            let store_kind = event.store_id.kind();
-            let chunk_id = event.chunk.id();
+            let chunk_id = event.chunk_before_processing.id();
             match event.kind {
                 re_chunk_store::ChunkStoreDiffKind::Addition => {
+                    self.mark_as(store, &chunk_id, LoadState::Loaded);
+                }
+                re_chunk_store::ChunkStoreDiffKind::Deletion => {
+                    self.mark_as(store, &chunk_id, LoadState::Unloaded);
+                }
+            }
+        }
+    }
+
+    fn mark_as(&mut self, store: &ChunkStore, chunk_id: &ChunkId, state: LoadState) {
+        let store_kind = store.id().kind();
+
+        if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
+            chunk_info.state = state;
+        } else {
+            let root_chunk_ids = store.find_root_rrd_manifests(chunk_id);
+            if root_chunk_ids.is_empty() {
+                warn_when_editing_recording(
+                    store_kind,
+                    "Added chunk that was not part of the chunk index",
+                );
+            } else {
+                for (chunk_id, _) in root_chunk_ids {
                     if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                        chunk_info.state = LoadState::Loaded;
-                    } else if let Some(source) = event.split_source {
-                        // The added chunk was the result of splitting another chunk:
-                        self.parents.entry(chunk_id).or_default().insert(source);
+                        chunk_info.state = state;
                     } else {
                         warn_when_editing_recording(
                             store_kind,
@@ -378,34 +396,7 @@ impl RrdManifestIndex {
                         );
                     }
                 }
-                re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                    self.mark_deleted(store_kind, &chunk_id);
-                }
             }
-        }
-    }
-
-    fn mark_deleted(&mut self, store_kind: StoreKind, chunk_id: &ChunkId) {
-        if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
-            chunk_info.state = LoadState::Unloaded;
-        } else if let Some(parents) = self.parents.remove(chunk_id) {
-            // Mark all ancestors as not being fully loaded:
-
-            let mut ancestors = parents.into_iter().collect_vec();
-            while let Some(chunk_id) = ancestors.pop() {
-                if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                    chunk_info.state = LoadState::Unloaded;
-                } else if let Some(grandparents) = self.parents.get(&chunk_id) {
-                    ancestors.extend(grandparents);
-                } else {
-                    warn_when_editing_recording(
-                        store_kind,
-                        "Removed ancestor chunk that was not part of the index",
-                    );
-                }
-            }
-        } else {
-            warn_when_editing_recording(store_kind, "Removed chunk that was not part of the index");
         }
     }
 
@@ -453,7 +444,7 @@ impl RrdManifestIndex {
 
         let ChunkPrefetchOptions {
             timeline,
-            missing_chunk_ids,
+            missing_remote_chunk_ids,
             start_time,
             max_uncompressed_bytes_per_batch,
             total_uncompressed_byte_budget,
@@ -485,7 +476,7 @@ impl RrdManifestIndex {
         let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
-        let missing_chunk_ids = missing_chunk_ids.into_iter();
+        let missing_remote_chunk_ids = missing_remote_chunk_ids.into_iter();
         let chunks_ids_after_time_cursor = || {
             chunks
                 .query(start_time..=TimeInt::MAX)
@@ -498,7 +489,7 @@ impl RrdManifestIndex {
         };
         let chunk_ids_in_priority_order = itertools::chain!(
             self.static_chunk_ids.iter().copied(),
-            missing_chunk_ids,
+            missing_remote_chunk_ids,
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );

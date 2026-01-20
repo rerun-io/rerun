@@ -72,7 +72,7 @@ impl CompactedStoreEvents {
         let mut this = Self {
             row_ids: store_events
                 .iter()
-                .flat_map(|event| event.chunk.row_ids())
+                .flat_map(|event| event.chunk_before_processing.row_ids())
                 .collect(),
             temporal: Default::default(),
             static_: Default::default(),
@@ -82,20 +82,20 @@ impl CompactedStoreEvents {
             if event.is_static() {
                 let per_component = this
                     .static_
-                    .entry(event.chunk.entity_path().hash())
+                    .entry(event.chunk_before_processing.entity_path().hash())
                     .or_default();
-                for component in event.chunk.components_identifiers() {
+                for component in event.chunk_before_processing.components_identifiers() {
                     *per_component.entry(component).or_default() += event.delta().unsigned_abs();
                 }
             } else {
-                for (&timeline, time_column) in event.chunk.timelines() {
+                for (&timeline, time_column) in event.chunk_before_processing.timelines() {
                     let per_timeline = this
                         .temporal
-                        .entry(event.chunk.entity_path().hash())
+                        .entry(event.chunk_before_processing.entity_path().hash())
                         .or_default();
                     for &time in time_column.times_raw() {
                         let per_component = per_timeline.entry(timeline).or_default();
-                        for component in event.chunk.components_identifiers() {
+                        for component in event.chunk_before_processing.components_identifiers() {
                             per_component
                                 .entry(component)
                                 .or_default()
@@ -152,7 +152,7 @@ impl EntityTree {
     }
 
     fn on_store_addition(&mut self, event: &ChunkStoreEvent) {
-        self.on_new_entity(event.chunk.entity_path());
+        self.on_new_entity(event.chunk_before_processing.entity_path());
     }
 
     pub fn on_new_entity(&mut self, entity_path: &EntityPath) {

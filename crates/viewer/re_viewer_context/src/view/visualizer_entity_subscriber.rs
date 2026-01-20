@@ -205,14 +205,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 .entry(event.store_id.clone())
                 .or_default();
 
-            let entity_path = event.diff.chunk.entity_path();
+            let entity_path = event.diff.chunk_before_processing.entity_path();
 
             // Update archetype tracking:
             if self.relevant_archetype.is_none()
                 || self.relevant_archetype.is_some_and(|archetype| {
                     event
                         .diff
-                        .chunk
+                        .chunk_before_processing
                         .components()
                         .component_descriptors()
                         .any(|component_descr| component_descr.archetype == Some(archetype))
@@ -267,7 +267,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
                         if let Some(index) = required_components_indices.get(&descriptor.component)
                         {
@@ -304,7 +304,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
                         if relevant_components.contains(&descriptor.component) {
                             // The component might be present, but logged completely empty.
@@ -339,7 +339,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
                         if relevant_datatypes.contains(&list_array.value_type()) {
                             // The component might be present, but logged completely empty.

@@ -437,11 +437,17 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 4)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk1));
+    assert!(Arc::ptr_eq(
+        &events[0].diff.chunk_before_processing,
+        &chunk1
+    ));
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 3)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk4));
+    assert!(Arc::ptr_eq(
+        &events[0].diff.chunk_before_processing,
+        &chunk4
+    ));
 
     Ok(())
 }
@@ -559,9 +565,12 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
     assert_eq!(ChunkStoreDiffKind::Deletion, events[1].kind);
     assert_eq!(ChunkStoreDiffKind::Deletion, events[2].kind);
-    similar_asserts::assert_eq!(chunk3 /* static comes first */, events[0].chunk);
-    similar_asserts::assert_eq!(chunk1, events[1].chunk);
-    similar_asserts::assert_eq!(chunk2, events[2].chunk);
+    similar_asserts::assert_eq!(
+        chunk3, /* static comes first */
+        events[0].chunk_before_processing
+    );
+    similar_asserts::assert_eq!(chunk1, events[1].chunk_before_processing);
+    similar_asserts::assert_eq!(chunk2, events[2].chunk_before_processing);
 
     assert_latest_value(
         &store,
@@ -595,7 +604,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let events = store.drop_entity_path(&entity_path2);
     assert_eq!(1, events.len());
     assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
-    similar_asserts::assert_eq!(chunk4, events[0].chunk);
+    similar_asserts::assert_eq!(chunk4, events[0].chunk_before_processing);
 
     assert_latest_value(
         &store,
