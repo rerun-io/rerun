@@ -8,14 +8,18 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::Session;
-use datafusion::common::{DataFusionError, Result as DataFusionResult, exec_datafusion_err};
+use datafusion::common::{
+    DataFusionError, Result as DataFusionResult, exec_datafusion_err, exec_err,
+};
 use datafusion::config::ConfigOptions;
 use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::TableProviderFilterPushDown;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
-use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
+use datafusion::physical_plan::{
+    DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties, PlanProperties,
+};
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
@@ -156,9 +160,11 @@ impl StreamingCacheTableProvider {
         task_ctx: Arc<TaskContext>,
         cache: &Arc<Mutex<StreamingCacheInner>>,
     ) -> DataFusionResult<()> {
-        let input_exec = input_exec
-            .repartitioned(1, &ConfigOptions::default())?
-            .ok_or_else(|| exec_datafusion_err!("Unable to repartition input"))?;
+        if input_exec.output_partitioning().partition_count() != 1 {
+            return exec_err!(
+                "Expected exactly one partition stream for input to StreamingCacheTableProvider"
+            );
+        }
         let mut stream = input_exec.execute(0, task_ctx)?;
 
         // Stream batches into cache
