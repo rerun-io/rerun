@@ -4,6 +4,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
+use re_byte_size::{MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
     ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle,
@@ -157,6 +158,37 @@ pub struct QueryCache {
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
+}
+
+impl MemUsageTreeCapture for QueryCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id: _,
+            store: _,
+            might_require_clearing,
+            latest_at_per_cache_key: _,
+            range_per_cache_key,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child(
+                "might_require_clearing",
+                might_require_clearing.total_size_bytes(),
+            )
+            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // Maybe double-counting chunks or other arrow data?
+            // .with_child(
+            //     "latest_at_per_cache_key",
+            //     latest_at_per_cache_key.total_size_bytes(),
+            // )
+            .with_child(
+                "range_per_cache_key",
+                range_per_cache_key.total_size_bytes(),
+            )
+            .into_tree()
+    }
 }
 
 impl std::fmt::Debug for QueryCache {

@@ -170,6 +170,16 @@ impl StorageEngineLike for StorageEngineReadGuard<'_> {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for StorageEngineReadGuard<'_> {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        let Self { store, cache } = self;
+        re_byte_size::MemUsageNode::new()
+            .with_child("ChunkStore", store.capture_mem_usage_tree())
+            .with_child("QueryCache", cache.capture_mem_usage_tree())
+            .into_tree()
+    }
+}
+
 // NOTE: None of these fields should ever be publicly exposed, either directly or through a method,
 // as it is always possible to go back to an actual `RwLock` via `ArcRwLockReadGuard::rwlock`.
 // Doing so would defeat the deadlock protection that the `StorageEngine` offers.

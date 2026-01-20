@@ -8520,6 +8520,7 @@ dependencies = [
  "arrow",
  "glam",
  "half",
+ "parking_lot",
  "smallvec",
 ]
 
@@ -9024,6 +9025,7 @@ dependencies = [
  "criterion",
  "insta",
  "mimalloc",
+ "re_byte_size",
  "smallvec",
  "static_assertions",
 ]
@@ -9203,6 +9205,17 @@ dependencies = [
  "sysinfo",
  "wasm-bindgen",
  "web-time",
+]
+
+[[package]]
+name = "re_memory_view"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "eframe",
+ "egui",
+ "re_byte_size",
+ "re_format",
+ "wgpu",
 ]
 
 [[package]]
@@ -10350,6 +10363,7 @@ dependencies = [
  "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",
@@ -10368,6 +10382,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_memory_view",
  "re_perf_telemetry",
  "re_query",
  "re_recording_panel",

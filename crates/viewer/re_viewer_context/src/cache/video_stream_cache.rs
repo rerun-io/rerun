@@ -15,7 +15,7 @@ use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
 use re_video::{DecodeSettings, StableIndexDeque};
 
-use crate::{Cache, CacheMemoryReport};
+use crate::Cache;
 
 #[cfg(test)]
 mod test_player;
@@ -874,6 +874,10 @@ impl Cache for VideoStreamCache {
         }
     }
 
+    fn name(&self) -> &'static str {
+        "VideoStreamCache"
+    }
+
     fn purge_memory(&mut self) {
         // We aggressively purge all unused video data every frame.
         // The expectation here is that parsing video data is fairly fast,
@@ -882,18 +886,6 @@ impl Cache for VideoStreamCache {
         // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
         // this assumption holds up fine: There is a (sufferable) delay,
         // but it's almost entirely due to the decoder trying to retrieve a frame.
-    }
-
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        "Video Streams"
     }
 
     fn on_rrd_manifest(&mut self, _entity_db: &EntityDb) {
@@ -928,6 +920,12 @@ impl Cache for VideoStreamCache {
                 );
             }
         }
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for VideoStreamCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }
 

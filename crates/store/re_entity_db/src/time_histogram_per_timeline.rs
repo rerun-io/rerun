@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::Bound;
 
 use emath::lerp;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
@@ -370,5 +371,29 @@ fn apply_estimate(
                 inc + (i < num_rows % num_pieces) as u32,
             );
         }
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogram {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        let Self { timeline: _, hist } = self;
+        MemUsageTree::Bytes(hist.total_size_bytes())
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogramPerTimeline {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self { times, has_static } = self;
+        _ = has_static;
+
+        let mut node = MemUsageNode::new();
+        for (timeline_name, histogram) in times {
+            node.add(
+                timeline_name.as_str().to_owned(),
+                histogram.capture_mem_usage_tree(),
+            );
+        }
+        node.into_tree()
     }
 }

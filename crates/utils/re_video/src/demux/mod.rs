@@ -1070,6 +1070,12 @@ pub enum VideoLoadError {
     SpsParsingError(h264_reader::nal::sps::SpsError),
 }
 
+impl re_byte_size::SizeBytes for VideoLoadError {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // close enough
+    }
+}
+
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")

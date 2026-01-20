@@ -9,7 +9,7 @@ use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
 use re_sdk_types::archetypes::{Asset3D, Mesh3D};
 use re_sdk_types::components::MediaType;
-use re_viewer_context::{Cache, CacheMemoryReport, CacheMemoryReportItem};
+use re_viewer_context::Cache;
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
 
@@ -113,6 +113,10 @@ impl MeshCache {
 }
 
 impl Cache for MeshCache {
+    fn name(&self) -> &'static str {
+        "MeshCache"
+    }
+
     fn begin_frame(&mut self) {
         // We aggressively clear caches that weren't used in the last frame because
         // `query_result_hash` in `MeshCacheKey` includes overrides in the hash. And
@@ -130,8 +134,9 @@ impl Cache for MeshCache {
         self.cache.clear();
     }
 
-    fn memory_report(&self) -> CacheMemoryReport {
-        let mut full_bytes_gpu = 0;
+    fn vram_usage(&self) -> re_byte_size::MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
         let mut items: Vec<_> = self
             .cache
             .iter()
@@ -146,24 +151,16 @@ impl Cache for MeshCache {
                             .sum::<u64>()
                     })
                     .sum();
-                full_bytes_gpu += bytes_gpu;
-                CacheMemoryReportItem {
-                    item_name: row_id.short_string(),
-                    bytes_cpu: meshes.total_size_bytes(),
-                    bytes_gpu: Some(bytes_gpu),
-                }
+                (row_id.short_string(), bytes_gpu)
             })
             .collect();
-        items.sort_by(|a, b| a.item_name.cmp(&b.item_name));
-        CacheMemoryReport {
-            bytes_cpu: self.cache.total_size_bytes(),
-            bytes_gpu: Some(full_bytes_gpu),
-            per_cache_item_info: items,
-        }
-    }
+        items.sort_by(|a, b| a.0.cmp(&b.0));
 
-    fn name(&self) -> &'static str {
-        "Meshes"
+        for (item_name, bytes_gpu) in items {
+            node.add(item_name, re_byte_size::MemUsageTree::Bytes(bytes_gpu));
+        }
+
+        node.into_tree()
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
@@ -197,5 +194,34 @@ impl Cache for MeshCache {
 
         self.cache
             .retain(|row_id, _meshes| !row_ids_removed.contains(row_id));
+    }
+}
+
+impl re_byte_size::SizeBytes for MeshCache {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            cache,
+            generation: _,
+        } = self;
+        cache.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for MeshCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut items: Vec<_> = self
+            .cache
+            .iter()
+            .map(|(row_id, meshes)| (row_id.short_string(), meshes.total_size_bytes()))
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (item_name, bytes_cpu) in items {
+            node.add(item_name, re_byte_size::MemUsageTree::Bytes(bytes_cpu));
+        }
+
+        node.with_total_size_bytes(self.total_size_bytes())
     }
 }

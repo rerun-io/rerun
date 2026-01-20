@@ -60,9 +60,9 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
-    SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache,
-    VideoStreamCache, VideoStreamProcessingError,
+    Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+    TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
+    VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{

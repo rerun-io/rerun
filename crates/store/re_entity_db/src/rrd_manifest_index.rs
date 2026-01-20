@@ -7,7 +7,7 @@ use arrow::compute::take_record_batch;
 use emath::NumExt as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
@@ -104,6 +104,16 @@ pub struct ChunkInfo {
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
+impl re_byte_size::SizeBytes for ChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            state: _,
+            temporals,
+        } = self;
+        temporals.heap_size_bytes()
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TemporalChunkInfo {
     pub timeline: Timeline,
@@ -116,6 +126,12 @@ pub struct TemporalChunkInfo {
     /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
     /// entry it might be less, since chunks allow sparse components.
     pub num_rows: u64,
+}
+
+impl re_byte_size::SizeBytes for TemporalChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
@@ -723,5 +739,55 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
         StoreKind::Blueprint => {
             // We edit blueprint by generating new chunks in the viewer.
         }
+    }
+}
+
+impl MemUsageTreeCapture for RrdManifestIndex {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+
+        let Self {
+            chunk_intervals,
+            chunk_promises: _, // not yet implemented
+            entity_has_static_data,
+            entity_has_temporal_data_on_timeline,
+            entity_tree,
+            manifest_row_from_chunk_id,
+            manifest,
+            native_static_map,
+            native_temporal_map,
+            remote_chunks,
+            static_chunk_ids,
+            timelines,
+            full_uncompressed_size: _,
+        } = self;
+
+        let mut node = re_byte_size::MemUsageNode::new();
+        node.add("chunk_intervals", chunk_intervals.total_size_bytes());
+        node.add(
+            "entity_has_static_data",
+            entity_has_static_data.total_size_bytes(),
+        );
+        node.add(
+            "entity_has_temporal_data_on_timeline",
+            entity_has_temporal_data_on_timeline.total_size_bytes(),
+        );
+        node.add("entity_tree", entity_tree.total_size_bytes());
+        node.add(
+            "manifest_row_from_chunk_id",
+            manifest_row_from_chunk_id.total_size_bytes(),
+        );
+        node.add("manifest", manifest.total_size_bytes());
+        node.add("native_static_map", native_static_map.total_size_bytes());
+        node.add(
+            "native_temporal_map",
+            native_temporal_map.total_size_bytes(),
+        );
+        node.add("remote_chunks", remote_chunks.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("timelines", timelines.total_size_bytes());
+
+        node.into_tree()
     }
 }

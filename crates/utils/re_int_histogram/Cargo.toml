@@ -20,6 +20,7 @@ all-features = true
 
 
 [dependencies]
+re_byte_size.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
 

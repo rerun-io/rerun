@@ -2,6 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
@@ -1074,6 +1075,51 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
+    }
+}
+
+impl MemUsageTreeCapture for EntityDb {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            rrd_manifest_index,
+            time_histogram_per_timeline,
+            storage_engine,
+            entity_path_from_hash,
+
+            // Small:
+            store_id: _,
+            enable_viewer_indexes: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
+            latest_row_id: _,
+            stats: _,
+        } = self;
+
+        let mut node = MemUsageNode::new();
+
+        node.add(
+            "chunk_store",
+            storage_engine.read().capture_mem_usage_tree(),
+        );
+
+        node.add(
+            "entity_path_from_hash",
+            MemUsageTree::Bytes(entity_path_from_hash.total_size_bytes()),
+        );
+
+        node.add(
+            "time_histogram_per_timeline",
+            time_histogram_per_timeline.capture_mem_usage_tree(),
+        );
+        node.add(
+            "rrd_manifest_index",
+            rrd_manifest_index.capture_mem_usage_tree(),
+        );
+
+        node.into_tree()
     }
 }
 
