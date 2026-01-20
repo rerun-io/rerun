@@ -119,6 +119,39 @@ impl DataLoader for UrdfDataLoader {
     }
 }
 
+/// Helper struct containing the (root) entity paths where the different parts of the URDF model are logged.
+struct UrdfLogPaths {
+    /// The root entity path of the robot.
+    pub root: EntityPath,
+
+    /// We separate visual and collision geometries under different paths below `root_path`.
+    /// This makes it for example easier to toggle the visibility of all visual or collision geometries at once.
+    pub visual_root: EntityPath,
+    pub collision_root: EntityPath,
+
+    // We log all default transforms to the same entity path because we use Transform3D with frame names.
+    pub transforms: EntityPath,
+}
+
+impl UrdfLogPaths {
+    pub fn new(robot_name: &str, entity_path_prefix: &Option<EntityPath>) -> Self {
+        let root = entity_path_prefix
+            .clone()
+            .map(|prefix| prefix / EntityPath::from_single_string(robot_name))
+            .unwrap_or_else(|| EntityPath::from_single_string(robot_name));
+        let visual_root = root.clone() / EntityPathPart::new("visual_geometries");
+        let collision_root = root.clone() / EntityPathPart::new("collision_geometries");
+        let transforms = root.clone() / EntityPathPart::new("joint_transforms");
+
+        Self {
+            root,
+            visual_root,
+            collision_root,
+            transforms,
+        }
+    }
+}
+
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 ///
 /// Can be used to find the [`EntityPath`] of any link or joint in the URDF.
@@ -134,20 +167,29 @@ pub struct UrdfTree {
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
     materials: HashMap<String, Material>,
+
+    log_paths: UrdfLogPaths,
 }
 
 impl UrdfTree {
     /// Given a path to an `.urdf` file, load it.
-    pub fn from_file_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file_path<P: AsRef<Path>>(
+        path: P,
+        entity_path_prefix: &Option<EntityPath>,
+    ) -> anyhow::Result<Self> {
         let path = path.as_ref();
         let robot = urdf_rs::read_file(path)?;
         let urdf_dir = path.parent().map(|p| p.to_path_buf());
-        Self::new(robot, urdf_dir)
+        Self::new(robot, urdf_dir, entity_path_prefix)
     }
 
     /// The `urdf_dir` is the directory containing the `.urdf` file,
     /// which can later be used to resolve relative paths to mesh files.
-    pub fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    pub fn new(
+        robot: Robot,
+        urdf_dir: Option<PathBuf>,
+        entity_path_prefix: &Option<EntityPath>,
+    ) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
             links,
@@ -210,6 +252,8 @@ impl UrdfTree {
             }
         }
 
+        let log_paths = UrdfLogPaths::new(&name, entity_path_prefix);
+
         Ok(Self {
             urdf_dir,
             name,
@@ -218,6 +262,7 @@ impl UrdfTree {
             links,
             children,
             materials,
+            log_paths,
         })
     }
 
@@ -244,24 +289,83 @@ impl UrdfTree {
         self.links.get(link_name)
     }
 
-    fn get_joint_path(&self, joint: &Joint) -> EntityPath {
-        let parent_path = self.get_link_path_by_name(&joint.parent.link);
-        parent_path / EntityPathPart::new(&joint.name)
+    /// Helper to get the entity path of a link w.r.t. some root path: <root>/<link parents>/<link name>/
+    fn get_link_path_at_root(&self, root: &EntityPath, link: &Link) -> EntityPath {
+        let parents = std::iter::successors(self.get_parent_of_link(&link.name), |joint| {
+            self.get_parent_of_link(&joint.parent.link)
+        });
+        let parent_path = parents
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .fold(root.clone(), |path, joint| {
+                path / EntityPathPart::new(&joint.parent.link)
+            });
+        parent_path / EntityPathPart::new(&link.name)
     }
 
-    fn get_link_path_by_name(&self, link_name: &str) -> EntityPath {
-        if let Some(parent_joint) = self.get_parent_of_link(link_name) {
-            self.get_joint_path(parent_joint) / EntityPathPart::new(link_name)
-        } else {
-            format!("{}/{link_name}", self.name).into()
+    /// Get the visual geometries of a link and their entity paths, if any.
+    pub fn get_visual_geometries(
+        &self,
+        link: &Link,
+    ) -> Option<Vec<(EntityPath, &urdf_rs::Visual)>> {
+        let link = self.links.get(&link.name)?;
+        if link.visual.is_empty() {
+            return None;
         }
+
+        // Get the base path for all visual geometries of this link.
+        let visual_base_path_for_link =
+            self.get_link_path_at_root(&self.log_paths.visual_root, link);
+
+        // Collect the links visual geometries and build their entity paths.
+        link.visual
+            .iter()
+            .enumerate()
+            .map(|(i, visual)| {
+                let visual_name = visual.name.clone().unwrap_or_else(|| format!("visual_{i}"));
+                (
+                    visual_base_path_for_link.clone() / EntityPathPart::new(visual_name),
+                    visual,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into()
     }
 
-    pub fn get_link_path(&self, link: &Link) -> EntityPath {
-        self.get_link_path_by_name(&link.name)
+    /// Get the collision geometries of a link and their entity paths, if any.
+    pub fn get_collision_geometries(
+        &self,
+        link: &Link,
+    ) -> Option<Vec<(EntityPath, &urdf_rs::Collision)>> {
+        let link = self.links.get(&link.name)?;
+        if link.collision.is_empty() {
+            return None;
+        }
+
+        // Get the base path for all collision geometries of this link.
+        let collision_base_path_for_link =
+            self.get_link_path_at_root(&self.log_paths.collision_root, link);
+
+        // Collect all the link's collision geometries and build their entity paths.
+        link.collision
+            .iter()
+            .enumerate()
+            .map(|(i, collision)| {
+                let collision_name = collision
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| format!("collision_{i}"));
+                (
+                    collision_base_path_for_link.clone() / EntityPathPart::new(collision_name),
+                    collision,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into()
     }
 
-    /// Find the parent join of a link, if it exists.
+    /// Find the parent joint of a link, if it exists.
     fn get_parent_of_link(&self, link_name: &str) -> Option<&Joint> {
         self.joints.iter().find(|j| j.child.link == link_name)
     }
@@ -276,6 +380,7 @@ impl UrdfTree {
     }
 }
 
+// TODO(michael): consider making this a method of `UrdfTree`.
 fn log_robot(
     robot: urdf_rs::Robot,
     filepath: &Path,
@@ -286,42 +391,29 @@ fn log_robot(
 ) -> anyhow::Result<()> {
     let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
 
-    let urdf_tree = UrdfTree::new(robot, urdf_dir).with_context(|| "Failed to build URDF tree!")?;
-    let root_path = entity_path_prefix
-        .clone()
-        .map(|prefix| prefix / EntityPath::from_single_string(urdf_tree.name.clone()))
-        .unwrap_or_else(|| EntityPath::from_single_string(urdf_tree.name.clone()));
-
-    // We can log all default transforms to the same entity because we use Transform3D with frame names.
-    let transforms_path = root_path.clone() / EntityPathPart::new("joint_transforms");
-
-    // We separate visual and collision geometries under different roots.
-    // This makes it for example easier to toggle the visibility of all visual or collision geometries at once.
-    let visual_root_path = root_path.clone() / EntityPathPart::new("visual_geometries");
-    let collision_root_path = root_path.clone() / EntityPathPart::new("collision_geometries");
+    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix)
+        .with_context(|| "Failed to build URDF tree!")?;
 
     // The robot's root coordinate frame_id.
     send_archetype(
         tx,
         store_id,
-        root_path.clone(),
+        urdf_tree.log_paths.root.clone(),
         timepoint,
         &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
     )?;
 
-    let transforms = walk_tree(
-        &urdf_tree,
-        tx,
-        store_id,
-        &visual_root_path,
-        &collision_root_path,
-        &urdf_tree.root.name,
-        timepoint,
-    )?;
+    let transforms = walk_tree(&urdf_tree, tx, store_id, timepoint, &urdf_tree.root.name)?;
 
     // Send all transforms as rows in a single chunk.
     if !transforms.is_empty() {
-        send_transforms_batch(tx, store_id, &transforms_path, &transforms, timepoint)?;
+        send_transforms_batch(
+            tx,
+            store_id,
+            &urdf_tree.log_paths.transforms,
+            &transforms,
+            timepoint,
+        )?;
     }
 
     Ok(())
@@ -331,10 +423,8 @@ fn walk_tree(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    visual_parent_path: &EntityPath,
-    collision_parent_path: &EntityPath,
-    link_name: &str,
     timepoint: &TimePoint,
+    link_name: &str,
 ) -> anyhow::Result<Vec<Transform3D>> {
     let link = urdf_tree
         .links
@@ -342,17 +432,7 @@ fn walk_tree(
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     debug_assert_eq!(link_name, link.name);
 
-    let visual_path = visual_parent_path / EntityPathPart::new(link_name);
-    let collision_path = collision_parent_path / EntityPathPart::new(link_name);
-    log_link(
-        urdf_tree,
-        tx,
-        store_id,
-        link,
-        &visual_path,
-        &collision_path,
-        timepoint,
-    )?;
+    log_link(urdf_tree, tx, store_id, timepoint, link)?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -364,15 +444,8 @@ fn walk_tree(
         joint_transforms_for_link.push(get_joint_transform(joint));
 
         // Recurse
-        let mut child_transforms = walk_tree(
-            urdf_tree,
-            tx,
-            store_id,
-            &visual_path,
-            &collision_path,
-            &joint.child.link,
-            timepoint,
-        )?;
+        let mut child_transforms =
+            walk_tree(urdf_tree, tx, store_id, timepoint, &joint.child.link)?;
         joint_transforms_for_link.append(&mut child_transforms);
     }
 
@@ -476,27 +549,20 @@ fn log_link(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    link: &urdf_rs::Link,
-    visual_path: &EntityPath,
-    collision_path: &EntityPath,
     timepoint: &TimePoint,
+    link: &urdf_rs::Link,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
-        name: link_name,
-        visual,
-        collision,
-        ..
+        name: link_name, ..
     } = link;
 
-    for (i, visual) in visual.iter().enumerate() {
+    for (visual_entity_path, visual) in urdf_tree.get_visual_geometries(link).unwrap_or_default() {
         let urdf_rs::Visual {
-            name,
             origin,
             geometry,
             material,
+            ..
         } = visual;
-        let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
-        let visual_entity = visual_path / EntityPathPart::new(visual_name.clone());
 
         let instance_scale = extract_instance_scale(geometry);
         // Prefer inline defined material properties if present, otherwise fall back to global material.
@@ -513,7 +579,7 @@ fn log_link(
         send_instance_pose_with_frame(
             tx,
             store_id,
-            visual_entity.clone(),
+            visual_entity_path.clone(),
             timepoint,
             origin,
             link_name.clone(),
@@ -524,22 +590,19 @@ fn log_link(
             urdf_tree,
             tx,
             store_id,
-            visual_entity,
+            visual_entity_path,
             geometry,
             material,
             timepoint,
         )?;
     }
 
-    for (i, collision) in collision.iter().enumerate() {
+    for (collision_entity_path, collision) in
+        urdf_tree.get_collision_geometries(link).unwrap_or_default()
+    {
         let urdf_rs::Collision {
-            name,
-            origin,
-            geometry,
+            origin, geometry, ..
         } = collision;
-        let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
-        let collision_entity = collision_path / EntityPathPart::new(collision_name.clone());
-
         let instance_scale = extract_instance_scale(geometry);
 
         // A collision geometry has no frame ID of its own and has a constant pose,
@@ -547,7 +610,7 @@ fn log_link(
         send_instance_pose_with_frame(
             tx,
             store_id,
-            collision_entity.clone(),
+            collision_entity_path.clone(),
             timepoint,
             origin,
             link_name.clone(),
@@ -558,18 +621,19 @@ fn log_link(
             urdf_tree,
             tx,
             store_id,
-            collision_entity.clone(),
+            collision_entity_path.clone(),
             geometry,
             None,
             timepoint,
         )?;
 
         if false {
+            // TODO(michael): consider hiding collision geometries by default.
             // TODO(#6541): the viewer should respect the `Visible` component.
             send_chunk_builder(
                 tx,
                 store_id,
-                ChunkBuilder::new(ChunkId::new(), collision_entity).with_component_batch(
+                ChunkBuilder::new(ChunkId::new(), collision_entity_path).with_component_batch(
                     RowId::new(),
                     timepoint.clone(),
                     (
