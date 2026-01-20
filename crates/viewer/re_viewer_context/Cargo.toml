@@ -92,8 +92,3 @@ tokio.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = ["Window"] }
-
-# Dependencies for tests:
-[dev-dependencies]
-re_sorbet.workspace = true
-re_span.workspace = true

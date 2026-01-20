@@ -4,11 +4,8 @@
 use re_chunk::Chunk;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
-use re_log_encoding::RrdManifestBuilder;
 use re_log_types::example_components::{MyPoint, MyPoints};
-use re_log_types::{
-    EntityPath, StoreId, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr,
-};
+use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr};
 use re_sdk_types::archetypes::Points2D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
