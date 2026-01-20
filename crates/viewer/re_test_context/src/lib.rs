@@ -800,6 +800,7 @@ impl TestContext {
                 | SystemCommand::SetAuthCredentials { .. }
                 | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::Logout
+                | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]

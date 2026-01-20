@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import datafusion as dfn
 import numpy as np
@@ -1242,13 +1243,13 @@ class RegistrationHandleInternal:
     def wait(self, timeout_secs: int | None = None) -> list[str]: ...
 
 #####################################################################################################################
-## SEND_TABLE                                                                                                      ##
+## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
 
 class ViewerClient:
     """A connection to an instance of a Rerun viewer."""
 
-    def __init__(self, addr: str) -> None:
+    def __init__(self, addr: str = "127.0.0.1:9876") -> None:
         """
         Create a new viewer client object.
 
@@ -1264,6 +1265,25 @@ class ViewerClient:
         Sends a table to the viewer.
 
         A table is represented as a dataframe defined by an Arrow record batch.
+        """
+
+    def save_screenshot(self, /, file_path: str, view_id: str | UUID | None = None) -> None:
+        """
+        Saves a screenshot to a file.
+
+        .. warning::
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+
+        Parameters
+        ----------
+        file_path : str
+            The path where the screenshot will be saved.
+            ⚠️ This path is relative to the viewer's filesystem, not the client's! ⚠️
+            If your viewer runs on a different machine, the screenshot will be saved there.
+        view_id : str | UUID | None
+            Optional view ID to screenshot.
+            If None, screenshots the entire viewer.
+
         """
 
 class NotFoundError(Exception):

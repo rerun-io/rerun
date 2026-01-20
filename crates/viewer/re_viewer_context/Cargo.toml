@@ -54,6 +54,7 @@ arrow.workspace = true
 bit-vec.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
+camino.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
 directories.workspace = true
