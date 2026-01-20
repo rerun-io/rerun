@@ -335,7 +335,13 @@ impl SeriesLinesSystem {
                     label,
                     aggregator,
                     &mut series,
-                );
+                )
+                .map_err(|error| {
+                    LoadSeriesError::EntitySpecificVisualizerError {
+                        entity_path: data_result.entity_path.clone(),
+                        error,
+                    }
+                })?;
             }
 
             Ok(series)
