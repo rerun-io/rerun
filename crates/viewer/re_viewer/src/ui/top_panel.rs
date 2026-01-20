@@ -442,7 +442,9 @@ fn panel_buttons_r2l(
         selection,
     );
 
-    if let Some(auth) = &app.state.auth_state {
+    if let Some(auth) = &app.state.auth_state
+        && !app.is_screenshotting()
+    {
         let rect_id = Id::new("user_icon_rect");
         let user_icon_size = 16.0;
         let response = Button::new((

@@ -38,9 +38,6 @@ pub struct ConnectionRegistry {
     /// Clients are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
     clients: HashMap<re_uri::Origin, RedapClient>,
-
-    /// Whether to use credentials stored on the host machine by default.
-    use_stored_credentials: bool,
 }
 
 impl ConnectionRegistry {
@@ -55,8 +52,8 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 clients: HashMap::new(),
-                use_stored_credentials: true,
             })),
+            use_stored_credentials: true,
         }
     }
 
@@ -71,8 +68,8 @@ impl ConnectionRegistry {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
                 clients: HashMap::new(),
-                use_stored_credentials: false,
             })),
+            use_stored_credentials: false,
         }
     }
 }
@@ -102,6 +99,11 @@ pub enum ClientCredentialsError {
 #[derive(Clone)]
 pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
+
+    /// Whether to use credentials stored on the host machine by default.
+    /// Since some tests run on a single-threaded tokio runtime and this is never updated,
+    /// it lives outside the `RwLock`.
+    use_stored_credentials: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -158,10 +160,7 @@ impl ConnectionRegistryHandle {
     }
 
     pub fn should_use_stored_credentials(&self) -> bool {
-        wrap_blocking_lock(|| {
-            let inner = self.inner.blocking_read();
-            inner.use_stored_credentials
-        })
+        self.use_stored_credentials
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
