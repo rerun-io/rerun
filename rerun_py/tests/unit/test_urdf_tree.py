@@ -31,9 +31,15 @@ def test_urdf_tree_loading() -> None:
     child_link = tree.get_joint_child(joint)
     assert child_link.name == "shoulder"
 
-    link_path = tree.get_link_path(child_link)
-    assert link_path == "/so_arm100/base/1/shoulder"
-    assert tree.get_link_path_by_name("shoulder") == link_path
+    visual_paths = tree.get_visual_geometry_paths(child_link)
+    assert visual_paths[0] == "/so_arm100/visual_geometries/base/1/shoulder/visual_0"
+    visual_paths = tree.get_visual_geometry_paths("shoulder")
+    assert visual_paths[0] == "/so_arm100/visual_geometries/base/1/shoulder/visual_0"
+
+    collision_paths = tree.get_collision_geometry_paths(child_link)
+    assert collision_paths[0] == "/so_arm100/collision_geometries/base/1/shoulder/collision_0"
+    collision_paths = tree.get_collision_geometry_paths("shoulder")
+    assert collision_paths[0] == "/so_arm100/collision_geometries/base/1/shoulder/collision_0"
 
     root_link = tree.root_link()
     assert root_link.name == "base"
