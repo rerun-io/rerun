@@ -191,13 +191,12 @@ impl VideoStreamCache {
         let result = match event.kind {
             re_chunk_store::ChunkStoreDiffKind::Addition => {
                 if let Some(known_range) = entry.known_chunk_ranges.get(&chunk.id()) {
-                    let offset_in_chunk = 0;
                     read_samples_from_known_chunk(
                         timeline_name,
                         chunk,
                         known_range,
+                        known_range,
                         video_data,
-                        offset_in_chunk,
                     )
                 } else {
                     match &event.direct_lineage {
@@ -411,14 +410,7 @@ fn handle_deletion(
         }
     }
 
-    {
-        let _samples = samples;
-        debug_assert_eq!(
-            _samples.count(),
-            0,
-            "All samples should be set to unloaded at this point."
-        );
-    }
+    drop(samples);
 
     if required_removals > 0 {
         if clear_start {
@@ -527,19 +519,12 @@ fn handle_compacted_chunk_addition(
             last_sample,
         };
 
-        let offset_in_chunk = load_range.first_sample - range.first_sample;
-
-        let res = read_samples_from_known_chunk(
-            timeline,
-            chunk,
-            &load_range,
-            video_data,
-            offset_in_chunk,
-        );
+        let res = read_samples_from_known_chunk(timeline, chunk, &range, &load_range, video_data);
 
         known_chunk_ranges.insert(chunk.id(), range);
 
-        adjust_keyframes_for_removed_samples(video_data);
+        // Duplicates are allowed to happen here, but removals won't happen.
+        video_data.keyframe_indices.dedup();
 
         res
     } else {
@@ -603,14 +588,8 @@ fn handle_split_chunk_addition(
     drop(samples);
 
     if let Some(known_range) = known_chunk_ranges.get(&chunk.id()) {
-        let offset_in_chunk = 0;
-        let res = read_samples_from_known_chunk(
-            timeline,
-            chunk,
-            known_range,
-            video_data,
-            offset_in_chunk,
-        );
+        let res =
+            read_samples_from_known_chunk(timeline, chunk, known_range, known_range, video_data);
 
         adjust_keyframes_for_removed_samples(video_data);
 
@@ -714,13 +693,12 @@ fn load_video_data_from_chunks(
             continue;
         };
 
-        let offset_in_chunk = 0;
         if let Err(err) = read_samples_from_known_chunk(
             timeline,
             chunk,
             known_range,
+            known_range,
             &mut video_descr,
-            offset_in_chunk,
         ) {
             match err {
                 VideoStreamProcessingError::OutOfOrderSamples => {
@@ -775,13 +753,13 @@ impl re_byte_size::SizeBytes for ChunkSampleRange {
 /// Encoding details are automatically updated whenever detected.
 /// Changes of encoding details over time will trigger a warning.
 ///
-/// `offset_in_chunk` is how many samples within the chunk should be skipped.
+/// `load_range` should be a sub-range of `load_range`.
 fn read_samples_from_known_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
     known_range: &ChunkSampleRange,
+    load_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
-    offset_in_chunk: usize,
 ) -> Result<(), VideoStreamProcessingError> {
     let re_video::VideoDataDescription {
         codec,
@@ -803,24 +781,23 @@ fn read_samples_from_known_chunk(
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
+    let original: ahash::HashSet<_> = keyframe_indices.iter().copied().collect();
     let split_idx = keyframe_indices
-        .binary_search(&known_range.first_sample)
+        .binary_search(&load_range.first_sample)
         .unwrap_or_else(|e| e);
 
-    let end_keyframes = keyframe_indices
-        .drain(split_idx..)
-        .filter(|idx| *idx >= known_range.first_sample + chunk.num_rows())
-        .collect::<Vec<_>>();
+    let end_keyframes = keyframe_indices.drain(split_idx..).collect::<Vec<_>>();
 
     let mut samples_iter = samples
-        .iter_index_range_clamped_mut(&known_range.idx_range())
+        .iter_index_range_clamped_mut(&load_range.idx_range())
         .filter(|(_, c)| c.source_id() == chunk.id().as_tuid());
 
     for (component_offset, (time, _row_id)) in chunk
         .iter_component_offsets(sample_component)
         .zip(chunk.iter_component_indices(timeline, sample_component))
         .filter(|(component_offset, _)| component_offset.len > 0)
-        .skip(offset_in_chunk)
+        .skip(load_range.first_sample - known_range.first_sample)
+        .take(load_range.idx_range().count())
     {
         if component_offset.len != 1 {
             re_log::warn_once!(
@@ -887,7 +864,7 @@ fn read_samples_from_known_chunk(
         );
     }
 
-    let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= known_range.last_sample);
+    let n = end_keyframes.partition_point(|sample_idx| *sample_idx <= load_range.last_sample);
     let sort_to = keyframe_indices.len() + n;
     keyframe_indices.extend(end_keyframes);
 
@@ -895,16 +872,12 @@ fn read_samples_from_known_chunk(
         keyframe_indices[split_idx..sort_to].sort_unstable();
     }
 
-    update_sample_durations(known_range, samples)?;
+    let new: ahash::HashSet<_> = keyframe_indices.iter().copied().collect();
 
-    if cfg!(debug_assertions)
-        && let Err(err) = video_descr.sanity_check()
-    {
-        panic!(
-            "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
-            chunk.entity_path()
-        );
-    }
+    // Should only be adding keyframes here.
+    assert!(original.is_subset(&new));
+
+    update_sample_durations(load_range, samples)?;
 
     Ok(())
 }
@@ -1153,15 +1126,6 @@ fn read_samples_from_new_chunk(
     update_sample_durations(&chunk_range, samples)?;
 
     known_ranges.insert(chunk.id(), chunk_range);
-
-    if cfg!(debug_assertions)
-        && let Err(err) = video_descr.sanity_check()
-    {
-        panic!(
-            "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
-            chunk.entity_path()
-        );
-    }
 
     Ok(())
 }
