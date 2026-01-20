@@ -23,3 +23,8 @@ extra-args = "--max-frame=10"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv]
+# opencv-contrib-python conflicts with opencv-python (both provide cv2 module)
+# torch depends on opencv-python, but we need opencv-contrib-python for tracker APIs
+override-dependencies = ["opencv-contrib-python>4.9"]
