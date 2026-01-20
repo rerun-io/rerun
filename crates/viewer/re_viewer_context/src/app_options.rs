@@ -165,7 +165,7 @@ pub struct ExperimentalAppOptions {
 
     /// Enables experimental component mapping ui.
     ///
-    /// TODO(RR-3338): Enable component mappings UI
+    /// TODO(RR-3338, RR-3382): Enable component mappings UI
     pub component_mapping: bool,
 }
 

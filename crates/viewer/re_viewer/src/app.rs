@@ -268,6 +268,11 @@ impl App {
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
+        // TODO(RR-3382): Hack to allow accessing the experimental component mapping flag in visualizer/view registration.
+        re_viewer_context::EXPERIMENTAL_COMPONENT_MAPPING
+            .set(state.app_options.experimental.component_mapping)
+            .ok(); // Whatever the reason this was already set, no reason to warn/fail over it given that this is all experimental!
+
         let view_class_registry =
             crate::default_views::create_view_class_registry(&mut component_fallback_registry)
                 .unwrap_or_else(|err| {

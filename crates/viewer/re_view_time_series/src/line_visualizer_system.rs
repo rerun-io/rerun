@@ -33,27 +33,31 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
 
 impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesLines::all_components().iter().cloned());
+        if *re_viewer_context::EXPERIMENTAL_COMPONENT_MAPPING
+            .get()
+            .unwrap_or(&false)
+        {
+            VisualizerQueryInfo {
+                relevant_archetype: archetypes::SeriesLines::name().into(),
+                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+                    util::supported_datatypes().into_iter().collect(),
+                ),
+                queried: archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesLines::all_components().iter())
+                    .cloned()
+                    .collect(),
+            }
+        } else {
+            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
+            query_info
+                .queried
+                .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
+            query_info.relevant_archetype = archetypes::SeriesLines::name().into();
 
-        query_info
-
-        // TODO(RR-3318): Enable this.
-        // VisualizerQueryInfo {
-        //     relevant_archetype: archetypes::SeriesLines::name().into(),
-        //     required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-        //         supported_datatypes().into_iter().collect(),
-        //     ),
-        //     queried: archetypes::Scalars::all_components()
-        //         .iter()
-        //         .chain(archetypes::SeriesLines::all_components().iter())
-        //         .cloned()
-        //         .collect(),
-        // }
+            query_info
+        }
     }
 
     fn execute(

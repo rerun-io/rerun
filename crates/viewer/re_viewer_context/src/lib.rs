@@ -209,3 +209,6 @@ pub struct PublishedViewInfo {
     /// NOTE: this can include a highlighted border of the view.
     pub rect: egui::Rect,
 }
+
+/// TODO(3382): Hack to allow accessing the experimental component mapping flag in visualizer/view registration.
+pub static EXPERIMENTAL_COMPONENT_MAPPING: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
