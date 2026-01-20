@@ -13,15 +13,10 @@ use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
-/// A single component mapping for a visualizer instruction.
-#[derive(Clone, Debug, Hash)]
-pub struct VisualizerComponentMapping {
-    pub selector: ComponentIdentifier,
-    pub target: ComponentIdentifier,
-}
-
-/// A list of component mappings for a visualizer instruction.
-pub type VisualizerComponentMappings = Vec<VisualizerComponentMapping>;
+/// Component mappings for a visualizer instruction.
+///
+/// Maps from target component to source component (selector).
+pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, ComponentIdentifier>;
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -38,9 +33,9 @@ pub struct VisualizerInstruction {
     /// like `Visible`, `Interactive` or transform components.
     pub component_overrides: IntSet<ComponentIdentifier>,
 
-    /// List of component mapping pairs.
+    /// Component mappings from target to source (selector).
     ///
-    /// Guaranteed to be unique on `target`.
+    /// Keys are target components, values are source components (selectors).
     pub component_mappings: VisualizerComponentMappings,
 }
 
@@ -60,18 +55,9 @@ impl VisualizerInstruction {
         }
     }
 
-    /// Adds a mapping, ensuring that all targets are unique.
-    // TODO(andreas): Just store it as a `BTreeMap` from target to selector?
-    pub fn set_mapping(&mut self, mapping: VisualizerComponentMapping) {
-        if let Some(target_component) = self
-            .component_mappings
-            .iter_mut()
-            .find(|m| m.target == mapping.target)
-        {
-            target_component.selector = mapping.selector;
-        } else {
-            self.component_mappings.push(mapping);
-        }
+    /// Sets a component mapping from target to selector.
+    pub fn set_mapping(&mut self, target: ComponentIdentifier, selector: ComponentIdentifier) {
+        self.component_mappings.insert(target, selector);
     }
 
     pub fn override_path_for(
@@ -89,10 +75,10 @@ impl VisualizerInstruction {
             )
             // We always have ti write the component map because it we may need to clear out old mappings.
             // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
-            .with_component_map(self.component_mappings.iter().map(|mapping| {
+            .with_component_map(self.component_mappings.iter().map(|(target, selector)| {
                 re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
-                    selector: mapping.selector.as_str().into(),
-                    target: mapping.target.as_str().into(),
+                    selector: selector.as_str().into(),
+                    target: target.as_str().into(),
                 }
             }));
 

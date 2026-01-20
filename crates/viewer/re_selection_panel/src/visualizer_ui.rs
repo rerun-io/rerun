@@ -253,11 +253,9 @@ fn visualizer_components(
         // Have to apply component mappings if there are any for this component.
         let mapped_component = instruction
             .component_mappings
-            .iter()
-            .find(|mapping| mapping.target == unmapped_component_descr.component)
-            .map_or(unmapped_component_descr.component, |mapping| {
-                mapping.selector
-            });
+            .get(&unmapped_component_descr.component)
+            .copied()
+            .unwrap_or(unmapped_component_descr.component);
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
@@ -580,15 +578,13 @@ fn source_component_ui(
     }
 
     ui.push_id("source_component", |ui| {
-        let component_map = instruction
-            .component_mappings
-            .iter()
-            .find(|mapping| mapping.target == component_descr.component);
-
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
                 // Get the current source component from the component mapping.
-                let current = component_map.map_or_else(|| "", |mapping| mapping.selector.as_str());
+                let current = instruction
+                    .component_mappings
+                    .get(&component_descr.component)
+                    .map_or("", |selector| selector.as_str());
 
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
@@ -618,8 +614,7 @@ fn save_component_mapping(
     let mut updated_instruction = instruction.clone();
 
     // Set or override the mapping
-    updated_instruction
-        .set_mapping(re_viewer_context::VisualizerComponentMapping { selector, target });
+    updated_instruction.set_mapping(target, selector);
 
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);

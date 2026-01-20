@@ -393,7 +393,7 @@ impl ViewClass for TimeSeriesView {
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         use re_sdk_types::archetypes::Scalars;
-        use re_viewer_context::{VisualizableReason, VisualizerComponentMapping};
+        use re_viewer_context::VisualizableReason;
 
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
@@ -419,10 +419,10 @@ impl ViewClass for TimeSeriesView {
                     // Extract physical component from the visualizable reason
                     if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
                         for (physical_component, _) in components {
-                            mappings.push(VisualizerComponentMapping {
-                                selector: Scalars::descriptor_scalars().component,
-                                target: *physical_component,
-                            });
+                            mappings.insert(
+                                *physical_component,
+                                Scalars::descriptor_scalars().component,
+                            );
                         }
                     }
 
@@ -444,10 +444,10 @@ impl ViewClass for TimeSeriesView {
                 available_visualizers.get(&SeriesLinesSystem::identifier())
             {
                 for (physical_component, _) in components {
-                    mappings.push(VisualizerComponentMapping {
-                        selector: *physical_component,
-                        target: Scalars::descriptor_scalars().component,
-                    });
+                    mappings.insert(
+                        Scalars::descriptor_scalars().component,
+                        *physical_component,
+                    );
                 }
             }
 

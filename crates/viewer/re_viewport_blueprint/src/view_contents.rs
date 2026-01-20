@@ -18,8 +18,8 @@ use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewId,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMapping,
-    VisualizerComponentMappings, VisualizerInstruction,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMappings,
+    VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -548,9 +548,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             .map_or_else(VisualizerComponentMappings::default, |mappings| {
                                 mappings
                                     .into_iter()
-                                    .map(|mapping| VisualizerComponentMapping {
-                                        selector: mapping.selector.as_str().into(),
-                                        target: mapping.target.as_str().into(),
+                                    .map(|mapping| {
+                                        (
+                                            mapping.target.as_str().into(),
+                                            mapping.selector.as_str().into(),
+                                        )
                                     })
                                     .collect()
                             });
@@ -595,17 +597,10 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             )
                         {
                             for mapping in component_mapping_overrides {
-                                if let Some(target_component) = component_mappings
-                                    .iter_mut()
-                                    .find(|m| m.target == mapping.target.as_str())
-                                {
-                                    target_component.selector = mapping.selector.as_str().into();
-                                } else {
-                                    component_mappings.push(VisualizerComponentMapping {
-                                        selector: mapping.selector.as_str().into(),
-                                        target: mapping.target.as_str().into(),
-                                    });
-                                }
+                                component_mappings.insert(
+                                    mapping.target.as_str().into(),
+                                    mapping.selector.as_str().into(),
+                                );
                             }
                         }
 
