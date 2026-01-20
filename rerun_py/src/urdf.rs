@@ -16,12 +16,9 @@ impl PyUrdfTree {
     #[staticmethod]
     #[pyo3(text_signature = "(path)")]
     pub fn from_file_path(path: PathBuf, entity_path_prefix: Option<String>) -> PyResult<Self> {
-        UrdfTree::from_file_path(
-            path,
-            &entity_path_prefix.map(EntityPath::from_single_string),
-        )
-        .map(Self)
-        .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
+        UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
+            .map(Self)
+            .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
     }
 
     /// Name of the robot defined in this URDF.

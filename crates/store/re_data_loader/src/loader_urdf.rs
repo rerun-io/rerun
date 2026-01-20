@@ -134,9 +134,8 @@ struct UrdfLogPaths {
 }
 
 impl UrdfLogPaths {
-    pub fn new(robot_name: &str, entity_path_prefix: &Option<EntityPath>) -> Self {
+    pub fn new(robot_name: &str, entity_path_prefix: Option<EntityPath>) -> Self {
         let root = entity_path_prefix
-            .clone()
             .map(|prefix| prefix / EntityPath::from_single_string(robot_name))
             .unwrap_or_else(|| EntityPath::from_single_string(robot_name));
         let visual_root = root.clone() / EntityPathPart::new("visual_geometries");
@@ -154,7 +153,7 @@ impl UrdfLogPaths {
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 ///
-/// Can be used to find the [`EntityPath`] of any link or joint in the URDF.
+/// Can be used to inspect any link or joint in the URDF.
 pub struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
@@ -175,7 +174,7 @@ impl UrdfTree {
     /// Given a path to an `.urdf` file, load it.
     pub fn from_file_path<P: AsRef<Path>>(
         path: P,
-        entity_path_prefix: &Option<EntityPath>,
+        entity_path_prefix: Option<EntityPath>,
     ) -> anyhow::Result<Self> {
         let path = path.as_ref();
         let robot = urdf_rs::read_file(path)?;
@@ -188,7 +187,7 @@ impl UrdfTree {
     pub fn new(
         robot: Robot,
         urdf_dir: Option<PathBuf>,
-        entity_path_prefix: &Option<EntityPath>,
+        entity_path_prefix: Option<EntityPath>,
     ) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
@@ -289,7 +288,7 @@ impl UrdfTree {
         self.links.get(link_name)
     }
 
-    /// Helper to get the entity path of a link w.r.t. some root path: <root>/<link parents>/<link name>/
+    /// Helper to get the entity path of a link w.r.t. some root path.
     fn get_link_path_at_root(&self, root: &EntityPath, link: &Link) -> EntityPath {
         let parents = std::iter::successors(self.get_parent_of_link(&link.name), |joint| {
             self.get_parent_of_link(&joint.parent.link)
@@ -380,7 +379,6 @@ impl UrdfTree {
     }
 }
 
-// TODO(michael): consider making this a method of `UrdfTree`.
 fn log_robot(
     robot: urdf_rs::Robot,
     filepath: &Path,
@@ -391,7 +389,7 @@ fn log_robot(
 ) -> anyhow::Result<()> {
     let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
 
-    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix)
+    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.clone())
         .with_context(|| "Failed to build URDF tree!")?;
 
     // The robot's root coordinate frame_id.

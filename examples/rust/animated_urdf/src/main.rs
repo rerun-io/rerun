@@ -33,7 +33,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log_file_from_path(urdf_path, None, true)?;
 
     // Load the URDF tree structure into memory:
-    let urdf = UrdfTree::from_file_path(urdf_path)?;
+    let urdf = UrdfTree::from_file_path(urdf_path, None)?;
 
     // Animate:
     for step in 0..10000 {
