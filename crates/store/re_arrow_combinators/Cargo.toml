@@ -21,7 +21,6 @@ all-features = true
 
 [dependencies]
 re_arrow_util.workspace = true
-re_sdk_types.workspace = true
 
 arrow.workspace = true
 thiserror.workspace = true
