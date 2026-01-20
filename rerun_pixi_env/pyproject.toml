@@ -7,6 +7,7 @@ requires-python = ">=3.10"
 [project.scripts]
 ensure-rerun-env = "rerun_pixi_env:main"
 ensure-pyo3-build-cfg = "rerun_pixi_env:ensure_pyo3_build_cfg"
+ensure-uv-shims = "rerun_pixi_env:ensure_uv_shims"
 uv-shim = "rerun_pixi_env:uv_shim_main"
 uvpy-shim = "rerun_pixi_env:uvpy_shim_main"
 
