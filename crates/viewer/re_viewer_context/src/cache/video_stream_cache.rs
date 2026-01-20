@@ -223,7 +223,6 @@ impl VideoStreamCache {
                 }
             }
             re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                eprintln!("\ndelete: {}", chunk.id().short_string());
                 let known_ranges = &mut entry.known_chunk_ranges;
                 handle_deletion(entity_db, timeline, video_data, chunk, known_ranges)
             }
@@ -568,49 +567,6 @@ fn handle_split_chunk_addition(
         );
         Ok(())
     }
-}
-
-// TODO: Remove
-fn log_samples(
-    store: &re_entity_db::EntityDb,
-    samples: &re_video::StableIndexDeque<re_video::SampleMetadataState>,
-) {
-    let mut last = String::new();
-    eprintln!(
-        "\nSamples:\n{}",
-        samples
-            .iter_indexed()
-            .filter_map(|(idx, s)| {
-                let sources: Vec<_> = store
-                    .storage_engine()
-                    .store()
-                    .find_root_rrd_manifests(&re_chunk::ChunkId::from_tuid(s.source_id()))
-                    .into_iter()
-                    .map(|(c, _)| c.short_string())
-                    .collect();
-
-                let l = s.sample().map(|_| "*").unwrap_or(" ");
-
-                let own = s.source_id().short_string();
-                let text = if let [single] = sources.as_slice()
-                    && single == &own
-                {
-                    own.to_string()
-                } else {
-                    format!("{own}: {}", sources.join(", "))
-                };
-
-                if text != last {
-                    last = text.clone();
-
-                    Some(format!("{l}{idx:5} @ {text}"))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
 }
 
 fn load_video_data_from_chunks(
@@ -1225,10 +1181,6 @@ impl Cache for VideoStreamCache {
                     },
                 );
             }
-        }
-
-        if let Some(video) = self.0.values().next() {
-            log_samples(entity_db, &video.video_stream.read().video_descr().samples);
         }
     }
 }

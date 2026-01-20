@@ -156,8 +156,6 @@ impl TestVideoPlayer {
     }
 
     fn set_sample(&mut self, idx: SampleIndex, mut sample: SampleMetadataState) {
-        eprintln!("  set_sample {idx}…");
-
         if let Some(sample) = sample.sample_mut() {
             sample.frame_nr = idx as u32;
             sample.decode_timestamp = re_video::Time::from_secs(
@@ -566,7 +564,9 @@ fn build_manifest_with_unloaded_chunks(store_id: StoreId, chunks: &[Arc<Chunk>])
 const STREAM_ENTITY: &str = "/stream";
 const TIMELINE_NAME: &str = "video";
 
+#[track_caller]
 fn unload_chunks(store: &EntityDb, cache: &mut super::VideoStreamCache, keep_range: Range<f64>) {
+    let loaded_chunks_before = store.storage_engine().store().num_physical_chunks();
     let store_events = store.gc(&re_chunk_store::GarbageCollectionOptions {
         target: re_chunk_store::GarbageCollectionTarget::Everything,
         time_budget: std::time::Duration::from_secs(u64::MAX),
@@ -583,6 +583,13 @@ fn unload_chunks(store: &EntityDb, cache: &mut super::VideoStreamCache, keep_ran
         perform_deep_deletions: false,
     });
 
+    let loaded_chunks_after = store.storage_engine().store().num_physical_chunks();
+
+    assert!(
+        loaded_chunks_before > loaded_chunks_after,
+        "Expected some chunks to be gc'd"
+    );
+
     cache.on_store_events(&store_events.iter().collect::<Vec<_>>(), store);
 }
 
@@ -590,7 +597,6 @@ fn load_chunks(store: &mut EntityDb, cache: &mut super::VideoStreamCache, chunks
     let mut store_events = Vec::<re_chunk_store::ChunkStoreEvent>::new();
 
     for chunk in chunks {
-        eprintln!("\nload: {}", chunk.id().short_string());
         store_events.extend(store.add_chunk(chunk).unwrap());
     }
 
@@ -736,17 +742,15 @@ fn cache_with_streaming() {
 
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
 
-    let chunks: Vec<_> = (0..10)
-        .map(|i| {
-            video_chunks(
-                AV1_TEST_KEYFRAME,
-                AV1_TEST_INTER_FRAME,
-                i as f64,
-                0.25,
-                1,
-                4,
-            )
-        })
+    let chunk_count = 100;
+
+    // Small enough to still be compacted, but big enough so we get multiple chunks.
+    let keyframe = av1_keyframe(1 << 12);
+    let inter_frame = av1_inter_frame(1 << 12);
+
+    let dt = 0.25;
+    let chunks: Vec<_> = (0..chunk_count)
+        .map(|i| video_chunks(&keyframe, &inter_frame, i as f64, dt, 1, 4))
         .chain(once(codec_chunk()))
         .map(Arc::new)
         .collect();
@@ -758,11 +762,25 @@ fn cache_with_streaming() {
     let mut player = TestVideoPlayer::from_stream(video_stream);
 
     // Load all sample chunks.
-    load_chunks(&mut store, &mut cache, &chunks[0..10]);
+    load_chunks(&mut store, &mut cache, &chunks[0..chunk_count]);
 
-    player.play_store(0.0..10.0, 0.25, &store).unwrap();
+    player.play_store(0.0..25.0, dt, &store).unwrap();
 
-    player.expect_decoded_samples(0..40);
+    player.expect_decoded_samples(0..chunk_count);
+
+    unload_chunks(&store, &mut cache, 15.0..25.0);
+
+    // Try dropping chunks at the start.
+    player.play_store(15.0..25.0, dt, &store).unwrap();
+
+    player.expect_decoded_samples(60..chunk_count);
+
+    // Try dropping chunks at the end.
+    unload_chunks(&store, &mut cache, 15.0..20.0);
+
+    player.play_store(15.0..20.0 - dt, dt, &store).unwrap();
+
+    player.expect_decoded_samples(60..80);
 }
 
 #[test]
@@ -825,9 +843,9 @@ fn cache_with_manifest_and_streaming() {
 }
 
 // Tests with more data per chunk to trigger splitting.
-fn big_av1_keyframe() -> Vec<u8> {
+fn av1_keyframe(size: usize) -> Vec<u8> {
     // 16 kb
-    let mut frame = vec![0; 1 << 14];
+    let mut frame = vec![0; size.max(AV1_TEST_KEYFRAME.len())];
 
     for (&source, dest) in AV1_TEST_KEYFRAME.iter().zip(frame.iter_mut()) {
         *dest = source;
@@ -836,9 +854,9 @@ fn big_av1_keyframe() -> Vec<u8> {
     frame
 }
 
-fn big_av1_inter_frame() -> Vec<u8> {
+fn av1_inter_frame(size: usize) -> Vec<u8> {
     // 1 kb
-    let mut frame = vec![0; 1 << 10];
+    let mut frame = vec![0; size.max(AV1_TEST_INTER_FRAME.len())];
 
     for (&source, dest) in AV1_TEST_INTER_FRAME.iter().zip(frame.iter_mut()) {
         *dest = source;
@@ -876,8 +894,8 @@ fn cache_with_streaming_big() {
     let sample_count = chunk_count * samples_per_chunk;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let keyframe = big_av1_keyframe();
-    let inter_frame = big_av1_inter_frame();
+    let keyframe = av1_keyframe(1 << 14);
+    let inter_frame = av1_inter_frame(1 << 10);
 
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
@@ -926,8 +944,8 @@ fn cache_with_manifest_big() {
     let samples_per_chunk = gops_per_chunk * samples_per_gop;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let keyframe = big_av1_keyframe();
-    let inter_frame = big_av1_inter_frame();
+    let keyframe = av1_keyframe(1 << 14);
+    let inter_frame = av1_inter_frame(1 << 10);
 
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
