@@ -95,8 +95,7 @@ impl PyRegistrationHandleInternal {
                 let mut client = match connection.client().await {
                     Ok(c) => c,
                     Err(err) => {
-                        #[expect(clippy::let_underscore_must_use)]
-                        let _ = tx.send(Err(err));
+                        tx.send(Err(err)).ok();
                         return;
                     }
                 };
@@ -105,8 +104,7 @@ impl PyRegistrationHandleInternal {
                     match client.query_tasks_on_completion(task_ids, timeout).await {
                         Ok(stream) => stream,
                         Err(err) => {
-                            #[expect(clippy::let_underscore_must_use)]
-                            let _ = tx.send(Err(to_py_err(err)));
+                            tx.send(Err(to_py_err(err))).ok();
                             return;
                         }
                     };
@@ -130,7 +128,7 @@ impl PyRegistrationHandleInternal {
                         }
 
                         Err(err) => {
-                            let _ = tx.send(Err(err)).ok();
+                            tx.send(Err(err)).ok();
                             break;
                         }
                     }

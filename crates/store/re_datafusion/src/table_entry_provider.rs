@@ -334,8 +334,7 @@ impl RecordBatchGrpcOutputStream {
             }
             .await;
 
-            #[expect(clippy::let_underscore_must_use)]
-            let _ = thread_status_tx.send(shutdown_response);
+            thread_status_tx.send(shutdown_response).ok();
         });
 
         Self {

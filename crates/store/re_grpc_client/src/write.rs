@@ -10,7 +10,7 @@ use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;
 use tokio::runtime;
-use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 use tonic::transport::Endpoint;
 use web_time::Instant;
 
@@ -117,14 +117,14 @@ pub struct Client {
     uri: ProxyUri,
     options: Options,
     thread: Option<JoinHandle<()>>,
-    cmd_tx: UnboundedSender<Cmd>,
+    cmd_tx: Sender<Cmd>,
     shutdown_tx: Sender<()>,
     status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
+        let (cmd_tx, cmd_rx) = mpsc::channel(100); // TODO(#11024): specify size in bytes instead of number of messages
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
         let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {
@@ -162,8 +162,18 @@ impl Client {
         }
     }
 
-    pub fn send(&self, msg: LogMsg) {
-        self.cmd_tx.send(Cmd::LogMsg(msg)).ok();
+    /// Send a message asynchronously with backpressure.
+    ///
+    /// This will block (async) if the channel is full.
+    pub async fn send_async(&self, msg: LogMsg) {
+        self.cmd_tx.send(Cmd::LogMsg(msg)).await.ok();
+    }
+
+    /// Send a message with blocking backpressure.
+    ///
+    /// This will block the current thread if the channel is full.
+    pub fn send_blocking(&self, msg: LogMsg) {
+        self.cmd_tx.blocking_send(Cmd::LogMsg(msg)).ok();
     }
 
     /// Whether the client is connected to a remote server.
@@ -189,7 +199,7 @@ impl Client {
         let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
         if self
             .cmd_tx
-            .send(Cmd::Flush {
+            .blocking_send(Cmd::Flush {
                 on_done: flush_done_tx,
             })
             .is_err()
@@ -304,7 +314,7 @@ impl Drop for Client {
 
 async fn message_proxy_client(
     uri: ProxyUri,
-    mut cmd_rx: UnboundedReceiver<Cmd>,
+    mut cmd_rx: Receiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
     status: Arc<AtomicCell<ClientConnectionState>>,

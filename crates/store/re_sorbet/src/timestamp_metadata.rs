@@ -22,6 +22,9 @@ pub enum TimestampLocation {
     /// Encoded in [`re_types_core::ChunkId`].
     ChunkCreation,
 
+    /// The message reached the gRPC sink in the SDK.
+    GrpcSink,
+
     /// When was this batch sent by the SDK gRPC log sink?
     IPCEncode,
 
@@ -37,6 +40,7 @@ impl std::fmt::Display for TimestampLocation {
         let s = match self {
             Self::Log => "log call",
             Self::ChunkCreation => "batch creation",
+            Self::GrpcSink => "gRPC sink",
             Self::IPCEncode => "encode and transmit",
             Self::IPCDecode => "receive and decode",
             Self::Ingest => "ingest into viewer",
@@ -60,6 +64,7 @@ impl TimestampLocation {
         match self {
             Self::Log => None,           // encoded in RowId
             Self::ChunkCreation => None, // encoded in ChunkId
+            Self::GrpcSink => Some("rerun:timestamp_sdk_grpc_sink"),
             Self::IPCEncode => Some("rerun:timestamp_sdk_ipc_encoded"),
             Self::IPCDecode => Some("rerun:timestamp_viewer_ipc_decoded"),
             Self::Ingest => None, // not recorded
