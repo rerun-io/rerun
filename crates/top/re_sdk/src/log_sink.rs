@@ -38,7 +38,11 @@ impl SinkFlushError {
 pub trait LogSink: Send + Sync + 'static + std::any::Any {
     /// Send this log message.
     ///
-    /// This should optionally block in order to apply backpressure.
+    /// In order to apply backpressure, implementing sinks should block
+    /// the call until there is enough capacity to accept the message.
+    ///
+    /// It is however NOT expected that `send` will _always_ block,
+    /// just when the sink is overwhelmed.
     fn send(&self, msg: LogMsg);
 
     /// Send all these log messages.
