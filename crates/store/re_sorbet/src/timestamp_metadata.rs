@@ -2,13 +2,70 @@
 //!
 //! This is used for latency measurements.
 
+use std::collections::BTreeMap;
+use std::ops::{Deref, DerefMut};
+
 use crate::ArrowBatchMetadata;
 
-/// When was this batch sent by the SDK gRPC log sink?
-pub const KEY_TIMESTAMP_SDK_IPC_ENCODE: &str = "rerun:timestamp_sdk_ipc_encoded";
+/// Important stops along the data transform part, from SDK to viewer.
+///
+/// This is used to annotate timestamps for latency measurements.
+///
+/// Ordered chronologically.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::EnumIter)]
+pub enum TimestampLocation {
+    /// Time of log call. Encoded in [`re_types_core::RowId`].
+    Log,
 
-/// When was this batch last decoded from IPC bytes by the gRPC server (presumably in the viewer)?
-pub const KEY_TIMESTAMP_VIEWER_IPC_DECODED: &str = "rerun:timestamp_viewer_ipc_decoded";
+    /// When the batcher has created the chunk.
+    ///
+    /// Encoded in [`re_types_core::ChunkId`].
+    ChunkCreation,
+
+    /// When was this batch sent by the SDK gRPC log sink?
+    IPCEncode,
+
+    /// When was this batch last decoded from IPC bytes by the gRPC server (presumably in the viewer)?
+    IPCDecode,
+
+    /// When the data was ingested into the store in the viewer.
+    Ingest,
+}
+
+impl std::fmt::Display for TimestampLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Log => "log call",
+            Self::ChunkCreation => "batch creation",
+            Self::IPCEncode => "encode and transmit",
+            Self::IPCDecode => "receive and decode",
+            Self::Ingest => "ingest into viewer",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl TimestampLocation {
+    /// The first step of the pipeline
+    pub const FIRST: Self = Self::Log;
+
+    /// The last step of the pipeline
+    pub const LAST: Self = Self::Ingest;
+
+    /// Get the arrow recordbatch metadata key associated with this timestamp location.
+    ///
+    /// Returns `None` for timestamp locations that are not recorded in metadata.
+    pub fn metadata_key(&self) -> Option<&'static str> {
+        #[expect(clippy::match_same_arms)]
+        match self {
+            Self::Log => None,           // encoded in RowId
+            Self::ChunkCreation => None, // encoded in ChunkId
+            Self::IPCEncode => Some("rerun:timestamp_sdk_ipc_encoded"),
+            Self::IPCDecode => Some("rerun:timestamp_viewer_ipc_decoded"),
+            Self::Ingest => None, // not recorded
+        }
+    }
+}
 
 /// We encode time as seconds since the Unix epoch,
 /// with nanosecond precision, e.g. `1700000000.012345678`.
@@ -50,67 +107,49 @@ fn test_timestamp_encoding() {
 
 /// Timestamps about this batch; used for latency measurements.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct TimestampMetadata {
-    /// When was this batch send by the SDK gRPC log sink?
-    pub grpc_encoded_at: Option<web_time::SystemTime>,
+pub struct TimestampMetadata(BTreeMap<TimestampLocation, web_time::SystemTime>);
 
-    /// When was this batch received and decoded by the viewer?
-    pub grpc_decoded_at: Option<web_time::SystemTime>,
+impl Deref for TimestampMetadata {
+    type Target = BTreeMap<TimestampLocation, web_time::SystemTime>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TimestampMetadata {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 impl TimestampMetadata {
     pub fn parse_record_batch_metadata(metadata: &ArrowBatchMetadata) -> Self {
-        let grpc_encoded_at = metadata
-            .get(KEY_TIMESTAMP_SDK_IPC_ENCODE)
-            .and_then(|s| parse_timestamp(s.as_str()));
+        use strum::IntoEnumIterator as _;
 
-        let grpc_decoded_at = metadata
-            .get(KEY_TIMESTAMP_VIEWER_IPC_DECODED)
-            .and_then(|s| parse_timestamp(s.as_str()));
+        let mut map = BTreeMap::new();
 
-        if cfg!(debug_assertions) {
-            // Missing both happens all the time - but missing just one is suspicious.
-            if grpc_encoded_at.is_some() && grpc_decoded_at.is_none() {
-                // TODO(#10343): enable this non-critical warning again
-                if false {
-                    re_log::warn_once!(
-                        "Received a batch with an encode timestamp but no decode timestamp. Latency measurements will be incomplete."
-                    );
-                }
-            }
-            if grpc_decoded_at.is_some() && grpc_encoded_at.is_none() {
-                re_log::warn_once!(
-                    "Received a batch with a decode timestamp but no encode timestamp. Latency measurements will be incomplete."
-                );
+        for location in TimestampLocation::iter() {
+            if let Some(key) = location.metadata_key()
+                && let Some(value) = metadata.get(key)
+                && let Some(timestamp) = parse_timestamp(value.as_str())
+            {
+                map.insert(location, timestamp);
             }
         }
 
-        Self {
-            grpc_encoded_at,
-            grpc_decoded_at,
-        }
+        Self(map)
     }
 
     pub fn to_metadata(&self) -> impl Iterator<Item = (String, String)> {
-        let Self {
-            grpc_encoded_at,
-            grpc_decoded_at,
-        } = self;
-
         let mut metadata = Vec::new();
 
-        if let Some(last_encoded_at) = grpc_encoded_at {
-            metadata.push((
-                KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
-                encode_timestamp(*last_encoded_at),
-            ));
-        }
-
-        if let Some(last_decoded_at) = grpc_decoded_at {
-            metadata.push((
-                KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
-                encode_timestamp(*last_decoded_at),
-            ));
+        for (location, timestamp) in &self.0 {
+            if let Some(key) = location.metadata_key() {
+                metadata.push((key.to_owned(), encode_timestamp(*timestamp)));
+            }
         }
 
         metadata.into_iter()

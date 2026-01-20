@@ -64,9 +64,15 @@ impl EntityDbClass<'_> {
 /// NOTE: all mutation is to be done via public functions!
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct EntityDb {
-    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
-    /// store id.
+    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s store id.
     store_id: StoreId,
+
+    /// Whether the `EntityDb` should maintain various secondary indexes using store events.
+    ///
+    /// These indexes are costly to maintain and only useful when running in the viewer.
+    /// For CLI tools, prefer disabling this to improve performance, unless you specifically need
+    /// these indexes for some reason.
+    enable_viewer_indexes: bool,
 
     /// Set by whomever created this [`EntityDb`].
     ///
@@ -109,6 +115,7 @@ pub struct EntityDb {
 impl Debug for EntityDb {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EntityDb")
+            .field("enable_viewer_indexes", &self.enable_viewer_indexes)
             .field("store_id", &self.store_id)
             .field("data_source", &self.data_source)
             .field("set_store_info", &self.set_store_info)
@@ -117,11 +124,28 @@ impl Debug for EntityDb {
 }
 
 impl EntityDb {
+    /// [Secondary viewer indexes] are enabled by default.
+    ///
+    /// Use [`Self::with_store_config`] for more control.
+    ///
+    /// [Secondary viewer indexes]: [`Self::enable_viewer_indexes`]
     pub fn new(store_id: StoreId) -> Self {
-        Self::with_store_config(store_id, ChunkStoreConfig::from_env().unwrap_or_default())
+        let enable_viewer_indexes = true;
+        Self::with_store_config(
+            store_id,
+            enable_viewer_indexes,
+            ChunkStoreConfig::from_env().unwrap_or_default(),
+        )
     }
 
-    pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
+    pub fn with_store_config(
+        store_id: StoreId,
+        enable_viewer_indexes: bool,
+        mut store_config: ChunkStoreConfig,
+    ) -> Self {
+        // If we don't care about inline indexes, we definitely don't care about remote subscribers either.
+        store_config.enable_changelog = enable_viewer_indexes;
+
         let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
@@ -131,6 +155,7 @@ impl EntityDb {
 
         Self {
             store_id,
+            enable_viewer_indexes,
             data_source: None,
             rrd_manifest_index: Default::default(),
             set_store_info: None,
@@ -637,7 +662,12 @@ impl EntityDb {
 
         let mut engine = self.storage_engine.write();
 
+        // The query cache isn't specific to the viewer. Always update it.
         engine.cache().on_events(store_events);
+
+        if !self.enable_viewer_indexes {
+            return;
+        }
 
         let engine = engine.downgrade();
 
@@ -827,7 +857,7 @@ impl EntityDb {
 
             let mut chunks: Vec<Arc<Chunk>> = engine
                 .store()
-                .iter_chunks()
+                .iter_physical_chunks()
                 .filter(move |chunk| {
                     if chunk.is_static() {
                         return true; // always keep all static data
@@ -885,6 +915,7 @@ impl EntityDb {
 
         let mut new_db = Self::new(new_id.clone());
 
+        new_db.enable_viewer_indexes = self.enable_viewer_indexes;
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;
 
@@ -908,7 +939,7 @@ impl EntityDb {
         }
 
         let engine = self.storage_engine.read();
-        for chunk in engine.store().iter_chunks() {
+        for chunk in engine.store().iter_physical_chunks() {
             new_db.add_chunk(&Arc::clone(chunk))?;
         }
 

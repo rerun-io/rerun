@@ -4,8 +4,9 @@ mod player;
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
+pub use chunk_decoder::VideoSampleDecoder;
 use parking_lot::Mutex;
-pub use player::PlayerConfiguration;
+pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
 use re_video::{DecodeSettings, VideoDataDescription};
 
@@ -330,9 +331,11 @@ impl Video {
 
         decoder_entry.used_last_frame = true;
         decoder_entry.player.frame_at(
-            render_context,
             video_time,
             &self.video_description,
+            &mut |texture, frame| {
+                chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
+            },
             get_video_buffer,
         )
     }

@@ -1343,6 +1343,30 @@ impl TimePanel {
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
+
+                let age = entity_db
+                    .rrd_manifest_index()
+                    .chunk_bandwidth_data_age(ui.time());
+                if ctx.app_options().show_metrics && age < 1.0 {
+                    let mut rate = entity_db
+                        .rrd_manifest_index()
+                        .chunk_bandwidth()
+                        .unwrap_or(0.0);
+
+                    if !rate.is_finite() {
+                        rate = 0.0;
+                    }
+
+                    ui.label(
+                        RichText::new(format!("{} / s", re_format::format_bytes(rate))).color(
+                            ui.style()
+                                .visuals
+                                .text_color()
+                                .gamma_multiply((1.0 - age * age) as f32),
+                        ),
+                    )
+                    .on_hover_text("Connection throughput");
+                }
             });
         }
     }
@@ -1996,7 +2020,7 @@ impl TimePanel {
         });
 
         // Press to move time:
-        if ui.input(|i| i.pointer.primary_down())
+        if ui.input(|i| i.pointer.primary_pressed() || i.pointer.primary_down() || i.pointer.primary_released())
             // `interact_pointer_pos` is set as soon as the mouse button is down on it,
             // without having to wait for the drag to go far enough or long enough
             && response.interact_pointer_pos().is_some()

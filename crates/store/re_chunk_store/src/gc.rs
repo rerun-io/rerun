@@ -209,33 +209,29 @@ impl ChunkStore {
             "GC done"
         );
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
-            {
-                if cfg!(debug_assertions) {
-                    let any_event_other_than_deletion = events
-                        .iter()
-                        .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
-                    assert!(!any_event_other_than_deletion);
-                }
-
-                Self::on_events(&events);
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+        {
+            if cfg!(debug_assertions) {
+                let any_event_other_than_deletion = events
+                    .iter()
+                    .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
+                assert!(!any_event_other_than_deletion);
             }
+        }
 
-            events
-        } else {
-            Vec::new()
-        };
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
 
         (events, stats_before - stats_after)
     }
@@ -701,7 +697,7 @@ mod tests {
         for pivot in [0, NUM_CHUNKS / 2, NUM_CHUNKS] {
             let mut store = setup_store();
 
-            assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+            assert_eq!(NUM_CHUNKS as usize, store.num_physical_chunks());
             for _ in 0..3 {
                 // Call `store.gc()` more than once just to make sure nothing weird happens with
                 // all the shadow indices left by the first call.
@@ -710,7 +706,7 @@ mod tests {
                     ..GarbageCollectionOptions::gc_everything()
                 });
             }
-            assert_eq!(0, store.num_chunks());
+            assert_eq!(0, store.num_physical_chunks());
         }
     }
 }

@@ -368,6 +368,8 @@ impl TransformForest {
 
 impl SizeBytes for TransformForest {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             roots,
             root_from_frame,
@@ -886,7 +888,7 @@ mod tests {
     fn test_simple_entity_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = entity_hierarchy_test_scene()?;
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1091,7 +1093,7 @@ mod tests {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = simple_frame_hierarchy_test_scene(multiple_entities)?;
         let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1271,7 +1273,7 @@ mod tests {
         {
             let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
 
             // Add a connection the cache doesn't know about.
             test_scene.add_chunk(&Arc::new(
@@ -1321,7 +1323,7 @@ mod tests {
                     )
                     .build()?,
             ))?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
+            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
 
             test_scene.add_chunk(&Arc::new(
                 // Add a connection the cache doesn't know about.

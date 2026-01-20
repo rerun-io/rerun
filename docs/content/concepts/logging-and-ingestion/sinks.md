@@ -37,7 +37,7 @@ This pattern is useful when:
 
 ## See also
 
-- [Recordings](apps-and-recordings.md): Understand how recordings relate to sinks
+- [Recordings](recordings.md): Understand how recordings relate to sinks
 - [Blueprints](../visualization/blueprints.md): Learn how to configure the viewer's layout
 - API References:
   - [🐍 Python sinks API](https://ref.rerun.io/docs/python/stable/common/initialization_functions/)

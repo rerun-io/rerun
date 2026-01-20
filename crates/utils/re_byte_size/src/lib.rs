@@ -1,10 +1,13 @@
 //! Calculate the heap-allocated size of values at runtime.
 
 mod arrow_sizes;
+mod bookkeeping_btreemap;
 mod primitive_sizes;
 mod smallvec_sizes;
 mod std_sizes;
 mod tuple_sizes;
+
+pub use bookkeeping_btreemap::BookkeepingBTreeMap;
 
 // ---
 

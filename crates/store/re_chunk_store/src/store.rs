@@ -683,21 +683,21 @@ impl ChunkStore {
         &self.config
     }
 
-    /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.
+    /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
-    pub fn iter_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
+    pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
         self.chunks_per_chunk_id.values()
     }
 
-    /// Get a chunk based on its ID.
+    /// Get a *physical* chunk based on its ID.
     #[inline]
-    pub fn chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+    pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         self.chunks_per_chunk_id.get(id)
     }
 
-    /// Get the number of chunks.
+    /// Get the number of *physical* chunks in the store.
     #[inline]
-    pub fn num_chunks(&self) -> usize {
+    pub fn num_physical_chunks(&self) -> usize {
         self.chunks_per_chunk_id.len()
     }
 

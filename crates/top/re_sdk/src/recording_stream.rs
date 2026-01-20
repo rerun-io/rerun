@@ -3037,7 +3037,7 @@ mod tests {
 
     impl LogSink for BatcherConfigTestSink {
         fn default_batcher_config(&self) -> ChunkBatcherConfig {
-            self.config.clone()
+            self.config
         }
 
         fn send(&self, _msg: LogMsg) {
@@ -3095,7 +3095,7 @@ mod tests {
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(config.clone()).unwrap();
+                    tx.send(*config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })
@@ -3119,7 +3119,7 @@ mod tests {
             ..new_config
         };
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: injected_config.clone(),
+            config: injected_config,
         }));
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
@@ -3131,7 +3131,7 @@ mod tests {
         // check that the env var is respected.
         let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_NUM_BYTES", "456");
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: injected_config.clone(),
+            config: injected_config,
         }));
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
@@ -3160,10 +3160,10 @@ mod tests {
 
         let (tx, rx) = std::sync::mpsc::channel();
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
-            .batcher_config(explicit_config.clone())
+            .batcher_config(explicit_config)
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(config.clone()).unwrap();
+                    tx.send(*config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })
