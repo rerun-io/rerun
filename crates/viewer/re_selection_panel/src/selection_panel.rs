@@ -1,6 +1,5 @@
 use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-use re_component_ui::transform_frame_id::edit_or_view_transform_frame_id;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
 use re_data_ui::item_ui::{
@@ -10,11 +9,12 @@ use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, MaybeMutRef,
-    PerVisualizer, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
+    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -560,17 +560,22 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
 
     let property_content = list_item::PropertyContent::new("Coordinate frame")
         .value_fn(|ui, _| {
-            let mut transform_frame_id = TransformFrameId::new(&frame_id);
-            if edit_or_view_transform_frame_id(
-                ctx.viewer_ctx,
-                ui,
-                &mut MaybeMutRef::MutRef(&mut transform_frame_id),
-                Some(&frame_id_before),
-            )
-            .changed()
-            {
-                frame_id = transform_frame_id.as_str().to_owned();
-            }
+            // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
+            let suggestions = {
+                let caches = ctx.viewer_ctx.store_context.caches;
+                let transform_cache =
+                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        c.read_lock_transform_cache(ctx.viewer_ctx.recording())
+                    });
+
+                transform_cache
+                    .frame_id_registry()
+                    .iter_frame_ids()
+                    .filter(|(_, id)| !id.is_entity_path_derived())
+                    .map(|(_, id)| id.to_string())
+                    .collect::<Vec<String>>()
+            };
+            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
             crate::visualizer_ui::remove_and_reset_override_buttons(
