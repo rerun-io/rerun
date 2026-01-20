@@ -149,7 +149,7 @@ This is achieved by setting the index to `None`:
 df = dataset.reader(index=None)
 ```
 
-The returned dataframe contains a single row with all the static data from the filtered content. 
+The returned dataframe contains a single row with all the static data from the filtered content.
 
 
 ### How do dataframe queries achieve resampling?
