@@ -62,7 +62,7 @@ This should produce an output similar to:
 └──────────────────────────────────┴────────────────────┴───────────────────────────────────┘
 ```
 
-Let's unpack what happens here:
+Let's unpack what happened here:
 - **Catalog required**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Data Platform deployment instead. We then obtain the dataset to be queried from the catalog.
 - **Content filtering**: The `filter_contents()` method restricts the scope of the query to specific entities. This affects which columns are returned, but may also change which rows are returned since rows are only produced where at least one filtered column has data (see [How are rows produced?](#how-are-rows-produced-by-dataframe-queries)).
 - **Reader produces a lazy dataframe**: The `reader(index=…)` method returns a [DataFusion](https://datafusion.apache.org/) dataframe. The `index` parameter specifies which timeline drives row generation: a row is produced for each unique value of this index where data exists. The returned dataframe is lazy and doesn't execute until it is collected.
