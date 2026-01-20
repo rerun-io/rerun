@@ -123,10 +123,7 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::time_spec_to_nanos(),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
@@ -161,10 +158,7 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::time_spec_to_nanos(),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
@@ -200,10 +194,7 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::time_spec_to_nanos(),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
                 .component(
@@ -220,10 +211,7 @@ fn main() -> anyhow::Result<()> {
             .output_columns(|out| {
                 out.component(
                     VideoStream::descriptor_codec(),
-                    [
-                        Op::access_field("format"),
-                        Op::string_to_video_codec(),
-                    ],
+                    [Op::access_field("format"), Op::string_to_video_codec()],
                 )
                 .component(
                     VideoStream::descriptor_sample(),
@@ -293,10 +281,7 @@ fn main() -> anyhow::Result<()> {
         out.time(
             TIME_NAME,
             args.epoch.time_type(),
-            [
-                Op::access_field("timestamp"),
-                Op::time_spec_to_nanos(),
-            ],
+            [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
         )
         .component(
             Pinhole::descriptor_resolution(),

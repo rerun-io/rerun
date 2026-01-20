@@ -225,9 +225,11 @@ impl Op {
             Self::BinaryToListUInt8 => map::MapList::new(semantic::BinaryToListUInt8::<i32>::new())
                 .transform(list_array)
                 .map_err(Into::into),
-            Self::StringToVideoCodecUInt32 => map::MapList::new(semantic::StringToVideoCodecUInt32::default())
-                .transform(list_array)
-                .map_err(Into::into),
+            Self::StringToVideoCodecUInt32 => {
+                map::MapList::new(semantic::StringToVideoCodecUInt32::default())
+                    .transform(list_array)
+                    .map_err(Into::into)
+            }
             Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
                 .transform(list_array)
                 .map_err(Into::into),
