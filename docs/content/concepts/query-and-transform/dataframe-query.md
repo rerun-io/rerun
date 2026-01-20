@@ -30,7 +30,7 @@ We can create a demo recording and load it into a temporary local catalog using 
 snippet: concepts/query-and-transform/dataframe_query_example[setup]
 
 
-We can then perform a dataframe query:
+We can then perform a dataframe query (against the local open-source Data Platform included in Rerun):
 
 snippet: concepts/query-and-transform/dataframe_query_example[query]
 
