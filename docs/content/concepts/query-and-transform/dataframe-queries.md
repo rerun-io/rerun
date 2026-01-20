@@ -126,7 +126,7 @@ dataset.filter_contents(["/camera", "/lidar"]).reader(index="timestamp").select(
 
 ### How are segments handled by dataframe queries?
 
-When querying a dataset with multiple [segments](catalog-object-model.md#segments), the query is applied on a segment-by-segment basis. This means:
+When querying a dataset with multiple [segments](catalog-object-model.md#datasets), the query is applied on a segment-by-segment basis. This means:
 
 - Latest-at semantics do not cross segment boundaries. Each segment is queried independently.
 - The output includes a `rerun_segment_id` column identifying which segment each row comes from.
