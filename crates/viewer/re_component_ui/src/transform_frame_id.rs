@@ -6,10 +6,11 @@ pub fn edit_or_view_transform_frame_id(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     frame_id: &mut MaybeMutRef<'_, TransformFrameId>,
+    hint_text: Option<&str>,
 ) -> egui::Response {
     match frame_id {
         MaybeMutRef::Ref(frame_id) => ui.label(frame_id.as_str()),
-        MaybeMutRef::MutRef(frame_id) => edit_transform_frame_id(ctx, ui, frame_id),
+        MaybeMutRef::MutRef(frame_id) => edit_transform_frame_id(ctx, ui, frame_id, hint_text),
     }
 }
 
@@ -17,6 +18,7 @@ fn edit_transform_frame_id(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     frame_id: &mut TransformFrameId,
+    hint_text: Option<impl Into<egui::WidgetText>>,
 ) -> egui::Response {
     let (mut suggestions, mut response) = {
         // In a scope to not hold the lock for longer than needed.
@@ -34,6 +36,9 @@ fn edit_transform_frame_id(
         let mut tmp_string = frame_id.as_str().to_owned();
 
         let mut text_edit = egui::TextEdit::singleline(&mut tmp_string);
+        if let Some(hint) = hint_text {
+            text_edit = text_edit.hint_text(hint);
+        }
         if !frame_exists {
             text_edit = text_edit.text_color(ui.tokens().error_fg_color);
         }

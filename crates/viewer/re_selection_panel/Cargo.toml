@@ -19,6 +19,7 @@ workspace = true
 re_case.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
+re_component_ui.workspace = true
 re_context_menu.workspace = true
 re_data_ui.workspace = true
 re_entity_db.workspace = true
@@ -43,6 +44,5 @@ smallvec.workspace = true
 static_assertions.workspace = true
 
 [dev-dependencies]
-re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true

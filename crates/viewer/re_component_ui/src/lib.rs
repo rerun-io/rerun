@@ -214,7 +214,9 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_array_edit_or_view(text_log_columns::edit_or_view_columns_singleline);
     registry.add_multiline_array_edit_or_view(text_log_columns::edit_or_view_columns_multiline);
 
-    registry.add_singleline_edit_or_view(transform_frame_id::edit_or_view_transform_frame_id);
+    registry.add_singleline_edit_or_view(|ctx, ui, frame_id| {
+        transform_frame_id::edit_or_view_transform_frame_id(ctx, ui, frame_id, None)
+    });
 
     // --------------------------------------------------------------------------------
     // All variant UIs:
