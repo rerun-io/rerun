@@ -12,7 +12,6 @@ import ast
 import difflib
 import importlib
 import inspect
-import re
 import sys
 import textwrap
 from inspect import Parameter, Signature
@@ -85,7 +84,7 @@ class APIDef:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
-TotalSignature = dict[str, APIDef | dict[str, APIDef]]
+TotalSignature = dict[str, APIDef | dict[str, APIDef | str]]
 
 
 def parse_function_signature(node: Any) -> APIDef:
@@ -158,7 +157,7 @@ def load_stub_signatures(pyi_file: Path) -> TotalSignature:
             class_name = node.name.value
 
             try:
-                class_def = {}
+                class_def: dict[str, APIDef | str] = {}
 
                 doc = None
                 for child in node.children:
@@ -204,7 +203,7 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
             api_def = APIDef(name, inspect.signature(obj), False, obj.__doc__)
             signatures[name] = api_def
         elif inspect.isclass(obj):
-            class_def = {}
+            class_def: dict[str, APIDef | str] = {}
             is_internal_class = name.endswith("Internal")
 
             # Get methods within the class
@@ -254,10 +253,18 @@ def apply_signature_fixes(pyi_file: Path, fixes: list[tuple[str, str | None, API
         return
 
     print()
-    print(Fore.YELLOW + "WARNING: Applying runtime signatures will replace stub signatures and docstrings." + Style.RESET_ALL)
-    print(Fore.YELLOW + "Type annotations from the stub file will be lost and need to be manually restored." + Style.RESET_ALL)
+    print(
+        Fore.YELLOW
+        + "WARNING: Applying runtime signatures will replace stub signatures and docstrings."
+        + Style.RESET_ALL
+    )
+    print(
+        Fore.YELLOW
+        + "Type annotations from the stub file will be lost and need to be manually restored."
+        + Style.RESET_ALL
+    )
     print()
-    print(f"Applying {len(fixes)} fix(es) to {pyi_file}...")
+    print(f"Applying {len(fixes)} fix(es) to {pyi_file}…")
 
     content = pyi_file.read_text(encoding="utf-8")
     tree = parso.parse(content)
@@ -272,7 +279,11 @@ def apply_signature_fixes(pyi_file: Path, fixes: list[tuple[str, str | None, API
                 node_map[(node.name.value, method_node.name.value)] = method_node
 
     # Apply fixes in reverse order by position to avoid offset issues
-    fixes_sorted = sorted(fixes, key=lambda f: node_map.get((f[0], f[1]), node).start_pos if (f[0], f[1]) in node_map else (0, 0), reverse=True)
+    fixes_sorted = sorted(
+        fixes,
+        key=lambda f: node_map.get((f[0], f[1]), node).start_pos if (f[0], f[1]) in node_map else (0, 0),
+        reverse=True,
+    )
 
     for class_name, method_name, runtime_sig, stub_sig in fixes_sorted:
         key = (class_name, method_name)
@@ -299,7 +310,7 @@ def apply_signature_fixes(pyi_file: Path, fixes: list[tuple[str, str | None, API
                     new_lines.append(f"    {line}")
                 new_lines.append('    """')
         else:
-            new_lines[0] += " ..."
+            new_lines[0] += " …"
 
         # Add indentation to all lines
         new_text = "\n".join(base_indent + line if line.strip() else "" for line in new_lines)
@@ -351,7 +362,11 @@ def compare_signatures(
                         print(f"{name}.{method_name}(…) signature mismatch:")
                         print_colored_diff(str(runtime_method_signature), str(stub_method_signature))
                         result += 1
-                        if apply_fixes and runtime_method_signature is not None:
+                        if (
+                            apply_fixes
+                            and runtime_method_signature is not None
+                            and isinstance(runtime_method_signature, APIDef)
+                        ):
                             fixes.append((name, method_name, runtime_method_signature, stub_method_signature))
 
             else:
@@ -374,7 +389,7 @@ def compare_signatures(
                     print(f"{name}(…) signature mismatch:")
                     print_colored_diff(str(runtime_signature), str(stub_signature))
                     result += 1
-                    if apply_fixes and runtime_signature is not None:
+                    if apply_fixes and runtime_signature is not None and isinstance(runtime_signature, APIDef):
                         fixes.append((name, None, runtime_signature, stub_signature))
             else:
                 print()
