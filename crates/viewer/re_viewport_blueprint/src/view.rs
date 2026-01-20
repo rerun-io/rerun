@@ -700,6 +700,7 @@ mod tests {
                 &query_range,
                 visualizable_entities,
                 ctx.indicated_entities_per_visualizer,
+                ctx.app_options(),
             ));
         });
 

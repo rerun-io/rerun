@@ -33,11 +33,11 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 }
 
 impl VisualizerSystem for SeriesPointsSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        if *re_viewer_context::EXPERIMENTAL_COMPONENT_MAPPING
-            .get()
-            .unwrap_or(&false)
-        {
+    fn visualizer_query_info(
+        &self,
+        app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        if app_options.experimental.component_mapping {
             VisualizerQueryInfo {
                 relevant_archetype: archetypes::SeriesPoints::name().into(),
                 required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(

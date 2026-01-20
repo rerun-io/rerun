@@ -141,8 +141,11 @@ impl From<RequiredComponents> for Requirement {
 }
 
 impl VisualizerEntitySubscriber {
-    pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
-        let visualizer_query_info = visualizer.visualizer_query_info();
+    pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(
+        visualizer: &T,
+        app_options: &crate::AppOptions,
+    ) -> Self {
+        let visualizer_query_info = visualizer.visualizer_query_info(app_options);
 
         Self {
             visualizer: T::identifier(),

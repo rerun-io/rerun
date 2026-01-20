@@ -45,7 +45,8 @@ pub fn view_components_defaults_section_ui(
     // Right now, they're just sorted by descriptor, which is not the same.
     let active_defaults = active_defaults(ctx, view, db, query);
     let visualizers = ctx.new_visualizer_collection();
-    let visualized_components_by_archetype = visualized_components_by_archetype(&visualizers);
+    let visualized_components_by_archetype =
+        visualized_components_by_archetype(&visualizers, ctx.viewer_ctx.app_options());
 
     // If there is nothing set by the user and nothing to be possibly added, we skip the section
     // entirely.
@@ -176,6 +177,7 @@ fn active_default_ui(
 
 fn visualized_components_by_archetype(
     visualizers: &VisualizerCollection,
+    app_options: &re_viewer_context::AppOptions,
 ) -> BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>> {
     let mut visualized_components_by_visualizer: BTreeMap<
         ArchetypeName,
@@ -186,7 +188,7 @@ fn visualized_components_by_archetype(
     // Accumulate the components across all visualizers and track which visualizer
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in visualizers.iter_with_identifiers() {
-        for descr in vis.visualizer_query_info().queried.iter() {
+        for descr in vis.visualizer_query_info(app_options).queried.iter() {
             let (Some(archetype_name), Some(component_type)) =
                 (descr.archetype, descr.component_type)
             else {

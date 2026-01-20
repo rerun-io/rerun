@@ -389,6 +389,7 @@ impl AppState {
                                     &query_range,
                                     &visualizable_entities,
                                     &indicated_entities_per_visualizer,
+                                    app_options,
                                 ),
                             )
                         })

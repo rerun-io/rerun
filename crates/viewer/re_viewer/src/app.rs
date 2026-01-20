@@ -268,17 +268,14 @@ impl App {
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        // TODO(RR-3382): Hack to allow accessing the experimental component mapping flag in visualizer/view registration.
-        re_viewer_context::EXPERIMENTAL_COMPONENT_MAPPING
-            .set(state.app_options.experimental.component_mapping)
-            .ok(); // Whatever the reason this was already set, no reason to warn/fail over it given that this is all experimental!
-
-        let view_class_registry =
-            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
-                .unwrap_or_else(|err| {
-                    re_log::error!("Failed to create view class registry: {err}");
-                    Default::default()
-                });
+        let view_class_registry = crate::default_views::create_view_class_registry(
+            &state.app_options,
+            &mut component_fallback_registry,
+        )
+        .unwrap_or_else(|err| {
+            re_log::error!("Failed to create view class registry: {err}");
+            Default::default()
+        });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -663,8 +660,10 @@ impl App {
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry
-            .add_class::<T>(&mut self.component_fallback_registry)
+        self.view_class_registry.add_class::<T>(
+            &self.state.app_options,
+            &mut self.component_fallback_registry,
+        )
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.
