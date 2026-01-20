@@ -189,6 +189,11 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/query-and-transform/dataframe_query_example" = [ # Creates and reads its own RRD, incompatible with _RERUN_TEST_FORCE_SAVE
+  "py",
+  "cpp",
+  "rust",
+]
 "howto/check_connection_status" = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist
@@ -343,11 +348,6 @@ backwards_check = [
 "concepts/different_data_per_timeline" = [
   # TODO(#5521): log VisualBounds2D in all languages
   "py",
-]
-"concepts/query-and-transform/dataframe_query_example" = [ # OSS server query example, doesn't generate rrds
-  "cpp",
-  "py",
-  "rust",
 ]
 "concepts/viscomp-base" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
