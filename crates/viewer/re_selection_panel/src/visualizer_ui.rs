@@ -200,7 +200,7 @@ fn visualizer_components(
     visualizer: &dyn VisualizerSystem,
     instruction: &VisualizerInstruction,
 ) {
-    let query_info = visualizer.visualizer_query_info();
+    let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
 
     let store_query = ctx.current_query();
     let query_ctx = ctx.query_context(data_result, &store_query);

@@ -268,12 +268,14 @@ impl App {
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        let view_class_registry =
-            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
-                .unwrap_or_else(|err| {
-                    re_log::error!("Failed to create view class registry: {err}");
-                    Default::default()
-                });
+        let view_class_registry = crate::default_views::create_view_class_registry(
+            &state.app_options,
+            &mut component_fallback_registry,
+        )
+        .unwrap_or_else(|err| {
+            re_log::error!("Failed to create view class registry: {err}");
+            Default::default()
+        });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -658,8 +660,10 @@ impl App {
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry
-            .add_class::<T>(&mut self.component_fallback_registry)
+        self.view_class_registry.add_class::<T>(
+            &self.state.app_options,
+            &mut self.component_fallback_registry,
+        )
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.

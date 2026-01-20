@@ -33,7 +33,10 @@ impl IdentifiedViewSystem for TransformAxes3DVisualizer {
 }
 
 impl VisualizerSystem for TransformAxes3DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
 
         // Make this visualizer available for any entity with Transform3D components

@@ -144,7 +144,11 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo;
+    ///
+    /// Warning: this method is called on registration of the visualizer system in order
+    /// to stear store subscribers. If subsequent calls to this method return different results,
+    /// they may not be taken into account.
+    fn visualizer_query_info(&self, app_options: &crate::AppOptions) -> VisualizerQueryInfo;
 
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///

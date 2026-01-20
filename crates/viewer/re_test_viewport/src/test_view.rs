@@ -26,7 +26,10 @@ impl ViewState for TestViewState {
 pub struct TestSystem;
 
 impl VisualizerSystem for TestSystem {
-    fn visualizer_query_info(&self) -> re_viewer_context::VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> re_viewer_context::VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<re_log_types::example_components::MyPoints>()
     }
 

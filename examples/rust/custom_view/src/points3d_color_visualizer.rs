@@ -2,9 +2,9 @@ use rerun::external::egui;
 use rerun::external::re_log_types::{EntityPath, Instance};
 use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
 use rerun::external::re_viewer_context::{
-    IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem,
+    AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
@@ -25,7 +25,7 @@ impl IdentifiedViewSystem for Points3DColorVisualizer {
 }
 
 impl VisualizerSystem for Points3DColorVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(&self, _app_options: &AppOptions) -> VisualizerQueryInfo {
         // Usually, visualizers are closely tied to archetypes.
         // However, here we're adding a visualizer that queries only parts of an existing archetype.
         if false {

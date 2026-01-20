@@ -109,6 +109,7 @@ impl TestContextExt for TestContext {
                                 &query_range,
                                 &visualizable_entities_for_view,
                                 ctx.indicated_entities_per_visualizer,
+                                ctx.app_options(),
                             );
 
                             query_results.insert(*view_id, data_query_result);

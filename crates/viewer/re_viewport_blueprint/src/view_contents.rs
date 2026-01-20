@@ -267,6 +267,7 @@ impl ViewContents {
         query_range: &QueryRange,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -310,8 +311,11 @@ impl ViewContents {
                 else {
                     continue;
                 };
-                components_for_defaults
-                    .extend(visualizer.visualizer_query_info().queried_components());
+                components_for_defaults.extend(
+                    visualizer
+                        .visualizer_query_info(app_options)
+                        .queried_components(),
+                );
             }
 
             ctx.blueprint.latest_at(
@@ -916,6 +920,7 @@ mod tests {
                 &query_range,
                 &visualizable_entities_for_visualizer_systems,
                 &PerVisualizer::default(),
+                &re_viewer_context::AppOptions::default(),
             );
 
             let mut visited = vec![];
