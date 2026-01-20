@@ -17,11 +17,11 @@ use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
-    BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass,
-    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
+    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass, SelectionChange,
+    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
+    blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -319,13 +319,32 @@ impl AppState {
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
+                let app_blueprint_ctx = AppBlueprintCtx {
+                    command_sender,
+                    current_blueprint: store_context.blueprint,
+                    default_blueprint: store_context.default_blueprint,
+                    blueprint_query: blueprint_query.clone(),
+                };
+                let time_ctrl =
+                    create_time_control_for(time_controls, recording, &app_blueprint_ctx);
+                let active_timeline = time_ctrl.timeline();
+
                 // Execute the queries for every `View`
                 let query_results = {
                     re_tracing::profile_scope!("query_results");
+
+                    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
+                    for view in viewport_ui.blueprint.views.values() {
+                        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+                    }
+
                     viewport_ui
                         .blueprint
                         .views
                         .values()
+                        .collect::<Vec<_>>()
+                        .into_par_iter()
                         .map(|view| {
                             // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
                             // but we don't have access to `ViewerContext` just yet.
@@ -348,28 +367,33 @@ impl AppState {
                                 PerVisualizerInViewClass::empty(view.class_identifier())
                             };
 
+                            let view_state = view_states
+                                .get(view.id)
+                                .expect("View state should exist, we just called ensure_state_exists on it.");
+
+                            let query_range = view.query_range(
+                                app_blueprint_ctx.current_blueprint(),
+                                app_blueprint_ctx.blueprint_query(),
+                                active_timeline,
+                                view_class_registry,
+                                view_state,
+                            );
+
                             (
                                 view.id,
-                                view.contents.execute_query(
+                                view.contents.build_data_result_tree(
                                     store_context,
+                                    active_timeline,
                                     view_class_registry,
-                                    &blueprint_query,
+                                    app_blueprint_ctx.blueprint_query(),
+                                    &query_range,
                                     &visualizable_entities,
+                                    &indicated_entities_per_visualizer,
                                 ),
                             )
                         })
                         .collect::<_>()
                 };
-
-                let app_blueprint_ctx = AppBlueprintCtx {
-                    command_sender,
-                    current_blueprint: store_context.blueprint,
-                    default_blueprint: store_context.default_blueprint,
-                    blueprint_query,
-                };
-                let time_ctrl =
-                    create_time_control_for(time_controls, recording, &app_blueprint_ctx);
-                let blueprint_query = app_blueprint_ctx.blueprint_query;
 
                 let egui_ctx = ui.ctx().clone();
                 let display_mode = self.navigation.current();
@@ -415,43 +439,6 @@ impl AppState {
 
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
-
-                let query_results = update_overrides(&ctx, &viewport_ui.blueprint, view_states);
-
-                // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
-                // it's just a bunch of refs so not really that big of a deal in practice.
-                let ctx = ViewerContext {
-                    global_context: GlobalContext {
-                        is_test: app_env.is_test(),
-
-                        memory_limit: startup_options.memory_limit,
-                        app_options,
-                        reflection,
-
-                        egui_ctx: &egui_ctx,
-                        render_ctx,
-                        command_sender,
-
-                        connection_registry,
-                        display_mode,
-                        auth_context: auth_state.as_ref(),
-                    },
-                    component_ui_registry,
-                    component_fallback_registry,
-                    view_class_registry,
-                    connected_receivers: rx_log,
-                    store_context,
-                    storage_context,
-                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
-                    indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-                    query_results: &query_results,
-                    time_ctrl,
-                    blueprint_time_ctrl: blueprint_time_control,
-                    selection_state,
-                    blueprint_query: &blueprint_query,
-                    focused_item,
-                    drag_and_drop_manager: &drag_and_drop_manager,
-                };
 
                 //
                 // Blueprint time panel
@@ -851,78 +838,6 @@ impl AppState {
                 .map(|undo_state| undo_state.blueprint_query())
         }
     }
-}
-
-/// Updates the query results for the given viewport UI.
-///
-/// Returns query results derived from the previous one.
-fn update_overrides(
-    ctx: &ViewerContext<'_>,
-    viewport_blueprint: &ViewportBlueprint,
-    view_states: &mut ViewStates,
-) -> HashMap<ViewId, DataQueryResult> {
-    use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-
-    struct OverridesUpdateTask<'a> {
-        view: &'a re_viewport_blueprint::ViewBlueprint,
-        view_state: &'a dyn re_viewer_context::ViewState,
-        query_result: DataQueryResult,
-    }
-
-    for view in viewport_blueprint.views.values() {
-        view_states.ensure_state_exists(view.id, view.class(ctx.view_class_registry));
-    }
-
-    let mut query_results = ctx.query_results.clone();
-
-    let work_items = viewport_blueprint
-        .views
-        .values()
-        .filter_map(|view| {
-            query_results.remove(&view.id).map(|query_result| {
-                let view_state = view_states
-                    .get(view.id)
-                    .expect("View state should exist, we just called ensure_state_exists on it.");
-                OverridesUpdateTask {
-                    view,
-                    view_state,
-                    query_result,
-                }
-            })
-        })
-        .collect::<Vec<_>>();
-
-    work_items
-        .into_par_iter()
-        .map(
-            |OverridesUpdateTask {
-                 view,
-                 view_state,
-                 mut query_result,
-             }| {
-                let visualizable_entities =
-                    ctx.collect_visualizable_entities_for_view_class(view.class_identifier());
-
-                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                    view,
-                    ctx.view_class_registry,
-                    &visualizable_entities,
-                    ctx.indicated_entities_per_visualizer,
-                );
-
-                resolver.update_overrides(
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                    ctx.time_ctrl.timeline(),
-                    ctx.view_class_registry,
-                    &mut query_result,
-                    view_state,
-                );
-
-                (view.id, query_result)
-            },
-        )
-        .collect()
 }
 
 fn table_ui(
