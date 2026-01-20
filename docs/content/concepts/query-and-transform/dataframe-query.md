@@ -4,7 +4,7 @@ order: 100
 ---
 
 Robotic and sensor data is inherently messy:
-- Sensors operate at different rates, producing unaligned data streams
+- Sensors operate at different rates: producing unaligned data streams
 - Data is sparse: not every component has a value at every timestamp
 - Multiple timelines coexist: wall clock time, frame numbers, sensor ticks, etc.
 
