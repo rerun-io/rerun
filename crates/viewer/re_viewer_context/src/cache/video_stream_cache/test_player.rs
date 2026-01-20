@@ -11,9 +11,8 @@ use re_renderer::video::{
 };
 use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
 use re_video::{
-    AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, AsyncDecoder, Receiver, SampleIndex,
-    SampleIndex, SampleMetadataState, SampleMetadataState, Sender, Time, Time,
-    VideoDataDescription, VideoDataDescription,
+    AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, SampleIndex, SampleMetadataState, Time,
+    VideoDataDescription,
 };
 
 use crate::{
@@ -21,7 +20,7 @@ use crate::{
 };
 
 struct TestDecoder {
-    sender: Sender<Result<re_video::Frame, re_video::DecodeError>>,
+    sender: re_video::Sender<Result<re_video::Frame, re_video::DecodeError>>,
     sample_tx: Sender<SampleIndex>,
     min_num_samples_to_enqueue_ahead: usize,
 }
@@ -146,8 +145,6 @@ impl TestVideoPlayer {
 
     #[track_caller]
     fn expect_decoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
-        eprintln!("  expect_decoded_samples…");
-
         let received = self.sample_rx.try_iter().collect::<Vec<_>>();
         let expected = samples.into_iter().collect::<Vec<_>>();
 
@@ -414,6 +411,23 @@ fn assert_loading(err: Result<(), VideoPlayerError>) {
     );
 }
 
+#[track_caller]
+fn assert_no_samples_before(err: Result<(), VideoPlayerError>) {
+    let err = err.unwrap_err();
+    assert!(
+        matches!(
+            err,
+            VideoPlayerError::InsufficientSampleData(
+                InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
+            )
+        ),
+        "Expected {:?} got {err:?}",
+        VideoPlayerError::InsufficientSampleData(
+            InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
+        )
+    );
+}
+
 #[test]
 fn player_with_unloaded() {
     #[track_caller]
@@ -508,7 +522,7 @@ impl TestVideoPlayer {
         self.play_with_buffer(range, time_step, &|tuid| {
             let buffer = storage_engine
                 .store()
-                .chunk(&re_chunk::ChunkId::from_tuid(tuid))
+                .physical_chunk(&re_chunk::ChunkId::from_tuid(tuid))
                 .and_then(|chunk| {
                     let raw = chunk.raw_component_array(
                         re_sdk_types::archetypes::VideoStream::descriptor_sample().component,
@@ -684,6 +698,7 @@ fn cache_with_manifest() {
     let mut player = TestVideoPlayer::from_stream(video_stream);
 
     assert_loading(player.play_store(6.0..10.0, 0.25, &store));
+    player.expect_decoded_samples(None);
 
     player.play_store(4.0..4.75, 0.25, &store).unwrap();
 
@@ -750,18 +765,96 @@ fn cache_with_streaming() {
     player.expect_decoded_samples(0..40);
 }
 
-// Test with more data per chunk to trigger splitting.
-const BIG_AV1_KEYFRAME: &[u8] = include_bytes!("big_av1_keyframe");
-const BIG_AV1_INTER_FRAME: &[u8] = include_bytes!("big_av1_inter_frame");
+#[test]
+fn cache_with_manifest_and_streaming() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunks: Vec<_> = once(codec_chunk())
+        .chain((0..6).map(|i| {
+            video_chunks(
+                AV1_TEST_KEYFRAME,
+                AV1_TEST_INTER_FRAME,
+                i as f64 + 1.0,
+                0.25,
+                1,
+                4,
+            )
+        }))
+        .map(Arc::new)
+        .collect();
+
+    // Load first 5 chunks into the manifest.
+    load_into_rrd_manifest(&mut store, &chunks[..5]);
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[..1]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load some chunks.
+    load_chunks(&mut store, &mut cache, &chunks[3..5]);
+
+    assert_no_samples_before(player.play_store(0.0..3.0, 0.25, &store));
+    player.expect_decoded_samples(None);
+
+    player.play_store(3.0..5.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(8..16);
+
+    load_chunks(&mut store, &mut cache, &chunks[5..6]);
+    player.play_store(5.0..6.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(16..20);
+
+    load_chunks(&mut store, &mut cache, &chunks[6..7]);
+    player.play_store(6.0..7.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(20..24);
+
+    player.play_store(3.0..7.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(8..24);
+
+    load_chunks(&mut store, &mut cache, &chunks[1..3]);
+    player.play_store(1.0..7.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(0..24);
+
+    unload_chunks(&store, &mut cache, 4.0..6.0);
+    // Check that all remaining samples are still playable.
+    player.play_store(4.0..6.0, 0.25, &store).unwrap();
+    player.expect_decoded_samples(12..20);
+}
+
+// Tests with more data per chunk to trigger splitting.
+fn big_av1_keyframe() -> Vec<u8> {
+    // 16 kb
+    let mut frame = vec![0; 1 << 14];
+
+    for (&source, dest) in AV1_TEST_KEYFRAME.iter().zip(frame.iter_mut()) {
+        *dest = source;
+    }
+
+    frame
+}
+
+fn big_av1_inter_frame() -> Vec<u8> {
+    // 1 kb
+    let mut frame = vec![0; 1 << 10];
+
+    for (&source, dest) in AV1_TEST_INTER_FRAME.iter().zip(frame.iter_mut()) {
+        *dest = source;
+    }
+
+    frame
+}
 
 #[track_caller]
-fn assert_splits_happened(store: EntityDb) {
+fn assert_splits_happened(store: &EntityDb) {
     let engine = store.storage_engine();
     let store = engine.store();
 
     assert!(
         store
-            .iter_chunks()
+            .iter_physical_chunks()
             .any(|c| { store.descends_from_a_split(&c.id()) }),
         "This test is testing how the video cache handles splits, but no split happened"
     );
@@ -783,11 +876,14 @@ fn cache_with_streaming_big() {
     let sample_count = chunk_count * samples_per_chunk;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
+    let keyframe = big_av1_keyframe();
+    let inter_frame = big_av1_inter_frame();
+
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
             video_chunks(
-                BIG_AV1_KEYFRAME,
-                BIG_AV1_INTER_FRAME,
+                &keyframe,
+                &inter_frame,
                 i as f64 * time_per_chunk,
                 dt,
                 gops_per_chunk,
@@ -813,7 +909,7 @@ fn cache_with_streaming_big() {
 
     player.expect_decoded_samples(0..sample_count as SampleIndex);
 
-    assert_splits_happened(store);
+    assert_splits_happened(&store);
 }
 
 #[test]
@@ -830,11 +926,14 @@ fn cache_with_manifest_big() {
     let samples_per_chunk = gops_per_chunk * samples_per_gop;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
+    let keyframe = big_av1_keyframe();
+    let inter_frame = big_av1_inter_frame();
+
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
             video_chunks(
-                BIG_AV1_KEYFRAME,
-                BIG_AV1_INTER_FRAME,
+                &keyframe,
+                &inter_frame,
                 time_per_chunk * i as f64,
                 dt,
                 gops_per_chunk,
@@ -853,7 +952,6 @@ fn cache_with_manifest_big() {
     let video_stream = playable_stream(&mut cache, &store);
     let mut player = TestVideoPlayer::from_stream(video_stream);
 
-    // Load all sample chunks.
     load_chunks(&mut store, &mut cache, &chunks[1..2]);
 
     player
@@ -863,5 +961,47 @@ fn cache_with_manifest_big() {
     let samples_per_chunk = samples_per_chunk as usize;
     player.expect_decoded_samples(samples_per_chunk..samples_per_chunk * 2 - 1);
 
-    assert_splits_happened(store);
+    load_chunks(&mut store, &mut cache, &chunks[2..3]);
+    player
+        .play_store(time_per_chunk * 2.0..time_per_chunk * 3.0 - dt, dt, &store)
+        .unwrap();
+
+    player.expect_decoded_samples(samples_per_chunk * 2..samples_per_chunk * 3 - 1);
+
+    let min_loaded = 1.7;
+    let max_loaded = 2.3;
+
+    unload_chunks(
+        &store,
+        &mut cache,
+        time_per_chunk * min_loaded..time_per_chunk * max_loaded,
+    );
+
+    // Assert that the beginning/end splits have been gc'd
+    assert_no_samples_before(player.play_store(time_per_chunk..time_per_chunk * 1.5, dt, &store));
+    player.expect_decoded_samples(None);
+
+    let play_store = player.play_store(time_per_chunk * 2.5..time_per_chunk * 3.0 - dt, dt, &store);
+    player.expect_decoded_samples(None);
+    assert_loading(play_store);
+
+    player
+        .play_store(
+            time_per_chunk * min_loaded..time_per_chunk * max_loaded - dt,
+            dt,
+            &store,
+        )
+        .unwrap();
+
+    let end = (samples_per_chunk as f64 * max_loaded) as usize;
+    player.expect_decoded_samples((samples_per_chunk as f64 * min_loaded).ceil() as usize..end);
+
+    load_chunks(&mut store, &mut cache, &chunks[0..2]);
+    player
+        .play_store(0.0..time_per_chunk * max_loaded - dt, dt, &store)
+        .unwrap();
+
+    player.expect_decoded_samples(0..end);
+
+    assert_splits_happened(&store);
 }

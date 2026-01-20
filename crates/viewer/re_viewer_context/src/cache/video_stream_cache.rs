@@ -104,6 +104,9 @@ pub enum VideoStreamProcessingError {
 
     #[error("Received video samples were not in chronological order.")]
     OutOfOrderSamples,
+
+    #[error("Chunks changed unexpectidly")]
+    UnexpectedChunkChanges,
 }
 
 const _: () = assert!(
@@ -188,12 +191,10 @@ impl VideoStreamCache {
         let result = match event.kind {
             re_chunk_store::ChunkStoreDiffKind::Addition => {
                 if let Some(known_range) = entry.known_chunk_ranges.get(&chunk.id()) {
-                    dbg!("known");
                     read_samples_from_known_chunk(timeline_name, chunk, known_range, video_data)
                 } else {
                     match &event.direct_lineage {
                         Some(ChunkDirectLineageReport::SplitFrom(original_chunk, siblings)) => {
-                            dbg!("split");
                             handle_split_chunk_addition(
                                 timeline_name,
                                 &mut entry.known_chunk_ranges,
@@ -204,7 +205,6 @@ impl VideoStreamCache {
                             )
                         }
                         Some(ChunkDirectLineageReport::CompactedFrom(old_chunks)) => {
-                            dbg!("compact");
                             handle_compacted_chunk_addition(
                                 timeline_name,
                                 &mut entry.known_chunk_ranges,
@@ -213,20 +213,17 @@ impl VideoStreamCache {
                                 old_chunks,
                             )
                         }
-                        _ => {
-                            dbg!("new");
-                            read_samples_from_new_chunk(
-                                timeline_name,
-                                chunk,
-                                video_data,
-                                &mut entry.known_chunk_ranges,
-                            )
-                        }
+                        _ => read_samples_from_new_chunk(
+                            timeline_name,
+                            chunk,
+                            video_data,
+                            &mut entry.known_chunk_ranges,
+                        ),
                     }
                 }
             }
             re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                dbg!("delete");
+                eprintln!("\ndelete: {}", chunk.id().short_string());
                 let known_ranges = &mut entry.known_chunk_ranges;
                 handle_deletion(entity_db, timeline, video_data, chunk, known_ranges)
             }
@@ -251,7 +248,10 @@ impl VideoStreamCache {
 
         match result {
             Ok(()) => {}
-            Err(VideoStreamProcessingError::OutOfOrderSamples) => {
+            Err(
+                VideoStreamProcessingError::OutOfOrderSamples
+                | VideoStreamProcessingError::UnexpectedChunkChanges,
+            ) => {
                 re_log::debug!("Found out of order samples");
                 drop(video_stream);
                 // We found out of order samples, discard this video stream cache entry
@@ -282,144 +282,142 @@ fn handle_deletion(
     let storage_engine = entity_db.storage_engine();
     let store = storage_engine.store();
 
-    {
-        let tmp = BTreeMap::default();
-        let per_chunk_map = entity_db
-            .rrd_manifest_index()
-            .native_temporal_map()
-            .get(chunk.entity_path())
-            .and_then(|per_timeline| {
-                let per_component = per_timeline.get(timeline)?;
-                per_component.get(&VideoStream::descriptor_sample().component)
-            })
-            .unwrap_or(&tmp);
+    let tmp = BTreeMap::default();
+    let per_chunk_map = entity_db
+        .rrd_manifest_index()
+        .native_temporal_map()
+        .get(chunk.entity_path())
+        .and_then(|per_timeline| {
+            let per_component = per_timeline.get(timeline)?;
+            per_component.get(&VideoStream::descriptor_sample().component)
+        })
+        .unwrap_or(&tmp);
 
-        let mut rrd_manifest_chunks: Vec<_> = store
-            .find_root_rrd_manifests(&chunk.id())
-            .into_iter()
-            .filter_map(|(c, _)| {
-                let entry = per_chunk_map.get(&c)?;
+    let mut rrd_manifest_chunks: Vec<_> = store
+        .find_root_rrd_manifests(&chunk.id())
+        .into_iter()
+        .filter_map(|(c, _)| {
+            let entry = per_chunk_map.get(&c)?;
 
-                Some((entry, c))
-            })
-            .collect();
+            Some((entry, c))
+        })
+        .collect();
 
-        let (sample_count, other_min, other_max) = video_data
-            .samples
-            .iter_index_range_clamped(&known_range.idx_range())
-            .fold(
-                (
-                    0,
-                    video_data.samples.next_index(),
-                    video_data.samples.min_index(),
-                ),
-                |(mut count, mut other_min, mut other_max), (idx, sample)| {
-                    if sample.source_id() == chunk.id().as_tuid() {
-                        count += 1;
-                    } else {
-                        other_min = other_min.min(idx);
-                        other_max = other_max.max(idx);
-                    }
-                    (count, other_min, other_max)
-                },
-            );
+    let (sample_count, other_min, other_max) = video_data
+        .samples
+        .iter_index_range_clamped(&known_range.idx_range())
+        .fold(
+            (
+                0usize,
+                video_data.samples.next_index(),
+                video_data.samples.min_index(),
+            ),
+            |(mut count, mut other_min, mut other_max), (idx, sample)| {
+                if sample.source_id() == chunk.id().as_tuid() {
+                    count += 1;
+                } else {
+                    other_min = other_min.min(idx);
+                    other_max = other_max.max(idx);
+                }
+                (count, other_min, other_max)
+            },
+        );
 
-        let required_count = rrd_manifest_chunks
-            .iter()
-            .map(|(entry, _)| entry.num_rows as usize)
-            .sum::<usize>();
+    let required_count = rrd_manifest_chunks
+        .iter()
+        .map(|(entry, _)| entry.num_rows as usize)
+        .sum::<usize>();
 
-        // If we don't have enough samples to fit all the now unloaded chunks we reset
-        // and build from new information.
-        if sample_count < required_count {
-            return Err(VideoStreamProcessingError::OutOfOrderSamples);
-        }
+    let possibly_start_removals = if known_range.first_sample == video_data.samples.min_index() {
+        other_min - known_range.first_sample + 1
+    } else {
+        0
+    };
 
-        let possibly_start_removals = if known_range.first_sample == video_data.samples.min_index()
-        {
-            other_min - known_range.first_sample + 1
-        } else {
-            0
-        };
+    let possibly_end_removals = if known_range.last_sample + 1 == video_data.samples.next_index() {
+        known_range.last_sample - other_max + 1
+    } else {
+        0
+    };
 
-        let possibly_end_removals =
-            if known_range.last_sample + 1 == video_data.samples.next_index() {
-                known_range.last_sample - other_max + 1
+    let required_removals = sample_count.saturating_sub(required_count);
+
+    // Prefer removing from the start.
+    let clear_start = if required_removals <= possibly_start_removals {
+        required_removals > 0
+    } else if required_removals <= possibly_end_removals {
+        false
+    } else {
+        // We can't remove enough samples.
+        return Err(VideoStreamProcessingError::UnexpectedChunkChanges);
+    };
+
+    let mut samples = video_data
+        .samples
+        .iter_index_range_clamped_mut(&known_range.idx_range());
+
+    if clear_start {
+        rrd_manifest_chunks
+            .sort_unstable_by_key(|(entry, _)| std::cmp::Reverse(entry.time_range.min));
+    } else {
+        rrd_manifest_chunks.sort_unstable_by_key(|(entry, _)| entry.time_range.min);
+    }
+
+    'outer: for (entry, chunk_id) in rrd_manifest_chunks {
+        for _ in 0..entry.num_rows {
+            let sample = if clear_start {
+                samples.next_back()
             } else {
-                0
+                samples.next()
             };
 
-        let required_removals = sample_count - required_count;
+            let Some((idx, sample)) = sample else {
+                break 'outer;
+            };
 
-        // Prefer removing from the start.
-        let clear_start = if required_removals <= possibly_start_removals {
-            required_removals > 0
-        } else if required_removals <= possibly_end_removals {
-            false
-        } else {
-            // We can't remove enough samples.
-            return Err(VideoStreamProcessingError::OutOfOrderSamples);
-        };
-
-        let mut samples = video_data
-            .samples
-            .iter_index_range_clamped_mut(&known_range.idx_range());
-
-        if clear_start {
-            rrd_manifest_chunks
-                .sort_unstable_by_key(|(entry, _)| std::cmp::Reverse(entry.time_range.min));
-        } else {
-            rrd_manifest_chunks.sort_unstable_by_key(|(entry, _)| entry.time_range.min);
-        }
-
-        for (entry, chunk_id) in rrd_manifest_chunks {
-            for _ in 0..entry.num_rows {
-                let sample = if clear_start {
-                    samples.next_back()
-                } else {
-                    samples.next()
-                };
-
-                let Some((idx, sample)) = sample else {
-                    return Err(VideoStreamProcessingError::OutOfOrderSamples);
-                };
-
-                if sample.source_id() != chunk.id().as_tuid() {
-                    continue;
-                }
-
-                known_ranges
-                    .entry(chunk_id)
-                    .and_modify(|range| {
-                        range.first_sample = range.first_sample.min(idx);
-                        range.last_sample = range.last_sample.max(idx);
-                    })
-                    .or_insert(ChunkSampleRange {
-                        first_sample: idx,
-                        last_sample: idx,
-                    });
-
-                *sample = re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid());
+            if sample.source_id() != chunk.id().as_tuid() {
+                continue;
             }
-        }
 
-        drop(samples);
-        if required_removals > 0 {
-            if clear_start {
-                let to_index = video_data.samples.min_index() + required_removals - 1;
-                video_data
-                    .samples
-                    .remove_all_with_index_smaller_equal(to_index);
-            } else {
-                let from_index = video_data.samples.next_index() - required_removals;
-                video_data
-                    .samples
-                    .remove_all_with_index_larger_equal(from_index);
-            }
-        }
+            known_ranges
+                .entry(chunk_id)
+                .and_modify(|range| {
+                    range.first_sample = range.first_sample.min(idx);
+                    range.last_sample = range.last_sample.max(idx);
+                })
+                .or_insert(ChunkSampleRange {
+                    first_sample: idx,
+                    last_sample: idx,
+                });
 
-        adjust_keyframes_for_removed_samples(video_data);
+            *sample = re_video::SampleMetadataState::Unloaded(chunk_id.as_tuid());
+        }
     }
+
+    {
+        let _samples = samples;
+        debug_assert_eq!(
+            _samples.count(),
+            0,
+            "All samples should be set to unloaded at this point."
+        );
+    }
+
+    if required_removals > 0 {
+        if clear_start {
+            let to_index = video_data.samples.min_index() + required_removals - 1;
+            video_data
+                .samples
+                .remove_all_with_index_smaller_equal(to_index);
+        } else {
+            let from_index = video_data.samples.next_index() - required_removals;
+            video_data
+                .samples
+                .remove_all_with_index_larger_equal(from_index);
+        }
+    }
+
+    adjust_keyframes_for_removed_samples(video_data);
 
     Ok(())
 }
@@ -527,15 +525,11 @@ fn handle_split_chunk_addition(
 
     let mut chunk_sample_iterators = ChunkSampleIterators::default();
 
-    let mut count = 0;
     for chunk in std::iter::once(chunk).chain(siblings) {
         if let Some(samples) = ChunkSamples::from_chunk(chunk, timeline) {
-            count += samples.samples.len();
             chunk_sample_iterators.add_chunk(samples);
         }
     }
-
-    dbg!(count);
 
     let mut i = 0;
 
@@ -549,7 +543,6 @@ fn handle_split_chunk_addition(
 
                 idx
             } else {
-                dbg!(i);
                 debug_assert!(
                     false,
                     "Split chunks ended up with more samples than the original chunk?"
@@ -582,11 +575,12 @@ fn log_samples(
     store: &re_entity_db::EntityDb,
     samples: &re_video::StableIndexDeque<re_video::SampleMetadataState>,
 ) {
+    let mut last = String::new();
     eprintln!(
         "\nSamples:\n{}",
         samples
             .iter_indexed()
-            .map(|(idx, s)| {
+            .filter_map(|(idx, s)| {
                 let sources: Vec<_> = store
                     .storage_engine()
                     .store()
@@ -598,12 +592,20 @@ fn log_samples(
                 let l = s.sample().map(|_| "*").unwrap_or(" ");
 
                 let own = s.source_id().short_string();
-                if let [single] = sources.as_slice()
+                let text = if let [single] = sources.as_slice()
                     && single == &own
                 {
-                    format!("{l}{idx:5} @ {own}",)
+                    own.to_string()
                 } else {
-                    format!("{l}{idx:5} @ {own}: {}", sources.join(", "))
+                    format!("{own}: {}", sources.join(", "))
+                };
+
+                if text != last {
+                    last = text.clone();
+
+                    Some(format!("{l}{idx:5} @ {text}"))
+                } else {
+                    None
                 }
             })
             .collect::<Vec<_>>()
@@ -1224,6 +1226,10 @@ impl Cache for VideoStreamCache {
                 );
             }
         }
+
+        if let Some(video) = self.0.values().next() {
+            log_samples(entity_db, &video.video_stream.read().video_descr().samples);
+        }
     }
 }
 
@@ -1432,7 +1438,6 @@ fn load_known_chunk_ranges(
                         .checked_sub(1)
                         .map(|offset| idx.saturating_add(offset as usize))
                 {
-                    dbg!(next_chunk_id, count);
                     known_chunk_ranges.insert(
                         next_chunk_id,
                         ChunkSampleRange {
@@ -1448,8 +1453,6 @@ fn load_known_chunk_ranges(
                 }
             }
             ChunkKind::Loaded(chunk) => {
-                dbg!(chunk.id, chunk.samples.len());
-
                 loaded_samples_timepoint_iterators.add_chunk(chunk);
             }
         }
@@ -1472,12 +1475,12 @@ fn load_known_chunk_ranges(
 fn adjust_keyframes_for_removed_samples(descr: &mut re_video::VideoDataDescription) {
     let samples = &descr.samples;
 
-    descr.keyframe_indices.dedup();
     descr.keyframe_indices.retain(|idx| {
         samples
             .get(*idx)
             .is_some_and(|s| s.sample().is_some_and(|s| s.is_sync))
     });
+    descr.keyframe_indices.dedup();
 }
 
 #[cfg(test)]
