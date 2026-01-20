@@ -899,6 +899,13 @@ impl SampleMetadataState {
             Self::Unloaded(id) => *id,
         }
     }
+
+    pub fn source_id_mut(&mut self) -> &mut Tuid {
+        match self {
+            Self::Present(sample) => &mut sample.source_id,
+            Self::Unloaded(id) => id,
+        }
+    }
 }
 
 impl re_byte_size::SizeBytes for SampleMetadataState {

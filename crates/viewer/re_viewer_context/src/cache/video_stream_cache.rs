@@ -191,7 +191,14 @@ impl VideoStreamCache {
         let result = match event.kind {
             re_chunk_store::ChunkStoreDiffKind::Addition => {
                 if let Some(known_range) = entry.known_chunk_ranges.get(&chunk.id()) {
-                    read_samples_from_known_chunk(timeline_name, chunk, known_range, video_data)
+                    let offset_in_chunk = 0;
+                    read_samples_from_known_chunk(
+                        timeline_name,
+                        chunk,
+                        known_range,
+                        video_data,
+                        offset_in_chunk,
+                    )
                 } else {
                     match &event.direct_lineage {
                         Some(ChunkDirectLineageReport::SplitFrom(original_chunk, siblings)) => {
@@ -266,6 +273,13 @@ impl VideoStreamCache {
     }
 }
 
+/// For a deletion event we want to:
+/// - Return samples to their root chunk in the rrd manifest.
+/// - Remove samples that are from volatile root chunks.
+///
+/// While keeping sample indices stable. So if we get deletion
+/// events for volatile chunks that aren't at the start/end of the
+/// sample list we reset this video cache entry.
 fn handle_deletion(
     entity_db: &EntityDb,
     timeline: &Timeline,
@@ -322,7 +336,11 @@ fn handle_deletion(
             },
         );
 
-    let required_count = rrd_manifest_chunks
+    // The number of samples in this chunk that come from the rrd manifest.
+    //
+    // For split chunks this will be larger than the actual number of samples
+    // in the chunk.
+    let count_from_manifest = rrd_manifest_chunks
         .iter()
         .map(|(entry, _)| entry.num_rows as usize)
         .sum::<usize>();
@@ -339,7 +357,7 @@ fn handle_deletion(
         0
     };
 
-    let required_removals = sample_count.saturating_sub(required_count);
+    let required_removals = sample_count.saturating_sub(count_from_manifest);
 
     // Prefer removing from the start.
     let clear_start = if required_removals <= possibly_start_removals {
@@ -421,6 +439,9 @@ fn handle_deletion(
     Ok(())
 }
 
+/// For compactions we want to:
+/// * Update the sample sources from all the compacted chunks to the new chunk.
+/// * Load samples from the incoming `chunk` we hadn't loaded before.
 fn handle_compacted_chunk_addition(
     timeline: TimelineName,
     known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
@@ -446,21 +467,29 @@ fn handle_compacted_chunk_addition(
     let mut min = None;
     let mut max = None;
 
-    let mut update_min_max = |idx: re_video::SampleIndex| {
+    let mut load_from = None;
+    let mut update_min_max = |idx: re_video::SampleIndex, is_unloaded: bool| {
         let min = min.get_or_insert(idx);
         let max = max.get_or_insert(idx);
         *min = idx.min(*min);
         *max = idx.max(*max);
+        if load_from.is_none() && is_unloaded {
+            load_from = Some(idx);
+        }
     };
+
     for (range, reused_chunk) in reused_chunks {
         for (idx, sample) in video_data
             .samples
             .iter_index_range_clamped_mut(&range.idx_range())
             .filter(|(_, s)| s.source_id() == reused_chunk.id().as_tuid())
         {
-            update_min_max(idx);
+            update_min_max(
+                idx,
+                matches!(sample, re_video::SampleMetadataState::Unloaded(_)),
+            );
 
-            *sample = re_video::SampleMetadataState::Unloaded(chunk.id().as_tuid());
+            *sample.source_id_mut() = chunk.id().as_tuid();
         }
     }
 
@@ -474,7 +503,7 @@ fn handle_compacted_chunk_addition(
         for _ in 0..len {
             let idx = video_data.samples.next_index();
 
-            update_min_max(idx);
+            update_min_max(idx, true);
 
             video_data
                 .samples
@@ -492,7 +521,21 @@ fn handle_compacted_chunk_addition(
             last_sample,
         };
 
-        let res = read_samples_from_known_chunk(timeline, chunk, &range, video_data);
+        // We only need to update samples that were unloaded, or didn't exist before.
+        let load_range = ChunkSampleRange {
+            first_sample: load_from.unwrap_or(first_sample),
+            last_sample,
+        };
+
+        let offset_in_chunk = load_range.first_sample - range.first_sample;
+
+        let res = read_samples_from_known_chunk(
+            timeline,
+            chunk,
+            &load_range,
+            video_data,
+            offset_in_chunk,
+        );
 
         known_chunk_ranges.insert(chunk.id(), range);
 
@@ -505,6 +548,11 @@ fn handle_compacted_chunk_addition(
     }
 }
 
+/// For splits we want to:
+/// * The first time we see a split we allocate samples for all its siblings.
+///   Or if said chunk has a root in the rrd manifest, update samples that has
+///   the root chunk as source.
+/// * Load samples from the incoming `chunk`.
 fn handle_split_chunk_addition(
     timeline: TimelineName,
     known_chunk_ranges: &mut BTreeMap<ChunkId, ChunkSampleRange>,
@@ -555,7 +603,14 @@ fn handle_split_chunk_addition(
     drop(samples);
 
     if let Some(known_range) = known_chunk_ranges.get(&chunk.id()) {
-        let res = read_samples_from_known_chunk(timeline, chunk, known_range, video_data);
+        let offset_in_chunk = 0;
+        let res = read_samples_from_known_chunk(
+            timeline,
+            chunk,
+            known_range,
+            video_data,
+            offset_in_chunk,
+        );
 
         adjust_keyframes_for_removed_samples(video_data);
 
@@ -654,22 +709,19 @@ fn load_video_data_from_chunks(
 
     for chunk in &sorted_samples {
         let Some(known_range) = known_chunk_ranges.get(&chunk.id()) else {
-            // If this chunk had any samples on the current timeline `known_chunk_ranges`
-            // should contain it.
-            debug_assert!(
-                chunk
-                    .iter_component_timepoints(sample_component)
-                    .filter(|t| t.get(&timeline).is_some())
-                    .count()
-                    == 0,
-                "[DEBUG] We just made sure this chunk's range was registered"
-            );
+            // If a chunk didn't actually contain any non-null samples we
+            // won't have any pre-allocated samples for it.
             continue;
         };
 
-        if let Err(err) =
-            read_samples_from_known_chunk(timeline, chunk, known_range, &mut video_descr)
-        {
+        let offset_in_chunk = 0;
+        if let Err(err) = read_samples_from_known_chunk(
+            timeline,
+            chunk,
+            known_range,
+            &mut video_descr,
+            offset_in_chunk,
+        ) {
             match err {
                 VideoStreamProcessingError::OutOfOrderSamples => {
                     re_log::warn_once!(
@@ -722,11 +774,14 @@ impl re_byte_size::SizeBytes for ChunkSampleRange {
 ///
 /// Encoding details are automatically updated whenever detected.
 /// Changes of encoding details over time will trigger a warning.
+///
+/// `offset_in_chunk` is how many samples within the chunk should be skipped.
 fn read_samples_from_known_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
     known_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
+    offset_in_chunk: usize,
 ) -> Result<(), VideoStreamProcessingError> {
     let re_video::VideoDataDescription {
         codec,
@@ -764,12 +819,9 @@ fn read_samples_from_known_chunk(
     for (component_offset, (time, _row_id)) in chunk
         .iter_component_offsets(sample_component)
         .zip(chunk.iter_component_indices(timeline, sample_component))
+        .filter(|(component_offset, _)| component_offset.len > 0)
+        .skip(offset_in_chunk)
     {
-        if component_offset.len == 0 {
-            // Ignore empty samples.
-            continue;
-        }
-
         if component_offset.len != 1 {
             re_log::warn_once!(
                 "Expected only a single VideoSample per row (it is a mono-component)"
