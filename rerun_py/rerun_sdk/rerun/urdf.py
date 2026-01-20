@@ -287,8 +287,7 @@ class UrdfTree:
 
     def get_visual_geometry_paths(self, link: str | UrdfLink) -> list[str]:
         """
-        Get the entity paths for all visual geometries of the given link, if any,
-        as they are logged by the URDF loader.
+        Get the entity paths for all visual geometries of the given link, if any.
 
         Parameters
         ----------
@@ -307,8 +306,7 @@ class UrdfTree:
 
     def get_collision_geometry_paths(self, link: str | UrdfLink) -> list[str]:
         """
-        Get the entity paths for all collision geometries of the given link, if any,
-        as they are logged by the URDF loader.
+        Get the entity paths for all collision geometries of the given link, if any.
 
         Parameters
         ----------
