@@ -1,6 +1,7 @@
 use re_sdk_types::components::TransformFrameId;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::text_edit::autocomplete_text_edit;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 
 /// Shows a potentially editable `frame_id`.
 /// If the `frame_id` is being edited, a list of matching frame names is shown as suggestions.
@@ -12,7 +13,10 @@ pub fn edit_or_view_transform_frame_id(
     frame_id: &mut MaybeMutRef<'_, TransformFrameId>,
 ) -> egui::Response {
     match frame_id {
-        MaybeMutRef::Ref(frame_id) => ui.label(frame_id.as_str()),
+        MaybeMutRef::Ref(frame_id) => UiLayout::List.data_label(
+            ui,
+            SyntaxHighlightedBuilder::new().with_string_value(frame_id.as_str()),
+        ),
         MaybeMutRef::MutRef(frame_id) => {
             let suggestions = {
                 let caches = ctx.store_context.caches;
