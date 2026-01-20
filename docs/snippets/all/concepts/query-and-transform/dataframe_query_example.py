@@ -1,10 +1,18 @@
 """Query and display the first 10 rows of a recording."""
 
+import atexit
 import math
+import os
+import tempfile
 
 from datafusion import col
 
 import rerun as rr
+
+
+# should be a cross-platform way to generate a rrd path.
+RRD_PATH = tempfile.mktemp(suffix=".rrd")
+atexit.register(lambda: os.unlink(RRD_PATH) if os.path.exists(RRD_PATH) else None)
 
 # region: setup
 # create some data
@@ -13,7 +21,7 @@ scalars = [math.sin(t / 10.0) for t in times]
 
 # log the data to a temporary recording
 with rr.RecordingStream("rerun_example_dataframe_query") as rec:
-    rec.save("/tmp/demo.rrd")
+    rec.save(RRD_PATH)
     rec.send_columns(
         "/data",
         indexes=[rr.TimeColumn("step", sequence=times)],
@@ -24,7 +32,7 @@ with rr.RecordingStream("rerun_example_dataframe_query") as rec:
 
 # region: query
 # load the demo recording in a temporary catalog
-with rr.server.Server(datasets={"dataset": ["/tmp/demo.rrd"]}) as server:
+with rr.server.Server(datasets={"dataset": [RRD_PATH]}) as server:
     # obtain a dataset from the catalog
     dataset = server.client().get_dataset("dataset")
 
