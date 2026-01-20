@@ -61,40 +61,17 @@ jobs:
 
       - name: Get PR details
         if: steps.check-member.outputs.authorized == 'true'
-        id: pr-details
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           echo "Fetching PR details for PR #${{ github.event.issue.number }}…"
-          PR_DATA=$(gh pr view ${{ github.event.issue.number }} \
+          gh pr view ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
-            --json headRefName,headRepositoryOwner,headRepository,number,title,body)
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body \
+            > /tmp/pr_data.json
 
-          echo "pr_number=$(echo "$PR_DATA" | jq -r '.number')" >> $GITHUB_OUTPUT
-          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
-          echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
-          echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
-          echo "title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
-
-          # Store body in file (handles multiline and special characters)
-          echo "$PR_DATA" | jq -r '.body // ""' > /tmp/pr_body.txt
-
-          # Determine if this is from a fork
-          # Compare head repo with the repo where this action is running
-          HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
-          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.name')
-          HEAD_FULL="${HEAD_OWNER}/${HEAD_REPO}"
-
-          echo "PR head: ${HEAD_FULL}"
-          echo "This repo: ${{ github.repository }}"
-
-          if [ "${HEAD_FULL}" = "${{ github.repository }}" ]; then
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-            echo "This is NOT a fork PR"
-          else
-            echo "is_fork=true" >> $GITHUB_OUTPUT
-            echo "This IS a fork PR from ${HEAD_FULL}"
-          fi
+          echo "PR data:"
+          jq '.' /tmp/pr_data.json
 
       - name: Trigger reality sync workflow
         if: steps.check-member.outputs.authorized == 'true'
@@ -104,28 +81,34 @@ jobs:
           echo "================================================"
           echo "Triggering repository_dispatch to reality repo"
           echo "================================================"
-          echo "Event type: sync-import-pr"
-          echo "Repo: rerun"
-          echo "PR number: ${{ steps.pr-details.outputs.pr_number }}"
-          echo "Head ref: ${{ steps.pr-details.outputs.head_ref }}"
-          echo "Head owner: ${{ steps.pr-details.outputs.head_owner }}"
-          echo "Head repo: ${{ steps.pr-details.outputs.head_repo }}"
-          echo "Is fork: ${{ steps.pr-details.outputs.is_fork }}"
-          echo "Triggered by: ${{ github.event.comment.user.login }}"
-          echo "================================================"
 
-          # Make the API call and capture both stdout and stderr
-          if gh api repos/rerun-io/reality/dispatches \
-            -f event_type=sync-import-pr \
-            -f "client_payload[repo]=rerun" \
-            -f "client_payload[pr_number]=${{ steps.pr-details.outputs.pr_number }}" \
-            -f "client_payload[head_ref]=${{ steps.pr-details.outputs.head_ref }}" \
-            -f "client_payload[head_owner]=${{ steps.pr-details.outputs.head_owner }}" \
-            -f "client_payload[head_repo]=${{ steps.pr-details.outputs.head_repo }}" \
-            -f "client_payload[title]=${{ steps.pr-details.outputs.title }}" \
-            -f "client_payload[is_fork]=${{ steps.pr-details.outputs.is_fork }}" \
-            -f "client_payload[triggered_by]=${{ github.event.comment.user.login }}" \
-            --raw-field "client_payload[body]=$(cat /tmp/pr_body.txt)" 2>&1; then
+          # Construct the entire payload using jq to avoid shell substitution
+          # This ensures backticks and other special characters in title/body are handled safely
+          jq -n \
+            --arg repo "${{ github.event.repository.name }}" \
+            --arg current_repo "${{ github.repository }}" \
+            --arg triggered_by "${{ github.event.comment.user.login }}" \
+            --slurpfile pr_data /tmp/pr_data.json \
+            '{
+              event_type: "sync-import-pr",
+              client_payload: {
+                repo: $repo,
+                pr_number: $pr_data[0].number,
+                head_ref: $pr_data[0].headRefName,
+                head_owner: $pr_data[0].headRepositoryOwner.login,
+                head_repo: $pr_data[0].headRepository.name,
+                title: $pr_data[0].title,
+                body: ($pr_data[0].body // ""),
+                is_fork: (("\($pr_data[0].headRepositoryOwner.login)/\($pr_data[0].headRepository.name)") != $current_repo),
+                triggered_by: $triggered_by
+              }
+            }' > /tmp/dispatch_payload.json
+
+          echo "Dispatch payload:"
+          jq '.' /tmp/dispatch_payload.json
+
+          # Make the API call with the JSON payload
+          if gh api repos/rerun-io/reality/dispatches --input /tmp/dispatch_payload.json 2>&1; then
             echo "✓ Successfully dispatched sync-import-pr event to reality repo"
             echo "Note: repository_dispatch returns 204 No Content on success"
             echo "The reality repo should now be processing the import workflow"
