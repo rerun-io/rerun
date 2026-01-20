@@ -254,9 +254,13 @@ fn with_unloaded_chunks() {
 
     let mut chunks = create_chunks();
 
-    // Add manifest with unloaded chunks (chunks that exist in manifest but not in the store)
-    let rrd_manifest = build_manifest_with_unloaded_chunks(test_context.active_store_id(), &chunks);
-    test_context.add_rrd_manifest(rrd_manifest);
+    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        test_context.active_store_id(),
+        chunks.iter(),
+    )
+    .unwrap();
+
+    test_context.add_rrd_manifest((*rrd_manifest).clone());
 
     let height = 250.0;
     let mut snapshot_results = SnapshotResults::new();
@@ -335,36 +339,6 @@ fn create_chunks() -> Vec<Chunk> {
         create_chunk("/timeline_b_only", timeline_b, [5, 8]),
         create_chunk("/some_entity", timeline_a, [9, 10]),
     ]
-}
-
-fn build_manifest_with_unloaded_chunks(
-    store_id: StoreId,
-    chunks: &[Chunk],
-) -> re_log_encoding::RrdManifest {
-    let mut builder = RrdManifestBuilder::default();
-    let mut byte_offset = 0u64;
-
-    for chunk in chunks {
-        let arrow_msg = chunk.to_arrow_msg().unwrap();
-        let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
-
-        // Use mock byte sizes for testing (actual values only matter for file-based loading)
-        let chunk_byte_size = 1000u64;
-        let chunk_byte_size_uncompressed = 2000u64;
-
-        let byte_span = re_span::Span {
-            start: byte_offset,
-            len: chunk_byte_size,
-        };
-
-        builder
-            .append(&chunk_batch, byte_span, chunk_byte_size_uncompressed)
-            .unwrap();
-
-        byte_offset += chunk_byte_size;
-    }
-
-    builder.build(store_id).unwrap()
 }
 
 pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {

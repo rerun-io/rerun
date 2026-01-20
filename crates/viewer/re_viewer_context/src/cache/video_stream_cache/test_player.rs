@@ -1,10 +1,9 @@
 use std::{iter::once, ops::Range, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
-use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
-use re_log_encoding::{RrdManifest, RrdManifestBuilder};
+use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
@@ -536,31 +535,6 @@ impl TestVideoPlayer {
     }
 }
 
-fn build_manifest_with_unloaded_chunks(store_id: StoreId, chunks: &[Arc<Chunk>]) -> RrdManifest {
-    let mut builder = RrdManifestBuilder::default();
-    let mut byte_offset = 0u64;
-
-    for chunk in chunks {
-        let arrow_msg = chunk.to_arrow_msg().unwrap();
-        let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).unwrap();
-
-        let chunk_byte_size = chunk.total_size_bytes();
-
-        let byte_span = re_span::Span {
-            start: byte_offset,
-            len: chunk_byte_size,
-        };
-
-        builder
-            .append(&chunk_batch, byte_span, chunk_byte_size)
-            .unwrap();
-
-        byte_offset += chunk_byte_size;
-    }
-
-    builder.build(store_id).unwrap()
-}
-
 const STREAM_ENTITY: &str = "/stream";
 const TIMELINE_NAME: &str = "video";
 
@@ -665,9 +639,13 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
 }
 
 fn load_into_rrd_manifest(store: &mut EntityDb, chunks: &[Arc<Chunk>]) {
-    let manifest = build_manifest_with_unloaded_chunks(store.store_id().clone(), chunks);
+    let manifest = RrdManifest::build_in_memory_from_chunks(
+        store.store_id().clone(),
+        chunks.iter().map(|c| &**c),
+    )
+    .unwrap();
 
-    store.add_rrd_manifest_message(manifest);
+    store.add_rrd_manifest_message((*manifest).clone());
 }
 
 #[test]
