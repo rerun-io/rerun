@@ -176,12 +176,28 @@ class Tracker:
     next_tracking_id = 0
     MAX_TIMES_UNDETECTED = 2
 
+    @staticmethod
+    def _create_tracker() -> Any:
+        """Create a CSRT tracker, handling OpenCV API variations."""
+        # Try cv2.legacy first (most common in opencv-contrib-python >4.5)
+        try:
+            return cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+        # Try cv2.TrackerCSRT.create() (some versions)
+        try:
+            return cv2.TrackerCSRT.create()  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+        # Try cv2.TrackerCSRT_create() (older API)
+        return cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
+
     def __init__(self, tracking_id: int, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.tracking_id = tracking_id
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv2.TrackerCSRT.create()  # type: ignore[attr-defined]
+        self.tracker = self._create_tracker()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -225,7 +241,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv2.TrackerCSRT.create()  # type: ignore[attr-defined]
+        self.tracker = self._create_tracker()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
