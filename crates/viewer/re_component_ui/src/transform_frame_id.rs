@@ -6,7 +6,7 @@ pub fn edit_or_view_transform_frame_id(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     frame_id: &mut MaybeMutRef<'_, TransformFrameId>,
-    hint_text: Option<&str>,
+    hint_text: Option<impl Into<egui::WidgetText>>,
 ) -> egui::Response {
     match frame_id {
         MaybeMutRef::Ref(frame_id) => ui.label(frame_id.as_str()),
