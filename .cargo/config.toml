@@ -31,7 +31,9 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # manually. But, mixing this with any pixi invocations will result in spurious rebuilds.
 PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
-# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
+# Our Wasm builds seem to fail when they try to use
+# macOS default AR. For stacker we were able to push down a fix.
+# but ring and lz4 both still need this (at least).
 [target.osx-arm64.activation.env]
 AR = "llvm-ar"
 

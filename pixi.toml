@@ -566,7 +566,9 @@ buf = "1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
+# Various Wasm targets fail on mac without
+# llvm-ar
+llvm-tools = "16.0.6.*"
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
