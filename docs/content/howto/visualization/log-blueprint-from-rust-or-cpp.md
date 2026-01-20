@@ -6,7 +6,7 @@ order: 501
 The blueprint API is currently only available in Python. However, blueprints can be saved to files and loaded from any language.
 
 This enables a workflow where you:
-1. Create and iterate on blueprints using Python
+1. Create and iterate on blueprints using Python (or the Viewer)
 2. Save the blueprint to a `.rbl` file
 3. Load that blueprint from Rust or C++ alongside your data
 
