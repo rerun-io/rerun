@@ -24,7 +24,7 @@ Dataframe queries can be used in two contexts:
 
 Let's use an example to illustrate how dataframe queries work.
 
-Dataframe queries run against datasets stored on a [Data Platform](../how-does-rerun-work.md#data-platform), an open-source implementation of which ships with Rerun.
+Dataframe queries run against datasets stored on a [Data Platform](../how-does-rerun-work.md#data-platform).
 We can create a demo recording and load it into a temporary local catalog using the following code:
 
 snippet: concepts/query-and-transform/dataframe_query_example[setup]
