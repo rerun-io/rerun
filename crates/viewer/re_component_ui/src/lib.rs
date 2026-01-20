@@ -22,7 +22,7 @@ mod response_utils;
 mod text_log_columns;
 mod time_range;
 mod timeline_columns;
-pub mod transform_frame_id;
+mod transform_frame_id;
 mod transforms;
 mod variant_uis;
 mod video_timestamp;
