@@ -747,19 +747,18 @@ impl MemUsageTreeCapture for RrdManifestIndex {
         use re_byte_size::SizeBytes as _;
 
         let Self {
-            manifest,
-            remote_chunks,
+            chunk_intervals,
             chunk_promises: _, // not yet implemented
-            parents,
-            timelines,
-            entity_tree,
-            entity_has_temporal_data_on_timeline,
             entity_has_static_data,
-            static_chunk_ids,
+            entity_has_temporal_data_on_timeline,
+            entity_tree,
+            manifest_row_from_chunk_id,
+            manifest,
             native_static_map,
             native_temporal_map,
-            chunk_intervals,
-            manifest_row_from_chunk_id,
+            remote_chunks,
+            static_chunk_ids,
+            timelines,
             full_uncompressed_size: _,
         } = self;
 
@@ -784,7 +783,6 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             "native_temporal_map",
             native_temporal_map.total_size_bytes(),
         );
-        node.add("parents", parents.total_size_bytes());
         node.add("remote_chunks", remote_chunks.total_size_bytes());
         node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
         node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());

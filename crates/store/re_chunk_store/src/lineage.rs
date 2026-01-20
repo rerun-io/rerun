@@ -66,6 +66,19 @@ pub enum ChunkDirectLineage {
     Volatile,
 }
 
+impl re_byte_size::SizeBytes for ChunkDirectLineage {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::SplitFrom(chunk_id, chunk_ids) => {
+                chunk_id.heap_size_bytes() + chunk_ids.heap_size_bytes()
+            }
+            Self::CompactedFrom(btree_set) => btree_set.heap_size_bytes(),
+            Self::ReferencedFrom(rrd_manifest) => rrd_manifest.heap_size_bytes(),
+            Self::Volatile => 0,
+        }
+    }
+}
+
 impl std::fmt::Display for ChunkDirectLineage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

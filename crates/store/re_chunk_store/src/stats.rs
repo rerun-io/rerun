@@ -366,6 +366,9 @@ impl SizeBytes for ChunkStore {
             type_registry,
             per_column_metadata,
             chunk_ids_per_min_row_id,
+            chunks_lineage,
+            dangling_splits,
+            leaky_compactions,
             temporal_physical_chunks_stats,
             static_chunks_stats,
             missing_chunk_ids,
@@ -392,6 +395,9 @@ impl SizeBytes for ChunkStore {
             + type_registry.heap_size_bytes()
             + per_column_metadata.heap_size_bytes()
             + chunk_ids_per_min_row_id.heap_size_bytes()
+            + chunks_lineage.heap_size_bytes()
+            + dangling_splits.heap_size_bytes()
+            + leaky_compactions.heap_size_bytes()
             + temporal_physical_chunks_stats.heap_size_bytes()
             + static_chunks_stats.heap_size_bytes()
             + missing_chunk_ids.heap_size_bytes()
