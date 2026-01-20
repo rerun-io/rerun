@@ -2,7 +2,7 @@ use re_sdk_types::components::TransformFrameId;
 use re_ui::text_edit::autocomplete_text_edit;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
-/// Shows an editable `frame_id`.
+/// Shows a potentially editable `frame_id`.
 /// If the `frame_id` is being edited, a list of matching frame names is shown as suggestions.
 ///
 /// Note: implicit, entity-path-derived frame IDs are not suggested.
