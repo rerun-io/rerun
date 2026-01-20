@@ -222,7 +222,20 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                             text_sig = "(self, " + text_sig[1:]
                     sig = "def __init__" + text_sig + ": ..."  # NOLINT
                     parsed = parso.parse(sig).children[0]
-                    class_def[method_name] = parse_function_signature(parsed)
+                    parsed_sig = parse_function_signature(parsed)
+                    # Get the actual docstring from __init__ (though PyO3 usually has a useless default)
+                    init_doc = (
+                        method_obj.__doc__
+                        if method_obj.__doc__ != "Initialize self.  See help(type(self)) for accurate signature."
+                        else None
+                    )
+                    # Create a new APIDef with the correct docstring
+                    class_def[method_name] = APIDef(
+                        parsed_sig.name,
+                        parsed_sig.signature,
+                        is_internal_class,
+                        init_doc,
+                    )
                     continue
                 try:
                     api_def = APIDef(method_name, inspect.signature(method_obj), is_internal_class, method_obj.__doc__)
@@ -300,8 +313,13 @@ def apply_signature_fixes(pyi_file: Path, fixes: list[tuple[str, str | None, API
         new_lines = []
         new_lines.append(f"def {runtime_sig.name}{runtime_sig.signature} -> Any:")
 
-        if runtime_sig.doc:
-            doclines = runtime_sig.doc.split("\n")
+        # For __init__, preserve the stub's docstring if runtime doesn't have a useful one
+        use_doc = runtime_sig.doc
+        if runtime_sig.name == "__init__" and not use_doc and stub_sig.doc:
+            use_doc = stub_sig.doc
+
+        if use_doc:
+            doclines = use_doc.split("\n")
             if len(doclines) == 1:
                 new_lines.append(f'    """{doclines[0]}"""')
             else:
