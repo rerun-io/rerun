@@ -104,8 +104,8 @@ impl SeriesLinesSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err.into());
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
-                    output.report_error_for(entity_path, error);
+                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
+                    output.report_error_for(entity_path, err);
                 }
                 Ok(series) => {
                     self.all_series.extend(series);
@@ -157,7 +157,7 @@ impl SeriesLinesSystem {
             else {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
-                    error: "No valid scalar data found".to_owned(),
+                    err: "No valid scalar data found".to_owned(),
                 });
             };
 
@@ -336,11 +336,9 @@ impl SeriesLinesSystem {
                     aggregator,
                     &mut series,
                 )
-                .map_err(|error| {
-                    LoadSeriesError::EntitySpecificVisualizerError {
-                        entity_path: data_result.entity_path.clone(),
-                        error,
-                    }
+                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
+                    entity_path: data_result.entity_path.clone(),
+                    err,
                 })?;
             }
 

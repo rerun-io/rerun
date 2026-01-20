@@ -105,8 +105,8 @@ impl SeriesPointsSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err);
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
-                    output.report_error_for(entity_path, error);
+                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
+                    output.report_error_for(entity_path, err);
                 }
                 Ok(one_series) => {
                     self.all_series.extend(one_series);
@@ -157,7 +157,7 @@ impl SeriesPointsSystem {
             else {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
-                    error: "No valid scalar data found".to_owned(),
+                    err: "No valid scalar data found".to_owned(),
                 });
             };
 
@@ -377,11 +377,9 @@ impl SeriesPointsSystem {
                     re_sdk_types::components::AggregationPolicy::Off,
                     &mut series,
                 )
-                .map_err(|error| {
-                    LoadSeriesError::EntitySpecificVisualizerError {
-                        entity_path: data_result.entity_path.clone(),
-                        error,
-                    }
+                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
+                    entity_path: data_result.entity_path.clone(),
+                    err,
                 })?;
             }
 
