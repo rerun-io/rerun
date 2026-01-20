@@ -1,5 +1,5 @@
 ---
-title: Dataframe query
+title: Dataframe queries
 order: 100
 ---
 
@@ -162,7 +162,7 @@ df = dataset.reader(
 ```
 
 - `using_index_values` specifies the exact timestamps to sample
-- `fill_latest_at=True` fills null values with the most recent data (latest-at semantics)
+- `fill_latest_at=True` fills null values with the most recent data (latest-at/forward fill semantics)
 
 For a complete example, see the [Time-align data](../../howto/query-and-transform/time_alignment.md) how-to.
 
