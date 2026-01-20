@@ -105,6 +105,8 @@ doc-valid-idents = [
   "GLB",
   "GLTF",
   "iOS",
+  "IPv4",
+  "IPv6",
   "macOS",
   "MessagePack",
   "MiB",

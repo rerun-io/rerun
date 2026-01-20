@@ -28,7 +28,7 @@ pub struct GrpcServerSink {
 }
 
 impl GrpcServerSink {
-    /// A `bind_ip` of `"0.0.0.0"` is a good default.
+    /// A `bind_ip` of `"::"` is a good default (dual-stack IPv4 + IPv6).
     pub fn new(
         bind_ip: &str,
         grpc_port: u16,

@@ -457,7 +457,7 @@ impl RecordingStreamBuilder {
         use re_grpc_server::ServerOptions;
 
         self.serve_grpc_opts(
-            "0.0.0.0",
+            "::",
             crate::DEFAULT_SERVER_PORT,
             ServerOptions {
                 memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.25),
@@ -473,7 +473,7 @@ impl RecordingStreamBuilder {
     /// The server is hosted on the given `bind_ip` and `port`, may be connected to by any SDK or Viewer
     /// at `rerun+http://{bind_ip}:{port}/proxy`.
     ///
-    /// `0.0.0.0` is a good default for `bind_ip`.
+    /// `::` is a good default for `bind_ip` (dual-stack IPv4 + IPv6).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
@@ -2025,14 +2025,14 @@ impl RecordingStream {
         &self,
         server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
-        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_options)
+        self.serve_grpc_opts("::", crate::DEFAULT_SERVER_PORT, server_options)
     }
 
     #[cfg(feature = "server")]
     /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://{bind_ip}:{port}/proxy`.
     ///
-    /// `0.0.0.0` is a good default for `bind_ip`.
+    /// `::` is a good default for `bind_ip` (dual-stack IPv4 + IPv6).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.

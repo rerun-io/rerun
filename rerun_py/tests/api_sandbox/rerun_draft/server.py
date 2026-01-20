@@ -19,7 +19,7 @@ class Server:
     def __init__(
         self,
         *,
-        host: str = "0.0.0.0",
+        host: str = "::",
         port: int | None = None,
         datasets: dict[str, PathLike[str]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
