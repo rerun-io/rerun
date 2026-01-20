@@ -14,7 +14,7 @@ scalars = [math.sin(t / 10.0) for t in times]
 # log the data to a temporary recording
 with rr.RecordingStream("rerun_example_dataframe_query") as rec:
     rec.save("/tmp/demo.rrd")
-    rr.send_columns(
+    rec.send_columns(
         "/data",
         indexes=[rr.TimeColumn("step", sequence=times)],
         columns=rr.Scalars.columns(scalars=scalars),
