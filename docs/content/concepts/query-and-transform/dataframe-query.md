@@ -8,7 +8,7 @@ Robotic and sensor data is inherently messy:
 - Data is sparse: not every component has a value at every timestamp
 - Multiple timelines coexist: wall clock time, frame numbers, sensor ticks, etc.
 
-ML workloads, on the other hand, need clean tabular data: aligned rows where each row represents one sample, with a consistent schema and a single index.
+Machine learning workloads, on the other hand, rely on aligned rows where each row represents one sample, with a consistent schema and a single index.
 
 Dataframe queries are designed to bridge this gap. They allow you to query arbitrary Rerun data and produce a dataframe as output.
 
