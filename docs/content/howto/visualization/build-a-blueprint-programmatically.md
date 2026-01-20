@@ -337,29 +337,25 @@ rr.send_blueprint(blueprint)
 
 You can save programmatically-created blueprints to `.rbl` files:
 
-```python
-blueprint = rrb.Blueprint(
-    rrb.TimeSeriesView(name="AAPL", origin="/stocks/AAPL"),
-)
-
-# Save to a file
-blueprint.save("rerun_example_blueprint_stocks", "my_blueprint.rbl")
-
-# Later, load it in any language
-rr.log_file_from_path("my_blueprint.rbl")
-```
+snippet: howto/visualization/save_blueprint
 
 #### Loading blueprints from any language
 
-The programmatic way works by calling `log_file_from_path`:
+Existing blueprint files (e.g. created with the Python SDK or saved from the viewer) can be programmatically loaded into Rerun
+This is particularly useful when using Rust or C++ SDKs, since the blueprint API is not yet available for these languages:
+
+snippet: howto/visualization/load_blueprint
+
+This works using the `log_file_from_path` API, which allows you to log any file that contains data that Rerun understands—in this case, blueprint data.
+
+API reference:
 
 -   [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
 -   [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 -   [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
-This method allows you to log any file that contains data that Rerun understands (in this case, blueprint data) as part of your current recording.
 
-This enables reusing blueprints across different programming languages. See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
+See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
 
 ### Advanced customization
 
