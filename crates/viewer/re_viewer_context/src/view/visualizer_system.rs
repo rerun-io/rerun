@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, EntityPath};
+use re_chunk::{ArchetypeName, ComponentType, EntityPath};
 use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
@@ -52,7 +52,12 @@ pub enum RequiredComponents {
     AnyComponent(ComponentSet),
 
     /// Entity must have _any one_ of these physical Arrow data types.
-    AnyPhysicalDatatype(DatatypeSet),
+    ///
+    /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
+    AnyPhysicalDatatype {
+        semantic_type: ComponentType,
+        physical_types: DatatypeSet,
+    },
 }
 
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
