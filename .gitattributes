@@ -6,6 +6,6 @@ pixi.lock linguist-generated=true
 **/*.urdf filter=lfs diff=lfs merge=lfs -text
 **/*.stl filter=lfs diff=lfs merge=lfs -text
 **/snapshots/**/*.png filter=lfs diff=lfs merge=lfs -text
-tests/assets/video/*.h264 filter=lfs diff=lfs merge=lfs -text
-tests/assets/video/*.mp4 filter=lfs diff=lfs merge=lfs -text
+**/*.h264 filter=lfs diff=lfs merge=lfs -text
+**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
