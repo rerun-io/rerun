@@ -7,10 +7,12 @@ the argument names, and whether the arguments are required or have defaults matc
 
 from __future__ import annotations
 
+import argparse
 import ast
 import difflib
 import importlib
 import inspect
+import re
 import sys
 import textwrap
 from inspect import Parameter, Signature
@@ -210,7 +212,16 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                 # Need special handling for __init__ methods because pyo3 doesn't expose them as functions
                 # Instead we use the __text_signature__ attribute from the class
                 if method_name == "__init__" and obj.__text_signature__ is not None:
-                    sig = "def __init__" + obj.__text_signature__ + ": ..."  # NOLINT
+                    # PyO3's __text_signature__ doesn't include 'self', so we need to add it
+                    text_sig = obj.__text_signature__
+                    # Check if self is already present
+                    if text_sig.startswith("(") and not text_sig.startswith("(self"):
+                        # Add self as first parameter
+                        if text_sig == "()":
+                            text_sig = "(self)"
+                        else:
+                            text_sig = "(self, " + text_sig[1:]
+                    sig = "def __init__" + text_sig + ": ..."  # NOLINT
                     parsed = parso.parse(sig).children[0]
                     class_def[method_name] = parse_function_signature(parsed)
                     continue
@@ -237,10 +248,84 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
     return signatures
 
 
-def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: TotalSignature) -> int:
-    """Compare stub signatures with runtime signatures."""
+def apply_signature_fixes(pyi_file: Path, fixes: list[tuple[str, str | None, APIDef, APIDef]]) -> None:
+    """Apply signature fixes to the .pyi file."""
+    if not fixes:
+        return
+
+    print()
+    print(Fore.YELLOW + "WARNING: Applying runtime signatures will replace stub signatures and docstrings." + Style.RESET_ALL)
+    print(Fore.YELLOW + "Type annotations from the stub file will be lost and need to be manually restored." + Style.RESET_ALL)
+    print()
+    print(f"Applying {len(fixes)} fix(es) to {pyi_file}...")
+
+    content = pyi_file.read_text(encoding="utf-8")
+    tree = parso.parse(content)
+
+    # Build a map to find nodes
+    node_map: dict[tuple[str, str | None], Any] = {}
+    for node in tree.children:
+        if node.type == "funcdef":
+            node_map[(node.name.value, None)] = node
+        elif node.type == "classdef":
+            for method_node in node.iter_funcdefs():
+                node_map[(node.name.value, method_node.name.value)] = method_node
+
+    # Apply fixes in reverse order by position to avoid offset issues
+    fixes_sorted = sorted(fixes, key=lambda f: node_map.get((f[0], f[1]), node).start_pos if (f[0], f[1]) in node_map else (0, 0), reverse=True)
+
+    for class_name, method_name, runtime_sig, stub_sig in fixes_sorted:
+        key = (class_name, method_name)
+        if key not in node_map:
+            print(f"  Warning: Could not find {class_name}.{method_name if method_name else ''}")
+            continue
+
+        node = node_map[key]
+        # Get the exact text from the file for this node
+        old_text = node.get_code()
+
+        # Build the replacement text with proper indentation
+        base_indent = " " * (node.start_pos[1])
+        new_lines = []
+        new_lines.append(f"def {runtime_sig.name}{runtime_sig.signature} -> Any:")
+
+        if runtime_sig.doc:
+            doclines = runtime_sig.doc.split("\n")
+            if len(doclines) == 1:
+                new_lines.append(f'    """{doclines[0]}"""')
+            else:
+                new_lines.append('    """')
+                for line in doclines:
+                    new_lines.append(f"    {line}")
+                new_lines.append('    """')
+        else:
+            new_lines[0] += " ..."
+
+        # Add indentation to all lines
+        new_text = "\n".join(base_indent + line if line.strip() else "" for line in new_lines)
+
+        # Replace in content
+        content = content.replace(old_text, new_text)
+
+        name_str = f"{class_name}.{method_name}" if method_name else class_name
+        print(f"  Fixed: {name_str}")
+
+    pyi_file.write_text(content, encoding="utf-8")
+    print(f"Successfully updated {pyi_file}")
+
+
+def compare_signatures(
+    stub_signatures: TotalSignature, runtime_signatures: TotalSignature, apply_fixes: bool = False
+) -> tuple[int, list[tuple[str, str | None, APIDef, APIDef]]]:
+    """
+    Compare stub signatures with runtime signatures.
+
+    Returns a tuple of (error_count, fixes_to_apply) where fixes_to_apply is a list of
+    (class_name, method_name, runtime_signature, stub_signature) tuples. If method_name is None, it's a top-level function.
+    """
 
     result = 0
+    fixes: list[tuple[str, str | None, APIDef, APIDef]] = []
 
     for name, stub_signature in stub_signatures.items():
         if isinstance(stub_signature, dict):
@@ -266,6 +351,8 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                         print(f"{name}.{method_name}(…) signature mismatch:")
                         print_colored_diff(str(runtime_method_signature), str(stub_method_signature))
                         result += 1
+                        if apply_fixes and runtime_method_signature is not None:
+                            fixes.append((name, method_name, runtime_method_signature, stub_method_signature))
 
             else:
                 docstr = stub_signature.get("__doc__", "")
@@ -287,6 +374,8 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                     print(f"{name}(…) signature mismatch:")
                     print_colored_diff(str(runtime_signature), str(stub_signature))
                     result += 1
+                    if apply_fixes and runtime_signature is not None:
+                        fixes.append((name, None, runtime_signature, stub_signature))
             else:
                 print()
                 if stub_signature.doc is not None and "Required-feature:" in stub_signature.doc:
@@ -298,10 +387,20 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
     if result == 0:
         print("All stub signatures match!")
 
-    return result
+    return result, fixes
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Compare Python stub signatures with runtime signatures and optionally apply fixes."
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply the runtime signatures to the stub file to fix mismatches",
+    )
+    args = parser.parse_args()
+
     # load the stub file
     path_to_stub = Path(__file__).parent.parent.parent / "rerun_py" / "rerun_bindings" / "rerun_bindings.pyi"
     stub_signatures = load_stub_signatures(path_to_stub)
@@ -309,7 +408,12 @@ def main() -> int:
     # load the runtime signatures
     runtime_signatures = load_runtime_signatures("rerun_bindings")
 
-    sys.exit(compare_signatures(stub_signatures, runtime_signatures))
+    error_count, fixes = compare_signatures(stub_signatures, runtime_signatures, apply_fixes=args.apply)
+
+    if args.apply and fixes:
+        apply_signature_fixes(path_to_stub, fixes)
+
+    sys.exit(error_count)
 
 
 if __name__ == "__main__":
