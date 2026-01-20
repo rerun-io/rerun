@@ -74,7 +74,7 @@ jobs:
           echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
           echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
           echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
-          echo "pr_title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
 
           # Store body in file (handles multiline and special characters)
           echo "$PR_DATA" | jq -r '.body // ""' > /tmp/pr_body.txt
@@ -122,10 +122,10 @@ jobs:
             -f "client_payload[head_ref]=${{ steps.pr-details.outputs.head_ref }}" \
             -f "client_payload[head_owner]=${{ steps.pr-details.outputs.head_owner }}" \
             -f "client_payload[head_repo]=${{ steps.pr-details.outputs.head_repo }}" \
-            -f "client_payload[pr_title]=${{ steps.pr-details.outputs.pr_title }}" \
+            -f "client_payload[title]=${{ steps.pr-details.outputs.title }}" \
             -f "client_payload[is_fork]=${{ steps.pr-details.outputs.is_fork }}" \
             -f "client_payload[triggered_by]=${{ github.event.comment.user.login }}" \
-            --raw-field "client_payload[pr_body]=$(cat /tmp/pr_body.txt)" 2>&1; then
+            --raw-field "client_payload[body]=$(cat /tmp/pr_body.txt)" 2>&1; then
             echo "✓ Successfully dispatched sync-import-pr event to reality repo"
             echo "Note: repository_dispatch returns 204 No Content on success"
             echo "The reality repo should now be processing the import workflow"
