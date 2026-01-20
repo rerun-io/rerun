@@ -24,6 +24,9 @@ pub struct Example {
     ///
     /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
     pub allow_warnings: bool,
+
+    /// If `true`, include this example in the manifest generation.
+    pub include_in_manifest: bool,
 }
 
 impl Example {
@@ -75,6 +78,7 @@ impl Example {
             thumbnail_dimensions: readme.thumbnail_dimensions,
             script_args: readme.build_args,
             allow_warnings: readme.allow_warnings,
+            include_in_manifest: readme.include_in_manifest,
             readme_body: body,
             language,
         }))
@@ -254,6 +258,7 @@ impl Channel {
                     readme_body: body,
                     language,
                     allow_warnings: readme.allow_warnings,
+                    include_in_manifest: readme.include_in_manifest,
                 });
             }
         }
@@ -331,6 +336,12 @@ struct Frontmatter {
     /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
     #[serde(default)]
     allow_warnings: bool,
+
+    /// If `true`, include this example in the manifest generation.
+    ///
+    /// Defaults to `false` so examples can be built/tested via channel without being included in manifests.
+    #[serde(default)]
+    include_in_manifest: bool,
 }
 
 impl Frontmatter {

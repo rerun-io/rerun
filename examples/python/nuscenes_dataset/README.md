@@ -4,6 +4,7 @@ tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/480w.png"
 thumbnail_dimensions = [480, 301]
 channel = "release"
+include_in_manifest = true
 build_args = ["--seconds=5"]
 -->
 

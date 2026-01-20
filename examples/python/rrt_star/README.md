@@ -4,6 +4,7 @@ tags = ["2D"]
 thumbnail= "https://static.rerun.io/rrt-star/fbbda33bdbbfa469ec95c905178ac3653920473a/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 -->
 
 This example visualizes the path finding algorithm RRT\* in a simple environment.

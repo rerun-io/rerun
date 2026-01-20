@@ -4,6 +4,7 @@ tags = ["2D", "3D", "Depth", "Mesh", "Object detection", "Pinhole camera", "Blue
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 -->
 
 This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun.

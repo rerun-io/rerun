@@ -4,6 +4,7 @@ tags = ["2D", "3D", "Depth", "NYUD", "Pinhole camera"]
 thumbnail = "https://static.rerun.io/rgbd/2fde3a620adc8bd9a5680260f0792d16ac5498bd/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
+include_in_manifest = true
 build_args = ["--frames=300"]
 -->
 

@@ -1,6 +1,7 @@
 <!--[metadata]
 title = "Convert and send custom protobuf messages from an MCAP file to Rerun"
 channel = "main"
+include_in_manifest = true
 -->
 
 Demonstrates how to read, convert and send custom Protobuf messages from [MCAP](https://mcap.dev/) to Rerun.
