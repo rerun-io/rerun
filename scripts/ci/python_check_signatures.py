@@ -226,7 +226,8 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                     # Get the actual docstring from __init__ (though PyO3 usually has a useless default)
                     init_doc = (
                         method_obj.__doc__
-                        if method_obj.__doc__ != "Initialize self.  See help(type(self)) for accurate signature."
+                        if method_obj.__doc__
+                        != "Initialize self.  See help(type(self)) for accurate signature."  # NOLINT
                         else None
                     )
                     # Create a new APIDef with the correct docstring
