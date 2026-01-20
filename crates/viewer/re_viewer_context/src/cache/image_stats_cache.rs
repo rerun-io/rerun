@@ -48,12 +48,12 @@ impl Cache for ImageStatsCache {
                 if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                     Either::Left(
                         event
-                            .chunk
+                            .chunk_before_processing
                             .component_descriptors()
                             .filter(|descr| descr.component_type == Some(components::Blob::name()))
                             .flat_map(|descr| {
                                 let kind = ImageKind::from_archetype_name(descr.archetype);
-                                event.chunk.row_ids().map(move |row_id| {
+                                event.chunk_before_processing.row_ids().map(move |row_id| {
                                     (StoredBlobCacheKey::new(row_id, descr.component), kind)
                                 })
                             }),

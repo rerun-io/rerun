@@ -175,12 +175,12 @@ impl Cache for MeshCache {
                 let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
                 let contains_mesh_data = || {
                     let contains_asset_blob = event
-                        .chunk
+                        .chunk_before_processing
                         .components()
                         .contains_component(Asset3D::descriptor_blob().component);
 
                     let contains_vertex_positions = event
-                        .chunk
+                        .chunk_before_processing
                         .components()
                         .contains_component(Mesh3D::descriptor_vertex_positions().component);
 
@@ -188,7 +188,7 @@ impl Cache for MeshCache {
                 };
 
                 if is_deletion() && contains_mesh_data() {
-                    Either::Left(event.chunk.row_ids())
+                    Either::Left(event.chunk_before_processing.row_ids())
                 } else {
                     Either::Right(std::iter::empty())
                 }
