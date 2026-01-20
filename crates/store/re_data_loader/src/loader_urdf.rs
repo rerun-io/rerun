@@ -318,7 +318,7 @@ impl UrdfTree {
         let visual_base_path_for_link =
             self.get_link_path_at_root(&self.log_paths.visual_root, link);
 
-        // Collect the links visual geometries and build their entity paths.
+        // Collect all the link's visual geometries and build their entity paths.
         link.visual
             .iter()
             .enumerate()
