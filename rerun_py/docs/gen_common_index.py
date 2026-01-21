@@ -206,12 +206,6 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Custom Data",
         mod_path=["rerun.any_value", "rerun.any_batch_value", "rerun.dynamic_archetype"],
-        # class_list=[
-        #     "AnyValues",
-        #     "AnyBatchValue",
-        #     "ComponentDescriptor",
-        #     "DynamicArchetype",
-        # ],
     ),
     ################################################################################
     # These are tables but don't need their own pages since they refer to types that

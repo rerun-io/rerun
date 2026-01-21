@@ -68,6 +68,16 @@ The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have no
 
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
 
+### Multiple internal submodules were move to properly mark internal
+Most of their functionality is already exposed indirectly through re-exports.
+If you still need to use any functionality directly you can still find them in their new location.
+* `rr.color_conversion` -> `rr._color_conversion`
+* `rr.event` -> `rr._event`
+* `rr.legacy_notebook` -> `rr._legacy_notebook`
+* `rr.logging_handler` -> `rr._logging_handler`
+* `rr.memory` -> `rr._memory`
+* `rr.script_helpers` -> `rr._script_helpers`
+
 ## CLI
 `rerun server --addr …` has been renamed `rerun server --host …`
 
