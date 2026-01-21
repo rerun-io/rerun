@@ -168,7 +168,7 @@ from .error_utils import (
 from ._legacy_notebook import (
     legacy_notebook_show as legacy_notebook_show,
 )
-from .logging_handler import (
+from ._logging_handler import (
     LoggingHandler as LoggingHandler,
 )
 from .memory import (
