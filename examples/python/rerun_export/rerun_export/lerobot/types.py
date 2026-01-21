@@ -85,23 +85,24 @@ class LeRobotConversionConfig:
             - reference_path: The entity path to use as reference for time alignment (action or state)
 
         """
-        contents = []
-        reference_path = None
+        contents: list[str] = []
+        reference_path: str | None = None
 
         entity_path = get_entity_path(self.action)
-        contents.append(entity_path)
-        if reference_path is None:
-            reference_path = entity_path
+        if entity_path is not None:
+            contents.append(entity_path)
+            if reference_path is None:
+                reference_path = entity_path
 
         entity_path = get_entity_path(self.state)
-        if entity_path not in contents:
+        if entity_path is not None and entity_path not in contents:
             contents.append(entity_path)
-        if reference_path is None:
+        if reference_path is None and entity_path is not None:
             reference_path = entity_path
 
         if self.task:
             entity_path = get_entity_path(self.task)
-            if entity_path not in contents:
+            if entity_path is not None and entity_path not in contents:
                 contents.append(entity_path)
 
         for spec in self.videos:

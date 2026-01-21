@@ -13,8 +13,8 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from lerobot.datasets.compute_stats import compute_episode_stats
-from lerobot.datasets.utils import update_chunk_file_indices
+from lerobot.datasets.compute_stats import compute_episode_stats  # type: ignore[import-untyped]
+from lerobot.datasets.utils import update_chunk_file_indices  # type: ignore[import-untyped]
 from tqdm import tqdm
 
 from rerun_export.lerobot.video_processing import (
@@ -26,9 +26,18 @@ from rerun_export.lerobot.video_processing import (
 from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
 
 if TYPE_CHECKING:
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    from collections.abc import Iterator
 
-    from rerun_export.lerobot.types import LeRobotConversionConfig, RemuxData, RemuxInfo, VideoSampleData, VideoSpec
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
+
+    from rerun_export.lerobot.types import (
+        FeatureSpec,
+        LeRobotConversionConfig,
+        RemuxData,
+        RemuxInfo,
+        VideoSampleData,
+        VideoSpec,
+    )
 
 
 def convert_dataframe_to_episode(
@@ -37,7 +46,7 @@ def convert_dataframe_to_episode(
     *,
     lerobot_dataset: LeRobotDataset,
     segment_id: str,
-    features: dict[str, dict[str, object]],
+    features: dict[str, FeatureSpec],
 ) -> tuple[bool, RemuxData | None, bool]:
     """
     Convert a DataFusion dataframe to a LeRobot episode.
@@ -59,8 +68,11 @@ def convert_dataframe_to_episode(
         - direct_saved: True if the episode was saved without decoding video frames
 
     """
-    action_dim = features["action"]["shape"][0] if "action" in features else None
-    state_dim = features["observation.state"]["shape"][0] if "observation.state" in features else None
+    action_spec = features.get("action")
+    state_spec = features.get("observation.state")
+
+    action_dim = action_spec["shape"][0] if action_spec else None
+    state_dim = state_spec["shape"][0] if state_spec else None
 
     if action_dim is None:
         raise ValueError("Action feature specification is missing.")
@@ -176,9 +188,11 @@ def _get_video_path_for_episode(
         raise ValueError("LeRobot dataset meta.video_path is not set.")
 
     # Construct path using the same format as LeRobot
-    video_path = lerobot_dataset.meta.video_path.format(video_key=video_key, chunk_index=chunk_idx, file_index=file_idx)
+    video_path_template = str(lerobot_dataset.meta.video_path)
+    video_path_str = video_path_template.format(video_key=video_key, chunk_index=chunk_idx, file_index=file_idx)
 
-    return lerobot_dataset.root / video_path
+    root_path = Path(lerobot_dataset.root)
+    return root_path / video_path_str
 
 
 def apply_remuxed_videos(
@@ -254,7 +268,7 @@ def _save_episode_without_video_decode(
     """Save an episode without decoding video frames by remuxing source packets directly."""
 
     @contextmanager
-    def _suppress_ffmpeg_output() -> None:
+    def _suppress_ffmpeg_output() -> Iterator[None]:
         with open(os.devnull, "w") as devnull:
             old_stdout_fd = os.dup(1)
             old_stderr_fd = os.dup(2)
@@ -298,7 +312,7 @@ def _save_episode_without_video_decode(
     start_index = lerobot_dataset.meta.total_frames
     times_ns = normalize_times(data_columns[config.index_column])
     times_s = (times_ns - times_ns[0]) / 1_000_000_000.0
-    episode_buffer: dict[str, npt.NDArray] = {
+    episode_buffer: dict[str, npt.NDArray[np.generic]] = {
         "timestamp": times_s.astype(np.float32),
         "frame_index": np.arange(num_rows, dtype=np.int64),
         "episode_index": np.full((num_rows,), episode_index, dtype=np.int64),
@@ -371,7 +385,7 @@ def _decode_video_frames_for_batch(
     index_column: str,
     videos: list[VideoSpec],
     video_data_cache: dict[str, VideoSampleData],
-) -> dict[str, list[npt.NDArray]]:
+) -> dict[str, list[npt.NDArray[np.uint8]]]:
     """
     Decode video frames for a batch of rows.
 
@@ -386,7 +400,7 @@ def _decode_video_frames_for_batch(
     """
     from rerun_export.utils import normalize_times
 
-    video_frames: dict[str, list[npt.NDArray]] = {}
+    video_frames: dict[str, list[npt.NDArray[np.uint8]]] = {}
     if video_data_cache:
         row_times_ns = normalize_times(table[index_column].to_pylist())
         for spec in videos:
@@ -441,7 +455,7 @@ def _build_frame(
     config: LeRobotConversionConfig,
     action_dim: int,
     state_dim: int,
-    video_frames: dict[str, list[npt.NDArray]],
+    video_frames: dict[str, list[npt.NDArray[np.uint8]]],
     num_rows: int,
 ) -> dict[str, object]:
     """

@@ -4,13 +4,14 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 import pyarrow as pa
 import rerun as rr
 from datafusion import col, functions as F
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
+from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
 from tqdm import tqdm
 
 from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
@@ -20,7 +21,7 @@ from rerun_export.utils import make_time_grid
 
 
 @contextmanager
-def _suppress_ffmpeg_output() -> None:
+def _suppress_ffmpeg_output() -> Iterator[None]:
     with open(os.devnull, "w") as devnull:
         old_stdout_fd = os.dup(1)
         old_stderr_fd = os.dup(2)

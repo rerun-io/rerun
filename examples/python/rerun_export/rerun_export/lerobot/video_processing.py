@@ -21,6 +21,15 @@ if TYPE_CHECKING:
     from rerun_export.lerobot.types import VideoSampleData, VideoSpec
 
 
+def _to_sample_bytes(sample: object) -> bytes:
+    """Convert a video sample to raw bytes."""
+    if isinstance(sample, np.ndarray):
+        return sample.tobytes()
+    if isinstance(sample, (bytes, bytearray, memoryview)):
+        return bytes(sample)
+    raise TypeError(f"Unsupported video sample type: {type(sample)}")
+
+
 def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> VideoSampleData:
     """
     Extract video samples and timestamps from a table.
@@ -39,6 +48,7 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
         ValueError: If no video samples are available
 
     """
+    # Important: Use to_numpy() instead of to_pylist() to avoid expensive Python object creation
     samples_raw = table[sample_column].to_numpy()
     times_raw = table[time_column].to_numpy()
     samples: list[bytes] = []
@@ -47,10 +57,7 @@ def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: s
         sample = unwrap_singleton(sample)
         if sample is None:
             continue
-        if isinstance(sample, np.ndarray):
-            sample_bytes = sample.tobytes()
-        else:
-            sample_bytes = bytes(sample)
+        sample_bytes = _to_sample_bytes(sample)
         samples.append(sample_bytes)
         times.append(timestamp)
     if not samples:
@@ -68,8 +75,7 @@ def load_video_samples(
     Load unaligned video samples for a segment from the catalog dataset.
 
     Args:
-        dataset: Rerun catalog dataset entry
-        segment_id: ID of the segment to read from
+        df: DataFusion dataframe containing video datas
         index_column: Timeline column name
         videos: Video stream specifications
 
@@ -109,10 +115,7 @@ def extract_first_video_sample(
             sample = unwrap_singleton(sample_array[row_idx].as_py())
             if sample is None:
                 continue
-            if isinstance(sample, np.ndarray):
-                sample_bytes = sample.tobytes()
-            else:
-                sample_bytes = bytes(sample)
+            sample_bytes = _to_sample_bytes(sample)
             timestamp = time_array[row_idx].as_py()
             return sample_bytes, normalize_times([timestamp])
     raise ValueError("No video samples available for decoding.")
@@ -153,14 +156,15 @@ def decode_video_frame(
     container = av.open(data_buffer, format=video_format, mode="r")
     video_stream = container.streams.video[0]
     start_time = times_ns[0]
-    latest_frame = None
+    latest_frame: av.VideoFrame | None = None
     packet_times = times_ns[: idx + 1]
     for packet, time_ns in zip(container.demux(video_stream), packet_times, strict=False):
         packet.time_base = Fraction(1, 1_000_000_000)
         packet.pts = int(time_ns - start_time)
         packet.dts = packet.pts
         for frame in packet.decode():
-            latest_frame = frame
+            if isinstance(frame, av.VideoFrame):
+                latest_frame = frame
     if latest_frame is None:
         raise ValueError("Failed to decode video frame for target time.")
     return np.asarray(latest_frame.to_image())
@@ -200,9 +204,9 @@ def can_remux_video(
 
     # Check if within tolerance
     fps_diff = abs(source_fps - target_fps) / target_fps
-    can_remux = fps_diff <= tolerance
+    can_remux = bool(fps_diff <= tolerance)
 
-    return can_remux, source_fps
+    return can_remux, float(source_fps)
 
 
 def remux_video_stream(
@@ -256,7 +260,7 @@ def remux_video_stream(
     # Add stream from template to preserve codec without re-encoding.
     # Some PyAV versions don't support the template kwarg; fall back to codec name.
     try:
-        output_stream = output_container.add_stream(template=input_stream)
+        output_stream = output_container.add_stream(template=input_stream)  # type: ignore[call-overload]
     except TypeError:
         output_stream = output_container.add_stream(input_stream.codec_context.name)
         if input_stream.codec_context.extradata:
