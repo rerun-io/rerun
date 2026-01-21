@@ -22,7 +22,7 @@ use re_viewer_context::{
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
-    VisualizerSourceComponent,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -866,7 +866,7 @@ impl ViewClass for TimeSeriesView {
 
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
-) -> Option<VisualizerSourceComponent> {
+) -> Option<VisualizerComponentSource> {
     let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
         return None;
     };
@@ -889,7 +889,7 @@ fn scalar_mapping_selector(
     first_native_semantic_match
         .or_else(|| Some(components.first().0))
         .map(
-            |source_component| VisualizerSourceComponent::SourceComponent {
+            |source_component| VisualizerComponentSource::SourceComponent {
                 source_component,
                 selector: String::new(),
             },

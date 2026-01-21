@@ -255,14 +255,14 @@ fn visualizer_components(
             .component_mappings
             .get(&unmapped_component_descr.component)
             .and_then(|mapping| match mapping {
-                re_viewer_context::VisualizerSourceComponent::SourceComponent {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
                     source_component,
                     selector: _, // TODO(RR-3308): implement selector logic
                 } => Some(*source_component),
 
-                re_viewer_context::VisualizerSourceComponent::Override
-                | re_viewer_context::VisualizerSourceComponent::Default
-                | re_viewer_context::VisualizerSourceComponent::Fallback => {
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
                     // TODO(RR-3338): Implement ui for other types.
                     None
                 }
@@ -597,14 +597,14 @@ fn source_component_ui(
                     .component_mappings
                     .get(&component_descr.component)
                     .and_then(|mapping| match mapping {
-                        re_viewer_context::VisualizerSourceComponent::SourceComponent {
+                        re_viewer_context::VisualizerComponentSource::SourceComponent {
                             source_component,
                             selector: _, // TODO(RR-3308): implement selector logic
                         } => Some(source_component.as_str()),
 
-                        re_viewer_context::VisualizerSourceComponent::Override
-                        | re_viewer_context::VisualizerSourceComponent::Default
-                        | re_viewer_context::VisualizerSourceComponent::Fallback => {
+                        re_viewer_context::VisualizerComponentSource::Override
+                        | re_viewer_context::VisualizerComponentSource::Default
+                        | re_viewer_context::VisualizerComponentSource::Fallback => {
                             // TODO(RR-3338): Implement ui for other types.
                             None
                         }
@@ -641,7 +641,7 @@ fn save_component_mapping(
     // Set or override the mapping
     match updated_instruction.component_mappings.entry(target) {
         std::collections::btree_map::Entry::Occupied(mut entry) => {
-            *entry.get_mut() = re_viewer_context::VisualizerSourceComponent::SourceComponent {
+            *entry.get_mut() = re_viewer_context::VisualizerComponentSource::SourceComponent {
                 source_component,
                 selector: String::new(), // TODO(RR-3308): implement selector logic
             };
@@ -649,7 +649,7 @@ fn save_component_mapping(
 
         std::collections::btree_map::Entry::Vacant(entry) => {
             entry.insert(
-                re_viewer_context::VisualizerSourceComponent::SourceComponent {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
                     source_component,
                     selector: String::new(), // TODO(RR-3308): implement selector logic
                 },

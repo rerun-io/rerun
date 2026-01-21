@@ -49,7 +49,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
         for (target, selector) in &visualizer_instruction.component_mappings {
             match selector {
-                re_viewer_context::VisualizerSourceComponent::SourceComponent {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
                     source_component,
                     selector: _, // TODO(RR-3308): implement selector logic
                 } => {
@@ -59,9 +59,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     }
                 }
 
-                re_viewer_context::VisualizerSourceComponent::Override
-                | re_viewer_context::VisualizerSourceComponent::Default
-                | re_viewer_context::VisualizerSourceComponent::Fallback => {
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
                     // TODO(RR-3400): implement the rest of the selectors
                 }
             }
@@ -143,7 +143,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     if let Some(visualizer_instruction) = visualizer_instruction {
         for (target, selector) in &visualizer_instruction.component_mappings {
             match selector {
-                re_viewer_context::VisualizerSourceComponent::SourceComponent {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
                     source_component,
                     selector: _, // TODO(RR-3308): implement selector logic
                 } => {
@@ -153,9 +153,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                     }
                 }
 
-                re_viewer_context::VisualizerSourceComponent::Override
-                | re_viewer_context::VisualizerSourceComponent::Default
-                | re_viewer_context::VisualizerSourceComponent::Fallback => {
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
                     // TODO(RR-3400): implement the rest of the selectors
                 }
             }

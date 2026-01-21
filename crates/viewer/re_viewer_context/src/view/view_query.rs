@@ -16,7 +16,7 @@ use crate::{
 
 /// [`VisualizerComponentMapping`] but without the target.
 #[derive(Clone, Debug)]
-pub enum VisualizerSourceComponent {
+pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {
         source_component: ComponentIdentifier,
@@ -33,7 +33,7 @@ pub enum VisualizerSourceComponent {
     Fallback,
 }
 
-impl VisualizerSourceComponent {
+impl VisualizerComponentSource {
     pub fn from_blueprint_mapping(mapping: &VisualizerComponentMapping) -> Self {
         let VisualizerComponentMapping {
             target,
@@ -62,7 +62,7 @@ impl VisualizerSourceComponent {
 /// Component mappings for a visualizer instruction.
 ///
 /// Maps from target component to source component (selector).
-pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerSourceComponent>;
+pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerComponentSource>;
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -120,7 +120,7 @@ impl VisualizerInstruction {
                 let target = target.as_str().into();
 
                 match mapping {
-                    VisualizerSourceComponent::SourceComponent {
+                    VisualizerComponentSource::SourceComponent {
                         source_component,
                         selector,
                     } => VisualizerComponentMapping {
@@ -131,21 +131,21 @@ impl VisualizerInstruction {
                         selector: (!selector.is_empty()).then(|| selector.as_str().into()),
                     },
 
-                    VisualizerSourceComponent::Override => VisualizerComponentMapping {
+                    VisualizerComponentSource::Override => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Override,
                         source_component: None,
                         selector: None,
                     },
 
-                    VisualizerSourceComponent::Default => VisualizerComponentMapping {
+                    VisualizerComponentSource::Default => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Default,
                         source_component: None,
                         selector: None,
                     },
 
-                    VisualizerSourceComponent::Fallback => VisualizerComponentMapping {
+                    VisualizerComponentSource::Fallback => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Fallback,
                         source_component: None,
