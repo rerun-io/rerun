@@ -2,19 +2,17 @@
 title = "LeRobot dataset curation using OSS Rerun server"
 tags = ["Robotics", "MCAP", "LeRobot", "Dataset", "Server"]
 channel = "main"
-thumbnail = "https://static.rerun.io/rerun-export/placeholder/480w.png"
+thumbnail = "https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
-<!-- TODO(gijsd): Add proper thumbnail images once available! -->
-
-<!-- <picture>
-  <img src="https://static.rerun.io/rerun-export/placeholder/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-export/placeholder/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-export/placeholder/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-export/placeholder/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-export/placeholder/1200w.png">
-</picture> -->
+<picture>
+  <img src="https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/1200w.png">
+</picture>
 
 Convert robot recordings into training-ready datasets by using the OSS Rerun server to query and transform RRD files into LeRobot v3 format.
 
