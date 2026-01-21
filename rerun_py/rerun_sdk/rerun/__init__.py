@@ -171,7 +171,7 @@ from ._legacy_notebook import (
 from ._logging_handler import (
     LoggingHandler as LoggingHandler,
 )
-from .memory import (
+from ._memory import (
     MemoryRecording as MemoryRecording,
     memory_recording as memory_recording,
 )
