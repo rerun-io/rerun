@@ -37,7 +37,7 @@ fn format_result<T: SizeBytes>(type_name: &str, len: usize, creator: impl Fn() -
     // The estimated size (our calculation) is deterministic, and the error percentage
     // tells us how accurate our estimate is relative to the platform's actual allocation.
     // Since we round the percentage, small variations in actual size won't affect the snapshot.
-    format!("{name:<44} {estimated:>10}B (estimated) - error: {error_pct:+.1}%")
+    format!("{name:<44} {estimated:>10}B (estimated) - error: {error_pct:+.0}%")
 }
 
 fn run_many_sizes<T: SizeBytes>(
