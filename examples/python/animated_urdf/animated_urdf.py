@@ -13,6 +13,7 @@ import math
 from pathlib import Path
 
 import rerun as rr
+import rerun.blueprint as rrb
 
 
 def main() -> None:
@@ -30,6 +31,14 @@ def main() -> None:
 
     # Load the URDF tree structure into memory
     urdf_tree = rr.urdf.UrdfTree.from_file_path(urdf_path)
+
+    # Hide the collision geometries by default in the viewer.
+    blueprint = rrb.Grid(
+        rrb.Spatial3DView(
+            name="Animated URDF", overrides={"so_arm100/collision_geometries": rrb.EntityBehavior(visible=False)}
+        )
+    )
+    rec.send_blueprint(blueprint)
 
     for step in range(10000):
         rec.set_time("step", sequence=step)
