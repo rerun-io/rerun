@@ -10,7 +10,8 @@ use arrow::datatypes::DataType;
 use itertools::Either;
 use nohash_hasher::IntMap;
 use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::reshape::{Explode, Flatten};
+use re_arrow_combinators::map;
+use re_arrow_combinators::reshape;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -18,6 +19,8 @@ use re_chunk::{
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
+
+use crate::lenses::semantic;
 
 use super::LensError;
 use super::builder::LensBuilder;
@@ -109,12 +112,22 @@ type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, OpError> + Sync + Se
 /// Provides commonly used transformations of component columns.
 ///
 /// Individual operations are wrapped to hide their implementation details.
+#[non_exhaustive]
 pub enum Op {
     /// Extracts a specific field from a `StructArray`.
     AccessField(op::AccessField),
 
+    /// Converts binary arrays to list arrays of `u8`.
+    BinaryToListUInt8,
+
     /// Efficiently casts a component to a new `DataType`.
     Cast(op::Cast),
+
+    /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
+    StringToVideoCodecUInt32,
+
+    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
+    TimeSpecToNanos,
 
     /// Flattens a list array inside a component.
     ///
@@ -133,7 +146,10 @@ impl std::fmt::Debug for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
+            Self::BinaryToListUInt8 => f.debug_struct("BinaryToListUInt8").finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
+            Self::StringToVideoCodecUInt32 => f.debug_struct("StringToVideoCodecUInt32").finish(),
+            Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
             Self::Flatten => f.debug_tuple("Flatten").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
@@ -146,6 +162,11 @@ impl Op {
         Self::AccessField(op::AccessField {
             field_name: field_name.into(),
         })
+    }
+
+    /// Converts binary arrays to list arrays of `u8`.
+    pub fn binary_to_list_uint8() -> Self {
+        Self::BinaryToListUInt8
     }
 
     /// Efficiently casts a component to a new `DataType`.
@@ -174,6 +195,16 @@ impl Op {
         Self::Flatten
     }
 
+    /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
+    pub fn string_to_video_codec() -> Self {
+        Self::StringToVideoCodecUInt32
+    }
+
+    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
+    pub fn time_spec_to_nanos() -> Self {
+        Self::TimeSpecToNanos
+    }
+
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
@@ -188,7 +219,20 @@ impl Op {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
-            Self::Flatten => Flatten::new().transform(list_array).map_err(Into::into),
+            Self::Flatten => reshape::Flatten::new()
+                .transform(list_array)
+                .map_err(Into::into),
+            Self::BinaryToListUInt8 => map::MapList::new(semantic::BinaryToListUInt8::<i32>::new())
+                .transform(list_array)
+                .map_err(Into::into),
+            Self::StringToVideoCodecUInt32 => {
+                map::MapList::new(semantic::StringToVideoCodecUInt32::default())
+                    .transform(list_array)
+                    .map_err(Into::into)
+            }
+            Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
+                .transform(list_array)
+                .map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }
@@ -562,7 +606,7 @@ impl OneToMany {
         chunk_times.extend(
             collect_output_times_iter(input, &self.times).filter_map(|result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
-                    match Explode.transform(&list_array) {
+                    match reshape::Explode.transform(&list_array) {
                         Ok(exploded) => {
                             match try_convert_time_column(timeline_name, timeline_type, &exploded) {
                                 Ok(time_col) => Some(time_col),
@@ -591,16 +635,20 @@ impl OneToMany {
         // Explode all component outputs and collect errors
         let chunk_components: re_chunk::ChunkComponents = output_components
             .filter_map(|result| match result {
-                Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
-                    Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
-                    Err(err) => {
-                        errors.push(LensError::ComponentOperationFailed {
-                            component: component_descr.component,
-                            source: err.into(),
-                        });
-                        None
+                Ok((component_descr, list_array)) => {
+                    match reshape::Explode.transform(&list_array) {
+                        Ok(exploded) => {
+                            Some(SerializedComponentColumn::new(exploded, component_descr))
+                        }
+                        Err(err) => {
+                            errors.push(LensError::ComponentOperationFailed {
+                                component: component_descr.component,
+                                source: err.into(),
+                            });
+                            None
+                        }
                     }
-                },
+                }
                 Err(err) => {
                     errors.push(err);
                     None

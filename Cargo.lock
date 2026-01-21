@@ -8391,7 +8391,6 @@ dependencies = [
  "arrow",
  "insta",
  "re_arrow_util",
- "re_sdk_types",
  "thiserror 2.0.17",
 ]
 

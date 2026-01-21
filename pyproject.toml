@@ -76,7 +76,7 @@ snippets = ["rerun-sdk", "av", "pandas"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
-  "opencv-python>=4.6",
+  "opencv-contrib-python>=4.6", # contrib is a superset; needed for detect_and_track_objects tracking module
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   # Example packages from workspace
   "air_traffic_data",
