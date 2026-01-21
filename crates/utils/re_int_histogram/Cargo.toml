@@ -19,6 +19,11 @@ workspace = true
 all-features = true
 
 
+[features]
+## Enable special testing utilities
+testing = ["re_byte_size/testing"]
+
+
 [dependencies]
 re_byte_size.workspace = true
 smallvec.workspace = true
