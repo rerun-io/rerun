@@ -152,7 +152,7 @@ impl crate::DataUi for EntityDb {
                         ui.label(format!("{current} / {max_downloaded}"));
 
                         if memory_limit {
-                            let rect = ui.small_icon(&re_ui::icons::INFO, None);
+                            let rect = ui.small_icon(&re_ui::icons::INFO, Some(ui.visuals().text_color()));
 
                             ui.allocate_rect(rect, egui::Sense::hover()).on_hover_text(format!("Download limited to {max_downloaded} memory budget"));
                         }

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import pyarrow as pa
-    from rerun.catalog import IndexColumnDescriptor, RegistrationHandle
+    from rerun.catalog import RegistrationHandle
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
 
@@ -251,10 +251,10 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
-    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
-        # Use the SDK's DatasetView.get_index_ranges()
+    def get_index_ranges(self) -> datafusion.DataFrame:
+        """Returns the range bounds of all indexes per segment."""
         view = self.filter_contents(["/**"])
-        return view.get_index_ranges(index)
+        return view.get_index_ranges()
 
     def create_fts_search_index(
         self,
@@ -452,24 +452,14 @@ class DatasetView:
             using_index_values=using_index_values,
         )
 
-    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
-        import datafusion.functions as F
-        from datafusion import col
+    def get_index_ranges(self) -> datafusion.DataFrame:
+        """Returns the range bounds of all indexes per segment."""
+        exprs = ["rerun_segment_id"]
+        for index_col in self.schema().index_columns():
+            exprs.append(f"{index_col.name}:start")
+            exprs.append(f"{index_col.name}:end")
 
-        schema = self.schema()
-        exprs = []
-
-        for index_column in schema.index_columns():
-            exprs.append(F.min(col(index_column.name)).alias(f"{index_column.name}:min"))
-            exprs.append(F.max(col(index_column.name)).alias(f"{index_column.name}:max"))
-
-        # TODO(ab, jleibs): we're still unsure about these, so let's keep them aside for now.
-        # for component_column in schema.component_columns():
-        #     if component_column.name.startswith("property:"):
-        #         continue
-        #     exprs.append(F.count(col(component_column.name)).alias(f"count({component_column.name})"))
-
-        return self.reader(index=index).aggregate("rerun_segment_id", exprs)
+        return self.segment_table().select(*exprs)
 
     def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given segment IDs."""

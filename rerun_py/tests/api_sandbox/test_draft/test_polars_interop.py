@@ -53,21 +53,27 @@ Schema([('rerun_segment_id', String),
         ('rerun_storage_urls', List(String)),
         ('rerun_last_updated_at', Datetime(time_unit='ns', time_zone=None)),
         ('rerun_num_chunks', UInt64),
-        ('rerun_size_bytes', UInt64)])\
+        ('rerun_size_bytes', UInt64),
+        ('timeline:end', Datetime(time_unit='ns', time_zone=None)),
+        ('timeline:start', Datetime(time_unit='ns', time_zone=None))])\
 """)
 
         df = df.drop(["rerun_storage_urls", "rerun_last_updated_at"]).sort("rerun_segment_id")
         assert str(df) == inline_snapshot("""\
-shape: (3, 4)
-┌────────────────────┬───────────────────┬──────────────────┬──────────────────┐
-│ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
-│ ---                ┆ ---               ┆ ---              ┆ ---              │
-│ str                ┆ list[str]         ┆ u64              ┆ u64              │
-╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡
-│ simple_recording_0 ┆ ["base"]          ┆ 2                ┆ 2656             │
-│ simple_recording_1 ┆ ["base"]          ┆ 2                ┆ 2656             │
-│ simple_recording_2 ┆ ["base"]          ┆ 2                ┆ 2656             │
-└────────────────────┴───────────────────┴──────────────────┴──────────────────┘\
+shape: (3, 6)
+┌────────────────┬────────────────┬────────────────┬───────────────┬───────────────┬───────────────┐
+│ rerun_segment_ ┆ rerun_layer_na ┆ rerun_num_chun ┆ rerun_size_by ┆ timeline:end  ┆ timeline:star │
+│ id             ┆ mes            ┆ ks             ┆ tes           ┆ ---           ┆ t             │
+│ ---            ┆ ---            ┆ ---            ┆ ---           ┆ datetime[ns]  ┆ ---           │
+│ str            ┆ list[str]      ┆ u64            ┆ u64           ┆               ┆ datetime[ns]  │
+╞════════════════╪════════════════╪════════════════╪═══════════════╪═══════════════╪═══════════════╡
+│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
+│ ng_0           ┆                ┆                ┆               ┆ 00:00:00      ┆ 00:00:00      │
+│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
+│ ng_1           ┆                ┆                ┆               ┆ 00:00:01      ┆ 00:00:01      │
+│ simple_recordi ┆ ["base"]       ┆ 2              ┆ 2656          ┆ 2000-01-01    ┆ 2000-01-01    │
+│ ng_2           ┆                ┆                ┆               ┆ 00:00:02      ┆ 00:00:02      │
+└────────────────┴────────────────┴────────────────┴───────────────┴───────────────┴───────────────┘\
 """)
 
 

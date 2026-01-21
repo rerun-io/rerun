@@ -158,7 +158,7 @@ impl TransformFramesUi {
             for (idx, transform) in self.frames.iter().take(show_amount).enumerate().rev() {
                 if idx + 1 < self.frames.len() || more {
                     let id = ui.next_auto_id();
-                    let rect = ui.small_icon(&icons::ARROW_UP, None);
+                    let rect = ui.small_icon(&icons::ARROW_UP, Some(ui.visuals().text_color()));
                     ui.interact(rect, id, egui::Sense::hover())
                         .on_hover_text(format!(
                             "{} is a child frame of {}",

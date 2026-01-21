@@ -21,6 +21,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures_util::{Stream, StreamExt as _};
 use re_dataframe::external::re_chunk_store::ChunkStore;
+use re_dataframe::utils::align_record_batch_to_schema;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
@@ -29,9 +30,7 @@ use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
 use re_redap_client::ConnectionClient;
 use tokio::runtime::Handle;
 
-use crate::dataframe_query_common::{
-    align_record_batch_to_schema, group_chunk_infos_by_segment_id,
-};
+use crate::dataframe_query_common::group_chunk_infos_by_segment_id;
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec {

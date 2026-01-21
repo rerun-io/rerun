@@ -902,6 +902,20 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     )
 }
 
+#[inline]
+pub fn build_index_value(value: impl TryInto<TimeInt>, time_type: TimeType) -> (Timeline, TimeInt) {
+    let timeline_name = match time_type {
+        TimeType::Sequence => "frame_nr",
+        TimeType::DurationNs => "duration",
+        TimeType::TimestampNs => "timestamp",
+    };
+
+    (
+        Timeline::new(timeline_name, time_type),
+        TimeInt::saturated_temporal(value),
+    )
+}
+
 impl SizeBytes for StoreId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

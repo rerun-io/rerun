@@ -220,7 +220,7 @@ class UrdfTree:
         self._inner = inner
 
     @staticmethod
-    def from_file_path(path: str | Path) -> UrdfTree:
+    def from_file_path(path: str | Path, entity_path_prefix: str | None = None) -> UrdfTree:
         """
         Load a URDF file from the given path.
 
@@ -228,9 +228,11 @@ class UrdfTree:
         ----------
         path:
             Path to the URDF file.
+        entity_path_prefix:
+            Optional entity path prefix.
 
         """
-        return UrdfTree(_UrdfTreeInternal.from_file_path(path))
+        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix))
 
     @property
     def name(self) -> str:
@@ -283,29 +285,43 @@ class UrdfTree:
         inner = self._inner.get_link_by_name(link_name)
         return UrdfLink(inner) if inner else None
 
-    def get_link_path(self, link: UrdfLink) -> str:
+    def get_visual_geometry_paths(self, link: str | UrdfLink) -> list[str]:
         """
-        Get the entity path for a link.
+        Get the entity paths for all visual geometries of the given link, if any.
 
         Parameters
         ----------
         link:
-            The link whose path to retrieve.
+            The link for which to get visual geometry paths,
+            either by name or as an UrdfLink instance.
 
         """
-        return self._inner.get_link_path(link._inner)
+        if isinstance(link, str):
+            inner = self._inner.get_link_by_name(link)
+            if inner is None:
+                return []
+        else:
+            inner = link._inner
+        return self._inner.get_visual_geometry_paths(inner)
 
-    def get_link_path_by_name(self, link_name: str) -> str | None:
+    def get_collision_geometry_paths(self, link: str | UrdfLink) -> list[str]:
         """
-        Get the entity path for a link by name.
+        Get the entity paths for all collision geometries of the given link, if any.
 
         Parameters
         ----------
-        link_name:
-            Name of the link.
+        link:
+            The link for which to retrieve the collision geometry entity paths,
+            either by name or as an UrdfLink instance.
 
         """
-        return self._inner.get_link_path_by_name(link_name)
+        if isinstance(link, str):
+            inner = self._inner.get_link_by_name(link)
+            if inner is None:
+                return []
+        else:
+            inner = link._inner
+        return self._inner.get_collision_geometry_paths(inner)
 
     def __repr__(self) -> str:
         return self._inner.__repr__()

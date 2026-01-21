@@ -659,6 +659,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             optimize_indexes, retrain_indexes, compact_fragments, cleanup_before, unsafe_allow_recent_cleanup
         )
 
+    def get_index_ranges(self) -> datafusion.DataFrame:
+        """Returns the range bounds of all indexes per segment."""
+        view = self.filter_contents(["/**"])
+        return view.get_index_ranges()
+
 
 class DatasetView:
     """
@@ -915,6 +920,15 @@ class DatasetView:
             content_str = "no content filter"
 
         return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
+
+    def get_index_ranges(self) -> datafusion.DataFrame:
+        """Returns the range bounds of all indexes per segment."""
+        exprs = ["rerun_segment_id"]
+        for index_col in self.schema().index_columns():
+            exprs.append(f"{index_col.name}:start")
+            exprs.append(f"{index_col.name}:end")
+
+        return self.segment_table().select(*exprs)
 
 
 class TableEntry(Entry[TableEntryInternal]):
