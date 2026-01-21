@@ -1,10 +1,11 @@
 #![expect(clippy::cast_possible_wrap)]
 
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::sync::Arc;
+
 use re_byte_size::testing::TrackingAllocator;
 use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
-use std::sync::Arc;
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator::system();
@@ -30,9 +31,13 @@ fn format_result<T: SizeBytes>(type_name: &str, len: usize, creator: impl Fn() -
     };
 
     let name = format!("{type_name} len={len}");
-    format!(
-        "{name:<44} estimated {estimated:>10}B vs {accurate:>10}B actual (error: {error_pct:+.1}%)"
-    )
+
+    // We intentionally exclude the actual (measured) size from the snapshot output.
+    // The actual size can vary very slightly across platforms (Windows/macOS/Linux).
+    // The estimated size (our calculation) is deterministic, and the error percentage
+    // tells us how accurate our estimate is relative to the platform's actual allocation.
+    // Since we round the percentage, small variations in actual size won't affect the snapshot.
+    format!("{name:<44} {estimated:>10}B (estimated) - error: {error_pct:+.1}%")
 }
 
 fn run_many_sizes<T: SizeBytes>(
