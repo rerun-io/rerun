@@ -387,13 +387,7 @@ fn log_robot(
 
     // Send all transforms as rows in a single chunk.
     if !transforms.is_empty() {
-        send_transforms_batch(
-            tx,
-            store_id,
-            &urdf_tree.log_paths.transforms,
-            &transforms,
-            timepoint,
-        )?;
+        send_static_transforms_batch(tx, store_id, &urdf_tree.log_paths.transforms, &transforms)?;
     }
 
     Ok(())
@@ -444,17 +438,20 @@ fn get_joint_transform(joint: &Joint) -> Transform3D {
     transform_from_pose(origin, parent.link.clone(), child.link.clone())
 }
 
-fn send_transforms_batch(
+/// Send a batch of static transforms as a single chunk.
+///
+/// We always do this statically for URDF, because this allows users to override them later
+/// on any other transform entity of their choice.
+fn send_static_transforms_batch(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
     transforms_path: &EntityPath,
     transforms: &[Transform3D],
-    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let mut chunk = ChunkBuilder::new(ChunkId::new(), transforms_path.clone());
 
     for transform in transforms {
-        chunk = chunk.with_archetype(RowId::new(), timepoint.clone(), transform);
+        chunk = chunk.with_archetype(RowId::new(), TimePoint::STATIC, transform);
     }
 
     send_chunk_builder(tx, store_id, chunk)
