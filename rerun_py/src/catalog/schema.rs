@@ -135,6 +135,66 @@ impl PySchemaInternal {
 
         PyCapsule::new(py, ffi_schema, Some(capsule_name))
     }
+
+    /// List all unique archetype names in the schema.
+    ///
+    /// Returns a sorted list of fully-qualified archetype names.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of archetype names (e.g., `["rerun.archetypes.Points3D", …]`)
+    fn archetypes(&self) -> Vec<String> {
+        let mut archetypes: Vec<String> = self
+            .columns
+            .component_columns()
+            .filter_map(|col| col.archetype.map(|a| a.to_string()))
+            .collect();
+
+        archetypes.sort();
+        archetypes.dedup();
+        archetypes
+    }
+
+    /// List all unique entity paths in the schema.
+    ///
+    /// Returns a sorted list of entity paths.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of entity paths (e.g., `["/world/points", "/world/camera", …]`)
+    fn entities(&self) -> Vec<String> {
+        let mut entities: Vec<String> = self
+            .columns
+            .component_columns()
+            .map(|col| col.entity_path.to_string())
+            .collect();
+
+        entities.sort();
+        entities.dedup();
+        entities
+    }
+
+    /// List all unique component type names in the schema.
+    ///
+    /// Returns a sorted list of fully-qualified component type names.
+    ///
+    /// Returns
+    /// -------
+    /// list[str]
+    ///     Sorted list of component type names (e.g., `["rerun.components.Position3D", …]`)
+    fn component_types(&self) -> Vec<String> {
+        let mut component_types: Vec<String> = self
+            .columns
+            .component_columns()
+            .filter_map(|col| col.component_type.map(|c| c.to_string()))
+            .collect();
+
+        component_types.sort();
+        component_types.dedup();
+        component_types
+    }
 }
 
 impl PySchemaInternal {

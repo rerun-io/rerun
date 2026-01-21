@@ -117,6 +117,75 @@ class Schema:
         """
         return [col.name for col in self]
 
+    def archetypes(self) -> list[str]:
+        """
+        List all unique archetype names in the schema.
+
+        Returns a sorted list of fully-qualified archetype names.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of archetype names (e.g., ["rerun.archetypes.Points3D", …])
+
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        archetypes = schema.archetypes()
+        print(archetypes)
+        # ['rerun.archetypes.Boxes3D', 'rerun.archetypes.Points3D', 'rerun.archetypes.Transform3D']
+        ```
+
+        """
+        return self._internal.archetypes()
+
+    def entities(self) -> list[str]:
+        """
+        List all unique entity paths in the schema.
+
+        Returns a sorted list of entity paths.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of entity paths (e.g., ["/world/points", "/world/camera", …])
+
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        entities = schema.entities()
+        print(entities)
+        # ['/world/boxes', '/world/camera', '/world/points']
+        ```
+
+        """
+        return self._internal.entities()
+
+    def component_types(self) -> list[str]:
+        """
+        List all unique component type names in the schema.
+
+        Returns a sorted list of fully-qualified component type names.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of component type names (e.g., ["rerun.components.Position3D", …])
+
+        Examples
+        --------
+        ```python
+        schema = dataset.schema()
+        component_types = schema.component_types()
+        print(component_types)
+        # ['rerun.components.Color', 'rerun.components.HalfSize3D', 'rerun.components.Position3D', …]
+        ```
+
+        """
+        return self._internal.component_types()
+
     def __repr__(self) -> str:
         """Return a string representation of the schema."""
         return "\n".join(repr(col) for col in self)

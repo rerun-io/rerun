@@ -23,7 +23,6 @@ use crate::catalog::{
 use crate::utils::wait_for_future;
 
 /// A view over a dataset with optional segment and content filters applied lazily.
-//TODO(RR-3157): add the ability to filter on components, not just entity paths
 #[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq]
 pub struct PyDatasetViewInternal {
     dataset: Py<PyDatasetEntryInternal>,
@@ -35,8 +34,12 @@ pub struct PyDatasetViewInternal {
     segment_filter: Option<HashSet<String>>,
 
     /// Content filters: entity path expressions like "/points/**", "-/text/**". If empty,
-    /// everything is included.
+    /// everything is included. Mutually exclusive with `column_selectors`.
     content_filters: Vec<String>,
+
+    /// Column selectors: component column selectors like "/entity_path:Component". If Some,
+    /// this is used instead of `content_filters` for component-level filtering.
+    column_selectors: Option<Vec<String>>,
 }
 
 impl PyDatasetViewInternal {
@@ -50,6 +53,21 @@ impl PyDatasetViewInternal {
             dataset,
             segment_filter,
             content_filters: content_filters.unwrap_or_default(),
+            column_selectors: None,
+        }
+    }
+
+    /// Create a new `DatasetView` with column selectors for component-level filtering.
+    pub fn new_with_column_selectors(
+        dataset: Py<PyDatasetEntryInternal>,
+        segment_filter: Option<HashSet<String>>,
+        column_selectors: Vec<String>,
+    ) -> Self {
+        Self {
+            dataset,
+            segment_filter,
+            content_filters: Vec::new(),
+            column_selectors: Some(column_selectors),
         }
     }
 
@@ -64,29 +82,84 @@ impl PyDatasetViewInternal {
         }
     }
 
-    /// Filter schema columns based on content filters.
-    fn filter_schema(&self, schema: SorbetColumnDescriptors) -> SorbetColumnDescriptors {
-        if self.content_filters.is_empty() {
-            return schema;
-        }
+    /// Check if a column descriptor is a system column (row_id or index/time).
+    ///
+    /// System columns are always included in filtered schemas regardless of filter criteria.
+    fn is_system_column(col: &ColumnDescriptor) -> bool {
+        matches!(col, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_))
+    }
 
+    /// Filter schema columns based on content filters or column selectors.
+    fn filter_schema(&self, schema: SorbetColumnDescriptors) -> PyResult<SorbetColumnDescriptors> {
+        // Apply column selector filtering first if present
+        let schema = if let Some(column_selectors) = &self.column_selectors {
+            Self::filter_schema_by_column_selectors(schema, column_selectors)?
+        } else {
+            schema
+        };
+
+        // Then apply entity path filtering if present
+        if !self.content_filters.is_empty() {
+            Ok(self.filter_schema_by_entity_path(schema))
+        } else {
+            Ok(schema)
+        }
+    }
+
+    /// Filter schema columns based on entity path filters.
+    fn filter_schema_by_entity_path(
+        &self,
+        schema: SorbetColumnDescriptors,
+    ) -> SorbetColumnDescriptors {
         let filter = self.resolved_entity_path_filter();
 
-        // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
             .into_iter()
-            .filter(|col| {
-                match col {
-                    ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
-                    // Keep row_id and index columns
-                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
-                }
+            .filter(|col| match col {
+                ColumnDescriptor::Component(comp) => filter.matches(&comp.entity_path),
+                _ => Self::is_system_column(col),
             })
             .collect();
 
         SorbetColumnDescriptors {
             columns: filtered_columns,
         }
+    }
+
+    /// Filter schema columns based on column selectors.
+    fn filter_schema_by_column_selectors(
+        schema: SorbetColumnDescriptors,
+        column_selectors: &[String],
+    ) -> PyResult<SorbetColumnDescriptors> {
+        use re_sorbet::ComponentColumnSelector;
+        use std::str::FromStr as _;
+
+        // Parse all column selectors - fail fast with clear error
+        let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
+            .iter()
+            .map(|s| ComponentColumnSelector::from_str(s))
+            .collect();
+
+        let selectors = selectors.map_err(|err| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid column selector format: {err}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+            ))
+        })?;
+
+        let filtered_columns: Vec<ColumnDescriptor> = schema
+            .into_iter()
+            .filter(|col| match col {
+                ColumnDescriptor::Component(comp) => {
+                    // Check if this component matches any selector
+                    selectors.iter().any(|selector| comp.matches(selector))
+                }
+                _ => Self::is_system_column(col),
+            })
+            .collect();
+
+        Ok(SorbetColumnDescriptors {
+            columns: filtered_columns,
+        })
     }
 }
 
@@ -123,7 +196,7 @@ impl PyDatasetViewInternal {
         } = PyDatasetEntryInternal::fetch_schema(&dataset)?;
 
         // Apply content filters
-        let filtered_columns = self_.filter_schema(base_columns);
+        let filtered_columns = self_.filter_schema(base_columns)?;
         Ok(PySchemaInternal {
             columns: filtered_columns,
             metadata,
@@ -192,12 +265,65 @@ impl PyDatasetViewInternal {
         let mut combined_filters = self_.content_filters.clone();
         combined_filters.extend(exprs);
 
+        // Preserve existing column selectors if any, so we can apply both filters
+        if let Some(column_selectors) = &self_.column_selectors {
+            Py::new(
+                py,
+                Self {
+                    dataset: self_.dataset.clone_ref(py),
+                    segment_filter: self_.segment_filter.clone(),
+                    content_filters: combined_filters,
+                    column_selectors: Some(column_selectors.clone()),
+                },
+            )
+        } else {
+            Py::new(
+                py,
+                Self::new(
+                    self_.dataset.clone_ref(py),
+                    self_.segment_filter.clone(),
+                    Some(combined_filters),
+                ),
+            )
+        }
+    }
+
+    /// Returns a new DatasetView filtered to the given component column selectors.
+    ///
+    /// Parameters
+    /// ----------
+    /// column_selectors : list[str]
+    ///     Component column selectors like "/entity_path:Component".
+    fn filter_contents_columns(
+        self_: PyRef<'_, Self>,
+        column_selectors: Vec<String>,
+    ) -> PyResult<Py<Self>> {
+        let py = self_.py();
+
+        // Compute intersection with existing column selectors if any.
+        // This implements AND logic: a column must match both the existing filter
+        // and the new filter to be included.
+        let combined_selectors = match &self_.column_selectors {
+            Some(existing) => {
+                // Convert new selectors to a set for efficient lookup
+                let new_set: HashSet<String> = column_selectors.into_iter().collect();
+
+                // Keep only existing selectors that are also in the new set (intersection)
+                existing
+                    .iter()
+                    .filter(|s| new_set.contains(*s))
+                    .cloned()
+                    .collect()
+            }
+            None => column_selectors,
+        };
+
         Py::new(
             py,
-            Self::new(
+            Self::new_with_column_selectors(
                 self_.dataset.clone_ref(py),
                 self_.segment_filter.clone(),
-                Some(combined_filters),
+                combined_selectors,
             ),
         )
     }
@@ -249,6 +375,7 @@ impl PyDatasetViewInternal {
             &self_.dataset,
             self_.segment_filter.clone(),
             &self_.content_filters,
+            &self_.column_selectors,
             index,
             include_semantically_empty_columns,
             include_tombstone_columns,
@@ -328,6 +455,64 @@ fn build_view_contents(
     }
 }
 
+/// Build a `ViewContentsSelector` from component column selectors.
+fn build_view_contents_from_column_selectors(
+    schema: &ArrowSchema,
+    column_selectors: &[String],
+) -> PyResult<Option<ViewContentsSelector>> {
+    use re_sorbet::ComponentColumnSelector;
+    use std::collections::BTreeMap;
+    use std::str::FromStr as _;
+
+    // Parse all column selectors - fail fast with clear error
+    let selectors: Result<Vec<ComponentColumnSelector>, _> = column_selectors
+        .iter()
+        .map(|s| ComponentColumnSelector::from_str(s))
+        .collect();
+
+    let selectors = selectors.map_err(|err| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Invalid column selector format: {err}. Expected format: 'entity_path:component' (e.g., '/world/points:Position3D')"
+        ))
+    })?;
+
+    // Extract component descriptors from schema and filter by selectors
+    let matching_components: Vec<_> = schema
+        .fields()
+        .iter()
+        .filter_map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()).ok())
+        .filter_map(|descriptor| {
+            if let ColumnDescriptor::Component(component) = descriptor {
+                Some(component)
+            } else {
+                None
+            }
+        })
+        .filter(|comp| selectors.iter().any(|selector| comp.matches(selector)))
+        .collect();
+
+    // Build ViewContentsSelector: map entity paths to sets of components
+    let mut contents = BTreeMap::new();
+    for comp in matching_components {
+        contents
+            .entry(comp.entity_path.clone())
+            .or_insert_with(BTreeSet::new)
+            .insert(comp.component);
+    }
+
+    // Convert to ViewContentsSelector format
+    let view_contents: BTreeMap<_, _> = contents
+        .into_iter()
+        .map(|(path, components)| (path, Some(components)))
+        .collect();
+
+    Ok(if view_contents.is_empty() {
+        None
+    } else {
+        Some(ViewContentsSelector(view_contents))
+    })
+}
+
 /// Build a table provider for dataframe queries with the given parameters.
 #[expect(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn build_dataframe_query_table_provider(
@@ -335,6 +520,7 @@ fn build_dataframe_query_table_provider(
     dataset: &Py<PyDatasetEntryInternal>,
     segment_filter: Option<HashSet<String>>,
     content_filters: &[String],
+    column_selectors: &Option<Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
@@ -347,7 +533,12 @@ fn build_dataframe_query_table_provider(
     let connection = dataset_ref.client().borrow(py).connection().clone();
     drop(dataset_ref);
 
-    let view_contents = build_view_contents(&schema, content_filters);
+    // Build view contents from either column selectors or content filters
+    let view_contents = if let Some(selectors) = column_selectors {
+        build_view_contents_from_column_selectors(&schema, selectors)?
+    } else {
+        build_view_contents(&schema, content_filters)
+    };
     let segment_ids: Vec<String> = match &segment_filter {
         Some(filter) => filter.iter().cloned().collect(),
         None => vec![],

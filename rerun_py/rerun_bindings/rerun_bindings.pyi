@@ -4,7 +4,7 @@ import os
 from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import datafusion as dfn
 import numpy as np
@@ -18,6 +18,15 @@ from .types import (
 
 if TYPE_CHECKING:
     from rerun.catalog import Schema
+
+# Type aliases for column selection
+AnyComponentColumn: TypeAlias = str | ComponentColumnSelector | ComponentColumnDescriptor
+"""A component column specified as a string, selector, or descriptor."""
+
+AnyColumn: TypeAlias = (
+    str | ComponentColumnSelector | ComponentColumnDescriptor | IndexColumnSelector | IndexColumnDescriptor
+)
+"""Any column (component or index) specified as a string, selector, or descriptor."""
 
 # NOTE
 #
@@ -182,8 +191,67 @@ class SchemaInternal:
     def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None: ...
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
-    ) -> ComponentColumnDescriptor: ...
+    ) -> ComponentColumnDescriptor:
+        """
+        Look up the column descriptor for a specific selector.
+
+        Parameters
+        ----------
+        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+            The selector to look up.
+
+            String arguments are expected to follow the following format:
+            `"<entity_path>:<component_type>"`
+
+        Returns
+        -------
+        ComponentColumnDescriptor
+            The column descriptor, if it exists. Raise an exception otherwise.
+
+        """
+
     def __arrow_c_schema__(self) -> Any: ...
+    def archetypes(self) -> list[str]:
+        """
+        List all unique archetype names in the schema.
+
+        Returns a sorted list of fully-qualified archetype names (e.g.,
+        `["rerun.archetypes.Points3D", "rerun.archetypes.Transform3D", ...]`).
+
+        Returns
+        -------
+        list[str]
+            Sorted list of fully-qualified archetype names.
+
+        """
+
+    def entities(self) -> list[str]:
+        """
+        List all unique entity paths in the schema.
+
+        Returns a sorted list of entity paths (e.g.,
+        `["/world/points", "/world/camera", "/observation/joints", ...]`).
+
+        Returns
+        -------
+        list[str]
+            Sorted list of entity paths.
+
+        """
+
+    def component_types(self) -> list[str]:
+        """
+        List all unique component type names in the schema.
+
+        Returns a sorted list of fully-qualified component type names (e.g.,
+        `["rerun.components.Position3D", "rerun.components.Color", ...]`).
+
+        Returns
+        -------
+        list[str]
+            Sorted list of fully-qualified component type names.
+
+        """
 
 class Recording:
     """
@@ -980,6 +1048,7 @@ class DatasetEntryInternal:
 
     def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
     def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
+    def filter_contents_columns(self, column_selectors: list[str]) -> DatasetViewInternal: ...
 
     # ---
 
@@ -1063,6 +1132,7 @@ class DatasetViewInternal:
     ) -> dfn.DataFrame: ...
     def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
     def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
+    def filter_contents_columns(self, column_selectors: list[str]) -> DatasetViewInternal: ...
 
 class TableEntryInternal:
     def catalog(self) -> CatalogClientInternal: ...
