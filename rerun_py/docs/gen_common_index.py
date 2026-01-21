@@ -76,48 +76,49 @@ def all_submodules(max_depth: int | None = None, ignore_hidden: bool = True) -> 
         ignore_hidden: If True, skip modules starting with underscores (e.g., _baseclasses, __main__).
 
     """
-    import pkgutil
 
     rerun_package_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun")
 
-    # Add the parent directory to sys.path temporarily so we can import rerun
-    parent_path = str(Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk"))
-    if parent_path not in sys.path:
-        sys.path.insert(0, parent_path)
+    # Walk the filesystem directly instead of importing packages
+    submodules = []
 
-    try:
-        # Import the rerun package
-        import rerun
+    # We do this because we build and test our docs without rerun_bindings built.
+    def _walk_package_dir(directory: Path, base_path: Path, current_relative_path: str = "") -> None:
+        """Recursively walk a Python package directory to find submodules."""
+        if not directory.is_dir():
+            return
 
-        submodules = []
+        # Check if this directory is a Python package (has __init__.py)
+        init_file = directory / "__init__.py"
+        if not init_file.exists():
+            return
 
-        # Walk through all submodules in the rerun package
-        for _, modname, _ in pkgutil.walk_packages(rerun.__path__, rerun.__name__ + "."):
-            # Remove the 'rerun.' prefix to get the relative module name
-            relative_name = modname[len("rerun.") :]
-
+        # If we're not at the root, add this as a submodule
+        if current_relative_path:
             # Skip hidden modules if requested
             if ignore_hidden:
-                # Check if any part of the module path starts with underscore
-                parts = relative_name.split(".")
+                parts = current_relative_path.split(".")
                 if any(part.startswith("_") for part in parts):
-                    continue
+                    return
 
             # Check depth if max_depth is specified
             if max_depth is not None:
-                depth = relative_name.count(".") + 1
+                depth = current_relative_path.count(".") + 1
                 if depth > max_depth:
-                    continue
+                    return
 
-            submodules.append(relative_name)
+            submodules.append(current_relative_path)
 
-        assert len(submodules) > 0, f"Found no submodules in {rerun_package_path}"
-        return sorted(submodules)
+        # Recursively walk subdirectories
+        for item in directory.iterdir():
+            if item.is_dir() and not item.name.startswith("."):
+                new_relative_path = current_relative_path + "." + item.name if current_relative_path else item.name
+                _walk_package_dir(item, base_path, new_relative_path)
 
-    finally:
-        # Clean up sys.path
-        if parent_path in sys.path:
-            sys.path.remove(parent_path)
+    _walk_package_dir(rerun_package_path, rerun_package_path)
+
+    assert len(submodules) > 0, f"Found no submodules in {rerun_package_path}"
+    return sorted(submodules)
 
 
 @dataclass
