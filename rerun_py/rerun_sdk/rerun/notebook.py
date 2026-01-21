@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
-from .event import (
+from ._event import (
     ViewerEvent,
     _viewer_event_from_json_str,
 )
