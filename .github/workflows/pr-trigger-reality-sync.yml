@@ -8,9 +8,11 @@ jobs:
   trigger-import:
     # Only run on PR comments (not issue comments)
     # Only run if comment contains the trigger phrase
+    # Ignore comments from bots (e.g., the sync bot's own error messages)
     if: |
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '@rerun-bot reality-sync')
+      contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+      !endsWith(github.event.comment.user.login, '[bot]')
     runs-on: ubuntu-latest
     defaults:
       run:
