@@ -316,7 +316,7 @@ build-examples = "uv run cargo run --locked -p re_dev_tools -- build-examples"
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
 # Update the results of `insta` and `kittest` snapshot regression tests
-rs-update-snapshot-tests = "INSTA_FORCE_UPDATE=1 UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet"
+rs-update-snapshot-tests = "INSTA_UPDATE=always UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet --no-fail-fast"
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
