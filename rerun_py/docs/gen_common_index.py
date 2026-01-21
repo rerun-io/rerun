@@ -148,6 +148,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "AnyValues",
             "AnyBatchValue",
             "ComponentDescriptor",
+            "DynamicArchetype",
         ],
     ),
     ################################################################################
