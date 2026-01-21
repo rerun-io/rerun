@@ -19,6 +19,9 @@ impl SizeBytes for String {
 
 /// Estimate heap size for a [`BTreeMap`] or [`BTreeSet`],
 /// excluding the memory that non-POD key/values hold on their own.
+///
+/// This estimates memory for BTrees built via sequential inserts.
+/// BTrees built via `.collect()` may use less memory due to bulk loading optimizations.
 #[inline]
 pub(crate) fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
     if len == 0 {
@@ -28,18 +31,37 @@ pub(crate) fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
     // Reference: https://github.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs
 
     const BTREE_B: usize = 6;
-    const ELEMENTS_PER_LEAF: usize = 2 * BTREE_B - 1;
-    const NODE_FIXED_OVERHEAD: usize = 16;
+    const CAPACITY: usize = 2 * BTREE_B - 1; // 11 entries max per node
 
-    // Estimate number of leaf nodes needed (nodes are ~half full on average after insertions)
-    let num_leaf_nodes = len.div_ceil(ELEMENTS_PER_LEAF);
+    // After sequential insertions, B-tree nodes are ~ln(2) ≈ 69% full on average.
+    // This comes from the fact that nodes split when full, creating two half-full nodes.
+    // We use 2/3 as a simple approximation.
+    let avg_entries_per_node = (CAPACITY * 2) / 3; // ~7 entries per node
 
-    // Each leaf node allocates space for ELEMENTS_PER_LEAF entries
-    let leaf_data_size = num_leaf_nodes * ELEMENTS_PER_LEAF * entry_size;
-    let leaf_overhead = num_leaf_nodes * NODE_FIXED_OVERHEAD;
+    // Estimate number of leaf nodes
+    let num_leaf_nodes = len.div_ceil(avg_entries_per_node.max(1));
 
-    // Internal nodes add ~10% overhead for large trees, ignore for simplicity
-    (leaf_data_size + leaf_overhead) as u64
+    // LeafNode layout (from Rust source):
+    // - parent: *const InternalNode (8 bytes on 64-bit)
+    // - len: u16 (2 bytes, padded to 8 for alignment)
+    // - keys: MaybeUninit<[K; CAPACITY]>
+    // - vals: MaybeUninit<[V; CAPACITY]>
+    // Total overhead is typically 16 bytes.
+    const LEAF_OVERHEAD: usize = 16;
+    let leaf_size = LEAF_OVERHEAD + CAPACITY * entry_size;
+    let total_leaf_size = num_leaf_nodes * leaf_size;
+
+    // Internal nodes form a tree above the leaves.
+    // For L leaf nodes, there are approximately L/(B+1) internal nodes at the first level,
+    // then L/(B+1)² at the next level, etc.
+    // Total internal nodes ≈ L/B for large trees.
+    // InternalNode has same base layout as LeafNode, plus an array of CAPACITY+1 child pointers.
+    let num_internal_nodes = num_leaf_nodes.saturating_sub(1) / BTREE_B;
+    const CHILD_PTR_SIZE: usize = size_of::<usize>(); // pointer to child node
+    let internal_node_size = leaf_size + (CAPACITY + 1) * CHILD_PTR_SIZE;
+    let total_internal_size = num_internal_nodes * internal_node_size;
+
+    (total_leaf_size + total_internal_size) as u64
 }
 
 impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
