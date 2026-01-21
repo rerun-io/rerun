@@ -132,6 +132,11 @@ impl re_byte_size::SizeBytes for TemporalChunkInfo {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.

@@ -179,6 +179,11 @@ impl re_byte_size::SizeBytes for ComponentType {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 re_string_interner::declare_new_type!(
@@ -221,5 +226,10 @@ impl re_byte_size::SizeBytes for DatatypeName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

@@ -184,6 +184,11 @@ impl re_byte_size::SizeBytes for ArchetypeName {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 // ---
@@ -198,5 +203,10 @@ impl re_byte_size::SizeBytes for ComponentIdentifier {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
