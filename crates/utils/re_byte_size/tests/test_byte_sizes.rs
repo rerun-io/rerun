@@ -89,9 +89,7 @@ fn test_sizes() {
     });
     run_many_sizes(&mut lines, "BTreeMap<u64, String> (insert)", |len| {
         // Pre-create all strings first to isolate BTree allocation behavior
-        let items: Vec<_> = (0..len as u64)
-            .map(|i| (i, format!("value_{i}")))
-            .collect();
+        let items: Vec<_> = (0..len as u64).map(|i| (i, format!("value_{i}"))).collect();
         let mut map = BTreeMap::<u64, String>::new();
         for (k, v) in items {
             map.insert(k, v);
