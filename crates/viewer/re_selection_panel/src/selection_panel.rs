@@ -7,8 +7,9 @@ use re_data_ui::item_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash};
+use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
@@ -515,7 +516,6 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 /// This is not technically a visualizer, but it affects visualization, so we show it alongside.
 fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
     use re_sdk_types::archetypes;
-    use re_sdk_types::components::TransformFrameId;
     use re_view::latest_at_with_blueprint_resolved_data;
 
     let component_descr = archetypes::CoordinateFrame::descriptor_frame();
@@ -560,7 +560,22 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
 
     let property_content = list_item::PropertyContent::new("Coordinate frame")
         .value_fn(|ui, _| {
-            frame_id_edit(ctx, ui, &mut frame_id, &frame_id_before);
+            // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
+            let suggestions = {
+                let caches = ctx.viewer_ctx.store_context.caches;
+                let transform_cache =
+                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        c.read_lock_transform_cache(ctx.viewer_ctx.recording())
+                    });
+
+                transform_cache
+                    .frame_id_registry()
+                    .iter_frame_ids()
+                    .filter(|(_, id)| !id.is_entity_path_derived())
+                    .map(|(_, id)| id.to_string())
+                    .collect::<Vec<String>>()
+            };
+            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
             crate::visualizer_ui::remove_and_reset_override_buttons(
@@ -600,93 +615,6 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             &TransformFrameId::new(&frame_id),
         );
     }
-}
-
-fn frame_id_edit(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    frame_id: &mut String,
-    frame_id_before: &String,
-) {
-    let (mut suggestions, response) = {
-        // In a scope to not hold the lock for longer than needed.
-        let caches = ctx.viewer_ctx.store_context.caches;
-        let transform_cache =
-            caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                c.read_lock_transform_cache(ctx.recording())
-            });
-
-        let frame_exists = transform_cache
-            .frame_id_registry()
-            .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
-            .is_some();
-
-        let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
-        if !frame_exists {
-            text_edit = text_edit.text_color(ui.tokens().error_fg_color);
-        }
-        let response = ui.add(text_edit);
-
-        let suggestions = transform_cache
-            .frame_id_registry()
-            .iter_frame_ids()
-            // Only show named frames.
-            .filter(|(_, id)| !id.is_entity_path_derived())
-            .filter_map(|(_, id)| id.strip_prefix(&*frame_id))
-            .filter(|rest| !rest.is_empty())
-            .map(|rest| rest.to_owned())
-            .collect::<Vec<_>>();
-
-        (suggestions, response)
-    };
-
-    suggestions.sort_unstable();
-
-    let suggestions_open =
-        (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();
-
-    let width = response.rect.width();
-
-    let suggestions_ui = |ui: &mut egui::Ui| {
-        for rest in suggestions {
-            let mut layout_job = egui::text::LayoutJob::default();
-            layout_job.append(
-                &*frame_id,
-                0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_default,
-                ),
-            );
-            layout_job.append(
-                &rest,
-                0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_subdued,
-                ),
-            );
-
-            if ui
-                .add(egui::Button::new(layout_job).min_size(egui::vec2(width, 0.0)))
-                .clicked()
-            {
-                frame_id.push_str(&rest);
-            }
-        }
-    };
-
-    egui::Popup::from_response(&response)
-        .style(re_ui::menu::menu_style())
-        .open(suggestions_open)
-        .show(|ui: &mut egui::Ui| {
-            ui.set_width(width);
-
-            egui::ScrollArea::vertical()
-                .min_scrolled_height(350.0)
-                .max_height(350.0)
-                .show(ui, suggestions_ui);
-        });
 }
 
 fn show_recording_properties(

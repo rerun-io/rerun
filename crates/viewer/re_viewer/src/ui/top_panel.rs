@@ -2,6 +2,7 @@ use egui::{Atom, Button, Color32, Id, Image, NumExt as _, Popup, RichText, Sense
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
+use re_sorbet::TimestampLocation;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
 use re_viewer_context::{StoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
@@ -126,7 +127,7 @@ fn top_bar_ui(
 
                 // High enough to be concerning; low enough to be believable (and almost realtime).
                 let is_latency_interesting = latency_snapshot
-                    .e2e
+                    .e2e()
                     .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
                 // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
@@ -441,7 +442,9 @@ fn panel_buttons_r2l(
         selection,
     );
 
-    if let Some(auth) = &app.state.auth_state {
+    if let Some(auth) = &app.state.auth_state
+        && !app.is_screenshotting()
+    {
         let rect_id = Id::new("user_icon_rect");
         let user_icon_size = 16.0;
         let response = Button::new((
@@ -656,7 +659,7 @@ fn latency_snapshot_button_ui(
     ui: &mut egui::Ui,
     latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
-    let Some(e2e) = latency.e2e else {
+    let Some(e2e) = latency.e2e() else {
         return None; // No e2e latency, nothing to show as a summary
     };
 
@@ -676,6 +679,11 @@ fn latency_snapshot_button_ui(
 }
 
 fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot) {
+    let Some(e2e) = latency.e2e() else {
+        ui.label("No latency data available.");
+        return;
+    };
+
     // The user is interested in the latency, so keep it updated.
     ui.ctx().request_repaint();
 
@@ -684,89 +692,39 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
     It is also affected by the framerate of the viewer.\n\
     This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
-    // Note: all times are in seconds.
-    let re_entity_db::LatencySnapshot {
-        e2e,
-        log2chunk,
-        chunk2encode,
-        transmission,
-        decode2ingest,
-    } = latency;
+    let re_entity_db::LatencySnapshot { secs_since_log } = latency;
 
-    if let (Some(log2chunk), Some(chunk2encode), Some(transmission), Some(decode2ingest)) =
-        (log2chunk, chunk2encode, transmission, decode2ingest)
-    {
-        // We have a full picture - use a nice vertical layout:
+    ui.horizontal(|ui| {
+        ui.label("end-to-end:").on_hover_text(e2e_hover_text);
+        latency_label(ui, e2e);
+    });
+    ui.separator();
 
-        if let Some(e2e) = e2e {
-            ui.horizontal(|ui| {
-                ui.label("end-to-end:").on_hover_text(e2e_hover_text);
-                latency_label(ui, e2e);
-            });
-            ui.separator();
+    ui.vertical_centered(|ui| {
+        fn small_and_weak(text: &str) -> egui::RichText {
+            egui::RichText::new(text).small().weak()
         }
 
-        ui.vertical_centered(|ui| {
-            fn small_and_weak(text: &str) -> egui::RichText {
-                egui::RichText::new(text).small().weak()
+        ui.spacing_mut().item_spacing.y = 0.0;
+
+        let mut previous = 0.0;
+
+        ui.label(TimestampLocation::Log.to_string());
+
+        for (&location, &latency_sec) in &secs_since_log {
+            if location == TimestampLocation::Log {
+                debug_assert_eq!(latency_sec, 0.0);
+            } else {
+                let latency_since_previous = latency_sec - previous;
+                previous = latency_sec;
+
+                ui.label(small_and_weak("↓"));
+                latency_label(ui, latency_since_previous);
+                ui.label(small_and_weak("|"));
+                ui.label(location.to_string());
             }
-
-            ui.spacing_mut().item_spacing.y = 0.0;
-            ui.label("log call");
-            ui.label(small_and_weak("|"));
-            latency_label(ui, log2chunk);
-            ui.label(small_and_weak("↓"));
-            ui.label("batch creation");
-            ui.label(small_and_weak("|"));
-            latency_label(ui, chunk2encode);
-            ui.label(small_and_weak("↓"));
-            ui.label("encode and transmit");
-            ui.label(small_and_weak("|"));
-            latency_label(ui, transmission);
-            ui.label(small_and_weak("↓"));
-            ui.label("receive and decode");
-            ui.label(small_and_weak("|"));
-            latency_label(ui, decode2ingest);
-            ui.label(small_and_weak("↓"));
-            ui.label("ingest into viewer");
-        });
-    } else {
-        // We have a partial picture - show only what we got:
-        egui::Grid::new("latency_snapshot")
-            .num_columns(2)
-            .striped(false)
-            .show(ui, |ui| {
-                if let Some(e2e) = e2e {
-                    ui.strong("log -> ingest (total end-to-end)")
-                        .on_hover_text(e2e_hover_text);
-                    latency_label(ui, e2e);
-                    ui.end_row();
-
-                    ui.end_row(); // Intentional extra blank line
-                }
-
-                if let Some(log2chunk) = log2chunk {
-                    ui.label("log -> chunk");
-                    latency_label(ui, log2chunk);
-                    ui.end_row();
-                }
-                if let Some(chunk2encode) = chunk2encode {
-                    ui.label("chunk -> encode");
-                    latency_label(ui, chunk2encode);
-                    ui.end_row();
-                }
-                if let Some(transmission) = transmission {
-                    ui.label("encode -> decode (transmission)");
-                    latency_label(ui, transmission);
-                    ui.end_row();
-                }
-                if let Some(decode2ingest) = decode2ingest {
-                    ui.label("decode -> ingest");
-                    latency_label(ui, decode2ingest);
-                    ui.end_row();
-                }
-            });
-    }
+        }
+    });
 }
 
 fn latency_label(ui: &mut egui::Ui, latency_sec: f32) -> egui::Response {

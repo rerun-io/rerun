@@ -46,13 +46,18 @@ impl ChunkUi {
     }
 
     // Return `true` if the user wants to exit the chunk viewer.
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+    pub(crate) fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        store: &re_chunk_store::ChunkStore,
+    ) -> bool {
         ui.sanity_check();
 
         let tokens = ui.tokens();
 
         let table_style = re_ui::TableStyle::Dense;
-        let should_exit = self.chunk_info_ui(ui);
+        let should_exit = self.chunk_info_ui(ui, store);
 
         //
         // Sort
@@ -196,7 +201,7 @@ impl ChunkUi {
     }
 
     // Returns true if the user wants to exit the chunk viewer.
-    fn chunk_info_ui(&self, ui: &mut egui::Ui) -> bool {
+    fn chunk_info_ui(&self, ui: &mut egui::Ui, store: &re_chunk_store::ChunkStore) -> bool {
         let metadata_ui =
             |ui: &mut egui::Ui, metadata: &std::collections::HashMap<String, String>| {
                 for (key, value) in metadata.iter().sorted() {
@@ -298,6 +303,8 @@ impl ChunkUi {
                 }
             }
         });
+
+        ui.info_label(store.format_lineage(&self.chunk.id()));
 
         should_exit
     }

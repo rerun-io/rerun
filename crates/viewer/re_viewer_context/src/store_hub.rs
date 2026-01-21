@@ -5,6 +5,7 @@ use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -17,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,
-    TableStore, TableStores,
+    BlueprintUndoState, Caches, RecordingOrTable, StorageContext, StoreContext, TableStore,
+    TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings
@@ -118,11 +119,8 @@ pub struct StoreStats {
     /// These are the query caches.
     pub query_cache_stats: QueryCachesStats,
 
-    /// Memory reports for caches.
-    pub cache_memory_reports: HashMap<&'static str, CacheMemoryReport>,
-
-    /// CPU memory of the viewer caches, e.g. image decode caches etc.
-    pub viewer_cache_size: u64,
+    /// VRAM usage by different caches
+    pub cache_vram_usage: MemUsageTree,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -1085,9 +1083,9 @@ impl StoreHub {
         for store in store_bundle.entity_dbs() {
             let store_id = store.store_id();
             let engine = store.storage_engine();
-            let cache_memory_reports = caches_per_recording
+            let cache_vram_usage = caches_per_recording
                 .get(store_id)
-                .map(|caches| caches.memory_reports())
+                .map(|caches| caches.vram_usage())
                 .unwrap_or_default();
             store_stats.insert(
                 store_id.clone(),
@@ -1095,11 +1093,7 @@ impl StoreHub {
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),
-                    viewer_cache_size: cache_memory_reports
-                        .values()
-                        .map(|report| report.bytes_cpu)
-                        .sum(),
-                    cache_memory_reports,
+                    cache_vram_usage,
                 },
             );
         }
@@ -1115,5 +1109,70 @@ impl StoreHub {
             store_stats,
             table_stats,
         }
+    }
+}
+
+impl MemUsageTreeCapture for StoreHub {
+    #[expect(clippy::iter_over_hash_type)]
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_bundle,
+            table_stores,
+            caches_per_recording,
+
+            // Small stuff:
+            persistence: _,
+            active_recording_or_table: _,
+            active_application_id: _,
+            default_blueprint_by_app_id: _,
+            active_blueprint_by_app_id: _,
+            data_source_order: _,
+            should_enable_heuristics_by_app_id: _,
+            blueprint_last_save: _,
+            blueprint_last_gc: _,
+        } = self;
+
+        let mut node = MemUsageNode::new();
+
+        // Collect all store IDs from both store_bundle and caches_per_recording
+        let mut all_store_ids = std::collections::BTreeSet::new();
+        for entity_db in store_bundle.entity_dbs() {
+            all_store_ids.insert(entity_db.store_id().clone());
+        }
+        for store_id in caches_per_recording.keys() {
+            all_store_ids.insert(store_id.clone());
+        }
+
+        // Group stores by recording ID, combining EntityDb and Caches
+        let mut stores_node = MemUsageNode::new();
+        for store_id in all_store_ids {
+            let recording_id = format!("{store_id:?}");
+            let mut recording_node = MemUsageNode::new();
+
+            // Add EntityDb if it exists
+            if let Some(entity_db) = store_bundle.get(&store_id) {
+                recording_node.add("EntityDb", entity_db.capture_mem_usage_tree());
+            }
+
+            // Add Caches if they exist for this store
+            if let Some(caches) = caches_per_recording.get(&store_id) {
+                recording_node.add("Caches", caches.capture_mem_usage_tree());
+            }
+
+            stores_node.add(recording_id, recording_node.into_tree());
+        }
+        node.add("stores", stores_node.into_tree());
+
+        // table_stores
+        let mut table_stores_node = MemUsageNode::new();
+        for (table_id, table_store) in table_stores {
+            let name = format!("{table_id:?}");
+            table_stores_node.add(name, MemUsageTree::Bytes(table_store.total_size_bytes()));
+        }
+        node.add("TableStores", table_stores_node.into_tree());
+
+        node.into_tree()
     }
 }

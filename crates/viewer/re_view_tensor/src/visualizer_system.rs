@@ -27,7 +27,10 @@ impl IdentifiedViewSystem for TensorSystem {
 }
 
 impl VisualizerSystem for TensorSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<Tensor>()
     }
 

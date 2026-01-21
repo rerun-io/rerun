@@ -137,7 +137,7 @@ impl Drop for WebViewerSink {
 pub struct WebViewerConfig {
     /// Ip to which the http server is bound.
     ///
-    /// Defaults to 0.0.0.0
+    /// Defaults to `::` (dual-stack IPv4 + IPv6).
     pub bind_ip: String,
 
     /// The port to which the webviewer should bind.
@@ -171,7 +171,7 @@ pub struct WebViewerConfig {
 impl Default for WebViewerConfig {
     fn default() -> Self {
         Self {
-            bind_ip: "0.0.0.0".to_owned(),
+            bind_ip: "::".to_owned(),
             web_port: WebViewerServerPort::AUTO,
             connect_to: Vec::new(),
             force_wgpu_backend: None,

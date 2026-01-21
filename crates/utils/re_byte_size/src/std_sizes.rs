@@ -1,6 +1,7 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use crate::SizeBytes;
@@ -132,6 +133,16 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     }
 }
 
+impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Ok(value) => value.heap_size_bytes(),
+            Err(err) => err.heap_size_bytes(),
+        }
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -144,5 +155,12 @@ impl<T: SizeBytes> SizeBytes for Box<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         T::total_size_bytes(&**self)
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for RangeInclusive<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start().heap_size_bytes() + self.end().heap_size_bytes()
     }
 }

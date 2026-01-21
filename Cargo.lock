@@ -8519,6 +8519,7 @@ dependencies = [
  "arrow",
  "glam",
  "half",
+ "parking_lot",
  "smallvec",
 ]
 
@@ -8559,6 +8560,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_quota_channel",
  "re_sorbet",
  "re_span",
  "re_tracing",
@@ -8939,7 +8941,6 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
- "saturating_cast",
  "serde",
  "similar-asserts",
  "static_assertions",
@@ -9023,6 +9024,7 @@ dependencies = [
  "criterion",
  "insta",
  "mimalloc",
+ "re_byte_size",
  "smallvec",
  "static_assertions",
 ]
@@ -9074,8 +9076,10 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
+ "re_byte_size",
  "re_log_encoding",
  "re_log_types",
+ "re_quota_channel",
  "re_tracing",
  "re_uri",
  "serde",
@@ -9203,6 +9207,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_memory_view"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "eframe",
+ "egui",
+ "re_byte_size",
+ "re_format",
+ "wgpu",
+]
+
+[[package]]
 name = "re_mp4"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9310,12 +9325,22 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_sdk_types",
- "re_span",
  "re_tracing",
  "re_types_core",
  "seq-macro",
  "similar-asserts",
  "thiserror 2.0.17",
+]
+
+[[package]]
+name = "re_quota_channel"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "crossbeam",
+ "parking_lot",
+ "re_byte_size",
+ "re_format",
+ "re_log",
 ]
 
 [[package]]
@@ -9408,7 +9433,9 @@ dependencies = [
  "jiff",
  "re_arrow_util",
  "re_auth",
+ "re_byte_size",
  "re_chunk",
+ "re_format",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9575,7 +9602,9 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_quota_channel",
  "re_sdk_types",
+ "re_sorbet",
  "re_tracing",
  "re_uri",
  "re_web_viewer_server",
@@ -9733,6 +9762,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "semver",
+ "strum",
  "thiserror 2.0.17",
  "tracing",
  "web-time",
@@ -10007,7 +10037,6 @@ dependencies = [
  "cfg_aliases",
  "criterion",
  "cros-codecs",
- "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
  "h264-reader",
@@ -10019,6 +10048,7 @@ dependencies = [
  "re_byte_size",
  "re_log",
  "re_mp4",
+ "re_quota_channel",
  "re_rav1d",
  "re_span",
  "re_tracing",
@@ -10332,6 +10362,7 @@ dependencies = [
  "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",
@@ -10350,6 +10381,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_memory_view",
  "re_perf_telemetry",
  "re_query",
  "re_recording_panel",
@@ -10358,6 +10390,7 @@ dependencies = [
  "re_renderer",
  "re_sdk_types",
  "re_selection_panel",
+ "re_sorbet",
  "re_test_context",
  "re_test_viewport",
  "re_time_panel",

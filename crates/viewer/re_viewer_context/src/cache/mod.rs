@@ -11,7 +11,7 @@ mod transform_database_store;
 mod video_asset_cache;
 mod video_stream_cache;
 
-pub use caches::{Cache, CacheMemoryReport, CacheMemoryReportItem, Caches};
+pub use caches::{Cache, Caches};
 // TODO(andreas): Do we _really_ have to have all these caches in `re_viewer_context`?
 // Caches are fully dynamic and registration based, so they can be added at runtime by any crate.
 // The reason this happens it that various viewer crates wants to access these, mostly for ui purposes.
@@ -38,13 +38,13 @@ fn filter_blob_removed_events(
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 itertools::Either::Left(
                     event
-                        .chunk
+                        .chunk_before_processing
                         .component_descriptors()
                         .filter(|descr| {
                             descr.component_type == Some(re_sdk_types::components::Blob::name())
                         })
                         .flat_map(|descr| {
-                            event.chunk.row_ids().map(move |row_id| {
+                            event.chunk_before_processing.row_ids().map(move |row_id| {
                                 crate::StoredBlobCacheKey::new(row_id, descr.component)
                             })
                         }),

@@ -5,7 +5,7 @@ Usage:
   pixi run py-build
   pixi run -e py python tests/python/table_zoo/table_zoo.py [--host HOST] [--port PORT] [--register-to-server]
 
-By default, behaves as before: sends the table to the Rerun Viewer via ViewerClient at rerun+http://0.0.0.0:9876/proxy.
+By default, behaves as before: sends the table to the Rerun Viewer via ViewerClient at rerun+http://127.0.0.1:9876/proxy.
 """
 
 from __future__ import annotations
@@ -338,7 +338,7 @@ def main() -> int:
     # Compute the exact default cache directory used when --cache-dir is not provided.
     default_cache_dir = _get_cache_dir() / "lancedb"
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Server host or IP. Default matches current viewer behavior: 0.0.0.0"
+        "--host", default="::", help="Server host or IP. Default matches current viewer behavior: :: (dual-stack)"
     )
     parser.add_argument(
         "--port", type=int, help="Server port. Defaults: 9876 for viewer mode; 51234 for register mode."

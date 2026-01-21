@@ -1,0 +1,122 @@
+name: PR Trigger Reality Sync
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  trigger-import:
+    # Only run on PR comments (not issue comments)
+    # Only run if comment contains the trigger phrase
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@rerun-bot reality-sync')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash --noprofile --norc -euo pipefail {0}
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: |
+            reality
+            rerun
+
+      - name: Check if commenter has write access
+        id: check-member
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          COMMENTER="${{ github.event.comment.user.login }}"
+          REPO="${{ github.repository }}"
+
+          # Check if user has write or admin permission on this repo
+          # This works for both user-owned and org-owned repositories
+          PERMISSION=$(gh api "repos/$REPO/collaborators/$COMMENTER/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+
+          echo "User $COMMENTER has permission: $PERMISSION"
+
+          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "User $COMMENTER is authorized (permission: $PERMISSION)"
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "User $COMMENTER is NOT authorized (permission: $PERMISSION)"
+          fi
+
+      - name: Post unauthorized message
+        if: steps.check-member.outputs.authorized == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "Sorry, only organization members can trigger the sync CI."
+
+      - name: Get PR details
+        if: steps.check-member.outputs.authorized == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "Fetching PR details for PR #${{ github.event.issue.number }}…"
+          gh pr view ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body \
+            > /tmp/pr_data.json
+
+          echo "PR data:"
+          jq '.' /tmp/pr_data.json
+
+      - name: Trigger reality sync workflow
+        if: steps.check-member.outputs.authorized == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "================================================"
+          echo "Triggering repository_dispatch to reality repo"
+          echo "================================================"
+
+          # Construct the entire payload using jq to avoid shell substitution
+          # This ensures backticks and other special characters in title/body are handled safely
+          jq -n \
+            --arg repo "${{ github.event.repository.name }}" \
+            --arg current_repo "${{ github.repository }}" \
+            --arg triggered_by "${{ github.event.comment.user.login }}" \
+            --slurpfile pr_data /tmp/pr_data.json \
+            '{
+              event_type: "sync-import-pr",
+              client_payload: {
+                repo: $repo,
+                pr_number: $pr_data[0].number,
+                head_ref: $pr_data[0].headRefName,
+                head_owner: $pr_data[0].headRepositoryOwner.login,
+                head_repo: $pr_data[0].headRepository.name,
+                title: $pr_data[0].title,
+                body: ($pr_data[0].body // ""),
+                is_fork: (("\($pr_data[0].headRepositoryOwner.login)/\($pr_data[0].headRepository.name)") != $current_repo),
+                triggered_by: $triggered_by
+              }
+            }' > /tmp/dispatch_payload.json
+
+          echo "Dispatch payload:"
+          jq '.' /tmp/dispatch_payload.json
+
+          # Make the API call with the JSON payload
+          if gh api repos/rerun-io/reality/dispatches --input /tmp/dispatch_payload.json 2>&1; then
+            echo "✓ Successfully dispatched sync-import-pr event to reality repo"
+            echo "Note: repository_dispatch returns 204 No Content on success"
+            echo "The reality repo should now be processing the import workflow"
+          else
+            echo "::error::Failed to dispatch repository_dispatch event to reality repo"
+            echo "::error::This could be due to:"
+            echo "::error::  1. Insufficient permissions on the GitHub App token"
+            echo "::error::  2. Reality repo not found or not accessible"
+            echo "::error::  3. Network issues"
+            exit 1
+          fi

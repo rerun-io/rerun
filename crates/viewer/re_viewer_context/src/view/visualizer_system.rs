@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, EntityPath};
+use re_chunk::{ArchetypeName, ComponentType, EntityPath};
 use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
@@ -52,7 +52,12 @@ pub enum RequiredComponents {
     AnyComponent(ComponentSet),
 
     /// Entity must have _any one_ of these physical Arrow data types.
-    AnyPhysicalDatatype(DatatypeSet),
+    ///
+    /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
+    AnyPhysicalDatatype {
+        semantic_type: ComponentType,
+        physical_types: DatatypeSet,
+    },
 }
 
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
@@ -144,7 +149,11 @@ pub trait VisualizerSystem: Send + Sync + std::any::Any {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo;
+    ///
+    /// Warning: this method is called on registration of the visualizer system in order
+    /// to stear store subscribers. If subsequent calls to this method return different results,
+    /// they may not be taken into account.
+    fn visualizer_query_info(&self, app_options: &crate::AppOptions) -> VisualizerQueryInfo;
 
     /// Queries the chunk store and performs data conversions to make it ready for display.
     ///

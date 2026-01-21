@@ -69,6 +69,17 @@ def ensure_uvpy_shim() -> None:
     _install_shim("uvpy-shim", "uvpy")
 
 
+def ensure_uv_shims() -> None:
+    """
+    Ensure both uv and uvpy shims exist in scripts/pixi/.
+
+    This can be used independently of ensure_pyo3_build_cfg when only
+    the uv shims are needed.
+    """
+    ensure_uv_shim()
+    ensure_uvpy_shim()
+
+
 def ensure_pyo3_build_cfg() -> None:
     """
     Ensure pyo3-build.cfg exists for cargo builds.

@@ -23,6 +23,7 @@ pub mod notifications;
 mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+pub mod text_edit;
 pub mod time;
 mod time_drag_value;
 mod ui_ext;

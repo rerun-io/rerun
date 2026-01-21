@@ -37,6 +37,12 @@ impl SinkFlushError {
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static + std::any::Any {
     /// Send this log message.
+    ///
+    /// In order to apply backpressure, implementing sinks should block
+    /// the call until there is enough capacity to accept the message.
+    ///
+    /// It is however NOT expected that `send` will _always_ block,
+    /// just when the sink is overwhelmed.
     fn send(&self, msg: LogMsg);
 
     /// Send all these log messages.
@@ -156,8 +162,7 @@ impl LogSink for MultiSink {
             mut flush_num_bytes,
             mut flush_num_rows,
             mut chunk_max_rows_if_unsorted,
-            mut max_commands_in_flight,
-            mut max_chunks_in_flight,
+            mut max_bytes_in_flight,
         } = ChunkBatcherConfig::DEFAULT;
 
         // Use a mix of the existing sinks thus that we flush *less* often.
@@ -170,8 +175,7 @@ impl LogSink for MultiSink {
             flush_num_rows = flush_num_rows.max(config.flush_num_rows);
             chunk_max_rows_if_unsorted =
                 chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
-            max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
-            max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
+            max_bytes_in_flight = max_bytes_in_flight.max(config.max_bytes_in_flight);
         }
 
         ChunkBatcherConfig {
@@ -179,8 +183,7 @@ impl LogSink for MultiSink {
             flush_num_bytes,
             flush_num_rows,
             chunk_max_rows_if_unsorted,
-            max_commands_in_flight,
-            max_chunks_in_flight,
+            max_bytes_in_flight,
         }
     }
 }
@@ -553,8 +556,16 @@ impl Default for GrpcSink {
 }
 
 impl LogSink for GrpcSink {
-    fn send(&self, msg: LogMsg) {
-        self.client.send(msg);
+    fn send(&self, mut log_msg: LogMsg) {
+        if let Some(metadata_key) = re_sorbet::TimestampLocation::GrpcSink.metadata_key() {
+            // Used for latency measurements:
+            log_msg.insert_arrow_record_batch_metadata(
+                metadata_key.to_owned(),
+                re_sorbet::timestamp_metadata::now_timestamp(),
+            );
+        }
+
+        self.client.send_blocking(log_msg);
     }
 
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {

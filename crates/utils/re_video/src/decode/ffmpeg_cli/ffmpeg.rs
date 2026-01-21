@@ -5,12 +5,12 @@ use std::process::ChildStdin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-use crossbeam::channel::{Receiver, SendError, Sender};
 use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
+use re_quota_channel::{Receiver, SendError, Sender};
 
 use super::version::FFmpegVersionParseError;
 use crate::decode::ffmpeg_cli::{
@@ -139,9 +139,24 @@ struct FFmpegFrameInfo {
     decode_timestamp: Time,
 }
 
+impl re_byte_size::SizeBytes for FFmpegFrameInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 enum FFmpegFrameData {
     Chunk(Chunk),
     Quit,
+}
+
+impl re_byte_size::SizeBytes for FFmpegFrameData {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Chunk(chunk) => chunk.heap_size_bytes(),
+            Self::Quit => 0,
+        }
+    }
 }
 
 /// Wraps an stdin with a shared shutdown boolean.
@@ -314,8 +329,10 @@ impl FFmpegProcessAndListener {
             .iter()
             .map_err(|err| Error::NoIterator(err.to_string()))?;
 
-        let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
-        let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
+        let (frame_info_tx, frame_info_rx) =
+            crate::channel(format!("{debug_name}-ffmpeg_frame_info"));
+        let (frame_data_tx, frame_data_rx) =
+            crate::channel(format!("{debug_name}-ffmpeg_frame_data"));
 
         let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));

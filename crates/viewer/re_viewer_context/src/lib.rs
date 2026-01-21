@@ -60,9 +60,9 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
-    SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache,
-    VideoStreamCache, VideoStreamProcessingError,
+    Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+    TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
+    VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
@@ -106,8 +106,8 @@ pub use self::time_control::{
     time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
-    VisualizableReason,
+    DatatypeMatchKind, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
+    VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{

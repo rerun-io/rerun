@@ -5,6 +5,7 @@ use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree};
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
@@ -183,13 +184,19 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        {
+        let connection_registry = connection_registry
+            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
+
+        // Only subscribe to auth changes and load credentials if we're supposed to use stored credentials.
+        // This prevents tests from being affected by stored credentials on the developer's machine.
+        if connection_registry.should_use_stored_credentials() {
             let command_sender = command_channel.0.clone();
             re_auth::credentials::subscribe_auth_changes(move |user| {
                 command_sender.send_system(SystemCommand::OnAuthChanged(
                     user.map(|user| AuthContext { email: user.email }),
                 ));
             });
+
             // Call get_token once so the auth state is initialized.
             tokio_runtime.spawn_future(async move {
                 re_auth::credentials::CliCredentialsProvider::new()
@@ -199,10 +206,8 @@ impl App {
             });
         }
 
-        let connection_registry = connection_registry
-            .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
-
-        if let Some(storage) = creation_context.storage
+        if connection_registry.should_use_stored_credentials()
+            && let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
         {
             connection_registry.load_tokens(tokens);
@@ -268,12 +273,14 @@ impl App {
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        let view_class_registry =
-            crate::default_views::create_view_class_registry(&mut component_fallback_registry)
-                .unwrap_or_else(|err| {
-                    re_log::error!("Failed to create view class registry: {err}");
-                    Default::default()
-                });
+        let view_class_registry = crate::default_views::create_view_class_registry(
+            &state.app_options,
+            &mut component_fallback_registry,
+        )
+        .unwrap_or_else(|err| {
+            re_log::error!("Failed to create view class registry: {err}");
+            Default::default()
+        });
 
         #[allow(clippy::allow_attributes, unused_mut, clippy::needless_update)]
         // false positive on web
@@ -658,8 +665,10 @@ impl App {
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.view_class_registry
-            .add_class::<T>(&mut self.component_fallback_registry)
+        self.view_class_registry.add_class::<T>(
+            &self.state.app_options,
+            &mut self.component_fallback_registry,
+        )
     }
 
     /// Accesses the view class registry which can be used to extend the Viewer.
@@ -2197,9 +2206,10 @@ impl App {
     }
 
     fn memory_panel_ui(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let frame = egui::Frame {
@@ -2215,6 +2225,7 @@ impl App {
                 self.memory_panel.ui(
                     ui,
                     &self.startup_options.memory_limit,
+                    mem_usage_tree,
                     gpu_resource_stats,
                     store_stats,
                 );
@@ -2265,6 +2276,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
         storage_context: &StorageContext<'_>,
+        mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -2290,7 +2302,7 @@ impl App {
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
+                self.memory_panel_ui(ui, gpu_resource_stats, mem_usage_tree, store_stats);
 
                 self.egui_debug_panel_ui(ui);
 
@@ -2728,7 +2740,7 @@ impl App {
         re_tracing::profile_function!();
 
         for event in store_events {
-            let chunk = &event.diff.chunk;
+            let chunk = &event.diff.chunk_before_processing;
 
             // For speed, we don't care about the order of the following log statements, so we silence this warning
             for component_descr in chunk.components().component_descriptors() {
@@ -3277,6 +3289,11 @@ impl eframe::App for App {
                 .add(egui_ctx.input(|i| i.time), seconds);
         }
 
+        // NOTE: Memory stats can be very costly to compute, so only do so if the memory panel is opened.
+        let mem_usage_tree = self
+            .memory_panel_open
+            .then(|| re_byte_size::NamedMemUsageTree::new("App", self.capture_mem_usage_tree()));
+
         #[cfg(target_arch = "wasm32")]
         if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
@@ -3464,6 +3481,7 @@ impl eframe::App for App {
                 &gpu_resource_stats,
                 store_context.as_ref(),
                 &storage_context,
+                mem_usage_tree,
                 store_stats.as_ref(),
             );
 
@@ -3898,5 +3916,15 @@ fn handle_time_ctrl_event(
 
     if let Some(time) = response.time_change {
         events.on_time_update(recording, time);
+    }
+}
+
+impl MemUsageTreeCapture for App {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+        let mut node = MemUsageNode::new();
+        // TODO(RR-3366): add rx_log
+        node.add("store_hub", self.store_hub.capture_mem_usage_tree());
+        node.into_tree()
     }
 }

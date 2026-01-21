@@ -1,4 +1,5 @@
 use arrow::array::RecordBatch;
+
 use re_chunk::{Chunk, TimeInt};
 use re_entity_db::EntityDb;
 use re_redap_client::{ApiResult, ConnectionClient};
@@ -37,10 +38,21 @@ pub fn prefetch_chunks_for_active_recording(
     }
 
     let missing_chunk_ids = recording.storage_engine().store().take_missing_chunk_ids();
+    let missing_remote_chunk_ids = missing_chunk_ids
+        .into_iter()
+        .flat_map(|chunk_id| {
+            recording
+                .storage_engine()
+                .store()
+                .find_root_rrd_manifests(&chunk_id)
+                .into_iter()
+                .map(|(chunk_id, _)| chunk_id)
+        })
+        .collect();
 
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
-        missing_chunk_ids,
+        missing_remote_chunk_ids,
         start_time,
         total_uncompressed_byte_budget: total_byte_budget,
 

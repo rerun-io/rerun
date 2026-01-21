@@ -31,7 +31,10 @@ impl IdentifiedViewSystem for GeoLineStringsVisualizer {
 }
 
 impl VisualizerSystem for GeoLineStringsVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<GeoLineStrings>()
     }
 

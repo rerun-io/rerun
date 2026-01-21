@@ -13,7 +13,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::external::re_chunk::external::re_byte_size;
 use re_renderer::RenderContext;
 use re_renderer::mesh::{self, GpuMesh, MeshError};
-use re_viewer_context::{Cache, CacheMemoryReport};
+use re_viewer_context::Cache;
 use smallvec::smallvec;
 
 // ----------------------------------------------------------------------------
@@ -214,20 +214,18 @@ impl WireframeCache {
 }
 
 impl Cache for WireframeCache {
+    fn name(&self) -> &'static str {
+        "WireframeCache"
+    }
+
     fn purge_memory(&mut self) {
         self.0.clear();
     }
+}
 
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        "Proc Mesh Wireframes"
+impl re_byte_size::MemUsageTreeCapture for WireframeCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }
 
@@ -514,21 +512,34 @@ impl Cache for SolidCache {
         self.0.clear();
     }
 
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: Some(
-                self.0
-                    .values()
-                    .map(|mesh| mesh.as_ref().map_or(0, |m| m.gpu_mesh.gpu_byte_size()))
-                    .sum(),
-            ),
-            per_cache_item_info: Vec::new(),
-        }
+    fn name(&self) -> &'static str {
+        "SolidCache"
     }
 
-    fn name(&self) -> &'static str {
-        "Proc Mesh Solids"
+    fn vram_usage(&self) -> re_byte_size::MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut items: Vec<_> = self
+            .0
+            .iter()
+            .map(|(key, mesh)| {
+                let bytes_gpu = mesh.as_ref().map_or(0, |m| m.gpu_mesh.gpu_byte_size());
+                (format!("{key:?}"), bytes_gpu)
+            })
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (item_name, bytes_gpu) in items {
+            node.add(item_name, re_byte_size::MemUsageTree::Bytes(bytes_gpu));
+        }
+
+        node.into_tree()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for SolidCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }
 

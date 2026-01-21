@@ -84,6 +84,20 @@ def get_added_lines_with_links(
     if exclude_patterns is None:
         exclude_patterns = []
 
+    # Get the subdirectory prefix if we're not at the git root.
+    # This is needed because git diff returns paths relative to the git root,
+    # but we may be running from a subdirectory (e.g., rerun/ in the reality repo).
+    try:
+        prefix_result = subprocess.run(
+            ["git", "rev-parse", "--show-prefix"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        git_prefix = prefix_result.stdout.strip()
+    except subprocess.CalledProcessError:
+        git_prefix = ""
+
     # Get the diff of added lines (try committed changes first, then staged changes)
     # Disable external diff tools to get standard git diff format
     env = os.environ.copy()
@@ -118,6 +132,9 @@ def get_added_lines_with_links(
             # Extract filename from +++ b/path/to/file
             if line.startswith("+++ b/"):
                 current_file = line[6:]  # Remove '+++ b/'
+                # Strip git subdirectory prefix if running from a subdirectory
+                if git_prefix and current_file.startswith(git_prefix):
+                    current_file = current_file[len(git_prefix) :]
                 # Skip files that match lychee exclude patterns
                 if should_exclude_file(current_file, exclude_patterns):
                     current_file = None

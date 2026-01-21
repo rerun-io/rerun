@@ -7,7 +7,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 use re_viewport::execute_systems_for_view;
-use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
@@ -93,27 +93,23 @@ impl TestContextExt for TestContext {
 
                             let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
-                            let mut data_query_result = view_blueprint.contents.execute_query(
-                                ctx.store_context,
-                                class_registry,
-                                ctx.blueprint_query,
-                                &visualizable_entities_for_view,
-                            );
-
-                            let resolver = DataQueryPropertyResolver::new(
-                                view_blueprint,
-                                class_registry,
-                                &visualizable_entities_for_view,
-                                ctx.indicated_entities_per_visualizer,
-                            );
-
-                            resolver.update_overrides(
-                                ctx.store_context.blueprint,
+                            let query_range = view_blueprint.query_range(
+                                ctx.blueprint_db(),
                                 ctx.blueprint_query,
                                 ctx.time_ctrl.timeline(),
                                 class_registry,
-                                &mut data_query_result,
                                 self.view_states.lock().get_mut_or_create(*view_id, class),
+                            );
+
+                            let data_query_result = view_blueprint.contents.build_data_result_tree(
+                                ctx.store_context,
+                                ctx.time_ctrl.timeline(),
+                                class_registry,
+                                ctx.blueprint_query,
+                                &query_range,
+                                &visualizable_entities_for_view,
+                                ctx.indicated_entities_per_visualizer,
+                                ctx.app_options(),
                             );
 
                             query_results.insert(*view_id, data_query_result);

@@ -47,7 +47,7 @@ impl PyServerInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid IP: {host:?}: {err}")))?;
 
         let connect_ip = if host.is_unspecified() {
-            // We usually cannot connect to 0.0.0.0, so tell clients to connect to 127.0.0.1 instead:
+            // We usually cannot connect to 0.0.0.0 or ::, so tell clients to connect to 127.0.0.1 instead:
             std::net::Ipv4Addr::LOCALHOST.into()
         } else {
             host

@@ -19,8 +19,10 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             let row_rect = ui.max_rect();
             assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 
+            let enable_viewer_indexes = true;
             let mut db = EntityDb::with_store_config(
                 StoreId::new(StoreKind::Recording, "test-app", "test"),
+                enable_viewer_indexes,
                 ChunkStoreConfig::COMPACTION_DISABLED,
             );
             let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();

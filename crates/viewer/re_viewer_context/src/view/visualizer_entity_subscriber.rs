@@ -3,13 +3,14 @@ use std::collections::hash_map::Entry;
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier};
+use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier, ComponentType};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
 use re_types_core::SerializedComponentColumn;
 use vec1::smallvec_v1::SmallVec1;
 
+use crate::DatatypeMatchKind;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
     VisualizableEntities, VisualizerSystem, typed_entity_collections::VisualizableReason,
@@ -57,6 +58,7 @@ struct AnyComponentRequirement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AnyPhysicalDatatypeRequirement {
+    semantic_type: ComponentType,
     relevant_datatypes: DatatypeSet,
 }
 
@@ -119,30 +121,29 @@ impl From<ComponentSet> for AnyComponentRequirement {
     }
 }
 
-impl From<DatatypeSet> for AnyPhysicalDatatypeRequirement {
-    fn from(value: DatatypeSet) -> Self {
-        Self {
-            relevant_datatypes: value,
-        }
-    }
-}
-
 impl From<RequiredComponents> for Requirement {
     fn from(value: RequiredComponents) -> Self {
         match value {
             RequiredComponents::None => Self::None,
             RequiredComponents::AllComponents(components) => Self::AllComponents(components.into()),
             RequiredComponents::AnyComponent(components) => Self::AnyComponent(components.into()),
-            RequiredComponents::AnyPhysicalDatatype(datatypes) => {
-                Self::AnyPhysicalDatatype(datatypes.into())
-            }
+            RequiredComponents::AnyPhysicalDatatype {
+                semantic_type,
+                physical_types,
+            } => Self::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
+                semantic_type,
+                relevant_datatypes: physical_types,
+            }),
         }
     }
 }
 
 impl VisualizerEntitySubscriber {
-    pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
-        let visualizer_query_info = visualizer.visualizer_query_info();
+    pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(
+        visualizer: &T,
+        app_options: &crate::AppOptions,
+    ) -> Self {
+        let visualizer_query_info = visualizer.visualizer_query_info(app_options);
 
         Self {
             visualizer: T::identifier(),
@@ -205,14 +206,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 .entry(event.store_id.clone())
                 .or_default();
 
-            let entity_path = event.diff.chunk.entity_path();
+            let entity_path = event.diff.chunk_before_processing.entity_path();
 
             // Update archetype tracking:
             if self.relevant_archetype.is_none()
                 || self.relevant_archetype.is_some_and(|archetype| {
                     event
                         .diff
-                        .chunk
+                        .chunk_before_processing
                         .components()
                         .component_descriptors()
                         .any(|component_descr| component_descr.archetype == Some(archetype))
@@ -267,7 +268,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
                         if let Some(index) = required_components_indices.get(&descriptor.component)
                         {
@@ -304,7 +305,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
                         if relevant_components.contains(&descriptor.component) {
                             // The component might be present, but logged completely empty.
@@ -330,6 +331,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     }
                 }
                 Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
+                    semantic_type,
                     relevant_datatypes,
                 }) => {
                     // Entity must have any of the required components
@@ -339,9 +341,28 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     for SerializedComponentColumn {
                         list_array,
                         descriptor,
-                    } in event.diff.chunk.components().values()
+                    } in event.diff.chunk_before_processing.components().values()
                     {
-                        if relevant_datatypes.contains(&list_array.value_type()) {
+                        let is_physical_match =
+                            relevant_datatypes.contains(&list_array.value_type());
+                        let is_semantic_match = descriptor.component_type == Some(*semantic_type);
+
+                        let match_kind = match (is_physical_match, is_semantic_match) {
+                            (false, false) => None,
+                            (true, false) => Some(DatatypeMatchKind::PhysicalDatatypeOnly),
+                            (true, true) => Some(DatatypeMatchKind::NativeSemantics),
+
+                            (false, true) => {
+                                re_log::warn_once!(
+                                    "Component {:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {:?} for this semantic type.",
+                                    descriptor.component,
+                                    list_array.value_type()
+                                );
+                                None
+                            }
+                        };
+
+                        if let Some(match_kind) = match_kind {
                             // The component might be present, but logged completely empty.
                             if !list_array.values().is_empty() {
                                 has_any_datatype = true;
@@ -356,12 +377,15 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                         if let VisualizableReason::DatatypeMatchAny { components } =
                                             occupied_entry.get_mut()
                                         {
-                                            components.push(descriptor.component);
+                                            components.push((descriptor.component, match_kind));
                                         }
                                     }
                                     Entry::Vacant(vacant_entry) => {
                                         vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
-                                            components: SmallVec1::new(descriptor.component),
+                                            components: SmallVec1::new((
+                                                descriptor.component,
+                                                match_kind,
+                                            )),
                                         });
                                     }
                                 }

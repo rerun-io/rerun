@@ -457,7 +457,7 @@ impl RecordingStreamBuilder {
         use re_grpc_server::ServerOptions;
 
         self.serve_grpc_opts(
-            "0.0.0.0",
+            "::",
             crate::DEFAULT_SERVER_PORT,
             ServerOptions {
                 memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.25),
@@ -473,7 +473,7 @@ impl RecordingStreamBuilder {
     /// The server is hosted on the given `bind_ip` and `port`, may be connected to by any SDK or Viewer
     /// at `rerun+http://{bind_ip}:{port}/proxy`.
     ///
-    /// `0.0.0.0` is a good default for `bind_ip`.
+    /// `::` is a good default for `bind_ip` (dual-stack IPv4 + IPv6).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
@@ -797,7 +797,7 @@ struct RecordingStreamInner {
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
     /// therefore the `Drop` implementation is guaranteed that no more data can come in while it's
     /// running.
-    cmds_tx: Sender<Command>,
+    cmds_tx: re_quota_channel::Sender<Command>,
 
     batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
@@ -891,7 +891,10 @@ impl RecordingStreamInner {
             );
         }
 
-        let (cmds_tx, cmds_rx) = crossbeam::channel::unbounded();
+        let (cmds_tx, cmds_rx) = re_quota_channel::channel(
+            "RecordingStream::cmds",
+            batcher_config.max_bytes_in_flight / 2,
+        );
 
         let batcher_to_sink_handle = {
             const NAME: &str = "RecordingStream::batcher_to_sink";
@@ -970,6 +973,19 @@ enum Command {
     },
     PopPendingChunks,
     Shutdown,
+}
+
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::RecordMsg(msg) => msg.heap_size_bytes(),
+            Self::SwapSink { .. }
+            | Self::InspectSink(_)
+            | Self::Flush { .. }
+            | Self::PopPendingChunks
+            | Self::Shutdown => 0,
+        }
+    }
 }
 
 impl Command {
@@ -1436,8 +1452,8 @@ impl RecordingStream {
 fn forwarding_thread(
     store_info: StoreInfo,
     mut sink: Box<dyn LogSink>,
-    cmds_rx: Receiver<Command>,
-    chunks: Receiver<Chunk>,
+    cmds_rx: re_quota_channel::Receiver<Command>,
+    chunks: re_quota_channel::Receiver<Chunk>,
     on_release: Option<ArrowRecordBatchReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
@@ -1506,7 +1522,6 @@ fn forwarding_thread(
         true
     }
 
-    use crossbeam::select;
     loop {
         // NOTE: Always pop chunks first, this is what makes `Command::PopPendingChunks` possible,
         // which in turns makes `RecordingStream::flush_blocking` well defined.
@@ -1522,7 +1537,7 @@ fn forwarding_thread(
             sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
         }
 
-        select! {
+        re_quota_channel::select! {
             recv(chunks) -> res => {
                 let Ok(chunk) = res else {
                     // The batcher is gone, which can only happen if the `RecordingStream` itself
@@ -2010,14 +2025,14 @@ impl RecordingStream {
         &self,
         server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
-        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_options)
+        self.serve_grpc_opts("::", crate::DEFAULT_SERVER_PORT, server_options)
     }
 
     #[cfg(feature = "server")]
     /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://{bind_ip}:{port}/proxy`.
     ///
-    /// `0.0.0.0` is a good default for `bind_ip`.
+    /// `::` is a good default for `bind_ip` (dual-stack IPv4 + IPv6).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
@@ -3037,7 +3052,7 @@ mod tests {
 
     impl LogSink for BatcherConfigTestSink {
         fn default_batcher_config(&self) -> ChunkBatcherConfig {
-            self.config.clone()
+            self.config
         }
 
         fn send(&self, _msg: LogMsg) {
@@ -3095,7 +3110,7 @@ mod tests {
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(config.clone()).unwrap();
+                    tx.send(*config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })
@@ -3119,7 +3134,7 @@ mod tests {
             ..new_config
         };
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: injected_config.clone(),
+            config: injected_config,
         }));
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
@@ -3131,7 +3146,7 @@ mod tests {
         // check that the env var is respected.
         let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_NUM_BYTES", "456");
         rec.set_sink(Box::new(BatcherConfigTestSink {
-            config: injected_config.clone(),
+            config: injected_config,
         }));
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
@@ -3160,10 +3175,10 @@ mod tests {
 
         let (tx, rx) = std::sync::mpsc::channel();
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
-            .batcher_config(explicit_config.clone())
+            .batcher_config(explicit_config)
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(config.clone()).unwrap();
+                    tx.send(*config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })

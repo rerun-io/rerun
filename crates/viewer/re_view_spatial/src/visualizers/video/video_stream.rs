@@ -40,7 +40,10 @@ impl IdentifiedViewSystem for VideoStreamVisualizer {
 }
 
 impl VisualizerSystem for VideoStreamVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<VideoStream>()
     }
 
@@ -158,7 +161,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine.store().chunk(&id)?;
+                    let chunk = storage_engine.store().physical_chunk(&id)?;
 
                     let sample_component = VideoStream::descriptor_sample().component;
 

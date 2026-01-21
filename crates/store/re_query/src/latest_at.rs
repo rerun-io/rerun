@@ -796,7 +796,7 @@ mod tests {
     use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
-    use re_log_types::{EntityPath, TimePoint, Timeline};
+    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
     use re_sdk_types::archetypes::Clear;
 
     use super::*;
@@ -1169,24 +1169,15 @@ mod tests {
                 .build()
                 .unwrap();
 
-        let rrd_manifest = {
-            let mut store = ChunkStore::new(
-                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-                ChunkStoreConfig::ALL_DISABLED,
-            );
+        let store_id = StoreId::random(re_log_types::StoreKind::Recording, "test_app");
 
-            store.insert_chunk(&Arc::new(chunk1.clone())).unwrap();
-            store
-                .insert_chunk(&Arc::new(chunk_parent_clear_flat.clone()))
-                .unwrap();
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id.clone(),
+            [&chunk1, &chunk_parent_clear_flat].into_iter(),
+        )
+        .unwrap();
 
-            Arc::new(store_to_rrd_manifest(&store))
-        };
-
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::COMPACTION_DISABLED,
-        );
+        let store = ChunkStore::new(store_id, ChunkStoreConfig::COMPACTION_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let mut cache = QueryCache::new(store.clone());
@@ -1242,35 +1233,6 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
         }
-    }
-
-    fn store_to_rrd_manifest(store: &ChunkStore) -> RrdManifest {
-        let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
-
-        let mut offset = 0;
-        for chunk in store.iter_chunks() {
-            let chunk_batch = chunk.to_chunk_batch().unwrap();
-
-            use re_byte_size::SizeBytes as _;
-            let byte_size_uncompressed = chunk.heap_size_bytes();
-
-            let uncompressed_byte_span = re_span::Span {
-                start: offset,
-                len: byte_size_uncompressed,
-            };
-
-            offset += byte_size_uncompressed;
-
-            rrd_manifest_builder
-                .append(&chunk_batch, uncompressed_byte_span, byte_size_uncompressed)
-                .unwrap();
-        }
-
-        let rrd_manifest = rrd_manifest_builder.build(store.id()).unwrap();
-        rrd_manifest.sanity_check_cheap().unwrap();
-        rrd_manifest.sanity_check_heavy().unwrap();
-
-        rrd_manifest
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

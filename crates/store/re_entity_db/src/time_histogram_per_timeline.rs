@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 use std::ops::Bound;
 
 use emath::lerp;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{TimeInt, Timeline, TimelineName};
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
+use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 use crate::RrdManifestIndex;
@@ -230,17 +231,21 @@ impl TimeHistogramPerTimeline {
         }
     }
 
+    // TODO(cmc): this is buggy and needs to be reworked.
     pub fn on_events(&mut self, rrd_manifest_index: &RrdManifestIndex, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         for event in events {
-            let original_chunk_id = if let Some(chunk_id) = event.diff.split_source {
-                chunk_id
-            } else {
-                event.chunk.id()
-            };
+            let original_chunk_id =
+                if let Some(ChunkDirectLineageReport::SplitFrom(chunk, _siblings)) =
+                    event.diff.direct_lineage.as_ref()
+                {
+                    chunk.id() // if there is a direct parent, use that id
+                } else {
+                    event.chunk_before_processing.id() // or, use the ID of the origin, pre-processing chunk
+                };
 
-            if event.chunk.is_static() {
+            if event.chunk_before_processing.is_static() {
                 match event.kind {
                     ChunkStoreDiffKind::Addition => {
                         self.has_static = true;
@@ -250,11 +255,12 @@ impl TimeHistogramPerTimeline {
                     }
                 }
             } else {
-                for time_column in event.chunk.timelines().values() {
+                for time_column in event.chunk_before_processing.timelines().values() {
                     let times = time_column.times_raw();
                     let timeline = time_column.timeline();
                     match event.kind {
                         ChunkStoreDiffKind::Addition => {
+                            // TODO(cmc): in case of splits, this happens more than once, and then we're doomed
                             if let Some(info) =
                                 rrd_manifest_index.remote_chunk_info(&original_chunk_id)
                                 && let Some(info) = &info.temporals.get(timeline.name())
@@ -277,14 +283,17 @@ impl TimeHistogramPerTimeline {
                             self.add_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                event.chunk_before_processing.num_components() as _,
                             );
                         }
+
+                        // TODO(cmc): we have a problem here: we're deleting root-chunks' worth of
+                        // data, even though we might only be GCing some splits of it.
                         ChunkStoreDiffKind::Deletion => {
                             self.remove_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                event.chunk_before_processing.num_components() as _,
                             );
 
                             if let Some(info) =
@@ -362,5 +371,29 @@ fn apply_estimate(
                 inc + (i < num_rows % num_pieces) as u32,
             );
         }
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogram {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        let Self { timeline: _, hist } = self;
+        MemUsageTree::Bytes(hist.total_size_bytes())
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogramPerTimeline {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self { times, has_static } = self;
+        _ = has_static;
+
+        let mut node = MemUsageNode::new();
+        for (timeline_name, histogram) in times {
+            node.add(
+                timeline_name.as_str().to_owned(),
+                histogram.capture_mem_usage_tree(),
+            );
+        }
+        node.into_tree()
     }
 }

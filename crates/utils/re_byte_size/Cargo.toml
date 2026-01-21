@@ -24,8 +24,10 @@ glam = ["dep:glam"]
 
 
 [dependencies]
-# TODO(emilk): make some of these opt-in
 arrow.workspace = true
 half.workspace = true
+parking_lot.workspace = true
 smallvec.workspace = true
+
+# Optional dependencies:
 glam = { workspace = true, optional = true }

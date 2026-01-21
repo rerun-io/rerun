@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ahash::HashMap;
 use glam::DAffine3;
@@ -6,7 +6,7 @@ use itertools::{Either, izip};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_byte_size::SizeBytes;
+use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
@@ -63,6 +63,8 @@ impl Default for TransformResolutionCache {
 
 impl SizeBytes for TransformResolutionCache {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             frame_id_registry,
             per_timeline,
@@ -87,6 +89,8 @@ pub struct ParentFromChildTransform {
 
 impl SizeBytes for ParentFromChildTransform {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self { parent, transform } = self;
 
         parent.heap_size_bytes() + transform.heap_size_bytes()
@@ -374,6 +378,8 @@ impl CachedTransformsForTimeline {
 
 impl SizeBytes for CachedTransformsForTimeline {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             per_child_frame_transforms,
             non_recursive_clears,
@@ -409,9 +415,11 @@ impl<T: SizeBytes> SizeBytes for CachedTransformValue<T> {
     }
 }
 
-type FrameTransformTimeMap = BTreeMap<TimeInt, CachedTransformValue<ParentFromChildTransform>>;
+type FrameTransformTimeMap =
+    BookkeepingBTreeMap<TimeInt, CachedTransformValue<ParentFromChildTransform>>;
 
-type PinholeProjectionMap = BTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjection>>;
+type PinholeProjectionMap =
+    BookkeepingBTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjection>>;
 
 #[derive(Clone, Debug, PartialEq)]
 struct TransformsForChildFrameEvents {
@@ -425,8 +433,8 @@ struct TransformsForChildFrameEvents {
 impl TransformsForChildFrameEvents {
     fn new_empty() -> Self {
         Self {
-            frame_transforms: BTreeMap::new(),
-            pinhole_projections: BTreeMap::new(),
+            frame_transforms: Default::default(),
+            pinhole_projections: Default::default(),
         }
     }
 
@@ -442,14 +450,10 @@ impl TransformsForChildFrameEvents {
     }
 
     /// Insert several cleared transforms for the given times.
-    fn insert_clears(&mut self, time: &BTreeSet<TimeInt>) {
-        let Self {
-            frame_transforms,
-            pinhole_projections,
-        } = self;
-
-        frame_transforms.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
-        pinhole_projections.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
+    fn insert_clears(&mut self, times: &BTreeSet<TimeInt>) {
+        for &time in times {
+            self.insert_clear(time);
+        }
     }
 
     /// Removes any events at a given time (if any).
@@ -566,20 +570,15 @@ impl SizeBytes for TreeTransformsForChildFrame {
     }
 }
 
-fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
-    transforms: &mut BTreeMap<TimeInt, CachedTransformValue<T>>,
+fn add_invalidated_entry_if_not_already_cleared<T: PartialEq + SizeBytes>(
+    transforms: &mut BookkeepingBTreeMap<TimeInt, CachedTransformValue<T>>,
     time: TimeInt,
 ) {
-    use std::collections::btree_map::Entry;
-
-    let entry = transforms.entry(time);
-    if let Entry::Vacant(vacant_entry) = entry {
-        vacant_entry.insert(CachedTransformValue::Invalidated);
-    } else if let Entry::Occupied(mut occupied_entry) = entry
-        && occupied_entry.get() != &CachedTransformValue::Cleared
-    {
-        occupied_entry.insert(CachedTransformValue::Invalidated);
-    }
+    transforms.mutate_entry(time, CachedTransformValue::Invalidated, |value| {
+        if *value != CachedTransformValue::Cleared {
+            *value = CachedTransformValue::Invalidated;
+        }
+    });
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -601,6 +600,8 @@ pub struct ResolvedPinholeProjection {
 
 impl SizeBytes for ResolvedPinholeProjection {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             parent,
             image_from_camera,
@@ -718,42 +719,52 @@ impl TreeTransformsForChildFrame {
 
         let mut events = self.events.lock();
 
-        let (time_of_last_update_to_this_frame, frame_transform) = events
+        events
             .frame_transforms
-            .range_mut(..query.at().inc())
-            .next_back()?;
+            .mutate_latest_at(
+                &query.at(),
+                |time_of_last_update_to_this_frame, frame_transform| {
+                    // Separate check to work around borrow checker issues.
+                    if frame_transform == &CachedTransformValue::Invalidated {
+                        let transform = query_and_resolve_tree_transform_at_entity(
+                            self.associated_entity_path(*time_of_last_update_to_this_frame),
+                            self.child_frame,
+                            entity_db,
+                            // Do NOT use the original query time since that may give us information about a different child frame!
+                            &LatestAtQuery::new(
+                                query.timeline(),
+                                *time_of_last_update_to_this_frame,
+                            ),
+                        );
 
-        // Separate check to work around borrow checker issues.
-        if frame_transform == &CachedTransformValue::Invalidated {
-            let transform = query_and_resolve_tree_transform_at_entity(
-                self.associated_entity_path(*time_of_last_update_to_this_frame),
-                self.child_frame,
-                entity_db,
-                // Do NOT use the original query time since that may give us information about a different child frame!
-                &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
-            );
+                        // First, we update the cache value.
+                        *frame_transform = match &transform {
+                            Ok(transform) => CachedTransformValue::Resident(transform.clone()),
 
-            // First, we update the cache value.
-            *frame_transform = match &transform {
-                Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+                            Err(crate::transform_queries::TransformError::MissingTransform {
+                                ..
+                            }) => {
+                                // This can happen if we conservatively added a timepoint before any transform event happened.
+                                CachedTransformValue::Cleared
+                            }
 
-                Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
-                    // This can happen if we conservatively added a timepoint before any transform event happened.
-                    CachedTransformValue::Cleared
-                }
+                            Err(err) => {
+                                re_log::error_once!("Failed to query transformations: {err}");
+                                CachedTransformValue::Cleared
+                            }
+                        };
+                    }
 
-                Err(err) => {
-                    re_log::error_once!("Failed to query transformations: {err}");
-                    CachedTransformValue::Cleared
-                }
-            };
-        }
-
-        match frame_transform {
-            CachedTransformValue::Resident(transform) => Some(transform.clone()),
-            CachedTransformValue::Cleared => None,
-            CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
-        }
+                    match frame_transform {
+                        CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                        CachedTransformValue::Cleared => None,
+                        CachedTransformValue::Invalidated => {
+                            unreachable!("Just made transform cache-resident")
+                        }
+                    }
+                },
+            )
+            .flatten()
     }
 
     #[inline]
@@ -767,41 +778,51 @@ impl TreeTransformsForChildFrame {
 
         let mut events = self.events.lock();
 
-        let (time_of_last_update_to_this_frame, pinhole_projection) = events
+        events
             .pinhole_projections
-            .range_mut(..query.at().inc())
-            .next_back()?;
+            .mutate_latest_at(
+                &query.at(),
+                |time_of_last_update_to_this_frame, pinhole_projection| {
+                    // Separate check to work around borrow checker issues.
+                    if pinhole_projection == &CachedTransformValue::Invalidated {
+                        let transform = query_and_resolve_pinhole_projection_at_entity(
+                            self.associated_entity_path(*time_of_last_update_to_this_frame),
+                            self.child_frame,
+                            entity_db,
+                            // Do NOT use the original query time since that may give us information about a different child frame!
+                            &LatestAtQuery::new(
+                                query.timeline(),
+                                *time_of_last_update_to_this_frame,
+                            ),
+                        );
 
-        // Separate check to work around borrow checker issues.
-        if pinhole_projection == &CachedTransformValue::Invalidated {
-            let transform = query_and_resolve_pinhole_projection_at_entity(
-                self.associated_entity_path(*time_of_last_update_to_this_frame),
-                self.child_frame,
-                entity_db,
-                // Do NOT use the original query time since that may give us information about a different child frame!
-                &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
-            );
+                        *pinhole_projection = match &transform {
+                            Ok(transform) => CachedTransformValue::Resident(transform.clone()),
 
-            *pinhole_projection = match &transform {
-                Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+                            Err(crate::transform_queries::TransformError::MissingTransform {
+                                ..
+                            }) => {
+                                // This can happen if we conservatively added a timepoint before any transform event happened.
+                                CachedTransformValue::Cleared
+                            }
 
-                Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
-                    // This can happen if we conservatively added a timepoint before any transform event happened.
-                    CachedTransformValue::Cleared
-                }
+                            Err(err) => {
+                                re_log::error_once!("Failed to query transformations: {err}");
+                                CachedTransformValue::Cleared
+                            }
+                        };
+                    }
 
-                Err(err) => {
-                    re_log::error_once!("Failed to query transformations: {err}");
-                    CachedTransformValue::Cleared
-                }
-            };
-        }
-
-        match pinhole_projection {
-            CachedTransformValue::Resident(transform) => Some(transform.clone()),
-            CachedTransformValue::Cleared => None,
-            CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
-        }
+                    match pinhole_projection {
+                        CachedTransformValue::Resident(transform) => Some(transform.clone()),
+                        CachedTransformValue::Cleared => None,
+                        CachedTransformValue::Invalidated => {
+                            unreachable!("Just made transform cache-resident")
+                        }
+                    }
+                },
+            )
+            .flatten()
     }
 }
 
@@ -811,7 +832,7 @@ impl TreeTransformsForChildFrame {
 #[derive(Debug)]
 pub struct PoseTransformForEntity {
     entity_path: EntityPath,
-    poses_per_time: Mutex<BTreeMap<TimeInt, CachedTransformValue<Vec<DAffine3>>>>,
+    poses_per_time: Mutex<BookkeepingBTreeMap<TimeInt, CachedTransformValue<Vec<DAffine3>>>>,
 }
 
 impl Clone for PoseTransformForEntity {
@@ -867,7 +888,7 @@ impl PoseTransformForEntity {
     fn new_empty(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            poses_per_time: Mutex::new(BTreeMap::new()),
+            poses_per_time: Mutex::new(BookkeepingBTreeMap::new()),
         }
     }
 
@@ -878,23 +899,27 @@ impl PoseTransformForEntity {
     ) -> Vec<DAffine3> {
         let mut poses_per_time = self.poses_per_time.lock();
 
-        let Some((_t, pose_transform)) = poses_per_time.range_mut(..query.at().inc()).next_back()
-        else {
-            return Vec::new();
-        };
+        poses_per_time
+            .mutate_latest_at(&query.at(), |_t, pose_transform| {
+                // Separate check to work around borrow checker issues.
+                if pose_transform == &CachedTransformValue::Invalidated {
+                    *pose_transform =
+                        CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
+                            &self.entity_path,
+                            entity_db,
+                            query,
+                        ));
+                }
 
-        // Separate check to work around borrow checker issues.
-        if pose_transform == &CachedTransformValue::Invalidated {
-            *pose_transform = CachedTransformValue::Resident(
-                query_and_resolve_instance_poses_at_entity(&self.entity_path, entity_db, query),
-            );
-        }
-
-        match pose_transform {
-            CachedTransformValue::Resident(transform) => transform.clone(),
-            CachedTransformValue::Cleared => Vec::new(),
-            CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
-        }
+                match pose_transform {
+                    CachedTransformValue::Resident(transform) => transform.clone(),
+                    CachedTransformValue::Cleared => Vec::new(),
+                    CachedTransformValue::Invalidated => {
+                        unreachable!("Just made transform cache-resident")
+                    }
+                }
+            })
+            .unwrap_or_default()
     }
 
     /// Inserts a cleared transform for the given times.
@@ -957,20 +982,20 @@ impl TransformResolutionCache {
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
                 // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
                 self.frame_id_registry
-                    .register_all_frames_in_chunk(&event.chunk);
+                    .register_all_frames_in_chunk(&event.chunk_before_processing);
             }
 
-            let aspects = TransformAspect::transform_aspects_of(&event.chunk);
+            let aspects = TransformAspect::transform_aspects_of(&event.chunk_before_processing);
             if aspects.is_empty() {
                 continue;
             }
 
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                self.remove_chunk(&event.chunk, aspects);
-            } else if event.diff.chunk.is_static() {
-                self.add_static_chunk(&event.chunk, aspects);
+                self.remove_chunk(&event.chunk_before_processing, aspects);
+            } else if event.diff.chunk_before_processing.is_static() {
+                self.add_static_chunk(&event.chunk_before_processing, aspects);
             } else {
-                self.add_temporal_chunk(&event.chunk, aspects);
+                self.add_temporal_chunk(&event.chunk_before_processing, aspects);
             }
         }
     }
