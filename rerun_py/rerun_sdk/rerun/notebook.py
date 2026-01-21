@@ -67,7 +67,7 @@ class Viewer:
     """
     A viewer embeddable in a notebook.
 
-    This viewer is a wrapper around the [`rerun_notebook.Viewer`][] widget.
+    This viewer is a wrapper around the `rerun_notebook.Viewer` widget.
     """
 
     def __init__(
