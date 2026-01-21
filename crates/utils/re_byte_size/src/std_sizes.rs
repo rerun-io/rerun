@@ -146,8 +146,11 @@ impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
 impl<T: SizeBytes> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
+        // Overhead for strong and weak counts:
+        let arc_overhead = 2 * size_of::<usize>() as u64;
+
         // A good approximation, that crucially works well for strong_count=1:
-        T::total_size_bytes(&**self) / Self::strong_count(self) as u64
+        (T::total_size_bytes(&**self) + arc_overhead) / Self::strong_count(self) as u64
     }
 }
 
