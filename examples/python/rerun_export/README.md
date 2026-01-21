@@ -6,9 +6,7 @@ thumbnail = "https://static.rerun.io/rerun-export/placeholder/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
-
-# TODO(gijsd): Claude wrote this readme, do another pass
-Also make sure to add the proper thumbnail images once available!
+<!-- TODO(gijsd): Add proper thumbnail images once available! -->
 
 <!-- <picture>
   <img src="https://static.rerun.io/rerun-export/placeholder/full.png" alt="">
@@ -18,33 +16,101 @@ Also make sure to add the proper thumbnail images once available!
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-export/placeholder/1200w.png">
 </picture> -->
 
-An example of how to use the OSS Rerun server to inspect and prepare MCAP recordings for training by constructing a LeRobot v3 dataset.
+Convert robot recordings into training-ready datasets by using the OSS Rerun server to query and transform RRD files into LeRobot v3 format.
 
-## Logging and visualizing with Rerun
+## Background
 
-This example demonstrates how to:
+This example demonstrates how to use the Rerun OSS server API to process robot recordings and prepare them for imitation learning. The workflow uses the server to load RRD files, query robot data (actions, observations, videos), align time series to a target framerate, and write the result as a LeRobot v3 dataset compatible with robotics model training pipelines.
 
-1. Start a local Rerun OSS server and load MCAP recordings
-2. Inspect and query robot telemetry data through the server API
-3. Prepare and structure the data into LeRobot v3 dataset format
-4. Validate the dataset is ready for robotics model training
+[LeRobot](https://github.com/huggingface/lerobot) is a project by Hugging Face that provides models, datasets, and tools for real-world robotics in PyTorch. This example shows how Rerun recordings can be converted into LeRobot's standardized dataset format.
 
-The key steps are:
+## Conversion workflow
 
-## Conversion CLI
+The converter loads RRD files into the OSS server, infers data types from the recordings, resamples all data to a target framerate, and writes the result as a LeRobot v3 dataset. Video streams are efficiently remuxed without re-encoding.
 
-This example ships a CLI that reads a directory of `.rrd` recordings via the OSS server API, aligns them
-at a target FPS, and writes a LeRobot v3 dataset to disk.
+## Run the code
+
+### Installation
+
+To install the example and its dependencies:
+
+```bash
+pip install -e examples/python/rerun_export
+```
+
+### Basic usage
+
+The example provides a CLI that converts a directory of RRD recordings into a LeRobot v3 dataset:
 
 ```bash
 rerun_export \
-  --rrd-dir /path/to/rrds \
-  --output /tmp/lerobot_dataset \
-  --dataset-name robot_runs \
+  --rrd-dir /path/to/recordings \
+  --output /path/to/output/dataset \
+  --dataset-name my_robot_dataset \
   --fps 10 \
   --index real_time \
-  --action-path /action \
-  --state-path /observation/joint_positions \
-  --task-path /language_instruction \
-  --image front:/camera/front:raw
+  --action /action:Scalars:scalars \
+  --state /observation/joint_positions:Scalars:scalars \
+  --task /language_instruction:TextDocument:text \
+  --video front:/camera/front:VideoStream:sample
 ```
+
+### CLI options
+
+Required arguments:
+
+- `--rrd-dir`: Directory containing RRD recording files
+- `--output`: Output directory for the LeRobot dataset
+- `--fps`: Target framerate for the dataset (e.g., 10 Hz)
+- `--action`: Fully qualified column for robot actions (format: `path:Component:field`)
+- `--state`: Fully qualified column for robot state observations
+
+Optional arguments:
+
+- `--dataset-name`: Dataset name in the catalog (default: `rrd_dataset`)
+- `--repo-id`: LeRobot repository ID (defaults to dataset name)
+- `--index`: Timeline to use for alignment (default: `real_time`)
+- `--task`: Fully qualified column for task descriptions (e.g., language instructions)
+- `--video`: Video stream specification as `key:path` (repeatable for multiple cameras)
+- `--segments`: List of specific segment IDs to convert
+- `--max-segments`: Limit the number of segments processed
+- `--use-images`: Store individual images instead of video files
+- `--action-names`: Comma-separated names for action dimensions
+- `--state-names`: Comma-separated names for state dimensions
+
+### Video specification format
+
+Videos are specified as `key:path`:
+
+- `key`: Camera identifier (e.g., `front`, `wrist`)
+- `path`: Entity path to the video stream (e.g., `/camera/front`)
+
+The converter expects [VideoStream](../../../docs//content/reference/types/archetypes/video_stream.md) components at the specified paths.
+
+## Example workflow
+
+Here's a complete example converting simulated robot teleop data:
+
+```bash
+# Convert RRD recordings to LeRobot dataset
+rerun_export \
+  --rrd-dir ./robot_recordings \
+  --output ./lerobot_dataset \
+  --dataset-name robot_demos \
+  --fps 15 \
+  --action /robot/action:Scalars:scalars \
+  --state /robot/state:Scalars:scalars \
+  --task /task:TextDocument:text \
+  --video front:/camera/front:VideoStream:sample \
+  --video wrist:/camera/wrist:VideoStream:sample \
+  --action-names "joint_0,joint_1,joint_2,gripper" \
+  --state-names "joint_0,joint_1,joint_2,gripper"
+
+# The resulting dataset can be used with LeRobot training scripts
+```
+
+The output directory will contain:
+
+- `data/`: Parquet files with aligned time series data
+- `videos/`: Encoded video files (if using `--use-videos`)
+- `meta/`: Dataset metadata and episode information

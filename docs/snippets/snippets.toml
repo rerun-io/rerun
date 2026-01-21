@@ -24,6 +24,7 @@ features = [
     "Query Data Platform",
     [
       "howto/dataframe_operations",
+      "howto/lerobot_export",
       "howto/query_images",
       "howto/query_videos",
       "howto/query_video_keyframes",

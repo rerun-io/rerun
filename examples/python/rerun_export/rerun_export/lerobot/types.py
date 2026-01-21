@@ -11,7 +11,7 @@ import numpy.typing as npt
 from rerun_export.utils import get_entity_path
 
 if TYPE_CHECKING:
-    import datafusion as dfn
+    import rerun as rr
 
 VideoSampleData = tuple[list[bytes], npt.NDArray[np.int64]]
 
@@ -72,7 +72,7 @@ class LeRobotConversionConfig:
     # Task configuration
     task_default: str = "task"
 
-    dataset: dfn.DataFrame | None = None
+    dataset: rr.catalog.DatasetEntry | None = None
     segment_id: str | None = None
 
     def get_filter_list(self) -> tuple[list[str], str | None]:
