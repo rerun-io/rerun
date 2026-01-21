@@ -886,6 +886,11 @@ impl ChunkStore {
         std::mem::take(&mut self.missing_chunk_ids.write())
     }
 
+    // TODO: docs
+    pub fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
+        self.missing_chunk_ids.write().insert(chunk_id);
+    }
+
     /// How many missing chunk IDs are currently registered?
     ///
     /// See also [`ChunkStore::take_missing_chunk_ids`].

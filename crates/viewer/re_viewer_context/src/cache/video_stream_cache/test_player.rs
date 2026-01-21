@@ -209,7 +209,7 @@ fn unloaded() -> SampleMetadataState {
     SampleMetadataState::Unloaded(Tuid::new())
 }
 
-/// A P-Frame
+/// A inter frame
 fn frame(time: f64) -> SampleMetadataState {
     let time = Time::from_secs(time, re_video::Timescale::NANOSECOND);
     SampleMetadataState::Present(re_video::SampleMetadata {
@@ -401,49 +401,15 @@ fn assert_loading(err: Result<(), VideoPlayerError>) {
                 InsufficientSampleDataError::ExpectedSampleNotAvailable
             )
         ),
-        "Expected {} got {err}",
+        "Expected '{}' got '{err}'",
         VideoPlayerError::InsufficientSampleData(
             InsufficientSampleDataError::ExpectedSampleNotAvailable
         )
     );
 }
 
-#[track_caller]
-fn assert_no_samples_before(err: Result<(), VideoPlayerError>) {
-    let err = err.unwrap_err();
-    assert!(
-        matches!(
-            err,
-            VideoPlayerError::InsufficientSampleData(
-                InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
-            )
-        ),
-        "Expected {} got {err}",
-        VideoPlayerError::InsufficientSampleData(
-            InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
-        )
-    );
-}
-
 #[test]
 fn player_with_unloaded() {
-    #[track_caller]
-    fn assert_loading(err: Result<(), VideoPlayerError>) {
-        let err = err.unwrap_err();
-        assert!(
-            matches!(
-                err,
-                VideoPlayerError::InsufficientSampleData(
-                    InsufficientSampleDataError::ExpectedSampleNotAvailable
-                )
-            ),
-            "Expected {} got {err}",
-            VideoPlayerError::InsufficientSampleData(
-                InsufficientSampleDataError::ExpectedSampleNotAvailable
-            )
-        );
-    }
-
     let mut video = create_video([
         keyframe(0.),
         frame(1.),
@@ -472,12 +438,11 @@ fn player_with_unloaded() {
     ])
     .unwrap();
 
-    video.expect_decoded_samples([]);
-
     video.play(0.0..3.0, 1.0).unwrap();
     video.expect_decoded_samples(0..3);
 
     assert_loading(video.play(4.0..8.0, 1.0));
+    video.expect_decoded_samples(None);
 
     video.play(8.0..15.0, 1.0).unwrap();
     video.expect_decoded_samples(8..15);
@@ -506,6 +471,71 @@ fn player_with_unloaded() {
     video.play(18.0..24.0, 1.0).unwrap();
 
     video.expect_decoded_samples(0..24);
+}
+
+#[test]
+fn player_fetching_unloaded() {
+    let samples = [
+        unloaded(),
+        unloaded(),
+        frame(2.0),
+        unloaded(),
+        keyframe(4.0),
+        unloaded(),
+        frame(6.0),
+        keyframe(7.0),
+        frame(8.0),
+        frame(9.0),
+        frame(10.0),
+        unloaded(),
+        frame(12.0),
+        frame(13.0),
+        frame(14.0),
+    ];
+
+    let unloaded_source_1 = samples[1].source_id();
+    let unloaded_source_5 = samples[5].source_id();
+    let unloaded_source_11 = samples[11].source_id();
+
+    let mut video = create_video(samples).unwrap();
+
+    assert_loading(video.play_with_buffer(2.0..4.0, 1.0, &|source| {
+        assert_eq!(source, unloaded_source_1);
+
+        &[]
+    }));
+
+    video.expect_decoded_samples(None);
+
+    let i = std::sync::atomic::AtomicU64::new(0);
+    assert_loading(video.play_with_buffer(4.0..7.0, 1.0, &|source| {
+        if i.fetch_add(1, std::sync::atomic::Ordering::Relaxed) == 1 {
+            assert_eq!(source, unloaded_source_5);
+        }
+
+        &[]
+    }));
+
+    video.expect_decoded_samples(std::iter::once(4));
+
+    let i = std::sync::atomic::AtomicU64::new(0);
+    assert_loading(video.play_with_buffer(7.0..12.0, 1.0, &|source| {
+        if i.fetch_add(4, std::sync::atomic::Ordering::Relaxed) == 1 {
+            assert_eq!(source, unloaded_source_11);
+        }
+
+        &[]
+    }));
+
+    video.expect_decoded_samples(7..11);
+
+    assert_loading(video.play_with_buffer(12.0..14.0, 1.0, &|source| {
+        assert_eq!(source, unloaded_source_11);
+
+        &[]
+    }));
+
+    video.expect_decoded_samples(None);
 }
 
 impl TestVideoPlayer {
@@ -773,7 +803,7 @@ fn cache_with_manifest_and_streaming() {
     // Load some chunks.
     load_chunks(&mut store, &mut cache, &chunks[3..5]);
 
-    assert_no_samples_before(player.play_store(0.0..3.0, 0.25, &store));
+    assert_loading(player.play_store(0.0..3.0, 0.25, &store));
     player.expect_decoded_samples(None);
 
     player.play_store(3.0..5.0, 0.25, &store).unwrap();
@@ -939,7 +969,7 @@ fn cache_with_manifest_splits() {
     );
 
     // Assert that the beginning/end splits have been gc'd
-    assert_no_samples_before(player.play_store(time_per_chunk..time_per_chunk * 1.5, dt, &store));
+    assert_loading(player.play_store(time_per_chunk..time_per_chunk * 1.5, dt, &store));
     player.expect_decoded_samples(None);
 
     let play_store = player.play_store(time_per_chunk * 2.5..time_per_chunk * 3.0 - dt, dt, &store);

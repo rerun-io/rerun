@@ -205,9 +205,38 @@ impl VideoPlayer {
         }
 
         // Find which sample best represents the requested PTS.
-        let requested_sample_idx = video_description
-            .latest_sample_index_at_presentation_timestamp(requested_pts)
-            .ok_or(InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp)?;
+        let Some(requested_sample_idx) =
+            video_description.latest_sample_index_at_presentation_timestamp(requested_pts)
+        else {
+            let mut has_samples_before = false;
+            let error = if let Some(idx) =
+                video_description
+                    .samples
+                    .iter_indexed()
+                    .find_map(|(idx, s)| {
+                        let s = s.sample()?;
+
+                        if s.presentation_timestamp >= requested_pts {
+                            Some(idx)
+                        } else {
+                            has_samples_before = true;
+                            None
+                        }
+                    }) {
+                if has_samples_before
+                    && let Some(missing_source) = video_description.unloaded_source_before(0, idx)
+                {
+                    get_video_buffer(missing_source);
+                }
+
+                InsufficientSampleDataError::ExpectedSampleNotAvailable
+            } else {
+                InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp
+            };
+
+            return Err(error.into());
+        };
+
         let requested_sample = video_description
             .samples
             .get(requested_sample_idx)
@@ -325,11 +354,23 @@ impl VideoPlayer {
         // In the presence of b-frames this order may be different!
 
         // Find the keyframe that contains the sample.
-        let requested_keyframe_idx = video_description
-            .sample_keyframe_idx(requested_sample_idx)
-            .ok_or(VideoPlayerError::InsufficientSampleData(
+        let Some(requested_keyframe_idx) =
+            video_description.sample_keyframe_idx(requested_sample_idx)
+        else {
+            // Request the buffer for the missing sample's source to trigger loading it.
+            if let Some(source) = video_description.unloaded_source_before(0, requested_sample_idx)
+            {
+                get_video_buffer(source);
+
+                return Err(VideoPlayerError::InsufficientSampleData(
+                    InsufficientSampleDataError::ExpectedSampleNotAvailable,
+                ));
+            }
+
+            return Err(VideoPlayerError::InsufficientSampleData(
                 InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp,
-            ))?;
+            ));
+        };
 
         self.handle_errors_and_reset_decoder_if_needed(
             video_description,
@@ -380,7 +421,11 @@ impl VideoPlayer {
             }
 
             match video_description.samples.get(last_enqueued + 1) {
-                Some(re_video::SampleMetadataState::Unloaded(_)) => {
+                Some(re_video::SampleMetadataState::Unloaded(source)) => {
+                    if last_enqueued >= requested_keyframe_idx {
+                        // Try to get the buffer anyway to signal that the player wants this source.
+                        get_video_buffer(*source);
+                    }
                     // We require all samples and one additional we're enqueuing before the requested
                     // sample to be present.
                     //
@@ -577,6 +622,18 @@ impl VideoPlayer {
         requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
+        // Check if there are unloaded samples before the requested index in this range.
+        if sample_range.contains(&requested_sample_idx)
+            && let Some(missing_source) =
+                video_description.unloaded_source_before(sample_range.start, requested_sample_idx)
+        {
+            // Try to get the buffer anyway to signal that the player wants this source.
+            get_video_buffer(missing_source);
+            return Err(VideoPlayerError::InsufficientSampleData(
+                InsufficientSampleDataError::ExpectedSampleNotAvailable,
+            ));
+        }
+
         for (sample_idx, sample) in video_description
             .samples
             .iter_index_range_clamped(sample_range)
@@ -584,17 +641,9 @@ impl VideoPlayer {
             let sample = match sample {
                 re_video::SampleMetadataState::Present(sample) => sample,
                 re_video::SampleMetadataState::Unloaded(_) => {
-                    // If this sample before the requested sample, we need this sample now
-                    // and error if it's unloaded.
-                    //
-                    // Otherwise we can presume this will be loaded later.
-                    if sample_idx <= requested_sample_idx {
-                        return Err(VideoPlayerError::InsufficientSampleData(
-                            InsufficientSampleDataError::ExpectedSampleNotAvailable,
-                        ));
-                    } else {
-                        return Ok(());
-                    }
+                    // We know this isn't before the requested sample because of
+                    // the check at the start of this function.
+                    return Ok(());
                 }
             };
             let chunk = sample

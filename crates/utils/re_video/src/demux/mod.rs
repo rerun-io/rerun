@@ -838,6 +838,18 @@ impl VideoDataDescription {
             .checked_sub(1)
     }
 
+    /// Returns the first unloaded index found before `idx`.
+    pub fn unloaded_source_before(&self, min_index: SampleIndex, idx: SampleIndex) -> Option<Tuid> {
+        let range = self.samples.min_index().max(min_index)..idx;
+        self.samples
+            .iter_index_range_clamped(&range)
+            .rev()
+            .find_map(|(_, s)| match s {
+                SampleMetadataState::Present(_) => None,
+                SampleMetadataState::Unloaded(tuid) => Some(*tuid),
+            })
+    }
+
     fn find_keyframe_index(
         &self,
         cmp_time: impl Fn(&SampleMetadata) -> bool,
