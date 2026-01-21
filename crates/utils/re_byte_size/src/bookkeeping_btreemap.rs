@@ -16,7 +16,7 @@ pub struct BookkeepingBTreeMap<K, V> {
     ///
     /// For Plain Old Data types, this will always be zero.
     ///
-    /// This does NOT include the size of the actual BTree data-structure itself.
+    /// This does NOT include the size of the actual btree data-structure itself.
     /// We estimate that with [`btree_heap_size`].
     kv_heap_size_bytes: u64,
 }
