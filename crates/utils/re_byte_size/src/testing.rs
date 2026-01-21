@@ -1,3 +1,5 @@
+//! Testing utilities for byte size measurements.
+
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {
@@ -7,11 +9,13 @@ thread_local! {
 /// Allocator that can be used in test for byte-accurate measurement of memory usage:
 ///
 /// ```
+/// # use re_byte_size::testing::TrackingAllocator;
+///
 /// #[global_allocator]
 /// pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator::system();
 ///
-/// fn size_of_thing() -> usize {
-///     let num_bytes = memory_use(|| {
+/// fn test_size_of_thing() {
+///     let (_thing, num_bytes) = TrackingAllocator::memory_use(|| {
 ///         vec![0u8; 1024 * 1024]
 ///     });
 ///     assert_eq!(num_bytes, 1024 * 1024);

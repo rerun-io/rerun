@@ -22,9 +22,6 @@ all-features = true
 [features]
 glam = ["dep:glam"]
 
-## Enable special testing utilities
-testing = []
-
 
 [dependencies]
 arrow.workspace = true

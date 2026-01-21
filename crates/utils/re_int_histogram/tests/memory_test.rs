@@ -1,5 +1,3 @@
-#![cfg(feature = "testing")]
-
 use insta::assert_debug_snapshot;
 use re_byte_size::testing::TrackingAllocator;
 
