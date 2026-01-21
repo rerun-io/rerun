@@ -5,7 +5,7 @@ use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
-use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree};
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture, NamedMemUsageTree};
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
@@ -3922,8 +3922,9 @@ fn handle_time_ctrl_event(
 impl MemUsageTreeCapture for App {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         re_tracing::profile_function!();
-        let mut node = MemUsageNode::new();
-        // TODO(RR-3366): add rx_log
+        let mut node = re_byte_size::MemUsageNode::default();
+        node.add("state", self.state.capture_mem_usage_tree());
+        node.add("rx_log", self.rx_log.capture_mem_usage_tree());
         node.add("store_hub", self.store_hub.capture_mem_usage_tree());
         node.into_tree()
     }
