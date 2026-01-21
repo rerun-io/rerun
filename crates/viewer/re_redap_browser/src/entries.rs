@@ -7,7 +7,7 @@ use datafusion::catalog::TableProvider;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
-use re_dataframe_ui::RequestedObject;
+use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
@@ -162,7 +162,14 @@ async fn fetch_entries_and_register_tables(
     while let Some((details, result)) = futures_unordered.next().await {
         let id = details.id;
         let inner_result = result.map(|(inner, provider)| {
-            session_ctx.register_table(&details.name, provider).ok();
+            // Create cached provider that reads from the raw table
+            let cached_provider = StreamingCacheTableProvider::new(provider, runtime.clone());
+
+            // Register cached provider with original name (in default schema)
+            session_ctx
+                .register_table(&details.name, Arc::new(cached_provider))
+                .ok();
+
             inner
         });
 
@@ -213,7 +220,7 @@ fn fetch_entry_details(
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin, runtime.clone())
+            fetch_table_details(client, entry.id, origin, runtime)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -258,7 +265,7 @@ async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: &re_uri::Origin,
-    runtime: AsyncRuntimeHandle,
+    runtime: &AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
         table_entry,
