@@ -63,6 +63,60 @@ def all_archetypes() -> list[str]:
     return quoted_strings
 
 
+def all_submodules(max_depth: int | None = None, ignore_hidden: bool = True) -> list[str]:
+    """
+    Walk the rerun package structure to find all submodules.
+
+    Args:
+        max_depth: Maximum depth to traverse. If None, traverse all levels.
+                   Depth 1 would return 'blueprint' but not 'blueprint.archetypes'.
+        ignore_hidden: If True, skip modules starting with underscores (e.g., _baseclasses, __main__).
+
+    """
+    import pkgutil
+
+    rerun_package_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun")
+
+    # Add the parent directory to sys.path temporarily so we can import rerun
+    parent_path = str(Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk"))
+    if parent_path not in sys.path:
+        sys.path.insert(0, parent_path)
+
+    try:
+        # Import the rerun package
+        import rerun
+
+        submodules = []
+
+        # Walk through all submodules in the rerun package
+        for _, modname, _ in pkgutil.walk_packages(rerun.__path__, rerun.__name__ + "."):
+            # Remove the 'rerun.' prefix to get the relative module name
+            relative_name = modname[len("rerun.") :]
+
+            # Skip hidden modules if requested
+            if ignore_hidden:
+                # Check if any part of the module path starts with underscore
+                parts = relative_name.split(".")
+                if any(part.startswith("_") for part in parts):
+                    continue
+
+            # Check depth if max_depth is specified
+            if max_depth is not None:
+                depth = relative_name.count(".") + 1
+                if depth > max_depth:
+                    continue
+
+            submodules.append(relative_name)
+
+        assert len(submodules) > 0, f"Found no submodules in {rerun_package_path}"
+        return sorted(submodules)
+
+    finally:
+        # Clean up sys.path
+        if parent_path in sys.path:
+            sys.path.remove(parent_path)
+
+
 @dataclass
 class Section:
     title: str
@@ -390,6 +444,12 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
     ),
     Section(
+        title="Server",
+        show_tables=True,
+        mod_path="rerun.server",
+        show_submodules=True,
+    ),
+    Section(
         title="Recording",
         mod_path="rerun.recording",
         func_list=[
@@ -401,6 +461,12 @@ SECTION_TABLE: Final[list[Section]] = [
             "RRDArchive",
         ],
         show_tables=True,
+    ),
+    Section(
+        title="URDF Support",
+        show_tables=True,
+        mod_path="rerun.urdf",
+        show_submodules=True,
     ),
     Section(
         title="Script Helpers",
@@ -448,10 +514,18 @@ SECTION_TABLE: Final[list[Section]] = [
 ]
 
 
-def is_mentioned(thing: str) -> bool:
+def is_archetype_mentioned(thing: str) -> bool:
     for section in SECTION_TABLE:
         if section.class_list is not None:
             if f"archetypes.{thing}" in section.class_list:
+                return True
+    return False
+
+
+def is_submodule_mentioned(thing: str) -> bool:
+    for section in SECTION_TABLE:
+        if section.mod_path is not None:
+            if thing == section.mod_path[len("rerun.") :]:
                 return True
     return False
 
@@ -462,8 +536,10 @@ sdk_root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
+for submodule in all_submodules(1, True):
+    assert is_submodule_mentioned(submodule), f"Submodule '{submodule}' is not mentioned in the index of {__file__}"
 for archetype in all_archetypes():
-    assert is_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
+    assert is_archetype_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
 
 # We use griffe to access docstrings
 # Lots of other potentially interesting stuff we could pull out in the future
