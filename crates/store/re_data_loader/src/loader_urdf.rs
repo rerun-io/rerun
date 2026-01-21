@@ -288,21 +288,6 @@ impl UrdfTree {
         self.links.get(link_name)
     }
 
-    /// Helper to get the entity path of a link w.r.t. some root path.
-    fn get_link_path_at_root(&self, root: &EntityPath, link: &Link) -> EntityPath {
-        let parents = std::iter::successors(self.get_parent_of_link(&link.name), |joint| {
-            self.get_parent_of_link(&joint.parent.link)
-        });
-        let parent_path = parents
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .fold(root.clone(), |path, joint| {
-                path / EntityPathPart::new(&joint.parent.link)
-            });
-        parent_path / EntityPathPart::new(&link.name)
-    }
-
     /// Get the visual geometries of a link and their entity paths, if any.
     pub fn get_visual_geometries(
         &self,
@@ -313,9 +298,10 @@ impl UrdfTree {
             return None;
         }
 
-        // Get the base path for all visual geometries of this link.
+        // The base path for all visual geometries of this link.
+        // We use flat paths under `visual_root` since link names have to be unique and to avoid deep nesting.
         let visual_base_path_for_link =
-            self.get_link_path_at_root(&self.log_paths.visual_root, link);
+            self.log_paths.visual_root.clone() / EntityPathPart::new(&link.name);
 
         // Collect all the link's visual geometries and build their entity paths.
         link.visual
@@ -342,9 +328,10 @@ impl UrdfTree {
             return None;
         }
 
-        // Get the base path for all collision geometries of this link.
+        // The base path for all collision geometries of this link.
+        // We use flat paths under `collision_root` since link names have to be unique and to avoid deep nesting.
         let collision_base_path_for_link =
-            self.get_link_path_at_root(&self.log_paths.collision_root, link);
+            self.log_paths.collision_root.clone() / EntityPathPart::new(&link.name);
 
         // Collect all the link's collision geometries and build their entity paths.
         link.collision
@@ -362,11 +349,6 @@ impl UrdfTree {
             })
             .collect::<Vec<_>>()
             .into()
-    }
-
-    /// Find the parent joint of a link, if it exists.
-    fn get_parent_of_link(&self, link_name: &str) -> Option<&Joint> {
-        self.joints.iter().find(|j| j.child.link == link_name)
     }
 
     pub fn get_joint_child(&self, joint: &Joint) -> &Link {
