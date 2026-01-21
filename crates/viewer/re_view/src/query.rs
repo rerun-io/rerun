@@ -45,9 +45,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
     let results = {
         // Apply component mappings when querying the recording.
-        for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.target) {
-                components.insert(mapping.selector);
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            if components.remove(target) {
+                components.insert(*selector);
             }
         }
 
@@ -57,13 +57,13 @@ pub fn range_with_blueprint_resolved_data<'a>(
                 .range(range_query, &data_result.entity_path, components);
 
         // Apply mapping to the results.
-        for mapping in &visualizer_instruction.component_mappings {
-            if let Some(mut chunks) = results.components.remove(&mapping.selector) {
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            if let Some(mut chunks) = results.components.remove(selector) {
                 for chunk in &mut chunks {
-                    *chunk = chunk.with_renamed_component(mapping.selector, mapping.target);
+                    *chunk = chunk.with_renamed_component(*selector, *target);
                 }
 
-                results.components.insert(mapping.target, chunks);
+                results.components.insert(*target, chunks);
             }
         }
 
@@ -124,9 +124,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     // Apply component mappings when querying the recording.
     if let Some(visualizer_instruction) = &visualizer_instruction {
-        for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.target) {
-                components.insert(mapping.selector);
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            if components.remove(target) {
+                components.insert(*selector);
             }
         }
     }
@@ -139,14 +139,12 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     // Apply mapping to the results.
     let component_mappings_hash = if let Some(visualizer_instruction) = visualizer_instruction {
-        for mapping in &visualizer_instruction.component_mappings {
-            if let Some(chunk) = results.components.remove(&mapping.selector) {
-                let chunk = std::sync::Arc::new(
-                    chunk.with_renamed_component(mapping.selector, mapping.target),
-                )
-                .to_unit()
-                .expect("The source chunk was a unit chunk.");
-                results.components.insert(mapping.target, chunk);
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            if let Some(chunk) = results.components.remove(selector) {
+                let chunk = std::sync::Arc::new(chunk.with_renamed_component(*selector, *target))
+                    .to_unit()
+                    .expect("The source chunk was a unit chunk.");
+                results.components.insert(*target, chunk);
             }
         }
         Hash64::hash(&visualizer_instruction.component_mappings)
