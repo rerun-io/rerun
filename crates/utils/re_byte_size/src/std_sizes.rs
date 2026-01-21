@@ -1,6 +1,7 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::mem::size_of;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
@@ -13,25 +14,55 @@ impl SizeBytes for String {
     }
 }
 
+// ----------------------------------------------------------------------------
+// BTree collections
+
+/// Estimate heap size for a [`BTreeMap`] or [`BTreeSet`],
+/// excluding the memory that non-POD key/values hold on their own.
+#[inline]
+fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
+    if len == 0 {
+        return 0;
+    }
+
+    // Reference: https://github1s.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs
+
+    const BTREE_B: usize = 6;
+    const ELEMENTS_PER_LEAF: usize = 2 * BTREE_B - 1;
+    const NODE_FIXED_OVERHEAD: usize = 16;
+
+    // Estimate number of leaf nodes needed (nodes are ~half full on average after insertions)
+    let num_leaf_nodes = len.div_ceil(ELEMENTS_PER_LEAF);
+
+    // Each leaf node allocates space for ELEMENTS_PER_LEAF entries
+    let leaf_data_size = num_leaf_nodes * ELEMENTS_PER_LEAF * entry_size;
+    let leaf_overhead = num_leaf_nodes * NODE_FIXED_OVERHEAD;
+
+    // Internal nodes add ~10% overhead for large trees, ignore for simplicity
+    (leaf_data_size + leaf_overhead) as u64
+}
+
 impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
-        // `BTreeMap` does not have a capacity method.
+        // BTree stores keys and values in separate arrays within nodes,
+        // so there's no tuple padding like in HashMap.
+        let base_size = btree_heap_size(self.len(), size_of::<K>() + size_of::<V>());
 
-        let keys_size_bytes = if K::is_pod() {
-            (self.len() * std::mem::size_of::<K>()) as _
+        let heap_in_keys = if K::is_pod() {
+            0
         } else {
-            self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
+            self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        let values_size_bytes = if V::is_pod() {
-            (self.len() * std::mem::size_of::<V>()) as _
+        let heap_in_values = if V::is_pod() {
+            0
         } else {
-            self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+            self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        keys_size_bytes + values_size_bytes
+        base_size + heap_in_keys + heap_in_values
     }
 }
 
@@ -39,13 +70,37 @@ impl<K: SizeBytes> SizeBytes for BTreeSet<K> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
-        // `BTreeSet` does not have a capacity method.
+        let base_size = btree_heap_size(self.len(), size_of::<K>());
 
-        if K::is_pod() {
-            (self.len() * std::mem::size_of::<K>()) as _
+        let heap_in_keys = if K::is_pod() {
+            0
         } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
-        }
+            self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        };
+
+        base_size + heap_in_keys
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Hash collections
+
+/// Estimate the number of slots allocated by a hashmap for the given capacity.
+///
+/// stdlib uses `hashbrown` hashmaps.
+///
+/// Reference: <https://github.com/rust-lang/hashbrown/blob/9037471eb241119de665eb328030f4b19c63dcbe/src/raw/mod.rs#L190-L191>
+#[inline]
+fn hashbrown_num_slots(capacity: usize) -> usize {
+    if capacity == 0 {
+        0
+    } else if capacity < 4 {
+        4
+    } else if capacity < 8 {
+        8
+    } else {
+        // hashbrown maintains 87.5% load factor: buckets = capacity * 8 / 7
+        (capacity * 8).div_ceil(7)
     }
 }
 
@@ -53,22 +108,28 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
+        let num_slots = hashbrown_num_slots(self.capacity());
 
-        let keys_size_bytes = if K::is_pod() {
-            (self.capacity() * std::mem::size_of::<K>()) as _
+        // 1 control byte per slot for SIMD metadata
+        let control_bytes = num_slots as u64;
+
+        // Use size_of::<(K, V)>() to account for alignment padding between K and V.
+        // For example, (u32, u8) takes 8 bytes, not 5.
+        let entry_size = (num_slots * size_of::<(K, V)>()) as u64;
+
+        let heap_in_keys = if K::is_pod() {
+            0
         } else {
-            (self.capacity() * std::mem::size_of::<K>()) as u64
-                + self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
+            self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        let values_size_bytes = if V::is_pod() {
-            (self.capacity() * std::mem::size_of::<V>()) as _
+        let heap_in_values = if V::is_pod() {
+            0
         } else {
-            (self.capacity() * std::mem::size_of::<V>()) as u64
-                + self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
+            self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        keys_size_bytes + values_size_bytes
+        control_bytes + entry_size + heap_in_keys + heap_in_values
     }
 }
 
@@ -76,15 +137,24 @@ impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
+        let num_slots = hashbrown_num_slots(self.capacity());
 
-        if K::is_pod() {
-            (self.capacity() * std::mem::size_of::<K>()) as _
+        // 1 control byte per slot for SIMD metadata
+        let control_bytes = num_slots as u64;
+
+        let entry_size = (num_slots * size_of::<K>()) as u64;
+
+        let heap_in_keys = if K::is_pod() {
+            0
         } else {
-            (self.capacity() * std::mem::size_of::<K>()) as u64
-                + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
-        }
+            self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        };
+
+        control_bytes + entry_size + heap_in_keys
     }
 }
+
+// ----------------------------------------------------------------------------
 
 // NOTE: Do _not_ implement `SizeBytes` for slices: we cannot know whether they point to the stack
 // or the heap!
@@ -105,9 +175,9 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
         if T::is_pod() {
-            (self.capacity() * std::mem::size_of::<T>()) as _
+            (self.capacity() * size_of::<T>()) as _
         } else {
-            (self.capacity() * std::mem::size_of::<T>()) as u64
+            (self.capacity() * size_of::<T>()) as u64
                 + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
     }
@@ -118,9 +188,9 @@ impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
         if T::is_pod() {
-            (self.capacity() * std::mem::size_of::<T>()) as _
+            (self.capacity() * size_of::<T>()) as _
         } else {
-            (self.capacity() * std::mem::size_of::<T>()) as u64
+            (self.capacity() * size_of::<T>()) as u64
                 + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
     }
