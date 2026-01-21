@@ -592,7 +592,7 @@ fn codec_chunk() -> Chunk {
     builder.build().unwrap()
 }
 
-fn video_chunks(
+fn video_chunk(
     keyframe: &[u8],
     inter_frame: &[u8],
     start_time: f64,
@@ -656,7 +656,7 @@ fn cache_with_manifest() {
 
     let chunks: Vec<_> = (0..10)
         .map(|i| {
-            video_chunks(
+            video_chunk(
                 AV1_TEST_KEYFRAME,
                 AV1_TEST_INTER_FRAME,
                 i as f64,
@@ -728,7 +728,7 @@ fn cache_with_streaming() {
 
     let dt = 0.25;
     let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| video_chunks(&keyframe, &inter_frame, i as f64, dt, 1, 4))
+        .map(|i| video_chunk(&keyframe, &inter_frame, i as f64, dt, 1, 4))
         .chain(once(codec_chunk()))
         .map(Arc::new)
         .collect();
@@ -769,7 +769,7 @@ fn cache_with_manifest_and_streaming() {
 
     let chunks: Vec<_> = once(codec_chunk())
         .chain((0..6).map(|i| {
-            video_chunks(
+            video_chunk(
                 AV1_TEST_KEYFRAME,
                 AV1_TEST_INTER_FRAME,
                 i as f64 + 1.0,
@@ -877,7 +877,7 @@ fn cache_with_streaming_big() {
 
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
-            video_chunks(
+            video_chunk(
                 &keyframe,
                 &inter_frame,
                 i as f64 * time_per_chunk,
@@ -927,7 +927,7 @@ fn cache_with_manifest_big() {
 
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
-            video_chunks(
+            video_chunk(
                 &keyframe,
                 &inter_frame,
                 time_per_chunk * i as f64,
@@ -1000,4 +1000,85 @@ fn cache_with_manifest_big() {
     player.expect_decoded_samples(0..end);
 
     assert_splits_happened(&store);
+}
+
+#[test]
+fn cache_with_unordered_chunks() {
+    let mut cache = VideoStreamCache::default();
+
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let chunk_count = 100;
+
+    let gop_count = 1;
+    let samples_per_gop = 4;
+
+    let dt = 0.25;
+    let chunks: Vec<_> = (0..chunk_count)
+        .map(|i| {
+            let timeline = Timeline::new_duration(TIMELINE_NAME);
+            let mut builder = Chunk::builder(STREAM_ENTITY);
+            let mut row_ids: Vec<_> = (0..gop_count * samples_per_gop)
+                .map(|_| RowId::new())
+                .collect();
+
+            use rand::SeedableRng as _;
+            use rand::seq::SliceRandom as _;
+            let mut rng = rand::rngs::StdRng::seed_from_u64(i as u64);
+
+            // Shuffle row ids to make the chunk (very likely) unsorted on the timeline.
+            row_ids.shuffle(&mut rng);
+
+            let start_time = i as f64;
+            for i in 0..gop_count {
+                let gop_start_time = start_time + (i * samples_per_gop) as f64 * dt;
+
+                builder = builder.with_archetype(
+                    row_ids.pop().unwrap(),
+                    [(timeline, TimeInt::from_secs(gop_start_time))],
+                    &VideoStream::update_fields().with_sample(AV1_TEST_KEYFRAME),
+                );
+
+                for i in 1..samples_per_gop {
+                    let time = gop_start_time + i as f64 * dt;
+                    builder = builder.with_archetype(
+                        row_ids.pop().unwrap(),
+                        [(timeline, TimeInt::from_secs(time))],
+                        &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
+                    );
+                }
+            }
+
+            let mut chunk = builder.build().unwrap();
+
+            chunk.sort_if_unsorted();
+
+            chunk
+        })
+        .chain(once(codec_chunk()))
+        .map(Arc::new)
+        .collect();
+
+    assert!(
+        chunks.iter().any(|chunk| {
+            chunk
+                .timelines()
+                .get(&re_chunk::TimelineName::new(TIMELINE_NAME))
+                .is_some_and(|t| !t.is_sorted())
+        }),
+        "We are testing unsorted chunks, at least one should end up unsorted"
+    );
+
+    // load codec chunk
+    load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load all sample chunks.
+    load_chunks(&mut store, &mut cache, &chunks[0..chunk_count]);
+
+    player.play_store(0.0..25.0, dt, &store).unwrap();
+
+    player.expect_decoded_samples(0..chunk_count);
 }
