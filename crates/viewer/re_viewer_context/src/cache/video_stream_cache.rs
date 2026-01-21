@@ -1639,9 +1639,7 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame_buildup_over_time() {
         let timeline = Timeline::new_sequence("frame");
 
-        // TODO(RR-3212): We disabled compaction on VideoStream for now. Details see https://github.com/rerun-io/rerun/pull/12270
-        //for compaction_enabled in [true, false] {
-        for compaction_enabled in [false] {
+        for compaction_enabled in [true, false] {
             println!("compaction enabled: {compaction_enabled}");
 
             let mut cache = VideoStreamCache::default();
