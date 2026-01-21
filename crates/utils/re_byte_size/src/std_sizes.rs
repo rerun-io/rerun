@@ -20,12 +20,12 @@ impl SizeBytes for String {
 /// Estimate heap size for a [`BTreeMap`] or [`BTreeSet`],
 /// excluding the memory that non-POD key/values hold on their own.
 #[inline]
-fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
+pub(crate) fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
     if len == 0 {
         return 0;
     }
 
-    // Reference: https://github1s.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs
+    // Reference: https://github.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs
 
     const BTREE_B: usize = 6;
     const ELEMENTS_PER_LEAF: usize = 2 * BTREE_B - 1;

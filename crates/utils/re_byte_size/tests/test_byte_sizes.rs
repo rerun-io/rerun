@@ -1,7 +1,7 @@
 #![expect(clippy::cast_possible_wrap)]
 
-use re_byte_size::SizeBytes;
 use re_byte_size::testing::TrackingAllocator;
+use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
@@ -31,7 +31,7 @@ fn format_result<T: SizeBytes>(type_name: &str, len: usize, creator: impl Fn() -
 
     let name = format!("{type_name} len={len}");
     format!(
-        "{name:<40} estimated {estimated:>10}B vs {accurate:>10}B actual (error: {error_pct:+.1}%)"
+        "{name:<44} estimated {estimated:>10}B vs {accurate:>10}B actual (error: {error_pct:+.1}%)"
     )
 }
 
@@ -81,6 +81,21 @@ fn test_sizes() {
         (0..len as u32)
             .map(|i| (i, i as u8))
             .collect::<BTreeMap<u32, u8>>()
+    });
+    run_many_sizes(&mut lines, "BTreeMap<u64, String>", |len| {
+        (0..len as u32)
+            .map(|i| (i, i as u8))
+            .collect::<BTreeMap<u32, u8>>()
+    });
+
+    lines.push(String::new());
+
+    run_many_sizes(&mut lines, "BookkeepingBTreeMap<u64, String>", |len| {
+        let mut map = BookkeepingBTreeMap::<u64, String>::new();
+        for i in 0..len as u64 {
+            map.insert(i, format!("value_{i}"));
+        }
+        map
     });
 
     lines.push(String::new());
