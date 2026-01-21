@@ -179,18 +179,6 @@ impl ArchetypeName {
     }
 }
 
-impl re_byte_size::SizeBytes for ArchetypeName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 // ---
 
 re_string_interner::declare_new_type!(
@@ -198,15 +186,3 @@ re_string_interner::declare_new_type!(
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ComponentIdentifier;
 );
-
-impl re_byte_size::SizeBytes for ComponentIdentifier {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
