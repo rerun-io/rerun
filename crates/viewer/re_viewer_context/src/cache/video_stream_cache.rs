@@ -190,10 +190,7 @@ impl VideoStreamCache {
         // able to get the video data in the player.
         let chunk = &event.chunk_after_processing;
 
-        let requires_sorting = chunk
-            .timelines()
-            .get(&timeline_name)
-            .is_some_and(|c| !c.is_sorted());
+        let requires_sorting = !chunk.is_timeline_sorted(&timeline_name);
         let chunk = if requires_sorting {
             &chunk.sorted_by_timeline_if_unsorted(&timeline_name)
         } else {
