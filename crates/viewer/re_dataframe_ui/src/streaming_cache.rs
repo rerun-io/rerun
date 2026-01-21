@@ -8,14 +8,16 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::Session;
-use datafusion::common::{DataFusionError, Result as DataFusionResult};
+use datafusion::common::{DataFusionError, Result as DataFusionResult, exec_err};
 use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::TableProviderFilterPushDown;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
-use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::prelude::{DataFrame, Expr, SessionContext};
+use datafusion::physical_plan::{
+    DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties as _, PlanProperties,
+};
+use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
 use parking_lot::Mutex;
@@ -64,21 +66,15 @@ impl StreamingCacheInner {
     }
 }
 
-/// An async closure that creates a [`DataFrame`] for streaming.
-pub type DataFrameFactory = Box<dyn Fn() -> DataFrameFuture + Send + Sync>;
-
-/// A future that resolves to a [`DataFrame`].
-pub type DataFrameFuture = Pin<Box<dyn Future<Output = DataFusionResult<DataFrame>> + Send>>;
-
-/// A [`TableProvider`] that caches streaming results from a [`DataFrame`].
+/// A [`TableProvider`] that caches streaming results from an inner [`TableProvider`].
 ///
-/// This provider executes a [`DataFrame`] and caches the results as they stream in.
+/// This provider executes a [`TableProvider`] and caches the results as they stream in.
 /// On subsequent scans, it returns cached batches first, then continues with
 /// new batches as they arrive.
 ///
 /// # Caching Behavior
 ///
-/// - **First scan**: Triggers streaming from the [`DataFrame`]. Each batch is cached.
+/// - **First scan**: Triggers streaming from the [`TableProvider`]. Each batch is cached.
 /// - **Subsequent scans (while streaming)**: Returns cached batches immediately,
 ///   then waits for new batches as they arrive.
 /// - **After streaming complete**: Returns all cached batches via a [`MemTable`].
@@ -88,8 +84,8 @@ pub type DataFrameFuture = Pin<Box<dyn Future<Output = DataFusionResult<DataFram
 /// When `refresh()` is called, a new inner cache is created. Old streams continue
 /// reading from the old cache until completion, while new scans use the fresh cache.
 pub struct StreamingCacheTableProvider {
-    /// Factory to create the [`DataFrame`] (called once on first scan).
-    df_factory: DataFrameFactory,
+    /// Input table provider
+    input_table: Arc<dyn TableProvider>,
 
     /// Schema for the cached data.
     schema: SchemaRef,
@@ -115,38 +111,16 @@ impl fmt::Debug for StreamingCacheTableProvider {
 impl StreamingCacheTableProvider {
     /// Create a new streaming cache table provider.
     ///
-    /// The `df_factory` is called once on the first scan to create the [`DataFrame`]
-    /// that will be streamed and cached.
-    pub fn new(
-        schema: SchemaRef,
-        df_factory: DataFrameFactory,
-        runtime: AsyncRuntimeHandle,
-    ) -> Self {
+    /// The `input_table` is called once on the first scan to create the inner stream
+    /// that will be cached.
+    pub fn new(input_table: Arc<dyn TableProvider>, runtime: AsyncRuntimeHandle) -> Self {
+        let schema = input_table.schema();
         Self {
-            df_factory,
+            input_table,
             schema: Arc::clone(&schema),
             cache: Mutex::new(Arc::new(Mutex::new(StreamingCacheInner::new(schema)))),
             runtime,
         }
-    }
-
-    /// Create from a session context and table name.
-    ///
-    /// This is a convenience constructor that creates the [`DataFrame`] factory
-    /// from the session context.
-    pub fn from_session_table(
-        session_ctx: Arc<SessionContext>,
-        table_name: String,
-        schema: SchemaRef,
-        runtime: AsyncRuntimeHandle,
-    ) -> Self {
-        let df_factory: DataFrameFactory = Box::new(move || {
-            let ctx = Arc::clone(&session_ctx);
-            let table_name = table_name.clone();
-            Box::pin(async move { ctx.table(&table_name).await })
-        });
-
-        Self::new(schema, df_factory, runtime)
     }
 
     /// Invalidate the cache and prepare for a fresh stream on next scan.
@@ -175,15 +149,20 @@ impl StreamingCacheTableProvider {
         self.cache.lock().lock().state.clone()
     }
 
-    /// Background task: stream from [`DataFrame`] to cache.
+    /// Background task: stream from [`TableProvider`] to cache.
     ///
     /// Stops early if no consumers remain (detected via `Arc` strong count).
     async fn stream_to_cache(
-        df_future: DataFrameFuture,
+        input_exec: Arc<dyn ExecutionPlan>,
+        task_ctx: Arc<TaskContext>,
         cache: &Arc<Mutex<StreamingCacheInner>>,
     ) -> DataFusionResult<()> {
-        let dataframe = df_future.await?;
-        let mut stream = dataframe.execute_stream().await?;
+        if input_exec.output_partitioning().partition_count() != 1 {
+            return exec_err!(
+                "Expected exactly one partition stream for input to StreamingCacheTableProvider"
+            );
+        }
+        let mut stream = input_exec.execute(0, task_ctx)?;
 
         // Stream batches into cache
         while let Some(result) = stream.next().await {
@@ -262,10 +241,15 @@ impl TableProvider for StreamingCacheTableProvider {
             }
             Action::ReturnError(error) => Err(DataFusionError::Shared(error)),
             Action::StartStreaming(inner_cache) => {
-                let df_future = (self.df_factory)();
+                let input_exec = self
+                    .input_table
+                    .scan(state, projection, filters, limit)
+                    .await?;
                 let cache_ref = Arc::clone(&inner_cache);
+                let task_ctx = state.task_ctx();
                 self.runtime.spawn_future(async move {
-                    if let Err(err) = Self::stream_to_cache(df_future, &cache_ref).await {
+                    if let Err(err) = Self::stream_to_cache(input_exec, task_ctx, &cache_ref).await
+                    {
                         let mut guard = cache_ref.lock();
                         guard.state = CacheState::Failed(Arc::new(err));
                         guard.wake_all();
