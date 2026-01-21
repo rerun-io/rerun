@@ -221,7 +221,7 @@ print(f"Total frames: {len(dataset)}")
 
 # Get a sample
 sample = dataset[0]
-print(sample.keys())  # dict_keys(['observation', 'action', 'episode_index', ...])
+print(sample.keys())
 ```
 
 Or push it to the Hugging Face Hub for sharing:
