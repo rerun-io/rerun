@@ -86,7 +86,7 @@ class Viewer:
         Any data logged to the recording after initialization will be sent directly to the viewer.
 
         This widget can be displayed by returning it at the end of your cells execution, or immediately
-        by calling [`Viewer.display`][].
+        by calling [`rerun.notebook.Viewer.display`][].
 
         Parameters
         ----------
@@ -454,10 +454,6 @@ class Viewer:
             Whether to start playing from the specified time point. Defaults to paused.
         timeline:
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
-        nanoseconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead, with "seconds" as the unit.
-        seconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
