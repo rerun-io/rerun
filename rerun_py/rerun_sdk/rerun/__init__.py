@@ -191,7 +191,7 @@ from .recording_stream import (
     set_thread_local_data_recording as set_thread_local_data_recording,
     thread_local_stream as thread_local_stream,
 )
-from .script_helpers import (
+from ._script_helpers import (
     script_add_args as script_add_args,
     script_setup as script_setup,
     script_teardown as script_teardown,
