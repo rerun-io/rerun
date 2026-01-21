@@ -18,8 +18,8 @@ use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewId,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMapping,
-    VisualizerComponentMappings, VisualizerInstruction,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMappings,
+    VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -333,12 +333,13 @@ impl ViewContents {
         };
 
         // TODO(andreas): integrate with `add_entity_tree_to_data_results_recursive` above.
-        let resolver = DataQueryPropertyResolver::new(
-            query_range,
-            view_class_registry.get_class_or_log_error(self.view_class_identifier),
+        let resolver = DataQueryPropertyResolver {
+            view_query_range: query_range,
+            view_class: view_class_registry.get_class_or_log_error(self.view_class_identifier),
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
-        );
+            enable_component_mappings: app_options.experimental.component_mapping,
+        };
 
         resolver.update_overrides(
             ctx.blueprint,
@@ -457,23 +458,12 @@ struct DataQueryPropertyResolver<'a> {
     view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
+
+    // TODO(RR-3382): Should always be enabled.
+    enable_component_mappings: bool,
 }
 
-impl<'a> DataQueryPropertyResolver<'a> {
-    pub fn new(
-        view_query_range: &'a QueryRange,
-        view_class: &'a dyn re_viewer_context::ViewClass,
-        visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
-    ) -> Self {
-        Self {
-            view_query_range,
-            view_class,
-            visualizable_entities_per_visualizer,
-            indicated_entities_per_visualizer,
-        }
-    }
-
+impl DataQueryPropertyResolver<'_> {
     /// Recursively walk the [`DataResultTree`] and update each node.
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
@@ -503,17 +493,17 @@ impl<'a> DataQueryPropertyResolver<'a> {
 
         let override_base_path = &node.data_result.override_base_path;
 
+        // If the user has overridden the visualizers, update which visualizers are used.
+        let id_component =
+            blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
+        let type_component =
+            blueprint_archetypes::VisualizerInstruction::descriptor_visualizer_type().component;
+        let component_map_component =
+            blueprint_archetypes::VisualizerInstruction::descriptor_component_map().component;
+
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
         if node.data_result.any_visualizers_available {
-            // If the user has overridden the visualizers, update which visualizers are used.
-            let id_component =
-                blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
-            let type_component =
-                blueprint_archetypes::VisualizerInstruction::descriptor_visualizer_type().component;
-            let component_map_component =
-                blueprint_archetypes::VisualizerInstruction::descriptor_component_map().component;
-
             if let Some(visualizer_instruction_ids) = blueprint
                 .latest_at(
                     blueprint_query,
@@ -536,30 +526,15 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             )
                             .map_or_else(|| "No type specified".into(), |vt| vt.as_str().into());
 
-                        let component_mappings = blueprint
-                            .latest_at(
-                                blueprint_query,
-                                &visualizer_override_path,
-                                [component_map_component],
-                            )
-                            .component_batch::<blueprint_components::VisualizerComponentMapping>(
-                                component_map_component,
-                            )
-                            .map_or_else(VisualizerComponentMappings::default, |mappings| {
-                                mappings
-                                    .into_iter()
-                                    .map(|mapping| VisualizerComponentMapping {
-                                        selector: mapping.selector.as_str().into(),
-                                        target: mapping.target.as_str().into(),
-                                    })
-                                    .collect()
-                            });
-
                         VisualizerInstruction::new(
                             instruction_id,
                             visualizer_type,
                             &node.data_result.override_base_path,
-                            component_mappings,
+                            // We're checking on stored component mappings later on since we also want to do so for otherwise
+                            // heuristically generated visualizers.
+                            // Practically, there should be no mappings stored if we're using heuristic visualizers,
+                            // but we want to be consistent with overrides & mappings from the store both applying always.
+                            VisualizerComponentMappings::default(),
                         )
                     })
                     .collect();
@@ -574,41 +549,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .0
                     .into_iter()
                     .enumerate()
-                    .map(|(index, (visualizer_type, mut component_mappings))| {
+                    .map(|(index, (visualizer_type, component_mappings))| {
                         let id = VisualizerInstructionId::new_deterministic(
                             node.data_result.entity_path.hash64(),
                             index,
                         );
-
-                        let override_path = VisualizerInstruction::override_path_for(
-                            &node.data_result.override_base_path,
-                            &id,
-                        );
-
-                        // TODO(RR-3317): Pick a mapping from the ones `choose_default_visualizers` returned.
-                        component_mappings.clear();
-
-                        if let Some(component_mapping_overrides) = blueprint
-                            .latest_at(blueprint_query, &override_path, [component_map_component])
-                            .component_batch::<blueprint_components::VisualizerComponentMapping>(
-                                component_map_component,
-                            )
-                        {
-                            for mapping in component_mapping_overrides {
-                                if let Some(target_component) = component_mappings
-                                    .iter_mut()
-                                    .find(|m| m.target == mapping.target.as_str())
-                                {
-                                    target_component.selector = mapping.selector.as_str().into();
-                                } else {
-                                    component_mappings.push(VisualizerComponentMapping {
-                                        selector: mapping.selector.as_str().into(),
-                                        target: mapping.target.as_str().into(),
-                                    });
-                                }
-                            }
-                        }
-
                         VisualizerInstruction::new(
                             id,
                             visualizer_type,
@@ -673,9 +618,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
             }
         }
 
-        // Gather real overrides on visualizer instruction specific path.
-        // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
         for instruction in &mut node.data_result.visualizer_instructions {
+            // Gather "real" overrides on visualizer instruction specific path.
+            // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
             for component in blueprint
                 .storage_engine()
                 .store()
@@ -692,6 +637,31 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 {
                     instruction.component_overrides.insert(component);
                 }
+            }
+
+            // Gather component mappings. If we previously generated some via heuristic, we extend/overwrite those in favor of the ones stored in the store.
+            if let Some(mappings_from_store) = blueprint
+                .latest_at(
+                    blueprint_query,
+                    &instruction.override_path,
+                    [component_map_component], // TODO(andreas): Should we batch more queries in general together here?
+                )
+                .component_batch::<blueprint_components::VisualizerComponentMapping>(
+                    component_map_component,
+                )
+            {
+                instruction
+                    .component_mappings
+                    .extend(mappings_from_store.into_iter().map(|mapping| {
+                        (
+                            re_chunk::ComponentIdentifier::new(mapping.target.as_str()),
+                            re_chunk::ComponentIdentifier::new(mapping.selector.as_str()),
+                        )
+                    }));
+            }
+
+            if !self.enable_component_mappings {
+                instruction.component_mappings.clear();
             }
         }
 

@@ -1138,7 +1138,7 @@ We currently have no plans for compatibility or migrations across multiple versi
 
 * ⏩ [New .rrd format that will be backwards compatible](https://rerun.io/blog/release-0.23)
 * 📈 Support for multiple scalars under a single entity
-* ↪️ [Callbacks API for notebooks and JavaScript](https://rerun.io/docs/howto/callbacks/)
+* ↪️ [Callbacks API for notebooks and JavaScript](https://rerun.io/docs/howto/callbacks)
 * ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
 * 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
 
