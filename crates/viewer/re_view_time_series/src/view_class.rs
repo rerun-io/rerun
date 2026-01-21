@@ -594,7 +594,7 @@ impl ViewClass for TimeSeriesView {
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
                 make_range_sane(Range1D::new(
-                    (match view_time_range.start {
+                    match view_time_range.start {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.min.as_i64()
                         }
@@ -604,13 +604,15 @@ impl ViewClass for TimeSeriesView {
                                 .start_boundary_time(view_current_time)
                                 .0
                         }
-                    } - time_offset) as f64,
-                    (match view_time_range.end {
+                    }
+                    .saturating_sub(time_offset) as f64,
+                    match view_time_range.end {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.max.as_i64()
                         }
                         _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                    } - time_offset) as f64,
+                    }
+                    .saturating_sub(time_offset) as f64,
                 ))
             };
 
@@ -812,12 +814,13 @@ impl ViewClass for TimeSeriesView {
                         re_sdk_types::blueprint::components::TimeRange(TimeRange {
                             start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.start() as i64 + time_offset,
+                                    (new_x_range_rounded.start() as i64)
+                                        .saturating_add(time_offset),
                                 ),
                             ),
                             end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.end() as i64 + time_offset,
+                                    (new_x_range_rounded.end() as i64).saturating_add(time_offset),
                                 ),
                             ),
                         });
@@ -1068,7 +1071,7 @@ fn add_series_to_plot(
                         *scalar_range.end_mut() = p.1;
                     }
 
-                    [(p.0 - time_offset) as _, p.1]
+                    [(p.0.saturating_sub(time_offset)) as _, p.1]
                 })
                 .collect::<Vec<_>>()
         } else {
@@ -1078,7 +1081,7 @@ fn add_series_to_plot(
             series
                 .points
                 .first()
-                .map(|p| vec![[(p.0 - time_offset) as _, p.1]])
+                .map(|p| vec![[(p.0.saturating_sub(time_offset)) as _, p.1]])
                 .unwrap_or_default()
         };
 
