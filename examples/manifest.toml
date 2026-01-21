@@ -34,6 +34,7 @@ examples = [
   # display order, most interesting first
   "droid_dataset",
   "animated_urdf",
+  "rerun_export",
   "ros_node",
   "chess_robby_fischer",
   "nuscenes_dataset",
