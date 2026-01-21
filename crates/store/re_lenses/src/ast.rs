@@ -9,9 +9,9 @@ use arrow::compute::take;
 use arrow::datatypes::DataType;
 use itertools::Either;
 use nohash_hasher::IntMap;
-use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::map;
 use re_arrow_combinators::reshape;
+use re_arrow_combinators::Transform as _;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -20,11 +20,11 @@ use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
-use crate::lenses::semantic;
+use crate::semantic;
 
-use super::LensError;
-use super::builder::LensBuilder;
-use super::op::{self, OpError};
+use crate::LensError;
+use crate::builder::LensBuilder;
+use crate::op::{self, OpError};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -250,8 +250,8 @@ impl Op {
 /// is non-deterministic, and dependent on the batcher, no assumptions should be
 /// made for values across rows.
 pub struct Lens {
-    pub(super) input: InputColumn,
-    pub(super) outputs: Vec<LensKind>,
+    pub(crate) input: InputColumn,
+    pub(crate) outputs: Vec<LensKind>,
 }
 
 impl Lens {

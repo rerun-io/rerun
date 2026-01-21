@@ -1,0 +1,30 @@
+[package]
+name = "re_lenses"
+description = "Lenses for transforming Arrow data into Rerun components."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_arrow_combinators.workspace = true
+re_chunk.workspace = true
+re_log_types.workspace = true
+re_sdk_types.workspace = true
+
+arrow.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
+thiserror.workspace = true
+vec1.workspace = true

@@ -1,3 +1,4 @@
+mod foxglove;
 mod protobuf;
 mod raw;
 mod recording_info;
@@ -10,7 +11,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
+use re_lenses::Lenses;
 
+pub use self::foxglove::foxglove_lenses;
 pub use self::protobuf::McapProtobufLayer;
 pub use self::raw::McapRawLayer;
 pub use self::recording_info::McapRecordingInfoLayer;
@@ -265,6 +268,8 @@ pub struct ExecutionPlan {
     pub file_layers: Vec<Box<dyn Layer>>,
     pub runners: Vec<MessageLayerRunner>,
     pub assignments: Vec<LayerAssignment>,
+    /// Optional lenses to apply as post-processing to chunks.
+    pub lenses: Option<Lenses>,
 }
 
 impl ExecutionPlan {
@@ -274,12 +279,33 @@ impl ExecutionPlan {
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
     ) -> anyhow::Result<()> {
+        // Create an emit wrapper that applies lenses if configured
+        let mut emit_with_lenses = |chunk: Chunk| {
+            if let Some(ref lenses) = self.lenses {
+                for result in lenses.apply(&chunk) {
+                    match result {
+                        Ok(transformed_chunk) => emit(transformed_chunk),
+                        Err(partial_chunk) => {
+                            for error in partial_chunk.errors() {
+                                re_log::error_once!("Lens error: {error}");
+                            }
+                            if let Some(chunk) = partial_chunk.take() {
+                                emit(chunk);
+                            }
+                        }
+                    }
+                }
+            } else {
+                emit(chunk);
+            }
+        };
+
         for mut layer in self.file_layers {
-            layer.process(mcap_bytes, summary, emit)?;
+            layer.process(mcap_bytes, summary, &mut emit_with_lenses)?;
         }
 
         for runner in &mut self.runners {
-            runner.process(mcap_bytes, summary, emit)?;
+            runner.process(mcap_bytes, summary, &mut emit_with_lenses)?;
         }
         Ok(())
     }
@@ -291,6 +317,9 @@ pub struct LayerRegistry {
     msg_factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn MessageLayer>>,
     msg_order: Vec<LayerIdentifier>,
     fallback: Fallback,
+    /// Factory for creating lenses to apply as post-processing to chunks.
+    /// Using a factory because Lenses contains closures that can't be cloned.
+    lenses_factory: Option<fn() -> Lenses>,
 }
 
 impl LayerRegistry {
@@ -301,7 +330,17 @@ impl LayerRegistry {
             msg_factories: Default::default(),
             msg_order: Vec::new(),
             fallback: Fallback::None,
+            lenses_factory: None,
         }
+    }
+
+    /// Configures a factory for creating lenses to apply as post-processing to chunks.
+    ///
+    /// Lenses transform raw message data (e.g., from protobuf) into semantic Rerun components.
+    /// A factory function is used because lenses contain closures that cannot be cloned.
+    pub fn with_lenses_factory(mut self, factory: fn() -> Lenses) -> Self {
+        self.lenses_factory = Some(factory);
+        self
     }
 
     /// Creates a registry with all builtin layers and raw fallback enabled.
@@ -324,7 +363,9 @@ impl LayerRegistry {
             // message layers (priority order):
             .register_message_layer::<McapRos2Layer>()
             .register_message_layer::<McapRos2ReflectionLayer>()
-            .register_message_layer::<McapProtobufLayer>();
+            .register_message_layer::<McapProtobufLayer>()
+            // lenses for semantic transformations (e.g., Foxglove -> Rerun):
+            .with_lenses_factory(foxglove_lenses);
 
         if raw_fallback_enabled {
             registry = registry
@@ -401,6 +442,8 @@ impl LayerRegistry {
             msg_factories,
             msg_order,
             fallback,
+            // Preserve lenses factory when selecting layers
+            lenses_factory: self.lenses_factory,
         }
     }
 
@@ -495,6 +538,7 @@ impl LayerRegistry {
             file_layers,
             runners,
             assignments,
+            lenses: self.lenses_factory.map(|f| f()),
         })
     }
 }

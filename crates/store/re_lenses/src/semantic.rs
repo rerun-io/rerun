@@ -1,6 +1,6 @@
 //! Semantic array transforms for concrete applications.
 //!
-//! Note: These should not be exposed as part of the public API, but rather wrapped in [`super::Op`].
+//! Note: These should not be exposed as part of the public API, but rather wrapped in [`crate::Op`].
 
 use std::marker::PhantomData;
 use std::sync::Arc;
