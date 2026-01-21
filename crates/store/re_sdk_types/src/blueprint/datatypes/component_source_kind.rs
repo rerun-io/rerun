@@ -37,10 +37,10 @@ pub enum ComponentSourceKind {
     /// and uses the `target` as its component name.
     Override = 2,
 
-    /// Default as specified on the View's blueprint.
+    /// Default as specified on the view's blueprint.
     Default = 3,
 
-    /// Make use of the Viewer's fallback logic to produce a value.
+    /// Make use of the viewer's fallback logic to produce a value.
     Fallback = 4,
 }
 
@@ -153,8 +153,8 @@ impl ::re_types_core::reflection::Enum for ComponentSourceKind {
             Self::Override => {
                 "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name."
             }
-            Self::Default => "Default as specified on the View's blueprint.",
-            Self::Fallback => "Make use of the Viewer's fallback logic to produce a value.",
+            Self::Default => "Default as specified on the view's blueprint.",
+            Self::Fallback => "Make use of the viewer's fallback logic to produce a value.",
         }
     }
 }

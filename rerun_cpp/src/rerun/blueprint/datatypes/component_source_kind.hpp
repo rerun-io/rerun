@@ -34,10 +34,10 @@ namespace rerun::blueprint::datatypes {
         /// and uses the `target` as its component name.
         Override = 2,
 
-        /// Default as specified on the View's blueprint.
+        /// Default as specified on the view's blueprint.
         Default = 3,
 
-        /// Make use of the Viewer's fallback logic to produce a value.
+        /// Make use of the viewer's fallback logic to produce a value.
         Fallback = 4,
     };
 } // namespace rerun::blueprint::datatypes

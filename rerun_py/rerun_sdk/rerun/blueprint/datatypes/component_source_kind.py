@@ -39,10 +39,10 @@ class ComponentSourceKind(Enum):
     """
 
     Default = 3
-    """Default as specified on the View's blueprint."""
+    """Default as specified on the view's blueprint."""
 
     Fallback = 4
-    """Make use of the Viewer's fallback logic to produce a value."""
+    """Make use of the viewer's fallback logic to produce a value."""
 
     @classmethod
     def auto(cls, val: str | int | ComponentSourceKind) -> ComponentSourceKind:
