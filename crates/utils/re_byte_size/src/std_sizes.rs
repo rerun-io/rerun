@@ -20,8 +20,8 @@ impl SizeBytes for String {
 /// Estimate heap size for a [`BTreeMap`] or [`BTreeSet`],
 /// excluding the memory that non-POD key/values hold on their own.
 ///
-/// This estimates memory for BTrees built via sequential inserts.
-/// BTrees built via `.collect()` may use less memory due to bulk loading optimizations.
+/// This estimates memory for btrees built via sequential inserts.
+/// Btrees built via `.collect()` may use less memory due to bulk loading optimizations.
 #[inline]
 pub(crate) fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
     if len == 0 {
