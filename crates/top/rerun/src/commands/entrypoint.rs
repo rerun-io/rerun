@@ -476,7 +476,7 @@ impl Args {
             // `--bind <BIND>`
             // > What bind address IP to use.
             // >
-            // > [default: 0.0.0.0]
+            // > [default: ::]
             // """
             let floatings = any_floating_args.then(|| {
                 let options = cmd
