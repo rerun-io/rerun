@@ -97,6 +97,13 @@ features = [
       "howto/serve_web_viewer",
     ],
   ],
+  [
+    "Experimental Viewer client",
+    [
+      "howto/screenshot",
+      "howto/send_table",
+    ],
+  ],
 ]
 
 # --------------------------------------------------------------------------------------------------
@@ -213,6 +220,11 @@ backwards_check = [
 "howto/query_images" = [
   "cpp", # Not implemented
   "rust", # Not implemented
+]
+"howto/screenshot" = [
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
+  "rust", # Doesn't exist
 ]
 "howto/send_table" = [
   "py", # Requires a server to connect to

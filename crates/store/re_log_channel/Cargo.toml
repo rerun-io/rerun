@@ -26,6 +26,7 @@ re_quota_channel.workspace = true
 re_tracing.workspace = true
 re_uri.workspace = true
 
+camino.workspace = true
 crossbeam.workspace = true
 parking_lot.workspace = true
 serde.workspace = true

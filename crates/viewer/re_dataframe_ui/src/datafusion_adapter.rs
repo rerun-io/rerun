@@ -228,14 +228,20 @@ impl DataFusionQuery {
                             if !sent_schemas {
                                 let sorbet_schema = batch.sorbet_schema().clone();
                                 let original_schema = Arc::clone(&schema);
-                                tx.send(QueryEvent::Schema {
-                                    original_schema,
-                                    sorbet_schema,
-                                })
-                                .ok();
+                                if tx
+                                    .send(QueryEvent::Schema {
+                                        original_schema,
+                                        sorbet_schema,
+                                    })
+                                    .is_err()
+                                {
+                                    return; // Receiver dropped, stop streaming
+                                }
                                 sent_schemas = true;
                             }
-                            tx.send(QueryEvent::Batch(batch)).ok();
+                            if tx.send(QueryEvent::Batch(batch)).is_err() {
+                                return; // Receiver dropped, stop streaming
+                            }
                         }
                         Err(err) => {
                             sent_error = true;

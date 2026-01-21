@@ -6,7 +6,6 @@ use re_arrow_combinators::{
     map::MapFixedSizeList,
     map::MapList,
     reshape::{RowMajorToColumnMajor, StructToFixedList},
-    semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 use re_log_types::TimeType;
 use rerun::external::re_log;
@@ -57,11 +56,6 @@ struct Args {
     epoch: Epoch,
 }
 
-/// Converts a list of binary arrays to a list of uint8 arrays.
-pub fn list_binary_to_list_uint8(input: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(BinaryToListUInt8::<i32>::new()).transform(input)?)
-}
-
 /// Converts a list of structs with `x`, `y`, `z` fields to a list of fixed-size lists with 3 f32 values.
 pub fn list_xyz_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray, OpError> {
     // Arrow transformations can work on any Arrow-level.
@@ -77,18 +71,6 @@ pub fn list_xyzw_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArra
     let pipeline = MapList::new(StructToFixedList::new(["x", "y", "z", "w"]).then(
         MapFixedSizeList::new(PrimitiveCast::<Float64Array, Float32Array>::new()),
     ));
-    Ok(pipeline.transform(list_array)?)
-}
-
-/// Converts a list of video codec strings to Rerun `VideoCodec` values (as u32).
-pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListArray, OpError> {
-    let pipeline = MapList::new(StringToVideoCodecUInt32::default());
-    Ok(pipeline.transform(list_array)?)
-}
-
-/// Converts a list of structs with i64 `seconds` and i32 `nanos` fields to a list of timestamps in nanoseconds (i64).
-pub fn list_timespec_to_list_nanos(list_array: &ListArray) -> Result<ListArray, OpError> {
-    let pipeline = MapList::new(TimeSpecToNanos::default());
     Ok(pipeline.transform(list_array)?)
 }
 
@@ -141,10 +123,7 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::func(list_timespec_to_list_nanos),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
@@ -179,10 +158,7 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::func(list_timespec_to_list_nanos),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
@@ -218,18 +194,12 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [
-                        Op::access_field("timestamp"),
-                        Op::func(list_timespec_to_list_nanos),
-                    ],
+                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
                 )
                 // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
                 .component(
                     EncodedImage::descriptor_blob(),
-                    [
-                        Op::access_field("data"),
-                        Op::func(list_binary_to_list_uint8),
-                    ],
+                    [Op::access_field("data"), Op::binary_to_list_uint8()],
                 )
             })?
             .build();
@@ -241,17 +211,11 @@ fn main() -> anyhow::Result<()> {
             .output_columns(|out| {
                 out.component(
                     VideoStream::descriptor_codec(),
-                    [
-                        Op::access_field("format"),
-                        Op::func(list_string_to_list_codec_uint32),
-                    ],
+                    [Op::access_field("format"), Op::string_to_video_codec()],
                 )
                 .component(
                     VideoStream::descriptor_sample(),
-                    [
-                        Op::access_field("data"),
-                        Op::func(list_binary_to_list_uint8),
-                    ],
+                    [Op::access_field("data"), Op::binary_to_list_uint8()],
                 )
             })?
             .build();
@@ -267,7 +231,7 @@ fn main() -> anyhow::Result<()> {
                         Op::access_field("transforms"),
                         Op::flatten(),
                         Op::access_field("timestamp"),
-                        Op::func(list_timespec_to_list_nanos),
+                        Op::time_spec_to_nanos(),
                     ],
                 )
                 .component(
@@ -317,10 +281,7 @@ fn main() -> anyhow::Result<()> {
         out.time(
             TIME_NAME,
             args.epoch.time_type(),
-            [
-                Op::access_field("timestamp"),
-                Op::func(list_timespec_to_list_nanos),
-            ],
+            [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
         )
         .component(
             Pinhole::descriptor_resolution(),

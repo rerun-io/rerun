@@ -142,6 +142,11 @@ impl re_byte_size::SizeBytes for AbsoluteTimeRange {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {

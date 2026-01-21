@@ -61,6 +61,11 @@ impl re_byte_size::SizeBytes for VersionedInstancePathHash {
         } = self;
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::fmt::Debug for VersionedInstancePathHash {

@@ -77,4 +77,29 @@ pub enum DataSourceUiCommand {
         // Not using `re_uri::Fragment` to avoid further dependency entanglement.
         fragment: String, //re_uri::Fragment,
     },
+
+    /// Save a screenshot to a file.
+    SaveScreenshot {
+        /// File path to save the screenshot to.
+        // TODO(#12482): Returning the screenshot to the caller would be more flexible and useful.
+        file_path: camino::Utf8PathBuf,
+
+        /// Optional view id to screenshot a specific view.
+        ///
+        /// If none is provided, the entire viewer is screenshotted.
+        view_id: Option<String>,
+    },
+}
+
+impl re_byte_size::SizeBytes for DataSourceUiCommand {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::SetUrlFragment { store_id, fragment } => {
+                store_id.heap_size_bytes() + fragment.heap_size_bytes()
+            }
+            Self::SaveScreenshot { file_path, view_id } => {
+                file_path.capacity() as u64 + view_id.heap_size_bytes()
+            }
+        }
+    }
 }
