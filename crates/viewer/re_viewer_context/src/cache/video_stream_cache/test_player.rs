@@ -592,14 +592,7 @@ fn codec_chunk() -> Chunk {
     builder.build().unwrap()
 }
 
-fn video_chunk(
-    keyframe: &[u8],
-    inter_frame: &[u8],
-    start_time: f64,
-    dt: f64,
-    gop_count: u64,
-    samples_per_gop: u64,
-) -> Chunk {
+fn video_chunk(start_time: f64, dt: f64, gop_count: u64, samples_per_gop: u64) -> Chunk {
     let timeline = Timeline::new_duration(TIMELINE_NAME);
     let mut builder = Chunk::builder(STREAM_ENTITY);
 
@@ -608,7 +601,7 @@ fn video_chunk(
         builder = builder.with_archetype(
             RowId::new(),
             [(timeline, TimeInt::from_secs(gop_start_time))],
-            &VideoStream::update_fields().with_sample(keyframe),
+            &VideoStream::update_fields().with_sample(AV1_TEST_KEYFRAME),
         );
 
         for i in 1..samples_per_gop {
@@ -616,7 +609,7 @@ fn video_chunk(
             builder = builder.with_archetype(
                 RowId::new(),
                 [(timeline, TimeInt::from_secs(time))],
-                &VideoStream::update_fields().with_sample(inter_frame),
+                &VideoStream::update_fields().with_sample(AV1_TEST_INTER_FRAME),
             );
         }
     }
@@ -655,16 +648,7 @@ fn cache_with_manifest() {
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
 
     let chunks: Vec<_> = (0..10)
-        .map(|i| {
-            video_chunk(
-                AV1_TEST_KEYFRAME,
-                AV1_TEST_INTER_FRAME,
-                i as f64,
-                0.25,
-                1,
-                4,
-            )
-        })
+        .map(|i| video_chunk(i as f64, 0.25, 1, 4))
         .chain(once(codec_chunk()))
         .map(Arc::new)
         .collect();
@@ -718,17 +702,22 @@ fn cache_with_manifest() {
 fn cache_with_streaming() {
     let mut cache = VideoStreamCache::default();
 
-    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+    let mut store = EntityDb::with_store_config(
+        StoreId::recording("test", "test"),
+        true,
+        re_chunk_store::ChunkStoreConfig {
+            enable_changelog: true,
+            chunk_max_bytes: u64::MAX,
+            chunk_max_rows: 12,
+            chunk_max_rows_if_unsorted: 12,
+        },
+    );
 
     let chunk_count = 100;
 
-    // Small enough to still be compacted, but big enough so we get multiple chunks.
-    let keyframe = av1_keyframe(1 << 12);
-    let inter_frame = av1_inter_frame(1 << 12);
-
     let dt = 0.25;
     let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| video_chunk(&keyframe, &inter_frame, i as f64, dt, 1, 4))
+        .map(|i| video_chunk(i as f64, dt, 1, 4))
         .chain(once(codec_chunk()))
         .map(Arc::new)
         .collect();
@@ -768,16 +757,7 @@ fn cache_with_manifest_and_streaming() {
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
 
     let chunks: Vec<_> = once(codec_chunk())
-        .chain((0..6).map(|i| {
-            video_chunk(
-                AV1_TEST_KEYFRAME,
-                AV1_TEST_INTER_FRAME,
-                i as f64 + 1.0,
-                0.25,
-                1,
-                4,
-            )
-        }))
+        .chain((0..6).map(|i| video_chunk(i as f64 + 1.0, 0.25, 1, 4)))
         .map(Arc::new)
         .collect();
 
@@ -820,29 +800,6 @@ fn cache_with_manifest_and_streaming() {
     player.expect_decoded_samples(12..20);
 }
 
-// Tests with more data per chunk to trigger splitting.
-fn av1_keyframe(size: usize) -> Vec<u8> {
-    // 16 kb
-    let mut frame = vec![0; size.max(AV1_TEST_KEYFRAME.len())];
-
-    for (&source, dest) in AV1_TEST_KEYFRAME.iter().zip(frame.iter_mut()) {
-        *dest = source;
-    }
-
-    frame
-}
-
-fn av1_inter_frame(size: usize) -> Vec<u8> {
-    // 1 kb
-    let mut frame = vec![0; size.max(AV1_TEST_INTER_FRAME.len())];
-
-    for (&source, dest) in AV1_TEST_INTER_FRAME.iter().zip(frame.iter_mut()) {
-        *dest = source;
-    }
-
-    frame
-}
-
 #[track_caller]
 fn assert_splits_happened(store: &EntityDb) {
     let engine = store.storage_engine();
@@ -857,10 +814,19 @@ fn assert_splits_happened(store: &EntityDb) {
 }
 
 #[test]
-fn cache_with_streaming_big() {
+fn cache_with_streaming_splits() {
     let mut cache = VideoStreamCache::default();
 
-    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+    let mut store = EntityDb::with_store_config(
+        StoreId::recording("test", "test"),
+        true,
+        re_chunk_store::ChunkStoreConfig {
+            enable_changelog: true,
+            chunk_max_bytes: u64::MAX,
+            chunk_max_rows: 100,
+            chunk_max_rows_if_unsorted: 100,
+        },
+    );
 
     let chunk_count = 4;
     let gops_per_chunk = 10;
@@ -872,14 +838,9 @@ fn cache_with_streaming_big() {
     let sample_count = chunk_count * samples_per_chunk;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let keyframe = av1_keyframe(1 << 14);
-    let inter_frame = av1_inter_frame(1 << 10);
-
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
             video_chunk(
-                &keyframe,
-                &inter_frame,
                 i as f64 * time_per_chunk,
                 dt,
                 gops_per_chunk,
@@ -909,10 +870,19 @@ fn cache_with_streaming_big() {
 }
 
 #[test]
-fn cache_with_manifest_big() {
+fn cache_with_manifest_splits() {
     let mut cache = VideoStreamCache::default();
 
-    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+    let mut store = EntityDb::with_store_config(
+        StoreId::recording("test", "test"),
+        true,
+        re_chunk_store::ChunkStoreConfig {
+            enable_changelog: true,
+            chunk_max_bytes: u64::MAX,
+            chunk_max_rows: 100,
+            chunk_max_rows_if_unsorted: 100,
+        },
+    );
 
     let chunk_count = 4;
     let gops_per_chunk = 10;
@@ -922,14 +892,9 @@ fn cache_with_manifest_big() {
     let samples_per_chunk = gops_per_chunk * samples_per_gop;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let keyframe = av1_keyframe(1 << 14);
-    let inter_frame = av1_inter_frame(1 << 10);
-
     let chunks: Vec<_> = (0..chunk_count)
         .map(|i| {
             video_chunk(
-                &keyframe,
-                &inter_frame,
                 time_per_chunk * i as f64,
                 dt,
                 gops_per_chunk,
