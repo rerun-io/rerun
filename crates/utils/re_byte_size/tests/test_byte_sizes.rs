@@ -40,12 +40,22 @@ fn format_result<T: SizeBytes>(type_name: &str, len: usize, creator: impl Fn() -
     format!("{name:<44} {estimated:>10}B (estimated) - error: {error_pct:+.0}%")
 }
 
-fn run_many_sizes<T: SizeBytes>(
+fn run_all_sizes<T: SizeBytes>(
     lines: &mut Vec<String>,
     type_name: &str,
     creator: impl Fn(usize) -> T,
 ) {
-    for len in [0usize, 1, 2, 3, 10, 100, 1_000, 10_000] {
+    for len in [0usize, 1, 2, 3, 10, 100, 1_000, 10_000, 100_000] {
+        lines.push(format_result(type_name, len, || creator(len)));
+    }
+}
+
+fn run_large_sizes<T: SizeBytes>(
+    lines: &mut Vec<String>,
+    type_name: &str,
+    creator: impl Fn(usize) -> T,
+) {
+    for len in [1_000, 10_000, 100_000] {
         lines.push(format_result(type_name, len, || creator(len)));
     }
 }
@@ -63,75 +73,95 @@ fn test_sizes() {
     // These are estimates - collect them all into a single snapshot
     let mut lines: Vec<String> = Vec::new();
 
-    run_many_sizes(&mut lines, "BTreeSet<String>", |len| {
-        (0..len)
-            .map(|i| i.to_string())
-            .collect::<BTreeSet<String>>()
+    run_all_sizes(&mut lines, "BTreeSet<String> (insert)", |len| {
+        let mut set = BTreeSet::new();
+        for i in 0..len {
+            set.insert(i.to_string());
+        }
+        set
     });
-    run_many_sizes(&mut lines, "BTreeSet<u128>", |len| {
-        (0..len as u128).collect::<BTreeSet<u128>>()
+    run_all_sizes(&mut lines, "BTreeSet<u128> (insert)", |len| {
+        let mut set = BTreeSet::new();
+        for i in 0..len as u128 {
+            set.insert(i);
+        }
+        set
     });
-    run_many_sizes(&mut lines, "BTreeSet<u32>", |len| {
-        (0..len as u32).collect::<BTreeSet<u32>>()
+    run_all_sizes(&mut lines, "BTreeSet<u32> (insert)", |len| {
+        let mut set = BTreeSet::new();
+        for i in 0..len as u32 {
+            set.insert(i);
+        }
+        set
     });
 
     lines.push(String::new());
 
-    run_many_sizes(&mut lines, "BTreeMap<u128, [u8; 256]>", |len| {
-        (0..len as u128)
-            .map(|i| (i, [i as u8; 256]))
-            .collect::<BTreeMap<u128, [u8; 256]>>()
+    run_all_sizes(&mut lines, "BTreeMap<u128, [u8; 256]> (insert)", |len| {
+        let mut map = BTreeMap::new();
+        for i in 0..len as u128 {
+            map.insert(i, [i as u8; 256]);
+        }
+        map
     });
-    run_many_sizes(&mut lines, "BTreeMap<u32, u8>", |len| {
-        (0..len as u32)
-            .map(|i| (i, i as u8))
-            .collect::<BTreeMap<u32, u8>>()
-    });
-    run_many_sizes(&mut lines, "BTreeMap<u64, String> (collect)", |len| {
-        (0..len as u64)
-            .map(|i| (i, format!("value_{i}")))
-            .collect::<BTreeMap<u64, String>>()
-    });
-    run_many_sizes(&mut lines, "BTreeMap<u64, String> (insert)", |len| {
-        // Pre-create all strings first to isolate BTree allocation behavior
-        let items: Vec<_> = (0..len as u64).map(|i| (i, format!("value_{i}"))).collect();
-        let mut map = BTreeMap::<u64, String>::new();
-        for (k, v) in items {
-            map.insert(k, v);
+    run_all_sizes(&mut lines, "BTreeMap<u32, u8> (insert)", |len| {
+        let mut map = BTreeMap::new();
+        for i in 0..len as u32 {
+            map.insert(i, i as u8);
         }
         map
     });
 
-    lines.push(String::new());
-
-    run_many_sizes(&mut lines, "BookkeepingBTreeMap<u64, String>", |len| {
-        let mut map = BookkeepingBTreeMap::<u64, String>::new();
+    run_all_sizes(&mut lines, "BTreeMap<u64, String> (insert)", |len| {
+        let mut map = BTreeMap::<u64, String>::new();
         for i in 0..len as u64 {
             map.insert(i, format!("value_{i}"));
         }
         map
     });
+    run_all_sizes(&mut lines, "BTreeMap<u64, String> (collect)", |len| {
+        (0..len as u64)
+            .map(|i| (i, format!("value_{i}")))
+            .collect::<BTreeMap<u64, String>>()
+    });
 
     lines.push(String::new());
 
-    run_many_sizes(&mut lines, "HashSet<String>", |len| {
+    run_all_sizes(
+        &mut lines,
+        "BookkeepingBTreeMap<u64, String> (insert)",
+        |len| {
+            let mut map = BookkeepingBTreeMap::<u64, String>::new();
+            for i in 0..len as u64 {
+                map.insert(i, format!("value_{i}"));
+            }
+            map
+        },
+    );
+
+    lines.push(String::new());
+
+    // Hash sets/maps differ in size slightly between platforms,
+    // so we only do large sizes for them:
+
+    run_large_sizes(&mut lines, "HashSet<String>", |len| {
         (0..len).map(|i| i.to_string()).collect::<HashSet<String>>()
     });
-    run_many_sizes(&mut lines, "HashSet<u128>", |len| {
+    run_large_sizes(&mut lines, "HashSet<u128>", |len| {
         (0..len as u128).collect::<HashSet<u128>>()
     });
-    run_many_sizes(&mut lines, "HashSet<u32>", |len| {
+    run_large_sizes(&mut lines, "HashSet<u32>", |len| {
         (0..len as u32).collect::<HashSet<u32>>()
     });
 
     lines.push(String::new());
 
-    run_many_sizes(&mut lines, "HashMap<u128, [u8; 256]>", |len| {
+    run_large_sizes(&mut lines, "HashMap<u128, [u8; 256]>", |len| {
         (0..len as u128)
             .map(|i| (i, [i as u8; 256]))
             .collect::<HashMap<u128, [u8; 256]>>()
     });
-    run_many_sizes(&mut lines, "HashMap<u32, u8>", |len| {
+    run_large_sizes(&mut lines, "HashMap<u32, u8>", |len| {
         (0..len as u32)
             .map(|i| (i, i as u8))
             .collect::<HashMap<u32, u8>>()
@@ -140,21 +170,21 @@ fn test_sizes() {
     lines.push(String::new());
 
     // SmallVec with capacity 4 - test both inline and spilled cases
-    run_many_sizes(&mut lines, "SmallVec<[String; 4]>", |len| {
+    run_all_sizes(&mut lines, "SmallVec<[String; 4]>", |len| {
         (0..len)
             .map(|i| i.to_string())
             .collect::<SmallVec<[String; 4]>>()
     });
-    run_many_sizes(&mut lines, "SmallVec<[u32; 4]>", |len| {
+    run_all_sizes(&mut lines, "SmallVec<[u32; 4]>", |len| {
         (0..len as u32).collect::<SmallVec<[u32; 4]>>()
     });
 
-    run_many_sizes(&mut lines, "VecDeque<String>", |len| {
+    run_all_sizes(&mut lines, "VecDeque<String>", |len| {
         (0..len)
             .map(|i| i.to_string())
             .collect::<VecDeque<String>>()
     });
-    run_many_sizes(&mut lines, "VecDeque<u32>", |len| {
+    run_all_sizes(&mut lines, "VecDeque<u32>", |len| {
         (0..len as u32).collect::<VecDeque<u32>>()
     });
 
