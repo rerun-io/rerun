@@ -14,7 +14,7 @@ pub struct PyUrdfTree(UrdfTree);
 impl PyUrdfTree {
     /// Load the URDF found at `path`.
     #[staticmethod]
-    #[pyo3(text_signature = "(path)")]
+    #[pyo3(text_signature = "(path, entity_path_prefix=None)")]
     pub fn from_file_path(path: PathBuf, entity_path_prefix: Option<String>) -> PyResult<Self> {
         UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
             .map(Self)
