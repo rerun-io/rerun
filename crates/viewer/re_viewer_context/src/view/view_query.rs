@@ -35,7 +35,7 @@ pub struct VisualizerInstruction {
 
     /// Component mappings from target to source (selector).
     ///
-    /// Keys are target components, values are source components (selectors).
+    /// Keys are target components, values describe where to source components (selectors).
     pub component_mappings: VisualizerComponentMappings,
 }
 
