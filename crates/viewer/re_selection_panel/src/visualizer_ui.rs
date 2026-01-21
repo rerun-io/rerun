@@ -392,6 +392,7 @@ fn visualizer_components(
             // them to avoid id clashes.
 
             // // Override (if available)
+            let has_override = raw_override.is_some();
             // if let Some((row_id, raw_override)) = raw_override.as_ref() {
             //     ui.push_id("override", |ui| {
             //         editable_blueprint_component_list_item(
@@ -486,6 +487,7 @@ fn visualizer_components(
                 unmapped_component_descr,
                 instruction,
                 &query_info,
+                has_override,
             );
         };
 
@@ -605,6 +607,7 @@ fn source_component_ui(
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
+    has_override: bool,
 ) {
     // TODO(aedm): In some cases, there should be no separate source selector. Eg. when the value is as enum:
     // we should offer "default" and enum options in a single dropdown. Simpler UI.
@@ -629,20 +632,12 @@ fn source_component_ui(
     // Fallback
     options.push(("Fallback".to_owned(), VisualizerComponentSource::Fallback));
 
-    let current = instruction
-        .component_mappings
-        .get(&component_descr.component)
-        .map(|mapping| match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector: _, // TODO(RR-3308): implement selector logic
-            } => source_component.as_str(),
-
-            re_viewer_context::VisualizerComponentSource::Override => "Override",
-            re_viewer_context::VisualizerComponentSource::Default => "Default",
-            re_viewer_context::VisualizerComponentSource::Fallback => "Fallback",
-        })
-        .unwrap_or("auto"); // TODO: what should we show here?
+    let current = get_current_component_source(
+        instruction,
+        &component_descr.component,
+        has_override,
+        entity_components_with_datatype,
+    );
 
     ui.push_id("source_component", |ui| {
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
@@ -668,6 +663,41 @@ fn source_component_ui(
     });
 }
 
+fn get_current_component_source<'a>(
+    instruction: &'a VisualizerInstruction,
+    component: &'a ComponentIdentifier,
+    has_override: bool,
+    entity_components_with_datatype: &'a [(ComponentIdentifier, DataType)],
+) -> &'a str {
+    if let Some(mapping) = instruction.component_mappings.get(component) {
+        return match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: _, // TODO(RR-3308): implement selector logic
+            } => source_component.as_str(),
+
+            re_viewer_context::VisualizerComponentSource::Override => "Override",
+            re_viewer_context::VisualizerComponentSource::Default => "Default",
+            re_viewer_context::VisualizerComponentSource::Fallback => "Fallback",
+        };
+    }
+
+    // No mapping found, figure out what to show here.
+
+    if has_override {
+        return "Override";
+    }
+
+    if entity_components_with_datatype
+        .iter()
+        .any(|(id, _)| id == component)
+    {
+        return component.as_str();
+    }
+
+    "Default / Fallback" // TODO: what should we show here?
+}
+
 fn save_component_mapping(
     ctx: &ViewContext<'_>,
     instruction: &VisualizerInstruction,
@@ -680,15 +710,6 @@ fn save_component_mapping(
     updated_instruction
         .component_mappings
         .insert(target, source_component);
-    // match updated_instruction.component_mappings.entry(target) {
-    //     std::collections::btree_map::Entry::Occupied(mut entry) => {
-    //         *entry.get_mut() = source_component;
-    //     }
-
-    //     std::collections::btree_map::Entry::Vacant(entry) => {
-    //         entry.insert(source_component);
-    //     }
-    // }
 
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
