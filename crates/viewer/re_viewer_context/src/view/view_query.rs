@@ -7,16 +7,62 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
 
 use crate::blueprint_helpers::BlueprintContext as _;
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
+/// [`VisualizerComponentMapping`] but without the target.
+#[derive(Clone, Debug)]
+pub enum VisualizerSourceComponent {
+    /// See [`ComponentSourceKind::SourceComponent`].
+    SourceComponent {
+        source_component: ComponentIdentifier,
+        selector: String,
+    },
+
+    /// See [`ComponentSourceKind::Override`].
+    Override,
+
+    /// See [`ComponentSourceKind::Default`].
+    Default,
+
+    /// See [`ComponentSourceKind::Fallback`].
+    Fallback,
+}
+
+impl VisualizerSourceComponent {
+    pub fn from_blueprint_mapping(mapping: &VisualizerComponentMapping) -> Self {
+        let VisualizerComponentMapping {
+            target,
+            source_kind,
+            source_component,
+            selector,
+        } = mapping;
+
+        let source_component = source_component.as_ref().unwrap_or(target);
+
+        match source_kind {
+            ComponentSourceKind::SourceComponent => Self::SourceComponent {
+                source_component: source_component.as_str().into(),
+                selector: selector.as_ref().map_or(String::new(), |s| s.to_string()),
+            },
+
+            ComponentSourceKind::Override => Self::Override,
+
+            ComponentSourceKind::Default => Self::Default,
+
+            ComponentSourceKind::Fallback => Self::Fallback,
+        }
+    }
+}
+
 /// Component mappings for a visualizer instruction.
 ///
 /// Maps from target component to source component (selector).
-pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, ComponentIdentifier>;
+pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerSourceComponent>;
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -55,11 +101,6 @@ impl VisualizerInstruction {
         }
     }
 
-    /// Sets a component mapping from target to selector.
-    pub fn set_mapping(&mut self, target: ComponentIdentifier, selector: ComponentIdentifier) {
-        self.component_mappings.insert(target, selector);
-    }
-
     pub fn override_path_for(
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,
@@ -75,10 +116,41 @@ impl VisualizerInstruction {
             )
             // We always have ti write the component map because it we may need to clear out old mappings.
             // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
-            .with_component_map(self.component_mappings.iter().map(|(target, selector)| {
-                re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
-                    selector: selector.as_str().into(),
-                    target: target.as_str().into(),
+            .with_component_map(self.component_mappings.iter().map(|(target, mapping)| {
+                let target = target.as_str().into();
+
+                match mapping {
+                    VisualizerSourceComponent::SourceComponent {
+                        source_component,
+                        selector,
+                    } => VisualizerComponentMapping {
+                        target,
+                        source_kind: ComponentSourceKind::SourceComponent,
+                        source_component: (!source_component.is_empty())
+                            .then(|| source_component.as_str().into()),
+                        selector: (!selector.is_empty()).then(|| selector.as_str().into()),
+                    },
+
+                    VisualizerSourceComponent::Override => VisualizerComponentMapping {
+                        target,
+                        source_kind: ComponentSourceKind::Override,
+                        source_component: None,
+                        selector: None,
+                    },
+
+                    VisualizerSourceComponent::Default => VisualizerComponentMapping {
+                        target,
+                        source_kind: ComponentSourceKind::Default,
+                        source_component: None,
+                        selector: None,
+                    },
+
+                    VisualizerSourceComponent::Fallback => VisualizerComponentMapping {
+                        target,
+                        source_kind: ComponentSourceKind::Fallback,
+                        source_component: None,
+                        selector: None,
+                    },
                 }
             }));
 
