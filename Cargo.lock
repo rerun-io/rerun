@@ -9075,6 +9075,7 @@ dependencies = [
 name = "re_log_channel"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
+ "camino",
  "crossbeam",
  "parking_lot",
  "re_byte_size",
@@ -10443,6 +10444,7 @@ dependencies = [
  "bit-vec",
  "bitflags 2.9.4",
  "bytemuck",
+ "camino",
  "crossbeam",
  "datafusion",
  "directories",

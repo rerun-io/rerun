@@ -18,6 +18,7 @@ use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, Stor
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::external::uuid;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
@@ -1295,6 +1296,56 @@ impl App {
                     re_log::error!("Failed to logout: {err}");
                 }
                 self.state.redap_servers.logout();
+            }
+            SystemCommand::SaveScreenshot { target, view_id } => {
+                if let Some(view_id) = view_id {
+                    // Screenshot a specific view
+                    if let Some(view_info) = self.egui_ctx.memory_mut(|mem| {
+                        mem.caches
+                            .cache::<re_viewer_context::ViewRectPublisher>()
+                            .get(&view_id)
+                            .cloned()
+                    }) {
+                        let re_viewer_context::PublishedViewInfo { name, rect } = view_info;
+                        let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
+                        if !rect.is_positive() {
+                            re_log::warn!("View too small for a screenshot");
+                            return;
+                        }
+
+                        self.egui_ctx
+                            .send_viewport_cmd(egui::ViewportCommand::Screenshot(
+                                egui::UserData::new(re_viewer_context::ScreenshotInfo {
+                                    ui_rect: Some(rect),
+                                    pixels_per_point: self.egui_ctx.pixels_per_point(),
+                                    name,
+                                    target,
+                                }),
+                            ));
+                    } else {
+                        re_log::warn!("View {view_id} not found for screenshot");
+                    }
+                } else {
+                    // Screenshot the entire viewer
+                    self.egui_ctx
+                        .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
+                            re_viewer_context::ScreenshotInfo {
+                                ui_rect: None,
+                                pixels_per_point: self.egui_ctx.pixels_per_point(),
+                                name: "screenshot".to_owned(),
+                                target,
+                            },
+                        )));
+                }
+
+                // Screenshot commands may be triggered from receiving messages over the network, so we may not actually do any painting right now.
+                // Make sure we do at least once, so the screenshot gets saved out.
+                self.egui_ctx.request_repaint();
+
+                // TODO(#12481): Depending on the platform we a request repaint alone isn't enough to wake up the viewer.
+                // For now we do a focus switch but this isn't ideal since it breaks the flow of programmatic screenshot taking.
+                self.egui_ctx
+                    .send_viewport_cmd(egui::ViewportCommand::Focus);
             }
         }
     }
@@ -2690,6 +2741,27 @@ impl App {
                     }
                 }
             }
+
+            DataSourceUiCommand::SaveScreenshot { file_path, view_id } => {
+                let view_id = if let Some(view_id) = view_id {
+                    if let Ok(view_id) = uuid::Uuid::parse_str(&view_id) {
+                        Some(view_id.into())
+                    } else {
+                        re_log::error!(
+                            "Failed to parse view id from {view_id:?}. Expected a UUID."
+                        );
+                        return;
+                    }
+                } else {
+                    None
+                };
+
+                self.command_sender
+                    .send_system(SystemCommand::SaveScreenshot {
+                        target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
+                        view_id,
+                    });
+            }
         }
     }
 
@@ -3057,7 +3129,7 @@ impl App {
                     self.egui_ctx.copy_image((*rgba).clone());
                 }
 
-                re_viewer_context::ScreenshotTarget::SaveToDisk => {
+                re_viewer_context::ScreenshotTarget::SaveToPathFromFileDialog => {
                     use image::ImageEncoder as _;
                     let mut png_bytes: Vec<u8> = Vec::new();
                     if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
@@ -3076,6 +3148,42 @@ impl App {
                             &file_name,
                             "Save screenshot".to_owned(),
                             png_bytes,
+                        );
+                    }
+                }
+
+                re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let rgba = rgba.clone();
+                        let Some(rgba_image) = image::RgbaImage::from_vec(
+                            rgba.width() as _,
+                            rgba.height() as _,
+                            bytemuck::pod_collect_to_vec(&rgba.pixels),
+                        ) else {
+                            re_log::error!("Failed to create image from screenshot data");
+                            return;
+                        };
+
+                        // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
+                        // (There's nothing interesting in the alpha channel anyways.)
+                        let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
+
+                        match rgb_image.save(&file_path) {
+                            Ok(()) => {
+                                re_log::info!("Saved screenshot to {file_path:?}");
+                            }
+                            Err(err) => {
+                                re_log::error!("Failed to save screenshot to {file_path:?}: {err}");
+                                // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
+                                std::fs::remove_file(&file_path).ok();
+                            }
+                        }
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        re_log::error!(
+                            "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
                         );
                     }
                 }
