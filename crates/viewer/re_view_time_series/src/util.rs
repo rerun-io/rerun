@@ -123,10 +123,20 @@ pub fn points_to_series(
     series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
-) {
+) -> Result<(), String> {
     re_tracing::profile_scope!("secondary", &instance_path.to_string());
+
     if points.is_empty() {
-        return;
+        // No values being present is not an error, maybe data comes in later!
+        return Ok(());
+    }
+
+    // Filter out static times if any slipped in.
+    // It's enough to check the first one since an entire column has to be either temporal or static.
+    if let Some(first) = points.first()
+        && first.time == re_log_types::TimeInt::STATIC.as_i64()
+    {
+        return Err("Can't plot data that was logged statically in a time series since there's no temporal dimension.".to_owned());
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
@@ -169,6 +179,8 @@ pub fn points_to_series(
             all_series,
         );
     }
+
+    Ok(())
 }
 
 /// Apply the given aggregation to the provided points.
