@@ -50,6 +50,10 @@ fn format_chunk_store() -> anyhow::Result<()> {
         r"\* version: \d+\.\d+\.\d+(\s*)│",
         "* version: [**REDACTED**]<>│".replace("<>", &" ".repeat(149)),
     );
+    settings.add_filter(
+        r"\* heap_size_bytes: \d+(\s*)│",
+        "* heap_size_bytes: [**REDACTED**]<>│".replace("<>", &" ".repeat(142)),
+    );
     settings.bind(|| {
         insta::assert_snapshot!("format_chunk_store", format!("{:240}", store));
     });
