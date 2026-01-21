@@ -324,10 +324,7 @@ py-update-snapshot-tests = { cmd = "uv run pytest --inline-snapshot=fix", depend
 ] }
 
 # Update all snapshot tests
-update-snapshot-tests = { depends-on = [
-  "rs-update-snapshot-tests",
-  "py-update-snapshot-tests",
-] }
+update-snapshot-tests = { depends-on = ["rs-update-snapshot-tests", "py-update-snapshot-tests"] }
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
