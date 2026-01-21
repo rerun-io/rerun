@@ -31,7 +31,7 @@ def test_urdf_tree_loading() -> None:
     child_link = tree.get_joint_child(joint)
     assert child_link.name == "shoulder"
 
-    # We expect flat, neigbouring paths for visual and collision geometries of links,
+    # We expect flat, neighbouring paths for visual and collision geometries of links,
     # queryable by either link name or link object.
     visual_paths = tree.get_visual_geometry_paths(child_link)
     assert visual_paths[0] == "/so_arm100/visual_geometries/shoulder/visual_0"
