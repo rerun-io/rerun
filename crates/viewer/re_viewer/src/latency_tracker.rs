@@ -33,6 +33,16 @@ struct LatencyTracker {
     pub inner: Mutex<InnerState>,
 }
 
+impl re_byte_size::SizeBytes for LatencyTracker {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl LatencyTracker {
     fn should_update(&self) -> bool {
         let lock = self.inner.lock();

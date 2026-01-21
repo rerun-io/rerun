@@ -9782,6 +9782,7 @@ dependencies = [
  "ahash",
  "nohash-hasher",
  "parking_lot",
+ "re_byte_size",
  "serde",
  "static_assertions",
 ]
