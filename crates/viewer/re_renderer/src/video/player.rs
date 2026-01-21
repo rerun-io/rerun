@@ -483,12 +483,17 @@ impl VideoPlayer {
             // This way, it might later recover from the error as we progress in the video.
             self.reset(video_description)?;
         }
-        // Seeking forward by more than one GOP
+        // Reset if our last enqueued sample has been unloaded.
+        //
+        // Or seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
-        else if self
-            .last_enqueued
-            .is_some_and(|e| e < video_description.keyframe_indices[requested_keyframe])
-        {
+        else if self.last_enqueued.is_some_and(|enqueued_idx| {
+            video_description
+                .samples
+                .get(enqueued_idx)
+                .is_none_or(|s| s.sample().is_none())
+                || enqueued_idx < video_description.keyframe_indices[requested_keyframe]
+        }) {
             self.reset(video_description)?;
         }
         // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
@@ -578,10 +583,6 @@ impl VideoPlayer {
         {
             let sample = match sample {
                 re_video::SampleMetadataState::Present(sample) => sample,
-                re_video::SampleMetadataState::Skip(_) => {
-                    self.last_enqueued = Some(sample_idx);
-                    continue;
-                }
                 re_video::SampleMetadataState::Unloaded(_) => {
                     // If this sample before the requested sample, we need this sample now
                     // and error if it's unloaded.
