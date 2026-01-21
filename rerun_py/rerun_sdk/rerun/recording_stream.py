@@ -310,6 +310,12 @@ class RecordingStream:
 
         if recording_id is not None:
             recording_id = str(recording_id)
+        else:
+            # We must absolutely avoid passing a None value to the bindings, because this will trigger the behavior
+            # where it attempts to use the same recording id for parallel streams in the same process. When a
+            # `RecordingStream` is explicitly created, the reuse of a recording id is not at all expected, though.
+            # TODO(RR-1154): this is yet another consequence of stateless APIs not being first class
+            recording_id = uuid.uuid4().hex
 
         self.inner = bindings.new_recording(
             application_id=application_id,

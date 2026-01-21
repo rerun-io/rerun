@@ -178,7 +178,7 @@ from .memory import (
 from .recording_stream import (
     BinaryStream as BinaryStream,
     ChunkBatcherConfig as ChunkBatcherConfig,
-    RecordingStream as RecordingStream,
+    RecordingStream as RecordingStream,  # noqa: TC001
     binary_stream as binary_stream,
     get_application_id as get_application_id,
     get_data_recording as get_data_recording,
@@ -350,13 +350,15 @@ def init(
         recording_id = str(recording_id)
 
     if init_logging:
-        RecordingStream(
+        # Note: don't use `RecordingStream` here, because it overrides the default recording id behavior
+        bindings.new_recording(
             application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=None,
         )
 
     if spawn:
