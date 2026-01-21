@@ -83,6 +83,11 @@ impl StreamingCacheInner {
 ///
 /// When `refresh()` is called, a new inner cache is created. Old streams continue
 /// reading from the old cache until completion, while new scans use the fresh cache.
+///
+/// # Pushdown filters
+///
+/// This provider does not support filter pushdown since it caches the full table. If your
+/// table supports filter pushdown, you probably should not use this cache.
 pub struct StreamingCacheTableProvider {
     /// Input table provider
     input_table: Arc<dyn TableProvider>,
