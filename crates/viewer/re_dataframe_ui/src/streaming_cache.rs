@@ -8,17 +8,14 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
 use datafusion::catalog::Session;
-use datafusion::common::{
-    DataFusionError, Result as DataFusionResult, exec_datafusion_err, exec_err,
-};
-use datafusion::config::ConfigOptions;
+use datafusion::common::{DataFusionError, Result as DataFusionResult, exec_err};
 use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::TableProviderFilterPushDown;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{
-    DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties, PlanProperties,
+    DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties as _, PlanProperties,
 };
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
@@ -69,15 +66,15 @@ impl StreamingCacheInner {
     }
 }
 
-/// A [`TableProvider`] that caches streaming results from a [`DataFrame`].
+/// A [`TableProvider`] that caches streaming results from an inner [`TableProvider`].
 ///
-/// This provider executes a [`DataFrame`] and caches the results as they stream in.
+/// This provider executes a [`TableProvider`] and caches the results as they stream in.
 /// On subsequent scans, it returns cached batches first, then continues with
 /// new batches as they arrive.
 ///
 /// # Caching Behavior
 ///
-/// - **First scan**: Triggers streaming from the [`DataFrame`]. Each batch is cached.
+/// - **First scan**: Triggers streaming from the [`TableProvider`]. Each batch is cached.
 /// - **Subsequent scans (while streaming)**: Returns cached batches immediately,
 ///   then waits for new batches as they arrive.
 /// - **After streaming complete**: Returns all cached batches via a [`MemTable`].
@@ -114,8 +111,8 @@ impl fmt::Debug for StreamingCacheTableProvider {
 impl StreamingCacheTableProvider {
     /// Create a new streaming cache table provider.
     ///
-    /// The `df_factory` is called once on the first scan to create the [`DataFrame`]
-    /// that will be streamed and cached.
+    /// The `input_table` is called once on the first scan to create the inner stream
+    /// that will be cached.
     pub fn new(input_table: Arc<dyn TableProvider>, runtime: AsyncRuntimeHandle) -> Self {
         let schema = input_table.schema();
         Self {
@@ -152,7 +149,7 @@ impl StreamingCacheTableProvider {
         self.cache.lock().lock().state.clone()
     }
 
-    /// Background task: stream from [`DataFrame`] to cache.
+    /// Background task: stream from [`TableProvider`] to cache.
     ///
     /// Stops early if no consumers remain (detected via `Arc` strong count).
     async fn stream_to_cache(
