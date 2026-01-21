@@ -24,8 +24,7 @@ enum ComponentSourceKind: ubyte (
     /// Make use of the Viewer's fallback logic to produce a value.
     Fallback,
 
-    // TODO(aedm, andreas, katya): Merge Default & Fallback?
-    // TODO: write issue about that and link it here.
+    // TODO(RR-3399): Merge Default & Fallback?
 }
 
 
@@ -59,6 +58,6 @@ table VisualizerComponentMapping (
   // * component query: "andreas.position.x" (where "x" is the selector)
   //
   // Counter argument:
-  // May cause some UI complexity because we have now to make the distiction there on the fly.
+  // May cause some UI complexity because we have now to make the distinction there on the fly.
 }
 
