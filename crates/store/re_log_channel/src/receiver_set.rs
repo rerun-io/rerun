@@ -202,6 +202,19 @@ impl LogReceiverSet {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for LogReceiverSet {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        let mut tree = re_byte_size::MemUsageNode::default();
+        self.for_each(|receiver| {
+            tree.add(
+                receiver.source().to_string(),
+                receiver.inner().current_bytes(),
+            );
+        });
+        tree.into_tree()
+    }
+}
+
 #[test]
 fn test_receive_set() {
     use re_log_types::StoreId;

@@ -49,6 +49,15 @@ pub enum VisualizerExecutionErrorState {
     PerEntity(IntMap<EntityPath, String>),
 }
 
+impl re_byte_size::SizeBytes for VisualizerExecutionErrorState {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Overall(_err) => 0, // assume small and/or rare
+            Self::PerEntity(errors) => errors.heap_size_bytes(),
+        }
+    }
+}
+
 impl VisualizerExecutionErrorState {
     pub fn from_result(
         result: &Result<VisualizerExecutionOutput, std::sync::Arc<ViewSystemExecutionError>>,
