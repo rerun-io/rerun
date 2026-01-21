@@ -9,6 +9,7 @@ mod ast;
 mod builder;
 mod error;
 mod op;
+mod semantic;
 mod sink;
 
 pub use self::{

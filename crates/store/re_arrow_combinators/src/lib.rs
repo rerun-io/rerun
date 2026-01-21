@@ -13,7 +13,6 @@ mod transform;
 pub mod cast;
 pub mod map;
 pub mod reshape;
-pub mod semantic;
 
 pub use crate::error::Error;
 pub use crate::transform::{Compose, Transform};
