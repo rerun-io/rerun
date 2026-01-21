@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, FixedSizeListArray, Float32Array};
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
-use re_log_types::{TimePoint, TimeType, Timeline};
+use re_log_types::{TimePoint, TimeType, Timeline, build_index_value};
 use re_sdk::RecordingStreamBuilder;
 use re_tuid::Tuid;
 use re_types_core::AsComponents;
@@ -46,9 +46,16 @@ pub fn create_simple_recording(
     tuid_prefix: TuidPrefix,
     segment_id: &str,
     entity_paths: &[&str],
+    time_type: TimeType,
 ) -> anyhow::Result<TempPath> {
     let tmp_dir = tempfile::tempdir()?;
-    let path = create_simple_recording_in(tuid_prefix, segment_id, entity_paths, tmp_dir.path())?;
+    let path = create_simple_recording_in(
+        tuid_prefix,
+        segment_id,
+        entity_paths,
+        time_type,
+        tmp_dir.path(),
+    )?;
     Ok(TempPath::new(tmp_dir, path))
 }
 
@@ -61,11 +68,12 @@ pub fn create_simple_recording_in(
     tuid_prefix: TuidPrefix,
     segment_id: &str,
     entity_paths: &[&str],
+    time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
     use re_chunk::{Chunk, TimePoint};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_log_types::{EntityPath, TimeInt};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -107,7 +115,7 @@ pub fn create_simple_recording_in(
         let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
             .with_sparse_component_batches(
                 next_row_id(),
-                [build_frame_nr(frame1)],
+                [build_index_value(frame1, time_type)],
                 [
                     (MyPoints::descriptor_points(), Some(&points1 as _)),
                     (MyPoints::descriptor_colors(), Some(&colors1 as _)),
@@ -115,7 +123,7 @@ pub fn create_simple_recording_in(
             )
             .with_sparse_component_batches(
                 next_row_id(),
-                [build_frame_nr(frame2)],
+                [build_index_value(frame2, time_type)],
                 [
                     (MyPoints::descriptor_points(), Some(&points2 as _)),
                     (MyPoints::descriptor_colors(), Some(&colors2 as _)),
@@ -123,7 +131,7 @@ pub fn create_simple_recording_in(
             )
             .with_sparse_component_batches(
                 next_row_id(),
-                [build_frame_nr(frame3)],
+                [build_index_value(frame3, time_type)],
                 [
                     (MyPoints::descriptor_points(), Some(&points3 as _)),
                     (MyPoints::descriptor_colors(), Some(&colors3 as _)),
@@ -131,7 +139,7 @@ pub fn create_simple_recording_in(
             )
             .with_sparse_component_batches(
                 next_row_id(),
-                [build_frame_nr(frame4)],
+                [build_index_value(frame4, time_type)],
                 [
                     (MyPoints::descriptor_points(), Some(&points4 as _)),
                     (MyPoints::descriptor_colors(), Some(&colors4 as _)),

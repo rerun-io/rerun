@@ -21,7 +21,7 @@ def test_dataset_basics(complex_dataset_prefix: Path) -> None:
 
         partition_df = ds.segment_table()
 
-        assert str(partition_df.schema()) == inline_snapshot("""\
+        assert partition_df.schema().to_string(show_field_metadata=False) == inline_snapshot("""\
 rerun_segment_id: string not null
 rerun_layer_names: list<rerun_layer_names: string not null> not null
   child 0, rerun_layer_names: string not null
@@ -30,6 +30,8 @@ rerun_storage_urls: list<rerun_storage_urls: string not null> not null
 rerun_last_updated_at: timestamp[ns] not null
 rerun_num_chunks: uint64 not null
 rerun_size_bytes: uint64 not null
+timeline:end: timestamp[ns]
+timeline:start: timestamp[ns]
 -- schema metadata --
 sorbet:version: '0.1.2'\
 """)
@@ -37,21 +39,25 @@ sorbet:version: '0.1.2'\
         assert str(
             partition_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
         ) == inline_snapshot("""\
-┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐
-│ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
-│ ---                 ┆ ---               ┆ ---              ┆ ---              │
-│ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │
-╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡
-│ complex_recording_0 ┆ [base]            ┆ 3                ┆ 3326             │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ complex_recording_1 ┆ [base]            ┆ 3                ┆ 3326             │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ complex_recording_2 ┆ [base]            ┆ 3                ┆ 3326             │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ complex_recording_3 ┆ [base]            ┆ 3                ┆ 3326             │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ complex_recording_4 ┆ [base]            ┆ 3                ┆ 3326             │
-└─────────────────────┴───────────────────┴──────────────────┴──────────────────┘\
+┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┬──────────────────────────────┬──────────────────────────────┐
+│ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ timeline:end                 ┆ timeline:start               │
+│ ---                 ┆ ---               ┆ ---              ┆ ---              ┆ ---                          ┆ ---                          │
+│ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable Timestamp(ns) ┆ type: nullable Timestamp(ns) │
+│                     ┆                   ┆                  ┆                  ┆ index: timeline              ┆ index: timeline              │
+│                     ┆                   ┆                  ┆                  ┆ index_kind: timestamp        ┆ index_kind: timestamp        │
+│                     ┆                   ┆                  ┆                  ┆ index_marker: end            ┆ index_marker: start          │
+│                     ┆                   ┆                  ┆                  ┆ kind: index                  ┆ kind: index                  │
+╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╪══════════════════════════════╪══════════════════════════════╡
+│ complex_recording_0 ┆ [base]            ┆ 3                ┆ 3326             ┆ 2000-01-01T00:00:02          ┆ 2000-01-01T00:00:00          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_1 ┆ [base]            ┆ 3                ┆ 3326             ┆ 2000-01-01T00:00:03          ┆ 2000-01-01T00:00:01          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_2 ┆ [base]            ┆ 3                ┆ 3326             ┆ 2000-01-01T00:00:04          ┆ 2000-01-01T00:00:02          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_3 ┆ [base]            ┆ 3                ┆ 3326             ┆ 2000-01-01T00:00:05          ┆ 2000-01-01T00:00:03          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_4 ┆ [base]            ┆ 3                ┆ 3326             ┆ 2000-01-01T00:00:06          ┆ 2000-01-01T00:00:04          │
+└─────────────────────┴───────────────────┴──────────────────┴──────────────────┴──────────────────────────────┴──────────────────────────────┘\
 """)
 
 

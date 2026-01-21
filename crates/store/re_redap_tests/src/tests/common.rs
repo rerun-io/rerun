@@ -1,8 +1,14 @@
 use std::collections::BTreeMap;
 
+use crate::{
+    RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
+    create_recording_with_embeddings, create_recording_with_properties,
+    create_recording_with_scalars, create_recording_with_text, create_simple_recording,
+};
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use re_log_types::TimeType;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -14,12 +20,6 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
-
-use crate::{
-    RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
-    create_recording_with_embeddings, create_recording_with_properties,
-    create_recording_with_scalars, create_recording_with_text, create_simple_recording,
-};
 
 /// Extension trait for the most common test setup tasks.
 #[async_trait]
@@ -162,7 +162,10 @@ async fn register_with_dataset_blocking(
 
 pub enum LayerType {
     /// See [`crate::utils::rerun::create_simple_recording`]
-    Simple { entities: &'static [&'static str] },
+    Simple {
+        entities: &'static [&'static str],
+        time_type: TimeType,
+    },
 
     /// See [`crate::create_nasty_recording`]
     Nasty { entities: &'static [&'static str] },
@@ -190,7 +193,17 @@ pub enum LayerType {
 
 impl LayerType {
     pub fn simple(entities: &'static [&'static str]) -> Self {
-        Self::Simple { entities }
+        Self::Simple {
+            entities,
+            time_type: TimeType::Sequence,
+        }
+    }
+
+    pub fn simple_with_time_type(entities: &'static [&'static str], time_type: TimeType) -> Self {
+        Self::Simple {
+            entities,
+            time_type,
+        }
     }
 
     pub fn nasty(entities: &'static [&'static str]) -> Self {
@@ -226,7 +239,10 @@ impl LayerType {
 
     fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
         match self {
-            Self::Simple { entities } => create_simple_recording(tuid_prefix, segment_id, entities),
+            Self::Simple {
+                entities,
+                time_type,
+            } => create_simple_recording(tuid_prefix, segment_id, entities, time_type),
 
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
@@ -274,6 +290,18 @@ impl LayerDefinition {
             segment_id,
             layer_name: None,
             layer_type: LayerType::simple(entities),
+        }
+    }
+
+    pub fn simple_with_time_type(
+        segment_id: &'static str,
+        entities: &'static [&'static str],
+        time_type: TimeType,
+    ) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::simple_with_time_type(entities, time_type),
         }
     }
 
