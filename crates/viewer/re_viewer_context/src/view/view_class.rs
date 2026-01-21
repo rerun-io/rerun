@@ -264,7 +264,7 @@ pub trait ViewState: std::any::Any + Sync + Send {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 
     fn size_bytes(&self) -> u64 {
-        0 // TODO(emilk): implement this for large view states
+        0 // TODO(emilk): implement this for large view statses
     }
 }
 
