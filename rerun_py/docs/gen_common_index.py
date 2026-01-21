@@ -39,6 +39,9 @@ from typing import Final
 import griffe
 import mkdocs_gen_files
 
+# Modules we want public but get captured in other doc sections
+EXCLUDE_SUBMODULE_CHECK = ["recording_stream", "sinks", "time", "web"]
+
 
 def all_archetypes() -> list[str]:
     file_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun/archetypes/__init__.py")
@@ -124,10 +127,14 @@ class Section:
     func_list: list[str] | None = None
     class_list: list[str] | None = None
     gen_page: bool = True
-    mod_path: str = "rerun"
+    mod_path: list[str] | None = None
     show_tables: bool = True
     default_filters: bool = True
     show_submodules: bool = False
+
+    def __post_init__(self) -> None:
+        if self.mod_path is None:
+            self.mod_path = ["rerun"]
 
 
 # This is the list of sections and functions that will be included in the index
@@ -183,27 +190,28 @@ SECTION_TABLE: Final[list[Section]] = [
     # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
     Section(
         title="Archetypes",
-        mod_path="rerun.archetypes",
+        mod_path=["rerun.archetypes"],
         show_tables=False,
     ),
     Section(
         title="Components",
-        mod_path="rerun.components",
+        mod_path=["rerun.components"],
         show_tables=False,
     ),
     Section(
         title="Datatypes",
-        mod_path="rerun.datatypes",
+        mod_path=["rerun.datatypes"],
         show_tables=False,
     ),
     Section(
         title="Custom Data",
-        class_list=[
-            "AnyValues",
-            "AnyBatchValue",
-            "ComponentDescriptor",
-            "DynamicArchetype",
-        ],
+        mod_path=["rerun.any_value", "rerun.any_batch_value", "rerun.dynamic_archetype"],
+        # class_list=[
+        #     "AnyValues",
+        #     "AnyBatchValue",
+        #     "ComponentDescriptor",
+        #     "DynamicArchetype",
+        # ],
     ),
     ################################################################################
     # These are tables but don't need their own pages since they refer to types that
@@ -228,7 +236,7 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="ErrorUtils",
-        mod_path="rerun.error_utils",
+        mod_path=["rerun.error_utils"],
         show_tables=False,
     ),
     Section(
@@ -340,7 +348,7 @@ SECTION_TABLE: Final[list[Section]] = [
     # Other referenced things
     Section(
         title="Enums",
-        mod_path="rerun",
+        mod_path=["rerun"],
         class_list=[
             "Box2DFormat",
             "ImageFormat",
@@ -350,7 +358,7 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Interfaces",
-        mod_path="rerun",
+        mod_path=["rerun"],
         class_list=[
             "ComponentMixin",
             "ComponentBatchLike",
@@ -366,7 +374,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Blueprint",
         sub_title="APIs",
-        mod_path="rerun.blueprint",
+        mod_path=["rerun.blueprint"],
         class_list=[
             "Blueprint",
             "BlueprintLike",
@@ -393,25 +401,25 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Blueprint",
         sub_title="Archetypes",
-        mod_path="rerun.blueprint.archetypes",
+        mod_path=["rerun.blueprint.archetypes"],
         show_tables=False,
     ),
     Section(
         title="Blueprint",
         sub_title="Components",
-        mod_path="rerun.blueprint.components",
+        mod_path=["rerun.blueprint.components"],
         show_tables=False,
     ),
     Section(
         title="Blueprint",
         sub_title="Datatypes",
-        mod_path="rerun.blueprint.datatypes",
+        mod_path=["rerun.blueprint.datatypes"],
         show_tables=False,
     ),
     Section(
         title="Blueprint",
         sub_title="Views",
-        mod_path="rerun.blueprint.views",
+        mod_path=["rerun.blueprint.views"],
         show_tables=False,
     ),
     ################################################################################
@@ -419,7 +427,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Catalog",
         show_tables=True,
-        mod_path="rerun.catalog",
+        mod_path=["rerun.catalog"],
         show_submodules=True,
         class_list=[
             "Schema",
@@ -446,12 +454,18 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Server",
         show_tables=True,
-        mod_path="rerun.server",
+        mod_path=["rerun.server"],
+        show_submodules=True,
+    ),
+    Section(
+        title="Authentication",
+        show_tables=True,
+        mod_path=["rerun.auth"],
         show_submodules=True,
     ),
     Section(
         title="Recording",
-        mod_path="rerun.recording",
+        mod_path=["rerun.recording"],
         func_list=[
             "load_archive",
             "load_recording",
@@ -465,7 +479,25 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="URDF Support",
         show_tables=True,
-        mod_path="rerun.urdf",
+        mod_path=["rerun.urdf"],
+        show_submodules=True,
+    ),
+    Section(
+        title="Utilities",
+        show_tables=False,
+        mod_path=["rerun.utilities"],
+        show_submodules=True,
+    ),
+    Section(
+        title="Experimental",
+        show_tables=True,
+        mod_path=["rerun.experimental"],
+        show_submodules=True,
+    ),
+    Section(
+        title="Notebook",
+        show_tables=True,
+        mod_path=["rerun.notebook"],
         show_submodules=True,
     ),
     Section(
@@ -496,21 +528,6 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         class_list=["LoggingHandler", "MemoryRecording", "GrpcSink", "FileSink"],
     ),
-    Section(
-        title="Utilities",
-        show_tables=False,
-        mod_path="rerun.utilities",
-        show_submodules=True,
-    ),
-    # We don't have any experimental apis right now, but when you add one again, you should add this here:
-    # Section(
-    #     title="Experimental",
-    #     func_list=[
-    #         "my_experimental_function",
-    #     ],
-    #     show_tables=False,
-    #     mod_path="rerun.experimental",
-    # ),
 ]
 
 
@@ -523,10 +540,13 @@ def is_archetype_mentioned(thing: str) -> bool:
 
 
 def is_submodule_mentioned(thing: str) -> bool:
+    if thing in EXCLUDE_SUBMODULE_CHECK:
+        return True
     for section in SECTION_TABLE:
         if section.mod_path is not None:
-            if thing == section.mod_path[len("rerun.") :]:
-                return True
+            for mod_path in section.mod_path:
+                if thing == mod_path[len("rerun.") :]:
+                    return True
     return False
 
 
@@ -537,7 +557,10 @@ common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
 for submodule in all_submodules(1, True):
-    assert is_submodule_mentioned(submodule), f"Submodule '{submodule}' is not mentioned in the index of {__file__}"
+    assert is_submodule_mentioned(submodule), (
+        f"Submodule '{submodule}' is not mentioned in the index of {__file__};"
+        " please add it to SECTION_TABLE for documentation, or prefix with underscore to hide it."
+    )
 for archetype in all_archetypes():
     assert is_archetype_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
 
@@ -623,22 +646,23 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
             # Write out the contents of this section
             write_path = common_dir.joinpath(md_file)
             with mkdocs_gen_files.open(write_path, "w") as fd:
-                fd.write(f"::: {section.mod_path}\n")
-                fd.write("    options:\n")
-                fd.write("      show_root_heading: True\n")
-                fd.write("      heading_level: 3\n")
-                fd.write("      members_order: alphabetical\n")
-                # fd.write("      show_object_full_path: True\n")
-                if section.func_list or section.class_list:
-                    fd.write("      members:\n")
-                    for func_name in section.func_list or []:
-                        fd.write(f"        - {func_name}\n")
-                    for class_name in section.class_list or []:
-                        fd.write(f"        - {class_name}\n")
-                if not section.default_filters:
-                    fd.write("      filters: []\n")
-                if section.show_submodules:
-                    fd.write("      show_submodules: True\n")
+                for mod_path in section.mod_path:
+                    fd.write(f"::: {mod_path}\n")
+                    fd.write("    options:\n")
+                    fd.write("      show_root_heading: True\n")
+                    fd.write("      heading_level: 3\n")
+                    fd.write("      members_order: alphabetical\n")
+                    # fd.write("      show_object_full_path: True\n")
+                    if section.func_list or section.class_list:
+                        fd.write("      members:\n")
+                        for func_name in section.func_list or []:
+                            fd.write(f"        - {func_name}\n")
+                        for class_name in section.class_list or []:
+                            fd.write(f"        - {class_name}\n")
+                    if not section.default_filters:
+                        fd.write("      filters: []\n")
+                    if section.show_submodules:
+                        fd.write("      show_submodules: True\n")
             # Helpful for debugging
             if 0:
                 with mkdocs_gen_files.open(write_path, "r") as fd:
@@ -653,8 +677,11 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                 index_file.write("Function | Description\n")
                 index_file.write("-------- | -----------\n")
                 for func_name in section.func_list:
-                    if section.mod_path != "rerun":
-                        mod_tail = section.mod_path.split(".")[1:]
+                    # Check if any mod_path is not "rerun" to determine formatting
+                    non_rerun_paths = [path for path in section.mod_path if path != "rerun"]
+                    if non_rerun_paths:
+                        # Use the first non-rerun path for formatting
+                        mod_tail = non_rerun_paths[0].split(".")[1:]
                         func_name = ".".join([*mod_tail, func_name])
                     func = rerun_pkg[func_name]
                     index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
@@ -663,8 +690,11 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                 index_file.write("Class | Description\n")
                 index_file.write("-------- | -----------\n")
                 for class_name in section.class_list:
-                    if section.mod_path != "rerun":
-                        mod_tail = section.mod_path.split(".")[1:]
+                    # Check if any mod_path is not "rerun" to determine formatting
+                    non_rerun_paths = [path for path in section.mod_path if path != "rerun"]
+                    if non_rerun_paths:
+                        # Use the first non-rerun path for formatting
+                        mod_tail = non_rerun_paths[0].split(".")[1:]
                         class_name = ".".join([*mod_tail, class_name])
                     cls = rerun_pkg[class_name]
                     bindings_class = False
