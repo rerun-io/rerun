@@ -18,7 +18,7 @@ impl SizeBytes for String {
 // BTree collections
 
 /// Estimate heap size for a [`BTreeMap`] or [`BTreeSet`],
-/// excluding the memory that non-POD key/values hold on their own.
+/// if it contains only Plain Old Data (POD).
 ///
 /// This estimates memory for btrees built via sequential inserts.
 /// Btrees built via `.collect()` may use less memory due to bulk loading optimizations.
