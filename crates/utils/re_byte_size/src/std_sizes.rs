@@ -28,7 +28,7 @@ pub(crate) fn btree_heap_size(len: usize, entry_size: usize) -> u64 {
         return 0;
     }
 
-    // Reference: https://github.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs
+    // Reference: https://github.com/rust-lang/rust/blob/main/library/alloc/src/collections/btree/node.rs   # NOLINT
 
     const BTREE_B: usize = 6;
     const CAPACITY: usize = 2 * BTREE_B - 1; // 11 entries max per node
