@@ -16,7 +16,6 @@ from tqdm import tqdm
 from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
-from rerun_export.lerobot.video_processing import load_video_samples
 from rerun_export.utils import make_time_grid
 
 
@@ -141,7 +140,7 @@ def convert_rrd_dataset_to_lerobot(
         inference_reader = inference_view.reader(index=config.index_column)
         inference_table = pa.table(inference_reader.select(*inference_columns))
 
-        print("Infering features from segment:", inference_segment_id)
+        print("Inferring features from segment:", inference_segment_id)
         start_time = time.time()
         # Infer features from the pre-queried table
         features = infer_features(
