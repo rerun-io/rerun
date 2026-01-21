@@ -8519,6 +8519,7 @@ dependencies = [
  "arrow",
  "glam",
  "half",
+ "insta",
  "parking_lot",
  "smallvec",
 ]

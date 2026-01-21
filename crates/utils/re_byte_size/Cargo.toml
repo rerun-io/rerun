@@ -31,3 +31,7 @@ smallvec.workspace = true
 
 # Optional dependencies:
 glam = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+insta.workspace = true
