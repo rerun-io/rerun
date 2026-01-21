@@ -1,0 +1,53 @@
+name: Notify Reality of Sync Branch Update
+
+# When a PR that was synced from reality is updated on the rerun side,
+# trigger a re-run of the verification workflow on the reality PR.
+# This ensures the reality PR's "verify-rerun-sync" check reflects the
+# current state of the rerun branch.
+
+on:
+  pull_request:
+    types: [synchronize]
+
+jobs:
+  notify-reality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: |
+            reality
+            rerun
+
+      - name: Re-run reality verification
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Find reality PR number from sync comment (only from rerun-bot for security)
+          REALITY_PR=$(gh api "repos/rerun-io/rerun/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "rerun-bot") | .body' \
+            | grep -oP 'reality/pull/\K\d+' | head -1)
+
+          if [[ -z "$REALITY_PR" ]]; then
+            echo "No reality PR reference found in bot comments - not a synced PR"
+            exit 0
+          fi
+
+          echo "Found reality PR #$REALITY_PR"
+
+          # Find and re-run the verification workflow for that PR
+          RUN_ID=$(gh api "repos/rerun-io/reality/actions/workflows/sync-pr-to-rerun.yml/runs?event=pull_request&per_page=100" \
+            --jq ".workflow_runs[] | select(.pull_requests[].number == $REALITY_PR) | .id" | head -1)
+
+          if [[ -n "$RUN_ID" ]]; then
+            echo "Re-running workflow run $RUN_ID"
+            gh api "repos/rerun-io/reality/actions/runs/$RUN_ID/rerun" -X POST
+          else
+            echo "No workflow run found for reality PR #$REALITY_PR"
+          fi
