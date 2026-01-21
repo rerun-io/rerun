@@ -141,11 +141,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let component_mappings_hash = if let Some(visualizer_instruction) = visualizer_instruction {
         for (target, selector) in &visualizer_instruction.component_mappings {
             if let Some(chunk) = results.components.remove(selector) {
-                let chunk = std::sync::Arc::new(
-                    chunk.with_renamed_component(*selector, *target),
-                )
-                .to_unit()
-                .expect("The source chunk was a unit chunk.");
+                let chunk = std::sync::Arc::new(chunk.with_renamed_component(*selector, *target))
+                    .to_unit()
+                    .expect("The source chunk was a unit chunk.");
                 results.components.insert(*target, chunk);
             }
         }
