@@ -14,10 +14,11 @@ use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item}
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
+    VisualizerExecutionErrorState, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
+use smallvec::SmallVec;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
@@ -390,91 +391,91 @@ fn visualizer_components(
             // e.g. be the same edit UI. We must ensure that we seed egui kd differently for each of
             // them to avoid id clashes.
 
-            // Override (if available)
-            if let Some((row_id, raw_override)) = raw_override.as_ref() {
-                ui.push_id("override", |ui| {
-                    editable_blueprint_component_list_item(
-                        &query_ctx,
-                        ui,
-                        "Override",
-                        override_path.clone(),
-                        unmapped_component_descr,
-                        *row_id,
-                        raw_override.as_ref(),
-                    )
-                    .on_hover_text("Override value for this specific entity in the current view");
-                });
-            }
+            // // Override (if available)
+            // if let Some((row_id, raw_override)) = raw_override.as_ref() {
+            //     ui.push_id("override", |ui| {
+            //         editable_blueprint_component_list_item(
+            //             &query_ctx,
+            //             ui,
+            //             "Override",
+            //             override_path.clone(),
+            //             unmapped_component_descr,
+            //             *row_id,
+            //             raw_override.as_ref(),
+            //         )
+            //         .on_hover_text("Override value for this specific entity in the current view");
+            //     });
+            // }
 
-            // Store (if available)
-            if let Some(unit) = result_store {
-                ui.push_id("store", |ui| {
-                    ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                            re_data_ui::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    data_result.entity_path.clone(),
-                                    unmapped_component_descr.component,
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx.viewer_ctx,
-                                ui,
-                                UiLayout::List,
-                                &store_query,
-                                ctx.recording(),
-                            );
-                        }),
-                    )
-                    .on_hover_text("The value that was logged to the data store");
-                });
-            }
+            // // Store (if available)
+            // if let Some(unit) = result_store {
+            //     ui.push_id("store", |ui| {
+            //         ui.list_item_flat_noninteractive(
+            //             list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+            //                 re_data_ui::ComponentPathLatestAtResults {
+            //                     component_path: ComponentPath::new(
+            //                         data_result.entity_path.clone(),
+            //                         unmapped_component_descr.component,
+            //                     ),
+            //                     unit,
+            //                 }
+            //                 .data_ui(
+            //                     ctx.viewer_ctx,
+            //                     ui,
+            //                     UiLayout::List,
+            //                     &store_query,
+            //                     ctx.recording(),
+            //                 );
+            //             }),
+            //         )
+            //         .on_hover_text("The value that was logged to the data store");
+            //     });
+            // }
 
-            // Default (if available)
-            if let Some((row_id, raw_default)) = raw_default.as_ref() {
-                ui.push_id("default", |ui| {
-                    editable_blueprint_component_list_item(
-                        &query_ctx,
-                        ui,
-                        "Default",
-                        ViewBlueprint::defaults_path(ctx.view_id),
-                        unmapped_component_descr,
-                        *row_id,
-                        raw_default.as_ref(),
-                    )
-                    .on_hover_text(
-                        "Default value for all components of this type is the current view",
-                    );
-                });
-            }
+            // // Default (if available)
+            // if let Some((row_id, raw_default)) = raw_default.as_ref() {
+            //     ui.push_id("default", |ui| {
+            //         editable_blueprint_component_list_item(
+            //             &query_ctx,
+            //             ui,
+            //             "Default",
+            //             ViewBlueprint::defaults_path(ctx.view_id),
+            //             unmapped_component_descr,
+            //             *row_id,
+            //             raw_default.as_ref(),
+            //         )
+            //         .on_hover_text(
+            //             "Default value for all components of this type is the current view",
+            //         );
+            //     });
+            // }
 
-            // Fallback (always there)
-            {
-                ui.push_id("fallback", |ui| {
-                    ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                            // TODO(andreas): db & entity path don't make sense here.
-                            ctx.viewer_ctx.component_ui_registry().component_ui_raw(
-                                ctx.viewer_ctx,
-                                ui,
-                                UiLayout::List,
-                                &store_query,
-                                ctx.recording(),
-                                &data_result.entity_path,
-                                unmapped_component_descr,
-                                None,
-                                raw_fallback.as_ref(),
-                            );
-                        }),
-                    )
-                    .on_hover_text(
-                        "Context sensitive fallback value for this component type, used only if \
-                    nothing else was specified. Unlike the other values, this may differ per \
-                    visualizer.",
-                    );
-                });
-            }
+            // // Fallback (always there)
+            // {
+            //     ui.push_id("fallback", |ui| {
+            //         ui.list_item_flat_noninteractive(
+            //             list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+            //                 // TODO(andreas): db & entity path don't make sense here.
+            //                 ctx.viewer_ctx.component_ui_registry().component_ui_raw(
+            //                     ctx.viewer_ctx,
+            //                     ui,
+            //                     UiLayout::List,
+            //                     &store_query,
+            //                     ctx.recording(),
+            //                     &data_result.entity_path,
+            //                     unmapped_component_descr,
+            //                     None,
+            //                     raw_fallback.as_ref(),
+            //                 );
+            //             }),
+            //         )
+            //         .on_hover_text(
+            //             "Context sensitive fallback value for this component type, used only if \
+            //         nothing else was specified. Unlike the other values, this may differ per \
+            //         visualizer.",
+            //         );
+            //     });
+            // }
 
             // Source component (if available).
             // TODO(RR-3338): Implement a new source componentselector UI.
@@ -531,18 +532,14 @@ fn visualizer_components(
     }
 }
 
-fn source_component_ui(
+fn collect_source_component_options(
     ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
+    options: &mut SmallVec<[(String, VisualizerComponentSource); 8]>,
 ) {
-    if !ctx.viewer_ctx.app_options().experimental.component_mapping {
-        return;
-    }
-
     let Some(target_component_type) = &component_descr.component_type else {
         return;
     };
@@ -580,82 +577,118 @@ fn source_component_ui(
         std::iter::once(target_component_reflection.datatype.clone()).collect()
     };
 
-    let all_source_options = entity_components_with_datatype
-        .iter()
-        .filter(|entity_component| allowed_physical_types.contains(&entity_component.1))
-        .map(|entity_component| entity_component.0.as_str())
-        .collect::<Vec<_>>();
-    if all_source_options.is_empty() {
-        return;
+    for component in entity_components_with_datatype {
+        if allowed_physical_types.contains(&component.1) {
+            options.push((
+                component.0.as_str().to_owned(),
+                VisualizerComponentSource::SourceComponent {
+                    source_component: component.0,
+                    selector: String::new(),
+                },
+            ));
+        }
     }
+    // let all_source_options = entity_components_with_datatype
+    //     .iter()
+    //     .filter(|entity_component| allowed_physical_types.contains(&entity_component.1))
+    //     .map(|entity_component| entity_component.0.as_str())
+    //     .collect::<Vec<_>>();
+    // if all_source_options.is_empty() {
+    //     return;
+    // }
+}
+
+fn source_component_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
+    component_descr: &ComponentDescriptor,
+    instruction: &VisualizerInstruction,
+    query_info: &VisualizerQueryInfo,
+) {
+    // TODO(aedm): In some cases, there should be no separate source selector. Eg. when the value is as enum:
+    // we should offer "default" and enum options in a single dropdown. Simpler UI.
+
+    let mut options = SmallVec::<[(String, VisualizerComponentSource); 8]>::new();
+
+    collect_source_component_options(
+        ctx,
+        entity_components_with_datatype,
+        component_descr,
+        instruction,
+        query_info,
+        &mut options,
+    );
+
+    // Custom
+    options.push(("Custom".to_owned(), VisualizerComponentSource::Override));
+
+    // Default
+    options.push(("Default".to_owned(), VisualizerComponentSource::Default));
+
+    // Fallback
+    options.push(("Fallback".to_owned(), VisualizerComponentSource::Fallback));
+
+    let current = instruction
+        .component_mappings
+        .get(&component_descr.component)
+        .map(|mapping| match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: _, // TODO(RR-3308): implement selector logic
+            } => source_component.as_str(),
+
+            re_viewer_context::VisualizerComponentSource::Override => "Override",
+            re_viewer_context::VisualizerComponentSource::Default => "Default",
+            re_viewer_context::VisualizerComponentSource::Fallback => "Fallback",
+        })
+        .unwrap_or("auto"); // TODO: what should we show here?
 
     ui.push_id("source_component", |ui| {
-        ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
+            |ui, _| {
                 // Get the current source component from the component mapping.
-                let current = instruction
-                    .component_mappings
-                    .get(&component_descr.component)
-                    .and_then(|mapping| match mapping {
-                        re_viewer_context::VisualizerComponentSource::SourceComponent {
-                            source_component,
-                            selector: _, // TODO(RR-3308): implement selector logic
-                        } => Some(source_component.as_str()),
-
-                        re_viewer_context::VisualizerComponentSource::Override
-                        | re_viewer_context::VisualizerComponentSource::Default
-                        | re_viewer_context::VisualizerComponentSource::Fallback => {
-                            // TODO(RR-3338): Implement ui for other types.
-                            None
-                        }
-                    })
-                    .unwrap_or("");
 
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
                     .show_ui(ui, |ui| {
-                        for option in std::iter::once("").chain(all_source_options.into_iter()) {
-                            if ui.button(option).clicked() {
+                        for (label, source) in options {
+                            if ui.button(label).clicked() {
                                 save_component_mapping(
                                     ctx,
                                     instruction,
-                                    option.into(),
+                                    source,
                                     component_descr.component,
                                 );
                             }
                         }
                     });
-            }),
-        );
+            },
+        ));
     });
 }
 
 fn save_component_mapping(
     ctx: &ViewContext<'_>,
     instruction: &VisualizerInstruction,
-    source_component: ComponentIdentifier,
+    source_component: VisualizerComponentSource,
     target: ComponentIdentifier,
 ) {
     let mut updated_instruction = instruction.clone();
 
     // Set or override the mapping
-    match updated_instruction.component_mappings.entry(target) {
-        std::collections::btree_map::Entry::Occupied(mut entry) => {
-            *entry.get_mut() = re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector: String::new(), // TODO(RR-3308): implement selector logic
-            };
-        }
+    updated_instruction
+        .component_mappings
+        .insert(target, source_component);
+    // match updated_instruction.component_mappings.entry(target) {
+    //     std::collections::btree_map::Entry::Occupied(mut entry) => {
+    //         *entry.get_mut() = source_component;
+    //     }
 
-        std::collections::btree_map::Entry::Vacant(entry) => {
-            entry.insert(
-                re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector: String::new(), // TODO(RR-3308): implement selector logic
-                },
-            );
-        }
-    }
+    //     std::collections::btree_map::Entry::Vacant(entry) => {
+    //         entry.insert(source_component);
+    //     }
+    // }
 
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
