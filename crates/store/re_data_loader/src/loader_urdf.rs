@@ -429,10 +429,16 @@ fn walk_tree(
 fn get_joint_transform(joint: &Joint) -> Transform3D {
     let Joint {
         name: _,
+        joint_type: _,
         origin,
         parent,
         child,
-        ..
+        axis: _,
+        limit: _,
+        calibration: _,
+        dynamics: _,
+        mimic: _,
+        safety_controller: _,
     } = joint;
 
     transform_from_pose(origin, parent.link.clone(), child.link.clone())
@@ -530,15 +536,18 @@ fn log_link(
     link: &urdf_rs::Link,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
-        name: link_name, ..
+        name: link_name,
+        inertial: _,
+        visual: _,
+        collision: _,
     } = link;
 
     for (visual_entity_path, visual) in urdf_tree.get_visual_geometries(link).unwrap_or_default() {
         let urdf_rs::Visual {
+            name: _,
             origin,
             geometry,
             material,
-            ..
         } = visual;
 
         let instance_scale = extract_instance_scale(geometry);
@@ -578,7 +587,9 @@ fn log_link(
         urdf_tree.get_collision_geometries(link).unwrap_or_default()
     {
         let urdf_rs::Collision {
-            origin, geometry, ..
+            name: _,
+            origin,
+            geometry,
         } = collision;
         let instance_scale = extract_instance_scale(geometry);
 
