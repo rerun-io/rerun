@@ -1,3 +1,5 @@
+use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
+use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::HashSet;
 use arrow::array::{
@@ -15,8 +17,6 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
-use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
-use crate::batch_coalescer::coalescer::CoalescerOptions;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;

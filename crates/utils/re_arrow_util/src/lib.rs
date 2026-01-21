@@ -22,8 +22,8 @@ pub use self::format::{
     format_record_batch_with_width,
 };
 pub use self::format_data_type::*;
-pub use self::test_extensions::*;
 pub use self::string_view::*;
+pub use self::test_extensions::*;
 
 /// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logically the same
 pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
