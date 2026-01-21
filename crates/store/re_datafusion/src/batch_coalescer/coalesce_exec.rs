@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use crate::batch_coalescer::coalescer::{CoalescerState, SizedBatchCoalescer};
+use crate::batch_coalescer::coalescer::{CoalescerOptions, CoalescerStatus, SizedBatchCoalescer};
 use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
 use datafusion::common::{Result, Statistics};
@@ -27,9 +27,9 @@ use futures::stream::{Stream, StreamExt as _};
 ///
 /// The operator buffers batches until it collects `target_batch_rows` rows and
 /// then emits a single concatenated batch. When only a limited number of rows
-/// are necessary (specified by the `fetch` parameter), the operator will stop
+/// are necessary (specified by the `max_rows` parameter), the operator will stop
 /// buffering and returns the final batch once the number of collected rows
-/// reaches the `fetch` value.
+/// reaches the `max_rows` value.
 ///
 /// See [`SizedBatchCoalescer`] for more information
 #[derive(Debug, Clone)]
@@ -37,14 +37,8 @@ pub struct SizedCoalesceBatchesExec {
     /// The input plan
     input: Arc<dyn ExecutionPlan>,
 
-    /// Maximum ideal size of coalesced batches in bytes
-    target_batch_bytes: usize,
-
-    /// Minimum number of rows for coalescing batches
-    target_batch_rows: usize,
-
-    /// Maximum number of rows to fetch, `None` means fetching all rows
-    fetch: Option<usize>,
+    /// Input options
+    coalescer_options: CoalescerOptions,
 
     /// Execution metrics
     metrics: ExecutionPlanMetricsSet,
@@ -54,25 +48,19 @@ pub struct SizedCoalesceBatchesExec {
 
 impl SizedCoalesceBatchesExec {
     /// Create a new `SizedCoalesceBatchesExec`
-    pub fn new(
-        input: Arc<dyn ExecutionPlan>,
-        target_batch_bytes: usize,
-        target_batch_rows: usize,
-    ) -> Self {
+    pub fn new(input: Arc<dyn ExecutionPlan>, coalescer_options: CoalescerOptions) -> Self {
         let cache = Self::compute_properties(&input);
         Self {
             input,
-            target_batch_bytes,
-            target_batch_rows,
-            fetch: None,
+            coalescer_options,
             metrics: ExecutionPlanMetricsSet::new(),
             cache,
         }
     }
 
-    /// Update fetch with the argument
-    pub fn with_fetch(mut self, fetch: Option<usize>) -> Self {
-        self.fetch = fetch;
+    /// Update max_rows with the argument
+    pub fn with_max_rows(mut self, max_rows: Option<usize>) -> Self {
+        self.coalescer_options.max_rows = max_rows;
         self
     }
 
@@ -96,10 +84,11 @@ impl DisplayAs for SizedCoalesceBatchesExec {
                 write!(
                     f,
                     "SizedCoalesceBatchesExec: target_batch_bytes={} target_batch_rows={}",
-                    self.target_batch_bytes, self.target_batch_rows,
+                    self.coalescer_options.target_batch_bytes,
+                    self.coalescer_options.target_batch_rows,
                 )?;
-                if let Some(fetch) = self.fetch {
-                    write!(f, ", fetch={fetch}")?;
+                if let Some(max_rows) = self.coalescer_options.max_rows {
+                    write!(f, ", max_rows={max_rows}")?;
                 }
 
                 Ok(())
@@ -108,10 +97,11 @@ impl DisplayAs for SizedCoalesceBatchesExec {
                 writeln!(
                     f,
                     "target_batch_bytes={} target_batch_rows={}",
-                    self.target_batch_bytes, self.target_batch_rows
+                    self.coalescer_options.target_batch_bytes,
+                    self.coalescer_options.target_batch_rows
                 )?;
-                if let Some(fetch) = self.fetch {
-                    write!(f, "limit={fetch}")?;
+                if let Some(max_rows) = self.coalescer_options.max_rows {
+                    write!(f, "limit={max_rows}")?;
                 }
                 Ok(())
             }
@@ -150,12 +140,8 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
         children: Vec<Arc<dyn ExecutionPlan>>,
     ) -> Result<Arc<dyn ExecutionPlan>> {
         Ok(Arc::new(
-            Self::new(
-                Arc::clone(&children[0]),
-                self.target_batch_bytes,
-                self.target_batch_rows,
-            )
-            .with_fetch(self.fetch),
+            Self::new(Arc::clone(&children[0]), self.coalescer_options.clone())
+                .with_max_rows(self.coalescer_options.max_rows),
         ))
     }
 
@@ -168,9 +154,7 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
             input: self.input.execute(partition, context)?,
             coalescer: SizedBatchCoalescer::new(
                 self.input.schema(),
-                self.target_batch_bytes,
-                self.target_batch_rows,
-                self.fetch,
+                self.coalescer_options.clone(),
             ),
             baseline_metrics: BaselineMetrics::new(&self.metrics, partition),
             // Start by pulling data
@@ -187,24 +171,23 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
     }
 
     fn partition_statistics(&self, partition: Option<usize>) -> Result<Statistics> {
-        self.input
-            .partition_statistics(partition)?
-            .with_fetch(self.schema(), self.fetch, 0, 1)
+        self.input.partition_statistics(partition)?.with_fetch(
+            self.schema(),
+            self.coalescer_options.max_rows,
+            0,
+            1,
+        )
     }
 
     fn with_fetch(&self, limit: Option<usize>) -> Option<Arc<dyn ExecutionPlan>> {
-        Some(Arc::new(Self {
-            input: Arc::clone(&self.input),
-            target_batch_bytes: self.target_batch_bytes,
-            target_batch_rows: self.target_batch_rows,
-            fetch: limit,
-            metrics: self.metrics.clone(),
-            cache: self.cache.clone(),
-        }))
+        Some(Arc::new(SizedCoalesceBatchesExec::with_max_rows(
+            self.clone(),
+            limit,
+        )))
     }
 
     fn fetch(&self) -> Option<usize> {
-        self.fetch
+        self.coalescer_options.max_rows
     }
 
     fn cardinality_effect(&self) -> CardinalityEffect {
@@ -322,12 +305,12 @@ impl SizedCoalesceBatchesStream {
 
                     match input_batch {
                         Some(Ok(batch)) => match self.coalescer.push_batch(&batch) {
-                            CoalescerState::Continue => {}
-                            CoalescerState::LimitReached => {
-                                self.inner_state = CoalesceBatchesStreamState::Exhausted;
-                            }
-                            CoalescerState::TargetReached => {
+                            CoalescerStatus::Continue => {}
+                            CoalescerStatus::BatchFull => {
                                 self.inner_state = CoalesceBatchesStreamState::ReturnBuffer;
+                            }
+                            CoalescerStatus::EndReached => {
+                                self.inner_state = CoalesceBatchesStreamState::Exhausted;
                             }
                         },
                         None => {
