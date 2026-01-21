@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 component_column_selector.rs linguist-generated=true
+component_source_kind.rs linguist-generated=true
 filter_by_range.rs linguist-generated=true
 filter_is_not_null.rs linguist-generated=true
 mod.rs linguist-generated=true

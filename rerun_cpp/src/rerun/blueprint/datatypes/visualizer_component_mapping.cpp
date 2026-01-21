@@ -4,6 +4,7 @@
 #include "visualizer_component_mapping.hpp"
 
 #include "../../datatypes/utf8.hpp"
+#include "component_source_kind.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -14,8 +15,18 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::datatypes::VisualizerComponentMapping>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("selector", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
             arrow::field("target", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
+            arrow::field(
+                "source_kind",
+                Loggable<rerun::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
+                false
+            ),
+            arrow::field(
+                "source_component",
+                Loggable<rerun::datatypes::Utf8>::arrow_datatype(),
+                true
+            ),
+            arrow::field("selector", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), true),
         });
         return datatype;
     }
@@ -63,20 +74,51 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
                     field_builder,
-                    &elements[elem_idx].selector,
+                    &elements[elem_idx].target,
                     1
                 ));
             }
         }
         {
-            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::UInt8Builder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].target,
-                    1
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::blueprint::datatypes::ComponentSourceKind>::
+                        fill_arrow_array_builder(field_builder, &elements[elem_idx].source_kind, 1)
+                );
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(2));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.source_component.has_value()) {
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                        field_builder,
+                        &element.source_component.value(),
+                        1
+                    ));
+                } else {
+                    ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                }
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(3));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.selector.has_value()) {
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                        field_builder,
+                        &element.selector.value(),
+                        1
+                    ));
+                } else {
+                    ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                }
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
