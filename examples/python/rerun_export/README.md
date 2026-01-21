@@ -3,7 +3,7 @@ title = "LeRobot dataset curation using OSS Rerun server"
 tags = ["Robotics", "MCAP", "LeRobot", "Dataset", "Server"]
 channel = "main"
 thumbnail = "https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail_dimensions = [480, 384]
 -->
 
 <picture>

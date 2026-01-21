@@ -75,7 +75,7 @@ def load_video_samples(
     Load unaligned video samples for a segment from the catalog dataset.
 
     Args:
-        df: DataFusion dataframe containing video datas
+        df: DataFusion dataframe containing video data
         index_column: Timeline column name
         videos: Video stream specifications
 
