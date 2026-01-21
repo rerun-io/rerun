@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Union
 
 
 def unwrap_singleton(value: object) -> object:
@@ -98,7 +97,7 @@ def make_time_grid(min_value: TimeInput, max_value: TimeInput, fps: int) -> npt.
 
     """
     min_array = np.asarray(min_value)
-    max_array = np.asarray(max_value)
+
     if np.issubdtype(min_array.dtype, np.datetime64):
         min_dt = np.int64(min_value).astype("datetime64[ns]")
         max_dt = np.int64(max_value).astype("datetime64[ns]")
