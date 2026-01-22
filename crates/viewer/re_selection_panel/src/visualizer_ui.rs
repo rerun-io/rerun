@@ -665,7 +665,7 @@ fn menu_more(
     raw_fallback: ArrayRef,
     raw_current_value: ArrayRef,
 ) {
-    remove_and_reset_override_buttons(
+    reset_override_button(
         ctx,
         ui,
         component_descr.clone(),
@@ -704,23 +704,13 @@ fn menu_more(
     }
 }
 
-pub fn remove_and_reset_override_buttons(
+pub fn reset_override_button(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     component_descr: ComponentDescriptor,
     override_path: &EntityPath,
     raw_override: &Option<ArrayRef>,
 ) {
-    if ui
-        .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
-        .on_disabled_hover_text("There's no override active")
-        .clicked()
-    {
-        ctx.clear_blueprint_component(override_path.clone(), component_descr);
-        ui.close();
-        return;
-    }
-
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
@@ -734,7 +724,7 @@ pub fn remove_and_reset_override_buttons(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component(override_path.clone(), component_descr.clone());
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
         ui.close();
     }
 }
