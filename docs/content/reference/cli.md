@@ -41,6 +41,8 @@ The Rerun command-line interface:
 * `--bind <BIND>`
 > What bind address IP to use.
 >
+> `::` will listen on all interfaces, IPv6 and IPv4.
+>
 > [Default: `::`]
 
 * `--memory-limit <MEMORY_LIMIT>`

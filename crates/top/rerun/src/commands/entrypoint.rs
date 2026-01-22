@@ -91,7 +91,7 @@ struct Args {
 
     /// What bind address IP to use.
     ///
-    /// Defaults to `::` (all interfaces, IPv6 and IPv4).
+    /// `::` will listen on all interfaces, IPv6 and IPv4.
     #[clap(long, default_value = "::")]
     bind: IpAddr,
 
