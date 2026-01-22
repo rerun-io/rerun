@@ -73,7 +73,6 @@ parking_lot.workspace = true
 percent-encoding.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["v4"] }
-vec1.workspace = true
 
 # Optional dependencies
 
