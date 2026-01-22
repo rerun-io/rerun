@@ -1,5 +1,4 @@
 use ahash::{HashMap, HashSet};
-use itertools::Either;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
@@ -36,23 +35,17 @@ impl Cache for ImageStatsCache {
 
         let cache_key_removed: HashSet<(StoredBlobCacheKey, ImageKind)> = events
             .iter()
-            .flat_map(|event| {
-                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                    Either::Left(
-                        event
-                            .chunk_before_processing
-                            .component_descriptors()
-                            .filter(|descr| descr.component_type == Some(components::Blob::name()))
-                            .flat_map(|descr| {
-                                let kind = ImageKind::from_archetype_name(descr.archetype);
-                                event.chunk_before_processing.row_ids().map(move |row_id| {
-                                    (StoredBlobCacheKey::new(row_id, descr.component), kind)
-                                })
-                            }),
-                    )
-                } else {
-                    Either::Right(std::iter::empty())
-                }
+            .filter_map(|e| e.to_deletion())
+            .flat_map(|del| {
+                del.chunk
+                    .component_descriptors()
+                    .filter(|descr| descr.component_type == Some(components::Blob::name()))
+                    .flat_map(|descr| {
+                        let kind = ImageKind::from_archetype_name(descr.archetype);
+                        del.chunk.row_ids().map(move |row_id| {
+                            (StoredBlobCacheKey::new(row_id, descr.component), kind)
+                        })
+                    })
             })
             .collect();
 

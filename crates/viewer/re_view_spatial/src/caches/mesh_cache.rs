@@ -168,24 +168,24 @@ impl Cache for MeshCache {
 
         let row_ids_removed: HashSet<RowId> = events
             .iter()
-            .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
+            .filter_map(|e| e.to_deletion())
+            .flat_map(|del| {
                 let contains_mesh_data = || {
-                    let contains_asset_blob = event
-                        .chunk_before_processing
+                    let contains_asset_blob = del
+                        .chunk
                         .components()
                         .contains_component(Asset3D::descriptor_blob().component);
 
-                    let contains_vertex_positions = event
-                        .chunk_before_processing
+                    let contains_vertex_positions = del
+                        .chunk
                         .components()
                         .contains_component(Mesh3D::descriptor_vertex_positions().component);
 
                     contains_asset_blob || contains_vertex_positions
                 };
 
-                if is_deletion() && contains_mesh_data() {
-                    Either::Left(event.chunk_before_processing.row_ids())
+                if contains_mesh_data() {
+                    Either::Left(del.chunk.row_ids())
                 } else {
                     Either::Right(std::iter::empty())
                 }

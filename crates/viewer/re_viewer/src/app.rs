@@ -2812,7 +2812,9 @@ impl App {
         re_tracing::profile_function!();
 
         for event in store_events {
-            let chunk = &event.diff.chunk_before_processing;
+            let Some(chunk) = event.delta_chunk() else {
+                continue;
+            };
 
             // For speed, we don't care about the order of the following log statements, so we silence this warning
             for component_descr in chunk.components().component_descriptors() {

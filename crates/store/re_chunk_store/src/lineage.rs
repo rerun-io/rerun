@@ -463,6 +463,11 @@ impl ChunkStore {
         let split_found = false;
         recurse(self, chunk_id, split_found)
     }
+
+    /// Returns the direct lineage of a chunk.
+    pub fn direct_lineage(&self, chunk_id: &ChunkId) -> Option<&ChunkDirectLineage> {
+        self.chunks_lineage.get(chunk_id)
+    }
 }
 
 #[cfg(test)]
@@ -473,7 +478,7 @@ mod tests {
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
 
-    use crate::{ChunkStoreConfig, ChunkStoreDiffKind};
+    use crate::ChunkStoreConfig;
 
     use super::*;
 
@@ -520,7 +525,17 @@ mod tests {
         ];
 
         for chunk in &chunks {
-            store.insert_chunk(chunk).unwrap();
+            let events = store.insert_chunk(chunk).unwrap();
+            for event in events {
+                let diff = event.to_addition().unwrap();
+                if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
+                    assert_eq!(
+                        diff.chunk_before_processing.id(),
+                        src.id(),
+                        "splits are guaranteed flat, and therefore the origin of a split should always match the unprocessed chunk",
+                    );
+                }
+            }
         }
 
         insta::assert_snapshot!("lineage_volatile", generate_redacted_lineage_report(&store));
@@ -591,7 +606,17 @@ mod tests {
 
         // Load it physically.
         for chunk in &chunks {
-            store.insert_chunk(chunk).unwrap();
+            let events = store.insert_chunk(chunk).unwrap();
+            for event in events {
+                let diff = event.to_addition().unwrap();
+                if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
+                    assert_eq!(
+                        diff.chunk_before_processing.id(),
+                        src.id(),
+                        "splits are guaranteed flat, and therefore the origin of a split should always match the unprocessed chunk",
+                    );
+                }
+            }
         }
 
         insta::assert_snapshot!(
@@ -656,17 +681,17 @@ mod tests {
         let events = store.insert_chunk(&chunk).unwrap();
         assert_eq!(4, events.len());
         for event in &events {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            assert_eq!(true, event.is_addition());
 
             // Check that splits are always flattened, very important!
             let siblings = events
                 .iter()
-                .filter(|e| e.chunk_after_processing.id() != event.chunk_after_processing.id())
-                .map(|e| e.chunk_after_processing.clone())
+                .filter(|e| e.delta_chunk().unwrap().id() != event.delta_chunk().unwrap().id())
+                .map(|e| e.delta_chunk().unwrap().clone())
                 .collect_vec();
             assert_eq!(
                 ChunkDirectLineageReport::SplitFrom(chunk.clone(), siblings),
-                *event.direct_lineage.as_ref().unwrap(),
+                event.to_addition().unwrap().direct_lineage,
             );
         }
 
@@ -687,7 +712,7 @@ mod tests {
         });
         assert_eq!(2, events.len());
         for event in events {
-            assert_eq!(ChunkStoreDiffKind::Deletion, event.kind);
+            assert_eq!(true, event.is_deletion());
         }
 
         assert_eq!(2, store.num_physical_chunks());
@@ -702,10 +727,10 @@ mod tests {
         let events = store.insert_chunk(&chunk).unwrap();
         assert_eq!(6, events.len());
         for event in &events[..2] {
-            assert_eq!(ChunkStoreDiffKind::Deletion, event.kind); // dangling splits
+            assert_eq!(true, event.is_deletion()); // dangling splits
         }
         for event in &events[2..] {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind); // new splits
+            assert_eq!(true, event.is_addition()); // new splits
         }
 
         assert_eq!(4, store.num_physical_chunks());
@@ -755,7 +780,7 @@ mod tests {
         let events = store.insert_chunk(&chunk1).unwrap();
         assert_eq!(2, events.len());
         for event in events {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            assert_eq!(true, event.is_addition());
         }
 
         assert_eq!(2, store.num_physical_chunks());
@@ -768,7 +793,7 @@ mod tests {
         let events = store.insert_chunk(&chunk2).unwrap();
         assert_eq!(1, events.len());
         for event in events {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            assert_eq!(true, event.is_addition());
         }
 
         assert_eq!(3, store.num_physical_chunks());
@@ -788,16 +813,15 @@ mod tests {
         // This should get compacted with chunk2, OTOH.
         let events = store.insert_chunk(&chunk3).unwrap();
         assert_eq!(1, events.len());
-        assert_eq!(ChunkStoreDiffKind::Addition, events[0].kind);
-        assert_eq!(chunk3, events[0].chunk_before_processing);
-        assert_eq!(chunk3.clone(), events[0].chunk_before_processing);
+        assert_eq!(true, events[0].is_addition());
+        assert_eq!(&chunk3, events[0].delta_chunk().unwrap());
         assert_eq!(
             ChunkDirectLineageReport::CompactedFrom(
                 [(chunk2.id(), chunk2.clone()), (chunk3.id(), chunk3.clone())]
                     .into_iter()
                     .collect()
             ),
-            *events[0].direct_lineage.as_ref().unwrap()
+            events[0].to_addition().unwrap().direct_lineage
         );
 
         assert_eq!(3, store.num_physical_chunks());
@@ -853,12 +877,12 @@ mod tests {
         let events = store.insert_chunk(&chunk1).unwrap();
         assert_eq!(1, events.len());
         for event in events {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            assert_eq!(true, event.is_addition());
         }
         let events = store.insert_chunk(&chunk2).unwrap();
         assert_eq!(1, events.len());
         for event in events {
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            assert_eq!(true, event.is_addition());
         }
 
         // The chunks should just not get compacted since the result would be beyond the num_rows
@@ -915,7 +939,7 @@ mod tests {
             assert_eq!(1, events.len());
 
             let event = events.pop().unwrap();
-            assert_eq!(ChunkStoreDiffKind::Addition, event.kind);
+            let event = event.to_addition().unwrap();
             assert_eq!(chunk.id(), event.chunk_before_processing.id());
 
             assert_eq!(
@@ -932,7 +956,7 @@ mod tests {
             );
 
             if let Some(prev_chunk) = prev_chunk.take() {
-                let lineage: ChunkDirectLineage = event.direct_lineage.as_ref().unwrap().into();
+                let lineage: ChunkDirectLineage = event.direct_lineage.clone().into();
                 let expected = ChunkDirectLineage::CompactedFrom(
                     [chunk.id(), prev_chunk.id()].into_iter().collect(),
                 );
@@ -942,7 +966,7 @@ mod tests {
                     store.descends_from_a_compaction(&event.chunk_after_processing.id())
                 );
             } else {
-                let lineage: ChunkDirectLineage = event.direct_lineage.as_ref().unwrap().into();
+                let lineage: ChunkDirectLineage = event.direct_lineage.clone().into();
                 let expected = ChunkDirectLineage::Volatile;
                 assert_eq!(expected, lineage);
                 assert_eq!(

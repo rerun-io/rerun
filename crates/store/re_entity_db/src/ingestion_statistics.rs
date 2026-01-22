@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use emath::History;
 use parking_lot::Mutex;
 use re_chunk::Chunk;
-use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
+use re_chunk_store::{ChunkStoreDiffAddition, ChunkStoreEvent};
 use re_sorbet::{TimestampLocation, TimestampMetadata};
 use web_time::SystemTime;
 
@@ -27,8 +27,8 @@ impl IngestionStatistics {
         re_tracing::profile_function!();
         let now_nanos = nanos_since_epoch();
         let mut stats = self.stats.lock();
-        for event in events {
-            stats.on_new_chunk(now_nanos, chunk_timestamps, &event.diff);
+        for add in events.iter().filter_map(|e| e.to_addition()) {
+            stats.on_store_addition(now_nanos, chunk_timestamps, add);
         }
     }
 }
@@ -43,17 +43,16 @@ impl IngestionStatistics {
 /// Statistics about the latency of incoming data to a store.
 #[derive(Clone, Debug, Default)]
 pub struct LatencyStats {
-    /// The latency from [`TimestampLocation::Log`] until this point,
-    /// measured in seconds.
+    /// The latency from [`TimestampLocation::Log`] until this point, measured in seconds.
     from_log_until: BTreeMap<TimestampLocation, History<f32>>,
 }
 
 impl LatencyStats {
-    fn on_new_chunk(
+    fn on_store_addition(
         &mut self,
         now_nanos: i64,
         chunk_timestamps: &TimestampMetadata,
-        diff: &ChunkStoreDiff,
+        add: &ChunkStoreDiffAddition,
     ) {
         let mut chunk_timestamps = chunk_timestamps.clone();
 
@@ -61,32 +60,26 @@ impl LatencyStats {
         let max_samples = 8 * 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
 
-        if diff.kind != ChunkStoreDiffKind::Addition {
-            return;
-        }
-
         chunk_timestamps.insert(
             TimestampLocation::Ingest,
             system_time_from_nanos(now_nanos as u64),
         );
 
-        let Some(log_time) = row_id_timestamp(&diff.chunk_before_processing) else {
+        // We want:
+        // * A row ID from which we can extract a timestamp, to act as a user-space logging timestamp.
+        // * A chunk ID from we can extract a timestamp, to act as a user-space micro-batching timestamp.
+        //
+        // For both of these, that means we only care about unprocessed data: we're interested in
+        // logging-related timings, not when things where compacted or split off.
+        let chunk = &add.chunk_before_processing;
+
+        let Some(log_time) = row_id_timestamp(chunk) else {
             return;
         };
         chunk_timestamps.insert(TimestampLocation::Log, log_time);
-
-        // We use the chunk id for timing, so we need to get the _original_ id:
-        let original_chunk_id =
-            if let Some(re_chunk_store::ChunkDirectLineageReport::SplitFrom(chunk, _siblings)) =
-                diff.direct_lineage.as_ref()
-            {
-                chunk.id()
-            } else {
-                diff.chunk_before_processing.id()
-            };
         chunk_timestamps.insert(
             TimestampLocation::ChunkCreation,
-            system_time_from_nanos(original_chunk_id.nanos_since_epoch()),
+            system_time_from_nanos(chunk.id().nanos_since_epoch()),
         );
 
         let now = now_nanos as f64 / 1e9;

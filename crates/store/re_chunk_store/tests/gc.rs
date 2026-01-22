@@ -6,8 +6,7 @@ use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
-    GarbageCollectionTarget, OnMissingChunk,
+    ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, OnMissingChunk,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
@@ -437,17 +436,11 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 4)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(
-        &events[0].diff.chunk_before_processing,
-        &chunk1
-    ));
+    assert!(Arc::ptr_eq(events[0].diff.delta_chunk().unwrap(), &chunk1));
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 3)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(
-        &events[0].diff.chunk_before_processing,
-        &chunk4
-    ));
+    assert!(Arc::ptr_eq(events[0].diff.delta_chunk().unwrap(), &chunk4));
 
     Ok(())
 }
@@ -562,15 +555,15 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
 
     let events = store.drop_entity_path(&entity_path1);
     assert_eq!(3, events.len());
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[1].kind);
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[2].kind);
+    assert!(events[0].is_deletion());
+    assert!(events[1].is_deletion());
+    assert!(events[2].is_deletion());
     similar_asserts::assert_eq!(
-        chunk3, /* static comes first */
-        events[0].chunk_before_processing
+        &chunk3, /* static comes first */
+        events[0].delta_chunk().unwrap()
     );
-    similar_asserts::assert_eq!(chunk1, events[1].chunk_before_processing);
-    similar_asserts::assert_eq!(chunk2, events[2].chunk_before_processing);
+    similar_asserts::assert_eq!(&chunk1, events[1].delta_chunk().unwrap());
+    similar_asserts::assert_eq!(&chunk2, events[2].delta_chunk().unwrap());
 
     assert_latest_value(
         &store,
@@ -603,8 +596,8 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
 
     let events = store.drop_entity_path(&entity_path2);
     assert_eq!(1, events.len());
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
-    similar_asserts::assert_eq!(chunk4, events[0].chunk_before_processing);
+    assert!(events[0].is_deletion());
+    similar_asserts::assert_eq!(&chunk4, events[0].delta_chunk().unwrap());
 
     assert_latest_value(
         &store,

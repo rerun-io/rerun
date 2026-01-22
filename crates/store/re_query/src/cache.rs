@@ -7,8 +7,8 @@ use parking_lot::RwLock;
 use re_byte_size::{MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
-    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle,
-    ChunkStoreSubscriber,
+    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimelineName};
 use re_types_core::archetypes;
@@ -335,154 +335,214 @@ impl ChunkStoreSubscriber for QueryCache {
                 store_id,
             );
 
-            let ChunkStoreDiff {
-                kind: _, // Don't care: both additions and deletions invalidate query results.
-                rrd_manifest,
-                chunk_before_processing,
-                chunk_after_processing: _, // we only care about new data
-                direct_lineage,
-            } = diff;
+            match diff {
+                ChunkStoreDiff::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest }) => {
+                    re_tracing::profile_scope!("compact event (virtual addition)");
 
-            if let Some(rrd_manifest) = rrd_manifest {
-                re_tracing::profile_scope!("compact events (virtual)");
+                    // Some virtual data was inserted into the store, we need to keep track of this information.
+                    //
+                    // In particular, we must know if there are pending tombstones out there, in order to properly
+                    // populate the `might_require_clearing` set.
 
-                // Some virtual data was inserted into the store, we need to keep track of this information.
-                //
-                // In particular, we must know if there are pending tombstones out there, in order to properly
-                // populate the `might_require_clearing` set.
-
-                match rrd_manifest.get_static_data_as_a_map() {
-                    Ok(native_static_map) => {
-                        for (entity_path, per_component) in native_static_map {
-                            for (component, chunk_id) in per_component {
-                                compacted_events
-                                    .static_
-                                    .entry((entity_path.clone(), component))
-                                    .or_default()
-                                    .insert(chunk_id);
+                    match rrd_manifest.get_static_data_as_a_map() {
+                        Ok(native_static_map) => {
+                            for (entity_path, per_component) in native_static_map {
+                                for (component, chunk_id) in per_component {
+                                    compacted_events
+                                        .static_
+                                        .entry((entity_path.clone(), component))
+                                        .or_default()
+                                        .insert(chunk_id);
+                                }
                             }
+                        }
+
+                        Err(err) => {
+                            re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
                         }
                     }
 
-                    Err(err) => {
-                        re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
-                    }
-                }
+                    match rrd_manifest.get_temporal_data_as_a_map() {
+                        Ok(native_temporal_map) => {
+                            for (entity_path, per_timeline) in native_temporal_map {
+                                for (timeline, per_component) in per_timeline {
+                                    for (component, per_chunk) in per_component {
+                                        for (chunk_id, entry) in per_chunk {
+                                            let key = QueryCacheKey::new(
+                                                entity_path.clone(),
+                                                *timeline.name(),
+                                                component,
+                                            );
 
-                match rrd_manifest.get_temporal_data_as_a_map() {
-                    Ok(native_temporal_map) => {
-                        for (entity_path, per_timeline) in native_temporal_map {
-                            for (timeline, per_component) in per_timeline {
-                                for (component, per_chunk) in per_component {
-                                    for (chunk_id, entry) in per_chunk {
-                                        let key = QueryCacheKey::new(
-                                            entity_path.clone(),
-                                            *timeline.name(),
-                                            component,
-                                        );
+                                            // latest-at
+                                            {
+                                                let data_time_min = entry.time_range.min();
+                                                compacted_events
+                                                    .temporal_latest_at
+                                                    .entry(key.clone())
+                                                    .and_modify(|time| {
+                                                        *time = TimeInt::min(*time, data_time_min);
+                                                    })
+                                                    .or_insert(data_time_min);
+                                            }
 
-                                        // latest-at
-                                        {
-                                            let data_time_min = entry.time_range.min();
-                                            compacted_events
-                                                .temporal_latest_at
-                                                .entry(key.clone())
-                                                .and_modify(|time| {
-                                                    *time = TimeInt::min(*time, data_time_min);
-                                                })
-                                                .or_insert(data_time_min);
-                                        }
-
-                                        // range
-                                        {
-                                            let compacted_events = compacted_events
-                                                .temporal_range
-                                                .entry(key)
-                                                .or_default();
-                                            compacted_events.insert(chunk_id);
+                                            // range
+                                            {
+                                                let compacted_events = compacted_events
+                                                    .temporal_range
+                                                    .entry(key)
+                                                    .or_default();
+                                                compacted_events.insert(chunk_id);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Err(err) => {
-                        re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
-                    }
-                }
-            } else {
-                re_tracing::profile_scope!("compact events (physical)");
-
-                // Some physical data was inserted into the store, we need to invalidate caches appropriately.
-
-                if chunk_before_processing.is_static() {
-                    for component_identifier in chunk_before_processing.components_identifiers() {
-                        let compacted_events = compacted_events
-                            .static_
-                            .entry((
-                                chunk_before_processing.entity_path().clone(),
-                                component_identifier,
-                            ))
-                            .or_default();
-
-                        compacted_events.insert(chunk_before_processing.id());
-                        // If a compaction was triggered, make sure to drop the original chunks too.
-                        if let Some(ChunkDirectLineageReport::CompactedFrom(chunks)) =
-                            direct_lineage
-                        {
-                            compacted_events.extend(chunks.keys().copied());
+                        Err(err) => {
+                            re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
                         }
                     }
                 }
 
-                for (timeline, per_component) in chunk_before_processing.time_range_per_component()
-                {
-                    for (component_identifier, time_range) in per_component {
-                        let key = QueryCacheKey::new(
-                            chunk_before_processing.entity_path().clone(),
-                            timeline,
-                            component_identifier,
-                        );
+                ChunkStoreDiff::Addition(add) => {
+                    re_tracing::profile_scope!("compact event (physical addition)");
 
-                        // latest-at
-                        {
-                            let mut data_time_min = time_range.min();
+                    // Some physical data was inserted into the store, we need to invalidate the caches appropriately.
 
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            if let Some(ChunkDirectLineageReport::CompactedFrom(chunks)) =
-                                direct_lineage
-                            {
-                                for chunk in chunks.values() {
-                                    let data_time_compacted = chunk
-                                        .time_range_per_component()
-                                        .get(&timeline)
-                                        .and_then(|per_component| per_component.get(&key.component))
-                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
+                    // Static
+                    if add.chunk_before_processing.is_static() {
+                        // For static data, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
 
-                                    data_time_min =
-                                        TimeInt::min(data_time_min, data_time_compacted);
-                                }
-                            }
+                        for component_identifier in chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((chunk.entity_path().clone(), component_identifier))
+                                .or_default();
 
-                            compacted_events
-                                .temporal_latest_at
-                                .entry(key.clone())
-                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
-                                .or_insert(data_time_min);
-                        }
+                            compacted_events.insert(chunk.id());
 
-                        // range
-                        {
-                            let compacted_events =
-                                compacted_events.temporal_range.entry(key).or_default();
-
-                            compacted_events.insert(chunk_before_processing.id());
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            if let Some(ChunkDirectLineageReport::CompactedFrom(chunks)) =
-                                direct_lineage
+                            // If a compaction was triggered, make sure to drop the original chunks.
+                            //
+                            // There's nothing to be done for splits, since the original chunk never made it into
+                            // the store anyway.
+                            if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                &add.direct_lineage
                             {
                                 compacted_events.extend(chunks.keys().copied());
+                            }
+                        }
+                    }
+
+                    // LatestAt
+                    {
+                        // For latest-at, we want to make sure to invalidate all chunks beyond the
+                        // smallest timestamp that was modified.
+                        //
+                        // For compaction, that means looking at the complete processed chunk, because even though
+                        // this has no semantic impact on the query, we still want to make sure that cache does not
+                        // keep strong references to these old chunks that have now been compaced away.
+                        let chunk = match &add.direct_lineage {
+                            ChunkDirectLineageReport::CompactedFrom(_) => {
+                                &add.chunk_after_processing
+                            }
+                            _ => add.delta_chunk(),
+                        };
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for (component_identifier, time_range) in per_component {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let data_time_min = time_range.min();
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+                        }
+                    }
+
+                    // Range
+                    {
+                        // For ranges, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for component_identifier in per_component.keys().copied() {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+                                compacted_events.insert(chunk.id());
+
+                                // If a compaction was triggered, make sure to drop the original chunks.
+                                //
+                                // There's nothing to be done for splits, since the original chunk never made it into
+                                // the store anyway.
+                                if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                    &add.direct_lineage
+                                {
+                                    compacted_events.extend(chunks.keys().copied());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    re_tracing::profile_scope!("compact event (physical deletion)");
+
+                    // Some physical data was removed from the store, we need to invalidate the caches appropriately.
+
+                    if del.chunk.is_static() {
+                        for component_identifier in del.chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((del.chunk.entity_path().clone(), component_identifier))
+                                .or_default();
+
+                            compacted_events.insert(del.chunk.id());
+                        }
+                    }
+
+                    for (timeline, per_component) in del.chunk.time_range_per_component() {
+                        for (component_identifier, time_range) in per_component {
+                            let key = QueryCacheKey::new(
+                                del.chunk.entity_path().clone(),
+                                timeline,
+                                component_identifier,
+                            );
+
+                            // latest-at
+                            {
+                                let data_time_min = time_range.min();
+
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+
+                            // range
+                            {
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+
+                                compacted_events.insert(del.chunk.id());
                             }
                         }
                     }

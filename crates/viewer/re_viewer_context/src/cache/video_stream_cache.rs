@@ -8,7 +8,7 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
-use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreEvent};
+use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType, VecDequeSortingExt as _};
 use re_sdk_types::archetypes::VideoStream;
@@ -184,23 +184,23 @@ impl VideoStreamCache {
 
         let timeline_name = *timeline.name();
 
-        // We want to use `chunk_after_processing` in all cases because
-        // video samples refer to specific chunks for where to fetch their
-        // data from. So referring to any of those would result in not being
-        // able to get the video data in the player.
-        let chunk = &event.chunk_after_processing;
-
-        let requires_sorting = !chunk.is_timeline_sorted(&timeline_name);
-        let chunk = if requires_sorting {
-            &chunk.sorted_by_timeline_if_unsorted(&timeline_name)
-        } else {
-            chunk
-        };
-
         let encoding_details_before = video_data.encoding_details.clone();
 
-        let result = match event.kind {
-            re_chunk_store::ChunkStoreDiffKind::Addition => {
+        let result = match &event.diff {
+            ChunkStoreDiff::Addition(add) => {
+                // We want to use `chunk_after_processing` in all cases because
+                // video samples refer to specific chunks for where to fetch their
+                // data from. So referring to any of those would result in not being
+                // able to get the video data in the player.
+                let chunk = &add.chunk_after_processing;
+
+                let requires_sorting = !chunk.is_timeline_sorted(&timeline_name);
+                let chunk = if requires_sorting {
+                    &chunk.sorted_by_timeline_if_unsorted(&timeline_name)
+                } else {
+                    chunk
+                };
+
                 if let Some(known_range) = entry.known_chunk_ranges.get(&chunk.id()) {
                     read_samples_from_known_chunk(
                         timeline_name,
@@ -210,8 +210,8 @@ impl VideoStreamCache {
                         video_data,
                     )
                 } else {
-                    match &event.direct_lineage {
-                        Some(ChunkDirectLineageReport::SplitFrom(original_chunk, siblings)) => {
+                    match &add.direct_lineage {
+                        ChunkDirectLineageReport::SplitFrom(original_chunk, siblings) => {
                             handle_split_chunk_addition(
                                 timeline_name,
                                 &mut entry.known_chunk_ranges,
@@ -221,7 +221,7 @@ impl VideoStreamCache {
                                 siblings,
                             )
                         }
-                        Some(ChunkDirectLineageReport::CompactedFrom(old_chunks)) => {
+                        ChunkDirectLineageReport::CompactedFrom(old_chunks) => {
                             handle_compacted_chunk_addition(
                                 timeline_name,
                                 &mut entry.known_chunk_ranges,
@@ -240,10 +240,13 @@ impl VideoStreamCache {
                     }
                 }
             }
-            re_chunk_store::ChunkStoreDiffKind::Deletion => {
+
+            ChunkStoreDiff::Deletion(del) => {
                 let known_ranges = &mut entry.known_chunk_ranges;
-                handle_deletion(entity_db, timeline, video_data, chunk, known_ranges)
+                handle_deletion(entity_db, timeline, video_data, &del.chunk, known_ranges)
             }
+
+            ChunkStoreDiff::VirtualAddition(_) => Ok(()),
         };
 
         if cfg!(debug_assertions)
@@ -251,14 +254,14 @@ impl VideoStreamCache {
         {
             panic!(
                 "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                event.chunk_before_processing.entity_path()
+                event.delta_chunk().map(|c| c.entity_path())
             );
         }
 
         if encoding_details_before != video_data.encoding_details {
             re_log::error_once!(
-                "The video stream codec details on {} changed over time, which is not supported.",
-                event.chunk_before_processing.entity_path()
+                "The video stream codec details on {:?} changed over time, which is not supported.",
+                event.delta_chunk().map(|c| c.entity_path())
             );
             video_renderer.reset_all_decoders();
         }
@@ -1214,8 +1217,11 @@ impl Cache for VideoStreamCache {
         let sample_component = VideoStream::descriptor_sample().component;
 
         for event in events {
-            if !event
-                .chunk_before_processing
+            let Some(delta_chunk) = event.delta_chunk() else {
+                continue;
+            };
+
+            if !delta_chunk
                 .components()
                 .contains_component(sample_component)
             {
@@ -1223,14 +1229,14 @@ impl Cache for VideoStreamCache {
             }
 
             #[expect(clippy::iter_over_hash_type)] //  TODO(#6198): verify that this is fine
-            for col in event.chunk_before_processing.timelines().values() {
+            for col in delta_chunk.timelines().values() {
                 let timeline = col.timeline();
                 self.handle_store_event(
                     entity_db,
                     event,
                     timeline,
                     &VideoStreamKey {
-                        entity_path: event.chunk_before_processing.entity_path().hash(),
+                        entity_path: delta_chunk.entity_path().hash(),
                         timeline: *timeline.name(),
                     },
                 );
