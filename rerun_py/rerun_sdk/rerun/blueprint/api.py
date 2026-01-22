@@ -28,7 +28,7 @@ from .visualizers import VisualizableArchetype, Visualizer
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..memory import MemoryRecording
+    from .._memory import MemoryRecording
     from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
     from .components.loop_mode import LoopModeLike

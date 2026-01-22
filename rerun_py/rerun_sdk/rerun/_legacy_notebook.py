@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from rerun import bindings
 
-from .memory import memory_recording
+from ._memory import memory_recording
 from .recording_stream import RecordingStream, get_application_id
 
 if TYPE_CHECKING:

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
-    from rerun.memory import MemoryRecording
+    from rerun._memory import MemoryRecording
     from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike as TimeColumnLike
@@ -579,7 +579,7 @@ class RecordingStream:
 
         """
 
-        from .memory import memory_recording
+        from ._memory import memory_recording
 
         return memory_recording(self)
 
