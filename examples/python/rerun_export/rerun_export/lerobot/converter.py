@@ -40,6 +40,22 @@ if TYPE_CHECKING:
     )
 
 
+@contextmanager
+def _suppress_ffmpeg_output() -> Iterator[None]:
+    with open(os.devnull, "w") as devnull:
+        old_stdout_fd = os.dup(1)
+        old_stderr_fd = os.dup(2)
+        try:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+            yield
+        finally:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stdout_fd)
+            os.close(old_stderr_fd)
+
+
 def convert_dataframe_to_episode(
     df: dfn.DataFrame,
     config: LeRobotConversionConfig,
@@ -54,9 +70,6 @@ def convert_dataframe_to_episode(
     Args:
         df: DataFusion dataframe containing the segment data (already filtered and aligned)
         config: Conversion configuration
-        video_data_cache: Pre-loaded video data per spec key (samples, times_ns).
-            If None, it will be loaded from the catalog dataset.
-        dataset: Rerun catalog dataset entry used to load video samples when cache is missing
         lerobot_dataset: LeRobot dataset to add frames to
         segment_id: ID of the segment being processed (for logging)
         features: Feature specifications from inference
@@ -141,6 +154,8 @@ def convert_dataframe_to_episode(
             num_rows=num_rows,
         )
         lerobot_dataset.add_frame(frame)
+
+    lerobot_dataset.save_episode()
 
     return True, remux_data, False
 
@@ -233,9 +248,13 @@ def apply_remuxed_videos(
             tmp_path = tmp_file.name
 
         try:
+            # Normalize video timestamps to start at 0, as expected by remuxer
+            video_times_ns = info["times_ns"]
+            video_times_ns_relative = video_times_ns - video_times_ns[0]
+
             remux_video_stream(
                 samples=info["samples"],
-                times_ns=info["times_ns"],
+                times_ns=video_times_ns_relative,
                 output_path=tmp_path,
                 video_format=spec.get("video_format", "h264"),
                 target_fps=remux_data["fps"],
@@ -266,22 +285,6 @@ def _save_episode_without_video_decode(
     remux_data: RemuxData,
 ) -> None:
     """Save an episode without decoding video frames by remuxing source packets directly."""
-
-    @contextmanager
-    def _suppress_ffmpeg_output() -> Iterator[None]:
-        with open(os.devnull, "w") as devnull:
-            old_stdout_fd = os.dup(1)
-            old_stderr_fd = os.dup(2)
-            try:
-                os.dup2(devnull.fileno(), 1)
-                os.dup2(devnull.fileno(), 2)
-                yield
-            finally:
-                os.dup2(old_stdout_fd, 1)
-                os.dup2(old_stderr_fd, 2)
-                os.close(old_stdout_fd)
-                os.close(old_stderr_fd)
-
     if lerobot_dataset.episode_buffer is None:
         lerobot_dataset.episode_buffer = lerobot_dataset.create_episode_buffer()
     episode_index = lerobot_dataset.episode_buffer["episode_index"]
@@ -291,6 +294,7 @@ def _save_episode_without_video_decode(
         episode_index = int(episode_index)
     if lerobot_dataset.meta.total_episodes != episode_index:
         lerobot_dataset.meta.info["total_episodes"] = episode_index
+
     task_col = config.task
     task_values = data_columns.get(task_col, [None] * num_rows) if task_col else [None] * num_rows
 

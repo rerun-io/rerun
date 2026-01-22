@@ -3,16 +3,12 @@ from __future__ import annotations
 
 import os
 import shutil
-from pathlib import Path
 
-import pyarrow as pa
 import rerun as rr
-from datafusion import col, functions as F
 from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
 from rerun_export.lerobot.converter import convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
-from rerun_export.utils import make_time_grid
 
 # Start a server with RRD recordings
 # In practice, you would point this to your directory of RRD files
@@ -41,7 +37,7 @@ training_data = (
         "/external/**",
         "/task_description",
     ])
-    .reader(index="real_time")
+    .reader(index="message_publish_time")
 )
 # endregion: filter_data
 # Define how to extract task instructions from the recording
@@ -91,10 +87,10 @@ if os.path.exists(dataset_root):
 lerobot_dataset = LeRobotDataset.create(
     repo_id="rerun/lerobot_dataset",  # Dataset identifier
     fps=config.fps,
-    features=features,  # Feature schema
-    root=dataset_root,  # Output directory
-    use_videos=config.use_videos,  # Store videos (vs. individual images)
-    video_backend="h264x",  # Video encoding backend
+    features=features,
+    root=dataset_root,
+    use_videos=config.use_videos,
+    video_backend="h264x",
 )
 print("Initialized LeRobot dataset in:", dataset_root)
 # endregion: create_dataset
@@ -116,8 +112,8 @@ convert_dataframe_to_episode(
 # Finalize the dataset (write metadata, close files, etc.)
 lerobot_dataset.finalize()
 
-print("Done!")
-# endregion: export_episode
 
-rr.init("lerobot_export_example", spawn=True)
+# Validate by loading the exported dataset with Rerun
+rr.init("lerobot_export_example", recording_id="episode_0", spawn=True)
 rr.log_file_from_path(dataset_root)
+# endregion: export_episode

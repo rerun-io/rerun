@@ -26,7 +26,7 @@ def _to_sample_bytes(sample: object) -> bytes:
     if isinstance(sample, np.ndarray):
         return sample.tobytes()
     else:
-        return bytes(sample)  # type: ignore
+        return bytes(sample)  # type: ignore[call-overload,no-any-return]
 
 
 def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> VideoSampleData:
@@ -257,13 +257,12 @@ def remux_video_stream(
     output_container = av.open(output_path, mode="w", format="mp4")
 
     # Add stream from template to preserve codec without re-encoding.
-    # Some PyAV versions don't support the template kwarg; fall back to codec name.
-    try:
-        output_stream = output_container.add_stream(template=input_stream)  # type: ignore[call-overload]
-    except TypeError:
-        output_stream = output_container.add_stream(input_stream.codec_context.name)
-        if input_stream.codec_context.extradata:
-            output_stream.codec_context.extradata = input_stream.codec_context.extradata
+    output_stream = output_container.add_stream(input_stream.codec_context.name)
+    assert type(output_stream) is av.VideoStream
+
+    if input_stream.codec_context.extradata:
+        output_stream.codec_context.extradata = input_stream.codec_context.extradata
+
     output_stream.width = width
     output_stream.height = height
 
@@ -283,7 +282,6 @@ def remux_video_stream(
         # Set timestamps from RRD data
         packet.time_base = time_base
         packet.pts = int(times_ns[packet_idx])
-        packet.dts = packet.pts
         packet.stream = output_stream
 
         output_container.mux(packet)
