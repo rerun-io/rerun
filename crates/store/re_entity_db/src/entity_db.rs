@@ -749,6 +749,7 @@ impl EntityDb {
         &mut self,
         fraction_to_purge: f32,
         time_cursor: Option<(Timeline, TimeInt)>,
+        is_active_store: bool,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -771,7 +772,11 @@ impl EntityDb {
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
-            protected_chunks: self.rrd_manifest_index.protected_chunks().clone(),
+            protected_chunks: if is_active_store {
+                self.rrd_manifest_index.protected_chunks().clone()
+            } else {
+                Default::default()
+            },
 
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.

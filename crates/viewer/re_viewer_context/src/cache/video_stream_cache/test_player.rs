@@ -546,7 +546,7 @@ fn unload_chunks(store: &EntityDb, cache: &mut super::VideoStreamCache, keep_ran
         target: re_chunk_store::GarbageCollectionTarget::Everything,
         time_budget: std::time::Duration::from_secs(u64::MAX),
         protect_latest: 0,
-        protected_chunks: store.rrd_manifest_index().protected_chunks().clone(),
+        protected_chunks: Default::default(),
         protected_time_ranges: std::iter::once((
             re_chunk::TimelineName::new(TIMELINE_NAME),
             AbsoluteTimeRange::new(
