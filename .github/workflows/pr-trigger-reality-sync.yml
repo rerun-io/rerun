@@ -61,7 +61,7 @@ jobs:
           # Check performed_via_github_app.id matches our app to prevent spoofing
           SYNC_APP_ID="${{ vars.SYNC_APP_ID }}"
           SYNC_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
-            --jq --arg app_id "$SYNC_APP_ID" '.[] | select((.performed_via_github_app.id | tostring == $app_id) and (.body | contains("Sync complete. Mirror PR in reality:"))) | .id' \
+            | jq -r --arg app_id "$SYNC_APP_ID" '.[] | select((.performed_via_github_app.id | tostring == $app_id) and (.body | contains("Sync complete. Mirror PR in reality:"))) | .id' \
             | head -1)
 
           if [ -n "$SYNC_COMMENT" ]; then
