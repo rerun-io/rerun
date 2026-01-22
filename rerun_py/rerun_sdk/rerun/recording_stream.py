@@ -330,12 +330,20 @@ class RecordingStream:
         self._prev: RecordingStream | None = None
         self.context_token: contextvars.Token[RecordingStream] | None = None
 
+        # Cache references to bindings functions for use in __del__.
+        # During interpreter shutdown, module-level bindings may be garbage collected
+        # before __del__ is called, but instance attributes remain available.
+        self._flush = bindings.flush
+        self._disconnect_orphaned_recordings = bindings.disconnect_orphaned_recordings
+
     @classmethod
     def _from_native(cls, native_recording: bindings.PyRecordingStream) -> RecordingStream:
         self = cls.__new__(cls)
         self.inner = native_recording
         self._prev = None
         self.context_token = None
+        self._flush = bindings.flush
+        self._disconnect_orphaned_recordings = bindings.disconnect_orphaned_recordings
         return self
 
     def __enter__(self) -> RecordingStream:
@@ -394,8 +402,9 @@ class RecordingStream:
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if not recording.is_forked_child():
-            # Flush any pending data (non-blocking)
-            bindings.flush(timeout_sec=0.0, recording=recording)  # NOLINT
+            # Flush any pending data (non-blocking).
+            # Use cached references to avoid issues during interpreter shutdown.
+            self._flush(timeout_sec=0.0, recording=recording)  # NOLINT
 
             # Drop our references to the native recording to make sure things will clean up
             # properly.
@@ -404,7 +413,7 @@ class RecordingStream:
 
             # At this point if there aren't other references to this recording, it's considered
             # orphaned. Do a sweep to clean up any orphaned recordings.
-            bindings.disconnect_orphaned_recordings()  # NOLINT
+            self._disconnect_orphaned_recordings()  # NOLINT
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
