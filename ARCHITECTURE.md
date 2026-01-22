@@ -98,6 +98,7 @@ Of course, this will only take us so far. In the future we plan on caching queri
 
 Here is an overview of the crates included in the project:
 
+<!-- TODO!! -->
 <picture>
   <img src="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/480w.png">
@@ -232,6 +233,7 @@ Update instructions:
 | re_error             | Helpers for handling errors.                                                         |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
+| re_lenses            | Lenses are an API for extracting, transforming, and restructuring component data.    |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
 | re_log_channel       | An in-memory channel of Rerun data messages                                          |
 | re_mcap              | Convert MCAP into Rerun-compatible data.                                             |

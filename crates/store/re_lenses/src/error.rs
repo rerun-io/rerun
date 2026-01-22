@@ -1,7 +1,7 @@
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::EntityPathFilter;
 
-use super::op::OpError;
+use crate::op::OpError;
 
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]

@@ -2,21 +2,17 @@
 //! are applied to chunks that match the specified entity path filter and contain
 //! the target component.
 //!
-//! See [`lenses::Lens`] for more details and assumptions. One way to make use of lenses is
-//! by using the [`lenses::LensesSink`].
+//! See [`Lens`] for more details and assumptions. One way to make use of lenses is
+//! by using the [`LensesSink`].
 
-mod ast;
-mod builder;
-mod error;
-mod op;
-mod semantic;
 mod sink;
 
-pub use self::{
-    // We should be careful not to expose to much implementation details here.
-    ast::{Lens, Lenses, Op, OutputMode},
-    builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
-    error::LensError,
-    op::OpError,
-    sink::LensesSink,
+// Re-exports from re_lenses.
+// We should be careful not to expose too much implementation details here.
+pub use re_lenses::{
+    ColumnsBuilder, Lens, LensBuilder, LensError, Lenses, Op, OpError, OutputMode, PartialChunk,
+    ScatterColumnsBuilder, StaticColumnsBuilder,
 };
+
+// We keep the sink in re_sdk since it depends on LogSink.
+pub use self::sink::LensesSink;
