@@ -1,14 +1,10 @@
 use itertools::Itertools as _;
-
-use re_arrow_util::RecordBatchExt as _;
-use re_arrow_util::{RecordBatchTestExt as _, SchemaTestExt as _};
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
-use re_protos::cloud::v1alpha1::GetRrdManifestRequest;
+use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, GetRrdManifestRequest};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_sdk::external::re_log_encoding::RrdManifest;
-use re_sdk::external::re_log_encoding::ToApplication as _;
+use re_sdk::external::re_log_encoding::{RrdManifest, ToApplication as _};
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 
