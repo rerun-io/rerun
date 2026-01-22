@@ -57,11 +57,11 @@ jobs:
           PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
           echo "Checking PR #${PR_NUMBER} for existing sync comment…"
 
-          # Look for "Sync complete" comment from previous sync
-          SYNC_COMMENT=$(gh pr view "$PR_NUMBER" \
-            --repo ${{ github.repository }} \
-            --json comments \
-            --jq '.comments[] | select(.body | contains("Sync complete. Mirror PR in reality:")) | .id' \
+          # Look for "Sync complete" comment from the sync bot (GitHub App)
+          # Check performed_via_github_app.id matches our app to prevent spoofing
+          SYNC_APP_ID="${{ vars.SYNC_APP_ID }}"
+          SYNC_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq --arg app_id "$SYNC_APP_ID" '.[] | select((.performed_via_github_app.id | tostring == $app_id) and (.body | contains("Sync complete. Mirror PR in reality:"))) | .id' \
             | head -1)
 
           if [ -n "$SYNC_COMMENT" ]; then
@@ -70,6 +70,29 @@ jobs:
           else
             echo "has_sync=false" >> $GITHUB_OUTPUT
             echo "No existing sync comment found, skipping auto-sync"
+          fi
+
+      - name: Check if pusher has write access (push events only)
+        if: github.event_name == 'pull_request'
+        id: check-pusher
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          PUSHER="${{ github.event.sender.login }}"
+          REPO="${{ github.repository }}"
+
+          # Check if user has write or admin permission on this repo
+          PERMISSION=$(gh api "repos/$REPO/collaborators/$PUSHER/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+
+          echo "User $PUSHER has permission: $PERMISSION"
+
+          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "User $PUSHER is authorized (permission: $PERMISSION)"
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "User $PUSHER is NOT authorized (permission: $PERMISSION)"
           fi
 
       - name: Check if commenter has write access (comment events only)
@@ -120,13 +143,16 @@ jobs:
               echo "Will not proceed: unauthorized comment"
             fi
           else
-            # Push trigger: need existing sync comment
-            if [ "${{ steps.check-sync-comment.outputs.has_sync }}" = "true" ]; then
-              echo "proceed=true" >> $GITHUB_OUTPUT
-              echo "Will proceed: push to previously synced PR"
-            else
+            # Push trigger: need existing sync comment AND authorized pusher
+            if [ "${{ steps.check-sync-comment.outputs.has_sync }}" != "true" ]; then
               echo "proceed=false" >> $GITHUB_OUTPUT
               echo "Will not proceed: no previous sync"
+            elif [ "${{ steps.check-pusher.outputs.authorized }}" != "true" ]; then
+              echo "proceed=false" >> $GITHUB_OUTPUT
+              echo "Will not proceed: pusher not authorized"
+            else
+              echo "proceed=true" >> $GITHUB_OUTPUT
+              echo "Will proceed: authorized push to previously synced PR"
             fi
           fi
 
