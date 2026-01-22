@@ -223,7 +223,12 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+
 "howto/layers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/lerobot_export" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]

@@ -97,19 +97,14 @@ def make_time_grid(min_value: TimeInput, max_value: TimeInput, fps: int) -> npt.
 
     """
     min_array = np.asarray(min_value)
-
     if np.issubdtype(min_array.dtype, np.datetime64):
-        min_dt = np.int64(min_value).astype("datetime64[ns]")
-        max_dt = np.int64(max_value).astype("datetime64[ns]")
         step = np.timedelta64(int(1_000_000_000 / fps), "ns")
-        if max_dt <= min_dt:
-            return np.array([min_dt])
-        return np.arange(min_dt, max_dt, step)
-    min_float = float(min_value)
-    max_float = float(max_value)
-    if max_float <= min_float:
-        return np.array([min_float], dtype=np.float64)
-    return np.arange(min_float, max_float, 1.0 / fps)
+        if max_value <= min_value:
+            return np.array([min_value])
+        return np.arange(min_value, max_value, step)
+    if max_value <= min_value:
+        return np.array([min_value], dtype=np.float64)
+    return np.arange(float(min_value), float(max_value), 1.0 / fps)
 
 
 def get_entity_path(fully_qualified_column: str | None) -> str | None:

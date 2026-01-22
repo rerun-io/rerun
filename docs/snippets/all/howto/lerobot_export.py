@@ -5,16 +5,19 @@ import os
 import shutil
 from pathlib import Path
 
+import pyarrow as pa
 import rerun as rr
+from datafusion import col, functions as F
 from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
 from rerun_export.lerobot.converter import convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+from rerun_export.utils import make_time_grid
 
 # Start a server with RRD recordings
 # In practice, you would point this to your directory of RRD files
 # TODO(gijsd): replace with a real dataset path
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = "/Users/gijsd/rerun-io/rrds-demo/"
 
 server = rr.server.Server(datasets={"robot_dataset": sample_5_path})
 client = server.client()
@@ -23,7 +26,7 @@ dataset = client.get_dataset(name="robot_dataset")
 
 # region: filter_data
 # Select a single recording (episode) to export
-single_recording = "rec_1311b0cfac384c3fb502800bfd5d3686"
+single_recording = dataset.segment_ids()[0]
 
 # Filter the dataset to include only the data we need for training:
 # - Action commands sent to the robot
@@ -33,36 +36,34 @@ single_recording = "rec_1311b0cfac384c3fb502800bfd5d3686"
 training_data = (
     dataset.filter_segments(single_recording)
     .filter_contents([
-        "/action/joint_positions",
-        "/observation/joint_positions",
-        "/camera/**",
-        "/language_instruction",
+        "/robot_right/**",
+        "/robot_left/**",
+        "/external/**",
+        "/task_description",
     ])
     .reader(index="real_time")
 )
 # endregion: filter_data
-
-# region: configure_export
 # Define how to extract task instructions from the recording
 # This could be from a TextDocument, static metadata, etc.
 # For this example, we assume a static instruction
-instructions = "/language_instruction:TextDocument:text"
+instructions = "/task_description:foxglove.KeyValuePair:message"
 
 # Specify video streams to include in the dataset
 # Each stream needs a key (camera identifier) and path to the VideoStream component
 videos = [
-    VideoSpec(key="ext1", path="/camera/ext1", video_format="h264"),
-    VideoSpec(key="ext2", path="/camera/ext2", video_format="h264"),
-    VideoSpec(key="wrist", path="/camera/wrist", video_format="h264"),
+    VideoSpec(key="cam_high", path="/external/cam_high/video_compressed", video_format="h264"),
+    VideoSpec(key="cam_low", path="/external/cam_low/video_compressed", video_format="h264"),
+    VideoSpec(key="wrist", path="/robot_right/wrist_camera/video_compressed", video_format="h264"),
 ]
 
 # Configure the conversion parameters
 # This maps Rerun's flexible data model to LeRobot's standardized format
 config = LeRobotConversionConfig(
-    fps=15,  # Target framerate for the dataset
-    index_column="real_time",  # Timeline to use for alignment
-    action="/action/joint_positions:Scalars:scalars",  # Fully qualified action column
-    state="/observation/joint_positions:Scalars:scalars",  # Fully qualified state column
+    fps=50,  # Target framerate for the dataset
+    index_column="message_publish_time",  # Timeline to use for alignment
+    action="/robot_left/joint_states:schemas.proto.JointState:joint_positions",  # Fully qualified action column
+    state="/robot_right/joint_states:schemas.proto.JointState:joint_positions",  # Fully qualified state column
     task=instructions,  # Task description column
     videos=videos,  # Video streams to include
     dataset=dataset,
@@ -88,7 +89,7 @@ if os.path.exists(dataset_root):
     shutil.rmtree(dataset_root)
 
 lerobot_dataset = LeRobotDataset.create(
-    repo_id="droid/gripper-closing",  # Dataset identifier
+    repo_id="rerun/lerobot_dataset",  # Dataset identifier
     fps=config.fps,
     features=features,  # Feature schema
     root=dataset_root,  # Output directory
@@ -117,3 +118,6 @@ lerobot_dataset.finalize()
 
 print("Done!")
 # endregion: export_episode
+
+rr.init("lerobot_export_example", spawn=True)
+rr.log_file_from_path(dataset_root)

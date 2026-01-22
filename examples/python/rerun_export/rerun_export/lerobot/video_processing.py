@@ -25,9 +25,8 @@ def _to_sample_bytes(sample: object) -> bytes:
     """Convert a video sample to raw bytes."""
     if isinstance(sample, np.ndarray):
         return sample.tobytes()
-    if isinstance(sample, (bytes, bytearray, memoryview)):
-        return bytes(sample)
-    raise TypeError(f"Unsupported video sample type: {type(sample)}")
+    else:
+        return bytes(sample)  # type: ignore
 
 
 def extract_video_samples(table: pa.Table, *, sample_column: str, time_column: str) -> VideoSampleData:
