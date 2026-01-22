@@ -340,7 +340,7 @@ raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
-rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 ron = { version = "0.11.0", features = ["integer128"] }
 roxmltree = "0.20.0"
 rustdoc-json = "0.9.7"
