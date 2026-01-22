@@ -3,6 +3,8 @@
 .gitattributes linguist-generated=true
 component_column_selector.cpp linguist-generated=true
 component_column_selector.hpp linguist-generated=true
+component_source_kind.cpp linguist-generated=true
+component_source_kind.hpp linguist-generated=true
 filter_by_range.cpp linguist-generated=true
 filter_by_range.hpp linguist-generated=true
 filter_is_not_null.cpp linguist-generated=true

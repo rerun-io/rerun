@@ -3,4 +3,4 @@ source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
 visualizer_type: []
-component_map: [{selector: , target: }]
+component_map: [{target: , source_kind: 0, source_component: , selector: }]
