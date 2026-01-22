@@ -88,7 +88,7 @@ where
             re_protos::headers::new_rerun_headers_layer(name, version, is_client)
         });
 
-    #[cfg(feature = "perf_telemetry")]
+    #[cfg(not(target_arch = "wasm32"))]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
     let svc = tower::ServiceBuilder::new()
