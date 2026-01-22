@@ -1294,6 +1294,7 @@ mod tests {
             time_budget: std::time::Duration::MAX,
             protect_latest: 1,
             protected_time_ranges: Default::default(),
+            protected_chunks: Default::default(),
             furthest_from: None,
             perform_deep_deletions: false,
         });

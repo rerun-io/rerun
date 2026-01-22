@@ -771,6 +771,7 @@ impl EntityDb {
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
+            protected_chunks: self.rrd_manifest_index.protected_chunks().clone(),
 
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.

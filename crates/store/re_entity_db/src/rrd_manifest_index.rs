@@ -157,6 +157,12 @@ pub struct RrdManifestIndex {
     /// so what's in the chunk store can differ significantly.
     remote_chunks: HashMap<ChunkId, ChunkInfo>,
 
+    /// Chunks that the prefetcher marked as either to keep or to
+    /// load last time it was ran.
+    ///
+    /// These chunks are protected from being gc'd.
+    protected_chunks: HashSet<ChunkId>,
+
     chunk_promises: ChunkPromises,
 
     /// Full time range per timeline
@@ -261,6 +267,10 @@ impl RrdManifestIndex {
     /// Info about a chunk that is in the manifest
     pub fn remote_chunk_info(&self, chunk_id: &ChunkId) -> Option<&ChunkInfo> {
         self.remote_chunks.get(chunk_id)
+    }
+
+    pub fn protected_chunks(&self) -> &HashSet<ChunkId> {
+        &self.protected_chunks
     }
 
     fn update_timeline_stats(&mut self) {
@@ -526,6 +536,7 @@ impl RrdManifestIndex {
 
         let entity_paths = manifest.col_chunk_entity_path_raw()?;
 
+        self.protected_chunks.clear();
         // We might reach our budget limits before we enqueue all `missing_chunk_ids`.
         // That's fine: they will still be missing next frame, and therefore will still be reported
         // as such by the store.
@@ -565,6 +576,8 @@ impl RrdManifestIndex {
                     break; // We've already loaded too much.
                 }
             }
+
+            self.protected_chunks.insert(chunk_id);
 
             if remote_chunk.state == LoadState::Unloaded {
                 let Ok(row_idx) = i32::try_from(row_idx) else {
@@ -805,6 +818,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             native_static_map,
             native_temporal_map,
             remote_chunks,
+            protected_chunks,
             static_chunk_ids,
             timelines,
             full_uncompressed_size: _,
@@ -832,6 +846,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             native_temporal_map.total_size_bytes(),
         );
         node.add("remote_chunks", remote_chunks.total_size_bytes());
+        node.add("protected_chunks", protected_chunks.total_size_bytes());
         node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
         node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
         node.add("timelines", timelines.total_size_bytes());
