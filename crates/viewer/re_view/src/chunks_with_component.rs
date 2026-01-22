@@ -31,6 +31,14 @@ impl ChunksWithComponent<'_> {
             component: self.component,
         })
     }
+
+    #[inline]
+    pub fn empty(component: ComponentIdentifier) -> Self {
+        Self {
+            chunks: Cow::Borrowed(&[]),
+            component,
+        }
+    }
 }
 
 /// Like [`ChunksWithComponent`] but for a single chunk.

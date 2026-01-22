@@ -57,6 +57,15 @@ impl VisualizerComponentSource {
             ComponentSourceKind::Fallback => Self::Fallback,
         }
     }
+
+    pub fn source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+            Self::Fallback => ComponentSourceKind::Fallback,
+        }
+    }
 }
 
 /// Component mappings for a visualizer instruction.
@@ -82,6 +91,7 @@ pub struct VisualizerInstruction {
     /// Component mappings from target to source (selector).
     ///
     /// Keys are target components, values describe where to source components (selectors).
+    /// Any target component not present here uses an auto-mapping strategy.
     pub component_mappings: VisualizerComponentMappings,
 }
 

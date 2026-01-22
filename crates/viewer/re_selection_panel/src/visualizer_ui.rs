@@ -211,14 +211,12 @@ fn visualizer_components(
     let query_ctx = ctx.query_context(data_result, &store_query);
 
     // Query fully resolved data.
-    let query_shadowed_defaults = true;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
         query_info.queried_components(),
-        query_shadowed_defaults,
         Some(instruction),
     );
 
