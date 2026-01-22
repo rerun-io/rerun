@@ -2,8 +2,8 @@
 //! are applied to chunks that match the specified entity path filter and contain
 //! the target component.
 //!
-//! See [`Lens`] for more details and assumptions. One way to make use of lenses is
-//! by using the [`LensesSink`].
+//! See [`crate::lenses::Lens`] for more details and assumptions. One way to make use of lenses is
+//! by using the [`crate::lenses::LensesSink`].
 
 mod sink;
 

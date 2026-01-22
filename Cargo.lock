@@ -9589,7 +9589,6 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "uuid",
- "vec1",
  "webbrowser",
 ]
 
