@@ -410,13 +410,12 @@ impl VideoPlayer {
             requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
 
         loop {
-            let last_enqueued: SampleIndex = self
-                .last_enqueued
-                .expect("We ensured that at least one keyframe was enqueued.");
+            let Some(last_enqueued) = self.last_enqueued else {
+                break;
+            };
+
             // Enqueued enough samples as described above?
-            if requested_keyframe_idx < keyframe_idx // Stay one keyframe ahead of the current one.
-                && last_enqueued >= min_last_sample_idx
-            {
+            if last_enqueued >= min_last_sample_idx {
                 break;
             }
 
@@ -468,7 +467,17 @@ impl VideoPlayer {
                     .gop_sample_range_for_keyframe(keyframe_idx)
                     .ok_or(VideoPlayerError::BadData)?;
 
-                let range = (last_enqueued + 1)..keyframe_range.end;
+                // Make sure we keep the keyframe
+                if let Some(sample) = video_description.samples.get(keyframe_range.start) {
+                    get_video_buffer(sample.source_id());
+                }
+
+                let range = (last_enqueued + 1)
+                    ..keyframe_range.end.min(
+                        requested_sample_idx
+                            + self.sample_decoder.max_num_samples_to_enqueue_ahead()
+                            + 1,
+                    );
                 self.enqueue_sample_range(
                     video_description,
                     &range,
@@ -600,16 +609,24 @@ impl VideoPlayer {
         requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
+        let max_last_sample_idx =
+            requested_sample_idx + self.sample_decoder.max_num_samples_to_enqueue_ahead();
         let sample_range = video_description
             .gop_sample_range_for_keyframe(keyframe_idx)
             .ok_or(VideoPlayerError::BadData)?;
 
-        self.enqueue_sample_range(
-            video_description,
-            &sample_range,
-            requested_sample_idx,
-            get_video_buffer,
-        )
+        if sample_range.start < max_last_sample_idx {
+            let sample_range = sample_range.start..sample_range.end.min(max_last_sample_idx + 1);
+
+            self.enqueue_sample_range(
+                video_description,
+                &sample_range,
+                requested_sample_idx,
+                get_video_buffer,
+            )
+        } else {
+            Ok(())
+        }
     }
 
     /// Enqueues sample range *within* a keyframe range.

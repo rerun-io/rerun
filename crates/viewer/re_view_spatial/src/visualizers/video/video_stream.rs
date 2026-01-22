@@ -161,10 +161,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
                 let get_chunk_array = |id| {
-                    let Some(chunk) = storage_engine.store().physical_chunk(&id) else {
-                        storage_engine.store().insert_missing_chunk_id(id);
-                        return None;
-                    };
+                    storage_engine.store().insert_missing_chunk_id(id);
+                    let chunk = storage_engine.store().physical_chunk(&id)?;
 
                     let sample_component = VideoStream::descriptor_sample().component;
 

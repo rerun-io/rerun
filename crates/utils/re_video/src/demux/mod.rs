@@ -225,7 +225,7 @@ impl VideoDataDescription {
     pub fn gop_sample_range_for_keyframe(
         &self,
         keyframe_idx: usize,
-    ) -> Option<std::ops::Range<usize>> {
+    ) -> Option<std::ops::Range<SampleIndex>> {
         Some(
             *self.keyframe_indices.get(keyframe_idx)?
                 ..self

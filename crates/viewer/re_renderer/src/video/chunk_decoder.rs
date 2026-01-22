@@ -191,6 +191,10 @@ impl VideoSampleDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
+    pub fn max_num_samples_to_enqueue_ahead(&self) -> usize {
+        self.min_num_samples_to_enqueue_ahead() + 10
+    }
+
     /// Returns the latest decoded frame at the given PTS and drops all earlier frames than the given PTS.
     ///
     /// Afterwards, you can retrieve the frame that is at or after the PTS using [`Self::oldest_available_frame`]
