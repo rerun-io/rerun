@@ -1,5 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
+mod batch_coalescer;
 mod catalog_provider;
 mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
