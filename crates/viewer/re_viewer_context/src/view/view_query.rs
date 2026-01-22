@@ -57,6 +57,15 @@ impl VisualizerComponentSource {
             ComponentSourceKind::Fallback => Self::Fallback,
         }
     }
+
+    pub fn component_source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+            Self::Fallback => ComponentSourceKind::Fallback,
+        }
+    }
 }
 
 /// Component mappings for a visualizer instruction.
