@@ -282,6 +282,7 @@ def remux_video_stream(
         # Set timestamps from RRD data
         packet.time_base = time_base
         packet.pts = int(times_ns[packet_idx])
+        packet.dts = packet.pts
         packet.stream = output_stream
 
         output_container.mux(packet)

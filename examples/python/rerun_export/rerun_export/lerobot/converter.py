@@ -354,9 +354,12 @@ def _save_episode_without_video_decode(
         temp_path = temp_dir / f"{video_key.replace('.', '_')}_{episode_index:03d}.mp4"
 
         with _suppress_ffmpeg_output():
+            video_times_ns = info["times_ns"]
+            video_times_ns_relative = video_times_ns - video_times_ns[0]
+
             remux_video_stream(
                 samples=info["samples"],
-                times_ns=info["times_ns"],
+                times_ns=video_times_ns_relative,
                 output_path=str(temp_path),
                 video_format=spec.get("video_format", "h264"),
                 target_fps=fps,
