@@ -157,7 +157,6 @@ pub fn points_to_series(
 
         all_series.push(PlotSeries {
             visible,
-            id: egui::Id::new(&instance_path),
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
@@ -267,13 +266,10 @@ fn add_series_runs(
 ) {
     re_tracing::profile_function!();
 
-    let id = egui::Id::new(&instance_path);
-
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
         visible,
-        id,
         label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
@@ -301,7 +297,6 @@ fn add_series_runs(
                 &mut series,
                 PlotSeries {
                     visible,
-                    id,
                     label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,

@@ -83,9 +83,6 @@ pub struct PlotSeries {
     /// Id of the visualizer instruction that is responsible for this series.
     pub visualizer_instruction_id: VisualizerInstructionId,
 
-    /// Id used for this series in the egui plot view.
-    pub id: egui::Id,
-
     /// Whether the individual series is visible.
     ///
     /// If this is false, [`PlotSeries::points`] is allowed to be empty.
