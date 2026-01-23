@@ -79,11 +79,11 @@ fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
             caps[0].to_string()
         } else {
             modified = true;
-            let new_id = format!("{}_dup", id);
+            let new_id = format!("{id}_dup");
             re_log::warn_once!(
                 "Renamed duplicate ID in DAE file to prevent parser panic: '{id}' -> '{new_id}'",
             );
-            format!("id={}{}{}", quote, new_id, quote)
+            format!("id={quote}{new_id}{quote}")
         }
     });
 
