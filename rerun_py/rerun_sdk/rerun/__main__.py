@@ -8,6 +8,8 @@ importing the module.
 
 from __future__ import annotations
 
+import sys
+
 from rerun_cli.__main__ import main as cli_main
 
 from rerun import unregister_shutdown
@@ -22,4 +24,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
