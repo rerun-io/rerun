@@ -933,3 +933,17 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
     (0.35 * screen_width).min(200.0).round()
 }
+
+impl re_byte_size::MemUsageTreeCapture for AppState {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+
+        let mut tree = re_byte_size::MemUsageNode::default();
+        tree.add(
+            "blueprint_undo_state",
+            self.blueprint_undo_state.total_size_bytes(),
+        );
+        tree.add("view_states", self.view_states.total_size_bytes());
+        tree.into_tree()
+    }
+}

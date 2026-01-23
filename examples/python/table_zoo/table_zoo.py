@@ -338,7 +338,7 @@ def main() -> int:
     # Compute the exact default cache directory used when --cache-dir is not provided.
     default_cache_dir = _get_cache_dir() / "lancedb"
     parser.add_argument(
-        "--host", default="::", help="Server host or IP. Default matches current viewer behavior: :: (dual-stack)"
+        "--host", default="0.0.0.0", help="Server host or IP. Default matches current viewer behavior: 0.0.0.0"
     )
     parser.add_argument(
         "--port", type=int, help="Server port. Defaults: 9876 for viewer mode; 51234 for register mode."

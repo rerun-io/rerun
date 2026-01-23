@@ -97,6 +97,11 @@ impl re_byte_size::SizeBytes for ChunkStoreConfig {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl ChunkStoreConfig {

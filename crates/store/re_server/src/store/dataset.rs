@@ -2,14 +2,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, RecordBatchOptions};
-use arrow::datatypes::{Fields, Schema};
-use itertools::Either;
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, create_array};
+use arrow::datatypes::{Field, Fields, Schema};
+use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_encoding::RrdManifest;
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
     EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
@@ -211,12 +211,15 @@ impl Dataset {
         let mut num_chunks = Vec::with_capacity(row_count);
         let mut size_bytes = Vec::with_capacity(row_count);
 
+        let mut all_index_ranges = Vec::with_capacity(row_count);
+
         for (segment_id, segment) in &self.inner.segments {
             let layer_count = segment.layer_count();
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
             let mut current_segment_properties = BTreeMap::default();
+            let mut current_segment_indexes = BTreeMap::default();
 
             for (layer_name, layer) in segment.iter_layers() {
                 layer_names_row.push(layer_name.to_owned());
@@ -237,6 +240,11 @@ impl Dataset {
                         Arc::clone(layer_properties.column(col_idx)),
                     );
                 }
+
+                for (time_name, range) in layer.index_ranges() {
+                    let entry = current_segment_indexes.entry(time_name).or_insert(range);
+                    *entry = entry.union(range);
+                }
             }
 
             let properties_batch = RecordBatch::try_new_with_options(
@@ -255,7 +263,52 @@ impl Dataset {
             )
             .map_err(Error::failed_to_extract_properties)?;
 
+            let indexes_batch = RecordBatch::try_new_with_options(
+                Arc::new(Schema::new_with_metadata(
+                    current_segment_indexes
+                        .keys()
+                        .flat_map(|timeline| {
+                            ["end", "start"].into_iter().map(|index_marker| {
+                                let metadata: HashMap<_, _> = [
+                                    ("rerun:index".to_owned(), timeline.name().to_string()),
+                                    ("rerun:index_kind".to_owned(), timeline.typ().to_string()),
+                                    ("rerun:index_marker".to_owned(), index_marker.to_owned()),
+                                    ("rerun:kind".to_owned(), "index".to_owned()),
+                                ]
+                                .into_iter()
+                                .collect();
+                                let field_name = format!("{}:{index_marker}", timeline.name());
+                                let data_type = timeline.datatype();
+                                Arc::new(
+                                    Field::new(field_name, data_type, true).with_metadata(metadata),
+                                )
+                            })
+                        })
+                        .collect_vec(),
+                    HashMap::default(),
+                )),
+                current_segment_indexes
+                    .into_iter()
+                    .flat_map(|(timeline, range)| match timeline.typ() {
+                        TimeType::Sequence => [
+                            create_array!(Int64, [range.max().as_i64()]) as ArrayRef,
+                            create_array!(Int64, [range.min().as_i64()]) as ArrayRef,
+                        ],
+                        TimeType::DurationNs => [
+                            create_array!(DurationNanosecond, [range.max().as_i64()]) as ArrayRef,
+                            create_array!(DurationNanosecond, [range.min().as_i64()]) as ArrayRef,
+                        ],
+                        TimeType::TimestampNs => [
+                            create_array!(TimestampNanosecond, [range.max().as_i64()]) as ArrayRef,
+                            create_array!(TimestampNanosecond, [range.min().as_i64()]) as ArrayRef,
+                        ],
+                    })
+                    .collect(),
+                &RecordBatchOptions::default().with_row_count(Some(1)),
+            )?;
+
             all_segment_properties.push(properties_batch);
+            all_index_ranges.push(indexes_batch);
 
             segment_ids.push(segment_id.to_string());
             layer_names.push(layer_names_row);
@@ -268,6 +321,8 @@ impl Dataset {
         let properties_record_batch =
             re_arrow_util::concat_polymorphic_batches(all_segment_properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
+        let indexes_record_batch =
+            re_arrow_util::concat_polymorphic_batches(all_index_ranges.as_slice())?;
 
         let base_record_batch = ScanSegmentTableResponse::create_dataframe(
             segment_ids,
@@ -281,7 +336,9 @@ impl Dataset {
 
         base_record_batch
             .concat_horizontally_with(&properties_record_batch)
-            .map_err(Error::failed_to_extract_properties)
+            .map_err(Error::failed_to_extract_properties)?
+            .concat_horizontally_with(&indexes_record_batch)
+            .map_err(Into::into)
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {

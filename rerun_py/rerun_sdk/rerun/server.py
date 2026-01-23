@@ -35,11 +35,11 @@ class Server:
     import rerun as rr
 
     # Start a server with some datasets
-    with rr.Server(port=9876, datasets={"my_data": "path/to/data.rrd"}) as server:
+    with rr.server.Server(port=9876, datasets={"my_data": ["path/to/data.rrd"]}) as server:
         client = server.client()
 
         # Use the client to interact with the catalog
-        datasets = client.datasets()
+        dataset = client.get_dataset("my_data")
     ```
 
     """
@@ -47,11 +47,11 @@ class Server:
     def __init__(
         self,
         *,
-        host: str = "::",
+        host: str = "0.0.0.0",
         port: int | None = None,
         datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
-        addr: str = "::",
+        addr: str = "0.0.0.0",
     ) -> None:
         """
         Create a new Rerun server instance and start it.
@@ -78,7 +78,7 @@ class Server:
 
         """
 
-        if host == "::" and addr != "::":
+        if host == "0.0.0.0" and addr != "0.0.0.0":
             host = addr
             _send_warning_or_raise(
                 "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `host`.",

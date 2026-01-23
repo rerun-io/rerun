@@ -232,7 +232,7 @@ impl EyeController {
         Eye {
             world_from_rub_view: IsoTransform::look_at_rh(
                 self.pos,
-                if self.pos == self.look_target {
+                if self.pos.distance_squared(self.look_target) < 1e-6 {
                     self.pos + Vec3::Y
                 } else {
                     self.look_target

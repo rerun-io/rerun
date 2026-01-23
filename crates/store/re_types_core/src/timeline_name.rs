@@ -27,10 +27,3 @@ impl TimelineName {
         Self::new("log_tick")
     }
 }
-
-impl re_byte_size::SizeBytes for TimelineName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}

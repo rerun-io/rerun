@@ -262,6 +262,10 @@ pub trait ViewState: std::any::Any + Sync + Send {
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    fn size_bytes(&self) -> u64 {
+        0 // TODO(emilk): implement this for large view statses
+    }
 }
 
 /// Implementation of an empty view state.

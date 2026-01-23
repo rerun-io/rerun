@@ -159,6 +159,11 @@ impl SizeBytes for MyPoint {
         let Self { x: _, y: _ } = self;
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl Loggable for MyPoint {
@@ -274,6 +279,11 @@ impl SizeBytes for MyPoint64 {
         let Self { x: _, y: _ } = self;
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl Loggable for MyPoint64 {
@@ -386,6 +396,11 @@ impl SizeBytes for MyColor {
     fn heap_size_bytes(&self) -> u64 {
         let Self(_) = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -506,6 +521,11 @@ impl SizeBytes for MyIndex {
     fn heap_size_bytes(&self) -> u64 {
         let Self(_) = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 

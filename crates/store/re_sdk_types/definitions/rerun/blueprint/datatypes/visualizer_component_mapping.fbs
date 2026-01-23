@@ -1,13 +1,63 @@
 namespace rerun.blueprint.datatypes;
 
+/// What kind of source to use for a visualizer component mapping.
+enum ComponentSourceKind: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Use an explicit selection defined by `source_component`.
+    ///
+    /// May or may not make use of a selector string.
+    SourceComponent,
+
+    /// Use a timeless override value that is defined in the blueprint.
+    ///
+    /// The override value is stored on the same entity as the visualizer instruction
+    /// and uses the `target` as its component name.
+    Override,
+
+    /// Default as specified on the view's blueprint.
+    Default,
+
+    /// Make use of the viewer's fallback logic to produce a value.
+    Fallback,
+
+    // TODO(RR-3399): Merge Default & Fallback?
+}
+
+
 /// Associate components of an entity to components of a visualizer.
 table VisualizerComponentMapping (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default"
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
-  /// Component selector for mapping.
-  selector: rerun.datatypes.Utf8 (order: 100);
+  /// Target component name which is being mapped to.
+  ///
+  /// This represents a "slot" on the visualizer.
+  target: rerun.datatypes.Utf8 (order: 100);
 
-  /// Target component name.
-  target: rerun.datatypes.Utf8 (order: 200);
+  /// What kind of source to pick.
+  source_kind: ComponentSourceKind (order: 200);
+
+  /// Component selector for mapping.
+  ///
+  /// Defaults to `target` if not specified.
+  source_component: rerun.datatypes.Utf8 (nullable, order: 300);
+
+  /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+  ///
+  /// Defaults to empty string if not specified.
+  selector: rerun.datatypes.Utf8 (nullable, order: 400);
+
+  // Motivation for separating `source_component` and `selector`:
+  // Component names may have dots in them, making parsing hard.
+  // Example:
+  // * component name: "andreas.position"  (where the selector is empty!)
+  // * component query: "andreas.position.x" (where "x" is the selector)
+  //
+  // Counter argument:
+  // May cause some UI complexity because we have now to make the distinction there on the fly.
 }
+

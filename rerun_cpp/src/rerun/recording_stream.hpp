@@ -187,7 +187,7 @@ namespace rerun {
         ///
         /// This function returns immediately.
         Result<std::string> serve_grpc(
-            std::string_view bind_ip = "::", uint16_t port = 9876,
+            std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
             std::string_view server_memory_limit = "25%",
             PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
         ) const;

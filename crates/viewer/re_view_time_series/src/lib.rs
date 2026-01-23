@@ -114,7 +114,7 @@ enum LoadSeriesError {
     ViewPropertyQuery(ViewPropertyQueryError),
     EntitySpecificVisualizerError {
         entity_path: EntityPath,
-        error: String,
+        err: String,
     },
 }
 

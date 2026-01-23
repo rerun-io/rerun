@@ -10,6 +10,7 @@ mod header_tooltip;
 mod re_table;
 pub mod re_table_utils;
 mod requested_object;
+mod streaming_cache;
 mod table_blueprint;
 mod table_selection;
 
@@ -22,6 +23,7 @@ pub use self::filters::{
 };
 pub use self::header_tooltip::column_header_tooltip_ui;
 pub use self::requested_object::RequestedObject;
+pub use self::streaming_cache::{CacheState, StreamingCacheTableProvider};
 pub use self::table_blueprint::{
     ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
 };

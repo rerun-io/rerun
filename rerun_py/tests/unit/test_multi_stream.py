@@ -29,6 +29,18 @@ def test_init_twice() -> None:
     assert recording_id == rr.get_recording_id()
 
 
+def test_recording_stream_twice() -> None:
+    """For `RecordingStream`, the default should be to have new, unique recording ids."""
+
+    with rr.RecordingStream("rerun_example_bug") as rec:
+        id1 = rec.get_recording_id()
+
+    with rr.RecordingStream("rerun_example_bug") as rec:
+        id2 = rec.get_recording_id()
+
+    assert id1 != id2
+
+
 def test_isolated_streams(tmp_path: Path) -> None:
     rec1_path = f"{tmp_path}/rec1.rrd"
     rec2_path = f"{tmp_path}/rec2.rrd"

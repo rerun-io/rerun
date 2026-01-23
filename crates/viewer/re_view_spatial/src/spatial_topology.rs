@@ -3,8 +3,7 @@ use std::sync::OnceLock;
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
-    ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::Component as _;
@@ -141,10 +140,10 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if event.diff.kind != ChunkStoreDiffKind::Addition {
+            let Some(add) = event.to_addition() else {
                 // Topology is only additive, don't care about removals.
                 continue;
-            }
+            };
 
             // Possible optimization:
             // only update topologies if an entity is logged the first time or a new relevant component was added.
@@ -152,8 +151,8 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
                 .entry(event.store_id.clone())
                 .or_default()
                 .on_store_diff(
-                    event.diff.chunk_before_processing.entity_path(),
-                    event.diff.chunk_before_processing.component_descriptors(),
+                    add.delta_chunk().entity_path(),
+                    add.delta_chunk().component_descriptors(),
                 );
         }
     }

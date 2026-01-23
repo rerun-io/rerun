@@ -45,7 +45,7 @@ These transforms can be directly sent to Rerun.
 Load a URDF file and access its structure:
 
 ```python
-urdf_tree = rr.urdf.UrdfTree.from_file_path("robot.urdf")
+urdf_tree = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix=None)
 
 # Access properties
 robot_name = urdf_tree.name
@@ -55,7 +55,11 @@ joints = urdf_tree.joints()
 # Lookup by name
 urdf_tree.get_joint_by_name("shoulder")
 urdf_tree.get_link_by_name("base_link")
-urdf_tree.get_link_path_by_name("end_effector")  # Entity path for logging additional data e.g. images
+
+# Get the entity paths of collision or visual geometries of a link.
+# This can be used for example to update the color / transparency during runtime:
+for visual_path in urdf_tree.get_visual_geometry_paths("gripper"):
+    rec.log(visual_path, rr.Asset3D.from_fields(albedo_factor=[255, 0, 0, 100]), static=True)
 ```
 
 ### UrdfJoint

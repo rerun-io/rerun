@@ -41,7 +41,10 @@ pub use self::dataframe::{
     Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
 };
-pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
+pub use self::events::{
+    ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion, ChunkStoreDiffVirtualAddition,
+    ChunkStoreEvent,
+};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
 pub use self::properties::ExtractPropertiesError;

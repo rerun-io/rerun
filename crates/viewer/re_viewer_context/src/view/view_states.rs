@@ -24,6 +24,20 @@ pub struct ViewStates {
     visualizer_errors: HashMap<ViewId, PerVisualizer<VisualizerExecutionErrorState>>,
 }
 
+impl re_byte_size::SizeBytes for ViewStates {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            states,
+            visualizer_errors,
+        } = self;
+        states
+            .iter()
+            .map(|(key, state)| key.total_size_bytes() + state.size_bytes())
+            .sum::<u64>()
+            + visualizer_errors.heap_size_bytes()
+    }
+}
+
 impl ViewStates {
     pub fn get(&self, view_id: ViewId) -> Option<&dyn ViewState> {
         self.states.get(&view_id).map(|s| s.as_ref())

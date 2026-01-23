@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from rerun.color_conversion import linear_to_gamma_u8_pixel, linear_to_gamma_u8_value
+from rerun._color_conversion import linear_to_gamma_u8_pixel, linear_to_gamma_u8_value
 
 
 def test_linear_to_gamma_u8_value() -> None:

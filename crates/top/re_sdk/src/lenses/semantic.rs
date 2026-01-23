@@ -1,4 +1,6 @@
 //! Semantic array transforms for concrete applications.
+//!
+//! Note: These should not be exposed as part of the public API, but rather wrapped in [`super::Op`].
 
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -11,9 +13,9 @@ use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
 use re_sdk_types::components::VideoCodec;
 
-use crate::cast::DowncastRef;
-use crate::reshape::GetField;
-use crate::{Error, Transform};
+use re_arrow_combinators::cast::DowncastRef;
+use re_arrow_combinators::reshape::GetField;
+use re_arrow_combinators::{Error, Transform};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
