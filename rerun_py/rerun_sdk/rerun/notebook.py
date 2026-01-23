@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
-from .event import (
+from ._event import (
     ViewerEvent,
     _viewer_event_from_json_str,
 )
@@ -67,7 +67,7 @@ class Viewer:
     """
     A viewer embeddable in a notebook.
 
-    This viewer is a wrapper around the [`rerun_notebook.Viewer`][] widget.
+    This viewer is a wrapper around the `rerun_notebook.Viewer` widget.
     """
 
     def __init__(
@@ -86,7 +86,7 @@ class Viewer:
         Any data logged to the recording after initialization will be sent directly to the viewer.
 
         This widget can be displayed by returning it at the end of your cells execution, or immediately
-        by calling [`Viewer.display`][].
+        by calling [`rerun.notebook.Viewer.display`][].
 
         Parameters
         ----------
@@ -454,10 +454,6 @@ class Viewer:
             Whether to start playing from the specified time point. Defaults to paused.
         timeline:
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
-        nanoseconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead, with "seconds" as the unit.
-        seconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:

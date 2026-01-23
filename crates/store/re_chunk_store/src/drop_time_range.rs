@@ -95,14 +95,14 @@ impl ChunkStore {
         let mut events: Vec<ChunkStoreEvent> = vec![];
 
         for chunk in chunks_to_drop {
-            for diff in self.remove_chunks_shallow(vec![chunk], None) {
+            for del in self.remove_chunks_shallow(vec![chunk], None) {
                 events.push(ChunkStoreEvent {
                     store_id: self.id.clone(),
                     store_generation: generation.clone(),
                     event_id: self
                         .event_id
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
+                    diff: del.into(),
                 });
             }
         }

@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
 component_column_selector.py linguist-generated=true
+component_source_kind.py linguist-generated=true
 filter_by_range.py linguist-generated=true
 filter_is_not_null.py linguist-generated=true
 selected_columns.py linguist-generated=true

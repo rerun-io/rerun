@@ -1895,16 +1895,20 @@ fn log_arrow_msg(
 
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
-    // It's important that we don't hold the session lock while building our arrow component.
-    // the API we call to back through pyarrow temporarily releases the GIL, which can cause
-    // a deadlock.
     let row = crate::arrow::build_row_from_components(&components, &TimePoint::default())?;
 
-    recording.record_row(entity_path, row, !static_);
+    py.allow_threads(|| {
+        // The call to `allow_threads` releases the GIL.
+        // It is important that we do so here,
+        // because the destructor for the arrow data will acquire the GIL
+        // in order to call back to pyarrow, and that can cause a deadlock,
+        // and the call here may cause that destructor to be invoked.
+        recording.record_row(entity_path, row, !static_);
 
-    py.allow_threads(flush_garbage_queue);
+        flush_garbage_queue();
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Directly send an arrow chunk to the recording stream.
@@ -1942,11 +1946,18 @@ fn send_arrow_chunk(
     // a deadlock.
     let chunk = crate::arrow::build_chunk_from_components(entity_path, &timelines, &components)?;
 
-    recording.send_chunk(chunk);
+    py.allow_threads(|| {
+        // The call to `allow_threads` releases the GIL.
+        // It is important that we do so here,
+        // because the destructor for the arrow data will acquire the GIL
+        // in order to call back to pyarrow, and that can cause a deadlock,
+        // and the call here may cause that destructor to be invoked.
+        recording.send_chunk(chunk);
 
-    py.allow_threads(flush_garbage_queue);
+        flush_garbage_queue();
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Log a file by path.

@@ -105,14 +105,19 @@ pub fn visualizer_ui_impl(
     let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
-            let archetype = ActiveVisualizers::new(
-                active_visualizers
-                    .iter()
-                    .filter(|v| &v.id != visualizer_id)
-                    .map(|v| v.id.0),
-            );
+            let active_visualizers = active_visualizers
+                .iter()
+                .filter(|v| &v.id != visualizer_id)
+                .collect::<Vec<_>>();
+
+            let archetype = ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
 
             ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
+
+            // If there's active visualizers, we also have to make sure that there's visualizer instructions, so time to manifest those.
+            for visualizer_instruction in active_visualizers {
+                visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+            }
         }
         response
     };
@@ -254,7 +259,19 @@ fn visualizer_components(
         let mapped_component = instruction
             .component_mappings
             .get(&unmapped_component_descr.component)
-            .copied()
+            .and_then(|mapping| match mapping {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: _, // TODO(RR-3308): implement selector logic
+                } => Some(*source_component),
+
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
+                    // TODO(RR-3338): Implement ui for other types.
+                    None
+                }
+            })
             .unwrap_or(unmapped_component_descr.component);
 
         // Query all the sources for our value.
@@ -584,7 +601,20 @@ fn source_component_ui(
                 let current = instruction
                     .component_mappings
                     .get(&component_descr.component)
-                    .map_or("", |selector| selector.as_str());
+                    .and_then(|mapping| match mapping {
+                        re_viewer_context::VisualizerComponentSource::SourceComponent {
+                            source_component,
+                            selector: _, // TODO(RR-3308): implement selector logic
+                        } => Some(source_component.as_str()),
+
+                        re_viewer_context::VisualizerComponentSource::Override
+                        | re_viewer_context::VisualizerComponentSource::Default
+                        | re_viewer_context::VisualizerComponentSource::Fallback => {
+                            // TODO(RR-3338): Implement ui for other types.
+                            None
+                        }
+                    })
+                    .unwrap_or("");
 
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
@@ -608,13 +638,29 @@ fn source_component_ui(
 fn save_component_mapping(
     ctx: &ViewContext<'_>,
     instruction: &VisualizerInstruction,
-    selector: ComponentIdentifier,
+    source_component: ComponentIdentifier,
     target: ComponentIdentifier,
 ) {
     let mut updated_instruction = instruction.clone();
 
     // Set or override the mapping
-    updated_instruction.set_mapping(target, selector);
+    match updated_instruction.component_mappings.entry(target) {
+        std::collections::btree_map::Entry::Occupied(mut entry) => {
+            *entry.get_mut() = re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: String::new(), // TODO(RR-3308): implement selector logic
+            };
+        }
+
+        std::collections::btree_map::Entry::Vacant(entry) => {
+            entry.insert(
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: String::new(), // TODO(RR-3308): implement selector logic
+                },
+            );
+        }
+    }
 
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);

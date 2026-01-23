@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
@@ -8,8 +9,8 @@ use re_chunk::{
     TimePoint, Timeline, TimelineName,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
+    ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
@@ -676,26 +677,31 @@ impl EntityDb {
             .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.time_histogram_per_timeline
-            .on_events(&self.rrd_manifest_index, store_events);
+        self.time_histogram_per_timeline.on_events(
+            engine.store(),
+            &self.rrd_manifest_index,
+            store_events,
+        );
         self.rrd_manifest_index
             .entity_tree
-            .on_store_additions(store_events);
+            .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
+
+        let dels = store_events
+            .iter()
+            .filter_map(|e| e.to_deletion())
+            .collect_vec();
 
         // It is possible for writes to trigger deletions: specifically in the case of
         // overwritten static data leading to dangling chunks.
-        let entity_paths_with_deletions = store_events
-            .iter()
-            .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
-            .map(|event| event.chunk_before_processing.entity_path().clone())
-            .collect();
+        let entity_paths_with_deletions =
+            dels.iter().map(|e| e.chunk.entity_path().clone()).collect();
 
         {
             re_tracing::profile_scope!("on_store_deletions");
             self.rrd_manifest_index.entity_tree.on_store_deletions(
                 &engine,
                 &entity_paths_with_deletions,
-                store_events,
+                &dels,
             );
         }
     }

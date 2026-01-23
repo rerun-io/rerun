@@ -154,17 +154,52 @@ async fn serve_impl(
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    let tcp_listener = TcpListener::bind(addr).await?;
-    let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
+    // TODO(rust-lang/rust#130668): When listening on `::` we want to listen to both ipv6 `::` and ipv4 `0.0.0.0`
+    // On Mac & Linux this happens automatically since all sockets are dual-stack by default.
+    // On Windows, the dual stack behavior is opt-in, but `TcpListener::bind` does not expose the option.
+    // To work around this, we explicitly listen on both ipv4 & ipv6 if an unspecified ipv6 address is used.
+    let dual_stack_windows = cfg!(target_os = "windows")
+        && matches!(addr.ip(), std::net::IpAddr::V6(ipv6) if ipv6.is_unspecified());
 
-    let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
-        format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
+    let incoming: Pin<Box<dyn Stream<Item = _> + Send>> = if dual_stack_windows {
+        let ipv6_addr = addr;
+        let ipv4_addr = SocketAddr::V4(std::net::SocketAddrV4::new(
+            std::net::Ipv4Addr::UNSPECIFIED,
+            addr.port(),
+        ));
+
+        let tcp_listener_ipv6 = TcpListener::bind(ipv6_addr).await?;
+        let tcp_listener_ipv4 = TcpListener::bind(ipv4_addr).await?;
+
+        let incoming_ipv6 = TcpIncoming::from(tcp_listener_ipv6).with_nodelay(Some(true));
+        let incoming_ipv4 = TcpIncoming::from(tcp_listener_ipv4).with_nodelay(Some(true));
+
+        // Merge both streams into a single stream
+        let merged = tokio_stream::StreamExt::merge(incoming_ipv6, incoming_ipv4);
+
+        let connect_addr = format!("rerun+http://127.0.0.1:{}/proxy", addr.port());
+
+        re_log::info!(
+            "Listening for gRPC connections on {ipv6_addr} and {ipv4_addr}. Connect by running `rerun --connect {connect_addr}`",
+        );
+
+        Box::pin(merged)
     } else {
-        format!("rerun+http://{addr}/proxy")
+        let tcp_listener = TcpListener::bind(addr).await?;
+        let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
+
+        let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
+            format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
+        } else {
+            format!("rerun+http://{addr}/proxy")
+        };
+
+        re_log::info!(
+            "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`",
+        );
+
+        Box::pin(incoming)
     };
-    re_log::info!(
-        "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`"
-    );
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();

@@ -10,7 +10,7 @@ use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis
 use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
+use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
@@ -22,6 +22,7 @@ use re_viewer_context::{
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -863,7 +864,9 @@ impl ViewClass for TimeSeriesView {
     }
 }
 
-fn scalar_mapping_selector(reason_opt: Option<&VisualizableReason>) -> Option<ComponentIdentifier> {
+fn scalar_mapping_selector(
+    reason_opt: Option<&VisualizableReason>,
+) -> Option<VisualizerComponentSource> {
     let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
         return None;
     };
@@ -883,7 +886,14 @@ fn scalar_mapping_selector(reason_opt: Option<&VisualizableReason>) -> Option<Co
         }
     }
 
-    first_native_semantic_match.or_else(|| Some(components.first().0))
+    first_native_semantic_match
+        .or_else(|| Some(components.first().0))
+        .map(
+            |source_component| VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: String::new(),
+            },
+        )
 }
 
 fn draw_time_cursor(

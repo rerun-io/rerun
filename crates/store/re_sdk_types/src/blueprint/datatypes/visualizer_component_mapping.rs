@@ -24,13 +24,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Associate components of an entity to components of a visualizer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisualizerComponentMapping {
-    /// Component selector for mapping.
-    pub selector: crate::datatypes::Utf8,
-
-    /// Target component name.
+    /// Target component name which is being mapped to.
+    ///
+    /// This represents a "slot" on the visualizer.
     pub target: crate::datatypes::Utf8,
+
+    /// What kind of source to pick.
+    pub source_kind: crate::blueprint::datatypes::ComponentSourceKind,
+
+    /// Component selector for mapping.
+    ///
+    /// Defaults to `target` if not specified.
+    pub source_component: Option<crate::datatypes::Utf8>,
+
+    /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+    ///
+    /// Defaults to empty string if not specified.
+    pub selector: Option<crate::datatypes::Utf8>,
 }
 
 ::re_types_core::macros::impl_into_cow!(VisualizerComponentMapping);
@@ -40,12 +52,18 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
+            Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
             Field::new(
-                "selector",
-                <crate::datatypes::Utf8>::arrow_datatype(),
+                "source_kind",
+                <crate::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
                 false,
             ),
-            Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
+            Field::new(
+                "source_component",
+                <crate::datatypes::Utf8>::arrow_datatype(),
+                true,
+            ),
+            Field::new("selector", <crate::datatypes::Utf8>::arrow_datatype(), true),
         ]))
     }
 
@@ -60,12 +78,18 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
+                Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
                 Field::new(
-                    "selector",
-                    <crate::datatypes::Utf8>::arrow_datatype(),
+                    "source_kind",
+                    <crate::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
                     false,
                 ),
-                Field::new("target", <crate::datatypes::Utf8>::arrow_datatype(), false),
+                Field::new(
+                    "source_component",
+                    <crate::datatypes::Utf8>::arrow_datatype(),
+                    true,
+                ),
+                Field::new("selector", <crate::datatypes::Utf8>::arrow_datatype(), true),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -81,39 +105,6 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
             as_array_ref(StructArray::new(
                 fields,
                 vec![
-                    {
-                        let (somes, selector): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.selector.clone());
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let selector_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                selector.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in selector.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, selector_validity)
-                            })
-                        }
-                    },
                     {
                         let (somes, target): (Vec<_>, Vec<_>) = data
                             .iter()
@@ -144,6 +135,99 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(offsets, inner_data, target_validity)
+                            })
+                        }
+                    },
+                    {
+                        let (somes, source_kind): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.source_kind.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let source_kind_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            _ = source_kind_validity;
+                            crate::blueprint::datatypes::ComponentSourceKind::to_arrow_opt(
+                                source_kind,
+                            )?
+                        }
+                    },
+                    {
+                        let (somes, source_component): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.source_component.clone())
+                                    .flatten();
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let source_component_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                                source_component.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            );
+                            #[expect(clippy::unwrap_used)]
+                            let capacity = offsets.last().copied().unwrap() as usize;
+                            let mut buffer_builder =
+                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                            for data in source_component.iter().flatten() {
+                                buffer_builder.append_slice(data.0.as_bytes());
+                            }
+                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
+
+                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            as_array_ref(unsafe {
+                                StringArray::new_unchecked(
+                                    offsets,
+                                    inner_data,
+                                    source_component_validity,
+                                )
+                            })
+                        }
+                    },
+                    {
+                        let (somes, selector): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.selector.clone()).flatten();
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let selector_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                                selector.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            );
+                            #[expect(clippy::unwrap_used)]
+                            let capacity = offsets.last().copied().unwrap() as usize;
+                            let mut buffer_builder =
+                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                            for data in selector.iter().flatten() {
+                                buffer_builder.append_slice(data.0.as_bytes());
+                            }
+                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
+
+                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            as_array_ref(unsafe {
+                                StringArray::new_unchecked(offsets, inner_data, selector_validity)
                             })
                         }
                     },
@@ -181,62 +265,6 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                     .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let selector = {
-                    if !arrays_by_name.contains_key("selector") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "selector",
-                        ))
-                        .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping");
-                    }
-                    let arrow_data = &**arrays_by_name["selector"];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
-                            .with_context(
-                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
-                            )?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|window| {
-                                    let start = window[0] as usize;
-                                    let end = window[1] as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::datatypes::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context(
-                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
-                            )?
-                            .into_iter()
-                    }
-                };
                 let target = {
                     if !arrays_by_name.contains_key("target") {
                         return Err(DeserializationError::missing_struct_field(
@@ -293,29 +321,167 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             .into_iter()
                     }
                 };
+                let source_kind = {
+                    if !arrays_by_name.contains_key("source_kind") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "source_kind",
+                        ))
+                        .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping");
+                    }
+                    let arrow_data = &**arrays_by_name["source_kind"];
+                    crate::blueprint::datatypes::ComponentSourceKind::from_arrow_opt(arrow_data)
+                        .with_context(
+                            "rerun.blueprint.datatypes.VisualizerComponentMapping#source_kind",
+                        )?
+                        .into_iter()
+                };
+                let source_component = {
+                    if !arrays_by_name.contains_key("source_component") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "source_component",
+                        ))
+                        .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping");
+                    }
+                    let arrow_data = &**arrays_by_name["source_component"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<StringArray>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context(
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#source_component",
+                            )?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        ZipValidity::new_with_validity(
+                                offsets.windows(2),
+                                arrow_data.nulls(),
+                            )
+                            .map(|elem| {
+                                elem
+                                    .map(|window| {
+                                        let start = window[0] as usize;
+                                        let end = window[1] as usize;
+                                        let len = end - start;
+                                        if arrow_data_buf.len() < end {
+                                            return Err(
+                                                DeserializationError::offset_slice_oob(
+                                                    (start, end),
+                                                    arrow_data_buf.len(),
+                                                ),
+                                            );
+                                        }
+                                        let data = arrow_data_buf.slice_with_length(start, len);
+                                        Ok(data)
+                                    })
+                                    .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt
+                                    .map(|res_or_opt| {
+                                        res_or_opt
+                                            .map(|v| crate::datatypes::Utf8(
+                                                ::re_types_core::ArrowString::from(v),
+                                            ))
+                                    })
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()
+                            .with_context(
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#source_component",
+                            )?
+                            .into_iter()
+                    }
+                };
+                let selector = {
+                    if !arrays_by_name.contains_key("selector") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "selector",
+                        ))
+                        .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping");
+                    }
+                    let arrow_data = &**arrays_by_name["selector"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<StringArray>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context(
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
+                            )?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                            .map(|elem| {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    let len = end - start;
+                                    if arrow_data_buf.len() < end {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_buf.len(),
+                                        ));
+                                    }
+                                    let data = arrow_data_buf.slice_with_length(start, len);
+                                    Ok(data)
+                                })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| {
+                                        crate::datatypes::Utf8(::re_types_core::ArrowString::from(
+                                            v,
+                                        ))
+                                    })
+                                })
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()
+                            .with_context(
+                                "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
+                            )?
+                            .into_iter()
+                    }
+                };
                 ZipValidity::new_with_validity(
-                    ::itertools::izip!(selector, target),
-                    arrow_data.nulls(),
-                )
-                .map(|opt| {
-                    opt.map(|(selector, target)| {
-                        Ok(Self {
-                            selector: selector
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisualizerComponentMapping#selector",
-                                )?,
-                            target: target
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisualizerComponentMapping#target",
-                                )?,
-                        })
+                        ::itertools::izip!(
+                            target, source_kind, source_component, selector
+                        ),
+                        arrow_data.nulls(),
+                    )
+                    .map(|opt| {
+                        opt
+                            .map(|(target, source_kind, source_component, selector)| Ok(Self {
+                                target: target
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.datatypes.VisualizerComponentMapping#target",
+                                    )?,
+                                source_kind: source_kind
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.datatypes.VisualizerComponentMapping#source_kind",
+                                    )?,
+                                source_component,
+                                selector,
+                            }))
+                            .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.datatypes.VisualizerComponentMapping")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context(
+                        "rerun.blueprint.datatypes.VisualizerComponentMapping",
+                    )?
             }
         })
     }
@@ -324,11 +490,17 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
 impl ::re_byte_size::SizeBytes for VisualizerComponentMapping {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.selector.heap_size_bytes() + self.target.heap_size_bytes()
+        self.target.heap_size_bytes()
+            + self.source_kind.heap_size_bytes()
+            + self.source_component.heap_size_bytes()
+            + self.selector.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
+        <crate::datatypes::Utf8>::is_pod()
+            && <crate::blueprint::datatypes::ComponentSourceKind>::is_pod()
+            && <Option<crate::datatypes::Utf8>>::is_pod()
+            && <Option<crate::datatypes::Utf8>>::is_pod()
     }
 }

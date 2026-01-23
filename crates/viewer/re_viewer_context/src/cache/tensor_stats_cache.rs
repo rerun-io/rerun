@@ -41,17 +41,14 @@ impl Cache for TensorStatsCache {
 
         let cache_keys: HashSet<Hash64> = events
             .iter()
-            .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_tensor_data = || {
-                    event
-                        .chunk_before_processing
-                        .components()
-                        .contains_component(Tensor::descriptor_data().component)
-                };
-
-                if is_deletion() && contains_tensor_data() {
-                    Either::Left(event.chunk_before_processing.row_ids().map(Hash64::hash))
+            .filter_map(|e| e.to_deletion())
+            .flat_map(|del| {
+                if del
+                    .chunk
+                    .components()
+                    .contains_component(Tensor::descriptor_data().component)
+                {
+                    Either::Left(del.chunk.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }

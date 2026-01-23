@@ -28,10 +28,11 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          SYNC_APP_ID: ${{ vars.SYNC_APP_ID }}
         run: |
-          # Find reality PR number from sync comment (only from rerun-bot for security)
+          # Find reality PR number from sync comment (only from our app for security)
           REALITY_PR=$(gh api "repos/rerun-io/rerun/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select(.user.login == "rerun-bot") | .body' \
+            | jq -r --arg app_id "$SYNC_APP_ID" '.[] | select(.performed_via_github_app.id | tostring == $app_id) | .body' \
             | grep -oP 'reality/pull/\K\d+' | head -1)
 
           if [[ -z "$REALITY_PR" ]]; then

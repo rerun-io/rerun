@@ -654,8 +654,10 @@ impl DataQueryPropertyResolver<'_> {
                     .component_mappings
                     .extend(mappings_from_store.into_iter().map(|mapping| {
                         (
-                            re_chunk::ComponentIdentifier::new(mapping.target.as_str()),
-                            re_chunk::ComponentIdentifier::new(mapping.selector.as_str()),
+                            mapping.target.as_str().into(),
+                            re_viewer_context::VisualizerComponentSource::from_blueprint_mapping(
+                                &mapping.0,
+                            ),
                         )
                     }));
             }

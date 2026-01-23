@@ -5,6 +5,7 @@ mod batches;
 mod compare;
 mod format;
 mod format_data_type;
+mod string_view;
 mod test_extensions;
 
 // ----------------------------------------------------------------
@@ -21,9 +22,10 @@ pub use self::format::{
     format_record_batch_with_width,
 };
 pub use self::format_data_type::*;
+pub use self::string_view::*;
 pub use self::test_extensions::*;
 
-/// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logivally the same
+/// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logically the same
 pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
     let list_data_type = list_array.data_type();
     if let DataType::List(field) = list_data_type
