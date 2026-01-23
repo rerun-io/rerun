@@ -14,14 +14,14 @@ pub enum Error {
         available_fields: Vec<String>,
     },
 
-    #[error("Field '{field_name}' has wrong type: expected {expected_type}, got {actual_type:?}")]
+    #[error("Field '{field_name}' has wrong type: expected {expected_type}, got {actual_type}")]
     FieldTypeMismatch {
         field_name: String,
         expected_type: String,
         actual_type: DataType,
     },
 
-    #[error("Type mismatch in {context}: expected {expected}, got {actual:?}")]
+    #[error("Type mismatch in {context}: expected {expected}, got {actual}")]
     TypeMismatch {
         expected: String,
         actual: DataType,
@@ -40,20 +40,20 @@ pub enum Error {
         actual: String,
     },
 
-    #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
+    #[error("List contains unexpected value type: expected {expected}, got {actual}")]
     UnexpectedListValueType { expected: String, actual: DataType },
 
     #[error("Expected list with {expected} elements, got {actual}")]
     UnexpectedListValueLength { expected: usize, actual: usize },
 
-    #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual:?}")]
+    #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual}")]
     UnexpectedFixedSizeListValueType { expected: String, actual: DataType },
 
-    #[error("Expected list to contain struct values, but got {actual:?}")]
+    #[error("Expected list to contain struct values, but got {actual}")]
     ExpectedStructInList { actual: DataType },
 
     #[error(
-        "Field '{field_name}' has type {actual_type:?}, but expected {expected_type:?} (inferred from field '{reference_field}')"
+        "Field '{field_name}' has type {actual_type}, but expected {expected_type} (inferred from field '{reference_field}')"
     )]
     InconsistentFieldTypes {
         field_name: String,
