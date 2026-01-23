@@ -20,7 +20,6 @@ web_viewer = ["rerun/web_viewer"]
 [dependencies]
 rerun = { path = "../../crates/top/rerun" }
 
-crossbeam.workspace = true
 itertools.workspace = true
 ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
