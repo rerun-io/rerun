@@ -339,7 +339,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// very unidiomatic Arrow things, and is therefore very slow at the moment. Avoid this on
     /// performance critical paths.
     ///
-    /// See [`Chunk::iter_component`] for more information.
+    /// See [`re_chunk::Chunk::iter_component`] for more information.
     pub fn component_slow<C: re_types_core::Component>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
@@ -359,7 +359,7 @@ impl<'a> HybridResultsChunkIter<'a> {
 
     /// Iterate as indexed, sliced, deserialized component batches.
     ///
-    /// See [`Chunk::iter_slices`] for more information.
+    /// See [`re_chunk::Chunk::iter_slices`] for more information.
     pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
@@ -379,7 +379,7 @@ impl<'a> HybridResultsChunkIter<'a> {
 
     /// Iterate as indexed, sliced, deserialized component batches for a specific struct field.
     ///
-    /// See [`Chunk::iter_slices_from_struct_field`] for more information.
+    /// See [`re_chunk::Chunk::iter_slices_from_struct_field`] for more information.
     pub fn slice_from_struct_field<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
         field_name: &'a str,
