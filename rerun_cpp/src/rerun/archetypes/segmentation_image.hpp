@@ -123,7 +123,8 @@ namespace rerun::archetypes {
         template <typename TElement>
         SegmentationImage(const TElement* pixels, WidthHeight resolution)
             : SegmentationImage{
-                  reinterpret_cast<const uint8_t*>(pixels), resolution, get_datatype(pixels)} {}
+                  reinterpret_cast<const uint8_t*>(pixels), resolution, get_datatype(pixels)
+              } {}
 
         /// Constructs image from pixel data + resolution with datatype inferred from the passed collection.
         ///
@@ -149,7 +150,8 @@ namespace rerun::archetypes {
             : SegmentationImage{
                   Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)),
                   resolution,
-                  datatype} {}
+                  datatype
+              } {}
 
         /// Constructs image from pixel data + resolution + datatype.
         ///

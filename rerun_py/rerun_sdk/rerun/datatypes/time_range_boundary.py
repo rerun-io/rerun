@@ -77,6 +77,7 @@ class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeBoundaryArrayLike, data_type: pa.DataType) -> pa.Array:
+
         from typing import cast
 
         from rerun.datatypes import TimeIntBatch

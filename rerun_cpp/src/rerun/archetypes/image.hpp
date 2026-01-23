@@ -283,9 +283,8 @@ namespace rerun::archetypes {
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
         /// @param resolution The resolution of the image as {width, height}.
-        [[deprecated("Renamed `from_grayscale8`")]] static Image from_greyscale8(
-            Collection<uint8_t> bytes, WidthHeight resolution
-        ) {
+        [[deprecated("Renamed `from_grayscale8`")]]
+        static Image from_greyscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
             return Image(
                 bytes,
                 resolution,

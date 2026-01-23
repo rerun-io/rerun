@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ...blueprint import archetypes as blueprint_archetypes
+
 __all__ = ["Spatial3DView"]
 
 
-from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
         DescribedComponentBatch,
     )
     from ...datatypes import EntityPathLike, Utf8Like
+    from .. import components as blueprint_components
 
 
 class Spatial3DView(View):

@@ -29,8 +29,8 @@ namespace rerun::components {
         }
 
         /// Creates a new `VideoTimestamp` from a presentation timestamp in seconds.
-        [[deprecated("Renamed to `from_secs`")]] static VideoTimestamp from_seconds(double seconds
-        ) {
+        [[deprecated("Renamed to `from_secs`")]]
+        static VideoTimestamp from_seconds(double seconds) {
             return VideoTimestamp(std::chrono::duration<double>(seconds));
         }
 
@@ -40,9 +40,8 @@ namespace rerun::components {
         }
 
         /// Creates a new `VideoTimestamp` from a presentation timestamp in milliseconds.
-        [[deprecated("Renamed to `from_millis`")]] static VideoTimestamp from_milliseconds(
-            double milliseconds
-        ) {
+        [[deprecated("Renamed to `from_millis`")]]
+        static VideoTimestamp from_milliseconds(double milliseconds) {
             return VideoTimestamp(std::chrono::duration<double, std::milli>(milliseconds));
         }
 
@@ -52,9 +51,8 @@ namespace rerun::components {
         }
 
         /// Creates a new `VideoTimestamp` from a presentation timestamp in nanoseconds.
-        [[deprecated("Renamed to `from_nanos`")]] static VideoTimestamp from_nanoseconds(
-            int64_t nanoseconds
-        ) {
+        [[deprecated("Renamed to `from_nanos`")]]
+        static VideoTimestamp from_nanoseconds(int64_t nanoseconds) {
             return VideoTimestamp(std::chrono::nanoseconds(nanoseconds));
         }
 

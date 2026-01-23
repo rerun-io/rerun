@@ -17,7 +17,6 @@ pub fn code_for_view(
     code.push_indented(
         0,
         "
-from .. import archetypes as blueprint_archetypes
 from .. import components as blueprint_components
 from ... import datatypes
 from ... import components

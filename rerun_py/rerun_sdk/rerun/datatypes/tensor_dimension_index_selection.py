@@ -74,6 +74,7 @@ class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelection
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSelectionArrayLike, data_type: pa.DataType) -> pa.Array:
+
         typed_data: Sequence[TensorDimensionIndexSelection]
 
         if isinstance(data, TensorDimensionIndexSelection):
