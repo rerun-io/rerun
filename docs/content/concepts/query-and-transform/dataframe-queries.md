@@ -1,6 +1,6 @@
 ---
 title: Dataframe queries
-order: 100
+order: 300
 ---
 
 Robotic and sensor data is inherently messy:

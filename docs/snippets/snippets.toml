@@ -33,6 +33,7 @@ features = [
     "Setting recording properties",
     [
       "concepts/recording_properties",
+      "concepts/query-and-transform/segment_properties",
     ],
   ],
   [

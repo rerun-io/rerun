@@ -169,6 +169,14 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
     ),
     Section(
+        title="Property functions",
+        func_list=[
+            "send_property",
+            "send_recording_name",
+            "send_recording_start_time_nanos",
+        ],
+    ),
+    Section(
         title="Timeline functions",
         func_list=[
             "set_time",
