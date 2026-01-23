@@ -6,7 +6,7 @@ name: Notify Reality of Sync Branch Update
 # current state of the rerun branch.
 
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize]
 
 jobs:
