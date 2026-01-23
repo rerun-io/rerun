@@ -20,6 +20,11 @@ pub struct ChunksWithComponent<'chunk> {
 
 impl ChunksWithComponent<'_> {
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.chunks.is_empty()
+    }
+
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = ChunkWithComponent<'_>> {
         self.chunks.iter().map(move |chunk| ChunkWithComponent {
             chunk,
