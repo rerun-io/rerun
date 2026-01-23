@@ -1,7 +1,7 @@
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
-use re_sdk_types::blueprint::components::LinkAxis;
+use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
 use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -123,6 +123,7 @@ pub fn points_to_series(
     series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
+    visualizer_instruction_id: VisualizerInstructionId,
 ) -> Result<(), String> {
     re_tracing::profile_scope!("secondary", &instance_path.to_string());
 
@@ -166,6 +167,7 @@ pub fn points_to_series(
             aggregator,
             aggregation_factor,
             min_time,
+            visualizer_instruction_id,
         });
     } else {
         add_series_runs(
@@ -177,6 +179,7 @@ pub fn points_to_series(
             aggregation_factor,
             min_time,
             all_series,
+            visualizer_instruction_id,
         );
     }
 
@@ -260,6 +263,7 @@ fn add_series_runs(
     aggregation_factor: f64,
     min_time: i64,
     all_series: &mut Vec<PlotSeries>,
+    visualizer_instruction_id: VisualizerInstructionId,
 ) {
     re_tracing::profile_function!();
 
@@ -279,6 +283,7 @@ fn add_series_runs(
         aggregator,
         aggregation_factor,
         min_time,
+        visualizer_instruction_id: visualizer_instruction_id.clone(),
     };
 
     for (i, p) in points.into_iter().enumerate() {
@@ -306,6 +311,7 @@ fn add_series_runs(
                     aggregator,
                     aggregation_factor,
                     min_time,
+                    visualizer_instruction_id: visualizer_instruction_id.clone(),
                 },
             );
 

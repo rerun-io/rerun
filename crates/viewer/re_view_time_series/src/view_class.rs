@@ -7,7 +7,9 @@ use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
-use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
+use re_sdk_types::blueprint::components::{
+    Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
+};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
@@ -993,12 +995,14 @@ fn update_series_visibility_overrides_from_plot(
     let hidden_items = plot_memory.hidden_items;
 
     // Determine which series have changed visibility state.
-    let mut per_entity_series_new_visibility_state: HashMap<EntityPath, SmallVec<[bool; 1]>> =
-        HashMap::default();
+    let mut per_visualizer_inst_id_series_new_visibility_state: HashMap<
+        VisualizerInstructionId,
+        SmallVec<[bool; 1]>,
+    > = HashMap::default();
     let mut series_to_update = Vec::new();
     for series in all_plot_series {
-        let entity_visibility_flags = per_entity_series_new_visibility_state
-            .entry(series.instance_path.entity_path.clone())
+        let entity_visibility_flags = per_visualizer_inst_id_series_new_visibility_state
+            .entry(series.visualizer_instruction_id.clone())
             .or_default();
 
         let visible_new = !hidden_items.contains(&series.id);
@@ -1016,8 +1020,8 @@ fn update_series_visibility_overrides_from_plot(
     }
 
     for series in series_to_update {
-        let Some(visibility_state) =
-            per_entity_series_new_visibility_state.remove(&series.instance_path.entity_path)
+        let Some(visibility_state) = per_visualizer_inst_id_series_new_visibility_state
+            .remove(&series.visualizer_instruction_id)
         else {
             continue;
         };
@@ -1026,7 +1030,6 @@ fn update_series_visibility_overrides_from_plot(
             continue;
         };
 
-        let override_path = result.override_base_path();
         let descriptor = match series.kind {
             PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
             PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),
@@ -1040,17 +1043,30 @@ fn update_series_visibility_overrides_from_plot(
             }
         };
 
-        let component_array = visibility_state
-            .into_iter()
-            .map(SeriesVisible::from)
-            .collect::<Vec<_>>();
-
-        if let Some(serialized_component_batch) =
-            descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+        if let Some(visualizer_instruction) = result
+            .visualizer_instructions
+            .iter()
+            .find(|instr| instr.id == series.visualizer_instruction_id)
         {
-            ctx.save_serialized_blueprint_component(
-                override_path.clone(),
-                serialized_component_batch,
+            let override_path = &visualizer_instruction.override_path;
+
+            let component_array = visibility_state
+                .into_iter()
+                .map(SeriesVisible::from)
+                .collect::<Vec<_>>();
+
+            if let Some(serialized_component_batch) =
+                descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+            {
+                ctx.save_serialized_blueprint_component(
+                    override_path.clone(),
+                    serialized_component_batch,
+                );
+            }
+        } else {
+            re_log::warn_once!(
+                "Could not find visualizer instruction for series at instance path `{}`",
+                series.instance_path
             );
         }
     }
