@@ -79,9 +79,7 @@ fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
             modified = true;
             let new_id = format!("{}_dup", id);
             re_log::warn_once!(
-                "Renamed duplicate ID in DAE file to prevent parser panic: '{}' -> '{}'",
-                id,
-                new_id
+                "Renamed duplicate ID in DAE file to prevent parser panic: '{id}' -> '{new_id}'",
             );
             format!("id={}{}{}", quote, new_id, quote)
         }
