@@ -377,6 +377,7 @@ impl SizeBytes for ChunkStore {
             temporal_physical_chunks_stats,
             static_chunks_stats,
             missing_chunk_ids,
+            used_chunk_ids,
             insert_id,
             gc_id,
             event_id: _, // no heap data
@@ -451,6 +452,10 @@ impl SizeBytes for ChunkStore {
             + {
                 profile_scope!("missing_chunk_ids");
                 missing_chunk_ids.heap_size_bytes()
+            }
+            + {
+                profile_scope!("used_chunk_ids");
+                used_chunk_ids.heap_size_bytes()
             }
             + insert_id.heap_size_bytes()
             + gc_id.heap_size_bytes()

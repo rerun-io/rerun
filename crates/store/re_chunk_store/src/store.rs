@@ -601,6 +601,9 @@ pub struct ChunkStore {
     /// as well as clearing it.
     pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
 
+    /// This keeps track of chunks that were used this frame.
+    pub(crate) used_chunk_ids: RwLock<HashSet<ChunkId>>,
+
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 
@@ -648,6 +651,7 @@ impl Clone for ChunkStore {
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
             missing_chunk_ids: Default::default(),
+            used_chunk_ids: Default::default(),
             insert_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
@@ -674,6 +678,7 @@ impl std::fmt::Display for ChunkStore {
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
             missing_chunk_ids: _,
+            used_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -757,6 +762,7 @@ impl ChunkStore {
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
             missing_chunk_ids: Default::default(),
+            used_chunk_ids: Default::default(),
             insert_id: 0,
             gc_id: 0,
             event_id: AtomicU64::new(0),
@@ -884,6 +890,10 @@ impl ChunkStore {
     /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
     pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.missing_chunk_ids.write())
+    }
+
+    pub fn take_used_chunk_ids(&self) -> HashSet<ChunkId> {
+        std::mem::take(&mut self.used_chunk_ids.write())
     }
 
     /// How many missing chunk IDs are currently registered?

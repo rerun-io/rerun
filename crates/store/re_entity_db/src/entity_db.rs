@@ -258,6 +258,12 @@ impl EntityDb {
         self.storage_engine.read()
     }
 
+    pub fn rrd_manifest_index_mut_and_storage_engine(
+        &mut self,
+    ) -> (&mut RrdManifestIndex, StorageEngineReadGuard<'_>) {
+        (&mut self.rrd_manifest_index, self.storage_engine.read())
+    }
+
     /// Returns a reference to the backing [`StorageEngine`].
     ///
     /// This can be used to obtain a clone of the [`StorageEngine`].
@@ -749,12 +755,15 @@ impl EntityDb {
         &mut self,
         fraction_to_purge: f32,
         time_cursor: Option<(Timeline, TimeInt)>,
-        is_active_store: bool,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
+        let protected_chunks = self
+            .rrd_manifest_index
+            .chunk_prioritizer_mut()
+            .take_protected_chunks();
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,
@@ -772,12 +781,7 @@ impl EntityDb {
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
-            protected_chunks: if is_active_store {
-                self.rrd_manifest_index.protected_chunks().clone()
-            } else {
-                Default::default()
-            },
-
+            protected_chunks,
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:

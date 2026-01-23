@@ -1346,11 +1346,13 @@ impl TimePanel {
 
                 let age = entity_db
                     .rrd_manifest_index()
-                    .chunk_bandwidth_data_age(ui.time());
+                    .chunk_promises()
+                    .bandwidth_data_age(ui.time());
                 if ctx.app_options().show_metrics && age < 1.0 {
                     let mut rate = entity_db
                         .rrd_manifest_index()
-                        .chunk_bandwidth()
+                        .chunk_promises()
+                        .bandwidth()
                         .unwrap_or(0.0);
 
                     if !rate.is_finite() {

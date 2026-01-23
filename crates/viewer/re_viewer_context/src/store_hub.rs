@@ -876,10 +876,6 @@ impl StoreHub {
         re_tracing::profile_function!();
         let is_active_recording = Some(store_id) == self.active_store_id();
 
-        let is_active_store = self
-            .active_store_id()
-            .is_some_and(|active_id| active_id == store_id);
-
         let store_bundle = &mut self.store_bundle;
 
         let is_last_recording = store_bundle.recordings().count() == 1;
@@ -897,8 +893,7 @@ impl StoreHub {
             .stats()
             .total()
             .total_size_bytes;
-        let store_events =
-            entity_db.purge_fraction_of_ram(fraction_to_purge, time_cursor, is_active_store);
+        let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge, time_cursor);
         let store_size_after = entity_db
             .storage_engine()
             .store()

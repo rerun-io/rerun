@@ -680,6 +680,13 @@ impl QueryResults {
                 .extend(this.missing.iter().copied());
         }
 
+        if !this.chunks.is_empty() {
+            store
+                .used_chunk_ids
+                .write()
+                .extend(this.chunks.iter().map(|c| c.id()));
+        }
+
         debug_assert!(
             this.chunks
                 .iter()

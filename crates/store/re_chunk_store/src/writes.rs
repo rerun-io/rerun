@@ -46,6 +46,7 @@ impl ChunkStore {
             static_chunk_ids_per_entity,
             static_chunks_stats: _, // stats are for physical data only
             missing_chunk_ids: _,
+            used_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -1026,6 +1027,7 @@ impl ChunkStore {
             static_chunk_ids_per_entity,
             static_chunks_stats,
             missing_chunk_ids: _,
+            used_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id,

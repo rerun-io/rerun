@@ -498,6 +498,7 @@ impl ChunkStore {
             static_chunk_ids_per_entity: _,    // we don't GC static data
             static_chunks_stats: _,            // we don't GC static data
             missing_chunk_ids: _,
+            used_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -662,6 +663,7 @@ impl ChunkStore {
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
             missing_chunk_ids: _,
+            used_chunk_ids: _,
             insert_id: _,
             gc_id: _,
             event_id: _,

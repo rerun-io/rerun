@@ -3240,7 +3240,8 @@ impl App {
                 let mut store_events = Vec::new();
                 for chunk in db
                     .rrd_manifest_index
-                    .resolve_pending_promises(self.egui_ctx.time())
+                    .chunk_promises_mut()
+                    .resolve_pending(self.egui_ctx.time())
                 {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
@@ -3262,12 +3263,15 @@ impl App {
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
 
-                if db.rrd_manifest_index.has_pending_promises() {
+                if db.rrd_manifest_index.chunk_promises().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }
         }
 
+        let s = store_hub
+            .active_caches()
+            .map_or(0, |caches| caches.capture_mem_usage_tree().size_bytes());
         // Prefetch new chunks for the active recording (if any):
         if let Some(recording) = store_hub.active_recording_mut()
             && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
@@ -3278,6 +3282,7 @@ impl App {
                 recording,
                 time_ctrl,
                 self.connection_registry(),
+                s,
             );
         }
     }
