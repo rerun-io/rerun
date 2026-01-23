@@ -214,7 +214,7 @@ class Tracker:
         curr_gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
         # Calculate optical flow
-        next_points, status, _error = cv2.calcOpticalFlowPyrLK(
+        next_points, status, _error = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
             self.prev_gray,
             curr_gray,
             self.prev_points,
@@ -359,7 +359,7 @@ def update_trackers_with_detections(
         best_match_idx = -1
         if non_updated_trackers:
             scores = [tracker.match_score(detection) for tracker in non_updated_trackers]
-            best_match_idx = np.argmax(scores)
+            best_match_idx = int(np.argmax(scores))
             top_match_score = scores[best_match_idx]
         if top_match_score > 0.0 and best_match_idx >= 0:
             best_tracker = non_updated_trackers.pop(best_match_idx)
