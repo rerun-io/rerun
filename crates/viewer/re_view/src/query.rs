@@ -89,7 +89,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     HybridRangeResults {
         overrides,
         results,
-        defaults: &ctx.query_result.component_defaults,
+        view_defaults: &ctx.query_result.view_defaults,
         component_mappings_hash: Hash64::hash(&active_remappings),
     }
 }
@@ -181,7 +181,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     HybridLatestAtResults {
         overrides,
         results,
-        defaults: &ctx.query_result.component_defaults,
+        view_defaults: &ctx.query_result.view_defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,

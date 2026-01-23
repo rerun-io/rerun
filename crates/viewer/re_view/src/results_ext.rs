@@ -19,7 +19,7 @@ use crate::chunks_with_component::ChunksWithComponent;
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub results: LatestAtResults,
-    pub defaults: &'a LatestAtResults,
+    pub view_defaults: &'a LatestAtResults,
 
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
@@ -37,7 +37,7 @@ pub struct HybridLatestAtResults<'a> {
 pub struct HybridRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
-    pub(crate) defaults: &'a LatestAtResults,
+    pub(crate) view_defaults: &'a LatestAtResults,
 
     /// Hash of mappings applied to [`Self::results`].
     pub(crate) component_mappings_hash: Hash64,
@@ -101,7 +101,7 @@ impl HybridLatestAtResults<'_> {
     ) -> Option<C> {
         self.get_required_instance(index, component).or_else(|| {
             // No override & no store -> try default instead
-            self.defaults.component_instance::<C>(index, component)
+            self.view_defaults.component_instance::<C>(index, component)
         })
     }
 }
@@ -124,7 +124,7 @@ impl HybridResults<'_> {
                 );
 
                 indices.extend(
-                    r.defaults
+                    r.view_defaults
                         .components
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
@@ -152,7 +152,7 @@ impl HybridResults<'_> {
                 );
 
                 indices.extend(
-                    r.defaults
+                    r.view_defaults
                         .components
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
@@ -310,7 +310,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
             // NOTE: Because this is a range query, we always need the defaults to come first,
             // since range queries don't have any state to bootstrap from.
-            let defaults = self.defaults.get(component).map(|unit| {
+            let defaults = self.view_defaults.get(component).map(|unit| {
                 // Because this is a default (blueprint data) we always re-index the data as static
                 // and zero the row IDs
                 Arc::unwrap_or_clone(unit.clone().into_chunk())
@@ -359,7 +359,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
 
             // Otherwise try to use the default data.
-            self.defaults
+            self.view_defaults
                 .get(component)
                 .map_or(Cow::Owned(Vec::new()), |unit| {
                     // Because this is an default from the blueprint we always re-index the data as static
