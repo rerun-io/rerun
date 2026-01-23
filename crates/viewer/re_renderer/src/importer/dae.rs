@@ -51,6 +51,9 @@ pub fn load_dae_from_buffer(
 ) -> Result<CpuModel, DaeImportError> {
     re_tracing::profile_function!();
 
+    // Some DAE files, particularly those exported from CAD tools, contain duplicate id attributes in their
+    // XML structure. The underlying `dae-parser` library panics when encountering these duplicates,
+    // so we sanitize the XML before attempting to load it.
     let buffer = sanitize_dae_ids(buffer);
 
     load_dae_from_buffer_inner(buffer.as_ref(), ctx)
