@@ -1242,84 +1242,86 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
             anyhow::bail!("Channel disconnected without a Goodbye message.");
         }
 
-        match rx.recv_timeout(timeout) {
-            Some((_, msg)) => {
-                re_log::info_once!("Received first message.");
+        if let Some((_, msg)) = rx.recv_timeout(timeout) {
+            re_log::info_once!("Received first message.");
 
-                match msg.payload {
-                    SmartMessagePayload::Msg(msg) => {
-                        match msg {
-                            DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
-                                let mut_db =
-                                    match store_id.kind() {
-                                        re_log_types::StoreKind::Recording => rec
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(store_id.clone())
-                                            }),
-                                        re_log_types::StoreKind::Blueprint => bp
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(store_id.clone())
-                                            }),
-                                    };
+            match msg.payload {
+                SmartMessagePayload::Msg(msg) => {
+                    match msg {
+                        DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
+                            let mut_db = match store_id.kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(store_id.clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(store_id.clone())
+                                }),
+                            };
 
-                                mut_db.add_rrd_manifest_message(*rrd_manifest);
-                            }
-
-                            DataSourceMessage::LogMsg(msg) => {
-                                let mut_db =
-                                    match msg.store_id().kind() {
-                                        re_log_types::StoreKind::Recording => rec
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                                            }),
-                                        re_log_types::StoreKind::Blueprint => bp
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                                            }),
-                                    };
-
-                                mut_db.add_log_msg(&msg)?;
-                            }
-
-                            DataSourceMessage::TableMsg(_) => {
-                                anyhow::bail!(
-                                    "Received a TableMsg which can't be stored in an EntityDb"
-                                );
-                            }
-
-                            DataSourceMessage::UiCommand(ui_command) => {
-                                anyhow::bail!(
-                                    "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
-                                );
-                            }
+                            mut_db.add_rrd_manifest_message(*rrd_manifest);
                         }
 
-                        num_messages += 1;
-                    }
+                        DataSourceMessage::LogMsg(msg) => {
+                            let mut_db = match msg.store_id().kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(msg.store_id().clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(msg.store_id().clone())
+                                }),
+                            };
 
-                    re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
-                        on_flush_done();
-                    }
-
-                    SmartMessagePayload::Quit(err) => {
-                        if let Some(err) = err {
-                            anyhow::bail!("data source has disconnected unexpectedly: {err}")
-                        } else if let Some(db) = rec {
-                            anyhow::ensure!(0 < num_messages, "No messages received");
-                            re_log::info!("Successfully ingested {num_messages} messages.");
-                            return Ok(db);
-                        } else {
-                            anyhow::bail!("EntityDb never initialized");
+                            mut_db.add_log_msg(&msg)?;
                         }
+
+                        DataSourceMessage::TableMsg(_) => {
+                            anyhow::bail!(
+                                "Received a TableMsg which can't be stored in an EntityDb"
+                            );
+                        }
+
+                        DataSourceMessage::UiCommand(ui_command) => {
+                            anyhow::bail!(
+                                "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
+                            );
+                        }
+                    }
+
+                    num_messages += 1;
+                }
+
+                re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    on_flush_done();
+                }
+
+                SmartMessagePayload::Quit(err) => {
+                    if let Some(err) = err {
+                        anyhow::bail!("data source has disconnected unexpectedly: {err}")
+                    } else if let Some(db) = rec {
+                        anyhow::ensure!(0 < num_messages, "No messages received");
+                        re_log::info!("Successfully ingested {num_messages} messages.");
+                        return Ok(db);
+                    } else {
+                        anyhow::bail!("EntityDb never initialized");
                     }
                 }
             }
-            None => {
-                anyhow::bail!(
-                    "Didn't receive any messages within {} seconds. Giving up.",
-                    timeout.as_secs()
+        } else {
+            if let Some(db) = rec {
+                // TODO(RR-3373): find a proper way to detect client disconnect without timing out.
+                re_log::info!(
+                    "Timed out after successfully receiving {num_messages} messages. Assuming the client disconnected cleanly.",
                 );
+                return Ok(db);
             }
+            anyhow::bail!(
+                "Didn't receive any messages within {} seconds. Giving up.",
+                timeout.as_secs()
+            );
         }
     }
 }
