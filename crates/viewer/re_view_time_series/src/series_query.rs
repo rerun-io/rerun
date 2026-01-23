@@ -254,7 +254,12 @@ pub fn collect_series_name(
         .get_optional_chunks(name_descriptor.component)
         .chunks
         .iter()
-        .chain(results.get_optional_chunks(name_descriptor.component).chunks.iter())
+        .chain(
+            results
+                .get_optional_chunks(name_descriptor.component)
+                .chunks
+                .iter(),
+        )
         .find(|chunk| !chunk.is_empty())
         .and_then(|chunk| {
             chunk

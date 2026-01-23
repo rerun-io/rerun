@@ -236,7 +236,9 @@ impl SeriesPointsSystem {
 
                 {
                     let all_marker_shapes_chunks = bootstrapped_results
-                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers().component)
+                        .get_optional_chunks(
+                            archetypes::SeriesPoints::descriptor_markers().component,
+                        )
                         .chunks
                         .iter()
                         .cloned()
