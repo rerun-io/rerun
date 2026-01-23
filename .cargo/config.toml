@@ -31,11 +31,8 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # manually. But, mixing this with any pixi invocations will result in spurious rebuilds.
 PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
-# Our Wasm builds seem to fail when they try to use
-# macOS default AR. For stacker we were able to push down a fix.
-# but ring and lz4 both still need this (at least).
 [target.osx-arm64.activation.env]
-AR = "llvm-ar"
+AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
 
 # `web_sys_unstable_apis` is required to enable the web_sys clipboard API which egui_web uses.
 # https://wasm-bindgen.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
