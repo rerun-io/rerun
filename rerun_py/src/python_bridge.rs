@@ -77,8 +77,10 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> =
-    LazyLock::new(crossbeam::channel::unbounded);
+static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> = LazyLock::new(|| {
+    #[expect(clippy::disallowed_methods)] // must be unbounded, or we can deadlock
+    crossbeam::channel::unbounded()
+});
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
 ///
