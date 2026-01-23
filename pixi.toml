@@ -560,6 +560,7 @@ cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constraine
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.1.0,<13" # For `upload_image.py`
+py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
