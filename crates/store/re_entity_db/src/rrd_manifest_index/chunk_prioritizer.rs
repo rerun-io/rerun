@@ -22,7 +22,7 @@ pub struct ChunkPrioritizer {
     /// All loaded chunks that are 'in' the memory limit.
     ///
     /// These chunks are protected from being gc'd.
-    in_limit_chunks: HashSet<ChunkId>,
+    pub(super) in_limit_chunks: HashSet<ChunkId>,
 
     chunk_promises: ChunkPromises,
 
@@ -155,17 +155,15 @@ impl ChunkPrioritizer {
         let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
-        let used_chunk_ids = store.take_used_chunk_ids();
-        let missing_remote_chunk_ids =
+        let store_tracked = store.take_tracked_chunk_ids();
+
+        let used = store_tracked.used_physical.into_iter();
+        let missing = store_tracked.missing.iter().flat_map(|c| {
             store
-                .take_missing_chunk_ids()
+                .find_root_rrd_manifests(c)
                 .into_iter()
-                .flat_map(|chunk_id| {
-                    store
-                        .find_root_rrd_manifests(&chunk_id)
-                        .into_iter()
-                        .map(|(chunk_id, _)| chunk_id)
-                });
+                .map(|(id, _)| id)
+        });
 
         let chunks_ids_after_time_cursor = || {
             chunks
@@ -179,8 +177,8 @@ impl ChunkPrioritizer {
         };
 
         let chunk_ids_in_priority_order = itertools::chain!(
-            used_chunk_ids,
-            missing_remote_chunk_ids,
+            used,
+            missing,
             self.static_chunk_ids.iter().copied(),
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
@@ -188,6 +186,7 @@ impl ChunkPrioritizer {
 
         let entity_paths = manifest.col_chunk_entity_path_raw()?;
 
+        self.in_limit_chunks.clear();
         let mut skip_chunks = HashSet::default();
 
         for chunk_id in chunk_ids_in_priority_order {
@@ -263,6 +262,9 @@ impl ChunkPrioritizer {
                         remaining_bytes_in_transit_budget = remaining_bytes_in_transit_budget
                             .saturating_sub(uncompressed_chunk_size);
                     }
+                    skip_chunks.insert(chunk_id);
+                    self.in_limit_chunks
+                        .extend(store.physical_leaf_chunks_for(&chunk_id));
                 }
                 Some(ChunkInfo {
                     state: LoadState::Loaded,
@@ -287,10 +289,10 @@ impl ChunkPrioritizer {
                                 .into_iter()
                                 .map(|(id, _)| id),
                         );
+                        self.in_limit_chunks.insert(chunk_id);
                     }
                 }
             }
-            self.in_limit_chunks.insert(chunk_id);
         }
 
         if !indices.is_empty() {

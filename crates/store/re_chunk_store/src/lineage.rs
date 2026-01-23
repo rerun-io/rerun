@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::RrdManifest;
@@ -405,6 +405,35 @@ impl ChunkStore {
         recurse(self, chunk_id, &mut roots);
 
         roots
+    }
+
+    pub fn physical_leaf_chunks_for<'a>(
+        &'a self,
+        chunk_id: &'a ChunkId,
+    ) -> impl Iterator<Item = ChunkId> {
+        let is_physical = |c: &&ChunkId| self.chunks_per_chunk_id.contains_key(c);
+
+        if is_physical(&chunk_id) {
+            #[expect(
+                clippy::iter_on_single_items,
+                reason = "We need this to be an option below"
+            )]
+            Either::Left(Some(*chunk_id).into_iter())
+        } else {
+            self.dangling_splits
+                .get(chunk_id)
+                .map(|chunks| Either::Right(chunks.iter().filter(is_physical).copied()))
+                .unwrap_or_else(|| {
+                    Either::Left(
+                        self.leaky_compactions
+                            .get(chunk_id)
+                            .filter(is_physical)
+                            .copied()
+                            .into_iter(),
+                    )
+                })
+        }
+        .into_iter()
     }
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a split.

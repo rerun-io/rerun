@@ -446,19 +446,19 @@ impl RrdManifestIndex {
         re_tracing::profile_function!();
 
         if let Some(component) = component {
-            let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
+            let Some(per_timeline) = self.native_temporal_map.get(entity) else {
                 return Vec::new();
             };
 
-            let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
+            let Some(per_entity) = per_timeline.get(timeline) else {
                 return Vec::new();
             };
 
-            let Some(component_ranges) = entity_ranges.get(&component) else {
+            let Some(per_component) = per_entity.get(&component) else {
                 return Vec::new();
             };
 
-            component_ranges
+            per_component
                 .iter()
                 .filter(|(chunk, _)| self.is_chunk_unloaded(chunk))
                 .map(|(_, entry)| *entry)

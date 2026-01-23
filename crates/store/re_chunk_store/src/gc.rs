@@ -94,13 +94,8 @@ impl GarbageCollectionOptions {
     }
 
     /// If true, we cannot remove this chunk.
-    pub fn is_chunk_temporally_protected(&self, store: &ChunkStore, chunk: &Chunk) -> bool {
-        if self.protected_chunks.contains(&chunk.id())
-            || store
-                .find_root_rrd_manifests(&chunk.id())
-                .iter()
-                .any(|(id, _)| self.protected_chunks.contains(id))
-        {
+    pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
+        if self.protected_chunks.contains(&chunk.id()) {
             return true;
         }
 
@@ -390,7 +385,7 @@ impl ChunkStore {
 
             for chunk in chunks
                 .into_iter()
-                .filter(|chunk| !options.is_chunk_temporally_protected(self, chunk))
+                .filter(|chunk| !options.is_chunk_protected(chunk))
             {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                 // and would count as amortized (i.e. 0 bytes).
@@ -433,7 +428,7 @@ impl ChunkStore {
                 .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
                 .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
                 .filter(|chunk| !chunk.is_static()) // cannot gc static data
-                .filter(|chunk| !options.is_chunk_temporally_protected(self, chunk));
+                .filter(|chunk| !options.is_chunk_protected(chunk));
 
             for chunk in chunks_in_priority_order {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
@@ -497,8 +492,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats: _, // handled by shallow impl
             static_chunk_ids_per_entity: _,    // we don't GC static data
             static_chunks_stats: _,            // we don't GC static data
-            missing_chunk_ids: _,
-            used_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -662,8 +656,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
-            missing_chunk_ids: _,
-            used_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,

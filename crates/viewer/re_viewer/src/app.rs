@@ -3269,9 +3269,6 @@ impl App {
             }
         }
 
-        let s = store_hub
-            .active_caches()
-            .map_or(0, |caches| caches.capture_mem_usage_tree().size_bytes());
         // Prefetch new chunks for the active recording (if any):
         if let Some(recording) = store_hub.active_recording_mut()
             && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
@@ -3282,7 +3279,6 @@ impl App {
                 recording,
                 time_ctrl,
                 self.connection_registry(),
-                s,
             );
         }
     }

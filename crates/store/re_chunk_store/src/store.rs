@@ -434,6 +434,28 @@ impl ChunkStoreHandle {
     }
 }
 
+/// This keeps track of all missing virtual [`ChunkId`]s and all
+/// used physical [`ChunkId`]s.
+///
+/// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+/// found in local memory. This set is automatically populated anytime that happens.
+#[derive(Debug, Default)]
+pub struct QueriedChunkIdTracker {
+    pub used_physical: HashSet<ChunkId>,
+    pub missing: HashSet<ChunkId>,
+}
+
+impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            used_physical,
+            missing: missing_virtual,
+        } = self;
+
+        used_physical.heap_size_bytes() + missing_virtual.heap_size_bytes()
+    }
+}
+
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -592,17 +614,9 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
-    /// This keeps track of all missing [`ChunkId`]s.
-    ///
-    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
-    /// found in local memory. This set is automatically populated anytime that happens.
-    ///
-    /// Calling [`ChunkStore::take_missing_chunk_ids`] will atomically return the contents of this set
+    /// Calling [`ChunkStore::take_protected_chunks`] will atomically return the contents of this set
     /// as well as clearing it.
-    pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
-
-    /// This keeps track of chunks that were used this frame.
-    pub(crate) used_chunk_ids: RwLock<HashSet<ChunkId>>,
+    pub(crate) queried_chunk_id_tracker: RwLock<QueriedChunkIdTracker>,
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -650,8 +664,7 @@ impl Clone for ChunkStore {
             temporal_physical_chunks_stats: self.temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
-            missing_chunk_ids: Default::default(),
-            used_chunk_ids: Default::default(),
+            queried_chunk_id_tracker: Default::default(),
             insert_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
@@ -677,8 +690,7 @@ impl std::fmt::Display for ChunkStore {
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
-            missing_chunk_ids: _,
-            used_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -761,8 +773,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
-            missing_chunk_ids: Default::default(),
-            used_chunk_ids: Default::default(),
+            queried_chunk_id_tracker: Default::default(),
             insert_id: 0,
             gc_id: 0,
             event_id: AtomicU64::new(0),
@@ -875,7 +886,8 @@ impl ChunkStore {
         Some((component_descr.component_type, datatype.clone()))
     }
 
-    /// Returns the set of [`ChunkId`]s that were detected as missing since the last time since method was called.
+    /// Returns and iterator over [`ChunkId`]s that were detected as
+    /// used or missing since the last time since method was called.
     ///
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
     /// found in local memory.
@@ -888,19 +900,15 @@ impl ChunkStore {
     /// The returned [`ChunkId`]s can live anywhere within the lineage tree, and therefore might
     /// not be usable for downstream consumers that did not track even compaction/split-off events.
     /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
-    pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
-        std::mem::take(&mut self.missing_chunk_ids.write())
-    }
-
-    pub fn take_used_chunk_ids(&self) -> HashSet<ChunkId> {
-        std::mem::take(&mut self.used_chunk_ids.write())
+    pub fn take_tracked_chunk_ids(&self) -> QueriedChunkIdTracker {
+        std::mem::take(&mut self.queried_chunk_id_tracker.write())
     }
 
     /// How many missing chunk IDs are currently registered?
     ///
     /// See also [`ChunkStore::take_missing_chunk_ids`].
     pub fn num_missing_chunk_ids(&self) -> usize {
-        self.missing_chunk_ids.read().len()
+        self.queried_chunk_id_tracker.read().missing.len()
     }
 }
 
