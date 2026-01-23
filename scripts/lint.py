@@ -268,9 +268,11 @@ def lint_line(
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
-    # Check for dataplatform/data platform (should be "Data Platform" unless in URL path)
-    if re.search(r"(?<!/\b)(dataplatform|data\s+platform)(?!/\b)", line, re.IGNORECASE):
-        return "Use 'Data Platform' instead of 'dataplatform'/'data platform' (unless it's part of a URL path)"
+    # Check for specific data platform phrases that should be capitalized
+    if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
+        r"(?<!/)dataplatform(?!/)", line
+    ):
+        return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path)"
 
     if not is_in_docstring:
         if m := re.search(
@@ -397,6 +399,8 @@ def test_lint_line() -> None:
         "fn ret_any_mut() -> &mut dyn std::any::Any",
         "Visit /dataplatform/docs for more info",
         "The https://example.com/dataplatform/api endpoint",
+        "We need a data platform solution",
+        "Building data platform infrastructure",
     ]
 
     should_error = [
@@ -452,9 +456,8 @@ def test_lint_line() -> None:
         "fn take_any_mut(thing: &mut dyn Any)",
         "The dataplatform is powerful",
         "Using dataplatform for analytics",
-        "Our DataPlatform solution",
-        "The data platform handles everything",
-        "Using data platform for analytics",
+        "I love the data platform",
+        "The Rerun data platform is great",
     ]
 
     for test in should_pass:
@@ -965,6 +968,9 @@ allow_capitalized = [
     # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
     "Arrow",
     # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+    "Data",
+    "Platform",
+    # In the context of "Data Platform" we want capitalization, but not for all mentions
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
@@ -1085,10 +1091,13 @@ def fix_header_casing(s: str) -> str:
 
 
 def fix_dataplatform(s: str) -> str:
-    """Fix 'dataplatform'/'data platform' to 'Data Platform' unless it's part of a URL path."""
+    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path."""
     # Don't fix if it's in a URL path (has slashes before or after)
     # Use negative lookbehind and lookahead to avoid URL paths
-    return re.sub(r"(?<!/\b)(dataplatform|data\s+platform)(?!/\b)", "Data Platform", s, flags=re.IGNORECASE)
+    s = re.sub(r"the\s+data\s+platform", "the Data Platform", s)
+    s = re.sub(r"Rerun\s+data\s+platform", "Rerun Data Platform", s)
+    s = re.sub(r"(?<!/)dataplatform(?!/)", "Data Platform", s)
+    return s
 
 
 def fix_enforced_upper_case(s: str) -> str:
