@@ -43,7 +43,7 @@ The Rerun command-line interface:
 >
 > `::` will listen on all interfaces, IPv6 and IPv4.
 >
-> [Default: `::`]
+> [Default: `0.0.0.0`]
 
 * `--memory-limit <MEMORY_LIMIT>`
 > An upper limit on how much memory the Rerun Viewer should use.
@@ -660,7 +660,7 @@ In-memory Rerun data server.
 * `--host <HOST>`
 > IP address to listen on.
 >
-> [Default: `::`]
+> [Default: `0.0.0.0`]
 
 * `-p, --port <PORT>`
 > Port to bind to.

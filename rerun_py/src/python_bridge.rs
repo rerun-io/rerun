@@ -1541,7 +1541,7 @@ fn serve_grpc(
         };
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
-            "::",
+            "0.0.0.0",
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_options,
         )
@@ -1644,7 +1644,7 @@ fn serve_web(
 
         let sink = re_sdk::web_viewer::new_sink(
             open_browser,
-            "::",
+            "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_options,
@@ -2135,13 +2135,12 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
         let mut web_handle = global_web_viewer_server();
 
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServer::new("::", WebViewerServerPort(port)).map_err(
-                |err| {
+            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
+                .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
                     ))
-                },
-            )?,
+                })?,
         );
 
         Ok(())
