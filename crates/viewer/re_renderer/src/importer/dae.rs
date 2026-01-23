@@ -56,7 +56,6 @@ pub fn load_dae_from_buffer(
     load_dae_from_buffer_inner(buffer.as_ref(), ctx)
 }
 
-
 fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
     if !buffer.windows(3).any(|w| w == b"id=") {
         return Cow::Borrowed(buffer);
