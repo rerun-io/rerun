@@ -21,10 +21,19 @@ pub enum VisualizableReason {
     ExactMatchAny,
 
     /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
-    // TODO(grtlr, andreas): Should primitive-castables live in the same struct? Probably only relevant if we care about conversions outside of the actual querysite.
     DatatypeMatchAny {
-        components: SmallVec1<[ComponentIdentifier; 1]>,
+        components: SmallVec1<[(ComponentIdentifier, DatatypeMatchKind); 1]>,
     },
+}
+
+/// Types of matches when matching [`crate::RequiredComponents::AnyPhysicalDatatype`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DatatypeMatchKind {
+    /// Only the physical datatype was matched, but semantics aren't the native ones.
+    PhysicalDatatypeOnly,
+
+    /// The native datatype was matched, so we have full
+    NativeSemantics,
 }
 
 /// List of entities that are visualizable with a given visualizer.
@@ -91,6 +100,15 @@ impl<T: Clone> Clone for PerVisualizer<T> {
 impl<T> Default for PerVisualizer<T> {
     fn default() -> Self {
         Self(IntMap::default())
+    }
+}
+
+impl<T> re_byte_size::SizeBytes for PerVisualizer<T>
+where
+    T: re_byte_size::SizeBytes,
+{
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
     }
 }
 

@@ -405,7 +405,7 @@ fn find_datatypes(
     for segment in dataset.segments().values() {
         for layer in segment.layers().values() {
             let chunk_store = layer.store_handle().read();
-            for chunk in chunk_store.iter_chunks() {
+            for chunk in chunk_store.iter_physical_chunks() {
                 if chunk.entity_path() == entity_path
                     && let Some(component) = chunk.components().0.get(component)
                     && let Some(timeline) = chunk.timelines().get(timeline_name)

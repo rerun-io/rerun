@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
+use re_log_types::{AbsoluteTimeRange, Timeline};
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone)]
 pub struct Layer {
@@ -37,13 +37,13 @@ impl Layer {
     }
 
     pub fn num_chunks(&self) -> u64 {
-        self.store_handle.read().num_chunks() as u64
+        self.store_handle.read().num_physical_chunks() as u64
     }
 
     pub fn size_bytes(&self) -> u64 {
         self.store_handle
             .read()
-            .iter_chunks()
+            .iter_physical_chunks()
             .map(|chunk| chunk.heap_size_bytes())
             .sum()
     }
@@ -61,6 +61,21 @@ impl Layer {
         &self,
     ) -> Result<RecordBatch, re_chunk_store::ExtractPropertiesError> {
         self.store_handle.read().extract_properties()
+    }
+
+    pub fn index_ranges(&self) -> BTreeMap<Timeline, AbsoluteTimeRange> {
+        let mut ranges = BTreeMap::new();
+        for chunk in self.store_handle.read().iter_physical_chunks() {
+            for time_col in chunk.timelines().values() {
+                let timeline = time_col.timeline().to_owned();
+                let range = time_col.time_range();
+
+                let entry = ranges.entry(timeline).or_insert(range);
+                *entry = entry.union(range);
+            }
+        }
+
+        ranges
     }
 }
 

@@ -40,6 +40,9 @@ from ._baseclasses import (
     ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
+from ._legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
+)
 from ._log import (
     AsComponents as AsComponents,
     escape_entity_path_part as escape_entity_path_part,
@@ -48,11 +51,23 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._logging_handler import (
+    LoggingHandler as LoggingHandler,
+)
+from ._memory import (
+    MemoryRecording as MemoryRecording,
+    memory_recording as memory_recording,
+)
 from ._numpy_compatibility import asarray as asarray
 from ._properties import (
     send_property as send_property,
     send_recording_name as send_recording_name,
     send_recording_start_time_nanos as send_recording_start_time_nanos,
+)
+from ._script_helpers import (
+    script_add_args as script_add_args,
+    script_setup as script_setup,
+    script_teardown as script_teardown,
 )
 from ._send_columns import (
     TimeColumn as TimeColumn,
@@ -165,20 +180,10 @@ from .error_utils import (
     set_strict_mode as set_strict_mode,
     strict_mode as strict_mode,
 )
-from .legacy_notebook import (
-    legacy_notebook_show as legacy_notebook_show,
-)
-from .logging_handler import (
-    LoggingHandler as LoggingHandler,
-)
-from .memory import (
-    MemoryRecording as MemoryRecording,
-    memory_recording as memory_recording,
-)
 from .recording_stream import (
     BinaryStream as BinaryStream,
     ChunkBatcherConfig as ChunkBatcherConfig,
-    RecordingStream as RecordingStream,
+    RecordingStream as RecordingStream,  # noqa: TC001
     binary_stream as binary_stream,
     get_application_id as get_application_id,
     get_data_recording as get_data_recording,
@@ -190,11 +195,6 @@ from .recording_stream import (
     set_global_data_recording as set_global_data_recording,
     set_thread_local_data_recording as set_thread_local_data_recording,
     thread_local_stream as thread_local_stream,
-)
-from .script_helpers import (
-    script_add_args as script_add_args,
-    script_setup as script_setup,
-    script_teardown as script_teardown,
 )
 from .sinks import (
     FileSink as FileSink,
@@ -350,13 +350,15 @@ def init(
         recording_id = str(recording_id)
 
     if init_logging:
-        RecordingStream(
+        # Note: don't use `RecordingStream` here, because it overrides the default recording id behavior
+        bindings.new_recording(
             application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=None,
         )
 
     if spawn:

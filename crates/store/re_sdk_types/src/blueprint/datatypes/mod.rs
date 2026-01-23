@@ -2,6 +2,7 @@
 
 mod component_column_selector;
 mod component_column_selector_ext;
+mod component_source_kind;
 mod filter_by_range;
 mod filter_is_not_null;
 mod selected_columns;
@@ -15,6 +16,7 @@ mod timeline_column_ext;
 mod visualizer_component_mapping;
 
 pub use self::component_column_selector::ComponentColumnSelector;
+pub use self::component_source_kind::ComponentSourceKind;
 pub use self::filter_by_range::FilterByRange;
 pub use self::filter_is_not_null::FilterIsNotNull;
 pub use self::selected_columns::SelectedColumns;

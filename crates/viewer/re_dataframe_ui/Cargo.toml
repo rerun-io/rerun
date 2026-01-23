@@ -37,10 +37,12 @@ re_viewer_context.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
+async-trait.workspace = true
 datafusion.workspace = true
 egui.workspace = true
 egui_dnd.workspace = true
 egui_table.workspace = true
+futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 ordered-float.workspace = true
@@ -48,7 +50,6 @@ parking_lot.workspace = true
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true
-futures.workspace = true
 
 
 [dev-dependencies]

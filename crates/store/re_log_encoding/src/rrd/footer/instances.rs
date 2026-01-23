@@ -5,6 +5,7 @@ use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
+use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
@@ -187,6 +188,19 @@ pub struct RrdManifest {
     pub data: arrow::array::RecordBatch,
 }
 
+impl re_byte_size::SizeBytes for RrdManifest {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            store_id,
+            sorbet_schema,
+            sorbet_schema_sha256: _,
+            data,
+        } = self;
+
+        store_id.heap_size_bytes() + sorbet_schema.heap_size_bytes() + data.heap_size_bytes()
+    }
+}
+
 /// A map based representation of the static data within an [`RrdManifest`].
 pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
@@ -203,11 +217,44 @@ pub struct RrdManifestTemporalMapEntry {
     pub num_rows: u64,
 }
 
+impl re_byte_size::SizeBytes for RrdManifestTemporalMapEntry {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// A map based representation of the temporal data within an [`RrdManifest`].
 pub type RrdManifestTemporalMap = IntMap<
     EntityPath,
     IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, RrdManifestTemporalMapEntry>>>,
 >;
+
+/// The sha256 hash of an [RRD manifest's payload].
+///
+/// Can be used as a unique and/or content-addressable ID.
+///
+/// Refer to [`RrdManifest::compute_sha256`] to see how exactly this is computed.
+///
+/// [RRD manifest's payload]: `RrdManifest::data`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RrdManifestSha256(pub [u8; 32]);
+
+impl std::fmt::Display for RrdManifestSha256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "RrdManifest#{}",
+            self.0
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>(),
+        ))
+    }
+}
 
 impl RrdManifest {
     /// High-level helper to parse [`RrdManifest`]s from raw RRD bytes.
@@ -276,6 +323,72 @@ impl RrdManifest {
         }
 
         Ok(manifests)
+    }
+
+    /// This builds an [`RrdManifest`] from a collection of chunks, assuming an in-memory backend.
+    ///
+    /// This is only useful for developement/testing purposes.
+    /// All sanity checking methods, including the costly ones, will be called before returning.
+    ///
+    /// Chunk offsets will start at 0 and increment from there according to their heap size.
+    /// There are no chunk keys whatsoever.
+    pub fn build_in_memory_from_chunks<'a>(
+        store_id: StoreId,
+        chunks: impl Iterator<Item = &'a re_chunk::Chunk>,
+    ) -> CodecResult<std::sync::Arc<Self>> {
+        let mut rrd_manifest_builder = crate::RrdManifestBuilder::default();
+
+        let mut offset = 0;
+        for chunk in chunks {
+            let chunk_batch = chunk.to_chunk_batch()?;
+
+            use re_byte_size::SizeBytes as _;
+            let byte_size_uncompressed = chunk.heap_size_bytes();
+
+            let uncompressed_byte_span = re_span::Span {
+                start: offset,
+                len: byte_size_uncompressed,
+            };
+
+            offset += byte_size_uncompressed;
+
+            rrd_manifest_builder.append(
+                &chunk_batch,
+                uncompressed_byte_span,
+                byte_size_uncompressed,
+            )?;
+        }
+
+        let rrd_manifest = rrd_manifest_builder.build(store_id)?;
+        rrd_manifest.sanity_check_cheap()?;
+        rrd_manifest.sanity_check_heavy()?;
+
+        Ok(std::sync::Arc::new(rrd_manifest))
+    }
+
+    /// Computes the sha256 hash of the manifest's data, which can be used as a unique ID.
+    //
+    // TODO(cmc): very expensive, should be cached somewhere.
+    pub fn compute_sha256(&self) -> Result<RrdManifestSha256, arrow::error::ArrowError> {
+        re_tracing::profile_function!();
+
+        let data_ipc = {
+            let mut data_ipc = Vec::new();
+            let mut w =
+                arrow::ipc::writer::StreamWriter::try_new(&mut data_ipc, self.data.schema_ref())?;
+            w.write(&self.data)?;
+            data_ipc
+        };
+
+        use sha2::Digest as _;
+        let mut hash = [0u8; 32];
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&data_ipc);
+        hasher.finalize_into(sha2::digest::generic_array::GenericArray::from_mut_slice(
+            &mut hash,
+        ));
+
+        Ok(RrdManifestSha256(hash))
     }
 
     /// Computes a map-based representation of the static data in this RRD manifest.

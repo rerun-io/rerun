@@ -9,12 +9,11 @@ use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, T
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
 
-use crate::store::ChunkIdSetPerTime;
 use crate::{ChunkStore, OnMissingChunk};
-
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::store::ChunkIdSetPerTime;
 
 // ---
 
@@ -1090,10 +1089,14 @@ impl ChunkStore {
             // need to make sure that the resulting chunks' per-component time range intersects with the
             // time range of the query itself.
             .filter(|chunk| {
-                chunk
-                    .timelines()
-                    .get(query.timeline())
-                    .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
+                (chunk.is_static() && include_static) || {
+                    chunk
+                        .timelines()
+                        .get(query.timeline())
+                        .is_some_and(|time_column| {
+                            time_column.time_range().intersects(query.range())
+                        })
+                }
             })
             .collect_vec();
 

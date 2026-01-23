@@ -169,7 +169,8 @@ fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOption
         )
         .on_hover_ui(|ui| {
             ui.markdown_ui(
-                "Enables an experimental UI for mapping components to different visualizations in the visualizer section of the selection view.",
+                "Enables an experimental UI for mapping components to different visualizations in the visualizer section of the selection view.
+WARNING: Viewer restart is needed to apply some of the remapping abilities to existing views.",
             );
         });
 }

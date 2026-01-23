@@ -8,7 +8,7 @@ use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
 use crate::time_control::TimeControlCommand;
-use crate::{AuthContext, RecordingOrTable};
+use crate::{AuthContext, RecordingOrTable, ScreenshotTarget, ViewId};
 
 // ----------------------------------------------------------------------------
 
@@ -157,6 +157,16 @@ pub enum SystemCommand {
 
     /// Logout from rerun cloud
     Logout,
+
+    /// Save a screenshot to a file.
+    SaveScreenshot {
+        /// Where to save the screenshot.
+        target: ScreenshotTarget,
+
+        /// Optional view id to screenshot a specific view.
+        /// If None, screenshots the entire viewer.
+        view_id: Option<ViewId>,
+    },
 }
 
 impl SystemCommand {

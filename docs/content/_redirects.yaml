@@ -34,7 +34,8 @@ getting-started/quick-start/rust: getting-started/data-in/rust
 
 # Concepts section (old paths moved to subfolders)
 concepts/app-model: concepts/how-does-rerun-work
-concepts/apps-and-recordings: concepts/logging-and-ingestion/apps-and-recordings
+concepts/apps-and-recordings: concepts/logging-and-ingestion/recordings
+concepts/logging-and-ingestion/apps-and-recordings: concepts/logging-and-ingestion/recordings
 concepts/annotation-context: concepts/visualization/annotation-context
 concepts/batches: concepts/logging-and-ingestion/batches
 concepts/blueprint: concepts/visualization/blueprints
@@ -51,7 +52,8 @@ concepts/transforms: concepts/logging-and-ingestion/transforms
 concepts/visualizers-and-overrides: concepts/visualization/visualizers-and-overrides
 
 # Reference section
-reference/dataframes: concepts/query-and-transform/dataframes
+reference/dataframes: concepts/query-and-transform/dataframe-queries
+concepts/query-and-transform/dataframes: concepts/query-and-transform/dataframe-queries
 reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
 reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
 reference/data-loaders/overview: concepts/logging-and-ingestion/data-loaders/overview

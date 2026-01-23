@@ -294,7 +294,7 @@ impl ExecutionPlan for TableEntryWriterExec {
     }
 }
 
-pub struct RecordBatchGrpcOutputStream {
+struct RecordBatchGrpcOutputStream {
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
     thread_status: tokio::sync::oneshot::Receiver<re_redap_client::ApiResult>,
@@ -303,7 +303,7 @@ pub struct RecordBatchGrpcOutputStream {
 }
 
 struct GrpcStreamSender {
-    sender: tokio::sync::mpsc::UnboundedSender<RecordBatch>,
+    sender: tokio::sync::mpsc::Sender<RecordBatch>,
 }
 
 impl RecordBatchStream for RecordBatchGrpcOutputStream {
@@ -320,22 +320,22 @@ impl RecordBatchGrpcOutputStream {
         table_id: EntryId,
         insert_op: TableInsertMode,
     ) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        // Use a bounded channel to provide backpressure
+        let (tx, rx) = tokio::sync::mpsc::channel(256); // This number was taken from thin air
 
         // Create an oneshot channel for reporting when the thread is complete
         let (thread_status_tx, thread_status_rx) = tokio::sync::oneshot::channel();
 
         runtime.spawn(async move {
             let shutdown_response = async {
-                let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(rx);
+                let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
                 let mut client = client;
 
                 client.write_table(stream, table_id, insert_op).await
             }
             .await;
 
-            #[expect(clippy::let_underscore_must_use)]
-            let _ = thread_status_tx.send(shutdown_response);
+            thread_status_tx.send(shutdown_response).ok();
         });
 
         Self {
@@ -373,22 +373,30 @@ impl Stream for RecordBatchGrpcOutputStream {
             Poll::Ready(Some(Ok(batch))) => {
                 // Send to gRPC if we have a sender
                 if let Some(ref grpc_sender) = self.grpc_sender {
-                    // Check if channel is still open
-                    if grpc_sender.sender.send(batch).is_err() {
-                        // Channel closed - the gRPC task may have failed
-                        // Check if we have a stored error
-                        if let Some(status) = self.grpc_error.take() {
-                            return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
-                                status,
-                            )))));
-                        } else {
-                            // Channel closed without error - treat as broken pipe
-                            return Poll::Ready(Some(Err(DataFusionError::External(Box::new(
-                                std::io::Error::new(
-                                    std::io::ErrorKind::BrokenPipe,
-                                    "gRPC stream closed unexpectedly",
-                                ),
-                            )))));
+                    // Use try_send for backpressure with bounded channel
+                    match grpc_sender.sender.try_send(batch) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            // Channel is full - apply backpressure by returning Pending
+                            cx.waker().wake_by_ref();
+                            return Poll::Pending;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            // Channel closed - the gRPC task may have failed
+                            // Check if we have a stored error
+                            if let Some(status) = self.grpc_error.take() {
+                                return Poll::Ready(Some(Err(DataFusionError::External(
+                                    Box::new(status),
+                                ))));
+                            } else {
+                                // Channel closed without error - treat as broken pipe
+                                return Poll::Ready(Some(Err(DataFusionError::External(
+                                    Box::new(std::io::Error::new(
+                                        std::io::ErrorKind::BrokenPipe,
+                                        "gRPC stream closed unexpectedly",
+                                    )),
+                                ))));
+                            }
                         }
                     }
                 }

@@ -1,0 +1,53 @@
+---
+source: crates/store/re_redap_tests/src/tests/register_segment.rs
+expression: batch.format_schema_snapshot()
+---
+duration:end: nullable Duration(ns) [
+    rerun:index: "duration"
+    rerun:index_kind: "duration"
+    rerun:index_marker: "end"
+    rerun:kind: "index"
+]
+duration:start: nullable Duration(ns) [
+    rerun:index: "duration"
+    rerun:index_kind: "duration"
+    rerun:index_marker: "start"
+    rerun:kind: "index"
+]
+frame_nr:end: nullable i64 [
+    rerun:index: "frame_nr"
+    rerun:index_kind: "sequence"
+    rerun:index_marker: "end"
+    rerun:kind: "index"
+]
+frame_nr:start: nullable i64 [
+    rerun:index: "frame_nr"
+    rerun:index_kind: "sequence"
+    rerun:index_marker: "start"
+    rerun:kind: "index"
+]
+property:text_log:TextLog:text: nullable List[nullable Utf8] [
+    rerun:archetype: "rerun.archetypes.TextLog"
+    rerun:component: "TextLog:text"
+    rerun:component_type: "rerun.components.Text"
+    rerun:entity_path: "/__properties/text_log"
+    rerun:kind: "data"
+]
+rerun_last_updated_at: Timestamp(ns)
+rerun_layer_names: List[Utf8]
+rerun_num_chunks: u64
+rerun_segment_id: Utf8
+rerun_size_bytes: u64
+rerun_storage_urls: List[Utf8]
+timestamp:end: nullable Timestamp(ns) [
+    rerun:index: "timestamp"
+    rerun:index_kind: "timestamp"
+    rerun:index_marker: "end"
+    rerun:kind: "index"
+]
+timestamp:start: nullable Timestamp(ns) [
+    rerun:index: "timestamp"
+    rerun:index_kind: "timestamp"
+    rerun:index_marker: "start"
+    rerun:kind: "index"
+]

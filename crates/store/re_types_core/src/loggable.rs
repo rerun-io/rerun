@@ -174,13 +174,6 @@ impl ComponentType {
 
 // ---
 
-impl re_byte_size::SizeBytes for ComponentType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
@@ -214,12 +207,5 @@ impl DatatypeName {
         } else {
             full_name
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for DatatypeName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
     }
 }

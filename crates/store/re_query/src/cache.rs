@@ -4,9 +4,11 @@ use std::sync::Arc;
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
+use re_byte_size::{MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
-    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
+    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimelineName};
 use re_types_core::archetypes;
@@ -158,6 +160,37 @@ pub struct QueryCache {
     pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
+impl MemUsageTreeCapture for QueryCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id: _,
+            store: _,
+            might_require_clearing,
+            latest_at_per_cache_key: _,
+            range_per_cache_key,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child(
+                "might_require_clearing",
+                might_require_clearing.total_size_bytes(),
+            )
+            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // Maybe double-counting chunks or other arrow data?
+            // .with_child(
+            //     "latest_at_per_cache_key",
+            //     latest_at_per_cache_key.total_size_bytes(),
+            // )
+            .with_child(
+                "range_per_cache_key",
+                range_per_cache_key.total_size_bytes(),
+            )
+            .into_tree()
+    }
+}
+
 impl std::fmt::Debug for QueryCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -302,157 +335,215 @@ impl ChunkStoreSubscriber for QueryCache {
                 store_id,
             );
 
-            let ChunkStoreDiff {
-                kind: _, // Don't care: both additions and deletions invalidate query results.
-                rrd_manifest,
-                chunk,
-                split_source: _, // Don't care
-                compacted,
-            } = diff;
+            match diff {
+                ChunkStoreDiff::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest }) => {
+                    re_tracing::profile_scope!("compact event (virtual addition)");
 
-            if let Some(rrd_manifest) = rrd_manifest {
-                re_tracing::profile_scope!("compact events (virtual)");
+                    // Some virtual data was inserted into the store, we need to keep track of this information.
+                    //
+                    // In particular, we must know if there are pending tombstones out there, in order to properly
+                    // populate the `might_require_clearing` set.
 
-                // Some virtual data was inserted into the store, we need to keep track of this information.
-                //
-                // In particular, we must know if there are pending tombstones out there, in order to properly
-                // populate the `might_require_clearing` set.
-
-                match rrd_manifest.get_static_data_as_a_map() {
-                    Ok(native_static_map) => {
-                        for (entity_path, per_component) in native_static_map {
-                            for (component, chunk_id) in per_component {
-                                compacted_events
-                                    .static_
-                                    .entry((entity_path.clone(), component))
-                                    .or_default()
-                                    .insert(chunk_id);
+                    match rrd_manifest.get_static_data_as_a_map() {
+                        Ok(native_static_map) => {
+                            for (entity_path, per_component) in native_static_map {
+                                for (component, chunk_id) in per_component {
+                                    compacted_events
+                                        .static_
+                                        .entry((entity_path.clone(), component))
+                                        .or_default()
+                                        .insert(chunk_id);
+                                }
                             }
+                        }
+
+                        Err(err) => {
+                            re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
                         }
                     }
 
-                    Err(err) => {
-                        re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
-                    }
-                }
+                    match rrd_manifest.get_temporal_data_as_a_map() {
+                        Ok(native_temporal_map) => {
+                            for (entity_path, per_timeline) in native_temporal_map {
+                                for (timeline, per_component) in per_timeline {
+                                    for (component, per_chunk) in per_component {
+                                        for (chunk_id, entry) in per_chunk {
+                                            let key = QueryCacheKey::new(
+                                                entity_path.clone(),
+                                                *timeline.name(),
+                                                component,
+                                            );
 
-                match rrd_manifest.get_temporal_data_as_a_map() {
-                    Ok(native_temporal_map) => {
-                        for (entity_path, per_timeline) in native_temporal_map {
-                            for (timeline, per_component) in per_timeline {
-                                for (component, per_chunk) in per_component {
-                                    for (chunk_id, entry) in per_chunk {
-                                        let key = QueryCacheKey::new(
-                                            entity_path.clone(),
-                                            *timeline.name(),
-                                            component,
-                                        );
+                                            // latest-at
+                                            {
+                                                let data_time_min = entry.time_range.min();
+                                                compacted_events
+                                                    .temporal_latest_at
+                                                    .entry(key.clone())
+                                                    .and_modify(|time| {
+                                                        *time = TimeInt::min(*time, data_time_min);
+                                                    })
+                                                    .or_insert(data_time_min);
+                                            }
 
-                                        // latest-at
-                                        {
-                                            let data_time_min = entry.time_range.min();
-                                            compacted_events
-                                                .temporal_latest_at
-                                                .entry(key.clone())
-                                                .and_modify(|time| {
-                                                    *time = TimeInt::min(*time, data_time_min);
-                                                })
-                                                .or_insert(data_time_min);
-                                        }
-
-                                        // range
-                                        {
-                                            let compacted_events = compacted_events
-                                                .temporal_range
-                                                .entry(key)
-                                                .or_default();
-                                            compacted_events.insert(chunk_id);
+                                            // range
+                                            {
+                                                let compacted_events = compacted_events
+                                                    .temporal_range
+                                                    .entry(key)
+                                                    .or_default();
+                                                compacted_events.insert(chunk_id);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Err(err) => {
-                        re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
-                    }
-                }
-            } else {
-                re_tracing::profile_scope!("compact events (physical)");
-
-                // Some physical data was inserted into the store, we need to invalidate caches appropriately.
-
-                if chunk.is_static() {
-                    for component_identifier in chunk.components_identifiers() {
-                        let compacted_events = compacted_events
-                            .static_
-                            .entry((chunk.entity_path().clone(), component_identifier))
-                            .or_default();
-
-                        compacted_events.insert(chunk.id());
-                        // If a compaction was triggered, make sure to drop the original chunks too.
-                        compacted_events.extend(compacted.iter().flat_map(
-                            |ChunkCompactionReport {
-                                 srcs: compacted_chunks,
-                                 new_chunk: _,
-                             }| compacted_chunks.keys().copied(),
-                        ));
-                    }
-                }
-
-                for (timeline, per_component) in chunk.time_range_per_component() {
-                    for (component_identifier, time_range) in per_component {
-                        let key = QueryCacheKey::new(
-                            chunk.entity_path().clone(),
-                            timeline,
-                            component_identifier,
-                        );
-
-                        // latest-at
-                        {
-                            let mut data_time_min = time_range.min();
-
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            if let Some(ChunkCompactionReport {
-                                srcs: compacted_chunks,
-                                new_chunk: _,
-                            }) = compacted
-                            {
-                                for chunk in compacted_chunks.values() {
-                                    let data_time_compacted = chunk
-                                        .time_range_per_component()
-                                        .get(&timeline)
-                                        .and_then(|per_component| per_component.get(&key.component))
-                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
-
-                                    data_time_min =
-                                        TimeInt::min(data_time_min, data_time_compacted);
-                                }
-                            }
-
-                            compacted_events
-                                .temporal_latest_at
-                                .entry(key.clone())
-                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
-                                .or_insert(data_time_min);
+                        Err(err) => {
+                            re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
                         }
+                    }
+                }
 
-                        // range
-                        {
-                            let compacted_events =
-                                compacted_events.temporal_range.entry(key).or_default();
+                ChunkStoreDiff::Addition(add) => {
+                    re_tracing::profile_scope!("compact event (physical addition)");
+
+                    // Some physical data was inserted into the store, we need to invalidate the caches appropriately.
+
+                    // Static
+                    if add.chunk_before_processing.is_static() {
+                        // For static data, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
+
+                        for component_identifier in chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((chunk.entity_path().clone(), component_identifier))
+                                .or_default();
 
                             compacted_events.insert(chunk.id());
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            compacted_events.extend(compacted.iter().flat_map(
-                                |ChunkCompactionReport {
-                                     srcs: compacted_chunks,
-                                     new_chunk: _,
-                                 }| {
-                                    compacted_chunks.keys().copied()
-                                },
-                            ));
+
+                            // If a compaction was triggered, make sure to drop the original chunks.
+                            //
+                            // There's nothing to be done for splits, since the original chunk never made it into
+                            // the store anyway.
+                            if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                &add.direct_lineage
+                            {
+                                compacted_events.extend(chunks.keys().copied());
+                            }
+                        }
+                    }
+
+                    // LatestAt
+                    {
+                        // For latest-at, we want to make sure to invalidate all chunks beyond the
+                        // smallest timestamp that was modified.
+                        //
+                        // For compaction, that means looking at the complete processed chunk, because even though
+                        // this has no semantic impact on the query, we still want to make sure that cache does not
+                        // keep strong references to these old chunks that have now been compaced away.
+                        let chunk = match &add.direct_lineage {
+                            ChunkDirectLineageReport::CompactedFrom(_) => {
+                                &add.chunk_after_processing
+                            }
+                            _ => add.delta_chunk(),
+                        };
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for (component_identifier, time_range) in per_component {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let data_time_min = time_range.min();
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+                        }
+                    }
+
+                    // Range
+                    {
+                        // For ranges, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for component_identifier in per_component.keys().copied() {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+                                compacted_events.insert(chunk.id());
+
+                                // If a compaction was triggered, make sure to drop the original chunks.
+                                //
+                                // There's nothing to be done for splits, since the original chunk never made it into
+                                // the store anyway.
+                                if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                    &add.direct_lineage
+                                {
+                                    compacted_events.extend(chunks.keys().copied());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    re_tracing::profile_scope!("compact event (physical deletion)");
+
+                    // Some physical data was removed from the store, we need to invalidate the caches appropriately.
+
+                    if del.chunk.is_static() {
+                        for component_identifier in del.chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((del.chunk.entity_path().clone(), component_identifier))
+                                .or_default();
+
+                            compacted_events.insert(del.chunk.id());
+                        }
+                    }
+
+                    for (timeline, per_component) in del.chunk.time_range_per_component() {
+                        for (component_identifier, time_range) in per_component {
+                            let key = QueryCacheKey::new(
+                                del.chunk.entity_path().clone(),
+                                timeline,
+                                component_identifier,
+                            );
+
+                            // latest-at
+                            {
+                                let data_time_min = time_range.min();
+
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+
+                            // range
+                            {
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+
+                                compacted_events.insert(del.chunk.id());
+                            }
                         }
                     }
                 }

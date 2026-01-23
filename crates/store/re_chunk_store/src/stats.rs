@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use re_byte_size::SizeBytes;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes};
 use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
@@ -110,6 +111,18 @@ pub struct ChunkStoreChunkStats {
 
     /// How many _component batches_ ("cells").
     pub num_events: u64,
+}
+
+impl SizeBytes for ChunkStoreChunkStats {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::fmt::Display for ChunkStoreChunkStats {
@@ -340,5 +353,82 @@ impl ChunkStore {
                 self.num_temporal_events_for_component_on_timeline(timeline, entity_path, component)
             })
             .sum()
+    }
+}
+
+impl SizeBytes for ChunkStore {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        let Self {
+            chunks_per_chunk_id,
+            static_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity_per_component,
+            id,
+            config,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunk_ids_per_min_row_id,
+            chunks_lineage,
+            dangling_splits,
+            leaky_compactions,
+            temporal_physical_chunks_stats,
+            static_chunks_stats,
+            missing_chunk_ids,
+            insert_id,
+            gc_id,
+            event_id: _, // no heap data
+        } = self;
+
+        // Avoid the amortizing effects of Arc::total_size_bytes:
+        let chunks_size = chunks_per_chunk_id
+            .iter()
+            .map(|(chunk_id, chunk)| {
+                chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
+            })
+            .sum::<u64>();
+
+        chunks_size
+            + static_chunk_ids_per_entity.heap_size_bytes()
+            + temporal_chunk_ids_per_entity.heap_size_bytes()
+            + temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+            + id.heap_size_bytes()
+            + config.heap_size_bytes()
+            + time_type_registry.heap_size_bytes()
+            + type_registry.heap_size_bytes()
+            + per_column_metadata.heap_size_bytes()
+            + chunk_ids_per_min_row_id.heap_size_bytes()
+            + chunks_lineage.heap_size_bytes()
+            + dangling_splits.heap_size_bytes()
+            + leaky_compactions.heap_size_bytes()
+            + temporal_physical_chunks_stats.heap_size_bytes()
+            + static_chunks_stats.heap_size_bytes()
+            + missing_chunk_ids.heap_size_bytes()
+            + insert_id.heap_size_bytes()
+            + gc_id.heap_size_bytes()
+    }
+}
+
+impl MemUsageTreeCapture for ChunkStore {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let mut memory_per_entity: BTreeMap<EntityPath, u64> = Default::default();
+
+        for chunk in self.chunks_per_chunk_id.values() {
+            let entity_path = chunk.entity_path();
+            let entry = memory_per_entity.entry(entity_path.clone()).or_default();
+            *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc
+        }
+
+        let mut node = MemUsageNode::new();
+
+        for (entity_path, size) in memory_per_entity {
+            node.add(entity_path.to_string(), MemUsageTree::Bytes(size));
+        }
+
+        node.with_total_size_bytes(self.total_size_bytes())
     }
 }

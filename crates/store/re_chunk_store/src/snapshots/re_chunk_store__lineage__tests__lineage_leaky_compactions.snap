@@ -1,0 +1,12 @@
+---
+source: crates/store/re_chunk_store/src/lineage.rs
+expression: generate_redacted_lineage_report(&store)
+---
+chunk_00000000000005390000000000000005 (status:loaded static:no)
+    compacted-from: chunk_00000000000005390000000000000003 (status:offloaded static:unknown)
+        origin:<volatile> (cannot be re-fetched)
+    compacted-from: chunk_00000000000005390000000000000004 (status:offloaded static:unknown)
+        compacted-from: chunk_00000000000005390000000000000001 (status:offloaded static:unknown)
+            origin:<volatile> (cannot be re-fetched)
+        compacted-from: chunk_00000000000005390000000000000002 (status:offloaded static:unknown)
+            origin:<volatile> (cannot be re-fetched)

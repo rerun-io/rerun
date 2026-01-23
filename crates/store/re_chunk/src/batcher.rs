@@ -3,11 +3,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
+use re_quota_channel::{Receiver, Sender};
 use re_types_core::{ComponentIdentifier, SerializedComponentBatch, SerializedComponentColumn};
 
 use crate::chunk::ChunkComponents;
@@ -125,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -147,17 +147,13 @@ pub struct ChunkBatcherConfig {
     /// unsorted.
     pub chunk_max_rows_if_unsorted: u64,
 
-    /// Size of the internal channel of commands.
+    /// The maximum number of bytes allowed to be in a queue/channel
+    /// before we apply backpressure.
     ///
-    /// Unbounded if left unspecified.
-    /// Once a batcher is created, this property cannot be changed.
-    pub max_commands_in_flight: Option<u64>,
-
-    /// Size of the internal channel of [`Chunk`]s.
+    /// This is divided in two by the input and output channels.
     ///
-    /// Unbounded if left unspecified.
-    /// Once a batcher is created, this property cannot be changed.
-    pub max_chunks_in_flight: Option<u64>,
+    /// If a single chunk exceeds this size it will still be processed.
+    pub max_bytes_in_flight: u64,
 }
 
 impl Default for ChunkBatcherConfig {
@@ -173,8 +169,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: 1024 * 1024, // 1 MiB
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        max_bytes_in_flight: 100 * 1024 * 1024, // Apply backpressure
     };
 
     /// Low-latency configuration, preferred when streaming directly to a viewer.
@@ -189,8 +184,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: 0,
         flush_num_rows: 0,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        ..Self::DEFAULT
     };
 
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
@@ -199,8 +193,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: u64::MAX,
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        ..Self::DEFAULT
     };
 
     /// Environment variable to configure [`Self::flush_tick`].
@@ -235,7 +228,7 @@ impl ChunkBatcherConfig {
     ///
     /// See [`Self::ENV_FLUSH_TICK`], [`Self::ENV_FLUSH_NUM_BYTES`], [`Self::ENV_FLUSH_NUM_BYTES`].
     pub fn apply_env(&self) -> ChunkBatcherResult<Self> {
-        let mut new = self.clone();
+        let mut new = *self;
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_TICK) {
             let flush_duration_secs: f64 =
@@ -415,13 +408,25 @@ impl Drop for ChunkBatcherInner {
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
-    Flush { on_done: Sender<()> },
+    Flush {
+        on_done: crossbeam::channel::Sender<()>,
+    },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
 }
 
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::AppendChunk(chunk) => chunk.heap_size_bytes(),
+            Self::AppendRow(_, row) => row.heap_size_bytes(),
+            Self::Flush { .. } | Self::UpdateConfig(_) | Self::Shutdown => 0,
+        }
+    }
+}
+
 impl Command {
-    fn flush() -> (Self, Receiver<()>) {
+    fn flush() -> (Self, crossbeam::channel::Receiver<()>) {
         let (tx, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done: tx }, rx)
     }
@@ -433,26 +438,17 @@ impl ChunkBatcher {
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
-    #[expect(clippy::needless_pass_by_value)]
     pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
-        let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
-            Some(cap) => crossbeam::channel::bounded(cap as _),
-            None => crossbeam::channel::unbounded(),
-        };
-
-        let (tx_chunk, rx_chunks) = match config.max_chunks_in_flight {
-            Some(cap) => crossbeam::channel::bounded(cap as _),
-            None => crossbeam::channel::unbounded(),
-        };
+        let (tx_cmds, rx_cmd) =
+            re_quota_channel::channel("batcher_input", config.max_bytes_in_flight / 2);
+        let (tx_chunk, rx_chunks) =
+            re_quota_channel::channel("batcher_output", config.max_bytes_in_flight / 2);
 
         let cmds_to_chunks_handle = {
             const NAME: &str = "ChunkBatcher::cmds_to_chunks";
             std::thread::Builder::new()
                 .name(NAME.into())
-                .spawn({
-                    let config = config.clone();
-                    move || batching_thread(config, hooks, rx_cmd, tx_chunk)
-                })
+                .spawn(move || batching_thread(config, hooks, rx_cmd, tx_chunk))
                 .map_err(|err| ChunkBatcherError::SpawnThread {
                     name: NAME,
                     err: Box::new(err),
@@ -662,18 +658,20 @@ fn batching_thread(
     // so that the next tick will not unnecessarily fire early.
     let mut skip_next_tick = false;
 
-    use crossbeam::select;
     loop {
-        select! {
-            recv(rx_cmd) -> cmd => {
+        crossbeam::select! {
+            recv(rx_cmd.inner()) -> cmd => {
                 let Ok(cmd) = cmd else {
                     // All command senders are gone, which can only happen if the
                     // `ChunkBatcher` itself has been dropped.
                     break;
                 };
 
+                let re_quota_channel::SizedMessage { msg, size_bytes } = cmd;
 
-                match cmd {
+                rx_cmd.manual_on_receive(size_bytes);
+
+                match msg {
                     Command::AppendChunk(chunk) => {
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
@@ -716,10 +714,10 @@ fn batching_thread(
 
                     Command::UpdateConfig(new_config) => {
                         // Warn if properties changed that we can't change here.
-                        if config.max_commands_in_flight != new_config.max_commands_in_flight ||
-                            config.max_chunks_in_flight != new_config.max_chunks_in_flight {
-                            re_log::warn!("Cannot change max commands/chunks in flight after batcher has been created. Previous max commands/chunks: {:?}/{:?}, new max commands/chunks: {:?}/{:?}",
-                                            config.max_commands_in_flight, config.max_chunks_in_flight, new_config.max_commands_in_flight, new_config.max_chunks_in_flight);
+                        if config.max_bytes_in_flight != new_config.max_bytes_in_flight {
+                            re_log::warn!("Cannot change max_bytes_in_flight after batcher has been created. \
+                                Previous max_bytes_in_flight: {:?}, new max_bytes_in_flight: {:?}",
+                                config.max_bytes_in_flight, new_config.max_bytes_in_flight);
                         }
 
                         re_log::trace!("Updated batcher config: {:?}", new_config);

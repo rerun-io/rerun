@@ -11,7 +11,7 @@ use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion, ChunkStoreEvent,
     ChunkStoreStats,
 };
 
@@ -209,33 +209,25 @@ impl ChunkStore {
             "GC done"
         );
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
-            {
-                if cfg!(debug_assertions) {
-                    let any_event_other_than_deletion = events
-                        .iter()
-                        .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
-                    assert!(!any_event_other_than_deletion);
-                }
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+        if cfg!(debug_assertions) {
+            let any_event_other_than_deletion = events.iter().any(|e| !e.is_deletion());
+            assert!(!any_event_other_than_deletion);
+        }
 
-                Self::on_events(&events);
-            }
-
-            events
-        } else {
-            Vec::new()
-        };
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
 
         (events, stats_before - stats_after)
     }
@@ -320,11 +312,37 @@ impl ChunkStore {
 
         {
             re_tracing::profile_scope!("sweep");
-            if options.perform_deep_deletions {
-                self.remove_chunks_deep(chunks_to_be_removed, Some(sweep_time_budget))
-            } else {
-                self.remove_chunks_shallow(chunks_to_be_removed, Some(sweep_time_budget))
-            }
+
+            // There is never a good reason not to deeply GC non-root level chunks: they cannot be
+            // inserted again anyhow, so they're just polluting the query indexes.
+
+            let (chunks_to_be_deeply_removed, chunks_to_be_shallow_removed) =
+                if options.perform_deep_deletions {
+                    (chunks_to_be_removed, vec![])
+                } else {
+                    (
+                        chunks_to_be_removed
+                            .iter()
+                            .filter(|chunk| !self.is_root_chunk(&chunk.id()))
+                            .cloned()
+                            .collect(),
+                        chunks_to_be_removed
+                            .iter()
+                            .filter(|chunk| self.is_root_chunk(&chunk.id()))
+                            .cloned()
+                            .collect(),
+                    )
+                };
+
+            let now = Instant::now();
+            let dels1 =
+                self.remove_chunks_shallow(chunks_to_be_shallow_removed, Some(sweep_time_budget));
+
+            let remaining_budget = sweep_time_budget.saturating_sub(now.elapsed());
+            let dels2 =
+                self.remove_chunks_deep(chunks_to_be_deeply_removed, Some(remaining_budget));
+
+            dels1.into_iter().chain(dels2).map(Into::into).collect()
         }
     }
 
@@ -439,14 +457,15 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
-    ) -> Vec<ChunkStoreDiff> {
+    ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         // Make sure to not forward those diffs as-is: just because the shallow deletion yielded
         // nothing, doesn't mean that a deep one won't.
-        // The deep diff is always a superset of the shallow one (you can remove chunk physical
+        // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
-        let diffs_shallow = self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+        let deletions_shallow =
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
 
         let Self {
             id: _,
@@ -456,6 +475,9 @@ impl ChunkStore {
             per_column_metadata: _,      // purely additive
             chunks_per_chunk_id: _,      // handled by shallow impl
             chunk_ids_per_min_row_id: _, // handled by shallow impl
+            chunks_lineage,              // purely additive
+            dangling_splits: _,          // purely additive
+            leaky_compactions: _,        // purely additive
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_physical_chunks_stats: _, // handled by shallow impl
@@ -471,7 +493,11 @@ impl ChunkStore {
         // regardless of the time budget.
         _ = time_budget;
 
-        let mut diffs = Vec::new();
+        // It is important *not* to remove from the lineage tree: we need this information to stay
+        // around even in the case of compaction, where the original chunk always gets deeply removed!
+        _ = chunks_lineage;
+
+        let mut deletions = Vec::new();
 
         for chunk in chunks_to_be_removed {
             let mut was_removed = false;
@@ -562,30 +588,30 @@ impl ChunkStore {
             }
 
             if was_removed {
-                diffs.push(ChunkStoreDiff::deletion(chunk));
+                deletions.push(ChunkStoreDiffDeletion { chunk });
             }
         }
 
         debug_assert!(
-            diffs.len() >= diffs_shallow.len() && {
-                let diff_ids: ahash::HashSet<_> =
-                    diffs.iter().map(|diff| diff.chunk.id()).collect();
-                diffs_shallow
+            deletions.len() >= deletions_shallow.len() && {
+                let del_ids: ahash::HashSet<_> =
+                    deletions.iter().map(|del| del.chunk.id()).collect();
+                deletions_shallow
                     .iter()
-                    .all(|diff| diff_ids.contains(&diff.chunk.id()))
+                    .all(|del| del_ids.contains(&del.chunk.id()))
             },
-            "deep diff should always be a superset of the shallow diff:\ndeep: [{}]\nshallow: [{}]",
-            diffs
+            "deep del should always be a superset of the shallow del:\ndeep: [{}]\nshallow: [{}]",
+            deletions
                 .iter()
-                .map(|diff| diff.chunk.id().to_string())
+                .map(|del| del.chunk.id().to_string())
                 .join(", "),
-            diffs_shallow
+            deletions_shallow
                 .iter()
-                .map(|diff| diff.chunk.id().to_string())
+                .map(|del| del.chunk.id().to_string())
                 .join(", "),
         );
 
-        diffs
+        deletions
     }
 
     /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical* indices only.
@@ -602,7 +628,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
-    ) -> Vec<ChunkStoreDiff> {
+    ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         let Self {
@@ -613,8 +639,11 @@ impl ChunkStore {
             per_column_metadata: _, // purely additive
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
-            temporal_chunk_ids_per_entity_per_component: _, // purely additive: virtual index
-            temporal_chunk_ids_per_entity: _,               // purely additive: virtual index
+            chunks_lineage: _,                              // virtual
+            dangling_splits: _,                             // virtual
+            leaky_compactions: _,                           // virtual
+            temporal_chunk_ids_per_entity_per_component: _, // virtual
+            temporal_chunk_ids_per_entity: _,               // virtual
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
@@ -627,7 +656,7 @@ impl ChunkStore {
         let start_time = Instant::now();
         let time_budget = time_budget.unwrap_or(Duration::MAX);
 
-        let mut diffs = Vec::with_capacity(chunks_to_be_removed.len());
+        let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
                 chunk_ids_per_min_row_id.remove(&row_id_min);
@@ -644,7 +673,7 @@ impl ChunkStore {
 
             *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
-            diffs.push(ChunkStoreDiff::deletion(chunk));
+            deletions.push(ChunkStoreDiffDeletion { chunk });
 
             // Only check time budget once we have removed at least one chunk.
             if time_budget <= start_time.elapsed() {
@@ -652,7 +681,7 @@ impl ChunkStore {
             }
         }
 
-        diffs
+        deletions
     }
 }
 
@@ -701,7 +730,7 @@ mod tests {
         for pivot in [0, NUM_CHUNKS / 2, NUM_CHUNKS] {
             let mut store = setup_store();
 
-            assert_eq!(NUM_CHUNKS as usize, store.num_chunks());
+            assert_eq!(NUM_CHUNKS as usize, store.num_physical_chunks());
             for _ in 0..3 {
                 // Call `store.gc()` more than once just to make sure nothing weird happens with
                 // all the shadow indices left by the first call.
@@ -710,7 +739,7 @@ mod tests {
                     ..GarbageCollectionOptions::gc_everything()
                 });
             }
-            assert_eq!(0, store.num_chunks());
+            assert_eq!(0, store.num_physical_chunks());
         }
     }
 }

@@ -99,9 +99,9 @@ Notes:
  * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=…)` on the image after constructing it.
 
 ### log_image_file
-Replace with `ImageEncoded`
+Replace with `EncodedImage`
 
-Python docs: [ImageEncoded](https://ref.rerun.io/docs/python/stable/common/image_helpers/#rerun.ImageEncoded)
+Python docs: [EncodedImage](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.EncodedImage)
 
 Notes:
  - `img_bytes` and `img_path`

@@ -12,7 +12,9 @@ use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_chunk_store::{
+    Chunk, ChunkStore, ChunkStoreHandle, LatestAtQuery, OnMissingChunk, RangeQuery,
+};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::LanceTable;
@@ -1116,7 +1118,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_static_data,
             exclude_temporal_data,
             scan_parameters,
-            query: _,
+            query,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -1148,7 +1150,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
             move |(segment_id, layer_name, store_handle)| {
-                let num_chunks = store_handle.read().num_chunks();
+                let num_chunks = store_handle.read().num_physical_chunks();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_segment_ids = Vec::with_capacity(num_chunks);
@@ -1159,7 +1161,17 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let mut timelines = BTreeMap::new();
 
-                for chunk in store_handle.read().iter_chunks() {
+                let chunks = if let Some(query) = &query {
+                    get_chunks_for_query(&store_handle, &entity_paths, query)
+                } else {
+                    store_handle
+                        .read()
+                        .iter_physical_chunks()
+                        .map(Clone::clone)
+                        .collect()
+                };
+
+                for chunk in chunks {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
                         continue;
                     }
@@ -1604,5 +1616,105 @@ fn get_entry_id_from_headers<T>(
         Err(tonic::Status::invalid_argument(format!(
             "missing mandatory {HEADERS:?} HTTP headers"
         )))
+    }
+}
+
+/// Return the equivalent latest at query
+fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
+    match &latest_at.index {
+        Some(index) => LatestAtQuery::new(index.clone().into(), latest_at.at),
+        None => {
+            // Static only data
+            LatestAtQuery::new("".into(), re_log_types::TimeInt::MIN)
+        }
+    }
+}
+
+/// Utility function to determine the chunks to return based on query parameters
+fn get_chunks_for_query(
+    store_handle: &ChunkStoreHandle,
+    entity_paths: &IntSet<EntityPath>,
+    query: &ext::Query,
+) -> Vec<Arc<Chunk>> {
+    let paths = if entity_paths.is_empty() {
+        store_handle.read().all_entities()
+    } else {
+        entity_paths.clone()
+    };
+    match (&query.latest_at, &query.range) {
+        (Some(latest_at), Some(range)) => {
+            let latest_at = latest_at_or_static(latest_at);
+            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+
+            // We have both a latest at and a range, so we need to combine
+            // chunks and ensure no duplicates
+            paths
+                .iter()
+                .flat_map(|entity_path| {
+                    let read_lock = store_handle.read();
+                    let mut latest_at = read_lock
+                        .latest_at_relevant_chunks_for_all_components(
+                            OnMissingChunk::Report,
+                            &latest_at,
+                            entity_path,
+                            true,
+                        )
+                        .chunks;
+                    let mut range = read_lock
+                        .range_relevant_chunks_for_all_components(
+                            OnMissingChunk::Report,
+                            &range.clone(),
+                            entity_path,
+                            true,
+                        )
+                        .chunks;
+
+                    range.retain(|chunk| !latest_at.contains(chunk));
+                    latest_at.extend(range);
+
+                    latest_at
+                })
+                .collect::<Vec<_>>()
+        }
+        (Some(latest_at), None) => {
+            let latest_at = latest_at_or_static(latest_at);
+
+            paths
+                .iter()
+                .flat_map(|entity_path| {
+                    store_handle
+                        .read()
+                        .latest_at_relevant_chunks_for_all_components(
+                            OnMissingChunk::Report,
+                            &latest_at.clone(),
+                            entity_path,
+                            true,
+                        )
+                        .chunks
+                })
+                .collect::<Vec<_>>()
+        }
+        (None, Some(range)) => {
+            let range = RangeQuery::new(range.index.clone().into(), range.index_range);
+            paths
+                .iter()
+                .flat_map(|entity_path| {
+                    store_handle
+                        .read()
+                        .range_relevant_chunks_for_all_components(
+                            OnMissingChunk::Report,
+                            &range.clone(),
+                            entity_path,
+                            true,
+                        )
+                        .chunks
+                })
+                .collect::<Vec<_>>()
+        }
+        (None, None) => store_handle
+            .read()
+            .iter_physical_chunks()
+            .map(Clone::clone)
+            .collect(),
     }
 }

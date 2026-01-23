@@ -3,8 +3,8 @@ use std::sync::{Arc, OnceLock};
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_chunk_store::{
-    Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
-    PerStoreChunkSubscriber,
+    Chunk, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreDiff, ChunkStoreEvent,
+    ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
@@ -85,7 +85,8 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
 
             let chunk_info = ChunkTimelineInfo {
                 chunk: chunk.clone(),
-                num_events: chunk.num_events_cumulative(), // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
+                // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
+                num_events: chunk.num_events_cumulative(),
                 resolved_time_range: time_column.time_range(),
             };
 
@@ -149,24 +150,27 @@ impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if let Some(re_chunk_store::ChunkCompactionReport {
-                srcs: compacted_chunks,
-                new_chunk,
-            }) = &event.diff.compacted
-            {
-                for removed_chunk in compacted_chunks.values() {
-                    self.remove_chunk(removed_chunk);
-                }
-                self.add_chunk(new_chunk);
-            } else {
-                match event.diff.kind {
-                    re_chunk_store::ChunkStoreDiffKind::Addition => {
-                        self.add_chunk(&event.chunk);
+            match &event.diff {
+                ChunkStoreDiff::Addition(add) => {
+                    // * For compaction events, we need to make sure to remove the now dangling source chunks.
+                    // * For split events, there's nothing to do since the source chunk never make it in anyhow.
+                    if let ChunkDirectLineageReport::CompactedFrom(chunks) = &add.direct_lineage {
+                        for removed_chunk in chunks.values() {
+                            self.remove_chunk(removed_chunk);
+                        }
                     }
-                    re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                        self.remove_chunk(&event.chunk);
-                    }
+
+                    // We have to maintain a collection of actual chunks that maps 1:1 to the current
+                    // state of the store, and therefore we should always use `chunk_after_processing`
+                    // and nothing else, since it corresponds to what actually got inserted in the end.
+                    self.add_chunk(&add.chunk_after_processing);
                 }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    self.remove_chunk(&del.chunk);
+                }
+
+                ChunkStoreDiff::VirtualAddition(_) => {}
             }
         }
     }

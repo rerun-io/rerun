@@ -24,6 +24,18 @@ pub enum TimeType {
     TimestampNs,
 }
 
+impl re_byte_size::SizeBytes for TimeType {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl std::fmt::Display for TimeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

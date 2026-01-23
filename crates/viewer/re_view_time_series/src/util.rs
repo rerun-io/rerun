@@ -1,4 +1,5 @@
 use re_log_types::AbsoluteTimeRange;
+use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
 use re_sdk_types::components::AggregationPolicy;
@@ -10,19 +11,19 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
 use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
 
-// TODO(RR-3318):
-// pub fn supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
-//     [
-//         arrow::datatypes::DataType::Float32,
-//         arrow::datatypes::DataType::Float64,
-//         arrow::datatypes::DataType::Int8,
-//         arrow::datatypes::DataType::Int32,
-//         arrow::datatypes::DataType::Int64,
-//         arrow::datatypes::DataType::UInt8,
-//         arrow::datatypes::DataType::UInt32,
-//         arrow::datatypes::DataType::UInt64,
-//     ]
-// }
+pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
+    [
+        arrow::datatypes::DataType::Float32,
+        arrow::datatypes::DataType::Float64,
+        arrow::datatypes::DataType::Int8,
+        arrow::datatypes::DataType::Int32,
+        arrow::datatypes::DataType::Int64,
+        arrow::datatypes::DataType::UInt8,
+        arrow::datatypes::DataType::UInt32,
+        arrow::datatypes::DataType::UInt64,
+        // TODO(andreas): Support bool types?
+    ]
+}
 
 /// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(
@@ -122,10 +123,20 @@ pub fn points_to_series(
     series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
-) {
+) -> Result<(), String> {
     re_tracing::profile_scope!("secondary", &instance_path.to_string());
+
     if points.is_empty() {
-        return;
+        // No values being present is not an error, maybe data comes in later!
+        return Ok(());
+    }
+
+    // Filter out static times if any slipped in.
+    // It's enough to check the first one since an entire column has to be either temporal or static.
+    if let Some(first) = points.first()
+        && first.time == re_log_types::TimeInt::STATIC.as_i64()
+    {
+        return Err("Can't plot data that was logged statically in a time series since there's no temporal dimension.".to_owned());
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
@@ -168,6 +179,8 @@ pub fn points_to_series(
             all_series,
         );
     }
+
+    Ok(())
 }
 
 /// Apply the given aggregation to the provided points.

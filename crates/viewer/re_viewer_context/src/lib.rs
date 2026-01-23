@@ -60,9 +60,9 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
-    SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache,
-    VideoStreamCache, VideoStreamProcessingError,
+    Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+    TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
+    VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
@@ -106,8 +106,8 @@ pub use self::time_control::{
     time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
-    VisualizableReason,
+    DatatypeMatchKind, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
+    VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{
@@ -122,7 +122,7 @@ pub use self::view::{
     ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
     ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
-    VisualizerComponentMapping, VisualizerComponentMappings, VisualizerExecutionErrorState,
+    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionErrorState,
     VisualizerExecutionOutput, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 pub use self::viewer_context::ViewerContext;
@@ -180,13 +180,16 @@ pub struct ScreenshotInfo {
 }
 
 /// Where to put the screenshot.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ScreenshotTarget {
     /// The screenshot will be copied to the clipboard.
     CopyToClipboard,
 
-    /// The screenshot will be saved to disk.
-    SaveToDisk,
+    /// The screenshot will be saved to disk (prompting the user for a location).
+    SaveToPathFromFileDialog,
+
+    /// The screenshot will be saved to the specified file path.
+    SaveToPath(camino::Utf8PathBuf),
 }
 
 // ----------------------------------------------------------------------------------------

@@ -33,7 +33,10 @@ impl IdentifiedViewSystem for TransformAxes3DVisualizer {
 }
 
 impl VisualizerSystem for TransformAxes3DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
 
         // Make this visualizer available for any entity with Transform3D components
@@ -77,7 +80,16 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
                 .child_frames_for_entity(entity_path.hash())
                 .map(|(frame_id_hash, transform)| {
-                    (*frame_id_hash, transform.target_from_source.as_affine3a())
+                    let target_from_source = if let Some(target_from_camera) =
+                        transforms.target_from_pinhole_root(*frame_id_hash)
+                    {
+                        // Don't apply the from-2D transform if this is a pinhole, stick with the last known 3D.
+                        target_from_camera
+                    } else {
+                        transform.target_from_source
+                    };
+
+                    (*frame_id_hash, target_from_source.as_affine3a())
                 })
                 .collect();
 
@@ -95,7 +107,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     if let Some(target_from_camera) =
                         transforms.target_from_pinhole_root(transform_info.tree_root())
                     {
-                        // Don't apply the from-2D transform, stick with the last known 3D.
+                        // Don't apply the from-2D transform if this is a pinhole, stick with the last known 3D.
                         transforms_to_draw
                             .insert(0, (frame_id_hash, target_from_camera.as_affine3a()));
                     } else {

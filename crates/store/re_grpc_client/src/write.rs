@@ -10,7 +10,7 @@ use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;
 use tokio::runtime;
-use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 use tonic::transport::Endpoint;
 use web_time::Instant;
 
@@ -117,14 +117,14 @@ pub struct Client {
     uri: ProxyUri,
     options: Options,
     thread: Option<JoinHandle<()>>,
-    cmd_tx: UnboundedSender<Cmd>,
+    cmd_tx: Sender<Cmd>,
     shutdown_tx: Sender<()>,
     status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
+        let (cmd_tx, cmd_rx) = mpsc::channel(100); // TODO(#11024): specify size in bytes instead of number of messages
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
         let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {
@@ -162,8 +162,35 @@ impl Client {
         }
     }
 
-    pub fn send(&self, msg: LogMsg) {
-        self.cmd_tx.send(Cmd::LogMsg(msg)).ok();
+    /// Send a message asynchronously with backpressure.
+    ///
+    /// This will block (async) if the channel is full.
+    pub async fn send_async(&self, msg: LogMsg) {
+        self.cmd_tx.send(Cmd::LogMsg(msg)).await.ok();
+    }
+
+    /// Send a message with blocking backpressure.
+    ///
+    /// This will block the current thread if the channel is full.
+    pub fn send_blocking(&self, msg: LogMsg) {
+        self.send_cmd_blocking(Cmd::LogMsg(msg)).ok();
+    }
+
+    fn send_cmd_blocking(&self, cmd: Cmd) -> Result<(), ()> {
+        re_tracing::profile_function!();
+
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            if handle.runtime_flavor() == runtime::RuntimeFlavor::MultiThread {
+                tokio::task::block_in_place(|| self.cmd_tx.blocking_send(cmd))
+            } else {
+                re_log::warn_once!(
+                    "Single-threaded tokio runtime detected - please use a multi-threaded runtime for best performance with Rerun's gRPC client. Falling back to async send."
+                );
+                self.cmd_tx.blocking_send(cmd)
+            }
+        } else {
+            self.cmd_tx.blocking_send(cmd)
+        }.map_err(|_ignored_details| ())
     }
 
     /// Whether the client is connected to a remote server.
@@ -188,8 +215,7 @@ impl Client {
 
         let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
         if self
-            .cmd_tx
-            .send(Cmd::Flush {
+            .send_cmd_blocking(Cmd::Flush {
                 on_done: flush_done_tx,
             })
             .is_err()
@@ -304,7 +330,7 @@ impl Drop for Client {
 
 async fn message_proxy_client(
     uri: ProxyUri,
-    mut cmd_rx: UnboundedReceiver<Cmd>,
+    mut cmd_rx: Receiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
     status: Arc<AtomicCell<ClientConnectionState>>,
@@ -359,11 +385,13 @@ async fn message_proxy_client(
                 cmd = cmd_rx.recv() => {
                     match cmd {
                         Some(Cmd::LogMsg(mut log_msg)) => {
-                            // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                             log_msg.insert_arrow_record_batch_metadata(
-                                re_sorbet::timestamp_metadata::KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
-                                re_sorbet::timestamp_metadata::now_timestamp(),
-                            );
+                            if let Some(metadata_key) = re_sorbet::TimestampLocation::IPCEncode.metadata_key() {
+                                // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                                log_msg.insert_arrow_record_batch_metadata(
+                                    metadata_key.to_owned(),
+                                    re_sorbet::timestamp_metadata::now_timestamp(),
+                                );
+                            }
 
                             let msg = match log_msg.to_transport(compression) {
                                 Ok(msg) => msg,

@@ -1,4 +1,6 @@
 //! Semantic array transforms for concrete applications.
+//!
+//! Note: These should not be exposed as part of the public API, but rather wrapped in [`super::Op`].
 
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -11,9 +13,9 @@ use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
 use re_sdk_types::components::VideoCodec;
 
-use crate::cast::DowncastRef;
-use crate::reshape::GetField;
-use crate::{Error, Transform};
+use re_arrow_combinators::cast::DowncastRef;
+use re_arrow_combinators::reshape::GetField;
+use re_arrow_combinators::{Error, Transform};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -22,6 +24,10 @@ use crate::{Error, Transform};
 pub struct BinaryToListUInt8<O1: OffsetSizeTrait, O2: OffsetSizeTrait = O1> {
     _from_offset: PhantomData<O1>,
     _to_offset: PhantomData<O2>,
+
+    /// This transform is specifically intended for contiguous byte data,
+    /// so we default to non-nullable lists.
+    nullable: bool,
 }
 
 impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> BinaryToListUInt8<O1, O2> {
@@ -60,7 +66,7 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
         let offsets = arrow::buffer::OffsetBuffer::new(new_offsets?.into());
 
         let list = Self::Target::new(
-            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            Arc::new(Field::new_list_field(DataType::UInt8, self.nullable)),
             offsets,
             Arc::new(uint8_array),
             source.nulls().cloned(),

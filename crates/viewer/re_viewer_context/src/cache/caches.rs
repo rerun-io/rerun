@@ -2,6 +2,7 @@ use std::any::TypeId;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
@@ -40,12 +41,25 @@ impl Caches {
         }
     }
 
-    pub fn memory_reports(&self) -> HashMap<&'static str, CacheMemoryReport> {
-        self.caches
+    /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
+    pub fn vram_usage(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut cache_vram: Vec<_> = self
+            .caches
             .lock()
             .values()
-            .map(|cache| (cache.name(), cache.memory_report()))
-            .collect()
+            .map(|cache| (cache.name(), cache.vram_usage()))
+            .collect();
+        cache_vram.sort_by_key(|(cache_name, _)| *cache_name);
+
+        for (cache_name, vram_tree) in cache_vram {
+            node.add(cache_name, vram_tree);
+        }
+
+        node.into_tree()
     }
 
     /// Attempt to free up memory.
@@ -109,37 +123,25 @@ impl Caches {
     }
 }
 
-/// Memory usage information of a single cache-item.
-pub struct CacheMemoryReportItem {
-    pub item_name: String,
-    pub bytes_cpu: u64,
-    pub bytes_gpu: Option<u64>,
-}
-
-/// A report of how much memory a certain cache is using, used for
-/// debugging memory usage in the memory panel.
-pub struct CacheMemoryReport {
-    pub bytes_cpu: u64,
-    pub bytes_gpu: Option<u64>,
-
-    /// Memory information per cache-item.
-    pub per_cache_item_info: Vec<CacheMemoryReportItem>,
-}
-
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
 ///
 /// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/cache/index.html>).
-pub trait Cache: std::any::Any + Send + Sync {
+pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture {
+    fn name(&self) -> &'static str;
+
     /// Called once per frame to potentially flush the cache.
     fn begin_frame(&mut self) {}
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
 
-    fn name(&self) -> &'static str;
-
-    /// Construct a [`CacheMemoryReport`] for this cache.
-    fn memory_report(&self) -> CacheMemoryReport;
+    /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
+    ///
+    /// This should report GPU memory usage with per-item breakdown where applicable.
+    /// Defaults to an empty tree (0 bytes) for caches that don't use GPU memory.
+    fn vram_usage(&self) -> MemUsageTree {
+        MemUsageTree::Bytes(0)
+    }
 
     /// React to the chunk store's changelog, if needed.
     ///
@@ -155,5 +157,27 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Useful for creating data that may be based on the information we get in the rrd manifest.
     fn on_rrd_manifest(&mut self, entity_db: &EntityDb) {
         _ = entity_db;
+    }
+}
+
+impl MemUsageTreeCapture for Caches {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut cache_trees: Vec<_> = self
+            .caches
+            .lock()
+            .values()
+            .map(|cache| (cache.name(), cache.capture_mem_usage_tree()))
+            .collect();
+        cache_trees.sort_by_key(|(cache_name, _)| *cache_name);
+
+        for (cache_name, tree) in cache_trees {
+            node.add(cache_name, tree);
+        }
+
+        node.into_tree()
     }
 }

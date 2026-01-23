@@ -4,11 +4,12 @@ use std::ops::RangeInclusive;
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
-use itertools::Itertools as _;
+use emath::NumExt as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
+use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
-use re_chunk_store::ChunkStoreEvent;
+use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
@@ -80,7 +81,9 @@ pub struct ChunkPrefetchOptions {
     ///
     /// We must try and download them in priority, as there are views actively waiting for them in order to
     /// properly render.
-    pub missing_chunk_ids: HashSet<ChunkId>,
+    ///
+    /// Only remote chunk IDs make sense here. Local IDs will be ignored.
+    pub missing_remote_chunk_ids: HashSet<ChunkId>,
 
     /// Batch together requests until we reach this size).
     pub max_uncompressed_bytes_per_batch: u64,
@@ -97,8 +100,18 @@ pub struct ChunkPrefetchOptions {
 pub struct ChunkInfo {
     state: LoadState,
 
-    /// None for static chunks
+    /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
+}
+
+impl re_byte_size::SizeBytes for ChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            state: _,
+            temporals,
+        } = self;
+        temporals.heap_size_bytes()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -108,17 +121,28 @@ pub struct TemporalChunkInfo {
     /// The time range covered by this entry.
     pub time_range: AbsoluteTimeRange,
 
-    /// The number of rows in the original chunk which are associated with this entry.
+    /// The total number of events in the original chunk for this time range.
     ///
-    /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
-    /// entry it might be less, since chunks allow sparse components.
-    pub num_rows: u64,
+    /// This accumulates for all entities and all components, but still accounts for sparness.
+    pub num_rows_for_all_entities_all_components: u64,
+}
+
+impl re_byte_size::SizeBytes for TemporalChunkInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
-/// This is constructed from an [`RrdManifest`], which is what
-/// the server sends to the client/viewer.
+/// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
+//
+// TODO(RR-3383): support multiple manifests per index.
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
@@ -135,10 +159,6 @@ pub struct RrdManifestIndex {
 
     chunk_promises: ChunkPromises,
 
-    /// The chunk store may split large chunks and merge (compact) small ones.
-    /// When we later drop a chunk, we need to know which other chunks to invalidate.
-    parents: HashMap<ChunkId, HashSet<ChunkId>>,
-
     /// Full time range per timeline
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
@@ -153,6 +173,7 @@ pub struct RrdManifestIndex {
 
     chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
+    /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
     manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
 
     full_uncompressed_size: u64,
@@ -197,12 +218,12 @@ impl RrdManifestIndex {
                             .entry(*timeline.name())
                             .and_modify(|info| {
                                 info.time_range = entry.time_range.union(info.time_range);
-                                info.num_rows += entry.num_rows;
+                                info.num_rows_for_all_entities_all_components += entry.num_rows;
                             })
                             .or_insert(TemporalChunkInfo {
                                 timeline,
                                 time_range: entry.time_range,
-                                num_rows: entry.num_rows,
+                                num_rows_for_all_entities_all_components: entry.num_rows,
                             });
                     }
                 }
@@ -353,7 +374,7 @@ impl RrdManifestIndex {
         chunk_info.state = LoadState::Loaded;
     }
 
-    pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
+    pub fn on_events(&mut self, store: &ChunkStore, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         if self.manifest.is_none() {
@@ -361,15 +382,43 @@ impl RrdManifestIndex {
         }
 
         for event in store_events {
-            let store_kind = event.store_id.kind();
-            let chunk_id = event.chunk.id();
-            match event.kind {
-                re_chunk_store::ChunkStoreDiffKind::Addition => {
+            match &event.diff {
+                ChunkStoreDiff::Addition(add) => {
+                    // This is about marking root-level persistent chunks as either loaded or unloaded.
+                    //
+                    // It doesn't really matter which chunk we pick because `mark_as` will take care of
+                    // walking upwards through the lineage tree until one can be found in any case.
+                    //
+                    // Picking the unprocessed chunk gives us a better chance of not even needing to walk
+                    // back the tree at all.
+                    self.mark_as(store, &add.chunk_before_processing.id(), LoadState::Loaded);
+                }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    self.mark_as(store, &del.chunk.id(), LoadState::Unloaded);
+                }
+
+                ChunkStoreDiff::VirtualAddition(_) => {}
+            }
+        }
+    }
+
+    fn mark_as(&mut self, store: &ChunkStore, chunk_id: &ChunkId, state: LoadState) {
+        let store_kind = store.id().kind();
+
+        if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
+            chunk_info.state = state;
+        } else {
+            let root_chunk_ids = store.find_root_rrd_manifests(chunk_id);
+            if root_chunk_ids.is_empty() {
+                warn_when_editing_recording(
+                    store_kind,
+                    "Added chunk that was not part of the chunk index",
+                );
+            } else {
+                for (chunk_id, _) in root_chunk_ids {
                     if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                        chunk_info.state = LoadState::Loaded;
-                    } else if let Some(source) = event.split_source {
-                        // The added chunk was the result of splitting another chunk:
-                        self.parents.entry(chunk_id).or_default().insert(source);
+                        chunk_info.state = state;
                     } else {
                         warn_when_editing_recording(
                             store_kind,
@@ -377,34 +426,7 @@ impl RrdManifestIndex {
                         );
                     }
                 }
-                re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                    self.mark_deleted(store_kind, &chunk_id);
-                }
             }
-        }
-    }
-
-    fn mark_deleted(&mut self, store_kind: StoreKind, chunk_id: &ChunkId) {
-        if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
-            chunk_info.state = LoadState::Unloaded;
-        } else if let Some(parents) = self.parents.remove(chunk_id) {
-            // Mark all ancestors as not being fully loaded:
-
-            let mut ancestors = parents.into_iter().collect_vec();
-            while let Some(chunk_id) = ancestors.pop() {
-                if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                    chunk_info.state = LoadState::Unloaded;
-                } else if let Some(grandparents) = self.parents.get(&chunk_id) {
-                    ancestors.extend(grandparents);
-                } else {
-                    warn_when_editing_recording(
-                        store_kind,
-                        "Removed ancestor chunk that was not part of the index",
-                    );
-                }
-            }
-        } else {
-            warn_when_editing_recording(store_kind, "Removed chunk that was not part of the index");
         }
     }
 
@@ -414,12 +436,32 @@ impl RrdManifestIndex {
     }
 
     /// See if we have received any new chunks since last call.
-    pub fn resolve_pending_promises(&mut self) -> Vec<Chunk> {
-        self.chunk_promises.resolve_pending()
+    pub fn resolve_pending_promises(&mut self, time: f64) -> Vec<Chunk> {
+        self.chunk_promises.resolve_pending(time)
     }
 
     pub fn has_pending_promises(&self) -> bool {
         self.chunk_promises.has_pending()
+    }
+
+    pub fn chunk_bandwidth(&self) -> Option<f64> {
+        self.chunk_promises
+            .download_size_history
+            .bandwidth()
+            .map(|b| b.0)
+    }
+
+    pub fn chunk_bandwidth_data_age(&self, time: f64) -> f64 {
+        self.chunk_promises
+            .download_size_history
+            .iter()
+            .last()
+            .map(|(t, _)| {
+                let age = time - t;
+
+                (age / self.chunk_promises.download_size_history.max_age() as f64).at_most(1.0)
+            })
+            .unwrap_or(1.0)
     }
 
     /// Find the next candidates for prefetching.
@@ -432,7 +474,7 @@ impl RrdManifestIndex {
 
         let ChunkPrefetchOptions {
             timeline,
-            missing_chunk_ids,
+            missing_remote_chunk_ids,
             start_time,
             max_uncompressed_bytes_per_batch,
             total_uncompressed_byte_budget,
@@ -458,11 +500,13 @@ impl RrdManifestIndex {
 
         let chunk_byte_size_uncompressed_raw: &[u64] =
             manifest.col_chunk_byte_size_uncompressed_raw()?.values();
+        let chunk_byte_size_raw: &[u64] = manifest.col_chunk_byte_size_raw()?.values();
 
         let mut uncompressed_bytes_in_batch: u64 = 0;
+        let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
-        let missing_chunk_ids = missing_chunk_ids.into_iter();
+        let missing_remote_chunk_ids = missing_remote_chunk_ids.into_iter();
         let chunks_ids_after_time_cursor = || {
             chunks
                 .query(start_time..=TimeInt::MAX)
@@ -475,7 +519,7 @@ impl RrdManifestIndex {
         };
         let chunk_ids_in_priority_order = itertools::chain!(
             self.static_chunk_ids.iter().copied(),
-            missing_chunk_ids,
+            missing_remote_chunk_ids,
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );
@@ -493,6 +537,7 @@ impl RrdManifestIndex {
 
             let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
 
+            let chunk_byte_size = chunk_byte_size_raw[row_idx];
             // We count only the chunks we are interested in as being part of the memory budget.
             // The others can/will be evicted as needed.
             let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
@@ -528,6 +573,7 @@ impl RrdManifestIndex {
 
                 indices.push(row_idx);
                 uncompressed_bytes_in_batch += uncompressed_chunk_size;
+                bytes_in_batch += chunk_byte_size;
                 remote_chunk.state = LoadState::InTransit;
 
                 if max_uncompressed_bytes_per_batch < uncompressed_bytes_in_batch {
@@ -538,6 +584,7 @@ impl RrdManifestIndex {
                     self.chunk_promises.add(ChunkPromiseBatch {
                         promise: Mutex::new(Some(load_chunks(rb))),
                         size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                        size_bytes: bytes_in_batch,
                     });
                     uncompressed_bytes_in_batch = 0;
                 }
@@ -557,6 +604,7 @@ impl RrdManifestIndex {
             self.chunk_promises.add(ChunkPromiseBatch {
                 promise: Mutex::new(Some(load_chunks(rb))),
                 size_bytes_uncompressed: uncompressed_bytes_in_batch,
+                size_bytes: bytes_in_batch,
             });
         }
 
@@ -705,5 +753,55 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
         StoreKind::Blueprint => {
             // We edit blueprint by generating new chunks in the viewer.
         }
+    }
+}
+
+impl MemUsageTreeCapture for RrdManifestIndex {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+
+        let Self {
+            chunk_intervals,
+            chunk_promises: _, // not yet implemented
+            entity_has_static_data,
+            entity_has_temporal_data_on_timeline,
+            entity_tree,
+            manifest_row_from_chunk_id,
+            manifest,
+            native_static_map,
+            native_temporal_map,
+            remote_chunks,
+            static_chunk_ids,
+            timelines,
+            full_uncompressed_size: _,
+        } = self;
+
+        let mut node = re_byte_size::MemUsageNode::new();
+        node.add("chunk_intervals", chunk_intervals.total_size_bytes());
+        node.add(
+            "entity_has_static_data",
+            entity_has_static_data.total_size_bytes(),
+        );
+        node.add(
+            "entity_has_temporal_data_on_timeline",
+            entity_has_temporal_data_on_timeline.total_size_bytes(),
+        );
+        node.add("entity_tree", entity_tree.total_size_bytes());
+        node.add(
+            "manifest_row_from_chunk_id",
+            manifest_row_from_chunk_id.total_size_bytes(),
+        );
+        node.add("manifest", manifest.total_size_bytes());
+        node.add("native_static_map", native_static_map.total_size_bytes());
+        node.add(
+            "native_temporal_map",
+            native_temporal_map.total_size_bytes(),
+        );
+        node.add("remote_chunks", remote_chunks.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("static_chunk_ids", static_chunk_ids.total_size_bytes());
+        node.add("timelines", timelines.total_size_bytes());
+
+        node.into_tree()
     }
 }

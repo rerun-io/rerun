@@ -488,7 +488,7 @@ impl TestContext {
     /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
         self.view_class_registry
-            .add_class::<T>(&mut self.component_fallback_registry)
+            .add_class::<T>(&self.app_options, &mut self.component_fallback_registry)
             .expect("registering a class should succeed");
     }
 
@@ -800,6 +800,7 @@ impl TestContext {
                 | SystemCommand::SetAuthCredentials { .. }
                 | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::Logout
+                | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]

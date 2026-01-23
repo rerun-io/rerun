@@ -21,7 +21,8 @@ use re_viewer_context::{
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -324,10 +325,10 @@ impl ViewClass for TimeSeriesView {
                         re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
                             components
                                 .iter()
-                                .any(|c| {
-                                    // If it's a builtin type, it has to be a `Scalars` datatype. For non-builtin types we allow for anything compatible.
-                                    *c == Scalars::descriptor_scalars().component
-                                        || !ctx.reflection().component_identifiers.contains_key(c)
+                                .any(|(_, match_kind)| {
+                                    // It has to have the native semantics for this though!
+                                    *match_kind
+                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
                                 })
                                 .then_some(ent)
                         }
@@ -392,9 +393,6 @@ impl ViewClass for TimeSeriesView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        use re_sdk_types::archetypes::Scalars;
-        use re_viewer_context::{VisualizableReason, VisualizerComponentMapping};
-
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
                 .iter()
@@ -404,28 +402,24 @@ impl ViewClass for TimeSeriesView {
                 })
                 .collect();
 
+        let scalars_component = Scalars::descriptor_scalars().component;
+
         let mut visualizers_with_mappings: IntMap<
             ViewSystemIdentifier,
-            re_viewer_context::VisualizerComponentMappings,
+            VisualizerComponentMappings,
         > = available_visualizers
             .iter()
             .filter_map(|(visualizer, reason_opt)| {
+                // Filter out entities that weren't indicated.
+                // We later fall back on to line visualizers for those.
                 if indicated_entities_per_visualizer
-                    .get(visualizer)
-                    .is_some_and(|matching_list| matching_list.contains(entity_path))
+                    .get(visualizer)?
+                    .contains(entity_path)
                 {
-                    let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-                    // Extract physical component from the visualizable reason
-                    if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
-                        for physical_component in components {
-                            mappings.push(VisualizerComponentMapping {
-                                selector: Scalars::descriptor_scalars().component,
-                                target: *physical_component,
-                            });
-                        }
-                    }
-
+                    let mappings = scalar_mapping_selector(*reason_opt)
+                        .into_iter()
+                        .map(|selector| (scalars_component, selector))
+                        .collect();
                     Some((*visualizer, mappings))
                 } else {
                     None
@@ -435,22 +429,13 @@ impl ViewClass for TimeSeriesView {
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
         if visualizers_with_mappings.is_empty()
-            && available_visualizers.contains_key(&SeriesLinesSystem::identifier())
-        {
-            let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-            // Extract physical component from the visualizable reason for the fallback visualizer
-            if let Some(Some(VisualizableReason::DatatypeMatchAny { components })) =
+            && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
-            {
-                for physical_component in components {
-                    mappings.push(VisualizerComponentMapping {
-                        selector: *physical_component,
-                        target: Scalars::descriptor_scalars().component,
-                    });
-                }
-            }
-
+        {
+            let mappings = scalar_mapping_selector(*series_line_visualizable_reason)
+                .into_iter()
+                .map(|selector| (scalars_component, selector))
+                .collect();
             visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
         }
 
@@ -610,7 +595,7 @@ impl ViewClass for TimeSeriesView {
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
                 make_range_sane(Range1D::new(
-                    (match view_time_range.start {
+                    match view_time_range.start {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.min.as_i64()
                         }
@@ -620,13 +605,15 @@ impl ViewClass for TimeSeriesView {
                                 .start_boundary_time(view_current_time)
                                 .0
                         }
-                    } - time_offset) as f64,
-                    (match view_time_range.end {
+                    }
+                    .saturating_sub(time_offset) as f64,
+                    match view_time_range.end {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.max.as_i64()
                         }
                         _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                    } - time_offset) as f64,
+                    }
+                    .saturating_sub(time_offset) as f64,
                 ))
             };
 
@@ -828,12 +815,13 @@ impl ViewClass for TimeSeriesView {
                         re_sdk_types::blueprint::components::TimeRange(TimeRange {
                             start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.start() as i64 + time_offset,
+                                    (new_x_range_rounded.start() as i64)
+                                        .saturating_add(time_offset),
                                 ),
                             ),
                             end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.end() as i64 + time_offset,
+                                    (new_x_range_rounded.end() as i64).saturating_add(time_offset),
                                 ),
                             ),
                         });
@@ -874,6 +862,38 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
+
+fn scalar_mapping_selector(
+    reason_opt: Option<&VisualizableReason>,
+) -> Option<VisualizerComponentSource> {
+    let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
+        return None;
+    };
+
+    let target_component = Scalars::descriptor_scalars().component;
+
+    let mut first_native_semantic_match = None;
+    for (physical_component, match_kind) in components {
+        if first_native_semantic_match.is_none()
+            && *match_kind == re_viewer_context::DatatypeMatchKind::NativeSemantics
+        {
+            first_native_semantic_match = Some(*physical_component);
+        }
+        if first_native_semantic_match.is_some() && physical_component == &target_component {
+            // Perfect match, don't do any mapping.
+            return None;
+        }
+    }
+
+    first_native_semantic_match
+        .or_else(|| Some(components.first().0))
+        .map(
+            |source_component| VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: String::new(),
+            },
+        )
 }
 
 fn draw_time_cursor(
@@ -1061,7 +1081,7 @@ fn add_series_to_plot(
                         *scalar_range.end_mut() = p.1;
                     }
 
-                    [(p.0 - time_offset) as _, p.1]
+                    [(p.0.saturating_sub(time_offset)) as _, p.1]
                 })
                 .collect::<Vec<_>>()
         } else {
@@ -1071,7 +1091,7 @@ fn add_series_to_plot(
             series
                 .points
                 .first()
-                .map(|p| vec![[(p.0 - time_offset) as _, p.1]])
+                .map(|p| vec![[(p.0.saturating_sub(time_offset)) as _, p.1]])
                 .unwrap_or_default()
         };
 

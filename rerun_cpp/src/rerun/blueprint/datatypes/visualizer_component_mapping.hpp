@@ -5,9 +5,11 @@
 
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
+#include "component_source_kind.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 namespace arrow {
     class Array;
@@ -21,11 +23,23 @@ namespace rerun::blueprint::datatypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VisualizerComponentMapping {
-        /// Component selector for mapping.
-        rerun::datatypes::Utf8 selector;
-
-        /// Target component name.
+        /// Target component name which is being mapped to.
+        ///
+        /// This represents a "slot" on the visualizer.
         rerun::datatypes::Utf8 target;
+
+        /// What kind of source to pick.
+        rerun::blueprint::datatypes::ComponentSourceKind source_kind;
+
+        /// Component selector for mapping.
+        ///
+        /// Defaults to `target` if not specified.
+        std::optional<rerun::datatypes::Utf8> source_component;
+
+        /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+        ///
+        /// Defaults to empty string if not specified.
+        std::optional<rerun::datatypes::Utf8> selector;
 
       public:
         VisualizerComponentMapping() = default;

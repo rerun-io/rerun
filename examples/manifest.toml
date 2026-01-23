@@ -47,6 +47,7 @@ examples = [
   "nv12",
   "imu_signals",
   "mcap",
+  "eye_control",
 ]
 
 [categories.generative-vision]
@@ -79,6 +80,7 @@ examples = [
   "detect_and_track_objects",
   "face_tracking",
   "annotation_gradio",
+  "sam3d_body",
   "prompt_depth_anything",
   "sam2_depthanything",
   "ocr",
@@ -161,6 +163,7 @@ examples = [
   "raw_mesh",
   "air_traffic_data",
   "imu_signals",
+  "eye_control",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included

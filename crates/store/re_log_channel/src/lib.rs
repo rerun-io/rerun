@@ -217,11 +217,11 @@ pub(crate) struct Channel {
 
 /// Create a new communication channel for [`DataSourceMessage`].
 pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
-    // TODO(emilk): add a back-channel to be used for controlling what data we load.
+    let max_bytes_on_wire = 128 * 1024 * 1024; // TODO(emilk): make configurable
 
     let source = Arc::new(source);
     let channel = Arc::new(Channel::default());
-    let (tx, rx) = crossbeam::channel::unbounded();
+    let (tx, rx) = re_quota_channel::channel(format!("log_channel({source})"), max_bytes_on_wire);
     let sender = LogSender::new(tx, source.clone(), channel.clone());
     let receiver = LogReceiver::new(rx, channel, source);
     (sender, receiver)
@@ -275,6 +275,16 @@ impl SmartMessage {
         match self.payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for SmartMessage {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { source: _, payload } = self;
+        match payload {
+            SmartMessagePayload::Msg(msg) => msg.heap_size_bytes(),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(..) => 0,
         }
     }
 }

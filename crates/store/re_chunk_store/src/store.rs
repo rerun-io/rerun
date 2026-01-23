@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
@@ -11,7 +11,7 @@ use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
-use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
+use crate::{ChunkDirectLineage, ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
@@ -90,6 +90,17 @@ impl Default for ChunkStoreConfig {
     #[inline]
     fn default() -> Self {
         Self::DEFAULT
+    }
+}
+
+impl re_byte_size::SizeBytes for ChunkStoreConfig {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -274,6 +285,20 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
+impl re_byte_size::SizeBytes for ChunkIdSetPerTime {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            max_interval_length,
+            per_start_time,
+            per_end_time,
+        } = self;
+
+        max_interval_length.heap_size_bytes()
+            + per_start_time.heap_size_bytes()
+            + per_end_time.heap_size_bytes()
+    }
+}
+
 pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentIdentifier, ChunkIdSetPerTime>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimeline =
@@ -314,6 +339,16 @@ pub struct ColumnMetadataState {
     /// This is purely additive: once false, it will always be false. Even in case of garbage
     /// collection.
     pub is_semantically_empty: bool,
+}
+
+impl re_byte_size::SizeBytes for ColumnMetadataState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            is_semantically_empty,
+        } = self;
+
+        is_semantically_empty.heap_size_bytes()
+    }
 }
 
 /// Incremented on each edit.
@@ -458,6 +493,56 @@ pub struct ChunkStore {
     /// distinguish virtual from physical chunks.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
+    /// Keeps track of where each individual chunks, both virtual & physical, came from.
+    ///
+    /// Due to compaction, a chunk's lineage often forms a tree rather than a straight line.
+    /// The lineage tree always ends in one of two ways:
+    /// * A reference to volatile memory, from which the chunk came from, and that cannot ever be
+    ///   reached again.
+    /// * A reference to an RRD manifest, from which the chunk was virtually loaded from, and where
+    ///   it can still be reached, provided that the associated Redap server still exists.
+    ///
+    /// This is purely additive: never garbage collected.
+    pub(crate) chunks_lineage: BTreeMap<ChunkId, ChunkDirectLineage>,
+
+    /// Anytime a chunk gets split during insertion, this is recorded here.
+    ///
+    /// The key is the ID of the source chunk, before splitting, which never made it into the store.
+    /// The values are the IDs of the resulting split chunks, which were actually inserted.
+    ///
+    /// So why is this useful? We use this data on the write path in order to detect when a chunk that
+    /// was previously inserted, and split into smaller chunks, is being inserted *again*, e.g. because
+    /// it had been offloaded due to memory pressure and is now making a comeback.
+    /// What might happen in these sort of scenarios, is that some of the resulting splits were
+    /// garbage collected away, but not all of them, and now we end up with tiny overlaps all over
+    /// the store which, while they don't impact semantics in any way, are annoying for at least 2 reasons:
+    /// * performance of the query engine
+    /// * hard to reason about for downstream consumers building secondary datastructures (e.g. video cache)
+    ///
+    /// This is purely additive: never garbage collected.
+    ///
+    /// `HashMap<OriginalChunkId, SplitChunkIds>`
+    pub(crate) dangling_splits: HashMap<ChunkId, Vec<ChunkId>>,
+
+    /// Anytime a chunk gets compacted with another during insertion, this is recorded here.
+    ///
+    /// The key is the ID of the chunk being inserted, before compaction, which never made it into the store.
+    /// The value is the ID of the resulting compacted chunk, which was actually inserted.
+    ///
+    /// So why is this useful? We use this data on the write path in order to detect when a chunk that
+    /// was previously inserted, and (potentially recursively) compacted with another chunk, is being
+    /// inserted *again*, e.g. because it had been offloaded due to memory pressure and is now making a comeback.
+    /// When that happens, the data for that chunk would effectively be duplicated across the chunk and
+    /// the pre-existing compacted data.
+    /// While that doesn't impact semantics in any way, it's still annoying for at least 2 reasons:
+    /// * performance of the query engine
+    /// * hard to reason about for downstream consumers building secondary datastructures (e.g. video cache)
+    ///
+    /// This is purely additive: never garbage collected.
+    ///
+    /// `HashMap<OriginalChunkId, CompactedChunkId>`
+    pub(crate) leaky_compactions: HashMap<ChunkId, ChunkId>,
+
     /// All *physical & virtual* temporal [`ChunkId`]s for all entities on all timelines, further
     /// indexed by [`ComponentIdentifier`].
     ///
@@ -551,6 +636,9 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            chunks_lineage: self.chunks_lineage.clone(),
+            dangling_splits: self.dangling_splits.clone(),
+            leaky_compactions: self.leaky_compactions.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
@@ -577,6 +665,9 @@ impl std::fmt::Display for ChunkStore {
             per_column_metadata: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
+            chunks_lineage,
+            dangling_splits: _,
+            leaky_compactions: _,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
             temporal_physical_chunks_stats,
@@ -600,9 +691,14 @@ impl std::fmt::Display for ChunkStore {
         ))?;
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
-        f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
+        f.write_str(&indent::indent_all_by(4, "physical chunks: [\n"))?;
         for chunk_id in chunk_ids_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
+                f.write_str(&indent::indent_all_by(
+                    8,
+                    format!("{}\n", self.format_lineage(chunk_id)),
+                ))?;
+
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
                     f.write_str(&indent::indent_all_by(8, format!("{chunk:chunk_width$}\n")))?;
@@ -612,6 +708,19 @@ impl std::fmt::Display for ChunkStore {
             } else {
                 f.write_str(&indent::indent_all_by(8, "<not_found>\n"))?;
             }
+        }
+        f.write_str(&indent::indent_all_by(4, "]\n"))?;
+
+        f.write_str(&indent::indent_all_by(4, "virtual chunks: [\n"))?;
+        for chunk_id in chunks_lineage.keys() {
+            if chunks_per_chunk_id.contains_key(chunk_id) {
+                continue;
+            }
+
+            f.write_str(&indent::indent_all_by(
+                8,
+                format!("{}\n", self.format_lineage(chunk_id)),
+            ))?;
         }
         f.write_str(&indent::indent_all_by(4, "]\n"))?;
 
@@ -638,6 +747,9 @@ impl ChunkStore {
             type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
+            chunks_lineage: Default::default(),
+            dangling_splits: Default::default(),
+            leaky_compactions: Default::default(),
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
@@ -683,21 +795,21 @@ impl ChunkStore {
         &self.config
     }
 
-    /// Iterate over all chunks in the store, in ascending [`ChunkId`] order.
+    /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
-    pub fn iter_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
+    pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
         self.chunks_per_chunk_id.values()
     }
 
-    /// Get a chunk based on its ID.
+    /// Get a *physical* chunk based on its ID.
     #[inline]
-    pub fn chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+    pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         self.chunks_per_chunk_id.get(id)
     }
 
-    /// Get the number of chunks.
+    /// Get the number of *physical* chunks in the store.
     #[inline]
-    pub fn num_chunks(&self) -> usize {
+    pub fn num_physical_chunks(&self) -> usize {
         self.chunks_per_chunk_id.len()
     }
 
@@ -766,6 +878,10 @@ impl ChunkStore {
     /// new queries are run.
     /// Callers are expected to call this once per frame in order to know which chunks were missing during
     /// the previous frame.
+    ///
+    /// The returned [`ChunkId`]s can live anywhere within the lineage tree, and therefore might
+    /// not be usable for downstream consumers that did not track even compaction/split-off events.
+    /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
     pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.missing_chunk_ids.write())
     }

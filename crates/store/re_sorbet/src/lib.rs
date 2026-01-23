@@ -55,7 +55,7 @@ pub use self::selectors::{
 pub use self::sorbet_batch::SorbetBatch;
 pub use self::sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors};
 pub use self::sorbet_schema::SorbetSchema;
-pub use self::timestamp_metadata::TimestampMetadata;
+pub use self::timestamp_metadata::{TimestampLocation, TimestampMetadata};
 
 /// The type of [`SorbetBatch`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

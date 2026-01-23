@@ -1,11 +1,12 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crossbeam::channel::{Receiver, Sender, unbounded};
-
 use super::{AsyncDecoder, Chunk, Result};
+
 #[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
+
+use crate::{Receiver, Sender};
 
 enum Command {
     Chunk(Chunk),
@@ -14,6 +15,16 @@ enum Command {
     Reset(Box<VideoDataDescription>),
 
     Stop,
+}
+
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Chunk(chunk) => chunk.heap_size_bytes(),
+            Self::Reset(video_data_description) => video_data_description.heap_size_bytes(),
+            Self::Stop => 0,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -72,7 +83,7 @@ impl AsyncDecoderWrapper {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let (command_tx, command_rx) = unbounded();
+        let (command_tx, command_rx) = crate::channel(format!("{debug_name}-channel"));
         let comms = Comms::default();
 
         let thread = std::thread::Builder::new()

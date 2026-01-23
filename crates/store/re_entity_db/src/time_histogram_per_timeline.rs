@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 use std::ops::Bound;
 
 use emath::lerp;
+use itertools::Itertools as _;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{TimeInt, Timeline, TimelineName};
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
+use re_chunk_store::{ChunkDirectLineage, ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 use crate::RrdManifestIndex;
@@ -188,6 +190,9 @@ impl TimeHistogramPerTimeline {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
+    /// Increments `n` for each specified time.
+    ///
+    /// I.e. this adds a total of `n*times.len()`.
     fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
@@ -200,6 +205,9 @@ impl TimeHistogramPerTimeline {
         }
     }
 
+    /// Decrements `n` for each specified time.
+    ///
+    /// I.e. this removes a total of `n*times.len()`.
     fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
@@ -219,93 +227,153 @@ impl TimeHistogramPerTimeline {
         re_tracing::profile_function!();
 
         for chunk in rrd_manifest_index.remote_chunks() {
+            if chunk.temporals.is_empty() {
+                self.has_static = true;
+            }
+
             for info in chunk.temporals.values() {
                 let histogram = self
                     .times
                     .entry(*info.timeline.name())
                     .or_insert_with(|| TimeHistogram::new(info.timeline));
 
-                apply_estimate(Application::Add, histogram, info.time_range, info.num_rows);
+                apply_estimate(
+                    Application::Add,
+                    histogram,
+                    info.time_range,
+                    info.num_rows_for_all_entities_all_components,
+                );
             }
         }
     }
 
-    pub fn on_events(&mut self, rrd_manifest_index: &RrdManifestIndex, events: &[ChunkStoreEvent]) {
+    pub fn on_events(
+        &mut self,
+        store: &ChunkStore,
+        rrd_manifest_index: &RrdManifestIndex,
+        events: &[ChunkStoreEvent],
+    ) {
         re_tracing::profile_function!();
 
         for event in events {
-            let original_chunk_id = if let Some(chunk_id) = event.diff.split_source {
-                chunk_id
-            } else {
-                event.chunk.id()
-            };
+            match &event.diff {
+                ChunkStoreDiff::Addition(add) => {
+                    let delta_chunk = add.delta_chunk();
 
-            if event.chunk.is_static() {
-                match event.kind {
-                    ChunkStoreDiffKind::Addition => {
+                    let remote_chunk_id = add.chunk_before_processing.id();
+                    let remote_chunk_info = rrd_manifest_index.remote_chunk_info(&remote_chunk_id);
+
+                    if delta_chunk.is_static() {
                         self.has_static = true;
-                    }
-                    ChunkStoreDiffKind::Deletion => {
-                        // we don't care
-                    }
-                }
-            } else {
-                for time_column in event.chunk.timelines().values() {
-                    let times = time_column.times_raw();
-                    let timeline = time_column.timeline();
-                    match event.kind {
-                        ChunkStoreDiffKind::Addition => {
-                            if let Some(info) =
-                                rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                                && let Some(info) = &info.temporals.get(timeline.name())
+                    } else {
+                        for time_column in delta_chunk.timelines().values() {
+                            let times = time_column.times_raw();
+                            let timeline = time_column.timeline();
+
+                            if let Some(chunk_info) = remote_chunk_info
+                                && let Some(timeline_info) =
+                                    &chunk_info.temporals.get(timeline.name())
                             {
-                                // We added estimated value for this before, based on the rrd manifest.
+                                // We added an estimated value for this before, based on the RRD manifest.
                                 // Now that we have the whole chunk we need to subtract those fake values again,
                                 // before we add in the actual contents of the chunk:
+
                                 let histogram = self
                                     .times
                                     .entry(*timeline.name())
                                     .or_insert_with(|| TimeHistogram::new(*timeline));
+
                                 apply_estimate(
                                     Application::Remove,
                                     histogram,
-                                    info.time_range,
-                                    info.num_rows,
+                                    timeline_info.time_range,
+                                    timeline_info.num_rows_for_all_entities_all_components,
                                 );
                             }
 
                             self.add_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                // This value is incorrect since it doesn't account for the potential sparseness
+                                // of individual components.
+                                // I.e. this will over-count. For what we use this datastructure for, this is fine.
+                                delta_chunk.num_components() as _,
                             );
                         }
-                        ChunkStoreDiffKind::Deletion => {
+                    }
+                }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    if del.chunk.is_static() {
+                        // we don't care
+                    } else {
+                        // We want to explicitly look for root chunks here, even if that means walking recursively
+                        // through the lineage tree.
+                        // We will need them in order to re-fill the estimates as best as we can.
+                        let remote_chunk_ids = store
+                            .find_root_rrd_manifests(&del.chunk.id())
+                            .into_iter()
+                            .map(|(c, _)| c)
+                            .collect_vec();
+                        let remote_chunk_infos = remote_chunk_ids
+                            .iter()
+                            .filter_map(|cid| rrd_manifest_index.remote_chunk_info(cid))
+                            .collect_vec();
+
+                        for time_column in del.chunk.timelines().values() {
+                            let times = time_column.times_raw();
+                            let timeline = time_column.timeline();
+
                             self.remove_temporal(
                                 time_column.timeline(),
                                 times,
-                                event.chunk.num_components() as _,
+                                // This value is incorrect since it doesn't account for the potential sparseness
+                                // of individual components.
+                                // I.e. this will over-count. For what we use this datastructure for, this is fine.
+                                del.chunk.num_components() as _,
                             );
 
-                            if let Some(info) =
-                                rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                                && let Some(info) = info.temporals.get(timeline.name())
-                            {
-                                // We GCed the full chunk, so add back the estimate:
-                                let histogram = self
-                                    .times
-                                    .entry(*timeline.name())
-                                    .or_insert_with(|| TimeHistogram::new(*timeline));
+                            #[expect(clippy::match_same_arms)] // readability
+                            let undo_factor: f64 = match store.direct_lineage(&del.chunk.id()) {
+                                // If the removed chunk was part of split lineage of siblings, then only bring that
+                                // much of the estimate back.
+                                Some(ChunkDirectLineage::SplitFrom(_, sibling_ids)) => {
+                                    1.0 / (sibling_ids.len() + 1) as f64
+                                }
 
-                                apply_estimate(
-                                    Application::Add,
-                                    histogram,
-                                    info.time_range,
-                                    info.num_rows,
-                                );
+                                Some(ChunkDirectLineage::CompactedFrom(_)) => 1.0,
+
+                                _ => 1.0,
+                            };
+
+                            for chunk_info in &remote_chunk_infos {
+                                if let Some(timeline_info) =
+                                    chunk_info.temporals.get(timeline.name())
+                                {
+                                    let histogram = self
+                                        .times
+                                        .entry(*timeline.name())
+                                        .or_insert_with(|| TimeHistogram::new(*timeline));
+
+                                    let n = timeline_info.num_rows_for_all_entities_all_components
+                                        as f64;
+                                    let n = n * undo_factor;
+                                    let n = n as u64;
+
+                                    apply_estimate(
+                                        Application::Add,
+                                        histogram,
+                                        timeline_info.time_range,
+                                        n,
+                                    );
+                                }
                             }
                         }
                     }
+                }
+
+                ChunkStoreDiff::VirtualAddition(_) => {
+                    // TODO(cmc): this should probably replace the `on_rrd_manifest` impl above.
                 }
             }
         }
@@ -335,20 +403,24 @@ fn apply_estimate(
     application: Application,
     histogram: &mut TimeHistogram,
     time_range: re_log_types::AbsoluteTimeRange,
-    num_rows: u64,
+    num_rows_for_all_entities_all_components: u64,
 ) {
-    if num_rows == 0 {
+    if num_rows_for_all_entities_all_components == 0 {
         return;
     }
 
     // Assume even spread of chunk (for now):
-    let num_pieces = u64::min(num_rows, 10);
+    let num_pieces = u64::min(num_rows_for_all_entities_all_components, 10);
 
     if num_pieces == 1 || time_range.min == time_range.max {
         let position = time_range.center();
-        application.apply(histogram, position.as_i64(), num_rows as u32);
+        application.apply(
+            histogram,
+            position.as_i64(),
+            num_rows_for_all_entities_all_components as u32,
+        );
     } else {
-        let inc = (num_rows / num_pieces) as u32;
+        let inc = (num_rows_for_all_entities_all_components / num_pieces) as u32;
         for i in 0..num_pieces {
             let position = lerp(
                 time_range.min.as_f64()..=time_range.max.as_f64(),
@@ -359,8 +431,32 @@ fn apply_estimate(
             application.apply(
                 histogram,
                 position,
-                inc + (i < num_rows % num_pieces) as u32,
+                inc + (i < num_rows_for_all_entities_all_components % num_pieces) as u32,
             );
         }
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogram {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        let Self { timeline: _, hist } = self;
+        MemUsageTree::Bytes(hist.total_size_bytes())
+    }
+}
+
+impl MemUsageTreeCapture for TimeHistogramPerTimeline {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let Self { times, has_static } = self;
+        _ = has_static;
+
+        let mut node = MemUsageNode::new();
+        for (timeline_name, histogram) in times {
+            node.add(
+                timeline_name.as_str().to_owned(),
+                histogram.capture_mem_usage_tree(),
+            );
+        }
+        node.into_tree()
     }
 }

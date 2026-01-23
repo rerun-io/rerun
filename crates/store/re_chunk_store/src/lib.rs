@@ -18,6 +18,7 @@ mod dataframe;
 mod drop_time_range;
 mod events;
 mod gc;
+mod lineage;
 mod properties;
 mod query;
 mod stats;
@@ -25,7 +26,6 @@ mod store;
 mod subscribers;
 mod writes;
 
-pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 // Re-exports
 #[doc(no_inline)]
 pub use {
@@ -34,6 +34,7 @@ pub use {
         UnitChunkShared,
     },
     re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
+    re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
 pub use self::dataframe::{
@@ -41,9 +42,11 @@ pub use self::dataframe::{
     ViewContentsSelector,
 };
 pub use self::events::{
-    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion, ChunkStoreDiffVirtualAddition,
+    ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
 pub use self::properties::ExtractPropertiesError;
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};

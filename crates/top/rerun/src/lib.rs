@@ -142,8 +142,9 @@ pub use re_capabilities::MainThreadToken;
 
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber,
+    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
+    ChunkStoreDiffVirtualAddition, ChunkStoreEvent, ChunkStoreGeneration, ChunkStoreHandle,
+    ChunkStoreSubscriber,
 };
 pub use re_log_types::StoreKind;
 

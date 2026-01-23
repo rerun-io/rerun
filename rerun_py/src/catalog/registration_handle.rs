@@ -86,7 +86,7 @@ impl PyRegistrationHandleInternal {
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
 
         // Spawn a task that queries the completion state and channels it to the iterator object.
-        let (tx, rx) = mpsc::unbounded_channel::<PyResult<Vec<RegistrationResult>>>();
+        let (tx, rx) = mpsc::channel::<PyResult<Vec<RegistrationResult>>>(32 * 1024);
         let descriptors = self.descriptors.clone();
         let task_id_to_indices = self.task_id_to_indices.clone();
         let runtime = get_tokio_runtime();
@@ -95,8 +95,7 @@ impl PyRegistrationHandleInternal {
                 let mut client = match connection.client().await {
                     Ok(c) => c,
                     Err(err) => {
-                        #[expect(clippy::let_underscore_must_use)]
-                        let _ = tx.send(Err(err));
+                        tx.send(Err(err)).await.ok();
                         return;
                     }
                 };
@@ -105,8 +104,7 @@ impl PyRegistrationHandleInternal {
                     match client.query_tasks_on_completion(task_ids, timeout).await {
                         Ok(stream) => stream,
                         Err(err) => {
-                            #[expect(clippy::let_underscore_must_use)]
-                            let _ = tx.send(Err(to_py_err(err)));
+                            tx.send(Err(to_py_err(err))).await.ok();
                             return;
                         }
                     };
@@ -119,7 +117,7 @@ impl PyRegistrationHandleInternal {
 
                     match result {
                         Ok(results) if !results.is_empty() => {
-                            if tx.send(Ok(results)).is_err() {
+                            if tx.send(Ok(results)).await.is_err() {
                                 // Receiver dropped, stop processing
                                 break;
                             }
@@ -130,7 +128,7 @@ impl PyRegistrationHandleInternal {
                         }
 
                         Err(err) => {
-                            let _ = tx.send(Err(err)).ok();
+                            tx.send(Err(err)).await.ok();
                             break;
                         }
                     }
@@ -276,7 +274,7 @@ pub struct PyRegistrationIterator {
     /// Channel to receive results from the async stream.
     ///
     /// The arc-mutex here is needed because we release the GIL while polling the stream.
-    rx: Arc<Mutex<mpsc::UnboundedReceiver<PyResult<Vec<RegistrationResult>>>>>,
+    rx: Arc<Mutex<mpsc::Receiver<PyResult<Vec<RegistrationResult>>>>>,
 
     /// Results are received in batches from gRPC, so we buffer them for the subsequent iterations.
     buffer: Vec<RegistrationResult>,

@@ -35,11 +35,11 @@ class Server:
     import rerun as rr
 
     # Start a server with some datasets
-    with rr.Server(port=9876, datasets={"my_data": "path/to/data.rrd"}) as server:
+    with rr.server.Server(port=9876, datasets={"my_data": ["path/to/data.rrd"]}) as server:
         client = server.client()
 
         # Use the client to interact with the catalog
-        datasets = client.datasets()
+        dataset = client.get_dataset("my_data")
     ```
 
     """

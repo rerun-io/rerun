@@ -6,9 +6,7 @@ use web_time::Instant;
 
 use super::VideoFrameTexture;
 use super::chunk_decoder::VideoSampleDecoder;
-use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
-use crate::video::chunk_decoder::update_video_texture_with_frame;
 use crate::video::{DecoderDelayState, InsufficientSampleDataError, VideoPlayerError};
 
 pub struct PlayerConfiguration {
@@ -145,7 +143,11 @@ impl VideoPlayer {
             re_video::new_decoder(&debug_name, description, decode_settings, output_sender)
         })?;
 
-        Ok(Self {
+        Ok(Self::new_with_encoder(sample_decoder))
+    }
+
+    pub fn new_with_encoder(sample_decoder: VideoSampleDecoder) -> Self {
+        Self {
             sample_decoder,
 
             video_texture: VideoTexture {
@@ -167,7 +169,7 @@ impl VideoPlayer {
             decoder_delay_state: DecoderDelayState::UpToDate,
 
             config: PlayerConfiguration::default(),
-        })
+        }
     }
 
     pub fn debug_name(&self) -> &str {
@@ -184,9 +186,12 @@ impl VideoPlayer {
     // TODO(andreas): have to detect when decoder is playing catch-up and don't show images that we're not interested in.
     pub fn frame_at<'a>(
         &mut self,
-        render_ctx: &RenderContext,
         requested_pts: Time,
         video_description: &re_video::VideoDataDescription,
+        update_video_texture_with_frame: &mut dyn FnMut(
+            &mut VideoTexture,
+            &re_video::Frame,
+        ) -> Result<(), VideoPlayerError>,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if video_description.keyframe_indices.is_empty() {
@@ -233,11 +238,7 @@ impl VideoPlayer {
                 .is_none_or(|info| info.presentation_timestamp != requested_sample_pts)
                 && self.decoder_delay_state != DecoderDelayState::Behind
             {
-                update_video_texture_with_frame(
-                    render_ctx,
-                    &mut self.video_texture,
-                    decoded_frame,
-                )?; // Update texture errors are very unusual, error out on those immediately.
+                update_video_texture_with_frame(&mut self.video_texture, decoded_frame)?; // Update texture errors are very unusual, error out on those immediately.
                 self.video_texture.frame_info = Some(decoded_frame.info.clone());
             }
 
@@ -357,6 +358,7 @@ impl VideoPlayer {
             self.enqueue_keyframe_range(
                 video_description,
                 requested_keyframe_idx,
+                requested_sample_idx,
                 get_video_buffer,
             )?;
 
@@ -377,9 +379,23 @@ impl VideoPlayer {
                 break;
             }
 
-            // Nothing more to enqueue / reached end of video?
-            if last_enqueued + 1 == video_description.samples.next_index() {
-                break;
+            match video_description.samples.get(last_enqueued + 1) {
+                Some(re_video::SampleMetadataState::Unloaded(_)) => {
+                    // We require all samples and one additional we're enqueuing before the requested
+                    // sample to be present.
+                    //
+                    // Usually `last_enqueued` is greater than `requested_sample_idx`
+                    // since we stay ahead of the requested sample as described above.
+                    if last_enqueued <= requested_sample_idx {
+                        return Err(VideoPlayerError::InsufficientSampleData(
+                            InsufficientSampleDataError::ExpectedSampleNotAvailable,
+                        ));
+                    }
+
+                    break;
+                }
+                Some(_state) => {}
+                None => break,
             }
 
             let next_keyframe_idx = keyframe_idx + 1;
@@ -395,8 +411,10 @@ impl VideoPlayer {
                 self.enqueue_keyframe_range(
                     video_description,
                     next_keyframe_idx,
+                    requested_sample_idx,
                     get_video_buffer,
                 )?;
+
                 keyframe_idx = next_keyframe_idx;
             }
             // If not, enqueue its remaining samples. This happens regularly in live video streams.
@@ -406,7 +424,12 @@ impl VideoPlayer {
                     .ok_or(VideoPlayerError::BadData)?;
 
                 let range = (last_enqueued + 1)..keyframe_range.end;
-                self.enqueue_sample_range(video_description, &range, get_video_buffer)?;
+                self.enqueue_sample_range(
+                    video_description,
+                    &range,
+                    requested_sample_idx,
+                    get_video_buffer,
+                )?;
             }
         }
 
@@ -460,12 +483,17 @@ impl VideoPlayer {
             // This way, it might later recover from the error as we progress in the video.
             self.reset(video_description)?;
         }
-        // Seeking forward by more than one GOP
+        // Reset if our last enqueued sample has been unloaded.
+        //
+        // Or seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
-        else if self
-            .last_enqueued
-            .is_some_and(|e| e < video_description.keyframe_indices[requested_keyframe])
-        {
+        else if self.last_enqueued.is_some_and(|enqueued_idx| {
+            video_description
+                .samples
+                .get(enqueued_idx)
+                .is_none_or(|s| s.sample().is_none())
+                || enqueued_idx < video_description.keyframe_indices[requested_keyframe]
+        }) {
             self.reset(video_description)?;
         }
         // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
@@ -524,13 +552,19 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         keyframe_idx: KeyframeIndex,
+        requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         let sample_range = video_description
             .gop_sample_range_for_keyframe(keyframe_idx)
             .ok_or(VideoPlayerError::BadData)?;
 
-        self.enqueue_sample_range(video_description, &sample_range, get_video_buffer)
+        self.enqueue_sample_range(
+            video_description,
+            &sample_range,
+            requested_sample_idx,
+            get_video_buffer,
+        )
     }
 
     /// Enqueues sample range *within* a keyframe range.
@@ -540,6 +574,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         sample_range: &Range<SampleIndex>,
+        requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
         for (sample_idx, sample) in video_description
@@ -548,14 +583,18 @@ impl VideoPlayer {
         {
             let sample = match sample {
                 re_video::SampleMetadataState::Present(sample) => sample,
-                re_video::SampleMetadataState::Skip(_) => {
-                    self.last_enqueued = Some(sample_idx);
-                    continue;
-                }
                 re_video::SampleMetadataState::Unloaded(_) => {
-                    return Err(VideoPlayerError::InsufficientSampleData(
-                        InsufficientSampleDataError::ExpectedSampleNotAvailable,
-                    ));
+                    // If this sample before the requested sample, we need this sample now
+                    // and error if it's unloaded.
+                    //
+                    // Otherwise we can presume this will be loaded later.
+                    if sample_idx <= requested_sample_idx {
+                        return Err(VideoPlayerError::InsufficientSampleData(
+                            InsufficientSampleDataError::ExpectedSampleNotAvailable,
+                        ));
+                    } else {
+                        return Ok(());
+                    }
                 }
             };
             let chunk = sample

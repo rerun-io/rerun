@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
-use re_sdk_types::components::{Color, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, Component as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
@@ -33,28 +33,33 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 }
 
 impl VisualizerSystem for SeriesPointsSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
+    fn visualizer_query_info(
+        &self,
+        app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        if app_options.experimental.component_mapping {
+            VisualizerQueryInfo {
+                relevant_archetype: archetypes::SeriesPoints::name().into(),
+                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+                    semantic_type: components::Scalar::name(),
+                    physical_types: util::series_supported_datatypes().into_iter().collect(),
+                },
+                queried: archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesPoints::all_components().iter())
+                    .cloned()
+                    .collect(),
+            }
+        } else {
+            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
+            query_info
+                .queried
+                .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
-        query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
+            query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
 
-        query_info
-
-        // TODO(RR-3318): Enable this.
-        // VisualizerQueryInfo {
-        //     relevant_archetype: archetypes::SeriesPoints::name().into(),
-        //     required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-        //         supported_datatypes().into_iter().collect(),
-        //     ),
-        //     queried: archetypes::Scalars::all_components()
-        //         .iter()
-        //         .chain(archetypes::SeriesPoints::all_components().iter())
-        //         .cloned()
-        //         .collect(),
-        // }
+            query_info
+        }
     }
 
     fn execute(
@@ -100,8 +105,8 @@ impl SeriesPointsSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err);
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
-                    output.report_error_for(entity_path, error);
+                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
+                    output.report_error_for(entity_path, err);
                 }
                 Ok(one_series) => {
                     self.all_series.extend(one_series);
@@ -152,7 +157,7 @@ impl SeriesPointsSystem {
             else {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
-                    error: "No valid scalar data found".to_owned(),
+                    err: "No valid scalar data found".to_owned(),
                 });
             };
 
@@ -371,7 +376,11 @@ impl SeriesPointsSystem {
                     // Aggregation for points is not supported.
                     re_sdk_types::components::AggregationPolicy::Off,
                     &mut series,
-                );
+                )
+                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
+                    entity_path: data_result.entity_path.clone(),
+                    err,
+                })?;
             }
 
             Ok(series)

@@ -867,6 +867,15 @@ pub struct TableMsg {
     pub data: ArrowRecordBatch,
 }
 
+impl re_byte_size::SizeBytes for TableMsg {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { id: _, data } = self;
+
+        data.heap_size_bytes()
+    }
+}
+
 impl TableMsg {
     pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
         self.data.schema_metadata_mut().insert(key, value);
@@ -890,6 +899,20 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
         TimeInt::saturated_temporal(frame_nr),
+    )
+}
+
+#[inline]
+pub fn build_index_value(value: impl TryInto<TimeInt>, time_type: TimeType) -> (Timeline, TimeInt) {
+    let timeline_name = match time_type {
+        TimeType::Sequence => "frame_nr",
+        TimeType::DurationNs => "duration",
+        TimeType::TimestampNs => "timestamp",
+    };
+
+    (
+        Timeline::new(timeline_name, time_type),
+        TimeInt::saturated_temporal(value),
     )
 }
 

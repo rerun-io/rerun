@@ -37,6 +37,7 @@ pub struct ViewSystemRegistrator<'a> {
     identifier: ViewClassIdentifier,
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
+    pub app_options: &'a crate::AppOptions,
 }
 
 impl ViewSystemRegistrator<'_> {
@@ -95,13 +96,14 @@ impl ViewSystemRegistrator<'_> {
         }
 
         if self.visualizers.insert(T::identifier()) {
+            let app_options = self.app_options;
             self.registry
                 .visualizers
                 .entry(T::identifier())
-                .or_insert_with(|| {
+                .or_insert_with(move || {
                     let visualizer = T::default();
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
-                        VisualizerEntitySubscriber::new(&visualizer),
+                        VisualizerEntitySubscriber::new(&visualizer, app_options),
                     ));
 
                     VisualizerTypeRegistryEntry {
@@ -207,8 +209,12 @@ impl ViewClassRegistry {
     /// Adds a new view class.
     ///
     /// Fails if a view class with the same name was already registered.
+    ///
+    /// Note that changes to app options later down the line may not be taken into account for already
+    /// registered views & visualizers.
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
+        app_options: &crate::AppOptions,
         fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
         let class = Box::<T>::default();
@@ -219,6 +225,7 @@ impl ViewClassRegistry {
             context_systems: Default::default(),
             visualizers: Default::default(),
             fallback_registry,
+            app_options,
         };
 
         class.on_register(&mut registrator)?;
@@ -229,6 +236,7 @@ impl ViewClassRegistry {
             context_systems,
             visualizers,
             fallback_registry: _,
+            app_options: _,
         } = registrator;
 
         if self
@@ -452,14 +460,5 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         }
-    }
-
-    pub fn instantiate_visualizer(
-        &self,
-        visualizer_identifier: ViewSystemIdentifier,
-    ) -> Option<Box<dyn VisualizerSystem>> {
-        self.visualizers
-            .get(&visualizer_identifier)
-            .map(|entry| (entry.factory_method)())
     }
 }

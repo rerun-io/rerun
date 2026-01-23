@@ -1,14 +1,16 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
+    ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
@@ -64,9 +66,15 @@ impl EntityDbClass<'_> {
 /// NOTE: all mutation is to be done via public functions!
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct EntityDb {
-    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
-    /// store id.
+    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s store id.
     store_id: StoreId,
+
+    /// Whether the `EntityDb` should maintain various secondary indexes using store events.
+    ///
+    /// These indexes are costly to maintain and only useful when running in the viewer.
+    /// For CLI tools, prefer disabling this to improve performance, unless you specifically need
+    /// these indexes for some reason.
+    enable_viewer_indexes: bool,
 
     /// Set by whomever created this [`EntityDb`].
     ///
@@ -109,6 +117,7 @@ pub struct EntityDb {
 impl Debug for EntityDb {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EntityDb")
+            .field("enable_viewer_indexes", &self.enable_viewer_indexes)
             .field("store_id", &self.store_id)
             .field("data_source", &self.data_source)
             .field("set_store_info", &self.set_store_info)
@@ -117,11 +126,28 @@ impl Debug for EntityDb {
 }
 
 impl EntityDb {
+    /// [Secondary viewer indexes] are enabled by default.
+    ///
+    /// Use [`Self::with_store_config`] for more control.
+    ///
+    /// [Secondary viewer indexes]: [`Self::enable_viewer_indexes`]
     pub fn new(store_id: StoreId) -> Self {
-        Self::with_store_config(store_id, ChunkStoreConfig::from_env().unwrap_or_default())
+        let enable_viewer_indexes = true;
+        Self::with_store_config(
+            store_id,
+            enable_viewer_indexes,
+            ChunkStoreConfig::from_env().unwrap_or_default(),
+        )
     }
 
-    pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
+    pub fn with_store_config(
+        store_id: StoreId,
+        enable_viewer_indexes: bool,
+        mut store_config: ChunkStoreConfig,
+    ) -> Self {
+        // If we don't care about inline indexes, we definitely don't care about remote subscribers either.
+        store_config.enable_changelog = enable_viewer_indexes;
+
         let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
@@ -131,6 +157,7 @@ impl EntityDb {
 
         Self {
             store_id,
+            enable_viewer_indexes,
             data_source: None,
             rrd_manifest_index: Default::default(),
             set_store_info: None,
@@ -637,33 +664,44 @@ impl EntityDb {
 
         let mut engine = self.storage_engine.write();
 
+        // The query cache isn't specific to the viewer. Always update it.
         engine.cache().on_events(store_events);
+
+        if !self.enable_viewer_indexes {
+            return;
+        }
 
         let engine = engine.downgrade();
 
-        self.rrd_manifest_index.on_events(store_events);
+        self.rrd_manifest_index
+            .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.time_histogram_per_timeline
-            .on_events(&self.rrd_manifest_index, store_events);
+        self.time_histogram_per_timeline.on_events(
+            engine.store(),
+            &self.rrd_manifest_index,
+            store_events,
+        );
         self.rrd_manifest_index
             .entity_tree
-            .on_store_additions(store_events);
+            .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
+
+        let dels = store_events
+            .iter()
+            .filter_map(|e| e.to_deletion())
+            .collect_vec();
 
         // It is possible for writes to trigger deletions: specifically in the case of
         // overwritten static data leading to dangling chunks.
-        let entity_paths_with_deletions = store_events
-            .iter()
-            .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
-            .map(|event| event.chunk.entity_path().clone())
-            .collect();
+        let entity_paths_with_deletions =
+            dels.iter().map(|e| e.chunk.entity_path().clone()).collect();
 
         {
             re_tracing::profile_scope!("on_store_deletions");
             self.rrd_manifest_index.entity_tree.on_store_deletions(
                 &engine,
                 &entity_paths_with_deletions,
-                store_events,
+                &dels,
             );
         }
     }
@@ -827,7 +865,7 @@ impl EntityDb {
 
             let mut chunks: Vec<Arc<Chunk>> = engine
                 .store()
-                .iter_chunks()
+                .iter_physical_chunks()
                 .filter(move |chunk| {
                     if chunk.is_static() {
                         return true; // always keep all static data
@@ -885,6 +923,7 @@ impl EntityDb {
 
         let mut new_db = Self::new(new_id.clone());
 
+        new_db.enable_viewer_indexes = self.enable_viewer_indexes;
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;
 
@@ -908,7 +947,7 @@ impl EntityDb {
         }
 
         let engine = self.storage_engine.read();
-        for chunk in engine.store().iter_chunks() {
+        for chunk in engine.store().iter_physical_chunks() {
             new_db.add_chunk(&Arc::clone(chunk))?;
         }
 
@@ -1042,6 +1081,51 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
+    }
+}
+
+impl MemUsageTreeCapture for EntityDb {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            rrd_manifest_index,
+            time_histogram_per_timeline,
+            storage_engine,
+            entity_path_from_hash,
+
+            // Small:
+            store_id: _,
+            enable_viewer_indexes: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
+            latest_row_id: _,
+            stats: _,
+        } = self;
+
+        let mut node = MemUsageNode::new();
+
+        node.add(
+            "chunk_store",
+            storage_engine.read().capture_mem_usage_tree(),
+        );
+
+        node.add(
+            "entity_path_from_hash",
+            MemUsageTree::Bytes(entity_path_from_hash.total_size_bytes()),
+        );
+
+        node.add(
+            "time_histogram_per_timeline",
+            time_histogram_per_timeline.capture_mem_usage_tree(),
+        );
+        node.add(
+            "rrd_manifest_index",
+            rrd_manifest_index.capture_mem_usage_tree(),
+        );
+
+        node.into_tree()
     }
 }
 

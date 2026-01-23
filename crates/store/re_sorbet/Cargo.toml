@@ -31,8 +31,9 @@ arrow.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 semver.workspace = true
-tracing.workspace = true
+strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
+tracing.workspace = true
 web-time.workspace = true
 
 # Keep this crate simple, with few dependencies.

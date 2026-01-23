@@ -4,6 +4,7 @@ tags = ["2D", "SAM", "Segmentation"]
 thumbnail = "https://static.rerun.io/segment-anything-model/36438df27a287e5eff3a673e2464af071e665fdf/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
+include_in_manifest = true
 -->
 
 Example of using Rerun to log and visualize the output of [Meta AI's Segment Anything model](https://segment-anything.com/).

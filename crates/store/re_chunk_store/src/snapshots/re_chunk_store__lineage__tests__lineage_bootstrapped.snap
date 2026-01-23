@@ -1,0 +1,24 @@
+---
+source: crates/store/re_chunk_store/src/lineage.rs
+expression: generate_redacted_lineage_report(&store)
+---
+chunk_00000000000005390000000000000004 (status:loaded static:no)
+    origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+chunk_00000000000005390000000000000005 (status:loaded static:no)
+    origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+chunk_00000000000005390000000000000006 (status:loaded static:no)
+    origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+chunk_00000000000005390000000000000009 (status:loaded static:no)
+    compacted-from: chunk_00000000000005390000000000000003 (status:offloaded static:no)
+        origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+    compacted-from: chunk_00000000000005390000000000000008 (status:offloaded static:unknown)
+        compacted-from: chunk_00000000000005390000000000000001 (status:offloaded static:no)
+            origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+        compacted-from: chunk_00000000000005390000000000000002 (status:offloaded static:no)
+            origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+chunk_0000000000000539000000000000000a (status:loaded static:no siblings:[chunk_0000000000000539000000000000000b])
+    split-from: chunk_00000000000005390000000000000007 (status:offloaded static:no)
+        origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26
+chunk_0000000000000539000000000000000b (status:loaded static:no siblings:[chunk_0000000000000539000000000000000a])
+    split-from: chunk_00000000000005390000000000000007 (status:offloaded static:no)
+        origin:RrdManifest#1209c96b2afc1d4a962723b2c37b8fe3ae5b312572fb7212cd7bf21a3f281d26

@@ -684,28 +684,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ashpd"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cbdf310d77fd3aaee6ea2093db7011dc2d35d2eb3481e5607f1f8d942ed99df"
-dependencies = [
- "async-fs",
- "async-net",
- "enumflags2",
- "futures-channel",
- "futures-util",
- "rand 0.9.2",
- "raw-window-handle",
- "serde",
- "serde_repr",
- "url",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
- "zbus",
-]
-
-[[package]]
 name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -776,17 +754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-fs"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8034a681df4aed8b8edbd7fbe472401ecf009251c8b40556b304567052e294c5"
-dependencies = [
- "async-lock",
- "blocking",
- "futures-lite",
-]
-
-[[package]]
 name = "async-io"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -813,17 +780,6 @@ dependencies = [
  "event-listener",
  "event-listener-strategy",
  "pin-project-lite",
-]
-
-[[package]]
-name = "async-net"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b948000fad4873c1c9339d60f2623323a0cfd3816e5181033c6a5cb68b2accf7"
-dependencies = [
- "async-io",
- "blocking",
- "futures-lite",
 ]
 
 [[package]]
@@ -8391,7 +8347,6 @@ dependencies = [
  "arrow",
  "insta",
  "re_arrow_util",
- "re_sdk_types",
  "thiserror 2.0.17",
 ]
 
@@ -8520,6 +8475,8 @@ dependencies = [
  "arrow",
  "glam",
  "half",
+ "insta",
+ "parking_lot",
  "smallvec",
 ]
 
@@ -8560,6 +8517,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_quota_channel",
  "re_sorbet",
  "re_span",
  "re_tracing",
@@ -8820,6 +8778,7 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "async-trait",
  "datafusion",
  "egui",
  "egui_dnd",
@@ -8940,7 +8899,6 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
- "saturating_cast",
  "serde",
  "similar-asserts",
  "static_assertions",
@@ -9024,6 +8982,7 @@ dependencies = [
  "criterion",
  "insta",
  "mimalloc",
+ "re_byte_size",
  "smallvec",
  "static_assertions",
 ]
@@ -9073,10 +9032,13 @@ dependencies = [
 name = "re_log_channel"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
+ "camino",
  "crossbeam",
  "parking_lot",
+ "re_byte_size",
  "re_log_encoding",
  "re_log_types",
+ "re_quota_channel",
  "re_tracing",
  "re_uri",
  "serde",
@@ -9204,6 +9166,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_memory_view"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "eframe",
+ "egui",
+ "re_byte_size",
+ "re_format",
+ "wgpu",
+]
+
+[[package]]
 name = "re_mp4"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9311,12 +9284,22 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_sdk_types",
- "re_span",
  "re_tracing",
  "re_types_core",
  "seq-macro",
  "similar-asserts",
  "thiserror 2.0.17",
+]
+
+[[package]]
+name = "re_quota_channel"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "crossbeam",
+ "parking_lot",
+ "re_byte_size",
+ "re_format",
+ "re_log",
 ]
 
 [[package]]
@@ -9409,7 +9392,9 @@ dependencies = [
  "jiff",
  "re_arrow_util",
  "re_auth",
+ "re_byte_size",
  "re_chunk",
+ "re_format",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9576,7 +9561,9 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_quota_channel",
  "re_sdk_types",
+ "re_sorbet",
  "re_tracing",
  "re_uri",
  "re_web_viewer_server",
@@ -9734,6 +9721,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "semver",
+ "strum",
  "thiserror 2.0.17",
  "tracing",
  "web-time",
@@ -9753,6 +9741,7 @@ dependencies = [
  "ahash",
  "nohash-hasher",
  "parking_lot",
+ "re_byte_size",
  "serde",
  "static_assertions",
 ]
@@ -9851,8 +9840,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_sdk_types",
- "re_sorbet",
- "re_span",
  "re_test_context",
  "re_tracing",
  "re_ui",
@@ -10008,7 +9995,6 @@ dependencies = [
  "cfg_aliases",
  "criterion",
  "cros-codecs",
- "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
  "h264-reader",
@@ -10020,6 +10006,7 @@ dependencies = [
  "re_byte_size",
  "re_log",
  "re_mp4",
+ "re_quota_channel",
  "re_rav1d",
  "re_span",
  "re_tracing",
@@ -10333,6 +10320,7 @@ dependencies = [
  "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",
@@ -10351,6 +10339,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_memory_view",
  "re_perf_telemetry",
  "re_query",
  "re_recording_panel",
@@ -10359,6 +10348,7 @@ dependencies = [
  "re_renderer",
  "re_sdk_types",
  "re_selection_panel",
+ "re_sorbet",
  "re_test_context",
  "re_test_viewport",
  "re_time_panel",
@@ -10409,6 +10399,7 @@ dependencies = [
  "bit-vec",
  "bitflags 2.9.4",
  "bytemuck",
+ "camino",
  "crossbeam",
  "datafusion",
  "directories",
@@ -10427,6 +10418,7 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "parking_lot",
+ "rand 0.9.2",
  "rayon",
  "re_arrow_ui",
  "re_arrow_util",
@@ -10921,26 +10913,26 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.15.4"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef2bee61e6cffa4635c72d7d81a84294e28f0930db0ddcb0f66d10244674ebed"
+checksum = "20dafead71c16a34e1ff357ddefc8afc11e7d51d6d2b9fbd07eaa48e3e540220"
 dependencies = [
- "ashpd",
  "block2 0.6.2",
  "dispatch2",
  "js-sys",
+ "libc",
  "log",
  "objc2 0.6.3",
  "objc2-app-kit 0.3.2",
  "objc2-core-foundation",
  "objc2-foundation 0.3.2",
+ "percent-encoding",
  "pollster",
  "raw-window-handle",
- "urlencoding",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -14719,7 +14711,6 @@ dependencies = [
  "endi",
  "enumflags2",
  "serde",
- "url",
  "winnow",
  "zvariant_derive",
  "zvariant_utils",

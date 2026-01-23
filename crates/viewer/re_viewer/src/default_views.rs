@@ -1,31 +1,45 @@
-use re_viewer_context::{FallbackProviderRegistry, ViewClassRegistry, ViewClassRegistryError};
+use re_viewer_context::{
+    AppOptions, FallbackProviderRegistry, ViewClassRegistry, ViewClassRegistryError,
+};
 
 pub fn create_view_class_registry(
+    app_options: &AppOptions,
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<ViewClassRegistry, ViewClassRegistryError> {
     re_tracing::profile_function!();
     let mut view_class_registry = ViewClassRegistry::default();
-    populate_view_class_registry_with_builtin(&mut view_class_registry, fallback_registry)?;
+    populate_view_class_registry_with_builtin(
+        app_options,
+        &mut view_class_registry,
+        fallback_registry,
+    )?;
     Ok(view_class_registry)
 }
 
 /// Add built-in views to the registry.
 fn populate_view_class_registry_with_builtin(
+    app_options: &AppOptions,
     view_class_registry: &mut ViewClassRegistry,
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
-    view_class_registry.add_class::<re_view_bar_chart::BarChartView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_dataframe::DataframeView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_graph::GraphView>(fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_bar_chart::BarChartView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_dataframe::DataframeView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_graph::GraphView>(app_options, fallback_registry)?;
     #[cfg(feature = "map_view")]
-    view_class_registry.add_class::<re_view_map::MapView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView2D>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView3D>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_tensor::TensorView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_text_document::TextDocumentView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_text_log::TextView>(fallback_registry)?;
-    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>(fallback_registry)?;
+    view_class_registry.add_class::<re_view_map::MapView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_spatial::SpatialView2D>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_spatial::SpatialView3D>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_tensor::TensorView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_text_document::TextDocumentView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_text_log::TextView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_time_series::TimeSeriesView>(app_options, fallback_registry)?;
 
     Ok(())
 }
@@ -52,8 +66,11 @@ mod tests {
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
-        let view_class_registry =
-            create_view_class_registry(&mut test_context.component_fallback_registry).unwrap();
+        let view_class_registry = create_view_class_registry(
+            &test_context.app_options,
+            &mut test_context.component_fallback_registry,
+        )
+        .unwrap();
         let mut snapshot_results = SnapshotResults::new();
         for egui_theme in [egui::Theme::Light, egui::Theme::Dark] {
             for entry in view_class_registry.iter_registry() {

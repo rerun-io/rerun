@@ -18,6 +18,7 @@ use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
+use crate::StreamingCacheTableProvider;
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -127,13 +128,28 @@ pub struct DataFusionTableWidget<'a> {
 impl<'a> DataFusionTableWidget<'a> {
     /// Clears all caches related to this session context and table reference.
     pub fn refresh(
-        egui_ctx: &egui::Context,
-        session_ctx: &SessionContext,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: egui::Context,
+        session_ctx: Arc<SessionContext>,
         table_ref: impl Into<TableReference>,
     ) {
-        let id = id_from_session_context_and_table(session_ctx, &table_ref.into());
+        let table_ref = table_ref.into();
 
-        DataFusionAdapter::clear_state(egui_ctx, id);
+        // Unfortunately, getting a TableProvider is async, so we need to spawn here:
+        runtime.spawn_future(async move {
+            if let Ok(provider) = session_ctx.table_provider(table_ref.clone()).await {
+                // If this is a StreamingCacheTableProvider, purge its cache
+                if let Some(cache_provider) = provider
+                    .as_any()
+                    .downcast_ref::<StreamingCacheTableProvider>()
+                {
+                    cache_provider.refresh();
+                }
+            }
+
+            let id = id_from_session_context_and_table(&session_ctx, &table_ref);
+            DataFusionAdapter::clear_state(&egui_ctx, id);
+        });
     }
 
     pub fn new(session_ctx: Arc<SessionContext>, table_ref: impl Into<TableReference>) -> Self {
@@ -276,7 +292,12 @@ impl<'a> DataFusionTableWidget<'a> {
                         .clicked()
                     {
                         // This will trigger a fresh query on the next frame.
-                        Self::refresh(ui.ctx(), &session_ctx, table_ref);
+                        Self::refresh(
+                            runtime,
+                            ui.ctx().clone(),
+                            Arc::clone(&session_ctx),
+                            table_ref,
+                        );
                     }
                 });
                 return TableStatus::Error(error);
@@ -302,8 +323,9 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let new_blueprint = Self::table_ui(
             viewer_ctx,
+            runtime,
             ui,
-            session_ctx.as_ref(),
+            Arc::clone(&session_ctx),
             table_ref,
             table_state.blueprint(),
             session_id,
@@ -331,8 +353,9 @@ impl<'a> DataFusionTableWidget<'a> {
     #[expect(clippy::too_many_arguments)]
     fn table_ui(
         viewer_ctx: &ViewerContext<'_>,
+        runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
-        session_ctx: &SessionContext,
+        session_ctx: Arc<SessionContext>,
         table_ref: TableReference,
         table_blueprint: &TableBlueprint,
         session_id: egui::Id,
@@ -459,7 +482,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         match action {
             Some(BottomBarAction::Refresh) => {
-                Self::refresh(ui.ctx(), session_ctx, table_ref);
+                Self::refresh(runtime, ui.ctx().clone(), session_ctx, table_ref);
             }
             None => {}
         }
