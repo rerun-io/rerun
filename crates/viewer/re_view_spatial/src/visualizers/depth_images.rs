@@ -261,12 +261,12 @@ impl VisualizerSystem for DepthImageVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_buffer_chunks =
-                    results.get_chunks(DepthImage::descriptor_buffer().component);
+                    results.get_required_chunk(DepthImage::descriptor_buffer().component);
                 if all_buffer_chunks.is_empty() {
                     return Ok(());
                 }
                 let all_format_chunks =
-                    results.get_chunks(DepthImage::descriptor_format().component);
+                    results.get_required_chunk(DepthImage::descriptor_format().component);
                 if all_format_chunks.is_empty() {
                     return Ok(());
                 }

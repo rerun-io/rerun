@@ -153,7 +153,7 @@ impl SeriesLinesSystem {
 
             // If we have no scalars, we can't do anything.
             let all_scalar_chunks =
-                results.get_chunks(archetypes::Scalars::descriptor_scalars().component);
+                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
             if all_scalar_chunks.is_empty() {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
@@ -228,12 +228,12 @@ impl SeriesLinesSystem {
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = bootstrapped_results
-                .get_chunks(aggregation_policy_descr.component)
+                .get_optional_chunks(aggregation_policy_descr.component)
                 .chunks
                 .iter()
                 .chain(
                     results
-                        .get_chunks(aggregation_policy_descr.component)
+                        .get_optional_chunks(aggregation_policy_descr.component)
                         .chunks
                         .iter(),
                 )

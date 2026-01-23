@@ -198,7 +198,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_strip_chunks =
-                    results.get_chunks(LineStrips3D::descriptor_strips().component);
+                    results.get_required_chunk(LineStrips3D::descriptor_strips().component);
                 if all_strip_chunks.is_empty() {
                     return Ok(());
                 }

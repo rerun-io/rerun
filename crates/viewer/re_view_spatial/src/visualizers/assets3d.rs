@@ -138,7 +138,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_blob_chunks = results.get_chunks(Asset3D::descriptor_blob().component);
+                let all_blob_chunks = results.get_required_chunk(Asset3D::descriptor_blob().component);
                 if all_blob_chunks.is_empty() {
                     return Ok(());
                 }

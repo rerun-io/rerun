@@ -188,7 +188,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_strip_chunks =
-                    results.get_chunks(LineStrips2D::descriptor_strips().component);
+                    results.get_required_chunk(LineStrips2D::descriptor_strips().component);
                 if all_strip_chunks.is_empty() {
                     return Ok(());
                 }

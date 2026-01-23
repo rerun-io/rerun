@@ -78,7 +78,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_blob_chunks =
-                    results.get_chunks(EncodedDepthImage::descriptor_blob().component);
+                    results.get_required_chunk(EncodedDepthImage::descriptor_blob().component);
                 if all_blob_chunks.is_empty() {
                     return Ok(());
                 }

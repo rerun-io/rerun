@@ -211,7 +211,7 @@ impl VisualizerSystem for Points3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_position_chunks =
-                    results.get_chunks(Points3D::descriptor_positions().component);
+                    results.get_required_chunk(Points3D::descriptor_positions().component);
                 if all_position_chunks.is_empty() {
                     return Ok(());
                 }

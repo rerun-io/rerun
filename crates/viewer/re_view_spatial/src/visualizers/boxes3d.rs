@@ -132,7 +132,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_half_size_chunks =
-                    results.get_chunks(Boxes3D::descriptor_half_sizes().component);
+                    results.get_required_chunk(Boxes3D::descriptor_half_sizes().component);
                 if all_half_size_chunks.is_empty() {
                     return Ok(());
                 }

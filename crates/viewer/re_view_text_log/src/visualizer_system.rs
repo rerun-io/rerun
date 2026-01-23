@@ -89,7 +89,7 @@ impl TextLogSystem {
             instruction,
         );
 
-        let all_text_chunks = results.get_chunks(TextLog::descriptor_text().component);
+        let all_text_chunks = results.get_required_chunk(TextLog::descriptor_text().component);
         if all_text_chunks.is_empty() {
             return;
         }

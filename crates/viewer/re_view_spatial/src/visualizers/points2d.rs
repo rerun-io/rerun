@@ -213,7 +213,7 @@ impl VisualizerSystem for Points2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_position_chunks =
-                    results.get_chunks(Points2D::descriptor_positions().component);
+                    results.get_required_chunk(Points2D::descriptor_positions().component);
                 if all_position_chunks.is_empty() {
                     return Ok(());
                 }

@@ -156,12 +156,12 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_length_chunks =
-                    results.get_chunks(Cylinders3D::descriptor_lengths().component);
+                    results.get_required_chunk(Cylinders3D::descriptor_lengths().component);
                 if all_length_chunks.is_empty() {
                     return Ok(());
                 }
                 let all_radius_chunks =
-                    results.get_chunks(Cylinders3D::descriptor_radii().component);
+                    results.get_required_chunk(Cylinders3D::descriptor_radii().component);
                 if all_radius_chunks.is_empty() {
                     return Ok(());
                 }

@@ -153,7 +153,7 @@ impl SeriesPointsSystem {
 
             // If we have no scalars, we can't do anything.
             let all_scalar_chunks =
-                results.get_chunks(archetypes::Scalars::descriptor_scalars().component);
+                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
             if all_scalar_chunks.is_empty() {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
@@ -236,13 +236,13 @@ impl SeriesPointsSystem {
 
                 {
                     let all_marker_shapes_chunks = bootstrapped_results
-                        .get_chunks(archetypes::SeriesPoints::descriptor_markers().component)
+                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers().component)
                         .chunks
                         .iter()
                         .cloned()
                         .chain(
                             results
-                                .get_chunks(
+                                .get_optional_chunks(
                                     archetypes::SeriesPoints::descriptor_markers().component,
                                 )
                                 .chunks

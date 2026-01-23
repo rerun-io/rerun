@@ -58,7 +58,7 @@ impl VisualizerSystem for TensorSystem {
                 Some(instruction),
             );
 
-            let all_tensor_chunks = results.get_chunks(Tensor::descriptor_data().component);
+            let all_tensor_chunks = results.get_required_chunk(Tensor::descriptor_data().component);
             if all_tensor_chunks.is_empty() {
                 continue;
             }

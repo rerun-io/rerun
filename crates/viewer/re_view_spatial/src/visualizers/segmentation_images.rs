@@ -65,12 +65,12 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let all_buffer_chunks =
-                    results.get_chunks(SegmentationImage::descriptor_buffer().component);
+                    results.get_required_chunk(SegmentationImage::descriptor_buffer().component);
                 if all_buffer_chunks.is_empty() {
                     return Ok(());
                 }
                 let all_formats_chunks =
-                    results.get_chunks(SegmentationImage::descriptor_format().component);
+                    results.get_required_chunk(SegmentationImage::descriptor_format().component);
                 if all_formats_chunks.is_empty() {
                     return Ok(());
                 }

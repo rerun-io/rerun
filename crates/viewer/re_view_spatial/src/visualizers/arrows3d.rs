@@ -203,7 +203,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let all_vector_chunks =
-                    results.get_chunks(Arrows3D::descriptor_vectors().component);
+                    results.get_required_chunk(Arrows3D::descriptor_vectors().component);
                 if all_vector_chunks.is_empty() {
                     return Ok(());
                 }
