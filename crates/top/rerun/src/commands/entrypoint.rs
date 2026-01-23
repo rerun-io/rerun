@@ -881,7 +881,7 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let renderer = args.renderer.as_deref();
 
-    let (command_tx, command_rx) = re_viewer_context::command_channel();
+    let (command_tx, command_rx) = re_viewer_context::command_channel(false);
 
     let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 

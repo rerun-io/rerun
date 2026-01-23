@@ -511,7 +511,8 @@ mod unit_tests {
 #[cfg(test)]
 mod integration_tests {
     use std::io;
-    use std::sync::mpsc::Receiver;
+
+    use crossbeam::channel::Receiver;
 
     use prost_reflect::prost::Message as _;
     use prost_reflect::prost_types::{

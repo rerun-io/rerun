@@ -294,7 +294,7 @@ pub trait DataLoader: Send + Sync {
         &self,
         settings: &DataLoaderSettings,
         path: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
 
     /// Loads data from in-memory file contents and sends it to `tx`.
@@ -327,7 +327,7 @@ pub trait DataLoader: Send + Sync {
         settings: &DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
 }
 

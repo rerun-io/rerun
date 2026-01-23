@@ -3105,7 +3105,7 @@ mod tests {
     fn test_sink_dependent_batcher_config() {
         clear_environment();
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crossbeam::channel::bounded(16);
 
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
             .batcher_hooks(BatcherHooks {
@@ -3173,7 +3173,7 @@ mod tests {
             ..ChunkBatcherConfig::DEFAULT
         };
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crossbeam::channel::bounded(16);
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
             .batcher_config(explicit_config)
             .batcher_hooks(BatcherHooks {
@@ -3198,7 +3198,7 @@ mod tests {
         let new_config_recv_result = rx.recv_timeout(std::time::Duration::from_millis(100));
         assert_eq!(
             new_config_recv_result,
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+            Err(crossbeam::channel::RecvTimeoutError::Timeout)
         );
     }
 }

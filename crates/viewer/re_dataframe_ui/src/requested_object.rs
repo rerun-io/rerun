@@ -1,5 +1,4 @@
-use std::sync::mpsc::{Receiver, sync_channel};
-
+use crossbeam::channel::Receiver;
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
@@ -18,7 +17,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     where
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = crate::create_channel(1);
         let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {

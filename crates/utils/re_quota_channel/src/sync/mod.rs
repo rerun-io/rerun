@@ -195,6 +195,7 @@ impl<T> Sender<T> {
             *current += size_bytes;
         }
 
+        // send is guaranteed not to block, because we use an unbounded channel
         self.tx
             .send(SizedMessage { msg, size_bytes })
             .map_err(|SendError(SizedMessage { msg, .. })| TrySendError::Disconnected(msg))
@@ -348,7 +349,8 @@ impl<T> Receiver<T> {
 ///   backpressure is applied. On native platforms, [`Sender::send`] will block
 ///   when this limit is reached. On `wasm32`, a warning is logged but sending continues.
 pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender<T>, Receiver<T>) {
-    #[expect(clippy::disallowed_methods)] // This crate adds its own byte-based bound/backpressure.
+    // This crate adds its own byte-based bound/backpressure, so allow `unbounded` channels on native:
+    #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
     let (tx, rx) = crossbeam::channel::unbounded();
 
     let shared = Arc::new(SharedState {

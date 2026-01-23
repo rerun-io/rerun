@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_check_connection_status")
         .connect_grpc()?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = crossbeam::channel::bounded(1);
 
     loop {
         let tx = tx.clone();

@@ -21,7 +21,7 @@ impl crate::DataLoader for RrdLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
@@ -119,7 +119,7 @@ impl crate::DataLoader for RrdLoader {
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         re_tracing::profile_function!(filepath.display().to_string());
 
@@ -168,7 +168,7 @@ impl crate::DataLoader for RrdLoader {
 
 fn decode_and_stream(
     filepath: &std::path::Path,
-    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    tx: &crossbeam::channel::Sender<crate::LoadedData>,
     msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,

@@ -70,6 +70,7 @@ disallowed-methods = [
   { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
   { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
+  { path = "std::sync::mpsc::channel", reason = "Use bounded channels (like re_quota_channel) to apply backpressure." },
   { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
   { path = "std::time::Duration::from_secs_f32", reason = "Use try_from_secs_f32 instead to avoid panics" },
   { path = "std::time::Duration::from_secs_f64", reason = "Use try_from_secs_f64 instead to avoid panics" },
