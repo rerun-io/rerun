@@ -74,20 +74,6 @@ impl SpatialViewVisualizerData {
         }
     }
 
-    pub fn add_bounding_box_from_points(
-        &mut self,
-        entity: EntityPathHash,
-        points: impl Iterator<Item = glam::Vec3>,
-        world_from_obj: glam::Affine3A,
-    ) {
-        re_tracing::profile_function!();
-        self.add_bounding_box(
-            entity,
-            macaw::BoundingBox::from_points(points),
-            world_from_obj,
-        );
-    }
-
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
     }
