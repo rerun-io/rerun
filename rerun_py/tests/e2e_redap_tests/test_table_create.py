@@ -92,9 +92,7 @@ def test_create_existing_table_fails(prefilled_catalog: PrefilledCatalog, tmp_pa
         Exception,
         match="failed to create table",
     ):
-        _table_entry = prefilled_catalog.factory.create_table_entry(
-            existing_table_name, schema, tmp_path.absolute().as_uri()
-        )
+        _table_entry = prefilled_catalog.factory.create_table(existing_table_name, schema, tmp_path.absolute().as_uri())
 
     existing_table_location = f"file://{TABLE_FILEPATH}"
 
@@ -102,4 +100,4 @@ def test_create_existing_table_fails(prefilled_catalog: PrefilledCatalog, tmp_pa
         Exception,
         match="failed to create table",
     ):
-        _table_entry = prefilled_catalog.factory.create_table_entry("new_table_name", schema, existing_table_location)
+        _table_entry = prefilled_catalog.factory.create_table("new_table_name", schema, existing_table_location)
