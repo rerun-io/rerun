@@ -18,7 +18,7 @@ use crate::chunks_with_component::ChunksWithComponent;
 /// they will be merged into the results appropriately.
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
-    pub results: LatestAtResults,
+    pub store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
 
     pub ctx: &'a ViewContext<'a>,
@@ -26,7 +26,7 @@ pub struct HybridLatestAtResults<'a> {
     pub data_result: &'a DataResult,
 
     /// Hash of mappings applied to [`Self::results`].
-    pub component_mappings_hash: Hash64,
+    pub component_indices_hash: Hash64,
 }
 
 /// Wrapper that contains the results of a range query with possible overrides.
@@ -36,7 +36,7 @@ pub struct HybridLatestAtResults<'a> {
 #[derive(Debug)]
 pub struct HybridRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
-    pub(crate) results: RangeResults,
+    pub(crate) store_results: RangeResults,
     pub(crate) view_defaults: &'a LatestAtResults,
 
     /// Hash of mappings applied to [`Self::results`].
@@ -87,7 +87,7 @@ impl HybridLatestAtResults<'_> {
             .component_instance::<C>(index, component)
             .or_else(||
                 // No override -> try recording store instead
-                self.results.component_instance::<C>(index, component))
+                self.store_results.component_instance::<C>(index, component))
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -120,7 +120,7 @@ impl HybridResults<'_> {
             Self::LatestAt(_, r) => {
                 let mut indices = Vec::with_capacity(
                     // Don't add defaults component count because that's defaults for the entire view.
-                    r.overrides.components.len() + r.results.components.len(),
+                    r.overrides.components.len() + r.store_results.components.len(),
                 );
 
                 indices.extend(
@@ -136,19 +136,19 @@ impl HybridResults<'_> {
                         .filter_map(|chunk| chunk.row_id()),
                 );
                 indices.extend(
-                    r.results
+                    r.store_results
                         .components
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
 
-                Hash64::hash((&indices, r.component_mappings_hash))
+                Hash64::hash((&indices, r.component_indices_hash))
             }
 
             Self::Range(_, r) => {
                 let mut indices = Vec::with_capacity(
                     // Don't add defaults component count because that's defaults for the entire view.
-                    r.overrides.components.len() + r.results.components.len(),
+                    r.overrides.components.len() + r.store_results.components.len(),
                 );
 
                 indices.extend(
@@ -163,11 +163,13 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(r.results.components.iter().flat_map(|(component, chunks)| {
-                    chunks
-                        .iter()
-                        .flat_map(|chunk| chunk.component_row_ids(*component))
-                }));
+                indices.extend(r.store_results.components.iter().flat_map(
+                    |(component, chunks)| {
+                        chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.component_row_ids(*component))
+                    },
+                ));
 
                 Hash64::hash((&indices, r.component_mappings_hash))
             }
@@ -319,7 +321,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
             });
 
             let results_chunks = self
-                .results
+                .store_results
                 .get_chunks(component, force_preserve_store_row_ids);
 
             // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
@@ -352,7 +354,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
         } else {
             // If the store data is not empty, return it.
             let results_chunks = self
-                .results
+                .store_results
                 .get_chunks(component, force_preserve_store_row_ids);
             if !results_chunks.is_empty() {
                 return results_chunks;

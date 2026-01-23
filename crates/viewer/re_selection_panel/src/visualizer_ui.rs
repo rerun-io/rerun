@@ -280,7 +280,7 @@ fn visualizer_components(
         let raw_override =
             result_override.and_then(|c| c.non_empty_component_batch_raw(target_component));
 
-        let result_store = query_result.results.get(mapped_component);
+        let result_store = query_result.store_results.get(mapped_component);
         let raw_store =
             result_store.and_then(|c| c.non_empty_component_batch_raw(mapped_component));
 

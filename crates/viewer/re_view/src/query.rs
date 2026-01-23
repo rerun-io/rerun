@@ -44,7 +44,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     components.retain(|component| overrides.get(*component).is_none());
 
     let mut active_remappings = Vec::new();
-    let results = {
+    let store_results = {
         // Apply component mappings when querying the recording.]
 
         for (target, selector) in &visualizer_instruction.component_mappings {
@@ -88,7 +88,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
     HybridRangeResults {
         overrides,
-        results,
+        store_results,
         view_defaults: &ctx.query_result.view_defaults,
         component_mappings_hash: Hash64::hash(&active_remappings),
     }
@@ -180,12 +180,12 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     HybridLatestAtResults {
         overrides,
-        results,
+        store_results: results,
         view_defaults: &ctx.query_result.view_defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,
-        component_mappings_hash: Hash64::hash(&active_remappings),
+        component_indices_hash: Hash64::hash(&active_remappings),
     }
 }
 
