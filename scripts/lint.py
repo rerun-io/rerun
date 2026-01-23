@@ -268,6 +268,10 @@ def lint_line(
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
+    # Check for dataplatform (should be "Data Platform" unless in URL path)
+    if re.search(r"(?<!/\b)dataplatform(?!/\b)", line, re.IGNORECASE):
+        return "Use 'Data Platform' instead of 'dataplatform' (unless it's part of a URL path)"
+
     if not is_in_docstring:
         if m := re.search(
             r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)',
@@ -391,6 +395,8 @@ def test_lint_line() -> None:
 """,
         "fn ret_any() -> &dyn std::any::Any",
         "fn ret_any_mut() -> &mut dyn std::any::Any",
+        "Visit /dataplatform/docs for more info",
+        "The https://example.com/dataplatform/api endpoint",
     ]
 
     should_error = [
@@ -444,6 +450,9 @@ def test_lint_line() -> None:
         "fn take_any_mut(thing: &mut dyn std::any::Any)",
         "fn take_any(thing: &dyn Any)",
         "fn take_any_mut(thing: &mut dyn Any)",
+        "The dataplatform is powerful",
+        "Using dataplatform for analytics",
+        "Our DataPlatform solution",
     ]
 
     for test in should_pass:
@@ -1073,6 +1082,13 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
+def fix_dataplatform(s: str) -> str:
+    """Fix 'dataplatform' to 'Data Platform' unless it's part of a URL path."""
+    # Don't fix if it's in a URL path (has slashes before or after)
+    # Use negative lookbehind and lookahead to avoid URL paths
+    return re.sub(r"(?<!/\b)dataplatform(?!/\b)", "Data Platform", s, flags=re.IGNORECASE)
+
+
 def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
@@ -1152,6 +1168,14 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
+                    line = new_line
+
+                # Fix dataplatform to Data Platform
+                new_line = fix_dataplatform(line)
+                if new_line != line:
+                    errors.append(
+                        f"{line_nr}: Use 'Data Platform' instead of 'dataplatform'. This should be '{new_line}'."
+                    )
                     line = new_line
 
             if in_example_readme and not in_metadata:
