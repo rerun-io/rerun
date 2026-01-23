@@ -173,7 +173,24 @@ impl Client {
     ///
     /// This will block the current thread if the channel is full.
     pub fn send_blocking(&self, msg: LogMsg) {
-        self.cmd_tx.blocking_send(Cmd::LogMsg(msg)).ok();
+        self.send_cmd_blocking(Cmd::LogMsg(msg)).ok();
+    }
+
+    fn send_cmd_blocking(&self, cmd: Cmd) -> Result<(), ()> {
+        re_tracing::profile_function!();
+
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            if handle.runtime_flavor() == runtime::RuntimeFlavor::MultiThread {
+                tokio::task::block_in_place(|| self.cmd_tx.blocking_send(cmd))
+            } else {
+                re_log::warn_once!(
+                    "Single-threaded tokio runtime detected - please use a multi-threaded runtime for best performance with Rerun's gRPC client. Falling back to async send."
+                );
+                self.cmd_tx.blocking_send(cmd)
+            }
+        } else {
+            self.cmd_tx.blocking_send(cmd)
+        }.map_err(|_ignored_details| ())
     }
 
     /// Whether the client is connected to a remote server.
@@ -198,8 +215,7 @@ impl Client {
 
         let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
         if self
-            .cmd_tx
-            .blocking_send(Cmd::Flush {
+            .send_cmd_blocking(Cmd::Flush {
                 on_done: flush_done_tx,
             })
             .is_err()
