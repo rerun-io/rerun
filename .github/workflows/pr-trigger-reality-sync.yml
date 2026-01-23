@@ -116,7 +116,7 @@ jobs:
           echo "Fetching PR details for PR #${PR_NUMBER}…"
           gh pr view "$PR_NUMBER" \
             --repo ${{ github.repository }} \
-            --json headRefName,headRepositoryOwner,headRepository,number,title,body \
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body,labels \
             > /tmp/pr_data.json
 
           echo "PR data:"
@@ -151,6 +151,7 @@ jobs:
                 head_repo: $pr_data[0].headRepository.name,
                 title: $pr_data[0].title,
                 body: ($pr_data[0].body // ""),
+                labels: $pr_data[0].labels,
                 is_fork: (("\($pr_data[0].headRepositoryOwner.login)/\($pr_data[0].headRepository.name)") != $current_repo),
                 triggered_by: $triggered_by
               }
