@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
-use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
+use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::ComponentIdentifier;
@@ -196,22 +196,11 @@ impl<'a> From<(RangeQuery, HybridRangeResults<'a>)> for HybridResults<'a> {
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
 pub trait RangeResultsExt {
-    /// Returns component data for the given component, ignores default data if the result
-    /// distinguishes them.
-    ///
-    /// For results that are aware of the blueprint, only overrides & store results will
-    /// be considered.
-    /// Defaults have no effect.
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>>;
-
     /// Returns component data for the given component or an empty array.
     ///
     /// For results that are aware of the blueprint, overrides, store results, and defaults will be
     /// considered.
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]>;
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_>;
 
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
@@ -223,83 +212,38 @@ pub trait RangeResultsExt {
         timeline: TimelineName,
         component: ComponentIdentifier,
     ) -> HybridResultsChunkIter<'_> {
-        let chunks = self.get_optional_chunks(component);
         HybridResultsChunkIter {
-            chunks,
+            chunks_with_component: self.get_chunks(component),
             timeline,
-            component,
         }
     }
 }
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>> {
-        self.get(component)
-            .cloned()
-            .map(|chunk| ChunksWithComponent {
-                chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
-                component,
-            })
-    }
-
-    #[inline]
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]> {
-        self.get(component).cloned().map_or_else(
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_> {
+        let chunks = self.get(component).cloned().map_or_else(
             || Cow::Owned(vec![]),
             |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
-        )
+        );
+        ChunksWithComponent { chunks, component }
     }
 }
 
 impl RangeResultsExt for RangeResults {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>> {
-        self.get_required(component)
-            .ok()
-            .map(|chunks| ChunksWithComponent {
-                chunks: Cow::Borrowed(chunks),
-                component,
-            })
-    }
-
-    #[inline]
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]> {
-        Cow::Borrowed(self.get(component).unwrap_or_default())
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_> {
+        let chunks = Cow::Borrowed(self.get(component).unwrap_or_default());
+        ChunksWithComponent { chunks, component }
     }
 }
 
 impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>> {
-        if let Some(unit) = self.overrides.get(component) {
-            // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
-                .into_static()
-                .zeroed();
-            Some(ChunksWithComponent {
-                chunks: Cow::Owned(vec![chunk]),
-                component,
-            })
-        } else {
-            self.results.get_required_chunks(component)
-        }
-    }
-
-    #[inline]
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]> {
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_> {
         re_tracing::profile_function!();
 
-        if let Some(unit) = self.overrides.get(component) {
+        let chunks = if let Some(unit) = self.overrides.get(component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -317,52 +261,35 @@ impl RangeResultsExt for HybridRangeResults<'_> {
                     .zeroed()
             });
 
-            let chunks = self.results.get_optional_chunks(component);
+            let results_chunks = self.results.get_chunks(component);
 
             // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
             // becomes an issue.
             Cow::Owned(
                 defaults
                     .into_iter()
-                    .chain(chunks.iter().cloned())
+                    .chain(results_chunks.chunks.iter().cloned())
                     .collect_vec(),
             )
-        }
+        };
+
+        ChunksWithComponent { chunks, component }
     }
 }
 
 impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>> {
-        if let Some(unit) = self.overrides.get(component) {
-            // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
-                .into_static()
-                .zeroed();
-            Some(ChunksWithComponent {
-                chunks: Cow::Owned(vec![chunk]),
-                component,
-            })
-        } else {
-            self.results.get_required_chunks(component)
-        }
-    }
-
-    #[inline]
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]> {
-        if let Some(unit) = self.overrides.get(component) {
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_> {
+        let chunks = if let Some(unit) = self.overrides.get(component) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
             Cow::Owned(vec![chunk])
         } else {
-            let chunks = self
-                .results
-                .get_optional_chunks(component)
+            let results_chunks = self.results.get_chunks(component);
+            let chunks = results_chunks
+                .chunks
                 .iter()
                 // NOTE: Since this is a latest-at query that is being coerced into a range query, we
                 // need to make sure that every secondary column has an index smaller then the primary column
@@ -373,39 +300,36 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
 
             // If the data is not empty, return it.
             if !chunks.is_empty() {
-                return Cow::Owned(chunks);
+                return ChunksWithComponent {
+                    chunks: Cow::Owned(chunks),
+                    component,
+                };
             }
 
             // Otherwise try to use the default data.
             let Some(unit) = self.defaults.get(component) else {
-                return Cow::Owned(Vec::new());
+                return ChunksWithComponent {
+                    chunks: Cow::Owned(Vec::new()),
+                    component,
+                };
             };
             // Because this is an default from the blueprint we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
             Cow::Owned(vec![chunk])
-        }
+        };
+
+        ChunksWithComponent { chunks, component }
     }
 }
 
 impl RangeResultsExt for HybridResults<'_> {
     #[inline]
-    fn get_required_chunks(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<ChunksWithComponent<'_>> {
+    fn get_chunks(&self, component: ComponentIdentifier) -> ChunksWithComponent<'_> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_chunks(component),
-            Self::Range(_, results) => results.get_required_chunks(component),
-        }
-    }
-
-    #[inline]
-    fn get_optional_chunks(&self, component: ComponentIdentifier) -> Cow<'_, [Chunk]> {
-        match self {
-            Self::LatestAt(_, results) => results.get_optional_chunks(component),
-            Self::Range(_, results) => results.get_optional_chunks(component),
+            Self::LatestAt(_, results) => results.get_chunks(component),
+            Self::Range(_, results) => results.get_chunks(component),
         }
     }
 }
@@ -417,9 +341,8 @@ use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`HybridResults::iter_as`].
 pub struct HybridResultsChunkIter<'a> {
-    chunks: Cow<'a, [Chunk]>,
+    chunks_with_component: ChunksWithComponent<'a>,
     timeline: TimelineName,
-    component: ComponentIdentifier,
 }
 
 impl<'a> HybridResultsChunkIter<'a> {
@@ -433,12 +356,18 @@ impl<'a> HybridResultsChunkIter<'a> {
     pub fn component_slow<C: re_types_core::Component>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(self.timeline, self.component),
-                chunk.iter_component::<C>(self.component),
-            )
-        })
+        self.chunks_with_component
+            .chunks
+            .iter()
+            .flat_map(move |chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(
+                        self.timeline,
+                        self.chunks_with_component.component
+                    ),
+                    chunk.iter_component::<C>(self.chunks_with_component.component),
+                )
+            })
     }
 
     /// Iterate as indexed, sliced, deserialized component batches.
@@ -447,12 +376,18 @@ impl<'a> HybridResultsChunkIter<'a> {
     pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(self.timeline, self.component),
-                chunk.iter_slices::<S>(self.component),
-            )
-        })
+        self.chunks_with_component
+            .chunks
+            .iter()
+            .flat_map(move |chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(
+                        self.timeline,
+                        self.chunks_with_component.component
+                    ),
+                    chunk.iter_slices::<S>(self.chunks_with_component.component),
+                )
+            })
     }
 
     /// Iterate as indexed, sliced, deserialized component batches for a specific struct field.
@@ -462,11 +397,20 @@ impl<'a> HybridResultsChunkIter<'a> {
         &'a self,
         field_name: &'a str,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(self.timeline, self.component),
-                chunk.iter_slices_from_struct_field::<S>(self.component, field_name)
-            )
-        })
+        self.chunks_with_component
+            .chunks
+            .iter()
+            .flat_map(move |chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(
+                        self.timeline,
+                        self.chunks_with_component.component
+                    ),
+                    chunk.iter_slices_from_struct_field::<S>(
+                        self.chunks_with_component.component,
+                        field_name
+                    )
+                )
+            })
     }
 }

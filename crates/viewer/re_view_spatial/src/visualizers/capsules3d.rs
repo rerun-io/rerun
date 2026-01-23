@@ -165,16 +165,16 @@ impl VisualizerSystem for Capsules3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_length_chunks) =
-                    results.get_required_chunks(Capsules3D::descriptor_lengths().component)
-                else {
+                let all_length_chunks =
+                    results.get_chunks(Capsules3D::descriptor_lengths().component);
+                if all_length_chunks.is_empty() {
                     return Ok(());
-                };
-                let Some(all_radius_chunks) =
-                    results.get_required_chunks(Capsules3D::descriptor_radii().component)
-                else {
+                }
+                let all_radius_chunks =
+                    results.get_chunks(Capsules3D::descriptor_radii().component);
+                if all_radius_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let num_lengths: usize = all_length_chunks
                     .iter()

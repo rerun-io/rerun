@@ -89,11 +89,10 @@ impl TextLogSystem {
             instruction,
         );
 
-        let Some(all_text_chunks) =
-            results.get_required_chunks(TextLog::descriptor_text().component)
-        else {
+        let all_text_chunks = results.get_chunks(TextLog::descriptor_text().component);
+        if all_text_chunks.is_empty() {
             return;
-        };
+        }
 
         // TODO(cmc): It would be more efficient (both space and compute) to do this lazily as
         // we're rendering the table by indexing back into the original chunk etc.

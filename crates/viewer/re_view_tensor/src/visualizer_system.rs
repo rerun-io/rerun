@@ -58,11 +58,10 @@ impl VisualizerSystem for TensorSystem {
                 Some(instruction),
             );
 
-            let Some(all_tensor_chunks) =
-                results.get_required_chunks(Tensor::descriptor_data().component)
-            else {
+            let all_tensor_chunks = results.get_chunks(Tensor::descriptor_data().component);
+            if all_tensor_chunks.is_empty() {
                 continue;
-            };
+            }
 
             let timeline = query.timeline;
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {

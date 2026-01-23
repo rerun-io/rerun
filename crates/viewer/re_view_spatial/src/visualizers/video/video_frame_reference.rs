@@ -72,11 +72,11 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let timeline = ctx.query.timeline();
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_video_timestamp_chunks) = results
-                    .get_required_chunks(VideoFrameReference::descriptor_timestamp().component)
-                else {
+                let all_video_timestamp_chunks =
+                    results.get_chunks(VideoFrameReference::descriptor_timestamp().component);
+                if all_video_timestamp_chunks.is_empty() {
                     return Ok(());
-                };
+                }
                 let all_video_references = results.iter_as(
                     timeline,
                     VideoFrameReference::descriptor_video_reference().component,

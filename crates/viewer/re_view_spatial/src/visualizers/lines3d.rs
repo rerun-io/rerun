@@ -197,11 +197,11 @@ impl VisualizerSystem for Lines3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_strip_chunks) =
-                    results.get_required_chunks(LineStrips3D::descriptor_strips().component)
-                else {
+                let all_strip_chunks =
+                    results.get_chunks(LineStrips3D::descriptor_strips().component);
+                if all_strip_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let num_strips = all_strip_chunks
                     .iter()
