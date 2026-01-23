@@ -14,7 +14,7 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use ahash::HashMap;
-use regex::{Captures, Regex};
+use regex_lite::{Captures, Regex};
 use smallvec::smallvec;
 use thiserror::Error;
 

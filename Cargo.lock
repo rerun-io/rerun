@@ -9520,7 +9520,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_video",
- "regex",
+ "regex-lite",
  "serde",
  "slotmap",
  "smallvec",
