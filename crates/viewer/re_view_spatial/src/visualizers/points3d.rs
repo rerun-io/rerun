@@ -241,8 +241,8 @@ impl VisualizerSystem for Points3DVisualizer {
                     results.iter_as(timeline, Points3D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_positions_indexed,
-                    all_colors.slice::<u32>(),
+                    all_positions_indexed,     // RowId 5
+                    all_colors.slice::<u32>(), // RowId 7
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
                     all_class_ids.slice::<u16>(),

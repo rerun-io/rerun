@@ -211,7 +211,7 @@ pub trait RangeResultsExt {
     fn get_chunks(
         &self,
         component: ComponentIdentifier,
-        force_force_preserve_store_row_ids: bool,
+        force_preserve_store_row_ids: bool,
     ) -> ChunksWithComponent<'_>;
 
     /// Returns required component chunks with preserved store row IDs.
