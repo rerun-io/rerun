@@ -77,3 +77,29 @@ def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathli
         match="sql parser error: Unexpected token in identifier: -",
     ):
         _ = entry_factory.create_table(table_name, schema, tmp_path.absolute().as_uri())
+
+
+def test_create_existing_table_fails(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
+    existing_table_name = "simple_datatypes"
+
+    # Ensure table exists prior to registering second time
+    _existing_table = prefilled_catalog.client.ctx.table(prefilled_catalog.factory.apply_prefix(existing_table_name))
+
+    existing_table_location = None
+    for t in prefilled_catalog.prefilled_tables():
+        if existing_table_name in t.name:
+            existing_table_location = t.storage_url
+
+    schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
+
+    with pytest.raises(
+        Exception,
+        match="failed to create table",
+    ):
+        _table_entry = prefilled_catalog.factory.create_table(existing_table_name, schema, tmp_path.absolute().as_uri())
+
+    with pytest.raises(
+        Exception,
+        match="failed to create table",
+    ):
+        _table_entry = prefilled_catalog.factory.create_table("new_table_name", schema, existing_table_location)
