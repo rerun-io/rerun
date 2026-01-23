@@ -54,11 +54,14 @@ Schema([('rerun_segment_id', String),
         ('rerun_last_updated_at', Datetime(time_unit='ns', time_zone=None)),
         ('rerun_num_chunks', UInt64),
         ('rerun_size_bytes', UInt64),
+        ('property:RecordingInfo:start_time', List(Int64)),
         ('timeline:end', Datetime(time_unit='ns', time_zone=None)),
         ('timeline:start', Datetime(time_unit='ns', time_zone=None))])\
 """)
 
-        df = df.drop(["rerun_storage_urls", "rerun_last_updated_at"]).sort("rerun_segment_id")
+        df = df.drop(["rerun_storage_urls", "rerun_last_updated_at", "property:RecordingInfo:start_time"]).sort(
+            "rerun_segment_id"
+        )
         assert str(df) == inline_snapshot("""\
 shape: (3, 6)
 ┌────────────────┬────────────────┬────────────────┬───────────────┬───────────────┬───────────────┐

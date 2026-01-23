@@ -105,14 +105,19 @@ pub fn visualizer_ui_impl(
     let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
-            let archetype = ActiveVisualizers::new(
-                active_visualizers
-                    .iter()
-                    .filter(|v| &v.id != visualizer_id)
-                    .map(|v| v.id.0),
-            );
+            let active_visualizers = active_visualizers
+                .iter()
+                .filter(|v| &v.id != visualizer_id)
+                .collect::<Vec<_>>();
+
+            let archetype = ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
 
             ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
+
+            // If there's active visualizers, we also have to make sure that there's visualizer instructions, so time to manifest those.
+            for visualizer_instruction in active_visualizers {
+                visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+            }
         }
         response
     };

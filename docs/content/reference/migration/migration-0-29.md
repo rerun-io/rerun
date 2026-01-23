@@ -84,3 +84,9 @@ If you still need to use any functionality directly you can still find them in t
 ## Overrides in blueprint files can't be imported
 
 Rerun 0.29 cannot currently load component overrides from `.rbl` files created in previous versions. Support for legacy overrides is coming soon.
+
+## Dataset re-registration required to fix missing `name` and `start_time` in segment table
+
+This release fixes a bug where the built-in properties ([`RecordingInfo`](../types/archetypes/recording_info.md), including `name` and `start_time`) would not be displayed in the segment table. On Rerun Data Platform deployments, property extraction happens at registration time. This means that datasets will need to be re-registered for these columns to be populated.
+
+The OSS server is not affected because it generates the segment table on the fly.

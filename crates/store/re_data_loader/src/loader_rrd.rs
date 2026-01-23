@@ -269,7 +269,7 @@ impl RetryableFileReader {
         // while not needlessly hammering the CPU.
         let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));
 
-        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::unbounded();
+        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::bounded(32 * 1024);
         let mut watcher = notify::recommended_watcher(tx_file_notifs)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 

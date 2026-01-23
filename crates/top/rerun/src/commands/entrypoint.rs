@@ -90,7 +90,9 @@ struct Args {
     command: Option<Command>,
 
     /// What bind address IP to use.
-    #[clap(long, default_value = "::")]
+    ///
+    /// `::` will listen on all interfaces, IPv6 and IPv4.
+    #[clap(long, default_value = "0.0.0.0")]
     bind: IpAddr,
 
     #[clap(
@@ -476,7 +478,7 @@ impl Args {
             // `--bind <BIND>`
             // > What bind address IP to use.
             // >
-            // > [default: 0.0.0.0]
+            // > [default: ::]
             // """
             let floatings = any_floating_args.then(|| {
                 let options = cmd

@@ -560,6 +560,7 @@ cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constraine
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.1.0,<13" # For `upload_image.py`
+py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
@@ -574,7 +575,7 @@ buf = "1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
+llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64

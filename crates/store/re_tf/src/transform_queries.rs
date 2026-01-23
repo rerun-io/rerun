@@ -131,7 +131,7 @@ fn atomic_latest_at_query(
                 let Some(frame_id_row) =
                     frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
                 else {
-                    re_log::error_once!("Expected at {condition_frame_id_component:?} @ {entity_path:?} to be a string array, but its type is instead {:?}", frame_id_row_untyped.data_type());
+                    re_log::error_once!("Expected at {condition_frame_id_component:?} @ {entity_path:?} to be a string array, but its type is instead {}", frame_id_row_untyped.data_type());
                     return false;
                 };
                 // Right now everything is singular on a single row, so check only the first element of this string array.
