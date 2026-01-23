@@ -9015,6 +9015,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_lenses"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.14.0",
+ "nohash-hasher",
+ "re_arrow_combinators",
+ "re_chunk",
+ "re_log_types",
+ "re_sdk_types",
+ "thiserror 2.0.17",
+ "vec1",
+]
+
+[[package]]
 name = "re_log"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
@@ -9556,6 +9571,7 @@ dependencies = [
  "re_data_loader",
  "re_grpc_client",
  "re_grpc_server",
+ "re_lenses",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9573,7 +9589,6 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "uuid",
- "vec1",
  "webbrowser",
 ]
 

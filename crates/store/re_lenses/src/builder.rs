@@ -4,8 +4,8 @@ use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
 
-use super::ast::{OneToMany, OneToOne, Static};
-use super::{LensError, Op, ast};
+use crate::ast::{OneToMany, OneToOne, Static};
+use crate::{LensError, Op, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
