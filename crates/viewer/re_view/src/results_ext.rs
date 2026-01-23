@@ -287,23 +287,10 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
                 .zeroed();
             Cow::Owned(vec![chunk])
         } else {
+            // If the store data is not empty, return it.
             let results_chunks = self.results.get_chunks(component);
-            let chunks = results_chunks
-                .chunks
-                .iter()
-                // NOTE: Since this is a latest-at query that is being coerced into a range query, we
-                // need to make sure that every secondary column has an index smaller then the primary column
-                // (we use `(TimeInt::STATIC, RowId::ZERO)`), otherwise range zipping would yield unexpected
-                // results.
-                .map(|chunk| chunk.clone().into_static().zeroed())
-                .collect_vec();
-
-            // If the data is not empty, return it.
-            if !chunks.is_empty() {
-                return ChunksWithComponent {
-                    chunks: Cow::Owned(chunks),
-                    component,
-                };
+            if !results_chunks.is_empty() {
+                return results_chunks;
             }
 
             // Otherwise try to use the default data.
