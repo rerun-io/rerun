@@ -114,6 +114,7 @@ backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
   # Dataplatform examples don't generate rrds
+  "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/query_images",
   "howto/time_alignment",
@@ -199,6 +200,10 @@ backwards_check = [
 ]
 "concepts/query-and-transform/dataframe_query_example" = [ # Creates and reads its own RRD, incompatible with _RERUN_TEST_FORCE_SAVE
   "py",
+  "cpp",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Python-only snippet, uses server API
   "cpp",
   "rust",
 ]
