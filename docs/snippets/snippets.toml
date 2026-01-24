@@ -25,6 +25,8 @@ features = [
     [
       "howto/dataframe_operations",
       "howto/query_images",
+      "howto/query_videos",
+      "howto/query_video_keyframes",
       "howto/time_alignment",
       "howto/view_operations",
     ],
@@ -117,6 +119,8 @@ backwards_check = [
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/query_images",
+  "howto/query_videos",
+  "howto/query_video_keyframes",
   "howto/time_alignment",
   "howto/view_operations",
 ]
@@ -224,6 +228,14 @@ backwards_check = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
 "howto/query_images" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_videos" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_video_keyframes" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -434,6 +446,16 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_videos" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_video_keyframes" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
