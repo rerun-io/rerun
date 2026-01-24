@@ -17,14 +17,11 @@ jobs:
           owner: rerun-io
           repositories: rerun
 
-      - name: Set pending check
+      - name: Set pending status
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          gh api "repos/${{ github.repository }}/check-runs" \
-            -f name=reality-sync \
-            -f head_sha=${{ github.event.pull_request.head.sha }} \
-            -f status=completed \
-            -f conclusion=neutral \
-            -f "output[title]=Blocked on upstream merge" \
-            -f "output[summary]=This PR cannot be merged directly. Use \`@rerun-bot reality-sync\` to sync with the upstream repository."
+          gh api "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f state=pending \
+            -f context=reality-sync \
+            -f description="Blocked on upstream merge"
