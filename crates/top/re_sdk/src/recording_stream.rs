@@ -1087,6 +1087,28 @@ impl RecordingStream {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
+    /// # Thread Safety
+    ///
+    /// While [`RecordingStream`] is `Send + Sync` and safe to use from multiple threads,
+    /// **avoid calling `log` while holding a [`std::sync::Mutex`]**. The rerun SDK uses
+    /// [rayon](https://docs.rs/rayon) internally for parallel processing, and rayon's
+    /// work-stealing behavior can cause deadlocks when combined with held mutexes
+    /// (see [rayon#592](https://github.com/rayon-rs/rayon/issues/592)).
+    ///
+    /// ```ignore
+    /// // ❌ Don't do this - potential deadlock:
+    /// let guard = mutex.lock().unwrap();
+    /// stream.log("data", &rerun::Points3D::new(points))?;
+    /// drop(guard);
+    ///
+    /// // ✅ Do this instead - extract data first:
+    /// let points = {
+    ///     let guard = mutex.lock().unwrap();
+    ///     guard.points.clone()
+    /// };
+    /// stream.log("data", &rerun::Points3D::new(points))?;
+    /// ```
+    ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
