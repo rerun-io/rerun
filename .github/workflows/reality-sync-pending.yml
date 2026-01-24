@@ -24,6 +24,7 @@ jobs:
           gh api "repos/${{ github.repository }}/check-runs" \
             -f name=reality-sync \
             -f head_sha=${{ github.event.pull_request.head.sha }} \
-            -f status=in_progress \
+            -f status=completed \
+            -f conclusion=action_required \
             -f "output[title]=Blocked on upstream merge" \
             -f "output[summary]=This PR cannot be merged directly. Use \`@rerun-bot reality-sync\` to sync with the upstream repository."
