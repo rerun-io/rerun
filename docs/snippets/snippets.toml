@@ -207,7 +207,8 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/query-and-transform/segment_properties" = [ # Python-only snippet, uses server API
+"concepts/query-and-transform/segment_properties" = [ # Creates and reads its own RRD, incompatible with _RERUN_TEST_FORCE_SAVE
+  "py",
   "cpp",
   "rust",
 ]
