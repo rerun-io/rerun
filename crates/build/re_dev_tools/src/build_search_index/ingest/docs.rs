@@ -61,7 +61,7 @@ fn parse_docs_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<(DocsFrontm
     let end = start + end;
 
     let frontmatter: DocsFrontmatter =
-        serde_yaml::from_str(content[start..end].trim()).map_err(|err| {
+        serde_yaml_bw::from_str(content[start..end].trim()).map_err(|err| {
             anyhow::anyhow!(
                 "Failed to parse YAML metadata of {:?}: {err}",
                 path.parent().unwrap().file_name().unwrap()

@@ -38,7 +38,7 @@ rustdoc-json.workspace = true
 rustdoc-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
+serde_yaml_bw.workspace = true
 tempfile.workspace = true
 toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 ureq = { workspace = true, features = ["json"] }
