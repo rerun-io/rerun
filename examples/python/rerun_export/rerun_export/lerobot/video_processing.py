@@ -216,7 +216,6 @@ def remux_video_stream(
     video_format: str,
     width: int | None = None,
     height: int | None = None,
-    target_fps: int | None = None,
 ) -> None:
     """
     Remux compressed video packets directly to output file without decode/encode.
@@ -232,7 +231,6 @@ def remux_video_stream(
         video_format: Source codec format (e.g., "h264", "hevc")
         width: Video frame width (auto-detected if None)
         height: Video frame height (auto-detected if None)
-        target_fps: Target FPS (if None, preserves source timing)
 
     Raises:
         ValueError: If remuxing fails
@@ -265,9 +263,6 @@ def remux_video_stream(
 
     output_stream.width = width
     output_stream.height = height
-
-    if target_fps is not None:
-        output_stream.rate = target_fps
 
     # Calculate time base from original timestamps
     time_base = Fraction(1, 1_000_000_000)  # nanosecond precision

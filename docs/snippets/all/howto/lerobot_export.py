@@ -1,8 +1,6 @@
 # region: setup
 from __future__ import annotations
 
-import os
-import shutil
 from pathlib import Path
 
 import rerun as rr
@@ -81,9 +79,6 @@ features = infer_features(
 # region: create_dataset
 # Create the LeRobot dataset structure on disk
 dataset_root = "/tmp/lerobot_dataset"
-if os.path.exists(dataset_root):
-    print("Removing old dataset export")
-    shutil.rmtree(dataset_root)
 
 lerobot_dataset = LeRobotDataset.create(
     repo_id="rerun/droid_lerobot",  # Dataset identifier

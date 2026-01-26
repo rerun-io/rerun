@@ -257,7 +257,6 @@ def apply_remuxed_videos(
                 times_ns=video_times_ns_relative,
                 output_path=tmp_path,
                 video_format=spec.get("video_format", "h264"),
-                target_fps=remux_data["fps"],
             )
 
             # Replace the encoded video with the remuxed one
@@ -342,7 +341,6 @@ def _save_episode_without_video_decode(
     video_metadata: dict[str, object] = {}
     specs = remux_data["specs"]
     remux_info = remux_data["remux_info"]
-    fps = remux_data["fps"]
 
     for spec in specs:
         info = remux_info.get(spec["key"])
@@ -362,7 +360,6 @@ def _save_episode_without_video_decode(
                 times_ns=video_times_ns_relative,
                 output_path=str(temp_path),
                 video_format=spec.get("video_format", "h264"),
-                target_fps=fps,
             )
 
             video_metadata.update(
