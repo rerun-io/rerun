@@ -61,16 +61,11 @@ Feature inference examines the underlying data to determine:
 
 ## Create the LeRobot dataset
 
-Initialize the output dataset structure on disk. This creates the directory hierarchy and prepares video encoding pipelines.
+Create the LeRobot dataset instance, using the LeRobot dataset API:
 
 snippet: howto/lerobot_export[create_dataset]
 
-The `LeRobotDataset.create()` method:
-
-- Creates `data/`, `videos/`, and `meta/` directories
-- Initializes Parquet files for time series data
-- Sets up video encoders for each camera stream
-- Writes dataset metadata (fps, features, repo ID)
+Note, the `dataset_root` is where the dataset files will be written, and LeRobot requires this to be an empty or non-existing directory.
 
 ## Export the episode
 
