@@ -124,7 +124,7 @@ container = av.open(data_buffer, format="h264", mode="r")
 video_stream = container.streams.video[0]
 
 # Decode to the target frame
-frame: av.VideoFrame | None = None
+frame = None
 for packet, time in zip(container.demux(video_stream), sample_times, strict=False):
     packet.time_base = Fraction(1, 1_000_000_000)
     packet.pts = int(time - sample_times[0])
@@ -132,7 +132,7 @@ for packet, time in zip(container.demux(video_stream), sample_times, strict=Fals
     for decoded_frame in packet.decode():
         frame = decoded_frame
 
-if frame is not None:
+if isinstance(frame, av.VideoFrame):
     image = np.asarray(frame.to_image())
     print(f"Efficiently decoded frame {target_frame_index} with shape: {image.shape}")
 # endregion: query_with_keyframes

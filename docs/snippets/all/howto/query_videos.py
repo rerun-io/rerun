@@ -51,11 +51,11 @@ data_buffer = BytesIO(sample_bytes)
 
 # Decode using PyAV
 container = av.open(data_buffer, format="h264", mode="r")
-video_stream = container.streams.video[0]
+video_stream: av.video.stream.VideoStream = container.streams.video[0]
 start_time = sample_times[0]
 
 # Decode all frames up to our target, keeping only the last one
-frame: av.VideoFrame | None = None
+frame = None
 for packet, time in zip(container.demux(video_stream), sample_times, strict=False):
     packet.time_base = Fraction(1, 1_000_000_000)  # Timestamps in nanoseconds
     packet.pts = int(time - start_time)
@@ -63,7 +63,7 @@ for packet, time in zip(container.demux(video_stream), sample_times, strict=Fals
     for decoded_frame in packet.decode():
         frame = decoded_frame
 
-if frame is None:
+if not isinstance(frame, av.VideoFrame):
     raise RuntimeError("Failed to decode frame.")
 image = np.asarray(frame.to_image())
 print(f"Decoded frame shape: {image.shape}")
