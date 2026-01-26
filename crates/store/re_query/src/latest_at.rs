@@ -879,18 +879,18 @@ mod tests {
             assert_eq!(expected, results);
         }
 
-        let diffs = store.write().remove_chunks_shallow(
+        let dels = store.write().remove_chunks_shallow(
             vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
             None,
         );
         cache.on_events(
-            &diffs
+            &dels
                 .into_iter()
-                .map(|diff| ChunkStoreEvent {
+                .map(|del| ChunkStoreEvent {
                     store_id: store.read().id(),
                     store_generation: store.read().generation(),
                     event_id: 0, // don't care
-                    diff,
+                    diff: del.into(),
                 })
                 .collect_vec(),
         );
@@ -909,20 +909,17 @@ mod tests {
             assert_eq!(expected, results);
         }
 
-        store
-            .write()
-            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
-        let diffs = store
+        let dels = store
             .write()
             .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
         cache.on_events(
-            &diffs
+            &dels
                 .into_iter()
-                .map(|diff| ChunkStoreEvent {
+                .map(|del| ChunkStoreEvent {
                     store_id: store.read().id(),
                     store_generation: store.read().generation(),
                     event_id: 0, // don't care
-                    diff,
+                    diff: del.into(),
                 })
                 .collect_vec(),
         );
@@ -1077,17 +1074,17 @@ mod tests {
                 assert_eq!(expected, results);
             }
 
-            let diffs = store
+            let dels = store
                 .write()
                 .remove_chunks_shallow(vec![Arc::new(tombstone.clone())], None);
             cache.on_events(
-                &diffs
+                &dels
                     .into_iter()
-                    .map(|diff| ChunkStoreEvent {
+                    .map(|del| ChunkStoreEvent {
                         store_id: store.read().id(),
                         store_generation: store.read().generation(),
                         event_id: 0, // don't care
-                        diff,
+                        diff: del.into(),
                     })
                     .collect_vec(),
             );
@@ -1107,17 +1104,17 @@ mod tests {
                 assert_eq!(expected, results);
             }
 
-            let diffs = store
+            let dels = store
                 .write()
                 .remove_chunks_deep(vec![Arc::new(tombstone.clone())], None);
             cache.on_events(
-                &diffs
+                &dels
                     .into_iter()
-                    .map(|diff| ChunkStoreEvent {
+                    .map(|del| ChunkStoreEvent {
                         store_id: store.read().id(),
                         store_generation: store.read().generation(),
                         event_id: 0, // don't care
-                        diff,
+                        diff: del.into(),
                     })
                     .collect_vec(),
             );

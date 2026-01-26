@@ -40,6 +40,16 @@ pub struct BlueprintUndoState {
     inflection_points: BTreeMap<TimeInt, u64>,
 }
 
+impl re_byte_size::SizeBytes for BlueprintUndoState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            current_time: _,
+            inflection_points,
+        } = self;
+        inflection_points.heap_size_bytes()
+    }
+}
+
 // We don't restore undo-state when closing the viewer.
 // If you want to support this, make sure you replace the call to `cumulative_frame_nr` with something else,
 // (because that resets to zero on restart) and also make sure you test it properly!

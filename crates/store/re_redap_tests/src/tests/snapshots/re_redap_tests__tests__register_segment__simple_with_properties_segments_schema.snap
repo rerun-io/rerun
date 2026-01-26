@@ -2,6 +2,18 @@
 source: crates/store/re_redap_tests/src/tests/register_segment.rs
 expression: batch.format_schema_snapshot()
 ---
+frame_nr:end: nullable i64 [
+    rerun:index: "frame_nr"
+    rerun:index_kind: "sequence"
+    rerun:index_marker: "end"
+    rerun:kind: "index"
+]
+frame_nr:start: nullable i64 [
+    rerun:index: "frame_nr"
+    rerun:index_kind: "sequence"
+    rerun:index_marker: "start"
+    rerun:kind: "index"
+]
 property:points:Points2D:positions: nullable List[nullable FixedSizeList[nullable f32; 2]] [
     rerun:archetype: "rerun.archetypes.Points2D"
     rerun:component: "Points2D:positions"

@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Associates components of an entity to components of a visualizer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisualizerComponentMapping(
     /// The component mapping pairs.
     pub crate::blueprint::datatypes::VisualizerComponentMapping,

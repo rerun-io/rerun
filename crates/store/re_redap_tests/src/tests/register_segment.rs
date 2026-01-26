@@ -1,10 +1,15 @@
 #![expect(clippy::unwrap_used)]
 
+use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
+use crate::{
+    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
+};
 use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_log_types::TimeType;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -14,11 +19,6 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use url::Url;
-
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
-use crate::{
-    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
-};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -243,6 +243,53 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_layers").await;
 }
 
+pub async fn register_and_scan_simple_dataset_multiple_timelines(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::simple_with_time_type(
+                "my_segment_id1",
+                &["my/entity", "my/other/entity"],
+                TimeType::Sequence,
+            ),
+            LayerDefinition::simple_with_time_type(
+                "my_segment_id2",
+                &["my/entity"],
+                TimeType::DurationNs,
+            ),
+            LayerDefinition::properties(
+                "my_segment_id1",
+                [prop(
+                    "text_log",
+                    re_sdk_types::archetypes::TextLog::new("i'm segment 1"),
+                )],
+            )
+            .layer_name("props"),
+            LayerDefinition::simple_with_time_type(
+                "my_segment_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+                TimeType::TimestampNs,
+            ),
+            LayerDefinition::simple_with_time_type(
+                "my_segment_id2",
+                &["my/entity", "my/fourth/entity"],
+                TimeType::Sequence,
+            )
+            .layer_name("layer_two"),
+        ],
+    );
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    scan_segment_table_and_snapshot(&service, dataset_name, "simple_with_multiple_timelines").await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_multiple_timelines")
+        .await;
+}
+
 pub async fn register_with_prefix(fe: impl RerunCloudService) {
     let root_dir = tempfile::tempdir().expect("creating temp dir");
 
@@ -253,6 +300,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix1,
         "my_segment_id1",
         &["my/entity", "my/other/entity"],
+        TimeType::Sequence,
         root_dir.path(),
     )
     .expect("creating recording");
@@ -262,6 +310,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix2,
         "my_segment_id2",
         &["my/entity"],
+        TimeType::Sequence,
         root_dir.path(),
     )
     .expect("creating recording");
@@ -271,6 +320,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix3,
         "my_segment_id3",
         &["my/entity", "another/one", "yet/another/one"],
+        TimeType::Sequence,
         root_dir.path(),
     )
     .expect("creating recording");
@@ -526,7 +576,8 @@ async fn scan_segment_table_and_snapshot(
         .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
-        .sort_property_columns();
+        .sort_property_columns()
+        .sort_index_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_segments_schema"),

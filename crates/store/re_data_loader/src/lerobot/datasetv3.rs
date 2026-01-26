@@ -7,13 +7,14 @@ use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotEr
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, mpsc::Sender};
+use std::sync::Arc;
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
 use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
+use crossbeam::channel::Sender;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
 use re_video::VideoDataDescription;
@@ -478,14 +479,15 @@ impl LeRobotDatasetV3 {
 
         let end_keyframe = video
             .presentation_time_keyframe_index(end_video_time)
-            .map(|idx| idx + 1)
-            .unwrap_or_else(|| video.keyframe_indices.len());
+            .or_else(|| video.keyframe_indices.len().checked_sub(1))
+            .ok_or(DataLoaderError::Other(anyhow!("No keyframes in the video")))?;
 
         // Determine the sample range to extract from the video
         let start_sample = video
             .gop_sample_range_for_keyframe(start_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
             .start;
+
         let end_sample = video
             .gop_sample_range_for_keyframe(end_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?

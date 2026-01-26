@@ -214,11 +214,15 @@ impl Snippet {
             ("RERUN_FLUSH_NUM_ROWS", "0"),
             ("RERUN_STRICT", "1"),
             ("RERUN_PANIC_ON_WARN", "1"),
-            (
+        ]);
+
+        // Only set _RERUN_TEST_FORCE_SAVE if we expect an RRD output
+        if !self.backwards_check_opted_out {
+            cmd.env(
                 "_RERUN_TEST_FORCE_SAVE",
                 rrd_path.to_string_lossy().as_ref(),
-            ),
-        ]);
+            );
+        }
 
         wait_for_output(cmd, &self.name, progress)?;
 

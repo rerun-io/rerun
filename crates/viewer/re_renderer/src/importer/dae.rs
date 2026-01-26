@@ -9,7 +9,12 @@
 //!
 //! ⚠️ Texture support is not yet implemented. Only diffuse colors are loaded.
 
+use std::borrow::Cow;
+use std::collections::HashSet;
+use std::sync::OnceLock;
+
 use ahash::HashMap;
+use regex_lite::{Captures, Regex};
 use smallvec::smallvec;
 use thiserror::Error;
 
@@ -46,6 +51,54 @@ pub fn load_dae_from_buffer(
 ) -> Result<CpuModel, DaeImportError> {
     re_tracing::profile_function!();
 
+    // Some DAE files, particularly those exported from CAD tools, contain duplicate id attributes in their
+    // XML structure. The underlying `dae-parser` library panics when encountering these duplicates,
+    // so we sanitize the XML before attempting to load it.
+    let buffer = sanitize_dae_ids(buffer);
+
+    load_dae_from_buffer_inner(buffer.as_ref(), ctx)
+}
+
+fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
+    if !buffer.windows(3).any(|w| w == b"id=") {
+        return Cow::Borrowed(buffer);
+    }
+
+    static RE: OnceLock<Regex> = OnceLock::new();
+    // Note: we only want to match the global `id` here, not scoped `sid` attributes.
+    let re = RE.get_or_init(|| Regex::new(r#"\bid=(["'])([^"']+)["']"#).unwrap());
+
+    let content = String::from_utf8_lossy(buffer);
+    let mut seen = HashSet::new();
+    let mut modified = false;
+
+    let new_content = re.replace_all(&content, |caps: &Captures<'_>| {
+        let quote = caps[1].to_string();
+        let id = caps[2].to_string();
+
+        if seen.insert(id.clone()) {
+            caps[0].to_string()
+        } else {
+            modified = true;
+            let new_id = format!("{id}_dup");
+            re_log::warn_once!(
+                "DAE file contains duplicate ID. Renaming it to avoid conflict: '{id}' -> '{new_id}'",
+            );
+            format!("id={quote}{new_id}{quote}")
+        }
+    });
+
+    if modified {
+        Cow::Owned(new_content.into_owned().into_bytes())
+    } else {
+        Cow::Borrowed(buffer)
+    }
+}
+
+fn load_dae_from_buffer_inner(
+    buffer: &[u8],
+    ctx: &RenderContext,
+) -> Result<CpuModel, DaeImportError> {
     let document = Document::from_reader(buffer).map_err(DaeImportError::Parser)?;
     let maps = document.local_maps();
 

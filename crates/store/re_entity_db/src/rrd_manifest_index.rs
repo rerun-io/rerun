@@ -9,7 +9,7 @@ use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{Chunk, ChunkId, TimeInt, Timeline, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreEvent};
+use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
@@ -100,7 +100,7 @@ pub struct ChunkPrefetchOptions {
 pub struct ChunkInfo {
     state: LoadState,
 
-    /// None for static chunks
+    /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
@@ -121,16 +121,20 @@ pub struct TemporalChunkInfo {
     /// The time range covered by this entry.
     pub time_range: AbsoluteTimeRange,
 
-    /// The number of rows in the original chunk which are associated with this entry.
+    /// The total number of events in the original chunk for this time range.
     ///
-    /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
-    /// entry it might be less, since chunks allow sparse components.
-    pub num_rows: u64,
+    /// This accumulates for all entities and all components, but still accounts for sparness.
+    pub num_rows_for_all_entities_all_components: u64,
 }
 
 impl re_byte_size::SizeBytes for TemporalChunkInfo {
     fn heap_size_bytes(&self) -> u64 {
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -169,6 +173,7 @@ pub struct RrdManifestIndex {
 
     chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
+    /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
     manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
 
     full_uncompressed_size: u64,
@@ -213,12 +218,12 @@ impl RrdManifestIndex {
                             .entry(*timeline.name())
                             .and_modify(|info| {
                                 info.time_range = entry.time_range.union(info.time_range);
-                                info.num_rows += entry.num_rows;
+                                info.num_rows_for_all_entities_all_components += entry.num_rows;
                             })
                             .or_insert(TemporalChunkInfo {
                                 timeline,
                                 time_range: entry.time_range,
-                                num_rows: entry.num_rows,
+                                num_rows_for_all_entities_all_components: entry.num_rows,
                             });
                     }
                 }
@@ -377,14 +382,23 @@ impl RrdManifestIndex {
         }
 
         for event in store_events {
-            let chunk_id = event.chunk_before_processing.id();
-            match event.kind {
-                re_chunk_store::ChunkStoreDiffKind::Addition => {
-                    self.mark_as(store, &chunk_id, LoadState::Loaded);
+            match &event.diff {
+                ChunkStoreDiff::Addition(add) => {
+                    // This is about marking root-level persistent chunks as either loaded or unloaded.
+                    //
+                    // It doesn't really matter which chunk we pick because `mark_as` will take care of
+                    // walking upwards through the lineage tree until one can be found in any case.
+                    //
+                    // Picking the unprocessed chunk gives us a better chance of not even needing to walk
+                    // back the tree at all.
+                    self.mark_as(store, &add.chunk_before_processing.id(), LoadState::Loaded);
                 }
-                re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                    self.mark_as(store, &chunk_id, LoadState::Unloaded);
+
+                ChunkStoreDiff::Deletion(del) => {
+                    self.mark_as(store, &del.chunk.id(), LoadState::Unloaded);
                 }
+
+                ChunkStoreDiff::VirtualAddition(_) => {}
             }
         }
     }
@@ -744,6 +758,8 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
 
 impl MemUsageTreeCapture for RrdManifestIndex {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         use re_byte_size::SizeBytes as _;
 
         let Self {

@@ -52,6 +52,15 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
+// We separately track orphaned recordings. These have been disconnected and are flushing but
+// actually dropping them prior to application exit leads to warning about dropping the
+// buffered sink.
+fn orphaned_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
+    static ORPHANED_RECORDINGS: OnceLock<parking_lot::Mutex<Vec<RecordingStream>>> =
+        OnceLock::new();
+    ORPHANED_RECORDINGS.get_or_init(Default::default).lock()
+}
+
 type GarbageSender = crossbeam::channel::Sender<ArrowRecordBatch>;
 type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 
@@ -77,8 +86,10 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> =
-    LazyLock::new(crossbeam::channel::unbounded);
+static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> = LazyLock::new(|| {
+    #[expect(clippy::disallowed_methods)] // must be unbounded, or we can deadlock
+    crossbeam::channel::unbounded()
+});
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
 ///
@@ -280,7 +291,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.allow_threads(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
-        for recording in all_recordings().iter() {
+        for recording in all_recordings().iter().chain(orphaned_recordings().iter()) {
             recording.flush_blocking()?;
         }
 
@@ -290,6 +301,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
         // Finally remove any recordings that have a refcount of 1, which means they are ONLY
         // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
+        orphaned_recordings().retain(|recording| recording.ref_count() > 1);
 
         Ok(())
     })
@@ -303,9 +315,10 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
 #[pyfunction]
 fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.allow_threads(|| -> Result<(), SinkFlushError> {
-        // Disconnect any recordings that have a refcount of 1. This means they are the
+        // Disconnect any recordings that have a refcount of 1. This means they are
         // only referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
-        for recording in all_recordings().iter() {
+        let mut orphaned = Vec::new();
+        all_recordings().retain(|recording| {
             if recording.ref_count() <= 1 {
                 re_log::debug!(
                     "Disconnecting orphaned recording: {}",
@@ -315,8 +328,13 @@ fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
                         .unwrap_or_else(|| "<unknown>".to_owned())
                 );
                 recording.disconnect();
+                orphaned.push(recording.clone());
+                false
+            } else {
+                true
             }
-        }
+        });
+        orphaned_recordings().extend(orphaned);
 
         Ok(())
     })
@@ -1539,7 +1557,7 @@ fn serve_grpc(
         };
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
-            "::",
+            "0.0.0.0",
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_options,
         )
@@ -1642,7 +1660,7 @@ fn serve_web(
 
         let sink = re_sdk::web_viewer::new_sink(
             open_browser,
-            "::",
+            "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_options,
@@ -1895,16 +1913,20 @@ fn log_arrow_msg(
 
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
-    // It's important that we don't hold the session lock while building our arrow component.
-    // the API we call to back through pyarrow temporarily releases the GIL, which can cause
-    // a deadlock.
     let row = crate::arrow::build_row_from_components(&components, &TimePoint::default())?;
 
-    recording.record_row(entity_path, row, !static_);
+    py.allow_threads(|| {
+        // The call to `allow_threads` releases the GIL.
+        // It is important that we do so here,
+        // because the destructor for the arrow data will acquire the GIL
+        // in order to call back to pyarrow, and that can cause a deadlock,
+        // and the call here may cause that destructor to be invoked.
+        recording.record_row(entity_path, row, !static_);
 
-    py.allow_threads(flush_garbage_queue);
+        flush_garbage_queue();
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Directly send an arrow chunk to the recording stream.
@@ -1942,11 +1964,18 @@ fn send_arrow_chunk(
     // a deadlock.
     let chunk = crate::arrow::build_chunk_from_components(entity_path, &timelines, &components)?;
 
-    recording.send_chunk(chunk);
+    py.allow_threads(|| {
+        // The call to `allow_threads` releases the GIL.
+        // It is important that we do so here,
+        // because the destructor for the arrow data will acquire the GIL
+        // in order to call back to pyarrow, and that can cause a deadlock,
+        // and the call here may cause that destructor to be invoked.
+        recording.send_chunk(chunk);
 
-    py.allow_threads(flush_garbage_queue);
+        flush_garbage_queue();
 
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Log a file by path.
@@ -2122,13 +2151,12 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
         let mut web_handle = global_web_viewer_server();
 
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServer::new("::", WebViewerServerPort(port)).map_err(
-                |err| {
+            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
+                .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
                     ))
-                },
-            )?,
+                })?,
         );
 
         Ok(())

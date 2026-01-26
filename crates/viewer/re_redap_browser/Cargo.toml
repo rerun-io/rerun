@@ -34,9 +34,11 @@ re_uri.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
+cfg-if.workspace = true
+crossbeam.workspace = true
 datafusion.workspace = true
-egui.workspace = true
 egui_extras.workspace = true
+egui.workspace = true
 futures.workspace = true
 itertools.workspace = true
 serde_json.workspace = true

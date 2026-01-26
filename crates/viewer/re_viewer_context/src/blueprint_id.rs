@@ -17,6 +17,16 @@ pub struct BlueprintId<T: BlueprintIdRegistry> {
     _registry: std::marker::PhantomData<T>,
 }
 
+impl<T: BlueprintIdRegistry> re_byte_size::SizeBytes for BlueprintId<T> {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl<T: BlueprintIdRegistry> BlueprintId<T> {
     pub fn invalid() -> Self {
         Self {

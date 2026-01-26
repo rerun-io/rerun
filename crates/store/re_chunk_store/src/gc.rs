@@ -11,7 +11,7 @@ use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion, ChunkStoreEvent,
     ChunkStoreStats,
 };
 
@@ -221,9 +221,7 @@ impl ChunkStore {
             })
             .collect();
         if cfg!(debug_assertions) {
-            let any_event_other_than_deletion = events
-                .iter()
-                .any(|e| e.kind != ChunkStoreDiffKind::Deletion);
+            let any_event_other_than_deletion = events.iter().any(|e| !e.is_deletion());
             assert!(!any_event_other_than_deletion);
         }
 
@@ -337,14 +335,14 @@ impl ChunkStore {
                 };
 
             let now = Instant::now();
-            let diffs1 =
+            let dels1 =
                 self.remove_chunks_shallow(chunks_to_be_shallow_removed, Some(sweep_time_budget));
 
             let remaining_budget = sweep_time_budget.saturating_sub(now.elapsed());
-            let diffs2 =
+            let dels2 =
                 self.remove_chunks_deep(chunks_to_be_deeply_removed, Some(remaining_budget));
 
-            diffs1.into_iter().chain(diffs2).collect()
+            dels1.into_iter().chain(dels2).map(Into::into).collect()
         }
     }
 
@@ -459,14 +457,15 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
-    ) -> Vec<ChunkStoreDiff> {
+    ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         // Make sure to not forward those diffs as-is: just because the shallow deletion yielded
         // nothing, doesn't mean that a deep one won't.
         // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
-        let diffs_shallow = self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+        let deletions_shallow =
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
 
         let Self {
             id: _,
@@ -498,7 +497,7 @@ impl ChunkStore {
         // around even in the case of compaction, where the original chunk always gets deeply removed!
         _ = chunks_lineage;
 
-        let mut diffs = Vec::new();
+        let mut deletions = Vec::new();
 
         for chunk in chunks_to_be_removed {
             let mut was_removed = false;
@@ -589,32 +588,30 @@ impl ChunkStore {
             }
 
             if was_removed {
-                diffs.push(ChunkStoreDiff::deletion(chunk));
+                deletions.push(ChunkStoreDiffDeletion { chunk });
             }
         }
 
         debug_assert!(
-            diffs.len() >= diffs_shallow.len() && {
-                let diff_ids: ahash::HashSet<_> = diffs
+            deletions.len() >= deletions_shallow.len() && {
+                let del_ids: ahash::HashSet<_> =
+                    deletions.iter().map(|del| del.chunk.id()).collect();
+                deletions_shallow
                     .iter()
-                    .map(|diff| diff.chunk_before_processing.id())
-                    .collect();
-                diffs_shallow
-                    .iter()
-                    .all(|diff| diff_ids.contains(&diff.chunk_before_processing.id()))
+                    .all(|del| del_ids.contains(&del.chunk.id()))
             },
-            "deep diff should always be a superset of the shallow diff:\ndeep: [{}]\nshallow: [{}]",
-            diffs
+            "deep del should always be a superset of the shallow del:\ndeep: [{}]\nshallow: [{}]",
+            deletions
                 .iter()
-                .map(|diff| diff.chunk_before_processing.id().to_string())
+                .map(|del| del.chunk.id().to_string())
                 .join(", "),
-            diffs_shallow
+            deletions_shallow
                 .iter()
-                .map(|diff| diff.chunk_before_processing.id().to_string())
+                .map(|del| del.chunk.id().to_string())
                 .join(", "),
         );
 
-        diffs
+        deletions
     }
 
     /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical* indices only.
@@ -631,7 +628,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
-    ) -> Vec<ChunkStoreDiff> {
+    ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         let Self {
@@ -659,7 +656,7 @@ impl ChunkStore {
         let start_time = Instant::now();
         let time_budget = time_budget.unwrap_or(Duration::MAX);
 
-        let mut diffs = Vec::with_capacity(chunks_to_be_removed.len());
+        let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
                 chunk_ids_per_min_row_id.remove(&row_id_min);
@@ -676,7 +673,7 @@ impl ChunkStore {
 
             *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
-            diffs.push(ChunkStoreDiff::deletion(chunk));
+            deletions.push(ChunkStoreDiffDeletion { chunk });
 
             // Only check time budget once we have removed at least one chunk.
             if time_budget <= start_time.elapsed() {
@@ -684,7 +681,7 @@ impl ChunkStore {
             }
         }
 
-        diffs
+        deletions
     }
 }
 

@@ -43,11 +43,27 @@ pub fn range_with_blueprint_resolved_data<'a>(
     // No need to query for components that have overrides.
     components.retain(|component| overrides.get(*component).is_none());
 
+    let mut active_remappings = Vec::new();
     let results = {
-        // Apply component mappings when querying the recording.
-        for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.target) {
-                components.insert(mapping.selector);
+        // Apply component mappings when querying the recording.]
+
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            match selector {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: _, // TODO(RR-3308): implement selector logic
+                } => {
+                    if components.remove(target) {
+                        components.insert(*source_component);
+                        active_remappings.push((*target, *source_component));
+                    }
+                }
+
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
+                    // TODO(RR-3400): implement the rest of the selectors
+                }
             }
         }
 
@@ -57,13 +73,13 @@ pub fn range_with_blueprint_resolved_data<'a>(
                 .range(range_query, &data_result.entity_path, components);
 
         // Apply mapping to the results.
-        for mapping in &visualizer_instruction.component_mappings {
-            if let Some(mut chunks) = results.components.remove(&mapping.selector) {
+        for (target, selector) in &active_remappings {
+            if let Some(mut chunks) = results.components.remove(selector) {
                 for chunk in &mut chunks {
-                    *chunk = chunk.with_renamed_component(mapping.selector, mapping.target);
+                    *chunk = chunk.with_renamed_component(*selector, *target);
                 }
 
-                results.components.insert(mapping.target, chunks);
+                results.components.insert(*target, chunks);
             }
         }
 
@@ -74,7 +90,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         overrides,
         results,
         defaults: &ctx.query_result.component_defaults,
-        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
+        component_mappings_hash: Hash64::hash(&active_remappings),
     }
 }
 
@@ -123,10 +139,25 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     }
 
     // Apply component mappings when querying the recording.
-    if let Some(visualizer_instruction) = &visualizer_instruction {
-        for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.target) {
-                components.insert(mapping.selector);
+    let mut active_remappings = Vec::new();
+    if let Some(visualizer_instruction) = visualizer_instruction {
+        for (target, selector) in &visualizer_instruction.component_mappings {
+            match selector {
+                re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: _, // TODO(RR-3308): implement selector logic
+                } => {
+                    if components.remove(target) {
+                        components.insert(*source_component);
+                        active_remappings.push((*target, *source_component));
+                    }
+                }
+
+                re_viewer_context::VisualizerComponentSource::Override
+                | re_viewer_context::VisualizerComponentSource::Default
+                | re_viewer_context::VisualizerComponentSource::Fallback => {
+                    // TODO(RR-3400): implement the rest of the selectors
+                }
             }
         }
     }
@@ -138,21 +169,14 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     );
 
     // Apply mapping to the results.
-    let component_mappings_hash = if let Some(visualizer_instruction) = visualizer_instruction {
-        for mapping in &visualizer_instruction.component_mappings {
-            if let Some(chunk) = results.components.remove(&mapping.selector) {
-                let chunk = std::sync::Arc::new(
-                    chunk.with_renamed_component(mapping.selector, mapping.target),
-                )
+    for (target, selector) in &active_remappings {
+        if let Some(chunk) = results.components.remove(selector) {
+            let chunk = std::sync::Arc::new(chunk.with_renamed_component(*selector, *target))
                 .to_unit()
                 .expect("The source chunk was a unit chunk.");
-                results.components.insert(mapping.target, chunk);
-            }
+            results.components.insert(*target, chunk);
         }
-        Hash64::hash(&visualizer_instruction.component_mappings)
-    } else {
-        Hash64::ZERO
-    };
+    }
 
     HybridLatestAtResults {
         overrides,
@@ -161,7 +185,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         ctx,
         query: latest_at_query.clone(),
         data_result,
-        component_mappings_hash,
+        component_mappings_hash: Hash64::hash(&active_remappings),
     }
 }
 

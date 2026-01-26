@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,6 +16,9 @@ from ..._baseclasses import (
     BaseBatch,
 )
 
+if TYPE_CHECKING:
+    from ...blueprint import datatypes as blueprint_datatypes
+
 __all__ = [
     "VisualizerComponentMapping",
     "VisualizerComponentMappingArrayLike",
@@ -24,15 +27,30 @@ __all__ = [
 ]
 
 
-def _visualizer_component_mapping__selector__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
+def _visualizer_component_mapping__target__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
     if isinstance(x, datatypes.Utf8):
         return x
     else:
         return datatypes.Utf8(x)
 
 
-def _visualizer_component_mapping__target__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
-    if isinstance(x, datatypes.Utf8):
+def _visualizer_component_mapping__source_component__special_field_converter_override(
+    x: datatypes.Utf8Like | None,
+) -> datatypes.Utf8 | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Utf8):
+        return x
+    else:
+        return datatypes.Utf8(x)
+
+
+def _visualizer_component_mapping__selector__special_field_converter_override(
+    x: datatypes.Utf8Like | None,
+) -> datatypes.Utf8 | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Utf8):
         return x
     else:
         return datatypes.Utf8(x)
@@ -46,31 +64,68 @@ class VisualizerComponentMapping:
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, selector: datatypes.Utf8Like, target: datatypes.Utf8Like) -> None:
+    def __init__(
+        self: Any,
+        target: datatypes.Utf8Like,
+        source_kind: blueprint_datatypes.ComponentSourceKindLike,
+        *,
+        source_component: datatypes.Utf8Like | None = None,
+        selector: datatypes.Utf8Like | None = None,
+    ) -> None:
         """
         Create a new instance of the VisualizerComponentMapping datatype.
 
         Parameters
         ----------
-        selector:
-            Component selector for mapping.
         target:
-            Target component name.
+            Target component name which is being mapped to.
+
+            This represents a "slot" on the visualizer.
+        source_kind:
+            What kind of source to pick.
+        source_component:
+            Component selector for mapping.
+
+            Defaults to `target` if not specified.
+        selector:
+            Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+
+            Defaults to empty string if not specified.
 
         """
 
         # You can define your own __init__ function as a member of VisualizerComponentMappingExt in visualizer_component_mapping_ext.py
-        self.__attrs_init__(selector=selector, target=target)
+        self.__attrs_init__(
+            target=target, source_kind=source_kind, source_component=source_component, selector=selector
+        )
 
-    selector: datatypes.Utf8 = field(
-        converter=_visualizer_component_mapping__selector__special_field_converter_override
-    )
-    # Component selector for mapping.
+    target: datatypes.Utf8 = field(converter=_visualizer_component_mapping__target__special_field_converter_override)
+    # Target component name which is being mapped to.
+    #
+    # This represents a "slot" on the visualizer.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    target: datatypes.Utf8 = field(converter=_visualizer_component_mapping__target__special_field_converter_override)
-    # Target component name.
+    source_kind: blueprint_datatypes.ComponentSourceKind = field()
+    # What kind of source to pick.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    source_component: datatypes.Utf8 | None = field(
+        default=None, converter=_visualizer_component_mapping__source_component__special_field_converter_override
+    )
+    # Component selector for mapping.
+    #
+    # Defaults to `target` if not specified.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    selector: datatypes.Utf8 | None = field(
+        default=None, converter=_visualizer_component_mapping__selector__special_field_converter_override
+    )
+    # Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+    #
+    # Defaults to empty string if not specified.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -84,12 +139,15 @@ VisualizerComponentMappingArrayLike = VisualizerComponentMapping | Sequence[Visu
 
 class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayLike]):
     _ARROW_DATATYPE = pa.struct([
-        pa.field("selector", pa.utf8(), nullable=False, metadata={}),
         pa.field("target", pa.utf8(), nullable=False, metadata={}),
+        pa.field("source_kind", pa.uint8(), nullable=False, metadata={}),
+        pa.field("source_component", pa.utf8(), nullable=True, metadata={}),
+        pa.field("selector", pa.utf8(), nullable=True, metadata={}),
     ])
 
     @staticmethod
     def _native_to_pa_array(data: VisualizerComponentMappingArrayLike, data_type: pa.DataType) -> pa.Array:
+        from rerun.blueprint.datatypes import ComponentSourceKindBatch
         from rerun.datatypes import Utf8Batch
 
         typed_data: Sequence[VisualizerComponentMapping]
@@ -101,8 +159,10 @@ class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayL
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.selector for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
                 Utf8Batch([x.target for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ComponentSourceKindBatch([x.source_kind for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.source_component for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.selector for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

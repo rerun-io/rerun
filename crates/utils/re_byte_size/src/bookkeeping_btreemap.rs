@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::SizeBytes;
+use crate::std_sizes::btree_heap_size;
 
 /// A [`BTreeMap`] wrapper with O(1) size queries via continuous bookkeeping.
 ///
@@ -11,8 +12,20 @@ use crate::SizeBytes;
 pub struct BookkeepingBTreeMap<K, V> {
     map: BTreeMap<K, V>,
 
-    /// The total heap size of all keys and values in bytes.
-    heap_size_bytes: u64,
+    /// The total heap uses internally by (non-POD) keys and values.
+    ///
+    /// For Plain Old Data types, this will always be zero.
+    ///
+    /// This does NOT include the size of the actual btree data-structure itself.
+    /// We estimate that with [`btree_heap_size`].
+    kv_heap_size_bytes: u64,
+}
+
+impl<K: Ord + SizeBytes, V: SizeBytes> SizeBytes for BookkeepingBTreeMap<K, V> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        btree_heap_size(self.len(), size_of::<K>() + size_of::<V>()) + self.kv_heap_size_bytes
+    }
 }
 
 impl<K, V> Default for BookkeepingBTreeMap<K, V>
@@ -35,7 +48,7 @@ where
     pub fn new() -> Self {
         Self {
             map: BTreeMap::new(),
-            heap_size_bytes: 0,
+            kv_heap_size_bytes: 0,
         }
     }
 
@@ -65,17 +78,15 @@ where
 
         match self.map.entry(key) {
             Entry::Vacant(vacant) => {
-                let key_size = vacant.key().total_size_bytes();
+                self.kv_heap_size_bytes += vacant.key().heap_size_bytes();
                 let value_ref = vacant.insert(default_value);
                 mutator(value_ref);
-                let value_size = value_ref.total_size_bytes();
-                self.heap_size_bytes += key_size + value_size;
+                self.kv_heap_size_bytes += value_ref.heap_size_bytes();
             }
             Entry::Occupied(mut occupied) => {
-                let size_before = occupied.get().total_size_bytes();
+                self.kv_heap_size_bytes -= occupied.get().heap_size_bytes();
                 mutator(occupied.get_mut());
-                let size_after = occupied.get().total_size_bytes();
-                self.heap_size_bytes = self.heap_size_bytes - size_before + size_after;
+                self.kv_heap_size_bytes += occupied.get().heap_size_bytes();
             }
         }
     }
@@ -93,10 +104,9 @@ where
         K: Clone,
     {
         let (key, value) = self.map.range_mut(..=key).next_back()?;
-        let size_before = value.total_size_bytes();
+        self.kv_heap_size_bytes -= value.heap_size_bytes();
         let ret = mutator(key, value);
-        let size_after = value.total_size_bytes();
-        self.heap_size_bytes = self.heap_size_bytes - size_before + size_after;
+        self.kv_heap_size_bytes += value.heap_size_bytes();
         Some(ret)
     }
 
@@ -108,20 +118,18 @@ where
 
     /// Inserts a key-value pair, returning the old value if the key was present.
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        // In a BTreeMap, the keys and values themselves are stored on the heap,
-        // so we count their total size (stack + heap).
-        let new_key_size = key.total_size_bytes();
-        let new_value_size = value.total_size_bytes();
+        let new_key_size = key.heap_size_bytes();
+        let new_value_size = value.heap_size_bytes();
 
         let old_value = self.map.insert(key, value);
 
         if let Some(old_value) = &old_value {
             // We're replacing an existing value, but the key remains the same:
-            self.heap_size_bytes += new_value_size;
-            self.heap_size_bytes -= old_value.total_size_bytes();
+            self.kv_heap_size_bytes -= old_value.heap_size_bytes();
+            self.kv_heap_size_bytes += new_value_size;
         } else {
             // New key-value pair - add both sizes:
-            self.heap_size_bytes += new_key_size + new_value_size;
+            self.kv_heap_size_bytes += new_key_size + new_value_size;
         }
 
         old_value
@@ -130,9 +138,8 @@ where
     /// Removes a key, returning its value if it was present.
     pub fn remove(&mut self, key: &K) -> Option<V> {
         if let Some(value) = self.map.remove(key) {
-            let key_size = key.total_size_bytes();
-            let value_size = value.total_size_bytes();
-            self.heap_size_bytes = self.heap_size_bytes - key_size - value_size;
+            self.kv_heap_size_bytes -= key.heap_size_bytes();
+            self.kv_heap_size_bytes -= value.heap_size_bytes();
             Some(value)
         } else {
             None
@@ -147,14 +154,6 @@ where
         for (key, value) in iter {
             self.insert(key, value);
         }
-    }
-}
-
-impl<K: SizeBytes, V: SizeBytes> SizeBytes for BookkeepingBTreeMap<K, V> {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        // O(1) - this is the whole point!
-        self.heap_size_bytes
     }
 }
 
@@ -176,9 +175,12 @@ mod tests {
     use super::*;
 
     fn heap_size_of_map<K: Ord + SizeBytes, V: SizeBytes>(map: &BookkeepingBTreeMap<K, V>) -> u64 {
-        map.iter()
-            .map(|(k, v)| k.total_size_bytes() + v.total_size_bytes())
-            .sum()
+        let entry_heap_size: u64 = map
+            .iter()
+            .map(|(k, v)| k.heap_size_bytes() + v.heap_size_bytes())
+            .sum();
+        crate::std_sizes::btree_heap_size(map.len(), size_of::<K>() + size_of::<V>())
+            + entry_heap_size
     }
 
     #[test]

@@ -475,7 +475,7 @@ impl ConnectionHandle {
                         .data
                         .ok_or_else(|| {
                             let err = missing_field!(QueryTasksResponse, "data");
-                            let err = ApiError::serialization(
+                            let err = ApiError::serialization_with_source(
                                 err,
                                 "failed waiting for tasks done: received item without data",
                             );
@@ -490,7 +490,7 @@ impl ConnectionHandle {
                     let schema = item.schema();
                     if !schema.contains(&QueryTasksResponse::schema()) {
                         let err = invalid_schema!(QueryTasksResponse);
-                        let err = ApiError::serialization(
+                        let err = ApiError::serialization_with_source(
                             err,
                             "failed waiting for tasks done: received item with invalid schema",
                         );
@@ -506,7 +506,7 @@ impl ConnectionHandle {
                     .map(|name| schema.index_of(name))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|err| {
-                        to_py_err(ApiError::serialization(
+                        to_py_err(ApiError::serialization_with_source(
                             err,
                             "failed waiting for tasks done: missing column on item",
                         ))

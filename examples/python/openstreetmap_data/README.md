@@ -3,8 +3,8 @@ title = "OpenStreetMap data"
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
 thumbnail = "https://static.rerun.io/osm_data/0be94071469c49f98326d85456ed2a3af8d1733a/480w.png"
-channel = "release"
-include_in_manifest = true
+# channel = "release" # disabled since the openstreetmap API is flaky
+# include_in_manifest = true
 -->
 
 

@@ -12,7 +12,7 @@ use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 use crate::store::ChunkIdSetPerTime;
 use crate::{
     ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreChunkStats,
-    ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreError, ChunkStoreEvent,
+    ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreError, ChunkStoreEvent,
     ChunkStoreResult, ColumnMetadataState,
 };
 
@@ -204,7 +204,7 @@ impl ChunkStore {
             event_id: self
                 .event_id
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            diff: ChunkStoreDiff::rrd_manifest(rrd_manifest),
+            diff: ChunkStoreDiff::virtual_addition(rrd_manifest),
         })
     }
 
@@ -324,72 +324,107 @@ impl ChunkStore {
                         .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id).cloned())
                         .collect(),
                     None,
-                ),
+                )
+                .into_iter()
+                .map(Into::into),
             );
         }
 
         self.chunks_lineage
             .entry(chunk.id())
+            // `.or_insert_with` because we don't want to lose the RRD manifest lineage if there is one.
             .or_insert_with(|| (&lineage).into());
 
-        // Always perform the recursive splitting inline, so that we don't generate and send store
-        // events that won't make any sense for downstream consumers, since these halfway chunks
-        // never get exposed to the outside world in any way.
-        let mut split_chunks: Vec<Arc<Chunk>> = Chunk::split_chunk_if_needed(
-            chunk.clone(),
-            &re_chunk::ChunkSplitConfig {
-                chunk_max_bytes: self.config.chunk_max_bytes,
-                chunk_max_rows: self.config.chunk_max_rows,
-                chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
-            },
-        );
-        loop {
-            re_tracing::profile_scope!("compute-recursive-splits");
+        // Splitting a static chunk just seems like a terrible idea in general.
+        let chunk_is_static = chunk.is_static();
 
-            let num_split_chunks = split_chunks.len();
-            split_chunks = split_chunks
-                .into_iter()
-                .flat_map(|split_chunk| {
-                    if self.descends_from_a_compaction(&split_chunk.id()) {
-                        // Never split a chunk that descends from a direct or indirect compaction, ever.
-                        vec![]
-                    } else {
-                        Chunk::split_chunk_if_needed(
-                            split_chunk.clone(),
-                            &re_chunk::ChunkSplitConfig {
-                                chunk_max_bytes: self.config.chunk_max_bytes,
-                                chunk_max_rows: self.config.chunk_max_rows,
-                                chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
-                            },
-                        )
-                    }
-                })
-                .collect_vec();
+        // If we're coming in here from the recursive call caused by a split, then we shouldn't try splitting at all.
+        //
+        // Mathematically, this is not needed: since we already split as much as needed on the first-and-only
+        // flattened split iteration, we will never split anything again.
+        // On the other hand, the explicitness makes this much easier to understand, and prevents unfortunate
+        // accidents when this code inevitably get refactored in the future.
+        //
+        // Also, splitting a static chunk just seems like a terrible idea in general.
+        let chunk_descends_from_split = self.descends_from_a_split(&chunk.id());
 
-            if split_chunks.len() == num_split_chunks {
-                // There was nothing new to split, therefore: we're done.
-                break;
-            }
-        }
-        if split_chunks.len() > 1 {
-            re_tracing::profile_scope!("add-splits");
+        // We should never try and split a chunk issued from a compaction, it's just counter-productive.
+        let chunk_descends_from_compaction = self.descends_from_a_compaction(&chunk.id());
 
-            // For a split, we keep track of our descendents so that we can accurately drop
-            // dangling splits later on if the parent get re-inserted.
-            self.dangling_splits
-                .insert(chunk.id(), split_chunks.iter().map(|c| c.id()).collect());
+        if !chunk_is_static && !chunk_descends_from_split && !chunk_descends_from_compaction {
+            // Always perform the recursive splitting inline, so that we don't generate and send store
+            // events that won't make any sense for downstream consumers, since these halfway chunks
+            // never get exposed to the outside world in any way.
+            let mut split_chunks: Vec<Arc<Chunk>> = Chunk::split_chunk_if_needed(
+                chunk.clone(),
+                &re_chunk::ChunkSplitConfig {
+                    chunk_max_bytes: self.config.chunk_max_bytes,
+                    chunk_max_rows: self.config.chunk_max_rows,
+                    chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
+                },
+            );
+            loop {
+                re_tracing::profile_scope!("compute-recursive-splits");
 
-            for split_chunk in &split_chunks {
-                let siblings = split_chunks
-                    .iter()
-                    .filter(|c| c.id() != split_chunk.id())
-                    .cloned()
+                let num_split_chunks = split_chunks.len();
+                split_chunks = split_chunks
+                    .into_iter()
+                    .flat_map(|split_chunk| {
+                        if self.descends_from_a_compaction(&split_chunk.id()) {
+                            // Never split a chunk that descends from a direct or indirect compaction, ever.
+                            vec![]
+                        } else {
+                            Chunk::split_chunk_if_needed(
+                                split_chunk.clone(),
+                                &re_chunk::ChunkSplitConfig {
+                                    chunk_max_bytes: self.config.chunk_max_bytes,
+                                    chunk_max_rows: self.config.chunk_max_rows,
+                                    chunk_max_rows_if_unsorted: self
+                                        .config
+                                        .chunk_max_rows_if_unsorted,
+                                },
+                            )
+                        }
+                    })
                     .collect_vec();
-                let lineage = ChunkDirectLineageReport::SplitFrom(chunk.clone(), siblings);
-                all_diffs.extend(self.insert_chunk_impl(split_chunk, lineage)?);
-            }
 
-            return Ok(all_diffs);
+                if split_chunks.len() == num_split_chunks {
+                    // There was nothing new to split, therefore: we're done.
+                    break;
+                }
+            }
+            if split_chunks.len() > 1 {
+                re_tracing::profile_scope!("add-splits");
+
+                // For a split, we keep track of our descendents so that we can accurately drop
+                // dangling splits later on if the parent get re-inserted.
+                self.dangling_splits
+                    .insert(chunk.id(), split_chunks.iter().map(|c| c.id()).collect());
+
+                for split_chunk in &split_chunks {
+                    let siblings = split_chunks
+                        .iter()
+                        .filter(|c| c.id() != split_chunk.id())
+                        .cloned()
+                        .collect_vec();
+                    let lineage = ChunkDirectLineageReport::SplitFrom(chunk.clone(), siblings);
+
+                    let mut diffs = self.insert_chunk_impl(split_chunk, lineage)?;
+                    for diff in &mut diffs {
+                        // In case of a split, the unprocessed chunk should always match the parent
+                        // chunk as specified in the `SplitFrom` lineage.
+                        // By default this won't be the case due to how the recursion is implemented,
+                        // so make sure to patch the data appropriately.
+                        if let ChunkStoreDiff::Addition(add) = diff {
+                            add.chunk_before_processing = chunk.clone();
+                        }
+                    }
+
+                    all_diffs.extend(diffs);
+                }
+
+                return Ok(all_diffs);
+            }
         }
 
         self.insert_id += 1;
@@ -644,7 +679,7 @@ impl ChunkStore {
             self.temporal_physical_chunks_stats +=
                 ChunkStoreChunkStats::from_chunk(&chunk_or_compacted);
 
-            let mut diff = ChunkStoreDiff::addition(
+            let mut add = ChunkStoreDiffAddition {
                 // NOTE: We are advertising only the non-compacted chunk as "added", i.e. only the new data.
                 //
                 // This makes sure that downstream subscribers only have to process what is new,
@@ -653,10 +688,10 @@ impl ChunkStore {
                 //
                 // Subscribers will still be capable of tracking which chunks have been merged with which
                 // by using the compaction report that we fill below.
-                Arc::clone(&chunk_before_processing), /* chunk_before_processing */
-                chunk_or_compacted.clone(),           /* chunk_after_processing */
-                lineage,                              /* lineage (might be patched below) */
-            );
+                chunk_before_processing: Arc::clone(&chunk_before_processing),
+                chunk_after_processing: chunk_or_compacted.clone(),
+                direct_lineage: lineage, // lineage (might be patched below)
+            };
             if let Some(elected_chunk) = &elected_chunk {
                 // NOTE: The chunk that we've just added has been compacted already!
                 let srcs: BTreeMap<_, _> =
@@ -665,13 +700,7 @@ impl ChunkStore {
                             // NOTE: deep removal, we don't want a compacted chunk to linger on!
                             self.remove_chunks_deep(vec![elected_chunk.clone()], None)
                                 .into_iter()
-                                .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
-                                .map(|diff| {
-                                    (
-                                        diff.chunk_before_processing.id(),
-                                        diff.chunk_before_processing,
-                                    )
-                                }),
+                                .map(|diff| (diff.chunk.id(), diff.chunk)),
                         )
                         .collect();
 
@@ -696,21 +725,21 @@ impl ChunkStore {
                     }
                 }
 
-                diff.direct_lineage = Some(ChunkDirectLineageReport::CompactedFrom(srcs));
+                add.direct_lineage = ChunkDirectLineageReport::CompactedFrom(srcs);
             }
 
-            (chunk_or_compacted, vec![diff])
+            (chunk_or_compacted, vec![add.into()])
         };
 
         self.chunks_per_chunk_id
             .insert(chunk_after_processing.id(), chunk_after_processing.clone());
 
         for diff in &diffs {
-            if let Some(report @ ChunkDirectLineageReport::CompactedFrom(_)) =
-                diff.direct_lineage.as_ref()
+            if let ChunkStoreDiff::Addition(add) = diff
+                && let report @ ChunkDirectLineageReport::CompactedFrom(_) = &add.direct_lineage
             {
                 self.chunks_lineage
-                    .insert(diff.chunk_after_processing.id(), report.into());
+                    .insert(add.chunk_after_processing.id(), report.into());
             }
         }
         all_diffs.extend(diffs);
@@ -1101,7 +1130,6 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::ChunkStoreDiffKind;
 
     // TODO(cmc): We could have more test coverage here, especially regarding thresholds etc.
     // For now the development and maintenance cost doesn't seem to be worth it.
@@ -1428,16 +1456,16 @@ mod tests {
         let events = store.insert_chunk(&chunk1)?;
         assert!(
             events.len() == 1
-                && events[0].chunk_before_processing.id() == chunk1.id()
-                && events[0].kind == ChunkStoreDiffKind::Addition,
+                && events[0].delta_chunk().unwrap().id() == chunk1.id()
+                && matches!(events[0].diff, ChunkStoreDiff::Addition(_)),
             "the first write should result in the addition of chunk1 and nothing else"
         );
 
         let events = store.insert_chunk(&chunk2)?;
         assert!(
             events.len() == 1
-                && events[0].chunk_before_processing.id() == chunk2.id()
-                && events[0].kind == ChunkStoreDiffKind::Addition,
+                && events[0].delta_chunk().unwrap().id() == chunk2.id()
+                && matches!(events[0].diff, ChunkStoreDiff::Addition(_)),
             "the second write should result in the addition of chunk2 and nothing else"
         );
 
@@ -1457,10 +1485,10 @@ mod tests {
         let events = store.insert_chunk(&chunk3)?;
         assert!(
             events.len() == 2
-                && events[0].chunk_before_processing.id() == chunk3.id()
-                && events[0].kind == ChunkStoreDiffKind::Addition
-                && events[1].chunk_before_processing.id() == chunk1.id()
-                && events[1].kind == ChunkStoreDiffKind::Deletion,
+                && events[0].delta_chunk().unwrap().id() == chunk3.id()
+                && matches!(events[0].diff, ChunkStoreDiff::Addition(_))
+                && events[1].delta_chunk().unwrap().id() == chunk1.id()
+                && matches!(events[1].diff, ChunkStoreDiff::Deletion(_)),
             "the third write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
         );
 

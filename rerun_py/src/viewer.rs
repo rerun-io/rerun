@@ -24,10 +24,15 @@ pub struct PyViewerClient {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyViewerClient {
     /// Create a new viewer client object.
+    ///
+    /// Parameters
+    /// ----------
+    /// addr:
+    ///     The address of the viewer.
     #[new]
-    #[pyo3(text_signature = "(self, addr)")]
-    fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
-        let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
+    #[pyo3(text_signature = "(self, addr=\"127.0.0.1:9876\")")]
+    fn new(py: Python<'_>, addr: &str) -> PyResult<Self> {
+        let origin = addr.parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let conn = ViewerConnectionHandle::new(py, origin.clone())?;
 
@@ -46,6 +51,39 @@ impl PyViewerClient {
         let mut conn = self_.borrow(py).conn.clone();
 
         conn.send_table(py, id, table)
+    }
+
+    /// Saves a screenshot to a file.
+    ///
+    /// .. warning::
+    ///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+    ///
+    /// Parameters
+    /// ----------
+    /// file_path : str
+    ///     The path where the screenshot will be saved.
+    ///     ⚠️ This path is relative to the viewer's filesystem, not the client's! ⚠️
+    ///     If your viewer runs on a different machine, the screenshot will be saved there.
+    /// view_id : str | UUID | None
+    ///     Optional view ID to screenshot.
+    ///     If None, screenshots the entire viewer.
+    #[pyo3(signature = (file_path, view_id = None))]
+    fn save_screenshot(
+        self_: Py<Self>,
+        file_path: String,
+        view_id: Option<Bound<'_, pyo3::PyAny>>,
+        py: Python<'_>,
+    ) -> PyResult<()> {
+        let mut conn = self_.borrow(py).conn.clone();
+
+        let view_id_str = view_id
+            .map(|v| {
+                v.extract::<String>()
+                    .or_else(|_| v.str()?.extract::<String>())
+            })
+            .transpose()?;
+
+        conn.save_screenshot(py, file_path, view_id_str)
     }
 }
 
@@ -80,6 +118,25 @@ impl ViewerConnectionHandle {
                 .write_table(re_protos::sdk_comms::v1alpha1::WriteTableRequest {
                     id: Some(re_protos::common::v1alpha1::TableId { id }),
                     data: Some(table.0.into()),
+                }),
+        )
+        .map_err(to_py_err)?;
+
+        Ok(())
+    }
+
+    fn save_screenshot(
+        &mut self,
+        py: Python<'_>,
+        file_path: String,
+        view_id: Option<String>,
+    ) -> PyResult<()> {
+        wait_for_future(
+            py,
+            self.client
+                .save_screenshot(re_protos::sdk_comms::v1alpha1::SaveScreenshotRequest {
+                    view_id,
+                    file_path,
                 }),
         )
         .map_err(to_py_err)?;

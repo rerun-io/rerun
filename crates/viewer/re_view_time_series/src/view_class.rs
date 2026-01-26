@@ -5,9 +5,11 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
-use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
+use re_sdk_types::blueprint::components::{
+    Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
+};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
@@ -21,7 +23,8 @@ use re_viewer_context::{
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -392,9 +395,6 @@ impl ViewClass for TimeSeriesView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        use re_sdk_types::archetypes::Scalars;
-        use re_viewer_context::{VisualizableReason, VisualizerComponentMapping};
-
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
                 .iter()
@@ -404,28 +404,24 @@ impl ViewClass for TimeSeriesView {
                 })
                 .collect();
 
+        let scalars_component = Scalars::descriptor_scalars().component;
+
         let mut visualizers_with_mappings: IntMap<
             ViewSystemIdentifier,
-            re_viewer_context::VisualizerComponentMappings,
+            VisualizerComponentMappings,
         > = available_visualizers
             .iter()
             .filter_map(|(visualizer, reason_opt)| {
+                // Filter out entities that weren't indicated.
+                // We later fall back on to line visualizers for those.
                 if indicated_entities_per_visualizer
-                    .get(visualizer)
-                    .is_some_and(|matching_list| matching_list.contains(entity_path))
+                    .get(visualizer)?
+                    .contains(entity_path)
                 {
-                    let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-                    // Extract physical component from the visualizable reason
-                    if let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt {
-                        for (physical_component, _) in components {
-                            mappings.push(VisualizerComponentMapping {
-                                selector: Scalars::descriptor_scalars().component,
-                                target: *physical_component,
-                            });
-                        }
-                    }
-
+                    let mappings = scalar_mapping_selector(*reason_opt)
+                        .into_iter()
+                        .map(|selector| (scalars_component, selector))
+                        .collect();
                     Some((*visualizer, mappings))
                 } else {
                     None
@@ -435,22 +431,13 @@ impl ViewClass for TimeSeriesView {
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
         if visualizers_with_mappings.is_empty()
-            && available_visualizers.contains_key(&SeriesLinesSystem::identifier())
-        {
-            let mut mappings = re_viewer_context::VisualizerComponentMappings::new();
-
-            // Extract physical component from the visualizable reason for the fallback visualizer
-            if let Some(Some(VisualizableReason::DatatypeMatchAny { components })) =
+            && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
-            {
-                for (physical_component, _) in components {
-                    mappings.push(VisualizerComponentMapping {
-                        selector: *physical_component,
-                        target: Scalars::descriptor_scalars().component,
-                    });
-                }
-            }
-
+        {
+            let mappings = scalar_mapping_selector(*series_line_visualizable_reason)
+                .into_iter()
+                .map(|selector| (scalars_component, selector))
+                .collect();
             visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
         }
 
@@ -481,7 +468,7 @@ impl ViewClass for TimeSeriesView {
         // (e.g. when plotting both lines & points with the same entity/instance path)
         let plot_item_id_to_instance_path: HashMap<egui::Id, InstancePath> = all_plot_series
             .iter()
-            .map(|series| (series.id, series.instance_path.clone()))
+            .map(|series| (series.id(), series.instance_path.clone()))
             .collect();
 
         let current_time = ctx.time_ctrl.time_i64();
@@ -610,7 +597,7 @@ impl ViewClass for TimeSeriesView {
         let resolve_time_range =
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
                 make_range_sane(Range1D::new(
-                    (match view_time_range.start {
+                    match view_time_range.start {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.min.as_i64()
                         }
@@ -620,13 +607,15 @@ impl ViewClass for TimeSeriesView {
                                 .start_boundary_time(view_current_time)
                                 .0
                         }
-                    } - time_offset) as f64,
-                    (match view_time_range.end {
+                    }
+                    .saturating_sub(time_offset) as f64,
+                    match view_time_range.end {
                         re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
                             timeline_range.max.as_i64()
                         }
                         _ => view_time_range.end.end_boundary_time(view_current_time).0,
-                    } - time_offset) as f64,
+                    }
+                    .saturating_sub(time_offset) as f64,
                 ))
             };
 
@@ -828,12 +817,13 @@ impl ViewClass for TimeSeriesView {
                         re_sdk_types::blueprint::components::TimeRange(TimeRange {
                             start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.start() as i64 + time_offset,
+                                    (new_x_range_rounded.start() as i64)
+                                        .saturating_add(time_offset),
                                 ),
                             ),
                             end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                                 re_sdk_types::datatypes::TimeInt(
-                                    new_x_range_rounded.end() as i64 + time_offset,
+                                    (new_x_range_rounded.end() as i64).saturating_add(time_offset),
                                 ),
                             ),
                         });
@@ -874,6 +864,38 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
+
+fn scalar_mapping_selector(
+    reason_opt: Option<&VisualizableReason>,
+) -> Option<VisualizerComponentSource> {
+    let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
+        return None;
+    };
+
+    let target_component = Scalars::descriptor_scalars().component;
+
+    let mut first_native_semantic_match = None;
+    for (physical_component, match_kind) in components {
+        if first_native_semantic_match.is_none()
+            && *match_kind == re_viewer_context::DatatypeMatchKind::NativeSemantics
+        {
+            first_native_semantic_match = Some(*physical_component);
+        }
+        if first_native_semantic_match.is_some() && physical_component == &target_component {
+            // Perfect match, don't do any mapping.
+            return None;
+        }
+    }
+
+    first_native_semantic_match
+        .or_else(|| Some(components.first().0))
+        .map(
+            |source_component| VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: String::new(),
+            },
+        )
 }
 
 fn draw_time_cursor(
@@ -951,7 +973,7 @@ fn set_plot_visibility_from_store(
         plot_memory.hidden_items = plot_series_from_store
             .iter()
             .filter(|&series| !series.visible)
-            .map(|series| series.id)
+            .map(|series| series.id())
             .collect();
         plot_memory.store(egui_ctx, plot_id);
     }
@@ -973,15 +995,17 @@ fn update_series_visibility_overrides_from_plot(
     let hidden_items = plot_memory.hidden_items;
 
     // Determine which series have changed visibility state.
-    let mut per_entity_series_new_visibility_state: HashMap<EntityPath, SmallVec<[bool; 1]>> =
-        HashMap::default();
+    let mut per_visualizer_inst_id_series_new_visibility_state: HashMap<
+        VisualizerInstructionId,
+        SmallVec<[bool; 1]>,
+    > = HashMap::default();
     let mut series_to_update = Vec::new();
     for series in all_plot_series {
-        let entity_visibility_flags = per_entity_series_new_visibility_state
-            .entry(series.instance_path.entity_path.clone())
+        let entity_visibility_flags = per_visualizer_inst_id_series_new_visibility_state
+            .entry(series.visualizer_instruction_id.clone())
             .or_default();
 
-        let visible_new = !hidden_items.contains(&series.id);
+        let visible_new = !hidden_items.contains(&series.id());
 
         let instance = series.instance_path.instance;
         let index = instance.specific_index().map_or(0, |i| i.get() as usize);
@@ -996,8 +1020,8 @@ fn update_series_visibility_overrides_from_plot(
     }
 
     for series in series_to_update {
-        let Some(visibility_state) =
-            per_entity_series_new_visibility_state.remove(&series.instance_path.entity_path)
+        let Some(visibility_state) = per_visualizer_inst_id_series_new_visibility_state
+            .remove(&series.visualizer_instruction_id)
         else {
             continue;
         };
@@ -1006,7 +1030,6 @@ fn update_series_visibility_overrides_from_plot(
             continue;
         };
 
-        let override_path = result.override_base_path();
         let descriptor = match series.kind {
             PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
             PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),
@@ -1020,17 +1043,30 @@ fn update_series_visibility_overrides_from_plot(
             }
         };
 
-        let component_array = visibility_state
-            .into_iter()
-            .map(SeriesVisible::from)
-            .collect::<Vec<_>>();
-
-        if let Some(serialized_component_batch) =
-            descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+        if let Some(visualizer_instruction) = result
+            .visualizer_instructions
+            .iter()
+            .find(|instr| instr.id == series.visualizer_instruction_id)
         {
-            ctx.save_serialized_blueprint_component(
-                override_path.clone(),
-                serialized_component_batch,
+            let override_path = &visualizer_instruction.override_path;
+
+            let component_array = visibility_state
+                .into_iter()
+                .map(SeriesVisible::from)
+                .collect::<Vec<_>>();
+
+            if let Some(serialized_component_batch) =
+                descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+            {
+                ctx.save_serialized_blueprint_component(
+                    override_path.clone(),
+                    serialized_component_batch,
+                );
+            }
+        } else {
+            re_log::warn_once!(
+                "Could not find visualizer instruction for series at instance path `{}`",
+                series.instance_path
             );
         }
     }
@@ -1061,7 +1097,7 @@ fn add_series_to_plot(
                         *scalar_range.end_mut() = p.1;
                     }
 
-                    [(p.0 - time_offset) as _, p.1]
+                    [(p.0.saturating_sub(time_offset)) as _, p.1]
                 })
                 .collect::<Vec<_>>()
         } else {
@@ -1071,7 +1107,7 @@ fn add_series_to_plot(
             series
                 .points
                 .first()
-                .map(|p| vec![[(p.0 - time_offset) as _, p.1]])
+                .map(|p| vec![[(p.0.saturating_sub(time_offset)) as _, p.1]])
                 .unwrap_or_default()
         };
 
@@ -1088,7 +1124,7 @@ fn add_series_to_plot(
                     .color(color)
                     .width(2.0 * series.radius_ui)
                     .highlight(highlight)
-                    .id(series.id),
+                    .id(series.id()),
             ),
             PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                 Points::new(&series.label, points)
@@ -1096,7 +1132,7 @@ fn add_series_to_plot(
                     .radius(series.radius_ui)
                     .shape(scatter_attrs.marker.into())
                     .highlight(highlight)
-                    .id(series.id),
+                    .id(series.id()),
             ),
             // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}

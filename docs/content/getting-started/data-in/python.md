@@ -121,7 +121,7 @@ archetypes altogether.
 
 For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
 
-Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral) in this example are vanilla `numpy` arrays.
+Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral?speculative-link) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
 ### Entities & hierarchies
@@ -165,7 +165,7 @@ rr.log(
 )
 ```
 
-Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.util.bounce_lerp),
+Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.util.bounce_lerp?speculative-link),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
 <picture>
@@ -286,7 +286,7 @@ Rerun offers several solutions for such use cases.
 
 ### Logging data over the network
 
-At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `[::]:9876` by default, which accepts both IPv4 and IPv6 connections).
+At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `0.0.0.0:9876` by default).
 
 On the logger side, simply use [`rr.connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc) instead of [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) to start sending the data over to any gRPC address.
 

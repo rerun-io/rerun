@@ -55,6 +55,7 @@ re_types_core.workspace = true
 
 # External:
 arrow = { workspace = true, features = ["ipc"] }
+crossbeam.workspace = true
 itertools.workspace = true
 lz4_flex = { workspace = true }
 parking_lot.workspace = true

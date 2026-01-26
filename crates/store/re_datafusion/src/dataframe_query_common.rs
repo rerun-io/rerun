@@ -1,9 +1,11 @@
+use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
+use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::HashSet;
 use arrow::array::{
     Array as _, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
     StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt32Array, new_null_array,
+    TimestampSecondArray, UInt32Array,
 };
 use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
@@ -14,7 +16,6 @@ use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusio
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
-use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
@@ -39,7 +40,8 @@ use std::sync::Arc;
 /// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
 /// the pitfall of executing a single row at a time, but we will likely want to consider
 /// at some point moving to a dynamic sizing.
-const DEFAULT_BATCH_SIZE: usize = 2048;
+const DEFAULT_BATCH_BYTES: u64 = 200 * 1024 * 1024;
+const DEFAULT_BATCH_ROWS: usize = 2048;
 
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider {
@@ -286,8 +288,14 @@ impl TableProvider for DataframeQueryTableProvider {
         )
         .map(Arc::new)
         .map(|exec| {
-            Arc::new(CoalesceBatchesExec::new(exec, DEFAULT_BATCH_SIZE).with_fetch(limit))
-                as Arc<dyn ExecutionPlan>
+            Arc::new(SizedCoalesceBatchesExec::new(
+                exec,
+                CoalescerOptions {
+                    target_batch_rows: DEFAULT_BATCH_ROWS,
+                    target_batch_bytes: DEFAULT_BATCH_BYTES,
+                    max_rows: limit,
+                },
+            )) as Arc<dyn ExecutionPlan>
         })
     }
 
@@ -390,37 +398,6 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
     let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
     fields.extend(schema.fields().iter().map(|f| (**f).clone()));
     Schema::new_with_metadata(fields, schema.metadata.clone())
-}
-
-#[tracing::instrument(level = "info", skip_all)]
-pub fn align_record_batch_to_schema(
-    batch: &RecordBatch,
-    target_schema: &Arc<Schema>,
-) -> Result<RecordBatch, DataFusionError> {
-    let num_rows = batch.num_rows();
-
-    let mut aligned_columns = Vec::with_capacity(target_schema.fields().len());
-
-    for field in target_schema.fields() {
-        if let Some((idx, _)) = batch.schema().column_with_name(field.name()) {
-            let batch_data_type = batch.column(idx).data_type();
-            if batch_data_type == &DataType::Null && field.data_type() != &DataType::Null {
-                // Chunk store may output a null array of null data type
-                aligned_columns.push(new_null_array(field.data_type(), num_rows));
-            } else {
-                aligned_columns.push(batch.column(idx).clone());
-            }
-        } else {
-            // Fill with nulls of the right data type
-            aligned_columns.push(new_null_array(field.data_type(), num_rows));
-        }
-    }
-
-    Ok(RecordBatch::try_new_with_options(
-        target_schema.clone(),
-        aligned_columns,
-        &RecordBatchOptions::new().with_row_count(Some(num_rows)),
-    )?)
 }
 
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
+use re_sdk::EntityPath;
 use re_sdk::external::re_data_loader::UrdfTree;
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
 
@@ -13,9 +14,9 @@ pub struct PyUrdfTree(UrdfTree);
 impl PyUrdfTree {
     /// Load the URDF found at `path`.
     #[staticmethod]
-    #[pyo3(text_signature = "(path)")]
-    pub fn from_file_path(path: PathBuf) -> PyResult<Self> {
-        UrdfTree::from_file_path(path)
+    #[pyo3(text_signature = "(path, entity_path_prefix=None)")]
+    pub fn from_file_path(path: PathBuf, entity_path_prefix: Option<String>) -> PyResult<Self> {
+        UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
             .map(Self)
             .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
     }
@@ -54,16 +55,24 @@ impl PyUrdfTree {
         self.0.get_link(link_name).cloned().map(PyUrdfLink)
     }
 
-    /// Returns the entity path assigned to the given link.
-    pub fn get_link_path(&self, link: &PyUrdfLink) -> String {
-        self.0.get_link_path(&link.0).to_string()
+    /// Returns the entity paths for all visual geometries of the given link, if any.
+    pub fn get_visual_geometry_paths(&self, link: &PyUrdfLink) -> Vec<String> {
+        self.0
+            .get_visual_geometries(&link.0)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(entity_path, _)| entity_path.to_string())
+            .collect()
     }
 
-    /// Returns the entity path for the named link, if it exists.
-    pub fn get_link_path_by_name(&self, link_name: &str) -> Option<String> {
+    /// Returns the entity paths for all collision geometries of the given link, if any.
+    pub fn get_collision_geometry_paths(&self, link: &PyUrdfLink) -> Vec<String> {
         self.0
-            .get_link(link_name)
-            .map(|link| self.0.get_link_path(link).to_string())
+            .get_collision_geometries(&link.0)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(entity_path, _)| entity_path.to_string())
+            .collect()
     }
 
     fn __repr__(&self) -> String {

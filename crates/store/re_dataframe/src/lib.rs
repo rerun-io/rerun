@@ -2,6 +2,7 @@
 
 mod engine;
 mod query;
+pub mod utils;
 
 pub use self::engine::QueryEngine;
 #[doc(no_inline)]

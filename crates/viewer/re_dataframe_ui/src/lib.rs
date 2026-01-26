@@ -10,6 +10,7 @@ mod header_tooltip;
 mod re_table;
 pub mod re_table_utils;
 mod requested_object;
+mod streaming_cache;
 mod table_blueprint;
 mod table_selection;
 
@@ -22,6 +23,24 @@ pub use self::filters::{
 };
 pub use self::header_tooltip::column_header_tooltip_ui;
 pub use self::requested_object::RequestedObject;
+pub use self::streaming_cache::{CacheState, StreamingCacheTableProvider};
 pub use self::table_blueprint::{
     ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
 };
+
+/// Create a blocking channel on native, and an unbounded channel on web.
+fn create_channel<T>(
+    size: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            _ = size;
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        } else {
+            crossbeam::channel::bounded(size)
+        }
+    }
+}

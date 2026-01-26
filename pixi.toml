@@ -290,7 +290,10 @@ py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format {{ f
 ] }
 py-fmt-check = "uv run ruff check . && uv run ruff format --check ."
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
+py-lint-non-sdk = { depends-on = [
+  "py-sync-examples", # these ensure that the .venv is in the right state for type checking examples and snippets
+  "py-sync-snippets",
+], cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
 # MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.
@@ -316,7 +319,15 @@ build-examples = "uv run cargo run --locked -p re_dev_tools -- build-examples"
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
 # Update the results of `insta` and `kittest` snapshot regression tests
-rs-update-snapshot-tests = "INSTA_FORCE_UPDATE=1 UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet"
+rs-update-snapshot-tests = "INSTA_UPDATE=always UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet --no-fail-fast"
+
+# Update the Python-based snapshot tests
+py-update-snapshot-tests = { cmd = "uv run pytest --inline-snapshot=fix", depends-on = [
+  "py-build",
+] }
+
+# Update all snapshot tests
+update-snapshot-tests = { depends-on = ["rs-update-snapshot-tests", "py-update-snapshot-tests"] }
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
@@ -552,6 +563,7 @@ cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constraine
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.1.0,<13" # For `upload_image.py`
+py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
@@ -566,7 +578,7 @@ buf = "1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
+llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64

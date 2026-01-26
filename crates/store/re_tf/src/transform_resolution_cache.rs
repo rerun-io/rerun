@@ -749,7 +749,8 @@ impl TreeTransformsForChildFrame {
                             }
 
                             Err(err) => {
-                                re_log::error_once!("Failed to query transformations: {err}");
+                                // Only warn since we can still work just fine if a transform didn't work.
+                                re_log::warn_once!("Failed to query transformations: {err}");
                                 CachedTransformValue::Cleared
                             }
                         };
@@ -807,7 +808,8 @@ impl TreeTransformsForChildFrame {
                             }
 
                             Err(err) => {
-                                re_log::error_once!("Failed to query transformations: {err}");
+                                // Only warn since we can still work just fine if a transform didn't work.
+                                re_log::warn_once!("Failed to query transformations: {err}");
                                 CachedTransformValue::Cleared
                             }
                         };
@@ -979,23 +981,29 @@ impl TransformResolutionCache {
         // Instead, we should do so lazily when results for a timeline are queried.
 
         for event in events {
-            if event.kind == re_chunk_store::ChunkStoreDiffKind::Addition {
-                // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
-                self.frame_id_registry
-                    .register_all_frames_in_chunk(&event.chunk_before_processing);
-            }
+            // This doesn't maintain a collection of chunks that needs to be kept in sync 1:1 with
+            // the store, rather it just keeps track of what entities have what properties, and for
+            // that a delta chunk is all we need.
+            let Some(delta_chunk) = event.delta_chunk() else {
+                continue; // virtual event, we don't care
+            };
 
-            let aspects = TransformAspect::transform_aspects_of(&event.chunk_before_processing);
+            // Since entity paths lead to implicit frames, we have to prime our lookup table
+            // with them even if this chunk doesn't have transform data.
+            self.frame_id_registry
+                .register_all_frames_in_chunk(delta_chunk);
+
+            let aspects = TransformAspect::transform_aspects_of(delta_chunk);
             if aspects.is_empty() {
                 continue;
             }
 
-            if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                self.remove_chunk(&event.chunk_before_processing, aspects);
-            } else if event.diff.chunk_before_processing.is_static() {
-                self.add_static_chunk(&event.chunk_before_processing, aspects);
+            if event.is_deletion() {
+                self.remove_chunk(delta_chunk, aspects);
+            } else if delta_chunk.is_static() {
+                self.add_static_chunk(delta_chunk, aspects);
             } else {
-                self.add_temporal_chunk(&event.chunk_before_processing, aspects);
+                self.add_temporal_chunk(delta_chunk, aspects);
             }
         }
     }

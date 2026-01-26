@@ -200,11 +200,11 @@ impl VisualizerSystem for Arrows2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_vector_chunks) =
-                    results.get_required_chunks(Arrows2D::descriptor_vectors().component)
-                else {
+                let all_vector_chunks =
+                    results.get_required_chunk(Arrows2D::descriptor_vectors().component);
+                if all_vector_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let num_vectors = all_vector_chunks
                     .iter()

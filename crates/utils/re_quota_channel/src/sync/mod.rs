@@ -20,7 +20,9 @@ pub use select::{Select, SelectTimeoutError, SelectedOperation, TrySelectError};
 pub use crate::SizedMessage;
 pub use crate::try_send_error::TrySendError;
 
-struct SharedState {
+struct ActiveSenderToken;
+
+struct Shared {
     /// Debug name for logging.
     debug_name: String,
 
@@ -31,14 +33,24 @@ struct SharedState {
     ///
     /// Used to ensure fair access to the channel among multiple senders,
     /// preventing starvation.
-    active_sender: FairMutex<()>,
+    active_sender: FairMutex<ActiveSenderToken>,
 
-    /// Protected by mutex for use with condvar.
-    bytes_in_flight: Mutex<u64>,
+    /// To be used together with [`Self::state_changed`].
+    state: Mutex<Locked>,
 
-    /// Signaled when bytes decrease (i.e., when a message is received).
+    /// Signaled when [`Self::state`] changes.
     #[cfg(not(target_arch = "wasm32"))]
-    less_bytes_in_flight: Condvar,
+    state_changed: Condvar,
+}
+
+struct Locked {
+    /// Total number of bytes currently on the wire.
+    bytes_in_flight: u64,
+
+    /// Number of active receivers. When this reaches zero, blocked senders
+    /// will wake up and return an error.
+    #[cfg(not(target_arch = "wasm32"))]
+    num_receivers: usize,
 }
 
 // ----------------------------------------------------------------------------
@@ -48,7 +60,7 @@ struct SharedState {
 /// Use [`Sender::send`] to send messages with their byte size.
 pub struct Sender<T> {
     tx: crossbeam::channel::Sender<SizedMessage<T>>,
-    shared: Arc<SharedState>,
+    shared: Arc<Shared>,
 }
 
 impl<T> Clone for Sender<T> {
@@ -96,28 +108,57 @@ impl<T> Sender<T> {
     // Blocking version for native
     #[cfg(not(target_arch = "wasm32"))]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
+        use std::time::{Duration, Instant};
+
+        // Make sure we are the only sender trying to send right now:
         let _sender_lock = self.shared.active_sender.lock();
 
+        let debug_name = &self.shared.debug_name;
+
+        let start = Instant::now();
+
         let capacity = self.shared.capacity_bytes;
+
+        /// Warn if we block for longer than this
+        const WARN_CUTOFF_SECS: u64 = 5;
+        const WARN_CUTOFF: Duration = Duration::from_secs(5);
 
         if size_bytes <= capacity {
             // Normal case: wait until we have room
 
             {
-                let mut bytes_in_flight = self.shared.bytes_in_flight.lock();
+                let mut state = self.shared.state.lock();
 
-                if capacity < *bytes_in_flight + size_bytes {
+                if capacity < state.bytes_in_flight + size_bytes {
                     re_log::debug_once!(
-                        "{}: Channel byte budget ({}) exceeded. Blocking until space is available…",
-                        self.shared.debug_name,
+                        "{debug_name}: Channel byte budget ({}) exceeded. Blocking until space is available…",
                         re_format::format_bytes(capacity as f64),
                     );
-                    while capacity < *bytes_in_flight + size_bytes {
-                        self.shared.less_bytes_in_flight.wait(&mut bytes_in_flight);
+
+                    let mut warned = false;
+
+                    while capacity < state.bytes_in_flight + size_bytes {
+                        // Check if all receivers have been dropped
+                        if state.num_receivers == 0 {
+                            return Err(SendError(msg));
+                        }
+
+                        if !warned && WARN_CUTOFF < start.elapsed() {
+                            re_log::warn!(
+                                "{debug_name}: Sender has been blocked for over {WARN_CUTOFF_SECS} seconds waiting for space in channel"
+                            );
+                            warned = true;
+                        }
+
+                        if warned {
+                            self.shared.state_changed.wait(&mut state);
+                        } else {
+                            self.shared.state_changed.wait_for(&mut state, WARN_CUTOFF);
+                        }
                     }
                 }
 
-                *bytes_in_flight += size_bytes;
+                state.bytes_in_flight += size_bytes;
             }
 
             self.tx
@@ -126,22 +167,39 @@ impl<T> Sender<T> {
         } else {
             // Special case: message is larger than total capacity
             re_log::debug_once!(
-                "{}: Message size ({}) exceeds channel capacity ({}). \
-                 Waiting for channel to empty before sending.",
-                self.shared.debug_name,
+                "{debug_name}: Message size ({}) exceeds channel capacity ({}). Waiting for channel to empty before sending.",
                 re_format::format_bytes(size_bytes as f64),
                 re_format::format_bytes(capacity as f64),
             );
 
             {
                 // Wait until the channel is completely empty
-                let mut bytes_in_flight = self.shared.bytes_in_flight.lock();
-                while 0 < *bytes_in_flight {
-                    self.shared.less_bytes_in_flight.wait(&mut bytes_in_flight);
+                let mut state = self.shared.state.lock();
+
+                let mut warned = false;
+
+                while 0 < state.bytes_in_flight {
+                    // Check if all receivers have been dropped
+                    if state.num_receivers == 0 {
+                        return Err(SendError(msg));
+                    }
+
+                    if !warned && WARN_CUTOFF < start.elapsed() {
+                        re_log::warn!(
+                            "{debug_name}: Sender has been blocked for over {WARN_CUTOFF_SECS} seconds waiting for channel to empty",
+                        );
+                        warned = true;
+                    }
+
+                    if warned {
+                        self.shared.state_changed.wait(&mut state);
+                    } else {
+                        self.shared.state_changed.wait_for(&mut state, WARN_CUTOFF);
+                    }
                 }
 
                 // Now send (we'll temporarily exceed capacity, but that's expected)
-                *bytes_in_flight += size_bytes;
+                state.bytes_in_flight += size_bytes;
             }
 
             self.tx
@@ -156,8 +214,8 @@ impl<T> Sender<T> {
         let capacity = self.shared.capacity_bytes;
 
         {
-            let mut current = self.shared.bytes_in_flight.lock();
-            let new_total = *current + size_bytes;
+            let mut state = self.shared.state.lock();
+            let new_total = state.bytes_in_flight + size_bytes;
 
             if capacity < new_total {
                 re_log::debug_once!(
@@ -168,7 +226,7 @@ impl<T> Sender<T> {
                 );
             }
 
-            *current = new_total;
+            state.bytes_in_flight = new_total;
         }
 
         self.tx
@@ -185,16 +243,17 @@ impl<T> Sender<T> {
         let capacity = self.shared.capacity_bytes;
 
         {
-            let mut current = self.shared.bytes_in_flight.lock();
+            let mut state = self.shared.state.lock();
 
             // Check if we have room (allow oversized messages if channel is empty)
-            if capacity < *current + size_bytes && 0 < *current {
+            if capacity < state.bytes_in_flight + size_bytes && 0 < state.bytes_in_flight {
                 return Err(TrySendError::Full(msg));
             }
 
-            *current += size_bytes;
+            state.bytes_in_flight += size_bytes;
         }
 
+        // send is guaranteed not to block, because we use an unbounded channel
         self.tx
             .send(SizedMessage { msg, size_bytes })
             .map_err(|SendError(SizedMessage { msg, .. })| TrySendError::Disconnected(msg))
@@ -221,7 +280,7 @@ impl<T> Sender<T> {
     /// Returns the current byte usage in the channel.
     #[inline]
     pub fn current_bytes(&self) -> u64 {
-        *self.shared.bytes_in_flight.lock()
+        self.shared.state.lock().bytes_in_flight
     }
 
     /// Returns the byte capacity of the channel.
@@ -234,10 +293,42 @@ impl<T> Sender<T> {
 // ----------------------------------------------------------------------------
 
 /// The receiving end of a byte-bounded channel.
-#[derive(Clone)]
 pub struct Receiver<T> {
     rx: crossbeam::channel::Receiver<SizedMessage<T>>,
-    shared: Arc<SharedState>,
+    shared: Arc<Shared>,
+}
+
+impl<T> Clone for Receiver<T> {
+    fn clone(&self) -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.shared.state.lock().num_receivers += 1;
+        }
+
+        Self {
+            rx: self.rx.clone(),
+            shared: Arc::clone(&self.shared),
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> Drop for Receiver<T> {
+    fn drop(&mut self) {
+        // Decrement receiver count and wake up any blocked senders if this was the last receiver
+        let num_receivers_left = {
+            let mut state = self.shared.state.lock();
+            state.num_receivers -= 1;
+            state.num_receivers
+        };
+        if num_receivers_left == 0 {
+            self.shared.state_changed.notify_all();
+        }
+        re_log::debug!(
+            "{}: Receiver dropped. {num_receivers_left} receivers remaining",
+            self.shared.debug_name,
+        );
+    }
 }
 
 impl<T> Receiver<T> {
@@ -285,7 +376,7 @@ impl<T> Receiver<T> {
     /// Returns the current byte usage in the channel.
     #[inline]
     pub fn current_bytes(&self) -> u64 {
-        *self.shared.bytes_in_flight.lock()
+        self.shared.state.lock().bytes_in_flight
     }
 
     /// Returns the byte capacity of the channel.
@@ -314,13 +405,13 @@ impl<T> Receiver<T> {
     /// has been received, so that the byte count can be updated.
     pub fn manual_on_receive(&self, size_bytes: u64) {
         {
-            let mut current = self.shared.bytes_in_flight.lock();
-            *current = current.saturating_sub(size_bytes);
+            let mut state = self.shared.state.lock();
+            state.bytes_in_flight = state.bytes_in_flight.saturating_sub(size_bytes);
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            self.shared.less_bytes_in_flight.notify_all();
+            self.shared.state_changed.notify_all();
         }
     }
 
@@ -348,19 +439,26 @@ impl<T> Receiver<T> {
 ///   backpressure is applied. On native platforms, [`Sender::send`] will block
 ///   when this limit is reached. On `wasm32`, a warning is logged but sending continues.
 pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender<T>, Receiver<T>) {
+    // This crate adds its own byte-based bound/backpressure, so allow `unbounded` channels on native:
+    #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
     let (tx, rx) = crossbeam::channel::unbounded();
 
-    let shared = Arc::new(SharedState {
+    let shared = Arc::new(Shared {
         debug_name: debug_name.into(),
 
         capacity_bytes,
 
-        active_sender: FairMutex::new(()),
+        active_sender: FairMutex::new(ActiveSenderToken),
 
-        bytes_in_flight: Mutex::new(0),
+        state: Mutex::new(Locked {
+            bytes_in_flight: 0,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            num_receivers: 1,
+        }),
 
         #[cfg(not(target_arch = "wasm32"))]
-        less_bytes_in_flight: Condvar::new(),
+        state_changed: Condvar::new(),
     });
 
     let sender = Sender {
@@ -377,6 +475,8 @@ pub fn channel<T>(debug_name: impl Into<String>, capacity_bytes: u64) -> (Sender
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::disallowed_methods)] // It's only a test
+
     use super::*;
 
     #[test]
@@ -447,7 +547,6 @@ mod tests {
         // Spawn a thread that will try to send another message
         let tx_clone = tx.clone();
 
-        #[expect(clippy::disallowed_methods)] // It's only a test
         let handle = std::thread::spawn(move || {
             tx_clone.send_with_size(2, 80).unwrap(); // This should block
             send_completed_clone.store(true, Ordering::SeqCst);
@@ -487,5 +586,37 @@ mod tests {
         // try_iter on empty channel should yield no items
         let messages: Vec<u32> = rx.try_iter().collect();
         assert_eq!(messages, Vec::<u32>::new());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_send_returns_when_receiver_dropped() {
+        use std::time::Duration;
+
+        let (tx, rx) = channel::<u32>("test".to_owned(), 100);
+
+        // Fill up the channel
+        tx.send_with_size(1, 80).unwrap();
+
+        // Spawn a thread that will try to send another message (which should block)
+        let tx_clone = tx.clone();
+
+        let handle = std::thread::spawn(move || {
+            // This should block waiting for space, then return Err when receiver is dropped
+            tx_clone.send_with_size(2, 80)
+        });
+
+        // Give the thread time to start and block
+        std::thread::sleep(Duration::from_millis(50));
+
+        // The send should not have completed yet (it's blocked waiting for space)
+        assert!(!handle.is_finished());
+
+        // Drop the receiver - this should cause the blocked send to return
+        drop(rx);
+
+        let result = handle.join().unwrap();
+
+        assert!(matches!(result, Err(SendError(2))));
     }
 }

@@ -1,8 +1,8 @@
 use std::mem;
 use std::sync::Arc;
-use std::sync::mpsc::TryRecvError;
 
 use arrow::datatypes::{DataType, SchemaRef};
+use crossbeam::channel::{Receiver, TryRecvError};
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::execution::SendableRecordBatchStream;
 use datafusion::functions::expr_fn::concat;
@@ -203,11 +203,8 @@ impl DataFusionQuery {
     ///
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
-    fn execute_streaming(
-        self,
-        runtime: &AsyncRuntimeHandle,
-    ) -> std::sync::mpsc::Receiver<QueryEvent> {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1000);
+    fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
+        let (tx, rx) = crate::create_channel(1000);
         runtime.spawn_future(async move {
             if let Ok(stream) = self.batch_stream().await {
                 let schema = stream.schema();
@@ -228,14 +225,20 @@ impl DataFusionQuery {
                             if !sent_schemas {
                                 let sorbet_schema = batch.sorbet_schema().clone();
                                 let original_schema = Arc::clone(&schema);
-                                tx.send(QueryEvent::Schema {
-                                    original_schema,
-                                    sorbet_schema,
-                                })
-                                .ok();
+                                if tx
+                                    .send(QueryEvent::Schema {
+                                        original_schema,
+                                        sorbet_schema,
+                                    })
+                                    .is_err()
+                                {
+                                    return; // Receiver dropped, stop streaming
+                                }
                                 sent_schemas = true;
                             }
-                            tx.send(QueryEvent::Batch(batch)).ok();
+                            if tx.send(QueryEvent::Batch(batch)).is_err() {
+                                return; // Receiver dropped, stop streaming
+                            }
                         }
                         Err(err) => {
                             sent_error = true;
@@ -310,7 +313,7 @@ pub struct DataFusionAdapter {
 
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
-    pub rx: Arc<Mutex<std::sync::mpsc::Receiver<QueryEvent>>>,
+    pub rx: Arc<Mutex<Receiver<QueryEvent>>>,
 
     pub results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
 

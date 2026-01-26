@@ -131,11 +131,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_half_size_chunks) =
-                    results.get_required_chunks(Boxes3D::descriptor_half_sizes().component)
-                else {
+                let all_half_size_chunks =
+                    results.get_required_chunk(Boxes3D::descriptor_half_sizes().component);
+                if all_half_size_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()

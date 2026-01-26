@@ -190,6 +190,8 @@ pub struct RrdManifest {
 
 impl re_byte_size::SizeBytes for RrdManifest {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             store_id,
             sorbet_schema,
@@ -220,6 +222,11 @@ pub struct RrdManifestTemporalMapEntry {
 impl re_byte_size::SizeBytes for RrdManifestTemporalMapEntry {
     fn heap_size_bytes(&self) -> u64 {
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 

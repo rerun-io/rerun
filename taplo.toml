@@ -1,16 +1,6 @@
 # https://github.com/tamasfe/taplo
 
-# As of writing, taplo is really slow to gather files, so we help it out a bit.
-include = [
-  "*.toml",
-  "crates/**/*.toml",
-  "examples/rust/**/*.toml",
-  "examples/python/**/*.toml",
-  "rerun_notebook/*.toml",
-  "rerun_py/*.toml",
-  "tests/rust/**/*.toml",
-  "docs/snippets/**/*.toml",
-]
+exclude = ["**/.pixi/**/*.toml"]
 
 [formatting]
 align_comments = false # causes unnecessary churn

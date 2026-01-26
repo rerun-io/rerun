@@ -1,16 +1,15 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::mpsc::Sender;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
+use crossbeam::channel::Sender;
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
 use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
 use re_sdk_types::datatypes::Vec3D;
 use re_sdk_types::external::glam;
-use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
+use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor};
 use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -120,9 +119,41 @@ impl DataLoader for UrdfDataLoader {
     }
 }
 
+/// Helper struct containing the (root) entity paths where the different parts of the URDF model are logged.
+struct UrdfLogPaths {
+    /// The root entity path of the robot.
+    pub root: EntityPath,
+
+    /// We separate visual and collision geometries under different paths below `root_path`.
+    /// This makes it for example easier to toggle the visibility of all visual or collision geometries at once.
+    pub visual_root: EntityPath,
+    pub collision_root: EntityPath,
+
+    // We log all default transforms to the same entity path because we use Transform3D with frame names.
+    pub transforms: EntityPath,
+}
+
+impl UrdfLogPaths {
+    pub fn new(robot_name: &str, entity_path_prefix: Option<EntityPath>) -> Self {
+        let root = entity_path_prefix
+            .map(|prefix| prefix / EntityPath::from_single_string(robot_name))
+            .unwrap_or_else(|| EntityPath::from_single_string(robot_name));
+        let visual_root = root.clone() / EntityPathPart::new("visual_geometries");
+        let collision_root = root.clone() / EntityPathPart::new("collision_geometries");
+        let transforms = root.clone() / EntityPathPart::new("joint_transforms");
+
+        Self {
+            root,
+            visual_root,
+            collision_root,
+            transforms,
+        }
+    }
+}
+
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 ///
-/// Can be used to find the [`EntityPath`] of any link or joint in the URDF.
+/// Can be used to inspect any link or joint in the URDF.
 pub struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
@@ -135,20 +166,29 @@ pub struct UrdfTree {
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
     materials: HashMap<String, Material>,
+
+    log_paths: UrdfLogPaths,
 }
 
 impl UrdfTree {
     /// Given a path to an `.urdf` file, load it.
-    pub fn from_file_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+    pub fn from_file_path<P: AsRef<Path>>(
+        path: P,
+        entity_path_prefix: Option<EntityPath>,
+    ) -> anyhow::Result<Self> {
         let path = path.as_ref();
         let robot = urdf_rs::read_file(path)?;
         let urdf_dir = path.parent().map(|p| p.to_path_buf());
-        Self::new(robot, urdf_dir)
+        Self::new(robot, urdf_dir, entity_path_prefix)
     }
 
     /// The `urdf_dir` is the directory containing the `.urdf` file,
     /// which can later be used to resolve relative paths to mesh files.
-    pub fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    pub fn new(
+        robot: Robot,
+        urdf_dir: Option<PathBuf>,
+        entity_path_prefix: Option<EntityPath>,
+    ) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
             links,
@@ -211,6 +251,8 @@ impl UrdfTree {
             }
         }
 
+        let log_paths = UrdfLogPaths::new(&name, entity_path_prefix);
+
         Ok(Self {
             urdf_dir,
             name,
@@ -219,6 +261,7 @@ impl UrdfTree {
             links,
             children,
             materials,
+            log_paths,
         })
     }
 
@@ -245,26 +288,67 @@ impl UrdfTree {
         self.links.get(link_name)
     }
 
-    fn get_joint_path(&self, joint: &Joint) -> EntityPath {
-        let parent_path = self.get_link_path_by_name(&joint.parent.link);
-        parent_path / EntityPathPart::new(&joint.name)
-    }
-
-    fn get_link_path_by_name(&self, link_name: &str) -> EntityPath {
-        if let Some(parent_joint) = self.get_parent_of_link(link_name) {
-            self.get_joint_path(parent_joint) / EntityPathPart::new(link_name)
-        } else {
-            format!("{}/{link_name}", self.name).into()
+    /// Get the visual geometries of a link and their entity paths, if any.
+    pub fn get_visual_geometries(
+        &self,
+        link: &Link,
+    ) -> Option<Vec<(EntityPath, &urdf_rs::Visual)>> {
+        let link = self.links.get(&link.name)?;
+        if link.visual.is_empty() {
+            return None;
         }
+
+        // The base path for all visual geometries of this link.
+        // We use flat paths under `visual_root` since link names have to be unique and to avoid deep nesting.
+        let visual_base_path_for_link =
+            self.log_paths.visual_root.clone() / EntityPathPart::new(&link.name);
+
+        // Collect all the link's visual geometries and build their entity paths.
+        link.visual
+            .iter()
+            .enumerate()
+            .map(|(i, visual)| {
+                let visual_name = visual.name.clone().unwrap_or_else(|| format!("visual_{i}"));
+                (
+                    visual_base_path_for_link.clone() / EntityPathPart::new(visual_name),
+                    visual,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into()
     }
 
-    pub fn get_link_path(&self, link: &Link) -> EntityPath {
-        self.get_link_path_by_name(&link.name)
-    }
+    /// Get the collision geometries of a link and their entity paths, if any.
+    pub fn get_collision_geometries(
+        &self,
+        link: &Link,
+    ) -> Option<Vec<(EntityPath, &urdf_rs::Collision)>> {
+        let link = self.links.get(&link.name)?;
+        if link.collision.is_empty() {
+            return None;
+        }
 
-    /// Find the parent join of a link, if it exists.
-    fn get_parent_of_link(&self, link_name: &str) -> Option<&Joint> {
-        self.joints.iter().find(|j| j.child.link == link_name)
+        // The base path for all collision geometries of this link.
+        // We use flat paths under `collision_root` since link names have to be unique and to avoid deep nesting.
+        let collision_base_path_for_link =
+            self.log_paths.collision_root.clone() / EntityPathPart::new(&link.name);
+
+        // Collect all the link's collision geometries and build their entity paths.
+        link.collision
+            .iter()
+            .enumerate()
+            .map(|(i, collision)| {
+                let collision_name = collision
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| format!("collision_{i}"));
+                (
+                    collision_base_path_for_link.clone() / EntityPathPart::new(collision_name),
+                    collision,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into()
     }
 
     pub fn get_joint_child(&self, joint: &Joint) -> &Link {
@@ -287,29 +371,24 @@ fn log_robot(
 ) -> anyhow::Result<()> {
     let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
 
-    let urdf_tree = UrdfTree::new(robot, urdf_dir).with_context(|| "Failed to build URDF tree!")?;
-    let entity_path = entity_path_prefix
-        .clone()
-        .map(|prefix| prefix / EntityPath::from_single_string(urdf_tree.name.clone()))
-        .unwrap_or_else(|| EntityPath::from_single_string(urdf_tree.name.clone()));
+    let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.clone())
+        .with_context(|| "Failed to build URDF tree!")?;
 
     // The robot's root coordinate frame_id.
     send_archetype(
         tx,
         store_id,
-        entity_path.clone(),
+        urdf_tree.log_paths.root.clone(),
         timepoint,
         &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
     )?;
 
-    walk_tree(
-        &urdf_tree,
-        tx,
-        store_id,
-        &entity_path,
-        &urdf_tree.root.name,
-        timepoint,
-    )?;
+    let transforms = walk_tree(&urdf_tree, tx, store_id, timepoint, &urdf_tree.root.name)?;
+
+    // Send all transforms as rows in a single chunk.
+    if !transforms.is_empty() {
+        send_static_transforms_batch(tx, store_id, &urdf_tree.log_paths.transforms, &transforms)?;
+    }
 
     Ok(())
 }
@@ -318,127 +397,70 @@ fn walk_tree(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    parent_path: &EntityPath,
-    link_name: &str,
     timepoint: &TimePoint,
-) -> anyhow::Result<()> {
+    link_name: &str,
+) -> anyhow::Result<Vec<Transform3D>> {
     let link = urdf_tree
         .links
         .get(link_name)
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     debug_assert_eq!(link_name, link.name);
-    let link_path = parent_path / EntityPathPart::new(link_name);
 
-    log_link(urdf_tree, tx, store_id, link, &link_path, timepoint)?;
+    log_link(urdf_tree, tx, store_id, timepoint, link)?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
-        return Ok(());
+        return Ok(Vec::new());
     };
 
+    let mut joint_transforms_for_link = Vec::new();
     for joint in joints {
-        let joint_path = &link_path / EntityPathPart::new(&joint.name);
-        log_joint(tx, store_id, &joint_path, joint, timepoint)?;
+        joint_transforms_for_link.push(get_joint_transform(joint));
 
         // Recurse
-        walk_tree(
-            urdf_tree,
-            tx,
-            store_id,
-            &joint_path,
-            &joint.child.link,
-            timepoint,
-        )?;
+        let mut child_transforms =
+            walk_tree(urdf_tree, tx, store_id, timepoint, &joint.child.link)?;
+        joint_transforms_for_link.append(&mut child_transforms);
     }
 
-    Ok(())
+    Ok(joint_transforms_for_link)
 }
 
-fn log_joint(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
-    joint_path: &EntityPath,
-    joint: &Joint,
-    timepoint: &TimePoint,
-) -> anyhow::Result<()> {
+fn get_joint_transform(joint: &Joint) -> Transform3D {
     let Joint {
         name: _,
-        joint_type,
+        joint_type: _,
         origin,
         parent,
         child,
-        axis,
-        limit,
-        calibration,
-        dynamics,
-        mimic,
-        safety_controller,
+        axis: _,
+        limit: _,
+        calibration: _,
+        dynamics: _,
+        mimic: _,
+        safety_controller: _,
     } = joint;
 
-    // A joint's own coordinate frame is that of its parent link.
-    send_archetype(
-        tx,
-        store_id,
-        joint_path.clone(),
-        timepoint,
-        &CoordinateFrame::update_fields().with_frame(parent.link.clone()),
-    )?;
-    // Send the joint origin, i.e. the default transform from parent link to child link.
-    send_transform(
-        tx,
-        store_id,
-        joint_path.clone(),
-        origin,
-        timepoint,
-        parent.link.clone(),
-        child.link.clone(),
-    )?;
+    transform_from_pose(origin, parent.link.clone(), child.link.clone())
+}
 
-    log_debug_format(
-        tx,
-        store_id,
-        joint_path.clone(),
-        "joint_type",
-        joint_type,
-        timepoint,
-    )?;
-    log_debug_format(tx, store_id, joint_path.clone(), "axis", axis, timepoint)?;
-    log_debug_format(tx, store_id, joint_path.clone(), "limit", limit, timepoint)?;
-    if let Some(calibration) = calibration {
-        log_debug_format(
-            tx,
-            store_id,
-            joint_path.clone(),
-            "calibration",
-            calibration,
-            timepoint,
-        )?;
-    }
-    if let Some(dynamics) = dynamics {
-        log_debug_format(
-            tx,
-            store_id,
-            joint_path.clone(),
-            "dynamics",
-            dynamics,
-            timepoint,
-        )?;
-    }
-    if let Some(mimic) = mimic {
-        log_debug_format(tx, store_id, joint_path.clone(), "mimic", mimic, timepoint)?;
-    }
-    if let Some(safety_controller) = safety_controller {
-        log_debug_format(
-            tx,
-            store_id,
-            joint_path.clone(),
-            "safety_controller",
-            &safety_controller,
-            timepoint,
-        )?;
+/// Send a batch of static transforms as a single chunk.
+///
+/// We always do this statically for URDF, because this allows users to override them later
+/// on any other transform entity of their choice.
+fn send_static_transforms_batch(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    transforms_path: &EntityPath,
+    transforms: &[Transform3D],
+) -> anyhow::Result<()> {
+    let mut chunk = ChunkBuilder::new(ChunkId::new(), transforms_path.clone());
+
+    for transform in transforms {
+        chunk = chunk.with_archetype(RowId::new(), TimePoint::STATIC, transform);
     }
 
-    Ok(())
+    send_chunk_builder(tx, store_id, chunk)
 }
 
 fn transform_from_pose(
@@ -471,24 +493,6 @@ fn instance_poses_from_pose(origin: &urdf_rs::Pose, scale: Option<Vec3D>) -> Ins
     poses
 }
 
-fn send_transform(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
-    entity_path: EntityPath,
-    origin: &urdf_rs::Pose,
-    timepoint: &TimePoint,
-    parent_frame: String,
-    child_frame: String,
-) -> anyhow::Result<()> {
-    send_archetype(
-        tx,
-        store_id,
-        entity_path,
-        timepoint,
-        &transform_from_pose(origin, parent_frame, child_frame),
-    )
-}
-
 fn send_instance_pose_with_frame(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
@@ -514,31 +518,6 @@ fn send_instance_pose_with_frame(
     )
 }
 
-/// Log the given value using its `Debug` formatting.
-///
-/// TODO(#402): support dynamic structured logging
-fn log_debug_format(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
-    entity_path: EntityPath,
-    name: &str,
-    value: &dyn std::fmt::Debug,
-    timepoint: &TimePoint,
-) -> anyhow::Result<()> {
-    send_chunk_builder(
-        tx,
-        store_id,
-        ChunkBuilder::new(ChunkId::new(), entity_path).with_serialized_batches(
-            RowId::new(),
-            timepoint.clone(),
-            vec![SerializedComponentBatch {
-                descriptor: ComponentDescriptor::partial(name),
-                array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
-            }],
-        ),
-    )
-}
-
 fn extract_instance_scale(geometry: &Geometry) -> Option<Vec3D> {
     match geometry {
         Geometry::Mesh {
@@ -553,45 +532,23 @@ fn log_link(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    link: &urdf_rs::Link,
-    link_entity: &EntityPath,
     timepoint: &TimePoint,
+    link: &urdf_rs::Link,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
-        name: _,
-        inertial,
-        visual,
-        collision,
+        name: link_name,
+        inertial: _,
+        visual: _,
+        collision: _,
     } = link;
 
-    log_debug_format(
-        tx,
-        store_id,
-        link_entity.clone(),
-        "inertial",
-        &inertial,
-        timepoint,
-    )?;
-
-    // Log coordinate frame ID of the link.
-    let link_name = link.name.clone();
-    send_archetype(
-        tx,
-        store_id,
-        link_entity.clone(),
-        timepoint,
-        &CoordinateFrame::update_fields().with_frame(link_name.clone()),
-    )?;
-
-    for (i, visual) in visual.iter().enumerate() {
+    for (visual_entity_path, visual) in urdf_tree.get_visual_geometries(link).unwrap_or_default() {
         let urdf_rs::Visual {
-            name,
+            name: _,
             origin,
             geometry,
             material,
         } = visual;
-        let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
-        let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
 
         let instance_scale = extract_instance_scale(geometry);
         // Prefer inline defined material properties if present, otherwise fall back to global material.
@@ -608,7 +565,7 @@ fn log_link(
         send_instance_pose_with_frame(
             tx,
             store_id,
-            visual_entity.clone(),
+            visual_entity_path.clone(),
             timepoint,
             origin,
             link_name.clone(),
@@ -619,22 +576,21 @@ fn log_link(
             urdf_tree,
             tx,
             store_id,
-            visual_entity,
+            visual_entity_path,
             geometry,
             material,
             timepoint,
         )?;
     }
 
-    for (i, collision) in collision.iter().enumerate() {
+    for (collision_entity_path, collision) in
+        urdf_tree.get_collision_geometries(link).unwrap_or_default()
+    {
         let urdf_rs::Collision {
-            name,
+            name: _,
             origin,
             geometry,
         } = collision;
-        let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
-        let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
-
         let instance_scale = extract_instance_scale(geometry);
 
         // A collision geometry has no frame ID of its own and has a constant pose,
@@ -642,7 +598,7 @@ fn log_link(
         send_instance_pose_with_frame(
             tx,
             store_id,
-            collision_entity.clone(),
+            collision_entity_path.clone(),
             timepoint,
             origin,
             link_name.clone(),
@@ -653,18 +609,19 @@ fn log_link(
             urdf_tree,
             tx,
             store_id,
-            collision_entity.clone(),
+            collision_entity_path.clone(),
             geometry,
             None,
             timepoint,
         )?;
 
         if false {
+            // TODO(michael): consider hiding collision geometries by default.
             // TODO(#6541): the viewer should respect the `Visible` component.
             send_chunk_builder(
                 tx,
                 store_id,
-                ChunkBuilder::new(ChunkId::new(), collision_entity).with_component_batch(
+                ChunkBuilder::new(ChunkId::new(), collision_entity_path).with_component_batch(
                     RowId::new(),
                     timepoint.clone(),
                     (

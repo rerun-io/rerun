@@ -106,7 +106,7 @@ impl WebViewerServer {
     /// # Ok(()) }
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr: std::net::SocketAddr = format!("{bind_ip}:{port}").parse()?;
+        let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 
         let server = tiny_http::Server::http(bind_addr)
             .map_err(|err| WebViewerServerError::CreateServerFailed(bind_addr.to_string(), err))?;

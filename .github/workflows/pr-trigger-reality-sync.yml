@@ -3,14 +3,55 @@ name: PR Trigger Reality Sync
 on:
   issue_comment:
     types: [created]
+  pull_request_target:
+    types: [synchronize]
 
 jobs:
-  trigger-import:
-    # Only run on PR comments (not issue comments)
-    # Only run if comment contains the trigger phrase
+  # Post a helpful message when unauthorized users try to trigger sync
+  unauthorized-message:
     if: |
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '@rerun-bot reality-sync')
+      contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+      github.event.comment.user.type != 'Bot' &&
+      github.event.comment.author_association != 'OWNER' &&
+      github.event.comment.author_association != 'MEMBER'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: rerun
+
+      - name: Post unauthorized message
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "Sorry, only organization members can trigger reality-sync."
+
+  trigger-import:
+    # For issue_comment: org members (OWNER/MEMBER) can trigger with '@rerun-bot reality-sync'
+    # For pull_request_target: only auto-sync non-fork PRs (fork PRs require explicit comment trigger)
+    if: |
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+        github.event.comment.user.type != 'Bot' &&
+        (
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER'
+        )
+      ) || (
+        github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,59 +68,70 @@ jobs:
             reality
             rerun
 
-      - name: Check if commenter has write access
-        id: check-member
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Determine PR number
+        id: pr-info
         run: |
-          COMMENTER="${{ github.event.comment.user.login }}"
-          REPO="${{ github.repository }}"
-
-          # Check if user has write or admin permission on this repo
-          # This works for both user-owned and org-owned repositories
-          PERMISSION=$(gh api "repos/$REPO/collaborators/$COMMENTER/permission" \
-            --jq '.permission' 2>/dev/null || echo "none")
-
-          echo "User $COMMENTER has permission: $PERMISSION"
-
-          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-            echo "User $COMMENTER is authorized (permission: $PERMISSION)"
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "triggered_by=${{ github.event.comment.user.login }}" >> $GITHUB_OUTPUT
+            echo "trigger_type=comment" >> $GITHUB_OUTPUT
           else
-            echo "authorized=false" >> $GITHUB_OUTPUT
-            echo "User $COMMENTER is NOT authorized (permission: $PERMISSION)"
+            echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "triggered_by=${{ github.event.sender.login }}" >> $GITHUB_OUTPUT
+            echo "trigger_type=push" >> $GITHUB_OUTPUT
           fi
 
-      - name: Post unauthorized message
-        if: steps.check-member.outputs.authorized == 'false'
+      - name: Check for existing sync comment (push events only)
+        if: github.event_name == 'pull_request_target'
+        id: check-sync-comment
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} \
-            --repo ${{ github.repository }} \
-            --body "Sorry, only organization members can trigger the sync CI."
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          echo "Checking PR #${PR_NUMBER} for existing sync comment…"
+
+          # Look for "Sync complete" comment from the sync bot (GitHub App)
+          # Check performed_via_github_app.id matches our app to prevent spoofing
+          SYNC_APP_ID="${{ vars.SYNC_APP_ID }}"
+          SYNC_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            | jq -r --arg app_id "$SYNC_APP_ID" '.[] | select((.performed_via_github_app.id | tostring == $app_id) and (.body | contains("Sync complete. Mirror PR in reality:"))) | .id' \
+            | head -1)
+
+          if [ -n "$SYNC_COMMENT" ]; then
+            echo "has_sync=true" >> $GITHUB_OUTPUT
+            echo "✓ Found existing sync comment, will re-sync on push"
+          else
+            echo "has_sync=false" >> $GITHUB_OUTPUT
+            echo "No existing sync comment found, skipping auto-sync"
+          fi
 
       - name: Get PR details
-        if: steps.check-member.outputs.authorized == 'true'
+        if: |
+          github.event_name == 'issue_comment' ||
+          steps.check-sync-comment.outputs.has_sync == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          echo "Fetching PR details for PR #${{ github.event.issue.number }}…"
-          gh pr view ${{ github.event.issue.number }} \
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          echo "Fetching PR details for PR #${PR_NUMBER}…"
+          gh pr view "$PR_NUMBER" \
             --repo ${{ github.repository }} \
-            --json headRefName,headRepositoryOwner,headRepository,number,title,body \
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body,labels \
             > /tmp/pr_data.json
 
           echo "PR data:"
           jq '.' /tmp/pr_data.json
 
       - name: Trigger reality sync workflow
-        if: steps.check-member.outputs.authorized == 'true'
+        if: |
+          github.event_name == 'issue_comment' ||
+          steps.check-sync-comment.outputs.has_sync == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           echo "================================================"
           echo "Triggering repository_dispatch to reality repo"
+          echo "Trigger type: ${{ steps.pr-info.outputs.trigger_type }}"
           echo "================================================"
 
           # Construct the entire payload using jq to avoid shell substitution
@@ -87,7 +139,7 @@ jobs:
           jq -n \
             --arg repo "${{ github.event.repository.name }}" \
             --arg current_repo "${{ github.repository }}" \
-            --arg triggered_by "${{ github.event.comment.user.login }}" \
+            --arg triggered_by "${{ steps.pr-info.outputs.triggered_by }}" \
             --slurpfile pr_data /tmp/pr_data.json \
             '{
               event_type: "sync-import-pr",
@@ -99,6 +151,7 @@ jobs:
                 head_repo: $pr_data[0].headRepository.name,
                 title: $pr_data[0].title,
                 body: ($pr_data[0].body // ""),
+                labels: $pr_data[0].labels,
                 is_fork: (("\($pr_data[0].headRepositoryOwner.login)/\($pr_data[0].headRepository.name)") != $current_repo),
                 triggered_by: $triggered_by
               }

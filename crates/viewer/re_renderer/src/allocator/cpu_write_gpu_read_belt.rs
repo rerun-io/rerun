@@ -468,6 +468,8 @@ impl CpuWriteGpuReadBelt {
                 <= Self::MIN_OFFSET_ALIGNMENT
         );
 
+        // we must use an unbounded channel to avoid blocking on web
+        #[expect(clippy::disallowed_methods)]
         let (sender, receiver) = mpsc::channel();
         Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_OFFSET_ALIGNMENT),

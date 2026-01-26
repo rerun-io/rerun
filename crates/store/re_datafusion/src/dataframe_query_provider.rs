@@ -5,6 +5,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use crate::dataframe_query_common::{
+    group_chunk_infos_by_segment_id, prepend_string_column_schema,
+};
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
@@ -22,6 +25,7 @@ use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, Pla
 use futures_util::Stream;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
+use re_dataframe::utils::align_record_batch_to_schema;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
@@ -34,10 +38,6 @@ use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tracing::Instrument as _;
-
-use crate::dataframe_query_common::{
-    align_record_batch_to_schema, group_chunk_infos_by_segment_id, prepend_string_column_schema,
-};
 
 /// This parameter sets the back pressure that either the streaming provider
 /// can place on the CPU worker thread or the CPU worker thread can place on

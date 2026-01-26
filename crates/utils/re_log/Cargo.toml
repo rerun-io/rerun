@@ -32,6 +32,7 @@ setup = ["dep:env_logger", "dep:js-sys", "dep:wasm-bindgen"]
 
 [dependencies]
 log = { workspace = true, features = ["std"] }
+crossbeam.workspace = true
 log-once.workspace = true
 parking_lot.workspace = true
 

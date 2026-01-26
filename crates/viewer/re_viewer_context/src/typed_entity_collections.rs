@@ -103,6 +103,15 @@ impl<T> Default for PerVisualizer<T> {
     }
 }
 
+impl<T> re_byte_size::SizeBytes for PerVisualizer<T>
+where
+    T: re_byte_size::SizeBytes,
+{
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
 /// Like [`PerVisualizer`], but ensured that all visualizers are relevant for the given view class.
 #[derive(Debug)]
 pub struct PerVisualizerInViewClass<T> {

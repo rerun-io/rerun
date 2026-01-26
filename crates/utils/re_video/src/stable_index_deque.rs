@@ -133,7 +133,7 @@ impl<T> StableIndexDeque<T> {
     /// v.pop_front();
     /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &1)]);
     /// ```
-    pub fn iter_indexed(&self) -> impl DoubleEndedIterator<Item = (usize, &T)> {
+    pub fn iter_indexed(&self) -> impl DoubleEndedIterator<Item = (usize, &T)> + ExactSizeIterator {
         let offset = self.index_offset;
         self.vec
             .iter()
@@ -149,7 +149,9 @@ impl<T> StableIndexDeque<T> {
     /// v.pop_front();
     /// assert_eq!(v.iter_indexed_mut().collect::<Vec<_>>(), vec![(1usize, &mut 1i32)]);
     /// ```
-    pub fn iter_indexed_mut(&mut self) -> impl Iterator<Item = (usize, &mut T)> {
+    pub fn iter_indexed_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (usize, &mut T)> + ExactSizeIterator {
         self.vec
             .iter_mut()
             .enumerate()
@@ -325,10 +327,10 @@ impl<T> StableIndexDeque<T> {
     /// assert_eq!(v.iter_index_range_clamped(&(3..5)).collect::<Vec<_>>(), vec![(3, &3), (4, &4)]);
     /// ```
     #[inline]
-    pub fn iter_index_range_clamped(
-        &self,
+    pub fn iter_index_range_clamped<'a>(
+        &'a self,
         range: &std::ops::Range<usize>,
-    ) -> impl Iterator<Item = (usize, &T)> {
+    ) -> impl DoubleEndedIterator<Item = (usize, &'a T)> + ExactSizeIterator + use<'a, T> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
         self.iter_indexed().skip(range_start).take(num_elements)
@@ -346,10 +348,10 @@ impl<T> StableIndexDeque<T> {
     /// assert_eq!(v.iter_index_range_clamped_mut(&(3..5)).collect::<Vec<_>>(), vec![(3, &mut 3), (4, &mut 4)]);
     /// ```
     #[inline]
-    pub fn iter_index_range_clamped_mut(
-        &mut self,
+    pub fn iter_index_range_clamped_mut<'a>(
+        &'a mut self,
         range: &std::ops::Range<usize>,
-    ) -> impl Iterator<Item = (usize, &mut T)> {
+    ) -> impl DoubleEndedIterator<Item = (usize, &'a mut T)> + ExactSizeIterator + use<'a, T> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
         self.iter_indexed_mut().skip(range_start).take(num_elements)
