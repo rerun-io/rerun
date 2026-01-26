@@ -36,6 +36,7 @@ features = [
     [
       "concepts/recording_properties",
       "concepts/query-and-transform/segment_properties",
+      "howto/layers",
     ],
   ],
   [
