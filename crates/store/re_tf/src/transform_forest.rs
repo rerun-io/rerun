@@ -1379,4 +1379,70 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_implicit_transform_at_root_being_ignored_with_warning()
+    -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+
+        // Add a transform that tries to make a root frame a child of something else
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::root())
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder("/child")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+
+        let mut transform_cache = TransformResolutionCache::default();
+        transform_cache.add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+
+        // Child still connects up to the root.
+        assert_eq!(
+            transform_forest
+                .transform_from_to(
+                    TransformFrameIdHash::from_entity_path(&"child".into()),
+                    std::iter::once(TransformFrameIdHash::from_entity_path(&EntityPath::root())),
+                    &|_| 1.0
+                )
+                .collect::<Vec<_>>(),
+            vec![(
+                TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                Ok(TreeTransform {
+                    root: TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                    target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                        0.0, -1.0, 0.0
+                    )),
+                })
+            )]
+        );
+
+        let received_log = log_rx.try_recv()?;
+        assert_eq!(received_log.level, re_log::Level::Warn);
+        assert!(
+            received_log
+                .msg
+                .contains("Ignoring transform at root entity"),
+            "Expected warning about ignoring implicit root parent frame, got: {}",
+            received_log.msg
+        );
+
+        Ok(())
+    }
 }
