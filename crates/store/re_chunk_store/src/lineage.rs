@@ -407,7 +407,9 @@ impl ChunkStore {
         roots
     }
 
-    pub fn physical_leaf_chunks_for<'a>(
+    /// Iterates over all physical chunks that have this chunk
+    /// as an ancestor.
+    pub fn physical_descendents_of<'a>(
         &'a self,
         chunk_id: &'a ChunkId,
     ) -> impl Iterator<Item = ChunkId> {

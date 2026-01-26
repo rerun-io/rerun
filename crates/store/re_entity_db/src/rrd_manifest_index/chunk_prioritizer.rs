@@ -24,6 +24,7 @@ pub struct ChunkPrioritizer {
     /// These chunks are protected from being gc'd.
     pub(super) in_limit_chunks: HashSet<ChunkId>,
 
+    /// Chunks that are in the progress of being downloaded.
     chunk_promises: ChunkPromises,
 
     /// Intervals of all root chunks in the rrd manifest per timeline.
@@ -118,10 +119,25 @@ impl ChunkPrioritizer {
         &mut self.chunk_promises
     }
 
+    /// Take a hashset of chunks that should be protected from being
+    /// evicted by gc now.
     pub fn take_protected_chunks(&mut self) -> HashSet<ChunkId> {
         std::mem::take(&mut self.in_limit_chunks)
     }
 
+    /// Prioritize which chunk (loaded & unloaded) we want to fit in the
+    /// current memory budget. And prefetch some amount of those chunks.
+    ///
+    /// This prioritizes chunks in the order of:
+    /// - Physical chunks that were used since last time this was ran.
+    /// - Virtual chunks that would've been hit by queries since last time
+    ///   this was ran.
+    /// - Static chunks.
+    /// - Chunks after the time cursor in rising temporal order.
+    /// - Chunks before the time cursor in rising temporal order.
+    ///
+    /// We go through these chunks until we hit `options.total_uncompressed_byte_budget`
+    /// and prefetch missing chunks until we hit `options.max_uncompressed_bytes_in_transit`.
     pub fn prioritize_and_prefetch(
         &mut self,
         store: &ChunkStore,
@@ -264,7 +280,7 @@ impl ChunkPrioritizer {
                     }
                     skip_chunks.insert(chunk_id);
                     self.in_limit_chunks
-                        .extend(store.physical_leaf_chunks_for(&chunk_id));
+                        .extend(store.physical_descendents_of(&chunk_id));
                 }
                 Some(ChunkInfo {
                     state: LoadState::Loaded,
@@ -283,6 +299,16 @@ impl ChunkPrioritizer {
                             break; // We've already loaded too much.
                         }
 
+                        // We want to skip trying to load in chunks from the rrd manifest for
+                        // physical chunks.
+                        //
+                        // Either this is a compaction/root chunk and we already have the whole chunk.
+                        // Or this is a split, which we only do for large chunks, which we don't want
+                        // download unnecessarily. Especially since we only gc these splits if the
+                        // memory budget gets hit.
+                        //
+                        // If these missing splits are missing we can let the `missing` chunk detection
+                        // handle that.
                         skip_chunks.extend(
                             store
                                 .find_root_rrd_manifests(&chunk_id)

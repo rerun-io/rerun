@@ -676,15 +676,11 @@ impl QueryResults {
         {
             let mut tracker = store.queried_chunk_id_tracker.write();
 
-            if !this.missing.is_empty() {
-                tracker.missing.extend(this.missing.iter().copied());
-            }
+            tracker.missing.extend(this.missing.iter().copied());
 
-            if !this.chunks.is_empty() {
-                tracker
-                    .used_physical
-                    .extend(this.chunks.iter().map(|c| c.id()));
-            }
+            tracker
+                .used_physical
+                .extend(this.chunks.iter().map(|c| c.id()));
         }
 
         debug_assert!(

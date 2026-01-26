@@ -60,8 +60,7 @@ pub struct GarbageCollectionOptions {
     /// back to row ID based collection.
     pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
 
-    /// Do not remove chunks with this id, or that are derived from a chunk in
-    /// the rrd manifest with this id.
+    /// Do not remove chunks with this id.
     pub protected_chunks: ahash::HashSet<ChunkId>,
 
     /// Remove chunks giving priority to those that are the furthest away from this timestamp.
