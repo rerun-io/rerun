@@ -479,14 +479,15 @@ impl LeRobotDatasetV3 {
 
         let end_keyframe = video
             .presentation_time_keyframe_index(end_video_time)
-            .map(|idx| idx + 1)
-            .unwrap_or_else(|| video.keyframe_indices.len());
+            .or_else(|| video.keyframe_indices.len().checked_sub(1))
+            .ok_or(DataLoaderError::Other(anyhow!("No keyframes in the video")))?;
 
         // Determine the sample range to extract from the video
         let start_sample = video
             .gop_sample_range_for_keyframe(start_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
             .start;
+
         let end_sample = video
             .gop_sample_range_for_keyframe(end_keyframe)
             .ok_or(DataLoaderError::Other(anyhow!("Bad video data")))?
