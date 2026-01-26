@@ -308,11 +308,11 @@ fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> View
         // * Lines:
         //    * scalar - map to `LinearSpeed` component.
         //    * color - explicitly use fallback.
-        //    * ... everything else is auto, which will pick up the SeriesLines name from the store.
+        //    * … everything else is auto, which will pick up the SeriesLines name from the store.
         // * Points:
         //    * scalar - map to `LinearSpeed` component.
         //    * color - explicitly use provided override (green).
-        //    * ... everything else is auto, which will not pick up anything from the store.
+        //    * … everything else is auto, which will not pick up anything from the store.
         let scalar_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
