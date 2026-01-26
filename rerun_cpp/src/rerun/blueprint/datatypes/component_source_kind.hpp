@@ -26,19 +26,25 @@ namespace rerun::blueprint::datatypes {
         /// Use an explicit selection defined by `source_component`.
         ///
         /// May or may not make use of a selector string.
+        ///
+        /// If the source component is not found on the entity,
+        /// a heuristically determined value will be used instead.
         SourceComponent = 1,
 
         /// Use a timeless override value that is defined in the blueprint.
         ///
         /// The override value is stored on the same entity as the visualizer instruction
         /// and uses the `target` as its component name.
+        ///
+        /// If there is no override value with the target component name,
+        /// a heuristically determined value will be used instead.
         Override = 2,
 
         /// Default as specified on the view's blueprint.
+        ///
+        /// If the view doesn't specify a default for the target component name,
+        /// a heuristically determined value will be used instead.
         Default = 3,
-
-        /// Make use of the viewer's fallback logic to produce a value.
-        Fallback = 4,
     };
 } // namespace rerun::blueprint::datatypes
 
