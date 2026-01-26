@@ -66,9 +66,10 @@ fn test_transparent_geometry<A: AsComponents>(
     harness.with_options(
         re_ui::testing::default_snapshot_options_for_3d(size)
             // Transparency rendering on MacOS diverges significantly from the other platforms.
-            .threshold(OsThreshold::new(default_options.threshold).macos(2.2))
+            // (not just on CI but also locally)
+            .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
             .failed_pixel_count_threshold(
-                OsThreshold::new(default_options.failed_pixel_count_threshold).macos(125),
+                OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
             ),
     );
     let mut harness = harness.build_ui(|ui| {
