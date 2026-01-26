@@ -30,7 +30,7 @@ For more details on time alignment, see [Time-align data](time_alignment.md).
 
 ## Setup
 
-Start a local server and load your RRD recordings. Each recording becomes a segment in the dataset.
+Start a local server and load your RRD recordings. Each recording becomes a segment in the dataset, and each segment becomes one LeRobot episode.
 
 snippet: howto/lerobot_export[setup]
 
@@ -38,7 +38,11 @@ See [Catalog object model](../../concepts/query-and-transform/catalog-object-mod
 
 ### Filter data for training
 
-Robot recordings often contain more data than needed for training. Filter the dataset to include only the relevant entity paths and components.
+Robot recordings often contain more data than needed for training.
+Filter the dataset to include only the relevant entity paths and components that will map to LeRobot’s standardized format.
+
+For example, you might include joint position commands as actions, joint states and end-effector pose as observations, RGB camera streams as video inputs, and a language instruction stream as the task description.
+Other signals such as debug visualizations, intermediate computations, or unused sensors can be excluded.
 
 snippet: howto/lerobot_export[filter_data]
 
@@ -75,11 +79,12 @@ Note, the `dataset_root` is where the dataset files will be written, and LeRobot
 
 ### Export the episode
 
-Convert the filtered, aligned data into a LeRobot episode. This is the core transformation step.
+Convert the filtered data into a LeRobot episode. This is the core transformation step.
 
 snippet: howto/lerobot_export[export_episode]
 
-The `convert_dataframe_to_episode` function resamples the dataframe to the target framerate and writes it to LeRobot's format. The tabular data (actions, states, task descriptions) is written to Parquet files, while video streams are efficiently remuxed without re-encoding.
+The `convert_dataframe_to_episode` function performs time alignment and resamples the dataframe to the target framerate. It generates a sequence of evenly spaced timestamps at the target framerate and treats these as the canonical timesteps for the episode.
+For each timestep, it queries the most recent available value of every selected component using Rerun’s [`latest-at`](../../concepts/logging-and-ingestion/latest-at.md) semantics. If a stream has no sample exactly at that time, its last observed value is forward-filled.
 
 The `finalize()` call completes the dataset by writing metadata and closing all files.
 
@@ -107,14 +112,15 @@ The `rerun_export` package includes a CLI that implements this workflow for batc
 
 ```bash
 rerun_export \
-  --rrd-dir ./robot_recordings \
+  --rrd-dir ./tests/assets/rrd/sample_5 \
   --output ./lerobot_dataset \
-  --dataset-name robot_demos \
+  --dataset-name rerun-example-droid \
   --fps 15 \
   --action /action/joint_positions:Scalars:scalars \
   --state /observation/joint_positions:Scalars:scalars \
   --task /language_instruction:TextDocument:text \
-  --video front:/camera/front \
+  --video ext1:/camera/ext1 \
+  --video ext2:/camera/ext2 \
   --video wrist:/camera/wrist
 ```
 
