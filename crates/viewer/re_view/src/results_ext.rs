@@ -29,7 +29,7 @@ pub struct HybridLatestAtResults<'a> {
 
     pub component_sources: IntMap<ComponentIdentifier, ComponentSourceKind>,
 
-    /// Hash of mappings applied to [`Self::results`].
+    /// Hash of mappings applied to [`Self::store_results`].
     pub component_indices_hash: Hash64,
 }
 
@@ -45,7 +45,7 @@ pub struct HybridRangeResults<'a> {
 
     pub(crate) component_sources: IntMap<ComponentIdentifier, ComponentSourceKind>,
 
-    /// Hash of mappings applied to [`Self::results`].
+    /// Hash of mappings applied to [`Self::store_results`].
     pub(crate) component_mappings_hash: Hash64,
 }
 
