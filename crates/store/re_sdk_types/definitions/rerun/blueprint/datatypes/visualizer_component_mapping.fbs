@@ -13,6 +13,7 @@ enum ComponentSourceKind: ubyte (
     ///
     /// If the source component is not found on the entity,
     /// a heuristically determined value will be used instead.
+    // TODO(andreas): this should probably be an error instead (unlike in override/default)?
     SourceComponent,
 
     /// Use a timeless override value that is defined in the blueprint.

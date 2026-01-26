@@ -28,9 +28,6 @@ pub enum VisualizerComponentSource {
 
     /// See [`ComponentSourceKind::Default`].
     Default,
-
-    /// See [`ComponentSourceKind::Fallback`].
-    Fallback,
 }
 
 impl VisualizerComponentSource {
@@ -53,8 +50,6 @@ impl VisualizerComponentSource {
             ComponentSourceKind::Override => Self::Override,
 
             ComponentSourceKind::Default => Self::Default,
-
-            ComponentSourceKind::Fallback => Self::Fallback,
         }
     }
 
@@ -63,7 +58,6 @@ impl VisualizerComponentSource {
             Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
             Self::Override => ComponentSourceKind::Override,
             Self::Default => ComponentSourceKind::Default,
-            Self::Fallback => ComponentSourceKind::Fallback,
         }
     }
 }
@@ -151,13 +145,6 @@ impl VisualizerInstruction {
                     VisualizerComponentSource::Default => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Default,
-                        source_component: None,
-                        selector: None,
-                    },
-
-                    VisualizerComponentSource::Fallback => VisualizerComponentMapping {
-                        target,
-                        source_kind: ComponentSourceKind::Fallback,
                         source_component: None,
                         selector: None,
                     },

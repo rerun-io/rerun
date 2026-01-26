@@ -264,8 +264,7 @@ fn visualizer_components(
                 } => Some(*source_component),
 
                 re_viewer_context::VisualizerComponentSource::Override
-                | re_viewer_context::VisualizerComponentSource::Default
-                | re_viewer_context::VisualizerComponentSource::Fallback => {
+                | re_viewer_context::VisualizerComponentSource::Default => {
                     // TODO(RR-3338): Implement ui for other types.
                     None
                 }
@@ -606,8 +605,7 @@ fn source_component_ui(
                         } => Some(source_component.as_str()),
 
                         re_viewer_context::VisualizerComponentSource::Override
-                        | re_viewer_context::VisualizerComponentSource::Default
-                        | re_viewer_context::VisualizerComponentSource::Fallback => {
+                        | re_viewer_context::VisualizerComponentSource::Default => {
                             // TODO(RR-3338): Implement ui for other types.
                             None
                         }

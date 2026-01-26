@@ -358,7 +358,6 @@ impl RangeResultsExt for HybridRangeResults<'_> {
                         ])
                     })
             }
-            ComponentSourceKind::Fallback => Cow::Owned(Vec::new()),
         };
 
         ChunksWithComponent { chunks, component }
@@ -384,7 +383,6 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
             ComponentSourceKind::Override => self.overrides.get(component),
             ComponentSourceKind::Default => self.view_defaults.get(component),
-            ComponentSourceKind::Fallback => None,
         };
 
         if let Some(unit_chunk) = unit_chunk {

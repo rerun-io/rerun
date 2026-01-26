@@ -93,15 +93,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     ComponentSourceKind::Override
                 } else if store_results.components.contains_key(component) {
                     ComponentSourceKind::SourceComponent
-                } else if ctx
-                    .query_result
-                    .view_defaults
-                    .components
-                    .contains_key(component)
-                {
-                    ComponentSourceKind::Default
                 } else {
-                    ComponentSourceKind::Fallback
+                    ComponentSourceKind::Default
                 };
 
                 entry.insert(source);
@@ -204,15 +197,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                     ComponentSourceKind::Override
                 } else if store_results.components.contains_key(component) {
                     ComponentSourceKind::SourceComponent
-                } else if ctx
-                    .query_result
-                    .view_defaults
-                    .components
-                    .contains_key(component)
-                {
-                    ComponentSourceKind::Default
                 } else {
-                    ComponentSourceKind::Fallback
+                    ComponentSourceKind::Default
                 };
 
                 entry.insert(source);

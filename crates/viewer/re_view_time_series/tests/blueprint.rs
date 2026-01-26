@@ -305,14 +305,14 @@ fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> View
         );
 
         // Two visualizers for the `speed` plot:
-        // * Lines:
-        //    * scalar - map to `LinearSpeed` component.
-        //    * color - explicitly use fallback.
-        //    * … everything else is auto, which will pick up the SeriesLines name from the store.
         // * Points:
         //    * scalar - map to `LinearSpeed` component.
-        //    * color - explicitly use provided override (green).
+        //    * color - explicitly use Default, leading to the fallback since the view default is on lines.
         //    * … everything else is auto, which will not pick up anything from the store.
+        // * Lines:
+        //    * scalar - map to `LinearSpeed` component.
+        //    * color - explicitly use Override
+        //    * … everything else is auto, which will pick up the SeriesLines name from the store.
         let scalar_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
@@ -323,16 +323,16 @@ fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> View
             &EntityPath::from("plots/speed"),
             view.id,
             [
-                SeriesLines::new().visualizer().with_mappings([
+                SeriesPoints::new().visualizer().with_mappings([
                     blueprint::components::VisualizerComponentMapping(scalar_mapping.clone()),
                     blueprint::components::VisualizerComponentMapping(VisualizerComponentMapping {
-                        target: SeriesLines::descriptor_colors().component.as_str().into(),
-                        source_kind: ComponentSourceKind::Fallback,
+                        target: SeriesPoints::descriptor_colors().component.as_str().into(),
+                        source_kind: ComponentSourceKind::Default,
                         source_component: None,
                         selector: None,
                     }),
                 ]),
-                SeriesPoints::new()
+                SeriesLines::new()
                     .with_colors([components::Color::from_rgb(0, 255, 0)])
                     .visualizer()
                     .with_mappings([
