@@ -61,8 +61,6 @@ config = LeRobotConversionConfig(
     state="/observation/joint_positions:Scalars:scalars",  # Fully qualified state column
     task=instructions,  # Task description column
     videos=videos,  # Video streams to include
-    dataset=dataset,
-    segment_id=single_recording,
 )
 # endregion: configure_export
 
@@ -78,17 +76,14 @@ features = infer_features(
 
 # region: create_dataset
 # Create the LeRobot dataset structure on disk
-dataset_root = "/tmp/lerobot_dataset"
-
 lerobot_dataset = LeRobotDataset.create(
     repo_id="rerun/droid_lerobot",  # Dataset identifier
     fps=config.fps,
     features=features,
-    root=dataset_root,
+    root="/tmp/lerobot_dataset",
     use_videos=config.use_videos,
     video_backend="h264x",
 )
-print("Initialized LeRobot dataset in:", dataset_root)
 # endregion: create_dataset
 
 # region: export_episode
@@ -108,3 +103,52 @@ convert_dataframe_to_episode(
 # Finalize the dataset (write metadata, close files, etc.)
 lerobot_dataset.finalize()
 # endregion: export_episode
+
+# region: multi_episode_export
+# Create a new LeRobot dataset for multiple episodes
+lerobot_dataset = LeRobotDataset.create(
+    repo_id="rerun/droid_lerobot_full",
+    fps=config.fps,
+    features=features,
+    root="/tmp/lerobot_dataset_full",
+    use_videos=config.use_videos,
+    video_backend="h264x",
+)
+
+# To export multiple recordings, repeat the filtering and conversion steps
+for segment_id in dataset.segment_ids():
+    print(f"Exporting segment: {segment_id}")
+
+    segment_data = (
+        dataset.filter_segments(segment_id)
+        .filter_contents([
+            "/action/joint_positions",
+            "/observation/joint_positions",
+            "/camera/**",
+            "/language_instruction",
+        ])
+        .reader(index="real_time")
+    )
+
+    convert_dataframe_to_episode(
+        df=segment_data,
+        config=config,
+        lerobot_dataset=lerobot_dataset,
+        segment_id=segment_id,
+        features=features,
+    )
+
+lerobot_dataset.finalize()
+# endregion: multi_episode_export
+
+# region: use_dataset
+
+# Access episode data
+print(f"Total episodes: {lerobot_dataset.num_episodes}")
+print(f"Total frames: {lerobot_dataset.num_frames}")
+
+# Get a sample
+sample = lerobot_dataset[0]
+print(sample.keys())
+
+# endregion: use_dataset

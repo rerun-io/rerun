@@ -72,9 +72,6 @@ class LeRobotConversionConfig:
     # Task configuration
     task_default: str = "task"
 
-    dataset: rr.catalog.DatasetEntry | None = None
-    segment_id: str | None = None
-
     def get_filter_list(self) -> tuple[list[str], str | None]:
         """
         Get the list of entity paths to filter and the reference path for time alignment.
