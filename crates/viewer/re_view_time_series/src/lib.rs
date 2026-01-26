@@ -112,6 +112,16 @@ pub struct PlotSeries {
     pub aggregation_factor: f64,
 }
 
+impl PlotSeries {
+    /// Returns a unique id for a given plot series.
+    ///
+    /// NOTE: A single visualizer instruction can be responsible for multiple series,
+    /// so we use the instance path number as an additional differentiator.
+    pub fn id(&self) -> egui::Id {
+        egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    }
+}
+
 /// Error that can occur when loading a single series.
 enum LoadSeriesError {
     ViewPropertyQuery(ViewPropertyQueryError),

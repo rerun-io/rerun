@@ -468,12 +468,7 @@ impl ViewClass for TimeSeriesView {
         // (e.g. when plotting both lines & points with the same entity/instance path)
         let plot_item_id_to_instance_path: HashMap<egui::Id, InstancePath> = all_plot_series
             .iter()
-            .map(|series| {
-                (
-                    egui::Id::new(&series.visualizer_instruction_id),
-                    series.instance_path.clone(),
-                )
-            })
+            .map(|series| (series.id(), series.instance_path.clone()))
             .collect();
 
         let current_time = ctx.time_ctrl.time_i64();
@@ -978,7 +973,7 @@ fn set_plot_visibility_from_store(
         plot_memory.hidden_items = plot_series_from_store
             .iter()
             .filter(|&series| !series.visible)
-            .map(|series| egui::Id::new(&series.visualizer_instruction_id))
+            .map(|series| series.id())
             .collect();
         plot_memory.store(egui_ctx, plot_id);
     }
@@ -1010,7 +1005,7 @@ fn update_series_visibility_overrides_from_plot(
             .entry(series.visualizer_instruction_id.clone())
             .or_default();
 
-        let visible_new = !hidden_items.contains(&egui::Id::new(&series.visualizer_instruction_id));
+        let visible_new = !hidden_items.contains(&series.id());
 
         let instance = series.instance_path.instance;
         let index = instance.specific_index().map_or(0, |i| i.get() as usize);
@@ -1129,7 +1124,7 @@ fn add_series_to_plot(
                     .color(color)
                     .width(2.0 * series.radius_ui)
                     .highlight(highlight)
-                    .id(egui::Id::new(&series.visualizer_instruction_id)),
+                    .id(series.id()),
             ),
             PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                 Points::new(&series.label, points)
@@ -1137,7 +1132,7 @@ fn add_series_to_plot(
                     .radius(series.radius_ui)
                     .shape(scatter_attrs.marker.into())
                     .highlight(highlight)
-                    .id(egui::Id::new(&series.visualizer_instruction_id)),
+                    .id(series.id()),
             ),
             // Break up the chart. At some point we might want something fancier.
             PlotSeriesKind::Clear => {}
