@@ -383,29 +383,73 @@ impl SizeBytes for ChunkStore {
         } = self;
 
         // Avoid the amortizing effects of Arc::total_size_bytes:
-        let chunks_size = chunks_per_chunk_id
-            .iter()
-            .map(|(chunk_id, chunk)| {
-                chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
-            })
-            .sum::<u64>();
+        let chunks_size = {
+            re_tracing::profile_scope!("chunks");
+            chunks_per_chunk_id
+                .iter()
+                .map(|(chunk_id, chunk)| {
+                    chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
+                })
+                .sum::<u64>()
+        };
+
+        use re_tracing::profile_scope;
 
         chunks_size
-            + static_chunk_ids_per_entity.heap_size_bytes()
-            + temporal_chunk_ids_per_entity.heap_size_bytes()
-            + temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+            + {
+                profile_scope!("static_chunk_ids_per_entity");
+                static_chunk_ids_per_entity.heap_size_bytes()
+            }
+            + {
+                profile_scope!("temporal_chunk_ids_per_entity");
+                temporal_chunk_ids_per_entity.heap_size_bytes()
+            }
+            + {
+                profile_scope!("temporal_chunk_ids_per_entity_per_component");
+                temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+            }
             + id.heap_size_bytes()
             + config.heap_size_bytes()
-            + time_type_registry.heap_size_bytes()
-            + type_registry.heap_size_bytes()
-            + per_column_metadata.heap_size_bytes()
-            + chunk_ids_per_min_row_id.heap_size_bytes()
-            + chunks_lineage.heap_size_bytes()
-            + dangling_splits.heap_size_bytes()
-            + leaky_compactions.heap_size_bytes()
-            + temporal_physical_chunks_stats.heap_size_bytes()
-            + static_chunks_stats.heap_size_bytes()
-            + missing_chunk_ids.heap_size_bytes()
+            + {
+                profile_scope!("time_type_registry");
+                time_type_registry.heap_size_bytes()
+            }
+            + {
+                profile_scope!("type_registry");
+                type_registry.heap_size_bytes()
+            }
+            + {
+                profile_scope!("per_column_metadata");
+                per_column_metadata.heap_size_bytes()
+            }
+            + {
+                profile_scope!("chunk_ids_per_min_row_id");
+                chunk_ids_per_min_row_id.heap_size_bytes()
+            }
+            + {
+                profile_scope!("chunks_lineage");
+                chunks_lineage.heap_size_bytes()
+            }
+            + {
+                profile_scope!("dangling_splits");
+                dangling_splits.heap_size_bytes()
+            }
+            + {
+                profile_scope!("leaky_compactions");
+                leaky_compactions.heap_size_bytes()
+            }
+            + {
+                profile_scope!("temporal_physical_chunks_stats");
+                temporal_physical_chunks_stats.heap_size_bytes()
+            }
+            + {
+                profile_scope!("static_chunks_stats");
+                static_chunks_stats.heap_size_bytes()
+            }
+            + {
+                profile_scope!("missing_chunk_ids");
+                missing_chunk_ids.heap_size_bytes()
+            }
             + insert_id.heap_size_bytes()
             + gc_id.heap_size_bytes()
     }
@@ -417,10 +461,13 @@ impl MemUsageTreeCapture for ChunkStore {
 
         let mut memory_per_entity: BTreeMap<EntityPath, u64> = Default::default();
 
-        for chunk in self.chunks_per_chunk_id.values() {
-            let entity_path = chunk.entity_path();
-            let entry = memory_per_entity.entry(entity_path.clone()).or_default();
-            *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc
+        {
+            re_tracing::profile_scope!("per-entity-stats");
+            for chunk in self.chunks_per_chunk_id.values() {
+                let entity_path = chunk.entity_path();
+                let entry = memory_per_entity.entry(entity_path.clone()).or_default();
+                *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc
+            }
         }
 
         let mut node = MemUsageNode::new();

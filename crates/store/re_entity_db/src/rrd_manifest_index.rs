@@ -758,6 +758,8 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
 
 impl MemUsageTreeCapture for RrdManifestIndex {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         use re_byte_size::SizeBytes as _;
 
         let Self {

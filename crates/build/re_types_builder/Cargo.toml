@@ -35,6 +35,7 @@ re_tracing.workspace = true
 # External
 anyhow.workspace = true
 camino.workspace = true
+crossbeam.workspace = true
 clang-format.workspace = true
 colored.workspace = true
 flatbuffers.workspace = true

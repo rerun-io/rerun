@@ -16,7 +16,9 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
     assert sorted(simple_filt.segment_ids()) == inline_snapshot(["complex_recording_2"])
 
-    assert segment_stable_snapshot(simple_filt.segment_table(join_meta=complex_metadata)) == inline_snapshot("""\
+    assert segment_stable_snapshot(
+        simple_filt.segment_table(join_meta=complex_metadata).drop("property:RecordingInfo:start_time")
+    ) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                             │
 │ * version: 0.1.2                                                                                                                                                      │
@@ -41,7 +43,9 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
     assert sorted(good_ds.segment_ids()) == inline_snapshot(["complex_recording_1", "complex_recording_3"])
 
-    assert segment_stable_snapshot(good_ds.segment_table()) == inline_snapshot("""\
+    assert segment_stable_snapshot(
+        good_ds.segment_table().drop("property:RecordingInfo:start_time")
+    ) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                       │
 │ * version: 0.1.2                                                                                                                                │

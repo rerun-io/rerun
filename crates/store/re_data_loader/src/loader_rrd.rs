@@ -21,7 +21,7 @@ impl crate::DataLoader for RrdLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
@@ -119,7 +119,7 @@ impl crate::DataLoader for RrdLoader {
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         re_tracing::profile_function!(filepath.display().to_string());
 
@@ -168,7 +168,7 @@ impl crate::DataLoader for RrdLoader {
 
 fn decode_and_stream(
     filepath: &std::path::Path,
-    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    tx: &crossbeam::channel::Sender<crate::LoadedData>,
     msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
@@ -269,7 +269,7 @@ impl RetryableFileReader {
         // while not needlessly hammering the CPU.
         let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));
 
-        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::unbounded();
+        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::bounded(32 * 1024);
         let mut watcher = notify::recommended_watcher(tx_file_notifs)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 

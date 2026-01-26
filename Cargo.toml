@@ -74,6 +74,7 @@ re_datafusion = { path = "crates/store/re_datafusion", version = "=0.29.0-alpha.
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.29.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.29.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.29.0-alpha.1", default-features = false }
+re_lenses = { path = "crates/store/re_lenses", version = "=0.29.0-alpha.1", default-features = false }
 re_log_channel = { path = "crates/store/re_log_channel", version = "=0.29.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.29.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.29.0-alpha.1", default-features = false }
@@ -340,7 +341,7 @@ raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
-rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 ron = { version = "0.11.0", features = ["integer128"] }
 roxmltree = "0.20.0"
 rustdoc-json = "0.9.7"

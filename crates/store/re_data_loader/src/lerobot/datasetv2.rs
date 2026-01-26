@@ -9,11 +9,11 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::Sender;
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
 use arrow::array::{Int64Array, RecordBatch};
+use crossbeam::channel::Sender;
 use itertools::Either;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;

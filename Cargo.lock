@@ -684,28 +684,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ashpd"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cbdf310d77fd3aaee6ea2093db7011dc2d35d2eb3481e5607f1f8d942ed99df"
-dependencies = [
- "async-fs",
- "async-net",
- "enumflags2",
- "futures-channel",
- "futures-util",
- "rand 0.9.2",
- "raw-window-handle",
- "serde",
- "serde_repr",
- "url",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
- "zbus",
-]
-
-[[package]]
 name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -776,17 +754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-fs"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8034a681df4aed8b8edbd7fbe472401ecf009251c8b40556b304567052e294c5"
-dependencies = [
- "async-lock",
- "blocking",
- "futures-lite",
-]
-
-[[package]]
 name = "async-io"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -813,17 +780,6 @@ dependencies = [
  "event-listener",
  "event-listener-strategy",
  "pin-project-lite",
-]
-
-[[package]]
-name = "async-net"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b948000fad4873c1c9339d60f2623323a0cfd3816e5181033c6a5cb68b2accf7"
-dependencies = [
- "async-io",
- "blocking",
- "futures-lite",
 ]
 
 [[package]]
@@ -2281,6 +2237,7 @@ dependencies = [
 name = "custom_data_loader"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
+ "crossbeam",
  "re_build_tools",
  "rerun",
 ]
@@ -4075,7 +4032,7 @@ dependencies = [
  "libc",
  "log",
  "rustversion",
- "windows 0.61.3",
+ "windows 0.58.0",
 ]
 
 [[package]]
@@ -7138,9 +7095,9 @@ checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 
 [[package]]
 name = "oneshot"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ce411919553d3f9fa53a0880544cda985a112117a0444d5ff1e870a893d6ea"
+checksum = "3ce66197e99546da6c6d991285f605192e794ceae69686c17163844a7bf8fcc2"
 
 [[package]]
 name = "oorandom"
@@ -8823,6 +8780,8 @@ dependencies = [
  "ahash",
  "arrow",
  "async-trait",
+ "cfg-if",
+ "crossbeam",
  "datafusion",
  "egui",
  "egui_dnd",
@@ -8894,6 +8853,7 @@ dependencies = [
  "argh",
  "camino",
  "cargo_metadata 0.23.0",
+ "crossbeam",
  "glob",
  "indicatif",
  "itertools 0.14.0",
@@ -9059,9 +9019,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_lenses"
+version = "0.29.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.14.0",
+ "nohash-hasher",
+ "re_arrow_combinators",
+ "re_chunk",
+ "re_log_types",
+ "re_sdk_types",
+ "thiserror 2.0.17",
+ "vec1",
+]
+
+[[package]]
 name = "re_log"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
+ "crossbeam",
  "env_filter",
  "env_logger",
  "js-sys",
@@ -9096,6 +9072,7 @@ dependencies = [
  "arrow",
  "bytes",
  "criterion",
+ "crossbeam",
  "ehttp",
  "insta",
  "itertools 0.14.0",
@@ -9173,6 +9150,7 @@ dependencies = [
  "arrow",
  "byteorder",
  "cdr-encoding",
+ "crossbeam",
  "insta",
  "mcap",
  "prost-reflect",
@@ -9397,6 +9375,8 @@ name = "re_redap_browser"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "cfg-if",
+ "crossbeam",
  "datafusion",
  "egui",
  "egui_extras",
@@ -9520,6 +9500,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_video",
+ "regex-lite",
  "serde",
  "slotmap",
  "smallvec",
@@ -9600,6 +9581,7 @@ dependencies = [
  "re_data_loader",
  "re_grpc_client",
  "re_grpc_server",
+ "re_lenses",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9617,7 +9599,6 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "uuid",
- "vec1",
  "webbrowser",
 ]
 
@@ -9934,6 +9915,7 @@ dependencies = [
  "camino",
  "clang-format",
  "colored",
+ "crossbeam",
  "flatbuffers",
  "indent",
  "itertools 0.14.0",
@@ -9986,6 +9968,7 @@ version = "0.29.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "crossbeam",
  "eframe",
  "egui",
  "egui_commonmark",
@@ -10343,6 +10326,7 @@ dependencies = [
  "arrow",
  "bytemuck",
  "cfg-if",
+ "crossbeam",
  "eframe",
  "egui",
  "egui-wgpu",
@@ -10444,6 +10428,7 @@ dependencies = [
  "bitflags 2.9.4",
  "bytemuck",
  "camino",
+ "cfg-if",
  "crossbeam",
  "datafusion",
  "directories",
@@ -10957,26 +10942,26 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.15.4"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef2bee61e6cffa4635c72d7d81a84294e28f0930db0ddcb0f66d10244674ebed"
+checksum = "20dafead71c16a34e1ff357ddefc8afc11e7d51d6d2b9fbd07eaa48e3e540220"
 dependencies = [
- "ashpd",
  "block2 0.6.2",
  "dispatch2",
  "js-sys",
+ "libc",
  "log",
  "objc2 0.6.3",
  "objc2-app-kit 0.3.2",
  "objc2-core-foundation",
  "objc2-foundation 0.3.2",
+ "percent-encoding",
  "pollster",
  "raw-window-handle",
- "urlencoding",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -11697,6 +11682,7 @@ checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 name = "snippets"
 version = "0.29.0-alpha.1+dev"
 dependencies = [
+ "crossbeam",
  "itertools 0.14.0",
  "ndarray",
  "rand 0.9.2",
@@ -12831,9 +12817,9 @@ dependencies = [
 
 [[package]]
 name = "tracy-client"
-version = "0.18.2"
+version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef54005d3d760186fd662dad4b7bb27ecd5531cdef54d1573ebd3f20a9205ed7"
+checksum = "a4f6fc3baeac5d86ab90c772e9e30620fc653bf1864295029921a15ef478e6a5"
 dependencies = [
  "loom",
  "once_cell",
@@ -12842,12 +12828,12 @@ dependencies = [
 
 [[package]]
 name = "tracy-client-sys"
-version = "0.26.1"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "319c70195101a93f56db4c74733e272d720768e13471f400c78406a326b172b0"
+checksum = "c5f7c95348f20c1c913d72157b3c6dee6ea3e30b3d19502c5a7f6d3f160dacbf"
 dependencies = [
  "cc",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -14755,7 +14741,6 @@ dependencies = [
  "endi",
  "enumflags2",
  "serde",
- "url",
  "winnow",
  "zvariant_derive",
  "zvariant_utils",

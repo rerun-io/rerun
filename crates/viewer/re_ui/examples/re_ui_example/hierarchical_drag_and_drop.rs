@@ -64,10 +64,10 @@ pub struct HierarchicalDragAndDrop {
     target_container: Option<ItemId>,
 
     /// Channel to receive commands from the UI
-    command_receiver: std::sync::mpsc::Receiver<Command>,
+    command_receiver: crossbeam::channel::Receiver<Command>,
 
     /// Channel to send commands from the UI
-    command_sender: std::sync::mpsc::Sender<Command>,
+    command_sender: crossbeam::channel::Sender<Command>,
 }
 
 impl Default for HierarchicalDragAndDrop {
@@ -75,7 +75,7 @@ impl Default for HierarchicalDragAndDrop {
         let root_item = Item::Container(Vec::new());
         let root_id = ItemId::new();
 
-        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+        let (command_sender, command_receiver) = crossbeam::channel::bounded(64);
 
         let mut res = Self {
             items: std::iter::once((root_id, root_item)).collect(),

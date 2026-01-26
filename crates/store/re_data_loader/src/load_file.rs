@@ -117,7 +117,7 @@ pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
-) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+) -> Result<crossbeam::channel::Receiver<LoadedData>, DataLoaderError> {
     re_tracing::profile_function!(path.display().to_string());
 
     // On native we run loaders in parallel so this needs to become static.
@@ -125,12 +125,13 @@ pub(crate) fn load(
         contents.map(|contents| std::sync::Arc::new(Cow::Owned(contents.into_owned())));
 
     let rx_loader = {
-        let (tx_loader, rx_loader) = std::sync::mpsc::channel();
+        let (tx_loader, rx_loader) = crossbeam::channel::bounded(1024);
 
         let any_compatible_loader = {
             #[derive(PartialEq, Eq)]
             struct CompatibleLoaderFound;
-            let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
+            let (tx_feedback, rx_feedback) =
+                crossbeam::channel::bounded::<CompatibleLoaderFound>(128);
 
             // When loading a file type with native support (.rrd, .mcap, .png, …)
             // then we don't need the overhead and noise of external data loaders:
@@ -225,11 +226,11 @@ pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
-) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+) -> Result<crossbeam::channel::Receiver<LoadedData>, DataLoaderError> {
     re_tracing::profile_function!(path.display().to_string());
 
     let rx_loader = {
-        let (tx_loader, rx_loader) = std::sync::mpsc::channel();
+        let (tx_loader, rx_loader) = crossbeam::channel::unbounded();
 
         let any_compatible_loader = crate::iter_loaders().map(|loader| {
             if let Some(contents) = contents.as_deref() {
@@ -271,7 +272,7 @@ pub(crate) fn load(
 pub(crate) fn send(
     settings: crate::DataLoaderSettings,
     file_source: FileSource,
-    rx_loader: std::sync::mpsc::Receiver<LoadedData>,
+    rx_loader: crossbeam::channel::Receiver<LoadedData>,
     tx: &LogSender,
 ) {
     spawn({

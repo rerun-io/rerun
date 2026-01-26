@@ -3,21 +3,54 @@ name: PR Trigger Reality Sync
 on:
   issue_comment:
     types: [created]
-  pull_request:
+  pull_request_target:
     types: [synchronize]
 
 jobs:
+  # Post a helpful message when unauthorized users try to trigger sync
+  unauthorized-message:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+      github.event.comment.user.type != 'Bot' &&
+      github.event.comment.author_association != 'OWNER' &&
+      github.event.comment.author_association != 'MEMBER'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: rerun-io
+          repositories: rerun
+
+      - name: Post unauthorized message
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "Sorry, only organization members can trigger reality-sync."
+
   trigger-import:
-    # For issue_comment: run on PR comments with trigger phrase (not from bots)
-    # For pull_request: always run (we'll check for existing sync comment in a step)
+    # For issue_comment: org members (OWNER/MEMBER) can trigger with '@rerun-bot reality-sync'
+    # For pull_request_target: only auto-sync non-fork PRs (fork PRs require explicit comment trigger)
     if: |
       (
         github.event_name == 'issue_comment' &&
         github.event.issue.pull_request &&
         contains(github.event.comment.body, '@rerun-bot reality-sync') &&
-        !endsWith(github.event.comment.user.login, '[bot]')
+        github.event.comment.user.type != 'Bot' &&
+        (
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER'
+        )
       ) || (
-        github.event_name == 'pull_request'
+        github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository
       )
     runs-on: ubuntu-latest
     defaults:
@@ -49,7 +82,7 @@ jobs:
           fi
 
       - name: Check for existing sync comment (push events only)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         id: check-sync-comment
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -72,92 +105,10 @@ jobs:
             echo "No existing sync comment found, skipping auto-sync"
           fi
 
-      - name: Check if pusher has write access (push events only)
-        if: github.event_name == 'pull_request'
-        id: check-pusher
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          PUSHER="${{ github.event.sender.login }}"
-          REPO="${{ github.repository }}"
-
-          # Check if user has write or admin permission on this repo
-          PERMISSION=$(gh api "repos/$REPO/collaborators/$PUSHER/permission" \
-            --jq '.permission' 2>/dev/null || echo "none")
-
-          echo "User $PUSHER has permission: $PERMISSION"
-
-          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-            echo "User $PUSHER is authorized (permission: $PERMISSION)"
-          else
-            echo "authorized=false" >> $GITHUB_OUTPUT
-            echo "User $PUSHER is NOT authorized (permission: $PERMISSION)"
-          fi
-
-      - name: Check if commenter has write access (comment events only)
-        if: github.event_name == 'issue_comment'
-        id: check-member
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          COMMENTER="${{ github.event.comment.user.login }}"
-          REPO="${{ github.repository }}"
-
-          # Check if user has write or admin permission on this repo
-          # This works for both user-owned and org-owned repositories
-          PERMISSION=$(gh api "repos/$REPO/collaborators/$COMMENTER/permission" \
-            --jq '.permission' 2>/dev/null || echo "none")
-
-          echo "User $COMMENTER has permission: $PERMISSION"
-
-          if [ "$PERMISSION" = "admin" ] || [ "$PERMISSION" = "write" ]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-            echo "User $COMMENTER is authorized (permission: $PERMISSION)"
-          else
-            echo "authorized=false" >> $GITHUB_OUTPUT
-            echo "User $COMMENTER is NOT authorized (permission: $PERMISSION)"
-          fi
-
-      - name: Post unauthorized message
-        if: |
-          github.event_name == 'issue_comment' &&
-          steps.check-member.outputs.authorized == 'false'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh pr comment ${{ steps.pr-info.outputs.pr_number }} \
-            --repo ${{ github.repository }} \
-            --body "Sorry, only organization members can trigger the sync CI."
-
-      - name: Determine if we should proceed
-        id: should-proceed
-        run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            # Comment trigger: need authorization
-            if [ "${{ steps.check-member.outputs.authorized }}" = "true" ]; then
-              echo "proceed=true" >> $GITHUB_OUTPUT
-              echo "Will proceed: authorized comment trigger"
-            else
-              echo "proceed=false" >> $GITHUB_OUTPUT
-              echo "Will not proceed: unauthorized comment"
-            fi
-          else
-            # Push trigger: need existing sync comment AND authorized pusher
-            if [ "${{ steps.check-sync-comment.outputs.has_sync }}" != "true" ]; then
-              echo "proceed=false" >> $GITHUB_OUTPUT
-              echo "Will not proceed: no previous sync"
-            elif [ "${{ steps.check-pusher.outputs.authorized }}" != "true" ]; then
-              echo "proceed=false" >> $GITHUB_OUTPUT
-              echo "Will not proceed: pusher not authorized"
-            else
-              echo "proceed=true" >> $GITHUB_OUTPUT
-              echo "Will proceed: authorized push to previously synced PR"
-            fi
-          fi
-
       - name: Get PR details
-        if: steps.should-proceed.outputs.proceed == 'true'
+        if: |
+          github.event_name == 'issue_comment' ||
+          steps.check-sync-comment.outputs.has_sync == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -165,14 +116,16 @@ jobs:
           echo "Fetching PR details for PR #${PR_NUMBER}…"
           gh pr view "$PR_NUMBER" \
             --repo ${{ github.repository }} \
-            --json headRefName,headRepositoryOwner,headRepository,number,title,body \
+            --json headRefName,headRepositoryOwner,headRepository,number,title,body,labels \
             > /tmp/pr_data.json
 
           echo "PR data:"
           jq '.' /tmp/pr_data.json
 
       - name: Trigger reality sync workflow
-        if: steps.should-proceed.outputs.proceed == 'true'
+        if: |
+          github.event_name == 'issue_comment' ||
+          steps.check-sync-comment.outputs.has_sync == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -198,6 +151,7 @@ jobs:
                 head_repo: $pr_data[0].headRepository.name,
                 title: $pr_data[0].title,
                 body: ($pr_data[0].body // ""),
+                labels: $pr_data[0].labels,
                 is_fork: (("\($pr_data[0].headRepositoryOwner.login)/\($pr_data[0].headRepository.name)") != $current_repo),
                 triggered_by: $triggered_by
               }

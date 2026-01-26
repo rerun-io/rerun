@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::Sender;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
+use crossbeam::channel::Sender;
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};

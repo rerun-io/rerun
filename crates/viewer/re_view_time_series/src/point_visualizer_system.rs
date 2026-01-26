@@ -152,14 +152,14 @@ impl SeriesPointsSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
-            else {
+            let all_scalar_chunks =
+                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
+            if all_scalar_chunks.is_empty() {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
                     err: "No valid scalar data found".to_owned(),
                 });
-            };
+            }
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             let fallback_color: Color = typed_fallback_for(
@@ -239,6 +239,7 @@ impl SeriesPointsSystem {
                         .get_optional_chunks(
                             archetypes::SeriesPoints::descriptor_markers().component,
                         )
+                        .chunks
                         .iter()
                         .cloned()
                         .chain(
@@ -246,6 +247,7 @@ impl SeriesPointsSystem {
                                 .get_optional_chunks(
                                     archetypes::SeriesPoints::descriptor_markers().component,
                                 )
+                                .chunks
                                 .iter()
                                 .cloned(),
                         )

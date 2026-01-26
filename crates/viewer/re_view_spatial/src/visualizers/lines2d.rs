@@ -187,11 +187,11 @@ impl VisualizerSystem for Lines2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_strip_chunks) =
-                    results.get_required_chunks(LineStrips2D::descriptor_strips().component)
-                else {
+                let all_strip_chunks =
+                    results.get_required_chunk(LineStrips2D::descriptor_strips().component);
+                if all_strip_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
 

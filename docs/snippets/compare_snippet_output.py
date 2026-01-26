@@ -251,7 +251,7 @@ def main() -> None:
         if "py" in active_languages:
             if "py" in example_opt_out_entirely:
                 print("Skipping py completely")
-            elif "py" in example_opt_out_compare:
+            elif "py" in example_opt_out_compare or python_output_path == baseline_path:
                 print("Skipping py compare")
             else:
                 try:
@@ -346,7 +346,9 @@ def run_python(example: Example) -> str:
 
     cmd = [python_executable, main_path, *example.extra_args()]
 
-    env = roundtrip_env(save_path=output_path)
+    env = {}
+    if str(example) not in OPT_OUT_BACKWARDS_CHECK:
+        env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
 
     return output_path
@@ -371,7 +373,9 @@ def run_prebuilt_rust(example: Example, *, release: bool, target: str | None, ta
     cmd += [example.name]
     cmd += example.extra_args()
 
-    env = roundtrip_env(save_path=output_path)
+    env = {}
+    if str(example) not in OPT_OUT_BACKWARDS_CHECK:
+        env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
 
     return output_path
@@ -382,7 +386,9 @@ def run_prebuilt_cpp(example: Example) -> str:
 
     extension = ".exe" if os.name == "nt" else ""
     cmd = [f"./build/debug/docs/snippets/{example.name}{extension}", *example.extra_args()]
-    env = roundtrip_env(save_path=output_path)
+    env = {}
+    if str(example) not in OPT_OUT_BACKWARDS_CHECK:
+        env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
 
     return output_path

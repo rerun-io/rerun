@@ -73,7 +73,9 @@ impl re_byte_size::SizeBytes for ChunkDirectLineage {
                 chunk_id.heap_size_bytes() + chunk_ids.heap_size_bytes()
             }
             Self::CompactedFrom(btree_set) => btree_set.heap_size_bytes(),
-            Self::ReferencedFrom(rrd_manifest) => rrd_manifest.heap_size_bytes(),
+            Self::ReferencedFrom(_rrd_manifest) => {
+                0 // calculating the size of each RrdManifest over and over again is too slow. It is also amortized, so doesn't matter much.
+            }
             Self::Volatile => 0,
         }
     }

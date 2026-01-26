@@ -32,7 +32,10 @@ def main() -> int:
         print(f"Error: Could not find rerun binary at {target_path}", file=sys.stderr)
         return 1
 
-    return subprocess.call([target_path, *sys.argv[1:]])
+    try:
+        return subprocess.call([target_path, *sys.argv[1:]])
+    except KeyboardInterrupt:
+        return 130
 
 
 if __name__ == "__main__":

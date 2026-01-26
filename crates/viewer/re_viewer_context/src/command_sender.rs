@@ -242,14 +242,14 @@ pub type StaticLocation = &'static Location<'static>;
 /// Sender that queues up the execution of commands.
 #[derive(Clone)]
 pub struct CommandSender {
-    system_sender: std::sync::mpsc::Sender<(StaticLocation, SystemCommand)>,
-    ui_sender: std::sync::mpsc::Sender<UICommand>,
+    system_sender: crossbeam::channel::Sender<(StaticLocation, SystemCommand)>,
+    ui_sender: crossbeam::channel::Sender<UICommand>,
 }
 
 /// Receiver for the [`CommandSender`]
 pub struct CommandReceiver {
-    system_receiver: std::sync::mpsc::Receiver<(StaticLocation, SystemCommand)>,
-    ui_receiver: std::sync::mpsc::Receiver<UICommand>,
+    system_receiver: crossbeam::channel::Receiver<(StaticLocation, SystemCommand)>,
+    ui_receiver: crossbeam::channel::Receiver<UICommand>,
 }
 
 impl CommandReceiver {
@@ -271,9 +271,9 @@ impl CommandReceiver {
 }
 
 /// Creates a new command channel.
-pub fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (system_sender, system_receiver) = std::sync::mpsc::channel();
-    let (ui_sender, ui_receiver) = std::sync::mpsc::channel();
+pub fn command_channel(is_test: bool) -> (CommandSender, CommandReceiver) {
+    let (system_sender, system_receiver) = create_channel(is_test, 256);
+    let (ui_sender, ui_receiver) = create_channel(is_test, 256);
     (
         CommandSender {
             system_sender,
@@ -293,7 +293,7 @@ impl SystemCommandSender for CommandSender {
     #[track_caller]
     fn send_system(&self, command: SystemCommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.system_sender.send((Location::caller(), command)).ok();
+        send_crossbeam(&self.system_sender, (Location::caller(), command)).ok();
     }
 }
 
@@ -301,7 +301,7 @@ impl UICommandSender for CommandSender {
     /// Send a command to be executed.
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.ui_sender.send(command).ok();
+        send_crossbeam(&self.ui_sender, command).ok();
     }
 }
 
@@ -328,6 +328,68 @@ impl EditRedapServerModalCommand {
             origin,
             open_on_success: None,
             title: None,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+
+/// Send a message, and warn if it is taking too long.
+// TODO(emilk): move somewhere so we can reuse it.
+#[track_caller]
+fn send_crossbeam<T>(
+    sender: &crossbeam::channel::Sender<T>,
+    msg: T,
+) -> Result<(), crossbeam::channel::SendError<T>> {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            // On web we cannot block, so we just do a normal send.
+            sender.send(msg)
+        } else {
+            use std::time::Duration;
+            use crossbeam::channel::SendTimeoutError;
+
+            let timeout_sec = 5;
+
+            match sender.send_timeout(msg, Duration::from_secs(timeout_sec)) {
+                Ok(()) => Ok(()),
+                Err(SendTimeoutError::Disconnected(msg)) => Err(crossbeam::channel::SendError(msg)),
+                Err(SendTimeoutError::Timeout(msg)) => {
+                    let caller = std::panic::Location::caller();
+                    re_log::debug_once!(
+                        "{}:{}: failed to send message within {timeout_sec}s. Will keep blocking…",
+                        caller.file(),
+                        caller.line(),
+                    );
+                    sender.send(msg)
+                }
+            }
+        }
+    }
+}
+
+/// Create a blocking channel on native, and an unbounded channel on web.
+// TODO(emilk): move somewhere so we can reuse it.
+fn create_channel<T>(
+    is_test: bool,
+    size: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            _ = (is_test, size);
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        } else {
+            if is_test {
+                // In tests we queue up a bunch of stuff while there is no process loop running,
+                // so we use a larger buffer to avoid deadlocks.
+                #[expect(clippy::disallowed_methods)]
+                crossbeam::channel::unbounded()
+            } else {
+                crossbeam::channel::bounded(size)
+            }
         }
     }
 }

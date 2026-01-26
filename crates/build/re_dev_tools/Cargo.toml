@@ -27,6 +27,7 @@ re_format.workspace = true
 anyhow.workspace = true
 argh.workspace = true
 camino.workspace = true
+crossbeam.workspace = true
 cargo_metadata.workspace = true
 glob.workspace = true
 indicatif.workspace = true

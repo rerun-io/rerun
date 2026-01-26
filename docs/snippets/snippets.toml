@@ -25,6 +25,8 @@ features = [
     [
       "howto/dataframe_operations",
       "howto/query_images",
+      "howto/query_videos",
+      "howto/query_video_keyframes",
       "howto/time_alignment",
       "howto/view_operations",
     ],
@@ -33,6 +35,7 @@ features = [
     "Setting recording properties",
     [
       "concepts/recording_properties",
+      "concepts/query-and-transform/segment_properties",
     ],
   ],
   [
@@ -113,8 +116,12 @@ backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
   # Dataplatform examples don't generate rrds
+  "concepts/query-and-transform/dataframe_query_example",
+  "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/query_images",
+  "howto/query_videos",
+  "howto/query_video_keyframes",
   "howto/time_alignment",
   "howto/view_operations",
 ]
@@ -196,8 +203,11 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/query-and-transform/dataframe_query_example" = [ # Creates and reads its own RRD, incompatible with _RERUN_TEST_FORCE_SAVE
-  "py",
+"concepts/query-and-transform/dataframe_query_example" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
+  "cpp",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
   "cpp",
   "rust",
 ]
@@ -218,6 +228,14 @@ backwards_check = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
 "howto/query_images" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_videos" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_video_keyframes" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -422,12 +440,37 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/video_stream_synthetic" = [ # No comparison because video is different on CI
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/dataframe_query_example" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/dataframe_operations" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
 ]
 "howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_videos" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_video_keyframes" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",

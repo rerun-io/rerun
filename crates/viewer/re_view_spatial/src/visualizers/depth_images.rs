@@ -260,16 +260,16 @@ impl VisualizerSystem for DepthImageVisualizer {
                 use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_buffer_chunks) =
-                    results.get_required_chunks(DepthImage::descriptor_buffer().component)
-                else {
+                let all_buffer_chunks =
+                    results.get_required_chunk(DepthImage::descriptor_buffer().component);
+                if all_buffer_chunks.is_empty() {
                     return Ok(());
-                };
-                let Some(all_format_chunks) =
-                    results.get_required_chunks(DepthImage::descriptor_format().component)
-                else {
+                }
+                let all_format_chunks =
+                    results.get_required_chunk(DepthImage::descriptor_format().component);
+                if all_format_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);

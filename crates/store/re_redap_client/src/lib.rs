@@ -16,6 +16,9 @@ pub use self::grpc::{
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
+/// Responses from the dataplatform can optionally include this header to communicate back the trace id of the request.
+const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
+
 /// Controls how to load chunks from the remote server.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum StreamMode {
@@ -94,6 +97,9 @@ pub struct ApiError {
     pub message: String,
     pub kind: ApiErrorKind,
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    // when the error comes from the server returning a trace id, we include it in the client
+    // error for easier reporting.
+    trace_id: Option<String>,
 }
 
 /// Convenience for `Result<T, ApiError>`
@@ -151,81 +157,109 @@ impl std::fmt::Display for ApiErrorKind {
 }
 
 impl ApiError {
-    pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+    #[inline]
+    fn new(kind: ApiErrorKind, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            kind: ApiErrorKind::from(err.code()),
-            source: Some(Box::new(err)),
-        }
-    }
-
-    pub fn serialization(
-        err: impl std::error::Error + Send + Sync + 'static,
-        message: impl Into<String>,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            kind: ApiErrorKind::Serialization,
-            source: Some(Box::new(err)),
-        }
-    }
-
-    pub fn invalid_arguments(
-        err: impl std::error::Error + Send + Sync + 'static,
-        message: impl Into<String>,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            kind: ApiErrorKind::InvalidArguments,
-            source: Some(Box::new(err)),
-        }
-    }
-
-    pub fn internal(
-        err: impl std::error::Error + Send + Sync + 'static,
-        message: impl Into<String>,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            kind: ApiErrorKind::Internal,
-            source: Some(Box::new(err)),
-        }
-    }
-
-    pub fn connection(
-        err: impl std::error::Error + Send + Sync + 'static,
-        message: impl Into<String>,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            kind: ApiErrorKind::Connection,
-            source: Some(Box::new(err)),
-        }
-    }
-
-    pub fn connection_simple(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            kind: ApiErrorKind::Connection,
+            kind,
             source: None,
+            trace_id: None,
         }
     }
 
-    pub fn credentials(err: ClientCredentialsError, message: impl Into<String>) -> Self {
+    #[inline]
+    fn new_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        kind: ApiErrorKind,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             message: message.into(),
-            kind: ApiErrorKind::Unauthenticated,
+            kind,
             source: Some(Box::new(err)),
+            trace_id: None,
         }
+    }
+
+    #[inline]
+    fn new_with_source_and_trace(
+        err: impl std::error::Error + Send + Sync + 'static,
+        kind: ApiErrorKind,
+        message: impl Into<String>,
+        trace_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind,
+            source: Some(Box::new(err)),
+            trace_id: Some(trace_id.into()),
+        }
+    }
+
+    pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+        let message = format!("{}: {}", message.into(), err.message());
+        let kind = ApiErrorKind::from(err.code());
+        let trace_id = err
+            .metadata()
+            .get(GRPC_RESPONSE_TRACEID_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_owned());
+        if let Some(trace_id) = trace_id {
+            Self::new_with_source_and_trace(err, kind, message, trace_id)
+        } else {
+            Self::new_with_source(err, kind, message)
+        }
+    }
+
+    pub fn serialization(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::Serialization, message)
+    }
+
+    pub fn serialization_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Serialization, message)
+    }
+
+    pub fn invalid_arguments_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::InvalidArguments, message)
+    }
+
+    pub fn internal_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Internal, message)
+    }
+
+    pub fn connection_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Connection, message)
+    }
+
+    pub fn connection(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::Connection, message)
+    }
+
+    pub fn credentials_with_source(
+        err: ClientCredentialsError,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Unauthenticated, message)
     }
 
     #[expect(clippy::needless_pass_by_value)]
     pub fn invalid_server(origin: re_uri::Origin) -> Self {
-        Self {
-            message: format!("{origin} is not a valid Rerun server"),
-            kind: ApiErrorKind::InvalidServer,
-            source: None,
-        }
+        Self::new(
+            ApiErrorKind::InvalidServer,
+            format!("{origin} is not a valid Rerun server"),
+        )
     }
 
     /// Helper method to downcast the source error to a `ClientCredentialsError` if possible.
@@ -245,9 +279,9 @@ impl ApiError {
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind, self.message)?;
-        if let Some(source) = &self.source {
-            write!(f, ": {source}")?;
+        write!(f, "{}", self.message)?;
+        if let Some(ref trace_id) = self.trace_id {
+            write!(f, " (trace-id: {trace_id})")?;
         }
         Ok(())
     }

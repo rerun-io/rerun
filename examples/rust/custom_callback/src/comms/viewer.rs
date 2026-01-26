@@ -63,6 +63,7 @@ impl ControlViewerHandle {
 
 impl ControlViewer {
     pub async fn connect(address: String) -> tokio::io::Result<Self> {
+        #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
         let (tx, rx) = unbounded_channel();
         Ok(Self {
             address,

@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from ..color_conversion import u8_array_to_rgba
+from .._color_conversion import u8_array_to_rgba
 from ..error_utils import RerunWarning
 
 if TYPE_CHECKING:

@@ -26,7 +26,7 @@ impl Profiler {
 
     fn start_server(&mut self) {
         crate::profile_function!();
-        let bind_addr = format!("[::]:{PORT}"); // Serve on all addresses (dual-stack IPv4 + IPv6).
+        let bind_addr = format!("0.0.0.0:{PORT}"); // Serve on all addresses.
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
                 re_log::info!(
