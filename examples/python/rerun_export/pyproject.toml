@@ -3,6 +3,7 @@ name = "rerun_export"
 version = "0.1.0"
 readme = "README.md"
 dependencies = [
+  # All versions are pinned by the root pyproject.toml
   "numpy",
   "pandas",
   "rerun-sdk",
@@ -13,7 +14,6 @@ dependencies = [
   "pyarrow",
   "pillow",
   "av",
-  "tyro>=1.0.5",
 ]
 
 [project.scripts]

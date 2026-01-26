@@ -1,10 +1,10 @@
 ---
-title: Export robot recordings to LeRobot datasets
+title: Export recordings to LeRobot datasets
 order: 90
 ---
 
-Robot data logged with Rerun can be converted into training-ready datasets for imitation learning.
-This guide demonstrates how to use the OSS Rerun server to query RRD recordings, align multi-rate sensor data to a common timeline, and export the result as a [LeRobot v3 dataset](https://github.com/huggingface/lerobot).
+Convert Rerun data into the training dataset version of your choice.
+This guide demonstrates how to use the OSS Rerun server to query recordings, align multi-rate sensor data to a common timeline, and export the result as a [LeRobot](https://github.com/huggingface/lerobot) dataset.
 
 ## Prerequisites
 
@@ -18,19 +18,14 @@ This will install the necessary dependencies including LeRobot, DataFusion, and 
 
 ## Time alignment and resampling
 
-By default, the export uses the framerate specified in the config to create evenly spaced samples. Under the hood, this uses the `using_index_values` parameter with `fill_latest_at=True`:
-
-This ensures:
-
-- All sensors are aligned to the same timestamps
-- Missing values are forward-filled from the most recent observation
-- The output has a consistent framerate
+By default, the export uses the frame rate specified in the config to create evenly spaced samples (a LeRobot requirement).
 
 For more details on time alignment, see [Time-align data](time_alignment.md).
 
 ## Setup
 
-Start a local server and load your RRD recordings. Each recording becomes a segment in the dataset, and each segment becomes one LeRobot episode.
+Start a local server and load your recordings.
+Each recording becomes a segment in the dataset, and each unique segment id becomes one LeRobot episode.
 
 snippet: howto/lerobot_export[setup]
 
@@ -41,7 +36,7 @@ See [Catalog object model](../../concepts/query-and-transform/catalog-object-mod
 Robot recordings often contain more data than needed for training.
 Filter the dataset to include only the relevant entity paths and components that will map to LeRobot’s standardized format.
 
-For example, you might include joint position commands as actions, joint states and end-effector pose as observations, RGB camera streams as video inputs, and a language instruction stream as the task description.
+For example, you might include joint position commands as actions, joint states and end-effector pose as observations, RGB camera streams as video inputs, and a language instruction as the task description.
 Other signals such as debug visualizations, intermediate computations, or unused sensors can be excluded.
 
 snippet: howto/lerobot_export[filter_data]
@@ -52,7 +47,7 @@ Define how to map the data to LeRobot's standardized format. This requires speci
 
 - Which components contain actions and observations
 - Video streams to include
-- Target framerate for the dataset
+- Target frame rate for the dataset
 - Timeline to use for alignment
 
 snippet: howto/lerobot_export[configure_export]
@@ -66,7 +61,7 @@ snippet: howto/lerobot_export[infer_features]
 Feature inference examines the underlying data to determine:
 
 - Data types (float, int, image, video, text)
-- Array shapes (scalar vs. vector vs. matrix)
+- Array shapes (scalar, vector, matrix)
 - Video dimensions (by decoding the first frame)
 
 ## Create the LeRobot dataset
@@ -75,7 +70,7 @@ Create the LeRobot dataset instance, using the LeRobot dataset API:
 
 snippet: howto/lerobot_export[create_dataset]
 
-Note, the `dataset_root` is where the dataset files will be written, and LeRobot requires this to be an empty or non-existing directory.
+Note, `root` is where the dataset files will be written, and LeRobot requires this to be an empty or non-existing directory.
 
 ### Export the episode
 
@@ -83,7 +78,7 @@ Convert the filtered data into a LeRobot episode. This is the core transformatio
 
 snippet: howto/lerobot_export[export_episode]
 
-The `convert_dataframe_to_episode` function performs time alignment and resamples the dataframe to the target framerate. It generates a sequence of evenly spaced timestamps at the target framerate and treats these as the canonical timesteps for the episode.
+The `convert_dataframe_to_episode` function performs time alignment and resamples the dataframe to the target frame rate. It generates a sequence of evenly spaced timestamps at the target frame rate and treats these as the canonical timesteps for the episode.
 For each timestep, it queries the most recent available value of every selected component using Rerun’s [`latest-at`](../../concepts/logging-and-ingestion/latest-at.md) semantics. If a stream has no sample exactly at that time, its last observed value is forward-filled.
 
 The `finalize()` call completes the dataset by writing metadata and closing all files.

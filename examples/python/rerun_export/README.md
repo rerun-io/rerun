@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "LeRobot dataset curation using OSS Rerun server"
+title = "LeRobot dataset from RRD"
 tags = ["Robotics", "MCAP", "LeRobot", "Dataset", "Server"]
 channel = "main"
 thumbnail = "https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/480w.png"
@@ -18,7 +18,8 @@ Convert robot recordings into training-ready datasets by using the OSS Rerun ser
 
 ## Background
 
-This example demonstrates how to use the Rerun OSS server API to process robot recordings and prepare them for imitation learning. The workflow uses the server to load RRD files, query robot data (actions, observations, videos), align time series to a target framerate, and write the result as a LeRobot v3 dataset compatible with robotics model training pipelines.
+This example demonstrates how to use the Rerun OSS server API to process robot recordings and prepare them for imitation learning.
+The workflow uses the server to load RRD files, query robot data (actions, observations, videos), align time series to a target framerate, and write the result as a LeRobot v3 dataset compatible with robotics model training pipelines.
 
 [LeRobot](https://github.com/huggingface/lerobot) is a project by Hugging Face that provides models, datasets, and tools for real-world robotics in PyTorch. This example shows how Rerun recordings can be converted into LeRobot's standardized dataset format.
 
@@ -52,29 +53,6 @@ rerun_export \
   --task /language_instruction:TextDocument:text \
   --video front:/camera/front:VideoStream:sample
 ```
-
-### CLI options
-
-Required arguments:
-
-- `--rrd-dir`: Directory containing RRD recording files
-- `--output`: Output directory for the LeRobot dataset
-- `--fps`: Target framerate for the dataset (e.g., 10 Hz)
-- `--action`: Fully qualified column for robot actions (format: `path:Component:field`)
-- `--state`: Fully qualified column for robot state observations
-
-Optional arguments:
-
-- `--dataset-name`: Dataset name in the catalog (default: `rrd_dataset`)
-- `--repo-id`: LeRobot repository ID (defaults to dataset name)
-- `--index`: Timeline to use for alignment (default: `real_time`)
-- `--task`: Fully qualified column for task descriptions (e.g., language instructions)
-- `--video`: Video stream specification as `key:path` (repeatable for multiple cameras)
-- `--segments`: List of specific segment IDs to convert
-- `--max-segments`: Limit the number of segments processed
-- `--use-images`: Store individual images instead of video files
-- `--action-names`: Comma-separated names for action dimensions
-- `--state-names`: Comma-separated names for state dimensions
 
 ### Video specification format
 
