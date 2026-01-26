@@ -3,10 +3,10 @@ title: Query video streams
 order: 70
 ---
 
-Video streams provide the best compression ratio for camera feeds, but require special handling when querying data back from the dataplatform.
+Video streams provide the best compression ratio for camera feeds, but require special handling when querying data back from the Data Platform.
 For more details about the different video types we support see our [video reference](../../concepts/logging-and-ingestion/video.md).
 
-This guide focuses on querying [`VideoStream`](../../reference/types/archetypes/video_stream.md) data from the Rerun dataplatform,
+This guide focuses on querying [`VideoStream`](../../reference/types/archetypes/video_stream.md) data from the Rerun Data Platform,
 including how to decode individual frames and how to export entire streams to MP4 files.
 
 The dependencies in this example require `rerun-sdk[all]` and `av` for video decoding.

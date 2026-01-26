@@ -660,7 +660,7 @@ See the
 -   Allow opening web viewer links directly [#10928](https://github.com/rerun-io/rerun/pull/10928)
 -   Add keyboard shortcut to copy entity hierarchy [#10938](https://github.com/rerun-io/rerun/pull/10938)
 -   Add H.265 support for native & `VideoStream` [#10994](https://github.com/rerun-io/rerun/pull/10994)
--   Support sharing URLs for dataplatform datasets & tables [#11038](https://github.com/rerun-io/rerun/pull/11038)
+-   Support sharing URLs for Data Platform datasets & tables [#11038](https://github.com/rerun-io/rerun/pull/11038)
 -   New open from URL dialog & main menu entry [#11040](https://github.com/rerun-io/rerun/pull/11040)
 -   Add archetypes for MCAP metadata [#11062](https://github.com/rerun-io/rerun/pull/11062)
 -   Add `opacity` setting for `VideoStream` & `VideoAsset` [#11113](https://github.com/rerun-io/rerun/pull/11113)
@@ -692,7 +692,7 @@ See the
 -   Add share link button to time panel context menu [#11186](https://github.com/rerun-io/rerun/pull/11186)
 
 #### 🕸️ Web
--   Improve browser navigation for http & Rerun dataplatform links [#10863](https://github.com/rerun-io/rerun/pull/10863)
+-   Improve browser navigation for http & Rerun Data Platform links [#10863](https://github.com/rerun-io/rerun/pull/10863)
 -   pixi: Use llvm-ar from PATH on macOS, avoid unexpanded ${PIXI_PROJECT… [#10910](https://github.com/rerun-io/rerun/pull/10910) (thanks [@matildasmeds](https://github.com/matildasmeds)!)
 
 #### 🧑‍💻 Dev-experience

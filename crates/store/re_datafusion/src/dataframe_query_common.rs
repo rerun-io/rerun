@@ -334,7 +334,7 @@ impl TableProvider for DataframeQueryTableProvider {
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
-/// on the data platform, we will get the schema for all entities and all components. This
+/// on the Data Platform, we will get the schema for all entities and all components. This
 /// method is used to down select from that full schema based on `query_expression`.
 #[tracing::instrument(level = "trace", skip_all)]
 fn compute_schema_for_query(

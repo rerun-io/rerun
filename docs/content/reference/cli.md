@@ -250,7 +250,7 @@ Authentication with the redap.
 
 Log into Rerun.
 
-This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+This command opens a page in your default browser, allowing you to log in to the Rerun Data Platform.
 
 Once you've logged in, your credentials are stored on your machine.
 
@@ -274,7 +274,7 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 
 Generate a fresh access token.
 
-You can use this token to authorize requests to the Rerun data platform.
+You can use this token to authorize requests to the Rerun Data Platform.
 
 It's closer to an API key than an access token, as it can be revoked before it expires.
 

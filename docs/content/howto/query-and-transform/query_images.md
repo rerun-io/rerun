@@ -4,7 +4,7 @@ order: 60
 ---
 
 Images are incredibly useful, however there are many ways to store and manipulate them.
-This example focuses on querying image frames from the Rerun dataplatform.
+This example focuses on querying image frames from the Rerun Data Platform.
 
 The dependencies in this example require `rerun-sdk[all]`.
 
