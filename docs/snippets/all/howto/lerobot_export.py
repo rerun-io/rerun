@@ -39,6 +39,8 @@ training_data = (
 )
 
 # endregion: filter_data
+
+# region: configure_export
 # Define how to extract task instructions from the recording
 # This could be from a TextDocument, static metadata, etc.
 # For this example, we assume a static instruction
