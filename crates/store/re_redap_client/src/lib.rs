@@ -16,7 +16,7 @@ pub use self::grpc::{
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
-/// Responses from the dataplatform can optionally include this header to communicate back the trace id of the request.
+/// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 
 /// Controls how to load chunks from the remote server.

@@ -21,7 +21,7 @@
 [snippets_ref]
 features = [
   [
-    "Query dataplatform",
+    "Query Data Platform",
     [
       "howto/dataframe_operations",
       "howto/query_images",

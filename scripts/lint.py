@@ -268,9 +268,9 @@ def lint_line(
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
-    # Check for dataplatform (should be "Data Platform" unless in URL path)
-    if re.search(r"(?<!/\b)dataplatform(?!/\b)", line, re.IGNORECASE):
-        return "Use 'Data Platform' instead of 'dataplatform' (unless it's part of a URL path)"
+    # Check for dataplatform/data platform (should be "Data Platform" unless in URL path)
+    if re.search(r"(?<!/\b)(dataplatform|data\s+platform)(?!/\b)", line, re.IGNORECASE):
+        return "Use 'Data Platform' instead of 'dataplatform'/'data platform' (unless it's part of a URL path)"
 
     if not is_in_docstring:
         if m := re.search(
@@ -453,6 +453,8 @@ def test_lint_line() -> None:
         "The dataplatform is powerful",
         "Using dataplatform for analytics",
         "Our DataPlatform solution",
+        "The data platform handles everything",
+        "Using data platform for analytics",
     ]
 
     for test in should_pass:
@@ -1083,10 +1085,10 @@ def fix_header_casing(s: str) -> str:
 
 
 def fix_dataplatform(s: str) -> str:
-    """Fix 'dataplatform' to 'Data Platform' unless it's part of a URL path."""
+    """Fix 'dataplatform'/'data platform' to 'Data Platform' unless it's part of a URL path."""
     # Don't fix if it's in a URL path (has slashes before or after)
     # Use negative lookbehind and lookahead to avoid URL paths
-    return re.sub(r"(?<!/\b)dataplatform(?!/\b)", "Data Platform", s, flags=re.IGNORECASE)
+    return re.sub(r"(?<!/\b)(dataplatform|data\s+platform)(?!/\b)", "Data Platform", s, flags=re.IGNORECASE)
 
 
 def fix_enforced_upper_case(s: str) -> str:
