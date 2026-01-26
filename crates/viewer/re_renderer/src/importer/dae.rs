@@ -65,7 +65,8 @@ fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
     }
 
     static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r#"id=(["'])([^"']+)["']"#).unwrap());
+    // Note: we only want to match the global `id` here, not scoped `sid` attributes.
+    let re = RE.get_or_init(|| Regex::new(r#"\bid=(["'])([^"']+)["']"#).unwrap());
 
     let content = String::from_utf8_lossy(buffer);
     let mut seen = HashSet::new();
@@ -81,7 +82,7 @@ fn sanitize_dae_ids(buffer: &[u8]) -> Cow<'_, [u8]> {
             modified = true;
             let new_id = format!("{id}_dup");
             re_log::warn_once!(
-                "Renamed duplicate ID in DAE file to prevent parser panic: '{id}' -> '{new_id}'",
+                "DAE file contains duplicate ID. Renaming it to avoid conflict: '{id}' -> '{new_id}'",
             );
             format!("id={quote}{new_id}{quote}")
         }
