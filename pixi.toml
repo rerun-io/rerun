@@ -290,7 +290,10 @@ py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format {{ f
 ] }
 py-fmt-check = "uv run ruff check . && uv run ruff format --check ."
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
+py-lint-non-sdk = { depends-on = [
+  "py-sync-examples", # these ensure that the .venv is in the right state for type checking examples and snippets
+  "py-sync-snippets",
+], cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
 # MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.

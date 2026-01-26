@@ -52,6 +52,15 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
+// We separately track orphaned recordings. These have been disconnected and are flushing but
+// actually dropping them prior to application exit leads to warning about dropping the
+// buffered sink.
+fn orphaned_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
+    static ORPHANED_RECORDINGS: OnceLock<parking_lot::Mutex<Vec<RecordingStream>>> =
+        OnceLock::new();
+    ORPHANED_RECORDINGS.get_or_init(Default::default).lock()
+}
+
 type GarbageSender = crossbeam::channel::Sender<ArrowRecordBatch>;
 type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 
@@ -282,7 +291,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.allow_threads(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
-        for recording in all_recordings().iter() {
+        for recording in all_recordings().iter().chain(orphaned_recordings().iter()) {
             recording.flush_blocking()?;
         }
 
@@ -292,6 +301,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
         // Finally remove any recordings that have a refcount of 1, which means they are ONLY
         // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
+        orphaned_recordings().retain(|recording| recording.ref_count() > 1);
 
         Ok(())
     })
@@ -305,9 +315,10 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
 #[pyfunction]
 fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.allow_threads(|| -> Result<(), SinkFlushError> {
-        // Disconnect any recordings that have a refcount of 1. This means they are the
+        // Disconnect any recordings that have a refcount of 1. This means they are
         // only referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
-        for recording in all_recordings().iter() {
+        let mut orphaned = Vec::new();
+        all_recordings().retain(|recording| {
             if recording.ref_count() <= 1 {
                 re_log::debug!(
                     "Disconnecting orphaned recording: {}",
@@ -317,8 +328,13 @@ fn disconnect_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
                         .unwrap_or_else(|| "<unknown>".to_owned())
                 );
                 recording.disconnect();
+                orphaned.push(recording.clone());
+                false
+            } else {
+                true
             }
-        }
+        });
+        orphaned_recordings().extend(orphaned);
 
         Ok(())
     })

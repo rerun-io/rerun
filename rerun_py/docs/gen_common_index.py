@@ -448,6 +448,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "IndexValuesLike",
             "NotFoundError",
             "RegistrationHandle",
+            "RegistrationResult",
             "SegmentRegistrationResult",
             "TableEntry",
             "VectorDistanceMetric",

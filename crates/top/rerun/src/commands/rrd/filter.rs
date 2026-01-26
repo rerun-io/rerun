@@ -109,7 +109,7 @@ impl FilterCommand {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
                             match re_sorbet::ChunkBatch::try_from(&msg.batch) {
                                 Ok(batch) => {
-                                    if !dropped_entity_paths.contains(batch.entity_path()) {
+                                    if dropped_entity_paths.contains(batch.entity_path()) {
                                         None
                                     } else {
                                         let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
