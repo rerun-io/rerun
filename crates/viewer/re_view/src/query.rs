@@ -63,10 +63,11 @@ pub fn range_with_blueprint_resolved_data<'a>(
             }
         }
 
-        let mut results =
-            ctx.recording_engine()
-                .cache()
-                .range(range_query, &data_result.entity_path, components.iter().copied());
+        let mut results = ctx.recording_engine().cache().range(
+            range_query,
+            &data_result.entity_path,
+            components.iter().copied(),
+        );
 
         // Apply mapping to the results.
         for (target, selector) in &active_remappings {

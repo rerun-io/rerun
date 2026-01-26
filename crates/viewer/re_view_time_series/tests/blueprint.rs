@@ -1,10 +1,9 @@
-use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
-use re_sdk_types::archetypes::{self, Scalars};
+use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
-use re_sdk_types::components;
 use re_sdk_types::datatypes::{self, TimeRange};
+use re_sdk_types::{DynamicArchetype, VisualizableArchetype as _, components};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -159,10 +158,35 @@ fn log_data(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
         let timepoint = TimePoint::from([(timeline, i)]);
         let t = i as f64 / 8.0;
         test_context.log_entity("plots/sin", |builder| {
-            builder.with_archetype(RowId::new(), timepoint.clone(), &Scalars::single(t.sin()))
+            builder.with_archetype_auto_row(timepoint.clone(), &Scalars::single(t.sin()))
         });
         test_context.log_entity("plots/cos", |builder| {
-            builder.with_archetype(RowId::new(), timepoint, &Scalars::single(t.cos()))
+            builder.with_archetype_auto_row(timepoint, &Scalars::single(t.cos()))
+        });
+    }
+}
+
+fn log_data_with_linear_speed(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
+    log_data(test_context, timeline);
+
+    test_context.log_entity("plots/speed", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &SeriesLines::new()
+                .with_colors([components::Color::from_rgb(255, 0, 0)])
+                .with_names(["store_name"]),
+        )
+    });
+
+    for i in 0..=MAX_TIME {
+        let timepoint = TimePoint::from([(timeline, i)]);
+        let t = i as f64 / 8.0;
+        test_context.log_entity("plots/speed", |builder| {
+            builder.with_archetype_auto_row(
+                timepoint.clone(),
+                &DynamicArchetype::new("custom")
+                    .with_component::<components::LinearSpeed>("custom_component", [t.cos()]),
+            )
         });
     }
 }
@@ -220,6 +244,123 @@ fn setup_blueprint(
                 }),
             );
         }
+
+        blueprint.add_view_at_root(view)
+    })
+}
+
+#[test]
+pub fn test_explicit_component_mapping() {
+    let mut test_context = TestContext::new();
+    test_context.app_options.experimental.component_mapping = true; // Have to do this before registering the view class.
+    test_context.register_view_class::<TimeSeriesView>();
+
+    let timeline = test_context.active_timeline().unwrap();
+    log_data_with_linear_speed(&mut test_context, timeline);
+
+    let view_id = setup_blueprint_with_explicit_mapping(&mut test_context);
+
+    let size = egui::vec2(300.0, 300.0);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "explicit_component_mapping",
+        size,
+        None,
+    ));
+}
+
+fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> ViewId {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        // Single line visualizer for the `sin` plot:
+        // * scalar - map explicitly to Scalar component.
+        // * color - explicitly use default (blue), ignore provided override.
+        // * .. everything else to auto
+        ctx.save_visualizers(
+            &EntityPath::from("plots/sin"),
+            view.id,
+            [SeriesLines::new()
+                .with_colors([components::Color::from_rgb(255, 0, 255)])
+                .visualizer()
+                .with_mappings([
+                    VisualizerComponentMapping {
+                        target: Scalars::descriptor_scalars().component.as_str().into(),
+                        source_kind: ComponentSourceKind::SourceComponent,
+                        source_component: None,
+                        selector: None,
+                    }
+                    .into(),
+                    VisualizerComponentMapping {
+                        target: SeriesLines::descriptor_colors().component.as_str().into(),
+                        source_kind: ComponentSourceKind::Default,
+                        source_component: None,
+                        selector: None,
+                    }
+                    .into(),
+                ])],
+        );
+
+        // Two visualizers for the `speed` plot:
+        // * Lines:
+        //    * scalar - map to `LinearSpeed` component.
+        //    * color - explicitly use fallback.
+        //    * ... everything else is auto, which will pick up the SeriesLines name from the store.
+        // * Points:
+        //    * scalar - map to `LinearSpeed` component.
+        //    * color - explicitly use provided override (green).
+        //    * ... everything else is auto, which will not pick up anything from the store.
+        let scalar_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:custom_component".into()),
+            selector: None,
+        };
+        ctx.save_visualizers(
+            &EntityPath::from("plots/speed"),
+            view.id,
+            [
+                SeriesLines::new().visualizer().with_mappings([
+                    blueprint::components::VisualizerComponentMapping(scalar_mapping.clone()),
+                    blueprint::components::VisualizerComponentMapping(VisualizerComponentMapping {
+                        target: SeriesLines::descriptor_colors().component.as_str().into(),
+                        source_kind: ComponentSourceKind::Fallback,
+                        source_component: None,
+                        selector: None,
+                    }),
+                ]),
+                SeriesPoints::new()
+                    .with_colors([components::Color::from_rgb(0, 255, 0)])
+                    .visualizer()
+                    .with_mappings([
+                        blueprint::components::VisualizerComponentMapping(scalar_mapping),
+                        blueprint::components::VisualizerComponentMapping(
+                            VisualizerComponentMapping {
+                                target: SeriesLines::descriptor_colors().component.as_str().into(),
+                                source_kind: ComponentSourceKind::Override,
+                                source_component: None,
+                                selector: None,
+                            },
+                        ),
+                    ]),
+            ],
+        );
+
+        // No visualization at all for plots/cos.
+        ctx.save_visualizers(
+            &EntityPath::from("plots/cos"),
+            view.id,
+            std::iter::empty::<re_sdk_types::Visualizer>(),
+        );
+
+        // Set a default color on the view (blue)
+        ctx.save_blueprint_archetype(
+            view.defaults_path.clone(),
+            &archetypes::SeriesLines::default().with_colors([(0, 0, 255)]),
+        );
 
         blueprint.add_view_at_root(view)
     })
