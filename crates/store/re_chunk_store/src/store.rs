@@ -449,10 +449,10 @@ impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             used_physical,
-            missing: missing_virtual,
+            missing,
         } = self;
 
-        used_physical.heap_size_bytes() + missing_virtual.heap_size_bytes()
+        used_physical.heap_size_bytes() + missing.heap_size_bytes()
     }
 }
 
@@ -614,8 +614,8 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
-    /// Calling [`ChunkStore::take_protected_chunks`] will atomically return the contents of this set
-    /// as well as clearing it.
+    /// Calling [`ChunkStore::take_tracked_chunk_ids`] will atomically return the contents of this
+    /// struct as well as clearing it.
     pub(crate) queried_chunk_id_tracker: RwLock<QueriedChunkIdTracker>,
 
     /// Monotonically increasing ID for insertions.
@@ -906,7 +906,7 @@ impl ChunkStore {
 
     /// How many missing chunk IDs are currently registered?
     ///
-    /// See also [`ChunkStore::take_missing_chunk_ids`].
+    /// See also [`ChunkStore::take_tracked_chunk_ids`].
     pub fn num_missing_chunk_ids(&self) -> usize {
         self.queried_chunk_id_tracker.read().missing.len()
     }

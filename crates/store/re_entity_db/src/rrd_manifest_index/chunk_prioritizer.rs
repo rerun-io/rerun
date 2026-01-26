@@ -336,17 +336,7 @@ pub struct ChunkPrefetchOptions {
     /// before looping back to the start.
     pub start_time: TimeInt,
 
-    /// These chunks are required by one or more queries that are currently in-flight.
-    ///
-    /// We must try and download them in priority, as there are views actively waiting for them in order to
-    /// properly render.
-    ///
-    /// Only remote chunk IDs make sense here. Local IDs will be ignored.
-    // pub missing_remote_chunk_ids: HashSet<ChunkId>,
-
-    // pub used_chunk_ids: HashSet<ChunkId>,
-
-    /// Batch together requests until we reach this size).
+    /// Batch together requests until we reach this size.
     pub max_uncompressed_bytes_per_batch: u64,
 
     /// Total budget for all loaded chunks.

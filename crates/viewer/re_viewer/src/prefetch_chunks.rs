@@ -23,7 +23,9 @@ pub fn prefetch_chunks_for_active_recording(
     let origin = redap_uri.origin.clone();
 
     let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
-    let total_byte_budget = (memory_limit as f64 * 0.75 - 1e8).max(0.0) as u64; // Don't completely fill it - we want some headroom for caches etc.
+    // Use 75% of memory limit minus 100MB for headroom. The extra 100MB buffer accounts for
+    // caches, intermediate allocations, and other non-chunk memory usage.
+    let total_byte_budget = (memory_limit as f64 * 0.75 - 1e8).max(0.0) as u64;
 
     // Load data from slightly before the current time to give some room for latest-at.
     // This is a bit hacky, but works for now.

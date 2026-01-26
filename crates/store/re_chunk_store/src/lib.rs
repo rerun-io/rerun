@@ -96,7 +96,7 @@ pub enum OnMissingChunk {
     /// Ignore the missing chunk, and return partial results.
     Ignore,
 
-    /// Remember the missing chunk ID in [`ChunkStore::take_missing_chunk_ids`]
+    /// Remember the missing chunk ID in [`ChunkStore::take_tracked_chunk_ids`]
     /// and report it back in [`QueryResults::missing`].
     Report,
 
