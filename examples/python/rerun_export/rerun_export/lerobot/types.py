@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 import numpy as np
 import numpy.typing as npt
 
 from rerun_export.utils import get_entity_path
-
-if TYPE_CHECKING:
-    import rerun as rr
 
 VideoSampleData = tuple[list[bytes], npt.NDArray[np.int64]]
 
