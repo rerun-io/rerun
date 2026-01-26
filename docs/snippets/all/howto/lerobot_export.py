@@ -47,7 +47,7 @@ training_data = (
 instructions = "/language_instruction:TextDocument:text"
 
 # Specify video streams to include in the dataset
-# Each stream needs a key (camera identifier) and path to the VideoStream component
+# Each stream needs a key (camera identifier) and entity path where the VideoStream is logged
 videos = [
     VideoSpec(key="ext1", path="/camera/ext1", video_format="h264"),
     VideoSpec(key="ext2", path="/camera/ext2", video_format="h264"),
