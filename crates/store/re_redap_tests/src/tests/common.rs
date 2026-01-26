@@ -249,9 +249,7 @@ impl LayerType {
             Self::Properties { properties } => create_recording_with_properties(
                 tuid_prefix,
                 segment_id,
-                // TODO(ab): avoid this annoying conversion (this requires a change to
-                // `create_recording_with_properties` which needs to be propagated to
-                // `Data Platform`.
+                // TODO(ab): avoid this annoying conversion
                 properties
                     .iter()
                     .map(|(k, v)| (k.clone(), v.iter().map(|v| v.as_ref()).collect()))
