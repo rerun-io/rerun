@@ -108,7 +108,9 @@ impl<T> Sender<T> {
     // Blocking version for native
     #[cfg(not(target_arch = "wasm32"))]
     fn send_impl(&self, msg: T, size_bytes: u64) -> Result<(), SendError<T>> {
-        use std::time::{Duration, Instant};
+        use std::time::Instant;
+
+        use crate::{BLOCKED_WARNING_THRESHOLD, BLOCKED_WARNING_THRESHOLD_SECS};
 
         // Make sure we are the only sender trying to send right now:
         let _sender_lock = self.shared.active_sender.lock();
@@ -118,10 +120,6 @@ impl<T> Sender<T> {
         let start = Instant::now();
 
         let capacity = self.shared.capacity_bytes;
-
-        /// Warn if we block for longer than this
-        const WARN_CUTOFF_SECS: u64 = 5;
-        const WARN_CUTOFF: Duration = Duration::from_secs(5);
 
         if size_bytes <= capacity {
             // Normal case: wait until we have room
@@ -143,9 +141,9 @@ impl<T> Sender<T> {
                             return Err(SendError(msg));
                         }
 
-                        if !warned && WARN_CUTOFF < start.elapsed() {
+                        if !warned && BLOCKED_WARNING_THRESHOLD < start.elapsed() {
                             re_log::warn!(
-                                "{debug_name}: Sender has been blocked for over {WARN_CUTOFF_SECS} seconds waiting for space in channel"
+                                "{debug_name}: Sender has been blocked for over {BLOCKED_WARNING_THRESHOLD_SECS} seconds waiting for space in channel"
                             );
                             warned = true;
                         }
@@ -153,7 +151,9 @@ impl<T> Sender<T> {
                         if warned {
                             self.shared.state_changed.wait(&mut state);
                         } else {
-                            self.shared.state_changed.wait_for(&mut state, WARN_CUTOFF);
+                            self.shared
+                                .state_changed
+                                .wait_for(&mut state, BLOCKED_WARNING_THRESHOLD);
                         }
                     }
                 }
@@ -184,9 +184,9 @@ impl<T> Sender<T> {
                         return Err(SendError(msg));
                     }
 
-                    if !warned && WARN_CUTOFF < start.elapsed() {
+                    if !warned && BLOCKED_WARNING_THRESHOLD < start.elapsed() {
                         re_log::warn!(
-                            "{debug_name}: Sender has been blocked for over {WARN_CUTOFF_SECS} seconds waiting for channel to empty",
+                            "{debug_name}: Sender has been blocked for over {BLOCKED_WARNING_THRESHOLD_SECS} seconds waiting for channel to empty",
                         );
                         warned = true;
                     }
@@ -194,7 +194,9 @@ impl<T> Sender<T> {
                     if warned {
                         self.shared.state_changed.wait(&mut state);
                     } else {
-                        self.shared.state_changed.wait_for(&mut state, WARN_CUTOFF);
+                        self.shared
+                            .state_changed
+                            .wait_for(&mut state, BLOCKED_WARNING_THRESHOLD);
                     }
                 }
 
