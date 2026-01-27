@@ -28,19 +28,7 @@ impl DataUi for ComponentPath {
             }
             .data_ui(ctx, ui, ui_layout, query, db);
         } else if ctx.recording().tree().subtree(entity_path).is_some() {
-            if db
-                .rrd_manifest_index()
-                .unloaded_temporal_entries_for(
-                    &re_log_types::Timeline::new(
-                        query.timeline(),
-                        db.timeline_type(&query.timeline()),
-                    ),
-                    entity_path,
-                    Some(*component),
-                )
-                .iter()
-                .any(|chunk| chunk.time_range.contains(query.at()))
-            {
+            if !db.has_fully_loaded(entity_path, *component, query) {
                 ui.label("Loading…");
             } else if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),

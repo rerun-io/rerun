@@ -512,6 +512,22 @@ impl EntityDb {
         None
     }
 
+    /// Check if we have all loaded chunk for the given entity and component at `query.at()`.
+    pub fn has_fully_loaded(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+        query: &LatestAtQuery,
+    ) -> bool {
+        let timeline = Timeline::new(query.timeline(), self.timeline_type(&query.timeline()));
+
+        !self
+            .rrd_manifest_index()
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
+            .iter()
+            .any(|chunk| chunk.time_range.contains(query.at()))
+    }
+
     /// If this entity db is the result of a clone, which store was it cloned from?
     ///
     /// A cloned store always gets a new unique ID.

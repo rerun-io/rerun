@@ -1344,11 +1344,11 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
 
-                let age = entity_db
+                let freshness = entity_db
                     .rrd_manifest_index()
                     .chunk_promises()
                     .bandwidth_data_freshness(ui.time());
-                if ctx.app_options().show_metrics && age < 1.0 {
+                if ctx.app_options().show_metrics && freshness > 0.0 {
                     let mut rate = entity_db
                         .rrd_manifest_index()
                         .chunk_promises()
@@ -1359,13 +1359,11 @@ impl TimePanel {
                         rate = 0.0;
                     }
 
+                    let staleness = 1.0 - freshness;
+                    let gamma = 1.0 - staleness * staleness;
                     ui.label(
-                        RichText::new(format!("{} / s", re_format::format_bytes(rate))).color(
-                            ui.style()
-                                .visuals
-                                .text_color()
-                                .gamma_multiply((1.0 - age * age) as f32),
-                        ),
+                        RichText::new(format!("{} / s", re_format::format_bytes(rate)))
+                            .color(ui.style().visuals.text_color().gamma_multiply(gamma as f32)),
                     )
                     .on_hover_text("Connection throughput");
                 }

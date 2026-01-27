@@ -100,8 +100,8 @@ impl ChunkPromises {
 
     /// Returns how fresh the bandwidth data is, as a normalized value from 0.0 to 1.0.
     ///
-    /// - `0.0` means the most recent download just completed.
-    /// - `1.0` means no downloads have completed within `Self.download_size_history.max_age()`.
+    /// - `1.0` means the most recent download just completed.
+    /// - `0.0` means no downloads have completed within `Self.download_size_history.max_age()`.
     pub fn bandwidth_data_freshness(&self, time: f64) -> f64 {
         self.download_size_history
             .iter()
@@ -109,9 +109,9 @@ impl ChunkPromises {
             .map(|(t, _)| {
                 let age = time - t;
 
-                (age / self.download_size_history.max_age() as f64).at_most(1.0)
+                (1.0 - age / self.download_size_history.max_age() as f64).at_least(0.0)
             })
-            .unwrap_or(1.0)
+            .unwrap_or(0.0)
     }
 
     /// See if we have received any new chunks since last call.

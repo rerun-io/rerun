@@ -96,14 +96,6 @@ impl<'a> ChunkRequestBatcher<'a> {
         })
     }
 
-    /// Returns (`uncompressed_size`, `byte_size`)
-    fn chunk_sizes(&self, row_idx: usize) -> (u64, u64) {
-        (
-            self.chunk_byte_size_uncompressed_raw[row_idx],
-            self.chunk_byte_size_raw[row_idx],
-        )
-    }
-
     /// Create promise from the current batch.
     fn finish_batch(&mut self) -> Result<(), PrefetchError> {
         let rb = take_record_batch(
@@ -115,6 +107,7 @@ impl<'a> ChunkRequestBatcher<'a> {
             size_bytes_uncompressed: self.uncompressed_bytes_in_batch,
             size_bytes: self.bytes_in_batch,
         });
+        self.bytes_in_batch = 0;
         self.uncompressed_bytes_in_batch = 0;
         Ok(())
     }
@@ -132,7 +125,8 @@ impl<'a> ChunkRequestBatcher<'a> {
             return Ok(false);
         }
 
-        let (uncompressed_chunk_size, chunk_byte_size) = self.chunk_sizes(chunk_row_idx);
+        let uncompressed_chunk_size = self.chunk_byte_size_uncompressed_raw[chunk_row_idx];
+        let chunk_byte_size = self.chunk_byte_size_raw[chunk_row_idx];
 
         let Ok(row_idx) = i32::try_from(chunk_row_idx) else {
             return Err(PrefetchError::BadIndex(chunk_row_idx)); // Very improbable
@@ -394,7 +388,8 @@ impl ChunkPrioritizer {
 
                     // We count only the chunks we are interested in as being part of the memory budget.
                     // The others can/will be evicted as needed.
-                    let (uncompressed_chunk_size, _) = chunk_batcher.chunk_sizes(row_idx);
+                    let uncompressed_chunk_size =
+                        chunk_batcher.chunk_byte_size_uncompressed_raw[row_idx];
 
                     if options.total_uncompressed_byte_budget < uncompressed_chunk_size {
                         warn_entity_exceeds_memory(entity_paths, row_idx);
