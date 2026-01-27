@@ -12,21 +12,17 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[features]
-default = []
-
 [lints]
 workspace = true
-
 
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk.workspace = true
-
+re_chunk_store.workspace = true
+re_datafusion.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sdk_types.workspace = true
@@ -37,6 +33,8 @@ re_types_core.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true
+async-trait.workspace = true
+datafusion.workspace = true
 futures.workspace = true
 insta = { workspace = true, features = ["filters"] }
 itertools.workspace = true
