@@ -47,14 +47,12 @@ impl VisualizerSystem for TensorSystem {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;
-            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 annotations,
                 &timeline_query,
                 data_result,
                 Tensor::all_component_identifiers(),
-                query_shadowed_defaults,
                 Some(instruction),
             );
 

@@ -211,14 +211,12 @@ fn visualizer_components(
     let query_ctx = ctx.query_context(data_result, &store_query);
 
     // Query fully resolved data.
-    let query_shadowed_defaults = true;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
         query_info.queried_components(),
-        query_shadowed_defaults,
         Some(instruction),
     );
 
@@ -266,8 +264,7 @@ fn visualizer_components(
                 } => Some(*source_component),
 
                 re_viewer_context::VisualizerComponentSource::Override
-                | re_viewer_context::VisualizerComponentSource::Default
-                | re_viewer_context::VisualizerComponentSource::Fallback => {
+                | re_viewer_context::VisualizerComponentSource::Default => {
                     // TODO(RR-3338): Implement ui for other types.
                     None
                 }
@@ -280,11 +277,11 @@ fn visualizer_components(
         let raw_override =
             result_override.and_then(|c| c.non_empty_component_batch_raw(target_component));
 
-        let result_store = query_result.results.get(mapped_component);
+        let result_store = query_result.store_results.get(mapped_component);
         let raw_store =
             result_store.and_then(|c| c.non_empty_component_batch_raw(mapped_component));
 
-        let result_default = query_result.defaults.get(target_component);
+        let result_default = query_result.view_defaults.get(target_component);
         let raw_default =
             result_default.and_then(|c| c.non_empty_component_batch_raw(target_component));
 
@@ -608,8 +605,7 @@ fn source_component_ui(
                         } => Some(source_component.as_str()),
 
                         re_viewer_context::VisualizerComponentSource::Override
-                        | re_viewer_context::VisualizerComponentSource::Default
-                        | re_viewer_context::VisualizerComponentSource::Fallback => {
+                        | re_viewer_context::VisualizerComponentSource::Default => {
                             // TODO(RR-3338): Implement ui for other types.
                             None
                         }

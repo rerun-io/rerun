@@ -213,14 +213,12 @@ impl ViewContextSystem for TransformTreeContext {
                 let transform_frame_id_component =
                     archetypes::CoordinateFrame::descriptor_frame().component;
 
-                let query_shadowed_components = false;
                 latest_at_with_blueprint_resolved_data(
                     ctx,
                     None,
                     &latest_at_query,
                     data_result,
                     [transform_frame_id_component],
-                    query_shadowed_components,
                     None, // Coordinate frame is not visualizer-specific.
                 )
             })
@@ -578,14 +576,12 @@ impl EntityTransformIdMapping {
             let transform_frame_id_component =
                 archetypes::CoordinateFrame::descriptor_frame().component;
 
-            let query_shadowed_components = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_at_query,
                 origin_data_result,
                 [transform_frame_id_component],
-                query_shadowed_components,
                 None,
             );
 
@@ -620,7 +616,7 @@ impl EntityTransformIdMapping {
                     fallback
                 },
                 |frame_id| {
-                    let is_mono = results.results.component_mono_raw_quiet(transform_frame_id_component).is_some();
+                    let is_mono = results.store_results.component_mono_raw_quiet(transform_frame_id_component).is_some();
                     if !is_mono {
                         re_log::warn_once!(
                             "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",

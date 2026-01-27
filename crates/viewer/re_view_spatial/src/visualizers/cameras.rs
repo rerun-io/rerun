@@ -245,14 +245,12 @@ impl VisualizerSystem for CamerasVisualizer {
         {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            let query_shadowed_components = false;
             let query_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &time_query,
                 data_result,
                 Pinhole::all_component_identifiers(),
-                query_shadowed_components,
                 Some(instruction),
             );
 

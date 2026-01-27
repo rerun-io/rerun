@@ -28,9 +28,6 @@ pub enum VisualizerComponentSource {
 
     /// See [`ComponentSourceKind::Default`].
     Default,
-
-    /// See [`ComponentSourceKind::Fallback`].
-    Fallback,
 }
 
 impl VisualizerComponentSource {
@@ -53,8 +50,14 @@ impl VisualizerComponentSource {
             ComponentSourceKind::Override => Self::Override,
 
             ComponentSourceKind::Default => Self::Default,
+        }
+    }
 
-            ComponentSourceKind::Fallback => Self::Fallback,
+    pub fn source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
         }
     }
 }
@@ -82,6 +85,7 @@ pub struct VisualizerInstruction {
     /// Component mappings from target to source (selector).
     ///
     /// Keys are target components, values describe where to source components (selectors).
+    /// Any target component not present here uses an auto-mapping strategy.
     pub component_mappings: VisualizerComponentMappings,
 }
 
@@ -141,13 +145,6 @@ impl VisualizerInstruction {
                     VisualizerComponentSource::Default => VisualizerComponentMapping {
                         target,
                         source_kind: ComponentSourceKind::Default,
-                        source_component: None,
-                        selector: None,
-                    },
-
-                    VisualizerComponentSource::Fallback => VisualizerComponentMapping {
-                        target,
-                        source_kind: ComponentSourceKind::Fallback,
                         source_component: None,
                         selector: None,
                     },
