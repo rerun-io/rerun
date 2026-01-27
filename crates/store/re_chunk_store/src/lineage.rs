@@ -408,8 +408,7 @@ impl ChunkStore {
         }
     }
 
-    /// Iterates over all physical chunks that have this chunk
-    /// as an ancestor.
+    /// Collects all physical chunks that descend from the given chunk in some way.
     pub fn collect_physical_descendents_of(
         &self,
         chunk_id: &ChunkId,
@@ -418,6 +417,8 @@ impl ChunkStore {
         let is_physical = |c: &&ChunkId| self.chunks_per_chunk_id.contains_key(c);
 
         if is_physical(&chunk_id) {
+            // A physical chunk cannot have descendents. If it did, it would have
+            // been offloaded already.
             descendents.push(*chunk_id);
         } else if let Some(split_chunks) = self.dangling_splits.get(chunk_id) {
             descendents.extend(split_chunks.iter().filter(is_physical).copied());
