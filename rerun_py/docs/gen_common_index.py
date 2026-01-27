@@ -497,6 +497,9 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=True,
         mod_path=["rerun.experimental"],
         show_submodules=True,
+        class_list=[
+            "ViewerClient",
+        ],
     ),
     Section(
         title="Notebook",
