@@ -1,5 +1,7 @@
 # Rerun changelog
 
+## [0.29.0](https://github.com/rerun-io/rerun/compare/0.28.2...0.29.0) - 2026-01-28 - URDF improvements, improved ROS 2 docs, and memory panel 
+
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-29
 
 ### ✨ Overview & highlights
