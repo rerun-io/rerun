@@ -77,6 +77,7 @@ impl ModalHandler {
 
             if self.should_close || (self.allow_escape && response.should_close()) {
                 self.modal = None;
+                self.should_close = false;
             }
 
             Some(response.inner)
