@@ -54,13 +54,140 @@ pub struct ChunkPrefetchOptions {
     pub max_uncompressed_bytes_in_transit: u64,
 }
 
+struct ChunkBatcher<'a> {
+    load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
+    manifest: &'a RrdManifest,
+    chunk_promises: &'a mut ChunkPromises,
+    chunk_byte_size_uncompressed_raw: &'a [u64],
+    chunk_byte_size_raw: &'a [u64],
+    max_uncompressed_bytes_per_batch: u64,
+
+    remaining_bytes_in_transit_budget: u64,
+    uncompressed_bytes_in_batch: u64,
+    bytes_in_batch: u64,
+    indices: Vec<i32>,
+}
+
+impl<'a> ChunkBatcher<'a> {
+    fn new(
+        load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
+        manifest: &'a RrdManifest,
+        chunk_promises: &'a mut ChunkPromises,
+        options: &ChunkPrefetchOptions,
+    ) -> Result<Self, re_log_encoding::CodecError> {
+        Ok(Self {
+            load_chunks,
+            chunk_byte_size_uncompressed_raw: manifest
+                .col_chunk_byte_size_uncompressed_raw()?
+                .values(),
+            chunk_byte_size_raw: manifest.col_chunk_byte_size_raw()?.values(),
+            manifest,
+            max_uncompressed_bytes_per_batch: options.max_uncompressed_bytes_per_batch,
+
+            remaining_bytes_in_transit_budget: options
+                .max_uncompressed_bytes_in_transit
+                .saturating_sub(chunk_promises.num_uncompressed_bytes_pending()),
+            chunk_promises,
+            uncompressed_bytes_in_batch: 0,
+            bytes_in_batch: 0,
+            indices: Vec::new(),
+        })
+    }
+
+    /// Returns (`uncompressed_size`, `byte_size`)
+    fn chunk_sizes(&self, row_idx: usize) -> (u64, u64) {
+        (
+            self.chunk_byte_size_uncompressed_raw[row_idx],
+            self.chunk_byte_size_raw[row_idx],
+        )
+    }
+
+    /// Create promise from the current batch.
+    fn batch(&mut self) -> Result<(), PrefetchError> {
+        let rb = take_record_batch(
+            &self.manifest.data,
+            &Int32Array::from(std::mem::take(&mut self.indices)),
+        )?;
+        self.chunk_promises.add(ChunkPromiseBatch {
+            promise: parking_lot::Mutex::new(Some((self.load_chunks)(rb))),
+            size_bytes_uncompressed: self.uncompressed_bytes_in_batch,
+            size_bytes: self.bytes_in_batch,
+        });
+        self.uncompressed_bytes_in_batch = 0;
+        Ok(())
+    }
+
+    /// Add a chunk to be fetched.
+    ///
+    /// If we hit `max_uncompressed_bytes_per_batch` this will create a
+    /// [`ChunkPromise`] that includes the given chunk.
+    fn try_fetch(
+        &mut self,
+        chunk_row_idx: usize,
+        remote_chunk: &mut ChunkInfo,
+    ) -> Result<bool, PrefetchError> {
+        if self.remaining_bytes_in_transit_budget == 0 {
+            return Ok(false);
+        }
+
+        let (uncompressed_chunk_size, chunk_byte_size) = self.chunk_sizes(chunk_row_idx);
+
+        let Ok(row_idx) = i32::try_from(chunk_row_idx) else {
+            return Err(PrefetchError::BadIndex(chunk_row_idx)); // Very improbable
+        };
+
+        self.indices.push(row_idx);
+
+        self.uncompressed_bytes_in_batch += uncompressed_chunk_size;
+        self.bytes_in_batch += chunk_byte_size;
+
+        remote_chunk.state = LoadState::InTransit;
+
+        if self.max_uncompressed_bytes_per_batch < self.uncompressed_bytes_in_batch {
+            self.batch()?;
+        }
+        self.remaining_bytes_in_transit_budget = self
+            .remaining_bytes_in_transit_budget
+            .saturating_sub(uncompressed_chunk_size);
+        Ok(true)
+    }
+
+    /// Fetch a last batch if one is prepared.
+    fn finish(&mut self) -> Result<(), PrefetchError> {
+        if !self.indices.is_empty() {
+            self.batch()?;
+        }
+
+        Ok(())
+    }
+}
+
+fn warn_entity_exceeds_memory(
+    entity_paths: &arrow::array::GenericByteArray<arrow::datatypes::GenericStringType<i32>>,
+    row_idx: usize,
+) {
+    // TODO(RR-3344): improve this error message
+    let entity_path = entity_paths.value(row_idx);
+    if cfg!(target_arch = "wasm32") {
+        re_log::debug_once!(
+            "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. Try the native viewer instead, or split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+        );
+    } else {
+        re_log::warn_once!(
+            "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. You should increase the `--memory-limit` or try to split up your large assets (e.g. prefer VideoStream over VideoAsset)."
+        );
+    }
+}
+
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
-    /// All loaded chunks that are 'in' the memory limit.
+    /// All physical chunks that are 'in' the memory limit.
     ///
     /// These chunks are protected from being gc'd.
     pub(super) in_limit_chunks: HashSet<ChunkId>,
+
+    checked_virtual_chunks: HashSet<ChunkId>,
 
     /// Chunks that are in the progress of being downloaded.
     chunk_promises: ChunkPromises,
@@ -72,13 +199,14 @@ pub struct ChunkPrioritizer {
     static_chunk_ids: HashSet<ChunkId>,
 
     /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
-    manifest_row_from_chunk_id: BTreeMap<ChunkId, usize>,
+    manifest_row_from_chunk_id: HashMap<ChunkId, usize>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             in_limit_chunks,
+            checked_virtual_chunks,
             chunk_promises: _, // not yet implemented
             remote_chunk_intervals,
             static_chunk_ids,
@@ -86,6 +214,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
         } = self;
 
         in_limit_chunks.heap_size_bytes()
+            + checked_virtual_chunks.heap_size_bytes()
             + remote_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + manifest_row_from_chunk_id.heap_size_bytes()
@@ -175,12 +304,14 @@ impl ChunkPrioritizer {
         let store_tracked = store.take_tracked_chunk_ids();
         let used = store_tracked.used_physical.into_iter();
 
-        let missing = store_tracked.missing.into_iter().flat_map(|c| {
-            store
-                .find_root_rrd_manifests(&c)
-                .into_iter()
-                .map(|(id, _)| id)
-        });
+        let mut missing_roots = Vec::new();
+
+        // Reuse a vec for less allocations in the loop.
+        let mut scratch = Vec::new();
+        for missing in store_tracked.missing {
+            store.collect_root_rrd_manifests(&missing, &mut scratch);
+            missing_roots.extend(scratch.drain(..).map(|(id, _)| id));
+        }
 
         let chunks_ids_after_time_cursor = move || {
             chunks
@@ -195,7 +326,7 @@ impl ChunkPrioritizer {
 
         let chunk_ids_in_priority_order = itertools::chain!(
             used,
-            missing,
+            missing_roots,
             static_chunk_ids.iter().copied(),
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
@@ -224,45 +355,27 @@ impl ChunkPrioritizer {
         manifest: &RrdManifest,
         remote_chunks: &mut HashMap<ChunkId, ChunkInfo>,
     ) -> Result<(), PrefetchError> {
-        let ChunkPrefetchOptions {
-            timeline,
-            start_time,
-            max_uncompressed_bytes_per_batch,
-            total_uncompressed_byte_budget,
-            max_uncompressed_bytes_in_transit,
-        } = *options;
-
-        let Some(chunks) = self.remote_chunk_intervals.get(&timeline) else {
-            return Err(PrefetchError::UnknownTimeline(timeline));
+        let Some(chunks) = self.remote_chunk_intervals.get(&options.timeline) else {
+            return Err(PrefetchError::UnknownTimeline(options.timeline));
         };
 
-        let mut remaining_byte_budget = total_uncompressed_byte_budget;
+        let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 
-        let mut remaining_bytes_in_transit_budget = max_uncompressed_bytes_in_transit
-            .saturating_sub(self.chunk_promises.num_uncompressed_bytes_pending());
-
-        let chunk_byte_size_uncompressed_raw: &[u64] =
-            manifest.col_chunk_byte_size_uncompressed_raw()?.values();
-        let chunk_byte_size_raw: &[u64] = manifest.col_chunk_byte_size_raw()?.values();
-
-        let mut uncompressed_bytes_in_batch: u64 = 0;
-        let mut bytes_in_batch: u64 = 0;
-        let mut indices = vec![];
+        let mut chunk_batcher =
+            ChunkBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options)?;
 
         let chunk_ids_in_priority_order =
-            Self::chunks_in_priority(&self.static_chunk_ids, store, start_time, chunks);
+            Self::chunks_in_priority(&self.static_chunk_ids, store, options.start_time, chunks);
 
         let entity_paths = manifest.col_chunk_entity_path_raw()?;
 
         self.in_limit_chunks.clear();
-        let mut skip_chunks = HashSet::default();
+        self.checked_virtual_chunks.clear();
+
+        // Reuse a vec for less allocations in the loop.
+        let mut scratch = Vec::new();
 
         for chunk_id in chunk_ids_in_priority_order {
-            // If we've already marked this as to be loaded, ignore it.
-            if self.in_limit_chunks.contains(&chunk_id) || skip_chunks.contains(&chunk_id) {
-                continue;
-            }
-
             match remote_chunks.get_mut(&chunk_id) {
                 Some(
                     remote_chunk @ ChunkInfo {
@@ -270,24 +383,19 @@ impl ChunkPrioritizer {
                         ..
                     },
                 ) => {
+                    // If we've already marked this as to be loaded, ignore it.
+                    if self.checked_virtual_chunks.contains(&chunk_id) {
+                        continue;
+                    }
+
                     let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
-                    let chunk_byte_size = chunk_byte_size_raw[row_idx];
+
                     // We count only the chunks we are interested in as being part of the memory budget.
                     // The others can/will be evicted as needed.
-                    let uncompressed_chunk_size = chunk_byte_size_uncompressed_raw[row_idx];
+                    let (uncompressed_chunk_size, _) = chunk_batcher.chunk_sizes(row_idx);
 
-                    if total_uncompressed_byte_budget < uncompressed_chunk_size {
-                        // TODO(RR-3344): improve this error message
-                        let entity_path = entity_paths.value(row_idx);
-                        if cfg!(target_arch = "wasm32") {
-                            re_log::debug_once!(
-                                "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. Try the native viewer instead, or split up your large assets (e.g. prefer VideoStream over VideoAsset)."
-                            );
-                        } else {
-                            re_log::warn_once!(
-                                "Cannot load all of entity '{entity_path}', because its size exceeds the memory budget. You should increase the `--memory-limit` or try to split up your large assets (e.g. prefer VideoStream over VideoAsset)."
-                            );
-                        }
+                    if options.total_uncompressed_byte_budget < uncompressed_chunk_size {
+                        warn_entity_exceeds_memory(entity_paths, row_idx);
                         continue;
                     }
 
@@ -301,36 +409,19 @@ impl ChunkPrioritizer {
                     }
 
                     if remote_chunk.state == LoadState::Unloaded
-                        && remaining_bytes_in_transit_budget > 0
+                        && !chunk_batcher.try_fetch(row_idx, remote_chunk)?
                     {
-                        let Ok(row_idx) = i32::try_from(row_idx) else {
-                            return Err(PrefetchError::BadIndex(row_idx)); // Very improbable
-                        };
-
-                        indices.push(row_idx);
-                        uncompressed_bytes_in_batch += uncompressed_chunk_size;
-                        bytes_in_batch += chunk_byte_size;
-                        remote_chunk.state = LoadState::InTransit;
-
-                        if max_uncompressed_bytes_per_batch < uncompressed_bytes_in_batch {
-                            let rb = take_record_batch(
-                                &manifest.data,
-                                &Int32Array::from(std::mem::take(&mut indices)),
-                            )?;
-                            self.chunk_promises.add(ChunkPromiseBatch {
-                                promise: parking_lot::Mutex::new(Some(load_chunks(rb))),
-                                size_bytes_uncompressed: uncompressed_bytes_in_batch,
-                                size_bytes: bytes_in_batch,
-                            });
-                            uncompressed_bytes_in_batch = 0;
-                        }
-
-                        // We enqueue it first, then decrement the budget, ensuring that we still download
-                        // big chunks that are outside the `remaining_bytes_in_transit_budget` limit.
-                        remaining_bytes_in_transit_budget = remaining_bytes_in_transit_budget
-                            .saturating_sub(uncompressed_chunk_size);
+                        // If we don't have anything more to fetch we stop looking.
+                        //
+                        // This isn't entirely correct gc wise. But if we evict chunks
+                        // we didn't get to because of this break, we won't be fighting
+                        // back and forth with gc since there's some unloaded
+                        // chunks inbetween we have to download first. After
+                        // which we won't stop prioritizing which chunks should
+                        // be in memory here.
+                        break;
                     }
-                    skip_chunks.insert(chunk_id);
+                    self.checked_virtual_chunks.insert(chunk_id);
                     self.in_limit_chunks
                         .extend(store.physical_descendents_of(&chunk_id));
                 }
@@ -340,11 +431,16 @@ impl ChunkPrioritizer {
                 })
                 | None => {
                     {
+                        if self.in_limit_chunks.contains(&chunk_id) {
+                            continue;
+                        }
+
                         let Some(chunk) = store.physical_chunk(&chunk_id) else {
                             re_log::warn_once!("Couldn't get loaded chunk from chunk store");
                             continue;
                         };
-                        // Can we fit this chunk in memory with our new prioritization?
+
+                        // Can we still fit this chunk in memory with our new prioritization?
                         remaining_byte_budget =
                             remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
                         if remaining_byte_budget == 0 {
@@ -361,26 +457,17 @@ impl ChunkPrioritizer {
                         //
                         // If these missing splits are missing we can let the `missing` chunk detection
                         // handle that.
-                        skip_chunks.extend(
-                            store
-                                .find_root_rrd_manifests(&chunk_id)
-                                .into_iter()
-                                .map(|(id, _)| id),
-                        );
+                        store.collect_root_rrd_manifests(&chunk_id, &mut scratch);
+                        self.checked_virtual_chunks
+                            .extend(scratch.drain(..).map(|(id, _)| id));
+
                         self.in_limit_chunks.insert(chunk_id);
                     }
                 }
             }
         }
 
-        if !indices.is_empty() {
-            let rb = take_record_batch(&manifest.data, &Int32Array::from(indices))?;
-            self.chunk_promises.add(ChunkPromiseBatch {
-                promise: parking_lot::Mutex::new(Some(load_chunks(rb))),
-                size_bytes_uncompressed: uncompressed_bytes_in_batch,
-                size_bytes: bytes_in_batch,
-            });
-        }
+        chunk_batcher.finish()?;
 
         Ok(())
     }

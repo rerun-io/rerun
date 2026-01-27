@@ -376,35 +376,36 @@ impl ChunkStore {
     /// If you want to find all root chunks regardless of their origin, refer to [`Self::find_root_rrd_manifests`]
     /// instead.
     pub fn find_root_rrd_manifests(&self, chunk_id: &ChunkId) -> Vec<(ChunkId, Arc<RrdManifest>)> {
-        fn recurse(
-            store: &ChunkStore,
-            chunk_id: &ChunkId,
-            roots: &mut Vec<(ChunkId, Arc<RrdManifest>)>,
-        ) {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                    recurse(store, chunk_id, roots);
-                }
-
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        recurse(store, chunk_id, roots);
-                    }
-                }
-
-                Some(ChunkDirectLineage::ReferencedFrom(rrd_manifest)) => {
-                    roots.push((*chunk_id, rrd_manifest.clone()));
-                }
-
-                _ => {}
-            }
-        }
-
         let mut roots = Vec::new();
-        recurse(self, chunk_id, &mut roots);
+        self.collect_root_rrd_manifests(chunk_id, &mut roots);
 
         roots
+    }
+
+    /// See [`Self::find_root_rrd_manifests`].
+    pub fn collect_root_rrd_manifests(
+        &self,
+        chunk_id: &ChunkId,
+        roots: &mut Vec<(ChunkId, Arc<RrdManifest>)>,
+    ) {
+        let lineage = self.chunks_lineage.get(chunk_id);
+        match lineage {
+            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
+                self.collect_root_rrd_manifests(chunk_id, roots);
+            }
+
+            Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                for chunk_id in chunk_ids {
+                    self.collect_root_rrd_manifests(chunk_id, roots);
+                }
+            }
+
+            Some(ChunkDirectLineage::ReferencedFrom(rrd_manifest)) => {
+                roots.push((*chunk_id, rrd_manifest.clone()));
+            }
+
+            _ => {}
+        }
     }
 
     /// Iterates over all physical chunks that have this chunk
