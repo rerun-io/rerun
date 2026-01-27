@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 Can be used to test mask-generation on one or more images. Images can be local file-paths
 or remote urls.
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from segment_anything.modeling import Sam
 
 DESCRIPTION = """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model).
 """.strip()
