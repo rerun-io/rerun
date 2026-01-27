@@ -1,6 +1,6 @@
 use saturating_cast::SaturatingCast as _;
 
-/// Represents a limit in how much RAM to use for the entire process.
+/// Represents a limit in how much RAM to use.
 ///
 /// Different systems can chose to heed the memory limit in different ways,
 /// e.g. by dropping old data when it is exceeded.
@@ -14,7 +14,18 @@ pub struct MemoryLimit {
     /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('counted').
     /// We limit based on this instead of `resident` (RSS) because `counted` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
+    ///
+    /// None means "unlimited".
     pub max_bytes: Option<u64>,
+}
+
+impl std::fmt::Display for MemoryLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.max_bytes {
+            Some(max_bytes) => write!(f, "{}", re_format::format_bytes(max_bytes as _)),
+            None => write!(f, "unlimited"),
+        }
+    }
 }
 
 impl MemoryLimit {

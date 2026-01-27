@@ -1655,7 +1655,7 @@ fn serve_web(
             memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
                 PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
             })?,
-            ..Default::default()
+            playback_behavior: re_grpc_server::PlaybackBehavior::OldestFirst,
         };
 
         let sink = re_sdk::web_viewer::new_sink(
