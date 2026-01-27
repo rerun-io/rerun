@@ -314,7 +314,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.16"
-ply-rs-bw = { version = "=2.0.3", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
+ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
