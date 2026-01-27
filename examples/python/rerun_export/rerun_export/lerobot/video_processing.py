@@ -236,12 +236,13 @@ def remux_video_stream(
         ValueError: If remuxing fails
 
     """
-
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    # Create input container from concatenated samples
+    # Concatenate all samples into a single buffer
     all_samples = b"".join(samples)
     input_buffer = BytesIO(all_samples)
+
+    # Open input as raw video format
     input_container = av.open(input_buffer, format=video_format, mode="r")
     input_stream = input_container.streams.video[0]
 
@@ -255,17 +256,14 @@ def remux_video_stream(
     output_container = av.open(output_path, mode="w", format="mp4")
 
     # Add stream from template to preserve codec without re-encoding.
-    output_stream = output_container.add_stream(input_stream.codec_context.name)
+    output_stream = output_container.add_stream_from_template(input_stream, opaque=True)
     assert type(output_stream) is av.VideoStream
-
-    if input_stream.codec_context.extradata:
-        output_stream.codec_context.extradata = input_stream.codec_context.extradata
 
     output_stream.width = width
     output_stream.height = height
 
-    # Calculate time base from original timestamps
-    time_base = Fraction(1, 1_000_000_000)  # nanosecond precision
+    # Set time base to nanosecond precision
+    time_base = Fraction(1, 1_000_000_000)
     output_stream.time_base = time_base
 
     # Remux packets with proper timestamps

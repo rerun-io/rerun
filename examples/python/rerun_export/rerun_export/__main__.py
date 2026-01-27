@@ -7,14 +7,12 @@ from pathlib import Path
 
 import pyarrow as pa
 import rerun as rr
-from datafusion import col, functions as F
 from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
 from tqdm import tqdm
 
-from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
+from rerun_export.lerobot.converter import convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
-from rerun_export.utils import make_time_grid, suppress_ffmpeg_output
 
 
 def _parse_video_specs(raw_specs: list[str]) -> list[VideoSpec]:
@@ -165,53 +163,19 @@ def convert_rrd_dataset_to_lerobot(
                 if is_empty:
                     continue
 
-                # Get time range from reference path
-                time_range_view = dataset.filter_segments(segment_id).filter_contents(reference_path)
-                time_df = time_range_view.reader(index=config.index_column)
-                min_max = time_df.aggregate(
-                    "rerun_segment_id",
-                    [F.min(col(config.index_column)).alias("min"), F.max(col(config.index_column)).alias("max")],
-                )
-                min_max_table = pa.table(min_max)
-
-                if min_max_table.num_rows == 0 or min_max_table["min"][0] is None:
-                    print(
-                        f"Skipping segment '{segment_id}': no data on index '{config.index_column}' "
-                        f"for reference path '{reference_path}'"
-                    )
-                    continue
-
-                min_value = min_max_table["min"].to_numpy()[0]
-                max_value = min_max_table["max"].to_numpy()[0]
-                desired_times = make_time_grid(min_value, max_value, config.fps)
-
-                # Query the dataframe with time alignment
                 view = dataset.filter_segments(segment_id).filter_contents(contents)
-                df = view.reader(index=config.index_column, using_index_values=desired_times, fill_latest_at=True)
+                df = view.reader(
+                    index=config.index_column,
+                )
 
-                # Apply filters
-                filters = []
-                filters.append(col(config.action).is_not_null())
-                filters.append(col(config.state).is_not_null())
-                if filters:
-                    df = df.filter(*filters)
                 # Convert the dataframe to an episode
-                success, remux_data, direct_saved = convert_dataframe_to_episode(
+                convert_dataframe_to_episode(
                     df,
                     config,
                     lerobot_dataset=lerobot_dataset,
                     segment_id=segment_id,
                     features=features,
                 )
-
-                if success and not direct_saved:
-                    episode_index = lerobot_dataset.episode_buffer["episode_index"]
-                    with suppress_ffmpeg_output():
-                        lerobot_dataset.save_episode()
-
-                        # Apply remuxed videos if possible
-                        if config.use_videos and remux_data:
-                            apply_remuxed_videos(lerobot_dataset, episode_index, remux_data)
 
             except Exception as e:
                 print(f"Error processing segment {segment_id}: {e}")
