@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use itertools::{Either, Itertools as _};
+use itertools::Itertools as _;
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::RrdManifest;
@@ -410,33 +410,36 @@ impl ChunkStore {
 
     /// Iterates over all physical chunks that have this chunk
     /// as an ancestor.
-    pub fn physical_descendents_of<'a>(
-        &'a self,
-        chunk_id: &'a ChunkId,
-    ) -> impl Iterator<Item = ChunkId> {
+    pub fn collect_physical_descendents_of(
+        &self,
+        chunk_id: &ChunkId,
+        descendents: &mut Vec<ChunkId>,
+    ) {
         let is_physical = |c: &&ChunkId| self.chunks_per_chunk_id.contains_key(c);
 
         if is_physical(&chunk_id) {
-            #[expect(
-                clippy::iter_on_single_items,
-                reason = "We need this to be an option below"
-            )]
-            Either::Left(Some(*chunk_id).into_iter())
+            descendents.push(*chunk_id);
+        } else if let Some(split_chunks) = self.dangling_splits.get(chunk_id) {
+            descendents.extend(split_chunks.iter().filter(is_physical).copied());
         } else {
-            self.dangling_splits
-                .get(chunk_id)
-                .map(|chunks| Either::Right(chunks.iter().filter(is_physical).copied()))
-                .unwrap_or_else(|| {
-                    Either::Left(
-                        self.leaky_compactions
-                            .get(chunk_id)
-                            .filter(is_physical)
-                            .copied()
-                            .into_iter(),
-                    )
-                })
+            let mut source_id = *chunk_id;
+
+            let compacted = loop {
+                let Some(chunk_id) = self.leaky_compactions.get(&source_id) else {
+                    break None;
+                };
+
+                if is_physical(&chunk_id) {
+                    break Some(*chunk_id);
+                }
+
+                source_id = *chunk_id;
+            };
+
+            if let Some(chunk_id) = compacted {
+                descendents.push(chunk_id);
+            }
         }
-        .into_iter()
     }
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a split.

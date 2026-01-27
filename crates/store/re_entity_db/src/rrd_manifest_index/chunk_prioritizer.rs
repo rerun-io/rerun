@@ -368,8 +368,9 @@ impl ChunkPrioritizer {
         self.in_limit_chunks.clear();
         self.checked_virtual_chunks.clear();
 
-        // Reuse a vec for less allocations in the loop.
-        let mut scratch = Vec::new();
+        // Reuse vecs for less allocations in the loop.
+        let mut manifest_chunks_scratch = Vec::new();
+        let mut physical_chunks_scratch = Vec::new();
 
         for chunk_id in chunk_ids_in_priority_order {
             match remote_chunks.get_mut(&chunk_id) {
@@ -419,8 +420,9 @@ impl ChunkPrioritizer {
                         break;
                     }
                     self.checked_virtual_chunks.insert(chunk_id);
+                    store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
                     self.in_limit_chunks
-                        .extend(store.physical_descendents_of(&chunk_id));
+                        .extend(physical_chunks_scratch.drain(..));
                 }
                 Some(ChunkInfo {
                     state: LoadState::Loaded,
@@ -454,9 +456,9 @@ impl ChunkPrioritizer {
                         //
                         // If these missing splits are missing we can let the `missing` chunk detection
                         // handle that.
-                        store.collect_root_rrd_manifests(&chunk_id, &mut scratch);
+                        store.collect_root_rrd_manifests(&chunk_id, &mut manifest_chunks_scratch);
                         self.checked_virtual_chunks
-                            .extend(scratch.drain(..).map(|(id, _)| id));
+                            .extend(manifest_chunks_scratch.drain(..).map(|(id, _)| id));
 
                         self.in_limit_chunks.insert(chunk_id);
                     }
