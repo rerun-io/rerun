@@ -74,6 +74,9 @@ pub enum Error {
         expected_type: &'static str,
     },
 
+    #[error("Index {index} out of bounds for array of length {length}")]
+    IndexOutOfBounds { index: usize, length: usize },
+
     #[error(transparent)]
     Arrow(#[from] ArrowError),
 }
