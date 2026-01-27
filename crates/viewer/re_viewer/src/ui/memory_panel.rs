@@ -553,7 +553,7 @@ pub fn memory_tree_ui(
         ui.label("Memory flamegraph visualizing the memory usage tree.");
         ui.hyperlink_to(
             "Learn more",
-            "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html?speculative-link",
+            "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html",
         );
 
         #[expect(dead_code)]
