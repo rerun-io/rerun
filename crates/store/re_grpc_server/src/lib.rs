@@ -47,10 +47,6 @@ pub struct ServerOptions {
     pub playback_behavior: PlaybackBehavior,
 
     /// Start garbage collecting old data when we reach this.
-    ///
-    /// If server & client are running on the same machine and all clients are expected to connect before
-    /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
-    /// otherwise you're potentially doubling your memory usage!
     pub memory_limit: MemoryLimit,
 }
 
@@ -58,7 +54,7 @@ impl Default for ServerOptions {
     fn default() -> Self {
         Self {
             playback_behavior: PlaybackBehavior::OldestFirst,
-            memory_limit: MemoryLimit::from_bytes(100 * 1024 * 1024), // Be very conservative by default
+            memory_limit: MemoryLimit::from_bytes(1024 * 1024 * 1024), // Be very conservative by default
         }
     }
 }
