@@ -80,6 +80,9 @@ def normalize_times(values: Iterable[object]) -> npt.NDArray[np.int64]:
     Returns:
         Int64 array representing nanoseconds
 
+    Raises:
+        ValueError: If datetime values are not in nanosecond precision
+
     """
     times = np.asarray(list(values))
 
@@ -92,6 +95,13 @@ def normalize_times(values: Iterable[object]) -> npt.NDArray[np.int64]:
             return np.array([t.value for t in times], dtype="int64")
 
     if np.issubdtype(times.dtype, np.datetime64):
+        # Verify we have at least nanosecond resolution
+        dt_unit = np.datetime_data(times.dtype)[0]
+        if dt_unit in ("s", "ms", "us"):
+            raise ValueError(
+                f"Datetime values have insufficient resolution: {dt_unit}. "
+                "Expected nanosecond ('ns') resolution for accurate timestamp conversion."
+            )
         return times.astype("datetime64[ns]").astype("int64")
     if np.issubdtype(times.dtype, np.timedelta64):
         return times.astype("timedelta64[ns]").astype("int64")

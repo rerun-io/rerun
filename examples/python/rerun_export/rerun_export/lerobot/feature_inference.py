@@ -46,7 +46,7 @@ def infer_features(
 
     action_array = np.asarray(action_sample).flatten()
     # Validate that action data can be converted to float32
-    if not np.can_cast(action_array.dtype, np.float32):
+    if not np.can_cast(action_array.dtype, np.float32, "same_kind"):
         raise ValueError(f"Action data has dtype '{action_array.dtype}' which cannot be safely cast to float32")
 
     action_dim = len(action_array)
@@ -65,7 +65,7 @@ def infer_features(
 
     state_array = np.asarray(state_sample).flatten()
     # Validate that state data can be converted to float32
-    if not np.can_cast(state_array.dtype, np.float32):
+    if not np.can_cast(state_array.dtype, np.float32, "same_kind"):
         raise ValueError(f"State data has dtype '{state_array.dtype}' which cannot be safely cast to float32")
 
     state_dim = len(state_array)
