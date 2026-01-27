@@ -6,8 +6,9 @@ use arrow::array::{Array as _, ListArray};
 
 use crate::{
     Transform,
+    index::GetIndexList,
     map::MapList,
-    reshape::{Flatten, GetField, GetIndexList},
+    reshape::{Flatten, GetField},
 };
 
 use super::parser::Expr;

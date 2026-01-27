@@ -14,5 +14,7 @@ pub use re_lenses::{
     ScatterColumnsBuilder, StaticColumnsBuilder,
 };
 
+pub use re_arrow_combinators::Selector;
+
 // We keep the sink in re_sdk since it depends on LogSink.
 pub use self::sink::LensesSink;

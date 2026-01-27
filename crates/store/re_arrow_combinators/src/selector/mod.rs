@@ -58,3 +58,21 @@ pub enum Error {
     #[error(transparent)]
     Runtime(#[from] crate::Error),
 }
+
+impl crate::Transform for Selector {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
+        self.execute_per_row(source).map_err(Into::into)
+    }
+}
+
+impl crate::Transform for &Selector {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
+        self.execute_per_row(source).map_err(Into::into)
+    }
+}

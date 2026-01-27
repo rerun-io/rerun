@@ -4,14 +4,15 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use std::str::FromStr as _;
+
 use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::compute::take;
 use arrow::datatypes::DataType;
 use itertools::Either;
 use nohash_hasher::IntMap;
-use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::map;
-use re_arrow_combinators::reshape;
+use re_arrow_combinators::{Selector, Transform as _};
+use re_arrow_combinators::{map, reshape};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -114,8 +115,10 @@ type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, OpError> + Sync + Se
 /// Individual operations are wrapped to hide their implementation details.
 #[non_exhaustive]
 pub enum Op {
-    /// Extracts a specific field from a `StructArray`.
-    AccessField(op::AccessField),
+    /// Selector operation using jq-like syntax for navigating and transforming Arrow data.
+    ///
+    /// The selector query string is parsed at execution time.
+    Selector(String),
 
     /// Converts binary arrays to list arrays of `u8`.
     BinaryToListUInt8,
@@ -129,15 +132,6 @@ pub enum Op {
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
     TimeSpecToNanos,
 
-    /// Flattens a list array inside a component.
-    ///
-    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
-    /// within each outer list row.
-    /// Inner nulls are preserved, outer nulls are skipped.
-    ///
-    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
-    Flatten,
-
     /// A user-defined arbitrary function to convert a component column.
     Func(CustomFn),
 }
@@ -145,23 +139,36 @@ pub enum Op {
 impl std::fmt::Debug for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AccessField(inner) => f.debug_tuple("AccessField").field(inner).finish(),
+            Self::Selector(query) => f.debug_tuple("Selector").field(query).finish(),
             Self::BinaryToListUInt8 => f.debug_struct("BinaryToListUInt8").finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
             Self::StringToVideoCodecUInt32 => f.debug_struct("StringToVideoCodecUInt32").finish(),
             Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
-            Self::Flatten => f.debug_tuple("Flatten").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
 }
 
+impl From<&str> for Op {
+    fn from(value: &str) -> Self {
+        Self::Selector(value.to_owned())
+    }
+}
+
 impl Op {
-    /// Extracts a specific field from a `StructArray`.
-    pub fn access_field(field_name: impl Into<String>) -> Self {
-        Self::AccessField(op::AccessField {
-            field_name: field_name.into(),
-        })
+    /// Creates a selector operation from a query string.
+    ///
+    /// The selector uses jq-like syntax for navigating and transforming Arrow data.
+    /// The query string is parsed at execution time.
+    ///
+    /// # Examples
+    ///
+    /// - `.field` - Access a field in a struct
+    /// - `.parent.child` - Access nested fields
+    /// - `.array[]` - Explode/flatten an array into multiple rows
+    /// - `.array[].field` - Explode array and access a field in each element
+    pub fn selector(query: impl Into<String>) -> Self {
+        Self::Selector(query.into())
     }
 
     /// Converts binary arrays to list arrays of `u8`.
@@ -182,17 +189,6 @@ impl Op {
     /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
     pub fn constant(value: ListArray) -> Self {
         Self::func(move |_| Ok(value.clone()))
-    }
-
-    /// Flattens a list array inside a component.
-    ///
-    /// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
-    /// within each outer list row.
-    /// Inner nulls are preserved, outer nulls are skipped.
-    ///
-    /// Example: `[[1, 2, 3], [4, null, 5], null, [6]]` becomes `[1, 2, 3, 4, null, 5, 6]`.
-    pub fn flatten() -> Self {
-        Self::Flatten
     }
 
     /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
@@ -217,11 +213,11 @@ impl Op {
 impl Op {
     fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         match self {
+            Self::Selector(query) => {
+                let selector = Selector::from_str(query)?;
+                selector.transform(list_array).map_err(Into::into)
+            }
             Self::Cast(op) => op.call(list_array),
-            Self::AccessField(op) => op.call(list_array),
-            Self::Flatten => reshape::Flatten::new()
-                .transform(list_array)
-                .map_err(Into::into),
             Self::BinaryToListUInt8 => map::MapList::new(semantic::BinaryToListUInt8::<i32>::new())
                 .transform(list_array)
                 .map_err(Into::into),

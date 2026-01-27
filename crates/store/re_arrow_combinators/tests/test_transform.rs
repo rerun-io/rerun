@@ -1,10 +1,13 @@
 mod util;
 
+use std::str::FromStr as _;
+
 use arrow::array::{Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder};
+use re_arrow_combinators::Selector;
 use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
 use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
-use re_arrow_combinators::reshape::{Flatten, GetField, RowMajorToColumnMajor, StructToFixedList};
+use re_arrow_combinators::reshape::{RowMajorToColumnMajor, StructToFixedList};
 use util::DisplayRB;
 
 use crate::util::fixtures;
@@ -14,8 +17,8 @@ fn simple() {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = MapList::new(GetField::new("poses"))
-        .then(Flatten::new())
+    let pipeline = Selector::from_str(".poses[]")
+        .unwrap()
         .then(MapList::new(StructToFixedList::new(["x", "y"])));
 
     let result: ListArray = pipeline.transform(&array).unwrap();
@@ -46,8 +49,8 @@ fn add_one_to_leaves() {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = MapList::new(GetField::new("poses"))
-        .then(Flatten::new())
+    let pipeline = Selector::from_str(".poses[]")
+        .unwrap()
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
             arrow::datatypes::Float64Type,
@@ -87,8 +90,8 @@ fn convert_to_f32() {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = MapList::new(GetField::new("poses"))
-        .then(Flatten::new())
+    let pipeline = Selector::from_str(".poses[]")
+        .unwrap()
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
             Float64Array,
@@ -123,8 +126,8 @@ fn replace_nulls() {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = MapList::new(GetField::new("poses"))
-        .then(Flatten::new())
+    let pipeline = Selector::from_str(".poses[]")
+        .unwrap()
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
             arrow::datatypes::Float64Type,
@@ -158,7 +161,7 @@ fn test_flatten_single_element() {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = MapList::new(GetField::new("poses")).then(Flatten::new());
+    let pipeline = Selector::from_str(".poses[]").unwrap();
 
     let result = pipeline.transform(&array).unwrap();
 
@@ -242,7 +245,10 @@ fn test_flatten_multiple_elements() {
 
     println!("{}", DisplayRB(list_of_lists.clone()));
 
-    let result = Flatten::new().transform(&list_of_lists).unwrap();
+    let result = Selector::from_str(".[]")
+        .unwrap()
+        .transform(&list_of_lists)
+        .unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone())), @"

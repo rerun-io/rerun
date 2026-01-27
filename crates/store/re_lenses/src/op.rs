@@ -9,9 +9,6 @@ use std::sync::Arc;
 use arrow::array::{Array as _, ListArray};
 use arrow::compute;
 use arrow::datatypes::{DataType, Field};
-use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::map::MapList;
-use re_arrow_combinators::reshape::GetField;
 
 /// Errors that occur during low-level operation execution on columns.
 #[derive(Debug, thiserror::Error)]
@@ -19,6 +16,10 @@ pub enum OpError {
     /// Error from Arrow combinator transformations.
     #[error(transparent)]
     Transform(#[from] re_arrow_combinators::Error),
+
+    /// Error from selector parsing.
+    #[error(transparent)]
+    Selector(Box<re_arrow_combinators::SelectorError>), // Box because of size.
 
     /// Error from Arrow operations.
     #[error(transparent)]
@@ -29,17 +30,9 @@ pub enum OpError {
     Other(Box<dyn std::error::Error + Send + Sync>),
 }
 
-/// Extracts a specific field from a struct component within a `ListArray`.
-#[derive(Debug)]
-pub struct AccessField {
-    pub(crate) field_name: String,
-}
-
-impl AccessField {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
-        MapList::new(GetField::new(self.field_name.clone()))
-            .transform(list_array)
-            .map_err(Into::into)
+impl From<re_arrow_combinators::SelectorError> for OpError {
+    fn from(value: re_arrow_combinators::SelectorError) -> Self {
+        Self::Selector(value.into())
     }
 }
 

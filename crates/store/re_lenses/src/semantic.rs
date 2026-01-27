@@ -14,8 +14,7 @@ use arrow::error::ArrowError;
 use re_sdk_types::components::VideoCodec;
 
 use re_arrow_combinators::cast::DowncastRef;
-use re_arrow_combinators::reshape::GetField;
-use re_arrow_combinators::{Error, Transform};
+use re_arrow_combinators::{Error, Transform, reshape};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -86,10 +85,10 @@ impl Transform for TimeSpecToNanos {
     type Target = Int64Array;
 
     fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let seconds_array = GetField::new("seconds")
+        let seconds_array = reshape::GetField::new("seconds")
             .then(DowncastRef::<Int64Type>::new())
             .transform(source)?;
-        let nanos_array = GetField::new("nanos")
+        let nanos_array = reshape::GetField::new("nanos")
             .then(DowncastRef::<Int32Type>::new())
             .transform(source)?;
 

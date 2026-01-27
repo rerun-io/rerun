@@ -80,3 +80,17 @@ pub enum Error {
     #[error(transparent)]
     Arrow(#[from] ArrowError),
 }
+
+impl From<crate::selector::Error> for Error {
+    fn from(err: crate::selector::Error) -> Self {
+        match err {
+            // If the selector error is already a runtime error, unwrap it
+            crate::selector::Error::Runtime(e) => e,
+            // For lex/parse errors, wrap them in a generic error message
+            // These shouldn't typically happen at runtime since selectors are pre-parsed
+            other => Self::Arrow(ArrowError::InvalidArgumentError(format!(
+                "Selector error: {other}"
+            ))),
+        }
+    }
+}
