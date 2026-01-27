@@ -84,9 +84,7 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
     assert returncode == 0, f"process exited with error code {returncode}"
 
     # Install the wheel
-    # Use --no-sources to ignore the [tool.uv.sources] config, which overrides rerun-sdk
-    # with the workspace version (needed for lerobot dependency override)
-    cmd = ["uv", "pip", "install", "--no-sources", f"{pkg}[tests] @ {path_to_file_url(wheel)}"]
+    cmd = ["uv", "pip", "install", f"{pkg}[tests] @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
