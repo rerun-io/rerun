@@ -2,13 +2,33 @@
 
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import numpy.typing as npt
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from collections.abc import Iterable
+
+    import numpy.typing as npt
+
+
+@contextmanager
+def suppress_ffmpeg_output() -> Iterator[None]:
+    with open(os.devnull, "w") as devnull:
+        old_stdout_fd = os.dup(1)
+        old_stderr_fd = os.dup(2)
+        try:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+            yield
+        finally:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stdout_fd)
+            os.close(old_stderr_fd)
 
 
 def unwrap_singleton(value: object) -> object:

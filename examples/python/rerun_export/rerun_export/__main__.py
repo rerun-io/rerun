@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 import argparse
-import os
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 
 import pyarrow as pa
@@ -17,23 +14,7 @@ from tqdm import tqdm
 from rerun_export.lerobot.converter import apply_remuxed_videos, convert_dataframe_to_episode
 from rerun_export.lerobot.feature_inference import infer_features
 from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
-from rerun_export.utils import make_time_grid
-
-
-@contextmanager
-def _suppress_ffmpeg_output() -> Iterator[None]:
-    with open(os.devnull, "w") as devnull:
-        old_stdout_fd = os.dup(1)
-        old_stderr_fd = os.dup(2)
-        try:
-            os.dup2(devnull.fileno(), 1)
-            os.dup2(devnull.fileno(), 2)
-            yield
-        finally:
-            os.dup2(old_stdout_fd, 1)
-            os.dup2(old_stderr_fd, 2)
-            os.close(old_stdout_fd)
-            os.close(old_stderr_fd)
+from rerun_export.utils import make_time_grid, suppress_ffmpeg_output
 
 
 def _parse_video_specs(raw_specs: list[str]) -> list[VideoSpec]:
@@ -225,7 +206,7 @@ def convert_rrd_dataset_to_lerobot(
 
                 if success and not direct_saved:
                     episode_index = lerobot_dataset.episode_buffer["episode_index"]
-                    with _suppress_ffmpeg_output():
+                    with suppress_ffmpeg_output():
                         lerobot_dataset.save_episode()
 
                         # Apply remuxed videos if possible

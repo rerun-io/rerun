@@ -1,4 +1,6 @@
 # region: setup
+"""Demonstrate converting Rerun recording to LeRobot dataset."""
+
 from __future__ import annotations
 
 from pathlib import Path

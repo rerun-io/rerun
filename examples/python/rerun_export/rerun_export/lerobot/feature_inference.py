@@ -44,7 +44,12 @@ def infer_features(
     if action_sample is None:
         raise ValueError(f"Could not infer action dimension: no non-null values found in column '{config.action}'")
 
-    action_dim = len(np.asarray(action_sample).flatten())
+    action_array = np.asarray(action_sample).flatten()
+    # Validate that action data can be converted to float32
+    if not np.can_cast(action_array.dtype, np.float32):
+        raise ValueError(f"Action data has dtype '{action_array.dtype}' which cannot be safely cast to float32")
+
+    action_dim = len(action_array)
     if config.action_names is not None and len(config.action_names) != action_dim:
         raise ValueError("Action names length does not match inferred action dimension.")
     features["action"] = {"dtype": "float32", "shape": (action_dim,), "names": config.action_names}
@@ -58,7 +63,12 @@ def infer_features(
     if state_sample is None:
         raise ValueError(f"Could not infer state dimension: no non-null values found in column '{config.state}'")
 
-    state_dim = len(np.asarray(state_sample).flatten())
+    state_array = np.asarray(state_sample).flatten()
+    # Validate that state data can be converted to float32
+    if not np.can_cast(state_array.dtype, np.float32):
+        raise ValueError(f"State data has dtype '{state_array.dtype}' which cannot be safely cast to float32")
+
+    state_dim = len(state_array)
     if config.state_names is not None and len(config.state_names) != state_dim:
         raise ValueError("State names length does not match inferred state dimension.")
     features["observation.state"] = {"dtype": "float32", "shape": (state_dim,), "names": config.state_names}

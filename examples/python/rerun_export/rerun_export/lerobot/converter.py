@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,11 +21,9 @@ from rerun_export.lerobot.video_processing import (
     load_video_samples,
     remux_video_stream,
 )
-from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton
+from rerun_export.utils import normalize_times, to_float32_vector, unwrap_singleton, suppress_ffmpeg_output
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from lerobot.datasets.lerobot_dataset import LeRobotDataset  # type: ignore[import-untyped]
 
     from rerun_export.lerobot.types import (
@@ -38,22 +34,6 @@ if TYPE_CHECKING:
         VideoSampleData,
         VideoSpec,
     )
-
-
-@contextmanager
-def _suppress_ffmpeg_output() -> Iterator[None]:
-    with open(os.devnull, "w") as devnull:
-        old_stdout_fd = os.dup(1)
-        old_stderr_fd = os.dup(2)
-        try:
-            os.dup2(devnull.fileno(), 1)
-            os.dup2(devnull.fileno(), 2)
-            yield
-        finally:
-            os.dup2(old_stdout_fd, 1)
-            os.dup2(old_stderr_fd, 2)
-            os.close(old_stdout_fd)
-            os.close(old_stderr_fd)
 
 
 def convert_dataframe_to_episode(
@@ -351,7 +331,7 @@ def _save_episode_without_video_decode(
         temp_dir = Path(tempfile.mkdtemp(dir=lerobot_dataset.root))
         temp_path = temp_dir / f"{video_key.replace('.', '_')}_{episode_index:03d}.mp4"
 
-        with _suppress_ffmpeg_output():
+        with suppress_ffmpeg_output():
             video_times_ns = info["times_ns"]
             video_times_ns_relative = video_times_ns - video_times_ns[0]
 
