@@ -39,15 +39,34 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
     let http_url = origin.as_url();
 
+    let tls_config = if let Ok(cert_path) = std::env::var("RERUN_REDAP_LOCAL_CERT_PATH") {
+        use tonic::transport::{Certificate, ClientTlsConfig};
+
+        re_log::info!(cert_path, "starting client with local TLS cert");
+
+        let ca_cert = tokio::fs::read_to_string(&cert_path).await.map_err(|err| {
+            ApiError::internal_with_source(
+                err,
+                format!("couldn't load local cert at {cert_path:?}"),
+            )
+        })?;
+        let ca_cert = Certificate::from_pem(ca_cert);
+
+        ClientTlsConfig::new()
+            .with_enabled_roots()
+            .ca_certificate(ca_cert)
+            .domain_name("localhost") // must match the Common Name (CN) in the self-signed cert
+            .assume_http2(true)
+    } else {
+        // TODO(RR-3480): This will fail to connect to unencrypted IPv6 addresses (e.g. `rerun+http://[fd00:4b21:6f7a:2022::10]:51234`).
+        tonic::transport::ClientTlsConfig::new()
+            .with_enabled_roots()
+            .assume_http2(true)
+    };
+
     let endpoint = {
         let mut endpoint = Endpoint::new(http_url)
-            .and_then(|ep| {
-                ep.tls_config(
-                    tonic::transport::ClientTlsConfig::new()
-                        .with_enabled_roots()
-                        .assume_http2(true),
-                )
-            })
+            .and_then(|ep| ep.tls_config(tls_config))
             .map_err(|err| ApiError::connection_with_source(err, "connecting to server"))?
             .http2_adaptive_window(true) // Optimize for throughput
             .connect_timeout(std::time::Duration::from_secs(10));
