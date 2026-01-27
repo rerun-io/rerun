@@ -54,7 +54,9 @@ pub struct ChunkPrefetchOptions {
     pub max_uncompressed_bytes_in_transit: u64,
 }
 
-struct ChunkBatcher<'a> {
+/// Helper struct responsible for batching requests and creating
+/// promises for missing chunks.
+struct ChunkRequestBatcher<'a> {
     load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
     manifest: &'a RrdManifest,
     chunk_promises: &'a mut ChunkPromises,
@@ -68,7 +70,7 @@ struct ChunkBatcher<'a> {
     indices: Vec<i32>,
 }
 
-impl<'a> ChunkBatcher<'a> {
+impl<'a> ChunkRequestBatcher<'a> {
     fn new(
         load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
         manifest: &'a RrdManifest,
@@ -103,7 +105,7 @@ impl<'a> ChunkBatcher<'a> {
     }
 
     /// Create promise from the current batch.
-    fn batch(&mut self) -> Result<(), PrefetchError> {
+    fn finish_batch(&mut self) -> Result<(), PrefetchError> {
         let rb = take_record_batch(
             &self.manifest.data,
             &Int32Array::from(std::mem::take(&mut self.indices)),
@@ -144,7 +146,7 @@ impl<'a> ChunkBatcher<'a> {
         remote_chunk.state = LoadState::InTransit;
 
         if self.max_uncompressed_bytes_per_batch < self.uncompressed_bytes_in_batch {
-            self.batch()?;
+            self.finish_batch()?;
         }
         self.remaining_bytes_in_transit_budget = self
             .remaining_bytes_in_transit_budget
@@ -152,10 +154,10 @@ impl<'a> ChunkBatcher<'a> {
         Ok(true)
     }
 
-    /// Fetch a last batch if one is prepared.
+    /// Fetch a last request batch if one is prepared.
     fn finish(&mut self) -> Result<(), PrefetchError> {
         if !self.indices.is_empty() {
-            self.batch()?;
+            self.finish_batch()?;
         }
 
         Ok(())
@@ -362,7 +364,7 @@ impl ChunkPrioritizer {
         let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 
         let mut chunk_batcher =
-            ChunkBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options)?;
+            ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options)?;
 
         let chunk_ids_in_priority_order =
             Self::chunks_in_priority(&self.static_chunk_ids, store, options.start_time, chunks);
