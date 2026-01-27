@@ -9,7 +9,7 @@ dependencies = [
   "rerun-sdk",
   "scipy",
   "tqdm",
-  "lerobot",
+  "lerobot==0.4.2",
   "datafusion",
   "pyarrow",
   "pillow",

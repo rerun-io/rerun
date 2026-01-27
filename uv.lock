@@ -5148,7 +5148,7 @@ dependencies = [
 requires-dist = [
     { name = "av" },
     { name = "datafusion" },
-    { name = "lerobot" },
+    { name = "lerobot", specifier = "==0.4.2" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pillow" },
@@ -5299,7 +5299,6 @@ examples = [
     { name = "graphs" },
     { name = "imu-signals" },
     { name = "incremental-logging" },
-    { name = "lerobot" },
     { name = "lidar" },
     { name = "live-camera-edge-detection" },
     { name = "live-scrolling-plot" },
@@ -5318,7 +5317,6 @@ examples = [
     { name = "plots" },
     { name = "polars" },
     { name = "raw-mesh" },
-    { name = "rerun-export" },
     { name = "rgbd" },
     { name = "rrt-star" },
     { name = "segment-anything" },
@@ -5333,6 +5331,7 @@ examples = [
 snippets = [
     { name = "av" },
     { name = "pandas" },
+    { name = "rerun-export" },
     { name = "rerun-sdk" },
 ]
 
@@ -5411,7 +5410,6 @@ examples = [
     { name = "graphs", editable = "examples/python/graphs" },
     { name = "imu-signals", editable = "examples/python/imu_signals" },
     { name = "incremental-logging", editable = "examples/python/incremental_logging" },
-    { name = "lerobot", specifier = "==0.4.2" },
     { name = "lidar", editable = "examples/python/lidar" },
     { name = "live-camera-edge-detection", editable = "examples/python/live_camera_edge_detection" },
     { name = "live-scrolling-plot", editable = "examples/python/live_scrolling_plot" },
@@ -5430,7 +5428,6 @@ examples = [
     { name = "plots", editable = "examples/python/plots" },
     { name = "polars", specifier = ">=0.12.0" },
     { name = "raw-mesh", editable = "examples/python/raw_mesh" },
-    { name = "rerun-export", editable = "examples/python/rerun_export" },
     { name = "rgbd", editable = "examples/python/rgbd" },
     { name = "rrt-star", editable = "examples/python/rrt_star" },
     { name = "segment-anything", git = "https://github.com/facebookresearch/segment-anything.git" },
@@ -5445,6 +5442,7 @@ examples = [
 snippets = [
     { name = "av" },
     { name = "pandas" },
+    { name = "rerun-export", editable = "examples/python/rerun_export" },
     { name = "rerun-sdk", editable = "rerun_py" },
 ]
 

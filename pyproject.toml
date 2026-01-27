@@ -72,7 +72,7 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
 ]
-snippets = ["rerun-sdk", "av", "pandas"]
+snippets = ["rerun-sdk", "av", "pandas", "rerun_export"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -80,7 +80,9 @@ examples = [
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   "torch>=2.5.1", # require at least 2.5.1 for some examples
   "torchvision>=0.20.1", # require at least 0.20.1 for some examples
-  "lerobot==0.4.2", # locking this at 0.4.2, to avoid surprises
+  # lerobot and rerun_export are not listed here to avoid override-dependencies
+  # conflicts during normal uv sync. Use `uv sync --package rerun_export` to
+  # install rerun_export with its lerobot dependency.
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -113,7 +115,6 @@ examples = [
   "objectron",
   "open_photogrammetry_format",
   "openstreetmap_data",
-  "rerun_export",
   "plots",
   "raw_mesh",
   "rgbd",
