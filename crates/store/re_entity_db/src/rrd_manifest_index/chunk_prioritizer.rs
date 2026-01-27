@@ -436,7 +436,7 @@ impl ChunkPrioritizer {
                         }
 
                         let Some(chunk) = store.physical_chunk(&chunk_id) else {
-                            re_log::warn_once!("Couldn't get loaded chunk from chunk store");
+                            re_log::warn_once!("Couldn't get physical chunk from chunk store");
                             continue;
                         };
 
