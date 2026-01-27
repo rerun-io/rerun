@@ -1,17 +1,30 @@
 """Query video streams efficiently using keyframe information."""
 
-# region: setup
+# ruff: noqa: E402
+
 from __future__ import annotations
 
-from fractions import Fraction
+import atexit
+import pathlib
+import shutil
+import tempfile
+
+
+TMP_DIR = pathlib.Path(tempfile.mkdtemp())
+atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
+
+
+# region: setup
 from io import BytesIO
 from pathlib import Path
+from fractions import Fraction
 
 import av
 import numpy as np
 import pyarrow as pa
-import rerun as rr
 from datafusion import col, functions as F
+
+import rerun as rr
 
 sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
 
@@ -65,7 +78,7 @@ time_column = rr.TimeColumn(timeline=timeline, timestamp=keyframe_times)
 content = rr.DynamicArchetype.columns(archetype="KeyframeData", components={"is_keyframe": keyframe_values})
 
 # Write to a new file as a layer
-layer_path = Path("/tmp/keyframe_layer.rrd")
+layer_path = TMP_DIR / "keyframe_layer.rrd"
 with rr.RecordingStream(
     application_id="keyframes",
     recording_id=first_segment_id,  # Match original recording_id
