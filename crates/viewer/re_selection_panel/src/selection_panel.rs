@@ -809,10 +809,10 @@ fn entity_path_filter_ui(
 
     // Apply the edit.
     let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
-    if new_filter == filter.unresolved() {
-        None // no change
-    } else {
+    if response.changed() && new_filter != filter.unresolved() {
         Some(new_filter)
+    } else {
+        None // no change
     }
 }
 
