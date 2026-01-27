@@ -16,6 +16,44 @@ use crate::{
     sorted_range_map::SortedRangeMap,
 };
 
+/// Errors that can occur during prefetching.
+#[derive(thiserror::Error, Debug)]
+pub enum PrefetchError {
+    #[error("No manifest available")]
+    NoManifest,
+
+    #[error("Unknown timeline: {0:?}")]
+    UnknownTimeline(Timeline),
+
+    #[error("Codec: {0}")]
+    Codec(#[from] re_log_encoding::CodecError),
+
+    #[error("Arrow: {0}")]
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error("Row index too large: {0}")]
+    BadIndex(usize),
+}
+
+/// How to calculate which chunks to prefetch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChunkPrefetchOptions {
+    pub timeline: Timeline,
+
+    /// Start loading chunks from this time onwards,
+    /// before looping back to the start.
+    pub start_time: TimeInt,
+
+    /// Batch together requests until we reach this size.
+    pub max_uncompressed_bytes_per_batch: u64,
+
+    /// Total budget for all loaded chunks.
+    pub total_uncompressed_byte_budget: u64,
+
+    /// Maximum number of bytes in transit at once.
+    pub max_uncompressed_bytes_in_transit: u64,
+}
+
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
@@ -125,6 +163,46 @@ impl ChunkPrioritizer {
         std::mem::take(&mut self.in_limit_chunks)
     }
 
+    /// An iterator over chunks in priority order.
+    ///
+    /// See [`Self::prioritize_and_prefetch`] for more details.
+    fn chunks_in_priority<'a>(
+        static_chunk_ids: &'a HashSet<ChunkId>,
+        store: &'a ChunkStore,
+        start_time: TimeInt,
+        chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
+    ) -> impl Iterator<Item = ChunkId> + use<'a> {
+        let store_tracked = store.take_tracked_chunk_ids();
+        let used = store_tracked.used_physical.into_iter();
+
+        let missing = store_tracked.missing.into_iter().flat_map(|c| {
+            store
+                .find_root_rrd_manifests(&c)
+                .into_iter()
+                .map(|(id, _)| id)
+        });
+
+        let chunks_ids_after_time_cursor = move || {
+            chunks
+                .query(start_time..=TimeInt::MAX)
+                .map(|(_, chunk_id)| *chunk_id)
+        };
+        let chunks_ids_before_time_cursor = move || {
+            chunks
+                .query(TimeInt::MIN..=start_time.saturating_sub(1))
+                .map(|(_, chunk_id)| *chunk_id)
+        };
+
+        let chunk_ids_in_priority_order = itertools::chain!(
+            used,
+            missing,
+            static_chunk_ids.iter().copied(),
+            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+        );
+        chunk_ids_in_priority_order
+    }
+
     /// Prioritize which chunk (loaded & unloaded) we want to fit in the
     /// current memory budget. And prefetch some amount of those chunks.
     ///
@@ -171,34 +249,8 @@ impl ChunkPrioritizer {
         let mut bytes_in_batch: u64 = 0;
         let mut indices = vec![];
 
-        let store_tracked = store.take_tracked_chunk_ids();
-
-        let used = store_tracked.used_physical.into_iter();
-        let missing = store_tracked.missing.iter().flat_map(|c| {
-            store
-                .find_root_rrd_manifests(c)
-                .into_iter()
-                .map(|(id, _)| id)
-        });
-
-        let chunks_ids_after_time_cursor = || {
-            chunks
-                .query(start_time..=TimeInt::MAX)
-                .map(|(_, chunk_id)| *chunk_id)
-        };
-        let chunks_ids_before_time_cursor = || {
-            chunks
-                .query(TimeInt::MIN..=start_time.saturating_sub(1))
-                .map(|(_, chunk_id)| *chunk_id)
-        };
-
-        let chunk_ids_in_priority_order = itertools::chain!(
-            used,
-            missing,
-            self.static_chunk_ids.iter().copied(),
-            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
-            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
-        );
+        let chunk_ids_in_priority_order =
+            Self::chunks_in_priority(&self.static_chunk_ids, store, start_time, chunks);
 
         let entity_paths = manifest.col_chunk_entity_path_raw()?;
 
@@ -332,42 +384,4 @@ impl ChunkPrioritizer {
 
         Ok(())
     }
-}
-
-/// Errors that can occur during prefetching.
-#[derive(thiserror::Error, Debug)]
-pub enum PrefetchError {
-    #[error("No manifest available")]
-    NoManifest,
-
-    #[error("Unknown timeline: {0:?}")]
-    UnknownTimeline(Timeline),
-
-    #[error("Codec: {0}")]
-    Codec(#[from] re_log_encoding::CodecError),
-
-    #[error("Arrow: {0}")]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("Row index too large: {0}")]
-    BadIndex(usize),
-}
-
-/// How to calculate which chunks to prefetch.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ChunkPrefetchOptions {
-    pub timeline: Timeline,
-
-    /// Start loading chunks from this time onwards,
-    /// before looping back to the start.
-    pub start_time: TimeInt,
-
-    /// Batch together requests until we reach this size.
-    pub max_uncompressed_bytes_per_batch: u64,
-
-    /// Total budget for all loaded chunks.
-    pub total_uncompressed_byte_budget: u64,
-
-    /// Maximum number of bytes in transit at once.
-    pub max_uncompressed_bytes_in_transit: u64,
 }

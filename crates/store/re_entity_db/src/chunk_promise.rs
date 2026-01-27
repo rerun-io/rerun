@@ -93,11 +93,16 @@ impl ChunkPromises {
         self.batches.iter().map(|b| b.size_bytes_uncompressed).sum()
     }
 
+    /// Average of bytes/second over recent history.
     pub fn bandwidth(&self) -> Option<f64> {
         self.download_size_history.bandwidth().map(|b| b.0)
     }
 
-    pub fn bandwidth_data_age(&self, time: f64) -> f64 {
+    /// Returns how fresh the bandwidth data is, as a normalized value from 0.0 to 1.0.
+    ///
+    /// - `0.0` means the most recent download just completed.
+    /// - `1.0` means no downloads have completed within `Self.download_size_history.max_age()`.
+    pub fn bandwidth_data_freshness(&self, time: f64) -> f64 {
         self.download_size_history
             .iter()
             .last()
