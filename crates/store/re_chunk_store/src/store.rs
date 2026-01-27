@@ -532,6 +532,9 @@ pub struct ChunkStore {
     /// The key is the ID of the source chunk, before splitting, which never made it into the store.
     /// The values are the IDs of the resulting split chunks, which were actually inserted.
     ///
+    /// Splitting cannot be recursive, and therefore there is never any requirement to traverse
+    /// this datastructure recursively.
+    ///
     /// So why is this useful? We use this data on the write path in order to detect when a chunk that
     /// was previously inserted, and split into smaller chunks, is being inserted *again*, e.g. because
     /// it had been offloaded due to memory pressure and is now making a comeback.
@@ -548,8 +551,13 @@ pub struct ChunkStore {
 
     /// Anytime a chunk gets compacted with another during insertion, this is recorded here.
     ///
-    /// The key is the ID of the chunk being inserted, before compaction, which never made it into the store.
+    /// The key can be either one of two things:
+    /// * The ID of an already stored physical chunk, that was elected for compaction.
+    /// * The ID of the chunk being inserted, before compaction, which never made it into the store.
+    ///
     /// The value is the ID of the resulting compacted chunk, which was actually inserted.
+    ///
+    /// Compaction is a recursive process: you should probably traverse this datastructure *recursively*.
     ///
     /// So why is this useful? We use this data on the write path in order to detect when a chunk that
     /// was previously inserted, and (potentially recursively) compacted with another chunk, is being
