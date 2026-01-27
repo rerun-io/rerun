@@ -6,6 +6,7 @@ import atexit
 import shutil
 import tempfile
 import pathlib
+import pyarrow as pa
 
 
 TMP_DIR = pathlib.Path(tempfile.mkdtemp())
@@ -39,35 +40,25 @@ from datafusion import col
 
 # Query action (commanded) and observation (actual) joint positions
 joints = dataset.filter_contents(["/action/joint_positions", "/observation/joint_positions"]).reader(index="real_time")
-joints = joints.cache()
 
 # Compute tracking error: L2 norm of (commanded - actual) joint positions
-segment_ids = joints.select("rerun_segment_id").distinct().to_pydict()["rerun_segment_id"]
+segment_ids = pa.table(joints.select("rerun_segment_id").distinct())["rerun_segment_id"].to_numpy()
 rrd_paths = []
 
 for seg_id in segment_ids:
-    # Filter to this segment and collect as Polars (for zero-copy NumPy conversion)
-    segment_data = (
-        joints.filter(col("rerun_segment_id") == seg_id)
-        .select(
+    # Filter to this segment and collect as a PyArrow table for efficient extraction to NumPy
+    segment_data = pa.table(
+        joints.filter(col("rerun_segment_id") == seg_id).select(
             "real_time",
             "/action/joint_positions:Scalars:scalars",
             "/observation/joint_positions:Scalars:scalars",
         )
-        .to_polars()
     )
 
-    timestamps = segment_data["real_time"].to_numpy(allow_copy=False)
+    timestamps = segment_data["real_time"].to_numpy()
 
-    num_joints = segment_data["/action/joint_positions:Scalars:scalars"].list.len()[0]
-    actions = (
-        segment_data["/action/joint_positions:Scalars:scalars"].list.to_array(num_joints).to_numpy(allow_copy=False)
-    )
-    observations = (
-        segment_data["/observation/joint_positions:Scalars:scalars"]
-        .list.to_array(num_joints)
-        .to_numpy(allow_copy=False)
-    )
+    actions = np.vstack(segment_data["/action/joint_positions:Scalars:scalars"].to_numpy())
+    observations = np.vstack(segment_data["/observation/joint_positions:Scalars:scalars"].to_numpy())
 
     # Compute L2 tracking error per timestep
     tracking_error = np.linalg.norm(actions - observations, axis=1)
@@ -106,14 +97,13 @@ print(segment_table)
 from datafusion import functions as F
 
 tracking = dataset.filter_contents(["/derived/tracking_error"]).reader(index="real_time")
-quality_stats = (
+quality_stats = pa.table(
     tracking.aggregate(
         col("rerun_segment_id"),
         [F.avg(col("/derived/tracking_error:Scalars:scalars")[0]).alias("mean_error")],
     )
     .with_column("tracking_good", col("mean_error") < 0.13)
     .select("rerun_segment_id", "tracking_good")
-    .to_pydict()
 )
 
 # Create RRDs with just the property
