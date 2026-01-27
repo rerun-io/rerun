@@ -2,6 +2,8 @@ use egui::PointerButton;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
+use crate::HarnessExt as _;
+
 /// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section
 /// only affects the children of the section.
 pub struct ViewerSection<'a, 'h> {
@@ -164,6 +166,18 @@ impl<'a, 'h: 'a> ViewerSection<'a, 'h> {
     pub fn hover_label_contains(&mut self, label: &str) {
         self.root().get_by_label_contains(label).hover();
         self.harness.run();
+    }
+
+    /// Toggles the collapse triangle of a hierarchical list item. Eg. visualizer components in the selection panel.
+    pub fn toggle_nth_hierarchical_list(&mut self, label: &str, index: usize) {
+        let node = self.get_nth_label(label, index);
+        let rect = node.rect();
+
+        // Click at the left edge of the rect + 8 pixels (to hit the center of the ~16px triangle)
+        let triangle_x = rect.left() + 8.0;
+        let triangle_y = rect.center().y;
+        let triangle_pos = egui::pos2(triangle_x, triangle_y);
+        self.harness.click_at(triangle_pos);
     }
 
     /// Helper function to get the node with the given label

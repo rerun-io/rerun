@@ -16,6 +16,7 @@ pub struct HarnessOptions {
     pub max_steps: Option<u64>,
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
+    pub enable_component_mapping: bool,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.
@@ -54,6 +55,7 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         // Force the FFmpeg path to be wrong so we have a reproducible behavior.
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
+        app.app_options_mut().experimental.component_mapping = options.enable_component_mapping;
 
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.

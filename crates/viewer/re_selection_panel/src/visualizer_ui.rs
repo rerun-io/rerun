@@ -543,7 +543,7 @@ fn source_component_ui(
     ui.push_id("source_component", |ui| {
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
             |ui, _| {
-                egui::ComboBox::new("source_component_combo_box", "")
+                let response = egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(component_source_string(&current))
                     .show_ui(ui, |ui| {
                         for source in options {
@@ -557,6 +557,13 @@ fn source_component_ui(
                             }
                         }
                     });
+                response.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(
+                        egui::WidgetType::ComboBox,
+                        ui.is_enabled(),
+                        format!("{}_$source", component_descr.component),
+                    )
+                });
             },
         ));
     });
