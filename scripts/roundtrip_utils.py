@@ -54,6 +54,9 @@ def run(
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
 
+    # Force UTF-8 encoding for Python I/O to handle Unicode output on Windows
+    env["PYTHONIOENCODING"] = "utf-8"
+
     # raise exception on warnings, e.g. when using a @deprecated function:
     env["PYTHONWARNINGS"] = "error"
 

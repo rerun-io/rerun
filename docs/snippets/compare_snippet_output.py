@@ -346,7 +346,9 @@ def run_python(example: Example) -> str:
 
     cmd = [python_executable, main_path, *example.extra_args()]
 
-    env = {}
+    env = os.environ.copy()
+    # Force UTF-8 encoding for Python I/O to handle Unicode output on Windows
+    env["PYTHONIOENCODING"] = "utf-8"
     if str(example) not in OPT_OUT_BACKWARDS_CHECK:
         env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -373,7 +375,7 @@ def run_prebuilt_rust(example: Example, *, release: bool, target: str | None, ta
     cmd += [example.name]
     cmd += example.extra_args()
 
-    env = {}
+    env = None
     if str(example) not in OPT_OUT_BACKWARDS_CHECK:
         env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -386,7 +388,7 @@ def run_prebuilt_cpp(example: Example) -> str:
 
     extension = ".exe" if os.name == "nt" else ""
     cmd = [f"./build/debug/docs/snippets/{example.name}{extension}", *example.extra_args()]
-    env = {}
+    env = None
     if str(example) not in OPT_OUT_BACKWARDS_CHECK:
         env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
