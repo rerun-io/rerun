@@ -644,7 +644,7 @@ fn sort_chunks_by_segment_order(
 }
 
 /// This is the function that will run on the IO (main) tokio runtime that will listen
-/// to the gRPC channel for chunks coming in from the data platform. This loop is started
+/// to the gRPC channel for chunks coming in from the Data Platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output DataFusion partition,
 /// which is different from the Rerun `segment_id`. The sorting by time index will happen within
 /// the cpu worker thread.

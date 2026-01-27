@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use re_log_types::{StoreId, StoreKind};
 
 use crate::EntityDb;
@@ -135,20 +134,5 @@ impl StoreBundle {
     /// In insertion order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
         self.recording_store.drain(..).map(|(_, store)| store)
-    }
-
-    // --
-
-    /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
-    pub fn find_oldest_modified_recording(&self) -> Option<StoreId> {
-        let mut entity_dbs = self
-            .recording_store
-            .values()
-            .filter(|db| db.store_kind() == StoreKind::Recording)
-            .collect_vec();
-
-        entity_dbs.sort_by_key(|db| db.last_modified_at());
-
-        entity_dbs.first().map(|db| db.store_id().clone())
     }
 }

@@ -812,6 +812,8 @@ impl StoreHub {
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
     ///
     /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
+    ///
+    /// Returns the number of bytes freed.
     //
     // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
     // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
@@ -822,7 +824,7 @@ impl StoreHub {
             &StoreId,
         )
             -> Option<(re_log_types::Timeline, re_log_types::TimeInt)>,
-    ) {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)]
@@ -830,17 +832,59 @@ impl StoreHub {
             cache.purge_memory();
         }
 
-        let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
-            return;
-        };
+        let active_store_id = self.active_store_id().cloned();
+        let background_recording_ids = self
+            .store_bundle
+            .recordings()
+            .map(|db| db.store_id().clone())
+            .filter(|store_id| Some(store_id) != active_store_id.as_ref())
+            .collect::<Vec<_>>();
+
+        let mut num_bytes_freed = 0;
+
+        for store_id in background_recording_ids {
+            let time_cursor = time_cursor_for(&store_id);
+            num_bytes_freed +=
+                self.purge_fraction_of_ram_for(fraction_to_purge, &store_id, time_cursor);
+        }
+
+        if num_bytes_freed == 0
+            && let Some(active_store_id) = active_store_id
+        {
+            // We didn't free any memory from the background recordings,
+            // so try the active one:
+            let time_cursor = time_cursor_for(&active_store_id);
+            num_bytes_freed +=
+                self.purge_fraction_of_ram_for(fraction_to_purge, &active_store_id, time_cursor);
+        }
+
+        num_bytes_freed
+    }
+
+    /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
+    ///
+    /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
+    //
+    // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
+    // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
+    fn purge_fraction_of_ram_for(
+        &mut self,
+        fraction_to_purge: f32,
+        store_id: &StoreId,
+        time_cursor: Option<(re_log_types::Timeline, re_log_types::TimeInt)>,
+    ) -> u64 {
+        re_tracing::profile_function!();
+        let is_active_recording = Some(store_id) == self.active_store_id();
 
         let store_bundle = &mut self.store_bundle;
 
-        let Some(entity_db) = store_bundle.get_mut(&store_id) else {
+        let is_last_recording = store_bundle.recordings().count() == 1;
+
+        let Some(entity_db) = store_bundle.get_mut(store_id) else {
             if cfg!(debug_assertions) {
                 unreachable!();
             }
-            return; // unreachable
+            return 0; // unreachable
         };
 
         let store_size_before = entity_db
@@ -849,8 +893,7 @@ impl StoreHub {
             .stats()
             .total()
             .total_size_bytes;
-        let store_events = entity_db
-            .purge_fraction_of_ram(fraction_to_purge, time_cursor_for(entity_db.store_id()));
+        let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge, time_cursor);
         let store_size_after = entity_db
             .storage_engine()
             .store()
@@ -858,36 +901,34 @@ impl StoreHub {
             .total()
             .total_size_bytes;
 
-        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+        if let Some(caches) = self.caches_per_recording.get_mut(store_id) {
             caches.on_store_events(&store_events, entity_db);
         }
 
-        // No point keeping an empty recording around.
-        if entity_db.is_empty() {
-            self.remove_store(&store_id);
-            return;
+        let num_bytes_freed = store_size_before.saturating_sub(store_size_after);
+
+        // No point keeping an empty recording around… but don't close the active one.
+        if entity_db.is_empty() && !is_active_recording {
+            self.remove_store(store_id);
+            return store_size_before;
         }
 
-        // Running the GC didn't do anything.
-        //
-        // That's because all that's left in that store is protected rows: it's time to remove it
-        // entirely, unless it's the last recording still standing, in which case we're better off
-        // keeping some data around to show the user rather than a blank screen.
-        //
-        // If the user needs the memory for something else, they will get it back as soon as they
-        // log new things anyhow.
-        let num_recordings = store_bundle.recordings().count();
-        if store_size_before == store_size_after && num_recordings > 1 {
-            self.remove_store(&store_id);
+        if num_bytes_freed == 0 {
+            // Running the GC didn't do anything.
+            //
+            // That's because all that's left in that store is protected rows: it's time to remove it
+            // entirely, unless it's the last recording still standing, in which case we're better off
+            // keeping some data around to show the user rather than a blank screen.
+            //
+            // If the user needs the memory for something else, they will get it back as soon as they
+            // log new things anyhow.
+            if !is_last_recording {
+                self.remove_store(store_id);
+                return store_size_before;
+            }
         }
 
-        // Either we've reached our target goal or we couldn't fetch memory stats, in which case
-        // we still consider that we're done anyhow.
-
-        // NOTE: It'd be tempting to loop through recordings here, as long as we haven't reached
-        // our actual target goal.
-        // We cannot do that though: there are other subsystems that need to release memory before
-        // we can get an accurate reading of the current memory used and decide if we should go on.
+        num_bytes_freed
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.

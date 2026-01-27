@@ -3,61 +3,101 @@ title: Component Batches
 order: 900
 ---
 
-Rerun has built-in support for batch data. Whenever you have a collection of things that all have the same type, rather
-than logging each element individually, you can log the entire collection together as a single "Batch". This provides
-significant benefits in terms of storage and compute.
+In the Rerun data model, the value of a given component at a given point in time is always itself a list—or a _batch_—of values.
 
-Some examples of batched data include points in a point cloud, bounding boxes for detected objects, tracked keypoints
-in a skeleton, or a collection of line strips.
+Consider this example:
 
-In the logging APIs, the majority of archetypes are named with the plural form, for example [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). They accept both single elements (internally treated as an N=1 batch) or arrays corresponding to the batches.
+```python
+rr.log("/data", rr.Points3D(positions=[0.0, 0.0, 0.0]))
+```
 
-## Terminology
+For convenience, the [`rr.Points3D`](../../reference/types/archetypes/points3d.md) archetype accepts a single position, but what actually happens is that the corresponding [`Position3D`](../../reference/types/components/position3d.md) component is logged as a batch of length 1.
+So the following log calls are equivalent:
+```python
+single_point = [0.0, 0.0, 0.0]
+rr.log("/data", rr.Points3D(positions=single_point)
+rr.log("/data", rr.Points3D(positions=[single_point])
+```
 
-- An *entity* is a collection of *components* (see [Entities and Components](entity-component.md)).
-- When an entity is batched, its components' individual elements are called *instances*.
-- When every instance within an entity shares the same value for a component, we say that this component is clamped. This
-  is a common pattern and has dedicated support for it (see the [Component Clamping](#component-clamping) section below).
-  For instance, you can set all the colors of a point cloud to the same color by passing a single color value to the
- `color` parameter.
-- During queries, a batch always has a *primary* component. The primary component is what determines
-  how many instances exist in the batch.
+Logging larger batches is obviously possible:
 
-## Restrictions
+```python
+rr.log("/data", rr.Points3D(positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]))
+```
 
-When using batched entities there are a few restrictions:
- - Because there is a one-to-one mapping between batches and entities:
-    - If data needs to span multiple entity paths, it needs to be split up into separate batches.
-    - If data needs to be split into multiple batches, each must be logged to a different path.
- - Whenever you log a batched entity, for any component that is updated, you must provide values for
-   every instance.
-    - It is not possible to only update a subset of the instances in the batch.
+The ability to log data as batches is useful in many cases, such as point clouds (as in the above example), bounding boxes for detected objects, tracked keypoints in a skeleton, or individual joint values for a robot arm.
 
-## Batch join rules
+This is also why, in the logging APIs, the majority of archetypes are named with the plural form, like `rr.Points3D` above.
 
-Rerun lets you choose which components in an entity you want to log at any point in time. If you don't log to a
-component, then in general it is not updated. For example, if you log a point cloud with positions and colors and then
-later log just new positions, when the Viewer displays that point cloud it will still look up the *last* colors that
-were logged (we refer to this as the *latest-at* semantics).
+An individual value within a batch is called an _instance_.
 
-This can be quite convenient since updating different components at different times puts far fewer restrictions on the
-organization of your code. It even means if a component on an entity is static, you only need to log it once.
 
-However, if both a batch of colors and a batch of positions have been logged at two different points in time, we need a way
-to know which point receives which color.
-For that, Rerun uses the index of the instance.
-When querying a batched component, the component-values are joined together based on this index.
-Logically, this happens as a *left-join* using the primary component for the entity. For example, if you log 3
-points and then later log 5 colors, you will still only see 3 points in the viewer.
+## Component batches are immutable
 
-What should happen if you have 5 points and 3 colors then? This is where clamping semantics come into play.
+When data is logged to a component for a given time point, the corresponding batch is immutable.
+This means that additional instances cannot be appended to it, and existing instances cannot be modified.
+The entire batch must be logged again, and this will replace the previous one.
 
-## Component clamping
+Note that when data is logged multiple times for the same component and at the same time point, the last logged batch will be used, but the previously logged batches will remain in storage.
 
-As mentioned, Rerun has special semantics when joining batches of different sizes, for example this is what happens when you mix arrays and single values in an API call.
+## Instance joining semantics
 
-If the component on the left-side of the join (the so-called primary component) has more instances than the other, then these tail values will simply be ignored.
-On the other hand, if the component on the left-side of the join (the so-called primary component) has less instances than the other, then the last instance will be repeated across every instance left in the batch. We call this clamping, in reference to texture sampling (think `CLAMP_TO_EDGE`!).
+Components are typically logged as part of archetypes, which are semantic groupings of related components (see [Entities and Components](entity-component.md)).
+Often, archetypes have instance joining semantics.
+This means that the nth instance of one of the components relates to the nth instance of other components.
+For example, this is the case of [`rr.Points3D`](../../reference/types/archetypes/points3d.md): the nth value of its `colors` field applies to the nth value of its `positions` field.
+
+### Instance clamping
+
+Such archetypes typically have a required component that acts as the _primary component_.
+That's the component which defines how many logical instances the logged archetype represents.
+For `rr.Points3D`, the primary component is [`Position3D`](../../reference/types/components/position3d.md).
+Its batch size determines how many points will be visible in the viewer.
+
+For components other than the primary component:
+- if they have more instances, the additional instances are ignored by the viewer;
+- if they have fewer instances, the last instance is repeated as required.
+
+We refer to the latter case as _clamping semantics_, which can also be seen as a left-join using the primary component.
+
+This enables natural logging calls such as the following:
+
+```python
+rr.log("/data", rr.Points3D(positions=[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], radii=0.5))
+```
+
+Here, an N=3 batch of positions is logged, along with a batch of N=1 radii.
+That unique radius value is clamped to the three positions and thus applies to all three points when displayed in the viewer.
+
+### Instance joining and latest-at semantics
+
+Instance joining applies to the _current_ value of the components being displayed in the viewer.
+It is worth remembering that the [latest-at semantics](latest-at.md) still apply, which means that joined components do not need to be logged at the same time.
+
+For example, one might log a point cloud with positions and colors at the beginning of a recording, and later only log updated positions.
+The viewer will always look up for the "last" colors that were logged ("latest at" semantics) and use them for display.
+
+### Instance joining is not universal
+
+Note that instance joining semantics are not universal.
+Some archetypes don't use it, or use it partially.
+
+For example, the [`rr.Mesh3D`](../../reference/types/archetypes/mesh3d.md) archetype has a `vertex_positions` required component, which defines the number of vertices in the mesh.
+Some components have instance joining semantics with `vertex_positions`, including `vertex_colors` and `vertex_texcoords`.
+However, some other components do not, including `triangle_indices` which contains triplets of indices into the `vertex_positions` batch and defines the triangles to be displayed.
+
+
+## Storage
+
+Internally, component data is stored as [Arrow List arrays](https://arrow.apache.org/docs/format/Columnar.html#variable-size-list-layout) within [chunks](chunks.md).
+Each row of the list array corresponds to a single time point, and the values in each row correspond to the component batch.
+The Rerun data model exploits the fact that list arrays can have different lengths in each row to allow component batches to have different lengths at each time point.
+
+This design choice is most visible when [querying Rerun data](../query-and-transform/dataframe-queries.md).
+The returned dataframes will always have the `ListArray` datatype for component columns, even if the underlying columns contain a single value per row, or all rows (or batches) have the same length.
+
 
 ## See also
+
 [`send_columns`](../../howto/logging-and-ingestion/send-columns.md) lets you efficiently send many batches of data in one log call.
+

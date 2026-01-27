@@ -1,3 +1,5 @@
+"""Leverage filters to more efficiently perform downstream queries."""
+
 # region: setup
 from __future__ import annotations
 

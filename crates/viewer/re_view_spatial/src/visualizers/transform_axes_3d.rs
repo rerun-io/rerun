@@ -154,7 +154,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 &latest_at_query,
                 data_result,
                 [axis_length_identifier, show_frame_identifier],
-                false,
                 Some(instruction),
             );
 

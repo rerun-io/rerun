@@ -71,7 +71,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         return img
 
 
-    rr.init("rerun_example_video_stream_synthetic", spawn=True)
+    rr.init("rerun_example_video_stream_synthetic")
 
     # Setup encoding pipeline.
     av.logging.set_level(av.logging.VERBOSE)

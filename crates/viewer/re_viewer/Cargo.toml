@@ -26,8 +26,6 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
-[package.metadata.cargo-shear]
-ignored = ["strum"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -144,6 +142,8 @@ ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
+strum_macros.workspace = true
+strum.workspace = true
 tap.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
@@ -160,8 +160,6 @@ poll-promise = { workspace = true, features = ["tokio"] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
-strum.workspace = true
-strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in

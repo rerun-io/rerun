@@ -62,7 +62,7 @@ impl Default for ServerOptions {
     fn default() -> Self {
         Self {
             playback_behavior: PlaybackBehavior::OldestFirst,
-            memory_limit: MemoryLimit::UNLIMITED,
+            memory_limit: MemoryLimit::from_bytes(100 * 1024 * 1024), // Be very conservative by default
         }
     }
 }
@@ -146,11 +146,12 @@ pub async fn serve(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    serve_impl(addr, MessageProxy::new(options), shutdown).await
+    serve_impl(addr, options, MessageProxy::new(options), shutdown).await
 }
 
 async fn serve_impl(
     addr: SocketAddr,
+    options: ServerOptions,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
@@ -200,6 +201,8 @@ async fn serve_impl(
 
         Box::pin(incoming)
     };
+
+    re_log::info!("Server memory limit set at {}", options.memory_limit);
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
@@ -299,7 +302,7 @@ pub async fn serve_from_channel(
         }
     });
 
-    if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+    if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
         re_log::error!("message proxy server crashed: {err}");
     }
 }
@@ -322,7 +325,7 @@ pub fn spawn_from_rx_set(
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
             re_log::error!("message proxy server crashed: {err}");
         }
     });
@@ -415,7 +418,7 @@ pub fn spawn_with_recv(
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
 
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
             re_log::error!("message proxy server crashed: {err}");
         }
     });

@@ -108,7 +108,7 @@ pub struct AppState {
     /// Not serialized since on startup we have to typically discard it anyways since
     /// whatever data was selected before is no longer accessible.
     ///
-    /// For dataplatform use-cases this can even be rather irritating:
+    /// For Data Platform use-cases this can even be rather irritating:
     /// if previously a server was selected, then starting with a URL should no longer select it.
     #[serde(skip)]
     pub selection_state: ApplicationSelectionState,

@@ -13,6 +13,8 @@ mod transform;
 pub mod cast;
 pub mod map;
 pub mod reshape;
+mod selector;
 
 pub use crate::error::Error;
+pub use crate::selector::{Error as SelectorError, Selector};
 pub use crate::transform::{Compose, Transform};

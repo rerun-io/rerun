@@ -195,14 +195,12 @@ impl SeriesLinesSystem {
             // * For the secondary components (colors, radii, names, etc), this is a problem
             //   though: you don't want your plot to change color depending on what the currently
             //   visible time range is! Secondary components have to be bootstrapped.
-            let query_shadowed_components = false;
             let bootstrapped_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &LatestAtQuery::new(query.timeline, query.range.min()),
                 data_result,
                 archetypes::SeriesLines::all_component_identifiers(),
-                query_shadowed_components,
                 Some(instruction),
             );
 
@@ -337,6 +335,7 @@ impl SeriesLinesSystem {
                     label,
                     aggregator,
                     &mut series,
+                    instruction.id.clone(),
                 )
                 .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),

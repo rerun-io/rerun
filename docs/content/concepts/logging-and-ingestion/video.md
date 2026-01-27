@@ -43,6 +43,9 @@ video asset file to be in Viewer memory before decoding can begin.
 
 Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to stream live video to Rerun.
 
+For more details on how to query and decode video streams from Rerun, see our [query video streams how-to](../../howto/query-and-transform/query_videos.md).
+
+
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.

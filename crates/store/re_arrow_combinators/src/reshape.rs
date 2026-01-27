@@ -32,7 +32,7 @@ impl Transform for GetField {
     type Target = ArrayRef;
 
     fn transform(&self, source: &StructArray) -> Result<ArrayRef, Error> {
-        source
+        let field_array = source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
                 let available_fields = source.fields().iter().map(|f| f.name().clone()).collect();
@@ -40,8 +40,35 @@ impl Transform for GetField {
                     field_name: self.field_name.clone(),
                     available_fields,
                 }
-            })
-            .map(Clone::clone)
+            })?
+            .clone();
+
+        // If the struct has nulls, we need to combine them with the field's nulls
+        // because in Arrow, when a struct is null, its fields should also be null
+        if let Some(struct_nulls) = source.nulls() {
+            let field_data = field_array.to_data();
+
+            // Combine struct nulls with field nulls
+            let combined_nulls = if let Some(field_nulls) = field_data.nulls() {
+                // Both struct and field have nulls - combine them with AND
+                let combined: Vec<bool> = (0..source.len())
+                    .map(|i| struct_nulls.is_valid(i) && field_nulls.is_valid(i))
+                    .collect();
+                NullBuffer::from(combined)
+            } else {
+                // Only struct has nulls - use those
+                struct_nulls.clone()
+            };
+
+            let new_data = field_data
+                .into_builder()
+                .nulls(Some(combined_nulls))
+                .build()?;
+            Ok(arrow::array::make_array(new_data))
+        } else {
+            // No struct nulls - just return the field as-is
+            Ok(field_array)
+        }
     }
 }
 
@@ -458,5 +485,97 @@ impl Transform for RowMajorToColumnMajor {
             reordered_values,
             source.nulls().cloned(),
         ))
+    }
+}
+
+/// Extracts a single element at a specific index from a list array.
+///
+/// For `ListArray`, this returns the element at the given index from each list row.
+/// If the index is out of bounds for a particular row, the result for that row will be null.
+///
+/// # Example
+///
+/// - `[[1, 2, 3], [4, 5]]` with index 1 → `[2, 5]`
+/// - `[[1, 2], [3]]` with index 1 → `[2, null]` (second list too short)
+/// - `null` → `null` (null rows produce null results)
+#[derive(Clone, Debug)]
+pub struct GetIndexList {
+    index: u64,
+}
+
+impl GetIndexList {
+    /// Create a new index extractor for the given index.
+    pub fn new(index: u64) -> Self {
+        Self { index }
+    }
+}
+
+impl Transform for GetIndexList {
+    type Source = ListArray;
+    type Target = ArrayRef;
+
+    fn transform(&self, source: &ListArray) -> Result<ArrayRef, Error> {
+        let offsets = source.offsets();
+        let values = source.values();
+
+        // If values is empty, all lists are empty, so all results are null.
+        if values.is_empty() {
+            return Ok(arrow::array::new_null_array(
+                values.data_type(),
+                source.len(),
+            ));
+        }
+
+        // Collect indices to extract from the values array
+        let mut indices = Vec::with_capacity(source.len());
+        let mut validity = Vec::with_capacity(source.len());
+
+        for row_idx in 0..source.len() {
+            if source.is_null(row_idx) {
+                // Null row produces null result
+                indices.push(0u64); // Placeholder index (will be marked null)
+                validity.push(false);
+            } else {
+                let start = offsets[row_idx];
+                let end = offsets[row_idx + 1];
+                let length = end - start;
+
+                if self.index < length as u64 {
+                    // Index is within bounds
+                    indices.push(start as u64 + self.index);
+                    validity.push(true);
+                } else {
+                    // Index out of bounds produces null
+                    indices.push(0u64); // Placeholder index
+                    validity.push(false);
+                }
+            }
+        }
+
+        // Extract values using take
+        let indices_array = UInt64Array::from(indices);
+        let options = arrow::compute::TakeOptions { check_bounds: true };
+        // We explicitly allow `take` here because we care about nulls.
+        #[expect(clippy::disallowed_methods)]
+        let mut result = arrow::compute::take(values.as_ref(), &indices_array, Some(options))?;
+
+        // Combine the validity mask with existing nulls from the values array
+        // The validity mask marks out-of-bounds and null list rows as null
+        // We need to intersect this with nulls from the source values
+        let validity_buffer = NullBuffer::from(validity);
+        let result_data = result.to_data();
+        let combined_nulls = match result_data.nulls() {
+            Some(existing_nulls) => {
+                // Intersect existing nulls with our validity mask using bitwise AND
+                let combined_buffer = existing_nulls.inner() & validity_buffer.inner();
+                Some(NullBuffer::new(combined_buffer))
+            }
+            None => Some(validity_buffer),
+        };
+
+        let new_data = result_data.into_builder().nulls(combined_nulls).build()?;
+        result = arrow::array::make_array(new_data);
+
+        Ok(result)
     }
 }
