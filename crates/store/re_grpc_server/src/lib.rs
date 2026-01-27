@@ -194,7 +194,7 @@ async fn serve_impl(
         Box::pin(incoming)
     };
 
-    re_log::info!("Server memory limit set at {}", options.memory_limit);
+    re_log::debug!("Server memory limit set at {}", options.memory_limit);
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();

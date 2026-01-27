@@ -326,10 +326,6 @@ impl<T> Drop for Receiver<T> {
         if num_receivers_left == 0 {
             self.shared.state_changed.notify_all();
         }
-        re_log::debug!(
-            "{}: Receiver dropped. {num_receivers_left} receivers remaining",
-            self.shared.debug_name,
-        );
     }
 }
 
