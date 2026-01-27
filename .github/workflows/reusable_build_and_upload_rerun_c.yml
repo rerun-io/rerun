@@ -85,13 +85,13 @@ jobs:
             linux-arm64)
               runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               lib_name="librerun_c.a"
               ;;
             windows-x64)
