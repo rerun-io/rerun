@@ -289,7 +289,7 @@ fn visualizer_components(
         let (value_source, (current_value_row_id, raw_current_value)) =
             match (raw_override.clone(), raw_store.clone(), raw_default.clone()) {
                 (Some(override_value), _, _) => (ComponentSourceKind::Override, override_value),
-                (None, Some(store_value), _) => (ComponentSourceKind::Store, store_value),
+                (None, Some(store_value), _) => (ComponentSourceKind::SourceComponent, store_value),
                 (None, None, Some(default_value)) => (ComponentSourceKind::Default, default_value),
                 (None, None, None) => (ComponentSourceKind::Fallback, (None, raw_fallback.clone())),
             };
@@ -329,7 +329,7 @@ fn visualizer_components(
                             unit: result_override.expect("This value was validated earlier."),
                         },
                     ),
-                    ComponentSourceKind::Store => (
+                    ComponentSourceKind::SourceComponent => (
                         &store_query,
                         ctx.recording(),
                         re_data_ui::ComponentPathLatestAtResults {
@@ -351,7 +351,7 @@ fn visualizer_components(
                             unit: result_default.expect("This value was validated earlier."),
                         },
                     ),
-                    ComponentSourceKind::FallbackOrPlaceholder => {
+                    ComponentSourceKind::Fallback => {
                         // Fallback values are always single values, so we can directly go to the component ui.
                         // TODO(andreas): db & entity path don't make sense here.
                         ctx.viewer_ctx.component_ui_registry().component_ui_raw(
@@ -528,13 +528,9 @@ fn source_component_ui(
     );
 
     // TODO(andreas): Which order should these be in?
-    options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Override` eventually?
+    options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Custom` eventually?
 
-    // TODO: show View `Default` only if available.
-    if raw_default.is_some() {
-        options.push(VisualizerComponentSource::Default);
-    }
-    options.push(VisualizerComponentSource::Fallback);
+    options.push(VisualizerComponentSource::Default);
 
     let current = current_component_source(
         instruction,
