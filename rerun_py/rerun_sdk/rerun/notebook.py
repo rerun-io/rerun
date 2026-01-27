@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime, timedelta
 
+    import datafusion
     import numpy as np
 
     from .blueprint import BlueprintLike
@@ -266,7 +267,7 @@ class Viewer:
     def send_table(
         self,
         id: str,
-        table: RecordBatch,
+        table: RecordBatch | list[RecordBatch] | datafusion.DataFrame,
     ) -> None:
         """
         Sends a table in the form of a dataframe to the viewer.
@@ -277,10 +278,13 @@ class Viewer:
             The name that uniquely identifies the table in the viewer.
             This name will also be shown in the recording panel.
         table:
-            The table as a single Arrow record batch.
+            The table data as an Arrow RecordBatch, list of RecordBatches, or a datafusion DataFrame.
 
         """
-        new_table = self._add_table_id(table, id)
+        from rerun._arrow import to_record_batch
+
+        record_batch = to_record_batch(table)
+        new_table = self._add_table_id(record_batch, id)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)
         writer.write_batch(new_table)

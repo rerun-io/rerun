@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from rerun._arrow import to_record_batch
+
 if TYPE_CHECKING:
     from uuid import UUID
 
@@ -55,7 +57,7 @@ class ViewerClient:
         """
         # TODO(RR-3481): we should be able to stream multiple record batches instead of having to merge to one. This
         # requires changing the grpc protocol though, or rolling a OSS server sidecar to the Viewer.
-        self._internal.send_table(name, _to_record_batch(table))
+        self._internal.send_table(name, to_record_batch(table))
 
     def save_screenshot(self, file_path: str, view_id: str | UUID | None = None) -> None:
         """
@@ -80,17 +82,3 @@ class ViewerClient:
         """
         view_id_str = str(view_id) if view_id is not None else None
         self._internal.save_screenshot(file_path, view_id_str)
-
-
-def _to_record_batch(table: pa.RecordBatch | list[pa.RecordBatch] | datafusion.DataFrame) -> pa.RecordBatch:
-    """Convert various table types to a single RecordBatch."""
-
-    import pyarrow as pa
-
-    if isinstance(table, pa.RecordBatch):
-        return table
-    elif isinstance(table, list):
-        return pa.concat_batches(table)
-    else:
-        # datafusion.DataFrame
-        return pa.concat_batches(table.collect())
