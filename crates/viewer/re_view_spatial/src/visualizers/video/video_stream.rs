@@ -53,6 +53,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let mut output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
@@ -65,6 +67,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
             let entity_path = &data_result.entity_path;
+            re_tracing::profile_scope!("Entity", entity_path.to_string().as_str());
 
             let Some(transform_info) = transform_info_for_archetype_or_report_error(
                 entity_path,

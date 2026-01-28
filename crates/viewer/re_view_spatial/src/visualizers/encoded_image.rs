@@ -47,6 +47,8 @@ impl VisualizerSystem for EncodedImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let mut output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, EncodedImage, _>(
@@ -79,6 +81,8 @@ impl EncodedImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &mut SpatialSceneEntityContext<'_>,
     ) {
+        re_tracing::profile_function!();
+
         use re_view::RangeResultsExt as _;
 
         use super::entity_iterator::iter_slices;

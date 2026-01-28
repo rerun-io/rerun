@@ -130,6 +130,8 @@ impl VideoStreamCache {
         timeline: TimelineName,
         decode_settings: DecodeSettings,
     ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
+        re_tracing::profile_function!();
+
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
@@ -808,6 +810,8 @@ fn read_samples_from_known_chunk(
     load_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
 ) -> Result<(), VideoStreamProcessingError> {
+    re_tracing::profile_function!();
+
     let re_video::VideoDataDescription {
         codec,
         samples,

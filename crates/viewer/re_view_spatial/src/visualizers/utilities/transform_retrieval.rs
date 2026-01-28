@@ -25,6 +25,8 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     view_kind: SpatialViewKind,
     output: &mut VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
+    re_tracing::profile_function!();
+
     let result = transform_context.target_from_entity_path(entity_path.hash());
     let transform_info = match format_transform_info_result(transform_context, result) {
         Ok(transform_info) => transform_info,

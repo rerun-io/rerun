@@ -15,6 +15,8 @@ pub fn textured_rect_from_image(
     multiplicative_tint: egui::Rgba,
     archetype_name: ArchetypeName,
 ) -> anyhow::Result<renderer::TexturedRect> {
+    re_tracing::profile_function!();
+
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
         .store_context

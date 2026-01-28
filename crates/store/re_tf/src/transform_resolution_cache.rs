@@ -1059,6 +1059,7 @@ impl TransformResolutionCache {
                 .or_insert_with(|| CachedTransformsForTimeline::new(timeline, static_timeline));
 
             if aspects.contains(TransformAspect::Frame) {
+                re_tracing::profile_scope!("TransformAspect::Frame");
                 for (time, frame) in
                     iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
                 {
@@ -1074,6 +1075,7 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
+                re_tracing::profile_scope!("TransformAspect::Pose");
                 let poses = per_timeline
                     .get_or_create_pose_transforms_temporal(entity_path, static_timeline);
                 for (time, _) in chunk.iter_indices(timeline) {
@@ -1081,6 +1083,7 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                re_tracing::profile_scope!("TransformAspect::PinholeOrViewCoordinates");
                 for (time, frame) in
                     iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
                 {
@@ -1098,6 +1101,7 @@ impl TransformResolutionCache {
 
             // Keep track of clears.
             if aspects.contains(TransformAspect::Clear) {
+                re_tracing::profile_scope!("TransformAspect::Clear");
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
                 for ((time, _row_id), is_recursive_slice) in chunk

@@ -388,6 +388,8 @@ impl ViewBlueprint {
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
+        re_tracing::profile_function!();
+
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
         // * default does not vary per visualizer

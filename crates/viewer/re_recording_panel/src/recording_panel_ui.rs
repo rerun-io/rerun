@@ -37,6 +37,7 @@ impl RecordingPanel {
         servers: &RedapServers,
         hide_examples: bool,
     ) {
+        re_tracing::profile_function!();
         let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
 
         for command in self.commands.drain(..) {

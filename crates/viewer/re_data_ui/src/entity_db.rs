@@ -20,6 +20,8 @@ impl crate::DataUi for EntityDb {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
+        re_tracing::profile_function!();
+
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui` (this is
             // probably dead code, as `entity_db_button_ui` is actually used in all single line

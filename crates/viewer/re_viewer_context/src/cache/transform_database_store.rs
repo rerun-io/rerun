@@ -29,6 +29,7 @@ impl TransformDatabaseStoreCache {
         entity_db: &EntityDb,
     ) -> ArcRwLockReadGuard<RawRwLock, TransformResolutionCache> {
         if !self.initialized {
+            re_tracing::profile_function!();
             self.initialized = true; // There can't be a race here since we have `&mut self``.
             self.transform_cache
                 .write()

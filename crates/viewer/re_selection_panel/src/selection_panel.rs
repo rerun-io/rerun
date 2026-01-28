@@ -173,6 +173,8 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
+        re_tracing::profile_function!();
+
         match item {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
@@ -622,6 +624,8 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
+    re_tracing::profile_function!();
+
     let mut property_entities = db
         .entity_paths()
         .into_iter()
