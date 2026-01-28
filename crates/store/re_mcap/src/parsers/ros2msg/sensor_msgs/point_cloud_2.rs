@@ -494,7 +494,7 @@ impl MessageParser for PointCloud2MessageParser {
         )?;
         chunks.push(frame_ids_chunk);
 
-        for (i, points_3d) in points_3ds.iter().enumerate() {
+        for (i, points_3d) in points_3ds.iter().flatten().enumerate() {
             let timelines = timelines
                 .iter()
                 .map(|(timeline, time_col)| (*timeline, time_col.row_sliced(i, 1).clone()))
