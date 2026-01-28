@@ -17,7 +17,7 @@ use re_sdk_types::blueprint::{
 use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewId,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, ViewId,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMappings,
     VisualizerInstruction,
 };
@@ -265,8 +265,8 @@ impl ViewContents {
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
         query_range: &QueryRange,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
         app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
@@ -352,7 +352,7 @@ impl ViewContents {
     }
 
     fn visualizers_per_entity(
-        visualizable_entities_for_visualizer_systems: &PerVisualizerInViewClass<
+        visualizable_entities_for_visualizer_systems: &PerVisualizerTypeInViewClass<
             VisualizableEntities,
         >,
     ) -> IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>> {
@@ -456,8 +456,8 @@ impl QueryExpressionEvaluator<'_> {
 struct DataQueryPropertyResolver<'a> {
     view_query_range: &'a QueryRange,
     view_class: &'a dyn re_viewer_context::ViewClass,
-    visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
-    indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
+    visualizable_entities_per_visualizer: &'a PerVisualizerTypeInViewClass<VisualizableEntities>,
+    indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
 
     // TODO(RR-3382): Should always be enabled.
     enable_component_mappings: bool,
@@ -483,7 +483,7 @@ impl DataQueryPropertyResolver<'_> {
     ) {
         // This is called very frequently, don't put a profile scope here.
 
-        let Some(node) = query_result.tree.lookup_node_mut(handle) else {
+        let Some(node) = query_result.tree.data_results.get_mut(handle) else {
             return;
         };
         // Set defaults for time-range/visible/interactive.
@@ -564,6 +564,17 @@ impl DataQueryPropertyResolver<'_> {
                     .collect();
             }
         }
+
+        // Map visualizer instruction IDs to data result handles for later use.
+        query_result
+            .tree
+            .data_results_by_visualizer_instruction
+            .extend(
+                node.data_result
+                    .visualizer_instructions
+                    .iter()
+                    .map(|vi| (vi.id, handle)),
+            );
 
         // Gather "special" overrides directly on the base path (per entity).
         for component in blueprint
@@ -763,7 +774,7 @@ mod tests {
         }
 
         let mut visualizable_entities_for_visualizer_systems =
-            PerVisualizerInViewClass::<VisualizableEntities>::empty(view_class_identifier);
+            PerVisualizerTypeInViewClass::<VisualizableEntities>::empty(view_class_identifier);
 
         visualizable_entities_for_visualizer_systems
             .per_visualizer
@@ -891,7 +902,7 @@ mod tests {
                 &LatestAtQuery::latest(blueprint_timeline()),
                 &query_range,
                 &visualizable_entities_for_visualizer_systems,
-                &PerVisualizer::default(),
+                &PerVisualizerType::default(),
                 &re_viewer_context::AppOptions::default(),
             );
 

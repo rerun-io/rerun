@@ -15,8 +15,8 @@ use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
     AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
-    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizer,
-    PerVisualizerInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
+    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
+    PerVisualizerTypeInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
@@ -38,13 +38,13 @@ pub struct ViewerContext<'a> {
 
     /// For each visualizer, the set of entities that are known to have all its required components.
     // TODO(andreas): This could have a generation id, allowing to update heuristics entities etc. more lazily.
-    pub visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+    pub visualizable_entities_per_visualizer: &'a PerVisualizerType<VisualizableEntities>,
 
     /// For each visualizer, the set of entities with relevant archetypes.
     ///
     /// TODO(andreas): Should we always do the intersection with `maybe_visualizable_entities_per_visualizer`
     ///                 or are we ever interested in a (definitely-)non-visualizable but archetype-matching entity?
-    pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
+    pub indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
 
     /// All the query results for this frame.
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
@@ -486,12 +486,12 @@ impl ViewerContext<'_> {
         )
     }
 
-    /// Like [`Self::iter_visualizable_entities_for_view_class`], but collects into a [`PerVisualizerInViewClass`].
+    /// Like [`Self::iter_visualizable_entities_for_view_class`], but collects into a [`PerVisualizerTypeInViewClass`].
     pub fn collect_visualizable_entities_for_view_class(
         &self,
         view_class_identifier: ViewClassIdentifier,
-    ) -> PerVisualizerInViewClass<VisualizableEntities> {
-        PerVisualizerInViewClass {
+    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
+        PerVisualizerTypeInViewClass {
             view_class_identifier,
             per_visualizer: self
                 .iter_visualizable_entities_for_view_class(view_class_identifier)

@@ -74,6 +74,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 transforms,
                 self.data.preferred_view_kind,
                 view_kind,
+                &instruction.id,
                 &mut output,
             ) else {
                 continue;

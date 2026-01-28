@@ -14,8 +14,8 @@ use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-    PerVisualizerInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
+    PerVisualizerTypeInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
     TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
     ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
@@ -99,8 +99,8 @@ Set the displayed dimensions in a selection panel.",
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.

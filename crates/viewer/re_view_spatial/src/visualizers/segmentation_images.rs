@@ -135,9 +135,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             );
                         }
                         Err(err) => {
-                            spatial_ctx
-                                .output
-                                .report_error_for(entity_path.clone(), re_error::format(err));
+                            spatial_ctx.report_error(re_error::format(err));
                         }
                     }
                 }

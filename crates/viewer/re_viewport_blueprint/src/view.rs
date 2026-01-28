@@ -461,8 +461,8 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder, VisualizableEntities,
-        VisualizableReason,
+        PerVisualizerType, PerVisualizerTypeInViewClass, ViewClassPlaceholder,
+        VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn test_visible_interactive_overrides() {
         let mut test_ctx = TestContext::new();
-        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
+        let mut visualizable_entities = PerVisualizerType::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
         {
@@ -506,7 +506,7 @@ mod tests {
                 });
         }
 
-        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
+        let visualizable_entities = PerVisualizerTypeInViewClass::<VisualizableEntities> {
             view_class_identifier: ViewClassPlaceholder::identifier(),
             per_visualizer: visualizable_entities.0.clone(),
         };
@@ -672,7 +672,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerTypeInViewClass<VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 

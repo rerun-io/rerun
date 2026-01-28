@@ -1,7 +1,9 @@
 use std::sync::LazyLock;
 
 use ahash::HashMap;
+use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -133,12 +135,10 @@ impl Clone for DataQueryResult {
 /// A hierarchical tree of [`DataResult`]s
 #[derive(Clone, Default, Debug)]
 pub struct DataResultTree {
-    data_results: SlotMap<DataResultHandle, DataResultNode>,
-    // TODO(jleibs): Decide if we really want to compute this per-query.
-    // at the moment we only look up a single path per frame for the selection panel. It's probably
-    // less over-head to just walk the tree once instead of pre-computing an entire map we use for
-    // a single lookup.
-    data_results_by_path: HashMap<EntityPathHash, DataResultHandle>,
+    pub data_results: SlotMap<DataResultHandle, DataResultNode>,
+    pub data_results_by_path: IntMap<EntityPathHash, DataResultHandle>,
+    pub data_results_by_visualizer_instruction: HashMap<VisualizerInstructionId, DataResultHandle>,
+
     root_handle: Option<DataResultHandle>,
 }
 
@@ -164,6 +164,13 @@ impl DataResultTree {
             data_results,
             data_results_by_path,
             root_handle,
+            // Filled in later.
+            // TODO(andreas): This is super messy: we rely on this being filled out by `DataQueryPropertyResolver::update_overrides`.
+            // At the time `DataResultTree::new` is called we don't have any information about visualizer instructions yet.
+            // Really the underlying problem is that we for no apparent reason separate creation of data results from
+            // creation of visualizer instructions & determination of available overrides.
+            // Merging those two tree walks should make things also a lot more efficient and even parallelizable if we want.
+            data_results_by_visualizer_instruction: Default::default(),
         }
     }
 
@@ -236,12 +243,6 @@ impl DataResultTree {
         self.data_results.get(handle)
     }
 
-    /// Look up a [`DataResultNode`] in the tree based on its handle.
-    #[inline]
-    pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
-        self.data_results.get_mut(handle)
-    }
-
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPathHash`].
     #[inline]
     pub fn lookup_node_by_path(&self, path: EntityPathHash) -> Option<&DataResultNode> {
@@ -252,6 +253,19 @@ impl DataResultTree {
     #[inline]
     pub fn lookup_result_by_path(&self, path: EntityPathHash) -> Option<&DataResult> {
         self.lookup_result(*self.data_results_by_path.get(&path)?)
+    }
+
+    /// Look up a [`DataResultNode`] in the tree based on a visualizer instruction ID.
+    #[inline]
+    pub fn lookup_result_by_visualizer_instruction(
+        &self,
+        visualizer_instruction: VisualizerInstructionId,
+    ) -> Option<&DataResult> {
+        self.lookup_result(
+            *self
+                .data_results_by_visualizer_instruction
+                .get(&visualizer_instruction)?,
+        )
     }
 
     #[inline]

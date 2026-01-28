@@ -1,8 +1,10 @@
 //! Various strongly typed sets of entities to express intent and avoid mistakes.
 
+use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_types_core::ViewClassIdentifier;
 use vec1::smallvec_v1::SmallVec1;
 
@@ -74,14 +76,12 @@ impl std::ops::Deref for IndicatedEntities {
 
 /// List of elements per visualizer system.
 ///
-/// TODO(RR-3305): should this always be per visualizer instruction id rather than per visualizer type? depends on the usecase probably. Best do audit all usages of this!
-///
 /// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
-/// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view.
+/// Refer to [`PerVisualizerTypeInViewClass`] for a collection that is limited to visualizers active for a given view.
 #[derive(Debug)]
-pub struct PerVisualizer<T>(pub IntMap<ViewSystemIdentifier, T>);
+pub struct PerVisualizerType<T>(pub IntMap<ViewSystemIdentifier, T>);
 
-impl<T> std::ops::Deref for PerVisualizer<T> {
+impl<T> std::ops::Deref for PerVisualizerType<T> {
     type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
@@ -90,20 +90,20 @@ impl<T> std::ops::Deref for PerVisualizer<T> {
     }
 }
 
-impl<T: Clone> Clone for PerVisualizer<T> {
+impl<T: Clone> Clone for PerVisualizerType<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
 // Manual default impl, otherwise T: Default would be required.
-impl<T> Default for PerVisualizer<T> {
+impl<T> Default for PerVisualizerType<T> {
     fn default() -> Self {
         Self(IntMap::default())
     }
 }
 
-impl<T> re_byte_size::SizeBytes for PerVisualizer<T>
+impl<T> re_byte_size::SizeBytes for PerVisualizerType<T>
 where
     T: re_byte_size::SizeBytes,
 {
@@ -112,9 +112,9 @@ where
     }
 }
 
-/// Like [`PerVisualizer`], but ensured that all visualizers are relevant for the given view class.
+/// Like [`PerVisualizerType`], but ensured that all visualizers are relevant for the given view class.
 #[derive(Debug)]
-pub struct PerVisualizerInViewClass<T> {
+pub struct PerVisualizerTypeInViewClass<T> {
     /// View for which this list is filtered down.
     ///
     /// Most of the time we don't actually need this field but it is useful for debugging
@@ -125,7 +125,7 @@ pub struct PerVisualizerInViewClass<T> {
     pub per_visualizer: IntMap<ViewSystemIdentifier, T>,
 }
 
-impl<T> PerVisualizerInViewClass<T> {
+impl<T> PerVisualizerTypeInViewClass<T> {
     pub fn empty(view_class_identifier: ViewClassIdentifier) -> Self {
         Self {
             view_class_identifier,
@@ -134,11 +134,53 @@ impl<T> PerVisualizerInViewClass<T> {
     }
 }
 
-impl<T> std::ops::Deref for PerVisualizerInViewClass<T> {
+impl<T> std::ops::Deref for PerVisualizerTypeInViewClass<T> {
     type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.per_visualizer
+    }
+}
+
+/// List of elements per visualizer instruction id.
+#[derive(Debug)]
+pub struct PerVisualizerInstruction<T>(pub HashMap<VisualizerInstructionId, T>);
+
+impl<T> std::ops::Deref for PerVisualizerInstruction<T> {
+    type Target = HashMap<VisualizerInstructionId, T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for PerVisualizerInstruction<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T: Clone> Clone for PerVisualizerInstruction<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+// Manual default impl, otherwise T: Default would be required.
+impl<T> Default for PerVisualizerInstruction<T> {
+    fn default() -> Self {
+        Self(HashMap::default())
+    }
+}
+
+impl<T> re_byte_size::SizeBytes for PerVisualizerInstruction<T>
+where
+    T: re_byte_size::SizeBytes,
+{
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
     }
 }

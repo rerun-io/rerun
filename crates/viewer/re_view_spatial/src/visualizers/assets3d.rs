@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
@@ -41,7 +41,7 @@ impl Asset3DVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;

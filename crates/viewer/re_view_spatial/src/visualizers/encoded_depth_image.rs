@@ -102,8 +102,6 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     EncodedDepthImage::descriptor_point_fill_ratio().component,
                 );
 
-                let entity_path = ctx.target_entity_path;
-
                 for (
                     (_time, row_id),
                     blobs,
@@ -121,10 +119,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(blob) = blobs.first() else {
-                        spatial_ctx.output.report_error_for(
-                            entity_path.clone(),
-                            "EncodedDepthImage blob is empty.".to_owned(),
-                        );
+                        spatial_ctx.report_error("EncodedDepthImage blob is empty.");
                         continue;
                     };
 
@@ -142,10 +137,9 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     }) {
                         Ok(image) => image,
                         Err(err) => {
-                            spatial_ctx.output.report_error_for(
-                                entity_path.clone(),
-                                format!("Failed to decode EncodedDepthImage blob: {err}"),
-                            );
+                            spatial_ctx.report_error(format!(
+                                "Failed to decode EncodedDepthImage blob: {err}"
+                            ));
                             continue;
                         }
                     };

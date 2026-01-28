@@ -13,7 +13,7 @@ use re_viewer_context::{
 };
 
 use crate::PickableTexturedRect;
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::{self, process_archetype};
@@ -138,7 +138,7 @@ impl VideoFrameReferenceVisualizer {
     fn process_video_frame(
         &mut self,
         ctx: &re_viewer_context::QueryContext<'_>,
-        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
         video_timestamp: &VideoTimestamp,
         video_references: Option<Vec<re_sdk_types::ArrowString>>,
         opacity: Opacity,

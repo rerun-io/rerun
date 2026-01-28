@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ComponentType, EntityPath};
+use ahash::HashMap;
+use re_chunk::{ArchetypeName, ComponentType};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
@@ -114,12 +115,12 @@ pub struct VisualizerExecutionOutput {
     /// It's the view's responsibility to queue this data for rendering.
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 
-    /// Errors encountered during execution, mapped to the entity paths they relate to.
+    /// Errors encountered during execution, mapped to the visualizer instructions that caused them.
     ///
-    /// Errors from last frame will be shown in the UI for the respective entities.
+    /// Errors from last frame will be shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
-    pub errors_per_entity: IntMap<EntityPath, String>,
+    pub errors_per_instruction: HashMap<VisualizerInstructionId, String>,
     //
     // TODO(andreas): We should put other output here as well instead of passing around visualizer
     // structs themselves which is rather surprising.
@@ -128,9 +129,14 @@ pub struct VisualizerExecutionOutput {
 }
 
 impl VisualizerExecutionOutput {
-    /// Marks the given entity as having encountered an error during visualization.
-    pub fn report_error_for(&mut self, entity_path: EntityPath, error: impl Into<String>) {
-        self.errors_per_entity.insert(entity_path, error.into());
+    /// Marks the given visualizer instruction as having encountered an error during visualization.
+    pub fn report_error_for(
+        &mut self,
+        instruction_id: VisualizerInstructionId,
+        error: impl Into<String>,
+    ) {
+        self.errors_per_instruction
+            .insert(instruction_id, error.into());
     }
 
     pub fn with_draw_data(

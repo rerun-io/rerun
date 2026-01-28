@@ -13,7 +13,7 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
+    BlueprintContext as _, DataResult, PerVisualizerType, QueryContext, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
     VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -22,7 +22,7 @@ use re_viewport_blueprint::ViewBlueprint;
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
     view: &ViewBlueprint,
-    visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
+    visualizer_errors: &PerVisualizerType<VisualizerExecutionErrorState>,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
@@ -98,7 +98,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[VisualizerInstruction],
     all_visualizers: &VisualizerCollection,
-    visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
+    visualizer_errors: &PerVisualizerType<VisualizerExecutionErrorState>,
 ) {
     let override_base_path = data_result.override_base_path();
 
@@ -138,11 +138,12 @@ pub fn visualizer_ui_impl(
                 // List all components that the visualizer may consume.
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
-                    let error_string = visualizer_errors
-                        .get(&visualizer_type) // TODO(RR-3304): track errors per visualizer id, not per visualizer type.
-                        .and_then(|error_state| {
-                            error_state.error_string_for(&data_result.entity_path)
-                        });
+                    let error_string =
+                        visualizer_errors
+                            .get(&visualizer_type)
+                            .and_then(|error_state| {
+                                error_state.error_string_for(&visualizer_instruction.id)
+                            });
 
                     ui.list_item()
                         .with_y_offset(1.0)

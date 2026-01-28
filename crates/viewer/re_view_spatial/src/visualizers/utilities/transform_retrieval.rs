@@ -1,5 +1,6 @@
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput};
 
 use crate::contexts::{TransformInfo, TransformTreeContext};
@@ -23,6 +24,7 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     transform_context: &'a TransformTreeContext,
     archetype_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
+    instruction_id: &VisualizerInstructionId,
     output: &mut VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
     re_tracing::profile_function!();
@@ -31,13 +33,13 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     let transform_info = match format_transform_info_result(transform_context, result) {
         Ok(transform_info) => transform_info,
         Err(err_msg) => {
-            output.report_error_for(entity_path.clone(), err_msg);
+            output.report_error_for(*instruction_id, err_msg);
             return None;
         }
     };
 
     is_valid_space_for_content(
-        entity_path,
+        instruction_id,
         transform_context,
         transform_info,
         archetype_kind,
@@ -82,7 +84,7 @@ pub fn format_transform_info_result<'a>(
 }
 
 pub fn is_valid_space_for_content(
-    entity_path: &EntityPath,
+    instruction_id: &VisualizerInstructionId,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,
     content_kind: Option<SpatialViewKind>,
@@ -107,7 +109,7 @@ pub fn is_valid_space_for_content(
     {
         let origin = transform_context.format_frame(target_frame_pinhole_root);
         output.report_error_for(
-            entity_path.clone(),
+            *instruction_id,
             format!("The origin of the 3D view ({origin:?}) is under pinhole projection which is not supported by most 3D visualizations."),
         );
         return false;
@@ -129,7 +131,7 @@ pub fn is_valid_space_for_content(
                         })
                     {
                         output.report_error_for(
-                            entity_path.clone(),
+                            *instruction_id,
                             "Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view. This applies a 3D → 2D projection to a space that's already regarded 2D.",
                         );
                         false
@@ -144,7 +146,7 @@ pub fn is_valid_space_for_content(
                         true
                     } else {
                         output.report_error_for(
-                            entity_path.clone(),
+                            *instruction_id,
                             "2D visualizers require a pinhole ancestor to be shown in a 3D view.",
                         );
                         false
@@ -157,7 +159,7 @@ pub fn is_valid_space_for_content(
             // View agnostic failure case for 3D content: if the 3D content is under a pinhole projection, we can't show it!
             if transform_has_pinhole_ancestor {
                 output.report_error_for(
-                    entity_path.clone(),
+                    *instruction_id,
                     "Can't visualize 3D content that is under a pinhole projection.",
                 );
                 return false;
@@ -176,7 +178,7 @@ pub fn is_valid_space_for_content(
                         true
                     } else {
                         output.report_error_for(
-                            entity_path.clone(),
+                            *instruction_id,
                             "3D visualizers require a pinhole at the origin of the 2D view.",
                         );
                         false

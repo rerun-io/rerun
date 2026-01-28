@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
@@ -54,7 +54,7 @@ impl Points3DVisualizer {
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Points3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;

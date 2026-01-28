@@ -6,7 +6,9 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
-use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
+use crate::contexts::{
+    EntityDepthOffsets, SpatialSceneVisualizerInstructionContext, TransformTreeContext,
+};
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
 
@@ -14,7 +16,7 @@ use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
 
 /// Iterates through all entity views for a given archetype.
 ///
-/// The callback passed in gets passed along a [`SpatialSceneEntityContext`] which contains
+/// The callback passed in gets passed along a [`SpatialSceneVisualizerInstructionContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 ///
 /// `archetype_space_kind` determines the expected space kind of the archetype, if any.
@@ -31,7 +33,7 @@ where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &mut SpatialSceneEntityContext<'_>,
+        &mut SpatialSceneVisualizerInstructionContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
@@ -54,13 +56,15 @@ where
             transforms,
             archetype_space_kind,
             view_kind,
+            &visualizer_instruction.id,
             output,
         ) else {
             continue;
         };
 
         let depth_offset_key = (system_identifier, entity_path.hash());
-        let mut entity_context = SpatialSceneEntityContext {
+        let mut entity_context = SpatialSceneVisualizerInstructionContext {
+            instruction_id: &visualizer_instruction.id,
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer

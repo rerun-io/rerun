@@ -18,8 +18,8 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    PerVisualizerInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
+    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType,
+    PerVisualizerTypeInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
@@ -392,8 +392,8 @@ impl ViewClass for TimeSeriesView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
@@ -1002,7 +1002,7 @@ fn update_series_visibility_overrides_from_plot(
     let mut series_to_update = Vec::new();
     for series in all_plot_series {
         let entity_visibility_flags = per_visualizer_inst_id_series_new_visibility_state
-            .entry(series.visualizer_instruction_id.clone())
+            .entry(series.visualizer_instruction_id)
             .or_default();
 
         let visible_new = !hidden_items.contains(&series.id());

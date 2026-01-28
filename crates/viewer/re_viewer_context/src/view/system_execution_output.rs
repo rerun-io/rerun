@@ -1,8 +1,8 @@
-use nohash_hasher::IntMap;
-use re_chunk::EntityPath;
+use ahash::HashMap;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::{
-    PerVisualizerInViewClass, ViewContextCollection, ViewSystemExecutionError,
+    PerVisualizerTypeInViewClass, ViewContextCollection, ViewSystemExecutionError,
     VisualizerCollection, VisualizerExecutionOutput,
 };
 
@@ -15,7 +15,7 @@ pub struct SystemExecutionOutput {
     pub context_systems: ViewContextCollection,
 
     /// Result of all visualizer executions for this view.
-    pub visualizer_execution_output: PerVisualizerInViewClass<
+    pub visualizer_execution_output: PerVisualizerTypeInViewClass<
         Result<VisualizerExecutionOutput, std::sync::Arc<ViewSystemExecutionError>>,
     >,
 }
@@ -45,15 +45,15 @@ pub enum VisualizerExecutionErrorState {
     /// The entire visualizer failed to execute.
     Overall(std::sync::Arc<ViewSystemExecutionError>),
 
-    /// The visualizer executed, but had per-entity errors.
-    PerEntity(IntMap<EntityPath, String>),
+    /// The visualizer executed, but had per-instruction errors.
+    PerInstruction(HashMap<VisualizerInstructionId, String>),
 }
 
 impl re_byte_size::SizeBytes for VisualizerExecutionErrorState {
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Overall(_err) => 0, // assume small and/or rare
-            Self::PerEntity(errors) => errors.heap_size_bytes(),
+            Self::PerInstruction(errors) => errors.heap_size_bytes(),
         }
     }
 }
@@ -64,20 +64,20 @@ impl VisualizerExecutionErrorState {
     ) -> Option<Self> {
         match result {
             Ok(output) => {
-                if output.errors_per_entity.is_empty() {
+                if output.errors_per_instruction.is_empty() {
                     None
                 } else {
-                    Some(Self::PerEntity(output.errors_per_entity.clone()))
+                    Some(Self::PerInstruction(output.errors_per_instruction.clone()))
                 }
             }
             Err(err) => Some(Self::Overall(err.clone())),
         }
     }
 
-    pub fn error_string_for(&self, path: &EntityPath) -> Option<String> {
+    pub fn error_string_for(&self, instruction_id: &VisualizerInstructionId) -> Option<String> {
         match self {
             Self::Overall(err) => Some(re_error::format_ref(&err)),
-            Self::PerEntity(errors) => errors.get(path).cloned(),
+            Self::PerInstruction(errors) => errors.get(instruction_id).cloned(),
         }
     }
 

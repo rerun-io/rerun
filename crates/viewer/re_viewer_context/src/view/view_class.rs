@@ -4,9 +4,10 @@ use re_sdk_types::ViewClassIdentifier;
 
 use super::{ViewContext, VisualizerComponentMappings};
 use crate::{
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, SystemExecutionOutput,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
+    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -132,8 +133,8 @@ pub trait ViewClass: Send + Sync {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers =
             visualizable_entities_per_visualizer

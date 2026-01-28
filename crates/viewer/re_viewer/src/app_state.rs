@@ -18,7 +18,7 @@ use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
-    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass, SelectionChange,
+    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerTypeInViewClass, SelectionChange,
     StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
     TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
     blueprint_timeline,
@@ -353,7 +353,7 @@ impl AppState {
                             let visualizable_entities = if let Some(view_class) =
                                 view_class_registry.class_entry(view.class_identifier())
                             {
-                                PerVisualizerInViewClass {
+                                PerVisualizerTypeInViewClass {
                                     view_class_identifier: view.class_identifier(),
                                     per_visualizer: visualizable_entities_per_visualizer
                                         .iter()
@@ -366,7 +366,7 @@ impl AppState {
                                         .collect(),
                                 }
                             } else {
-                                PerVisualizerInViewClass::empty(view.class_identifier())
+                                PerVisualizerTypeInViewClass::empty(view.class_identifier())
                             };
 
                             let view_state = view_states

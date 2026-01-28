@@ -725,18 +725,23 @@ impl TilesDelegate<'_, '_> {
             return;
         };
 
+        let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
+
         let errors = visualizer_errors
             .values()
             .flat_map(|err| match err {
                 re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
                     Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
                 }
-                re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
-                    Either::Right(errors.iter().map(|(entity, err)| {
-                        (
-                            Item::DataResult(view_id, entity.clone().into()),
+                re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
+                    Either::Right(errors.iter().filter_map(|(visualizer_instruction, err)| {
+                        let data_result = data_result_tree
+                            .lookup_result_by_visualizer_instruction(*visualizer_instruction)?;
+
+                        Some((
+                            Item::DataResult(view_id, data_result.entity_path.clone().into()),
                             err.clone(),
-                        )
+                        ))
                     }))
                 }
             })
