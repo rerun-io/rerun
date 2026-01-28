@@ -1040,7 +1040,11 @@ impl TransformResolutionCache {
     }
 
     fn add_temporal_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(format!(
+            "{} rows, {}",
+            chunk.num_rows(),
+            chunk.entity_path()
+        ));
 
         debug_assert!(!chunk.is_static());
 
@@ -1302,7 +1306,7 @@ impl TransformResolutionCache {
 ///
 /// Yields an entry for every row. Note that there may be many entries per time though.
 /// (Currently, there can be only a single frame id per row)
-pub fn iter_child_frames_in_chunk(
+fn iter_child_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
     frame_component: ComponentIdentifier,
