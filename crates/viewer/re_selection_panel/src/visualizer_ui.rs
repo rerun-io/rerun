@@ -288,12 +288,13 @@ fn visualizer_components(
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
-        let (value_source, (current_value_row_id, raw_current_value)) =
+        // TODO: review this logic.
+        let (value_source, (_current_value_row_id, raw_current_value)) =
             match (raw_override.clone(), raw_store.clone(), raw_default.clone()) {
                 (Some(override_value), _, _) => (ComponentSourceKind::Override, override_value),
                 (None, Some(store_value), _) => (ComponentSourceKind::SourceComponent, store_value),
                 (None, None, Some(default_value)) => (ComponentSourceKind::Default, default_value),
-                (None, None, None) => (ComponentSourceKind::Fallback, (None, raw_fallback.clone())),
+                (None, None, None) => (ComponentSourceKind::Default, (None, raw_fallback.clone())),
             };
 
         let override_path = &instruction.override_path;
@@ -353,22 +354,6 @@ fn visualizer_components(
                             unit: result_default.expect("This value was validated earlier."),
                         },
                     ),
-                    ComponentSourceKind::Fallback => {
-                        // Fallback values are always single values, so we can directly go to the component ui.
-                        // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry().component_ui_raw(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                            &data_result.entity_path,
-                            unmapped_component_descr,
-                            current_value_row_id,
-                            raw_current_value.as_ref(),
-                        );
-                        return;
-                    }
                 };
 
                 component_path_latest_at.data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -388,7 +373,6 @@ fn visualizer_components(
                 instruction,
                 &query_info,
                 &raw_override_batch,
-                &raw_default_batch,
             );
         };
 
@@ -517,7 +501,6 @@ fn source_component_ui(
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
     raw_override: &Option<ArrayRef>,
-    raw_default: &Option<ArrayRef>,
 ) {
     // TODO(aedm): In some cases, there should be no separate source selector. Eg. when the value is as enum:
     // we should offer "default" and enum options in a single dropdown. Simpler UI.
@@ -538,7 +521,6 @@ fn source_component_ui(
         instruction,
         &component_descr.component,
         raw_override.is_some(),
-        raw_default.is_some(),
         entity_components_with_datatype,
     );
 
@@ -580,7 +562,6 @@ fn current_component_source<'a>(
     instruction: &'a VisualizerInstruction,
     component: &'a ComponentIdentifier,
     has_override: bool,
-    has_default: bool,
     entity_components_with_datatype: &'a [(ComponentIdentifier, DataType)],
 ) -> VisualizerComponentSource {
     // Use mapping if available.
@@ -591,8 +572,7 @@ fn current_component_source<'a>(
     // Otherwise we follow the stack of:
     // * override
     // * store
-    // * default
-    // * fallback
+    // * default / fallback
     // And pick the first one that is available.
 
     if has_override {
@@ -610,11 +590,7 @@ fn current_component_source<'a>(
         };
     }
 
-    if has_default {
-        return VisualizerComponentSource::Default;
-    }
-
-    VisualizerComponentSource::Fallback
+    VisualizerComponentSource::Default
 }
 
 fn component_source_string(source: &VisualizerComponentSource) -> &'static str {
@@ -625,7 +601,6 @@ fn component_source_string(source: &VisualizerComponentSource) -> &'static str {
         } => source_component.as_str(),
         VisualizerComponentSource::Override => "Override",
         VisualizerComponentSource::Default => "View Default",
-        VisualizerComponentSource::Fallback => "Fallback",
     }
 }
 

@@ -66,7 +66,6 @@ impl VisualizerComponentSource {
             Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
             Self::Override => ComponentSourceKind::Override,
             Self::Default => ComponentSourceKind::Default,
-            Self::Fallback => ComponentSourceKind::Fallback,
         }
     }
 }
