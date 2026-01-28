@@ -1358,7 +1358,7 @@ impl TimePanel {
                     }
 
                     ui.label(
-                        RichText::new(format!("{} / s", re_format::format_bytes(rate))).color(
+                        RichText::new(format!("{}/s", re_format::format_bytes(rate))).color(
                             ui.style()
                                 .visuals
                                 .text_color()

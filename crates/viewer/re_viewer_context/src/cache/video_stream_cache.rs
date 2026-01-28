@@ -168,7 +168,7 @@ impl VideoStreamCache {
     fn handle_store_event(
         &mut self,
         entity_db: &EntityDb,
-        event: &&ChunkStoreEvent,
+        event: &ChunkStoreEvent,
         timeline: &Timeline,
         key: &VideoStreamKey,
     ) {
@@ -259,10 +259,17 @@ impl VideoStreamCache {
         }
 
         if encoding_details_before != video_data.encoding_details {
-            re_log::error_once!(
-                "The video stream codec details on {:?} changed over time, which is not supported.",
-                event.delta_chunk().map(|c| c.entity_path())
-            );
+            if let Some(before) = encoding_details_before
+                && let Some(after) = &video_data.encoding_details
+            {
+                let name = event
+                    .delta_chunk()
+                    .map(|c| c.entity_path().to_string())
+                    .unwrap_or_else(|| "<UNKNOWN>".to_owned());
+                re_log::error_once!(
+                    "The video stream codec details of {name:?} changed (from {before:?} to {after:?}). This is not supported."
+                );
+            }
             video_renderer.reset_all_decoders();
         }
 
