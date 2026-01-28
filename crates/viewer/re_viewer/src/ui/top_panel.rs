@@ -328,12 +328,14 @@ fn connection_status_ui(
 
                 let ms = duration.as_millis();
 
-                RichText::new(format!("{ms} ms")).strong().append_to(
-                    &mut layout_job,
-                    ui.style(),
-                    egui::FontSelection::Default,
-                    egui::Align::Center,
-                );
+                RichText::new(format!("{} ms", re_format::format_uint(ms)))
+                    .strong()
+                    .append_to(
+                        &mut layout_job,
+                        ui.style(),
+                        egui::FontSelection::Default,
+                        egui::Align::Center,
+                    );
 
                 RichText::new(format!(" latency for {url}")).append_to(
                     &mut layout_job,

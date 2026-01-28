@@ -1362,7 +1362,7 @@ impl TimePanel {
                     let staleness = 1.0 - freshness;
                     let gamma = 1.0 - staleness * staleness;
                     ui.label(
-                        RichText::new(format!("{} / s", re_format::format_bytes(rate)))
+                        RichText::new(format!("{}/s", re_format::format_bytes(rate)))
                             .color(ui.style().visuals.text_color().gamma_multiply(gamma as f32)),
                     )
                     .on_hover_text("Connection throughput");

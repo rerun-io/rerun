@@ -744,12 +744,18 @@ impl QueryResults {
     //
     // TODO(RR-3295): this should ultimately not exist once all callsite have been updated to
     // the do whatever happens to be "the right thing" in their respective context.
+    #[track_caller]
     pub fn into_iter_verbose(self) -> impl Iterator<Item = Arc<Chunk>> {
         if self.is_partial() {
             const MSG: &str =
                 "iterating partial query results: some data has been silently discarded";
             if cfg!(debug_assertions) {
-                re_log::warn_once!("{MSG}");
+                let location = std::panic::Location::caller();
+                re_log::warn_once!(
+                    "{}:{} DEBUG WARNING: {MSG}",
+                    location.file(),
+                    location.line()
+                );
             } else {
                 re_log::debug_once!("{MSG}");
             }
