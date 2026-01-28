@@ -17,7 +17,7 @@ sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "vi
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 CATALOG_URL = server.url()
-client = server.client()
+client = rr.catalog.CatalogClient(CATALOG_URL)
 dataset = client.get_dataset(name="video_dataset")
 df = dataset.filter_contents(["/compressed_images/**", "/raw_images/**"]).reader(index="log_time")
 times = pa.table(df.select("log_time"))["log_time"].to_numpy()
