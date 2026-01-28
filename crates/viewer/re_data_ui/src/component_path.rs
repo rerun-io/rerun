@@ -21,7 +21,6 @@ impl DataUi for ComponentPath {
         let engine = db.storage_engine();
 
         let results = engine.cache().latest_at(query, entity_path, [*component]);
-
         if let Some(unit) = results.components.get(component) {
             crate::ComponentPathLatestAtResults {
                 component_path: self.clone(),
@@ -29,7 +28,9 @@ impl DataUi for ComponentPath {
             }
             .data_ui(ctx, ui, ui_layout, query, db);
         } else if ctx.recording().tree().subtree(entity_path).is_some() {
-            if engine.store().entity_has_component_on_timeline(
+            if !db.has_fully_loaded(entity_path, *component, query) {
+                ui.label("Loading…");
+            } else if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),
                 entity_path,
                 *component,

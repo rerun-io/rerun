@@ -258,6 +258,12 @@ impl EntityDb {
         self.storage_engine.read()
     }
 
+    pub fn rrd_manifest_index_mut_and_storage_engine(
+        &mut self,
+    ) -> (&mut RrdManifestIndex, StorageEngineReadGuard<'_>) {
+        (&mut self.rrd_manifest_index, self.storage_engine.read())
+    }
+
     /// Returns a reference to the backing [`StorageEngine`].
     ///
     /// This can be used to obtain a clone of the [`StorageEngine`].
@@ -504,6 +510,22 @@ impl EntityDb {
         }
 
         None
+    }
+
+    /// Check if we have all loaded chunk for the given entity and component at `query.at()`.
+    pub fn has_fully_loaded(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+        query: &LatestAtQuery,
+    ) -> bool {
+        let timeline = Timeline::new(query.timeline(), self.timeline_type(&query.timeline()));
+
+        !self
+            .rrd_manifest_index()
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
+            .iter()
+            .any(|chunk| chunk.time_range.contains(query.at()))
     }
 
     /// If this entity db is the result of a clone, which store was it cloned from?
@@ -754,6 +776,10 @@ impl EntityDb {
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
+        let protected_chunks = self
+            .rrd_manifest_index
+            .chunk_prioritizer_mut()
+            .take_protected_chunks();
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,
@@ -771,7 +797,7 @@ impl EntityDb {
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
-
+            protected_chunks,
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:

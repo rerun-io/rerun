@@ -3240,7 +3240,8 @@ impl App {
                 let mut store_events = Vec::new();
                 for chunk in db
                     .rrd_manifest_index
-                    .resolve_pending_promises(self.egui_ctx.time())
+                    .chunk_promises_mut()
+                    .resolve_pending(self.egui_ctx.time())
                 {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
@@ -3262,7 +3263,7 @@ impl App {
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
 
-                if db.rrd_manifest_index.has_pending_promises() {
+                if db.rrd_manifest_index.chunk_promises().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }

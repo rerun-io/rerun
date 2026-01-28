@@ -673,11 +673,14 @@ impl QueryResults {
             }
         }
 
-        if !this.missing.is_empty() {
-            store
-                .missing_chunk_ids
-                .write()
-                .extend(this.missing.iter().copied());
+        {
+            let mut tracker = store.queried_chunk_id_tracker.write();
+
+            tracker.missing.extend(this.missing.iter().copied());
+
+            tracker
+                .used_physical
+                .extend(this.chunks.iter().map(|c| c.id()));
         }
 
         debug_assert!(
@@ -1251,7 +1254,7 @@ mod tests {
             );
             assert!(results.is_empty());
 
-            assert!(store.take_missing_chunk_ids().is_empty());
+            assert!(store.take_tracked_chunk_ids().missing.is_empty());
         }
 
         store.insert_chunk(&chunk1).unwrap();
@@ -1286,7 +1289,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.take_missing_chunk_ids().is_empty());
+            assert!(store.take_tracked_chunk_ids().missing.is_empty());
         }
 
         store.gc(&crate::GarbageCollectionOptions {
@@ -1294,6 +1297,7 @@ mod tests {
             time_budget: std::time::Duration::MAX,
             protect_latest: 1,
             protected_time_ranges: Default::default(),
+            protected_chunks: Default::default(),
             furthest_from: None,
             perform_deep_deletions: false,
         });
@@ -1329,7 +1333,7 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_missing_chunk_ids(),
+                store.take_tracked_chunk_ids().missing,
                 itertools::chain!(results_latest_at.missing, results_range.missing).collect()
             );
         }
@@ -1365,7 +1369,7 @@ mod tests {
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_missing_chunk_ids(),
+                store.take_tracked_chunk_ids().missing,
                 itertools::chain!(results_latest_at.missing, results_range.missing).collect()
             );
         }
@@ -1402,7 +1406,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.take_missing_chunk_ids().is_empty());
+            assert!(store.take_tracked_chunk_ids().missing.is_empty());
         }
     }
 

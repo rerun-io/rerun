@@ -376,35 +376,71 @@ impl ChunkStore {
     /// If you want to find all root chunks regardless of their origin, refer to [`Self::find_root_rrd_manifests`]
     /// instead.
     pub fn find_root_rrd_manifests(&self, chunk_id: &ChunkId) -> Vec<(ChunkId, Arc<RrdManifest>)> {
-        fn recurse(
-            store: &ChunkStore,
-            chunk_id: &ChunkId,
-            roots: &mut Vec<(ChunkId, Arc<RrdManifest>)>,
-        ) {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                    recurse(store, chunk_id, roots);
-                }
-
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        recurse(store, chunk_id, roots);
-                    }
-                }
-
-                Some(ChunkDirectLineage::ReferencedFrom(rrd_manifest)) => {
-                    roots.push((*chunk_id, rrd_manifest.clone()));
-                }
-
-                _ => {}
-            }
-        }
-
         let mut roots = Vec::new();
-        recurse(self, chunk_id, &mut roots);
+        self.collect_root_rrd_manifests(chunk_id, &mut roots);
 
         roots
+    }
+
+    /// See [`Self::find_root_rrd_manifests`].
+    pub fn collect_root_rrd_manifests(
+        &self,
+        chunk_id: &ChunkId,
+        roots: &mut Vec<(ChunkId, Arc<RrdManifest>)>,
+    ) {
+        let lineage = self.chunks_lineage.get(chunk_id);
+        match lineage {
+            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
+                self.collect_root_rrd_manifests(chunk_id, roots);
+            }
+
+            Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                for chunk_id in chunk_ids {
+                    self.collect_root_rrd_manifests(chunk_id, roots);
+                }
+            }
+
+            Some(ChunkDirectLineage::ReferencedFrom(rrd_manifest)) => {
+                roots.push((*chunk_id, rrd_manifest.clone()));
+            }
+
+            _ => {}
+        }
+    }
+
+    /// Collects all physical chunks that descend from the given chunk in some way.
+    pub fn collect_physical_descendents_of(
+        &self,
+        chunk_id: &ChunkId,
+        descendents: &mut Vec<ChunkId>,
+    ) {
+        let is_physical = |c: &&ChunkId| self.chunks_per_chunk_id.contains_key(c);
+
+        if is_physical(&chunk_id) {
+            // A physical chunk cannot have descendents. If it did, it would have
+            // been offloaded already.
+            descendents.push(*chunk_id);
+        } else if let Some(split_chunks) = self.dangling_splits.get(chunk_id) {
+            descendents.extend(split_chunks.iter().filter(is_physical).copied());
+        } else {
+            let mut source_id = *chunk_id;
+
+            let compacted = loop {
+                let Some(chunk_id) = self.leaky_compactions.get(&source_id) else {
+                    break None;
+                };
+
+                if is_physical(&chunk_id) {
+                    break Some(*chunk_id);
+                }
+
+                source_id = *chunk_id;
+            };
+
+            if let Some(chunk_id) = compacted {
+                descendents.push(chunk_id);
+            }
+        }
     }
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a split.
@@ -709,6 +745,7 @@ mod tests {
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
             protected_time_ranges: Default::default(),
+            protected_chunks: Default::default(),
             furthest_from: None,
             perform_deep_deletions: false,
         });

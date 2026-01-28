@@ -1,5 +1,6 @@
 //! Responsible for tracking in-progress chunk downloads for larger-than-RAM.
 
+use emath::NumExt as _;
 use parking_lot::Mutex;
 use re_chunk::Chunk;
 
@@ -90,6 +91,27 @@ impl ChunkPromises {
 
     pub fn num_uncompressed_bytes_pending(&self) -> u64 {
         self.batches.iter().map(|b| b.size_bytes_uncompressed).sum()
+    }
+
+    /// Average of bytes/second over recent history.
+    pub fn bandwidth(&self) -> Option<f64> {
+        self.download_size_history.bandwidth().map(|b| b.0)
+    }
+
+    /// Returns how fresh the bandwidth data is, as a normalized value from 0.0 to 1.0.
+    ///
+    /// - `1.0` means the most recent download just completed.
+    /// - `0.0` means no downloads have completed within `Self.download_size_history.max_age()`.
+    pub fn bandwidth_data_freshness(&self, time: f64) -> f64 {
+        self.download_size_history
+            .iter()
+            .last()
+            .map(|(t, _)| {
+                let age = time - t;
+
+                (1.0 - age / self.download_size_history.max_age() as f64).at_least(0.0)
+            })
+            .unwrap_or(0.0)
     }
 
     /// See if we have received any new chunks since last call.
