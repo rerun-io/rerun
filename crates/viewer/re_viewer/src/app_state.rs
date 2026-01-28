@@ -756,7 +756,7 @@ impl AppState {
             .memory(|mem| mem.focused())
             .and_then(|id| TextEditState::load(ui.ctx(), id))
             .is_none()
-            && ui
+            && !ui
                 .ctx()
                 .plugin::<LabelSelectionState>()
                 .lock()
