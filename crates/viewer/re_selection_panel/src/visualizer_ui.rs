@@ -290,7 +290,7 @@ fn visualizer_components(
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
         // TODO: review this logic.
-        let (value_source, (_current_value_row_id, raw_current_value)) =
+        let (value_source, (current_value_row_id, raw_current_value)) =
             match (raw_override.clone(), raw_store.clone(), raw_default.clone()) {
                 (Some(override_value), _, _) => (ComponentSourceKind::Override, override_value),
                 (None, Some(store_value), _) => (ComponentSourceKind::SourceComponent, store_value),
@@ -344,17 +344,34 @@ fn visualizer_components(
                             unit: result_store.expect("This value was validated earlier."),
                         },
                     ),
-                    ComponentSourceKind::Default => (
-                        ctx.blueprint_query(),
-                        ctx.blueprint_db(),
-                        re_data_ui::ComponentPathLatestAtResults {
-                            component_path: ComponentPath::new(
-                                ViewBlueprint::defaults_path(ctx.view_id),
-                                target_component,
-                            ),
-                            unit: result_default.expect("This value was validated earlier."),
-                        },
-                    ),
+                    ComponentSourceKind::Default => {
+                        if let Some(result_default) = result_default {
+                            (
+                                ctx.blueprint_query(),
+                                ctx.blueprint_db(),
+                                re_data_ui::ComponentPathLatestAtResults {
+                                    component_path: ComponentPath::new(
+                                        ViewBlueprint::defaults_path(ctx.view_id),
+                                        target_component,
+                                    ),
+                                    unit: result_default,
+                                },
+                            )
+                        } else {
+                            ctx.viewer_ctx.component_ui_registry().component_ui_raw(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                                &data_result.entity_path,
+                                unmapped_component_descr,
+                                current_value_row_id,
+                                raw_current_value.as_ref(),
+                            );
+                            return;
+                        }
+                    }
                 };
 
                 component_path_latest_at.data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
