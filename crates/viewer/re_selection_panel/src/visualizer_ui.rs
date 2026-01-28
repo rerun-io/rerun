@@ -492,7 +492,6 @@ fn collect_source_component_options(
         .collect()
 }
 
-#[expect(clippy::too_many_arguments)]
 fn source_component_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
@@ -545,6 +544,7 @@ fn source_component_ui(
                     egui::WidgetInfo::labeled(
                         egui::WidgetType::ComboBox,
                         ui.is_enabled(),
+                        // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
                         format!("{}_$source", component_descr.component),
                     )
                 });
@@ -557,7 +557,6 @@ fn source_component_ui(
 ///
 /// If none is encoded in the visualizer instruction, we apply the same logic as `re_view::query`.
 /// TODO(andreas): Can we deduplicate this somehow?
-#[expect(clippy::fn_params_excessive_bools)] // TODO: meh.
 fn current_component_source<'a>(
     instruction: &'a VisualizerInstruction,
     component: &'a ComponentIdentifier,
