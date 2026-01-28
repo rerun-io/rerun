@@ -1,7 +1,17 @@
-# region: setup
 """Demonstrate converting Rerun recording to LeRobot dataset."""
 
+# ruff: noqa: E402
 from __future__ import annotations
+
+import atexit
+import pathlib
+import shutil
+import tempfile
+
+TMP_DIR = pathlib.Path(tempfile.mkdtemp())
+atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
+
+# region: setup
 
 from pathlib import Path
 
@@ -84,9 +94,8 @@ lerobot_dataset = LeRobotDataset.create(
     repo_id="rerun/droid_lerobot",  # Dataset identifier
     fps=config.fps,
     features=features,
-    root="/tmp/lerobot_dataset",
+    root=TMP_DIR / "lerobot_dataset",
     use_videos=config.use_videos,
-    video_backend="h264x",
 )
 # endregion: create_dataset
 
@@ -114,9 +123,8 @@ lerobot_dataset = LeRobotDataset.create(
     repo_id="rerun/droid_lerobot_full",
     fps=config.fps,
     features=features,
-    root="/tmp/lerobot_dataset_full",
+    root=TMP_DIR / "lerobot_dataset_full",
     use_videos=config.use_videos,
-    video_backend="h264x",
 )
 
 # To export multiple recordings, repeat the filtering and conversion steps
@@ -150,9 +158,5 @@ lerobot_dataset.finalize()
 # Access episode data
 print(f"Total episodes: {lerobot_dataset.num_episodes}")
 print(f"Total frames: {lerobot_dataset.num_frames}")
-
-# Get a sample
-sample = lerobot_dataset[0]
-print(sample.keys())
 
 # endregion: use_dataset

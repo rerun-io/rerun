@@ -122,6 +122,7 @@ backwards_check = [
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
   "howto/layers",
+  "howto/lerobot_export",
   "howto/query_images",
   "howto/query_videos",
   "howto/query_video_keyframes",
@@ -473,6 +474,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/layers" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/lerobot_export" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
