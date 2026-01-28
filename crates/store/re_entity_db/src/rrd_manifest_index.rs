@@ -536,31 +536,26 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
 impl re_byte_size::SizeBytes for RrdManifestIndex {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            chunk_intervals,
-            chunk_promises: _, // TODO(emilk)
             entity_has_static_data,
             entity_has_temporal_data_on_timeline,
             entity_tree,
-            manifest_row_from_chunk_id,
             manifest,
             native_static_map,
             native_temporal_map,
             remote_chunks,
-            static_chunk_ids,
+            chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
         } = self;
 
-        chunk_intervals.heap_size_bytes()
-            + entity_has_static_data.heap_size_bytes()
+        entity_has_static_data.heap_size_bytes()
             + entity_has_temporal_data_on_timeline.heap_size_bytes()
             + entity_tree.heap_size_bytes()
-            + manifest_row_from_chunk_id.heap_size_bytes()
             + manifest.heap_size_bytes()
             + native_static_map.heap_size_bytes()
             + native_temporal_map.heap_size_bytes()
             + remote_chunks.heap_size_bytes()
-            + static_chunk_ids.heap_size_bytes()
+            + chunk_prioritizer.heap_size_bytes()
             + timelines.heap_size_bytes()
     }
 }
