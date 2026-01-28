@@ -60,30 +60,30 @@ pub async fn test_source_component_dropdown() {
     let mut harness = make_harness();
 
     // Take initial snapshot
-    harness.snapshot_app("source_component_1_initial");
+    harness.snapshot_app("source_component_1");
 
     // Expand the view in the blueprint tree
     harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
-    harness.snapshot_app("source_component_2_view_expanded");
+    harness.snapshot_app("source_component_2");
 
     // Click on the points3d entity to select it
     // After selection, the Visualizers section should already be expanded showing components
     harness.blueprint_tree().click_label("points3d");
-    harness.snapshot_app("source_component_3_selected");
+    harness.snapshot_app("source_component_3");
 
     harness
         .selection_panel()
         .toggle_nth_hierarchical_list("radii", 1);
-    harness.snapshot_app("source_component_4_radii_expanded");
+    harness.snapshot_app("source_component_4");
 
     // Now we should see the "Source" dropdown showing "Points3D:radii"
     harness
         .selection_panel()
         .click_label("Points3D:radii_$source");
-    harness.snapshot_app("source_component_5_dropdown_open");
+    harness.snapshot_app("source_component_5");
 
     // Select "View Default" from the dropdown options to avoid confusion with the "Override" RadioButton
     harness.click_label("View Default");
-    harness.snapshot_app("source_component_6_override_selected");
+    harness.snapshot_app("source_component_6");
 }
