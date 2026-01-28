@@ -123,24 +123,20 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
+                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
                     [
                         // Lens operations always work on component-column level.
-                        Op::access_field("poses"),
-                        Op::flatten(),
-                        Op::access_field("position"),
+                        Op::selector(".poses[].position"),
                         Op::func(list_xyz_struct_to_list_fixed),
                     ],
                 )
                 .component(
                     InstancePoses3D::descriptor_quaternions(),
                     [
-                        Op::access_field("poses"),
-                        Op::flatten(),
-                        Op::access_field("orientation"),
+                        Op::selector(".poses[].orientation"),
                         Op::func(list_xyzw_struct_to_list_fixed),
                     ],
                 )
@@ -158,28 +154,26 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
+                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
                 )
                 .component(
                     InstancePoses3D::descriptor_translations(),
                     [
                         // Lens operations always work on component-column level.
-                        Op::access_field("pose"),
-                        Op::access_field("position"),
+                        Op::selector(".pose.position"),
                         Op::func(list_xyz_struct_to_list_fixed),
                     ],
                 )
                 .component(
                     InstancePoses3D::descriptor_quaternions(),
                     [
-                        Op::access_field("pose"),
-                        Op::access_field("orientation"),
+                        Op::selector(".pose.orientation"),
                         Op::func(list_xyzw_struct_to_list_fixed),
                     ],
                 )
                 .component(
                     CoordinateFrame::descriptor_frame(),
-                    [Op::access_field("frame_id")],
+                    [Op::selector(".frame_id")],
                 )
             })?
             .output_static_columns(|out| {
@@ -194,12 +188,12 @@ fn main() -> anyhow::Result<()> {
                 out.time(
                     TIME_NAME,
                     args.epoch.time_type(),
-                    [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
+                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
                 )
                 // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
                 .component(
                     EncodedImage::descriptor_blob(),
-                    [Op::access_field("data"), Op::binary_to_list_uint8()],
+                    [Op::selector(".data"), Op::binary_to_list_uint8()],
                 )
             })?
             .build();
@@ -211,11 +205,11 @@ fn main() -> anyhow::Result<()> {
             .output_columns(|out| {
                 out.component(
                     VideoStream::descriptor_codec(),
-                    [Op::access_field("format"), Op::string_to_video_codec()],
+                    [Op::selector(".format"), Op::string_to_video_codec()],
                 )
                 .component(
                     VideoStream::descriptor_sample(),
-                    [Op::access_field("data"), Op::binary_to_list_uint8()],
+                    [Op::selector(".data"), Op::binary_to_list_uint8()],
                 )
             })?
             .build();
@@ -228,43 +222,29 @@ fn main() -> anyhow::Result<()> {
                     TIME_NAME,
                     args.epoch.time_type(),
                     [
-                        Op::access_field("transforms"),
-                        Op::flatten(),
-                        Op::access_field("timestamp"),
+                        Op::selector(".transforms[].timestamp"),
                         Op::time_spec_to_nanos(),
                     ],
                 )
                 .component(
                     Transform3D::descriptor_parent_frame(),
-                    [
-                        Op::access_field("transforms"),
-                        Op::flatten(),
-                        Op::access_field("parent_frame_id"),
-                    ],
+                    [Op::selector(".transforms[].parent_frame_id")],
                 )
                 .component(
                     Transform3D::descriptor_child_frame(),
-                    [
-                        Op::access_field("transforms"),
-                        Op::flatten(),
-                        Op::access_field("child_frame_id"),
-                    ],
+                    [Op::selector(".transforms[].child_frame_id")],
                 )
                 .component(
                     Transform3D::descriptor_translation(),
                     [
-                        Op::access_field("transforms"),
-                        Op::flatten(),
-                        Op::access_field("translation"),
+                        Op::selector(".transforms[].translation"),
                         Op::func(list_xyz_struct_to_list_fixed),
                     ],
                 )
                 .component(
                     Transform3D::descriptor_quaternion(),
                     [
-                        Op::access_field("transforms"),
-                        Op::flatten(),
-                        Op::access_field("rotation"),
+                        Op::selector(".transforms[].rotation"),
                         Op::func(list_xyzw_struct_to_list_fixed),
                     ],
                 )
@@ -281,7 +261,7 @@ fn main() -> anyhow::Result<()> {
         out.time(
             TIME_NAME,
             args.epoch.time_type(),
-            [Op::access_field("timestamp"), Op::time_spec_to_nanos()],
+            [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
         )
         .component(
             Pinhole::descriptor_resolution(),
@@ -290,13 +270,13 @@ fn main() -> anyhow::Result<()> {
         .component(
             Pinhole::descriptor_image_from_camera(),
             [
-                Op::access_field("K"),
+                Op::selector(".K"),
                 Op::func(list_3x3_row_major_to_column_major),
             ],
         )
         .component(
             Pinhole::descriptor_parent_frame(),
-            [Op::access_field("frame_id")],
+            [Op::selector(".frame_id")],
         )
     })?
     .build();

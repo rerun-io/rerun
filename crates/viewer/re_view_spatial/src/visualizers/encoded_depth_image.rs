@@ -77,11 +77,11 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 use super::entity_iterator::iter_slices;
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) =
-                    results.get_required_chunks(EncodedDepthImage::descriptor_blob().component)
-                else {
+                let all_blob_chunks =
+                    results.get_required_chunk(EncodedDepthImage::descriptor_blob().component);
+                if all_blob_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);

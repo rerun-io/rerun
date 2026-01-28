@@ -72,6 +72,7 @@ struct TestVideoPlayer {
 
 impl TestVideoPlayer {
     fn from_descr(video_descr: VideoDataDescription) -> Self {
+        #![expect(clippy::disallowed_methods)] // it's a test
         let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
         let video = VideoPlayer::new_with_encoder(
             VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {

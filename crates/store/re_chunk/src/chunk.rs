@@ -1486,9 +1486,9 @@ impl Chunk {
             if *row_ids.data_type() != RowId::arrow_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
+                        "RowId data has the wrong datatype: expected {} but got {} instead",
                         RowId::arrow_datatype(),
-                        *row_ids.data_type(),
+                        row_ids.data_type(),
                     ),
                 });
             }

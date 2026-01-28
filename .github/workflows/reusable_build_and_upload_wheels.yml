@@ -114,14 +114,14 @@ jobs:
             linux-arm64)
                 runner="ubuntu-arm-16-core"
                 target="aarch64-unknown-linux-gnu"
-                container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
+                container="'ghcr.io/rerun-io/ci_docker:0.17.0'" # Required to be manylinux compatible
                 compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_28"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-32-cores"

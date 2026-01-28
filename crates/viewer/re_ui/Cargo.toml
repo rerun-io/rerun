@@ -78,6 +78,7 @@ raw-window-handle.workspace = true
 
 
 [dev-dependencies]
+crossbeam.workspace = true
 egui_kittest.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
 

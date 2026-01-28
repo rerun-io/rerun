@@ -18,7 +18,7 @@ Building intelligent physical systems requires rapid iteration on both data and 
 
 The best robotics teams minimize their time from new data to training. Rerun gives you the unified infrastructure to make that happen.
 
-## The Rerun data platform
+## The Rerun Data Platform
 
 Rerun provides an integrated solution for working with multimodal temporal data:
 

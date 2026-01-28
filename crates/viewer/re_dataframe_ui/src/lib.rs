@@ -27,3 +27,20 @@ pub use self::streaming_cache::{CacheState, StreamingCacheTableProvider};
 pub use self::table_blueprint::{
     ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
 };
+
+/// Create a blocking channel on native, and an unbounded channel on web.
+fn create_channel<T>(
+    size: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            _ = size;
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        } else {
+            crossbeam::channel::bounded(size)
+        }
+    }
+}

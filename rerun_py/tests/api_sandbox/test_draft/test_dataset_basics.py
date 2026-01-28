@@ -40,6 +40,8 @@ rerun_storage_urls: list<rerun_storage_urls: string not null> not null
 rerun_last_updated_at: timestamp[ns] not null
 rerun_num_chunks: uint64 not null
 rerun_size_bytes: uint64 not null
+property:RecordingInfo:start_time: list<item: int64>
+  child 0, item: int64
 timeline:end: timestamp[ns]
 timeline:start: timestamp[ns]
 -- schema metadata --
@@ -47,7 +49,9 @@ sorbet:version: '0.1.2'\
 """)
 
         assert str(
-            segment_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
+            segment_df.drop("rerun_storage_urls", "rerun_last_updated_at", "property:RecordingInfo:start_time").sort(
+                "rerun_segment_id"
+            )
         ) == inline_snapshot("""\
 ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┬──────────────────────────────┬──────────────────────────────┐
 │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ timeline:end                 ┆ timeline:start               │

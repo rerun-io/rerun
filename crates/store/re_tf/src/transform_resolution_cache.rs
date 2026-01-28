@@ -749,7 +749,8 @@ impl TreeTransformsForChildFrame {
                             }
 
                             Err(err) => {
-                                re_log::error_once!("Failed to query transformations: {err}");
+                                // Only warn since we can still work just fine if a transform didn't work.
+                                re_log::warn_once!("Failed to query transformations: {err}");
                                 CachedTransformValue::Cleared
                             }
                         };
@@ -807,7 +808,8 @@ impl TreeTransformsForChildFrame {
                             }
 
                             Err(err) => {
-                                re_log::error_once!("Failed to query transformations: {err}");
+                                // Only warn since we can still work just fine if a transform didn't work.
+                                re_log::warn_once!("Failed to query transformations: {err}");
                                 CachedTransformValue::Cleared
                             }
                         };

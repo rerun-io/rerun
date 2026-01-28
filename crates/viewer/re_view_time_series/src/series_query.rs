@@ -155,11 +155,13 @@ pub fn collect_colors(
 
     let all_color_chunks = bootstrapped_results
         .get_optional_chunks(color_descriptor.component)
+        .chunks
         .iter()
         .cloned()
         .chain(
             results
                 .get_optional_chunks(color_descriptor.component)
+                .chunks
                 .iter()
                 .cloned(),
         )
@@ -250,10 +252,12 @@ pub fn collect_series_name(
 
     let mut series_names: Vec<String> = bootstrapped_results
         .get_optional_chunks(name_descriptor.component)
+        .chunks
         .iter()
         .chain(
             results
                 .get_optional_chunks(name_descriptor.component)
+                .chunks
                 .iter(),
         )
         .find(|chunk| !chunk.is_empty())
@@ -298,11 +302,13 @@ pub fn collect_radius_ui(
     {
         let all_radius_chunks = bootstrapped_results
             .get_optional_chunks(radius_descriptor.component)
+            .chunks
             .iter()
             .cloned()
             .chain(
                 results
                     .get_optional_chunks(radius_descriptor.component)
+                    .chunks
                     .iter()
                     .cloned(),
             )

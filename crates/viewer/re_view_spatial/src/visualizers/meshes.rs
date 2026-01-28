@@ -138,11 +138,11 @@ impl VisualizerSystem for Mesh3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions().component)
-                else {
+                let all_vertex_position_chunks =
+                    results.get_required_chunk(Mesh3D::descriptor_vertex_positions().component);
+                if all_vertex_position_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_vertex_positions_indexed =

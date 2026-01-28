@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc::Sender};
+use std::sync::Arc;
 
 use anyhow::{Context as _, anyhow};
 use arrow::{
@@ -6,6 +6,7 @@ use arrow::{
     compute::cast,
     datatypes::{DataType, Field},
 };
+use crossbeam::channel::Sender;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, TimelineName,
@@ -35,7 +36,7 @@ pub const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
 pub fn prepare_episode_chunks(
     episodes: impl IntoIterator<Item = EpisodeIndex>,
     application_id: &ApplicationId,
-    tx: &std::sync::mpsc::Sender<LoadedData>,
+    tx: &Sender<LoadedData>,
     loader_name: &str,
 ) -> Vec<(EpisodeIndex, StoreId)> {
     let mut store_ids = vec![];
@@ -61,7 +62,7 @@ pub fn prepare_episode_chunks(
 pub fn load_and_stream_common<Dataset>(
     dataset: &Dataset,
     store_ids: &[(EpisodeIndex, StoreId)],
-    tx: &std::sync::mpsc::Sender<LoadedData>,
+    tx: &Sender<LoadedData>,
     loader_name: &str,
     load_episode: impl Fn(&Dataset, EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError>,
 ) {

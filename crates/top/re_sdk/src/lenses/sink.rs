@@ -1,8 +1,7 @@
 use re_chunk::Chunk;
+use re_lenses::{Lens, Lenses, OutputMode};
 use re_log_types::{LogMsg, StoreId};
 
-use super::Lens;
-use super::ast::{Lenses, OutputMode};
 use crate::sink::LogSink;
 
 /// A sink which can transform a [`LogMsg`] and forward the result to an underlying backing [`LogSink`].

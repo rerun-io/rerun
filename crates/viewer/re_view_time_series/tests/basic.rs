@@ -32,7 +32,6 @@ fn test_clear_series_points_and_line_impl(
 
     let timeline = Timeline::log_tick();
 
-    // TODO(#10512): Potentially fix up this after we have "markers".
     // There are some intricacies involved with this test. `SeriesLines` and
     // `SeriesPoints` can both be logged without any associated data (all
     // fields are optional). Now that indicators are gone, no data is logged

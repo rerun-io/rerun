@@ -91,16 +91,14 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) =
-            results.get_required_chunks(Image::descriptor_buffer().component)
-        else {
+        let all_buffer_chunks = results.get_required_chunk(Image::descriptor_buffer().component);
+        if all_buffer_chunks.is_empty() {
             return;
-        };
-        let Some(all_formats_chunks) =
-            results.get_required_chunks(Image::descriptor_format().component)
-        else {
+        }
+        let all_formats_chunks = results.get_required_chunk(Image::descriptor_format().component);
+        if all_formats_chunks.is_empty() {
             return;
-        };
+        }
 
         let timeline = ctx.query.timeline();
         let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);

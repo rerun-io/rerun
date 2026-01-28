@@ -12,6 +12,8 @@ pub enum TestOptions {
 }
 
 pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuilder<T> {
+    re_log::setup_logging(); // It's nice with log output from tests
+
     let size = size.into();
 
     let options = match option {

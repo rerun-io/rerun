@@ -1,8 +1,9 @@
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::hash::Hash64;
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
+use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
@@ -32,6 +33,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
 ) -> HybridRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
+    // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
+    // Logic gets surprisingly complicated quickly though.
+
     let mut components = components.into_iter().collect::<IntSet<_>>();
 
     let overrides = query_overrides(
@@ -40,37 +44,30 @@ pub fn range_with_blueprint_resolved_data<'a>(
         components.iter().copied(),
     );
 
-    // No need to query for components that have overrides.
-    components.retain(|component| overrides.get(*component).is_none());
-
+    // Apply component mappings when querying the recording.
     let mut active_remappings = Vec::new();
-    let results = {
+    let mut component_sources = IntMap::default();
+    let store_results = {
         // Apply component mappings when querying the recording.]
+        for (target, source) in &visualizer_instruction.component_mappings {
+            component_sources.insert(*target, source.source_kind());
 
-        for (target, selector) in &visualizer_instruction.component_mappings {
-            match selector {
-                re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector: _, // TODO(RR-3308): implement selector logic
-                } => {
-                    if components.remove(target) {
-                        components.insert(*source_component);
-                        active_remappings.push((*target, *source_component));
-                    }
-                }
-
-                re_viewer_context::VisualizerComponentSource::Override
-                | re_viewer_context::VisualizerComponentSource::Default
-                | re_viewer_context::VisualizerComponentSource::Fallback => {
-                    // TODO(RR-3400): implement the rest of the selectors
-                }
+            if let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: _, // TODO(RR-3308): implement selector logic
+            } = source
+                && components.remove(target)
+            {
+                components.insert(*source_component);
+                active_remappings.push((*target, *source_component));
             }
         }
 
-        let mut results =
-            ctx.recording_engine()
-                .cache()
-                .range(range_query, &data_result.entity_path, components);
+        let mut results = ctx.recording_engine().cache().range(
+            range_query,
+            &data_result.entity_path,
+            components.iter().copied(),
+        );
 
         // Apply mapping to the results.
         for (target, selector) in &active_remappings {
@@ -86,10 +83,30 @@ pub fn range_with_blueprint_resolved_data<'a>(
         results
     };
 
+    // Auto-determine remaining mapping sources.
+    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
+    for component in &components {
+        match component_sources.entry(*component) {
+            std::collections::hash_map::Entry::Occupied(_) => {}
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                let source = if overrides.get(*component).is_some() {
+                    ComponentSourceKind::Override
+                } else if store_results.components.contains_key(component) {
+                    ComponentSourceKind::SourceComponent
+                } else {
+                    ComponentSourceKind::Default
+                };
+
+                entry.insert(source);
+            }
+        }
+    }
+
     HybridRangeResults {
         overrides,
-        results,
-        defaults: &ctx.query_result.component_defaults,
+        store_results,
+        view_defaults: &ctx.query_result.view_defaults,
+        component_sources,
         component_mappings_hash: Hash64::hash(&active_remappings),
     }
 }
@@ -105,18 +122,18 @@ pub fn range_with_blueprint_resolved_data<'a>(
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-///
-/// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    query_shadowed_components: bool,
     visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
+
+    // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
+    // Logic gets surprisingly complicated quickly though.
 
     let mut components = components.into_iter().collect::<IntSet<_>>();
     let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
@@ -133,59 +150,69 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         )
     };
 
-    // No need to query for components that have overrides unless opted in!
-    if !query_shadowed_components {
-        components.retain(|component| overrides.get(*component).is_none());
-    }
-
     // Apply component mappings when querying the recording.
     let mut active_remappings = Vec::new();
+    let mut component_sources = IntMap::default();
     if let Some(visualizer_instruction) = visualizer_instruction {
-        for (target, selector) in &visualizer_instruction.component_mappings {
-            match selector {
-                re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector: _, // TODO(RR-3308): implement selector logic
-                } => {
-                    if components.remove(target) {
-                        components.insert(*source_component);
-                        active_remappings.push((*target, *source_component));
-                    }
-                }
+        for (target, source) in &visualizer_instruction.component_mappings {
+            component_sources.insert(*target, source.source_kind());
 
-                re_viewer_context::VisualizerComponentSource::Override
-                | re_viewer_context::VisualizerComponentSource::Default
-                | re_viewer_context::VisualizerComponentSource::Fallback => {
-                    // TODO(RR-3400): implement the rest of the selectors
-                }
+            if let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector: _, // TODO(RR-3308): implement selector logic
+            } = source
+                && components.remove(target)
+            {
+                components.insert(*source_component);
+                active_remappings.push((*target, *source_component));
             }
         }
     }
 
-    let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
+    let mut store_results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
-        components,
+        components.iter().copied(),
     );
 
     // Apply mapping to the results.
     for (target, selector) in &active_remappings {
-        if let Some(chunk) = results.components.remove(selector) {
+        if let Some(chunk) = store_results.components.remove(selector) {
             let chunk = std::sync::Arc::new(chunk.with_renamed_component(*selector, *target))
                 .to_unit()
                 .expect("The source chunk was a unit chunk.");
-            results.components.insert(*target, chunk);
+            store_results.components.insert(*target, chunk);
+        }
+    }
+
+    // Auto-determine remaining mapping sources.
+    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
+    for component in &components {
+        match component_sources.entry(*component) {
+            std::collections::hash_map::Entry::Occupied(_) => {}
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                let source = if overrides.get(*component).is_some() {
+                    ComponentSourceKind::Override
+                } else if store_results.components.contains_key(component) {
+                    ComponentSourceKind::SourceComponent
+                } else {
+                    ComponentSourceKind::Default
+                };
+
+                entry.insert(source);
+            }
         }
     }
 
     HybridLatestAtResults {
         overrides,
-        results,
-        defaults: &ctx.query_result.component_defaults,
+        store_results,
+        view_defaults: &ctx.query_result.view_defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,
-        component_mappings_hash: Hash64::hash(&active_remappings),
+        component_sources,
+        component_indices_hash: Hash64::hash(&active_remappings),
     }
 }
 
@@ -219,14 +246,12 @@ pub fn query_archetype_with_history<'a>(
         }
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_query,
                 data_result,
                 components,
-                query_shadowed_defaults,
                 Some(visualizer_instruction),
             );
             (latest_query, results).into()
@@ -335,14 +360,12 @@ impl DataResultQuery for DataResult {
         latest_at_query: &'a LatestAtQuery,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a> {
-        let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
             A::all_component_identifiers(),
-            query_shadowed_components,
             visualizer_instruction,
         )
     }
@@ -354,14 +377,12 @@ impl DataResultQuery for DataResult {
         component: ComponentIdentifier,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
     ) -> HybridLatestAtResults<'a> {
-        let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
             std::iter::once(component),
-            query_shadowed_components,
             visualizer_instruction,
         )
     }

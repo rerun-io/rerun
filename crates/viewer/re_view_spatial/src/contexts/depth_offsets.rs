@@ -83,14 +83,12 @@ fn collect_draw_order_per_visualizer(
     let mut default_draw_order = None; // determined lazily
 
     for (data_result, instruction) in query.iter_visualizer_instruction_for(visualizer_identifier) {
-        let query_shadowed_components = false;
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,
             data_result,
             [draw_order_descriptor.component],
-            query_shadowed_components,
             Some(instruction),
         )
         .get_mono::<DrawOrder>(draw_order_descriptor.component)

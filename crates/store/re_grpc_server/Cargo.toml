@@ -29,6 +29,7 @@ re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
+re_quota_channel = { workspace = true, features = ["tokio"] }
 re_sorbet.workspace = true
 re_tracing.workspace = true
 re_sdk_types.workspace = true
@@ -36,6 +37,7 @@ re_uri.workspace = true
 
 # External
 anyhow.workspace = true
+async-stream.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport", "router"] }

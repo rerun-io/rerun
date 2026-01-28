@@ -1,3 +1,5 @@
+"""Demonstrate common dataframe operations with Rerun Data Platform."""
+
 # region: setup
 from __future__ import annotations
 

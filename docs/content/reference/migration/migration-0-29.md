@@ -68,9 +68,25 @@ The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have no
 
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
 
+### Multiple internal submodules were move to properly mark internal
+Most of their functionality is already exposed indirectly through re-exports.
+If you still need to use any functionality directly you can still find them in their new location.
+* `rr.color_conversion` -> `rr._color_conversion`
+* `rr.event` -> `rr._event`
+* `rr.legacy_notebook` -> `rr._legacy_notebook`
+* `rr.logging_handler` -> `rr._logging_handler`
+* `rr.memory` -> `rr._memory`
+* `rr.script_helpers` -> `rr._script_helpers`
+
 ## CLI
 `rerun server --addr …` has been renamed `rerun server --host …`
 
 ## Overrides in blueprint files can't be imported
 
 Rerun 0.29 cannot currently load component overrides from `.rbl` files created in previous versions. Support for legacy overrides is coming soon.
+
+## Dataset re-registration required to fix missing `name` and `start_time` in segment table
+
+This release fixes a bug where the built-in properties ([`RecordingInfo`](../types/archetypes/recording_info.md), including `name` and `start_time`) would not be displayed in the segment table. On Rerun Data Platform deployments, property extraction happens at registration time. This means that datasets will need to be re-registered for these columns to be populated.
+
+The OSS server is not affected because it generates the segment table on the fly.

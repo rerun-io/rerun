@@ -39,16 +39,35 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
 
     let http_url = origin.as_url();
 
+    let tls_config = if let Ok(cert_path) = std::env::var("RERUN_REDAP_LOCAL_CERT_PATH") {
+        use tonic::transport::{Certificate, ClientTlsConfig};
+
+        re_log::info!(cert_path, "starting client with local TLS cert");
+
+        let ca_cert = tokio::fs::read_to_string(&cert_path).await.map_err(|err| {
+            ApiError::internal_with_source(
+                err,
+                format!("couldn't load local cert at {cert_path:?}"),
+            )
+        })?;
+        let ca_cert = Certificate::from_pem(ca_cert);
+
+        ClientTlsConfig::new()
+            .with_enabled_roots()
+            .ca_certificate(ca_cert)
+            .domain_name("localhost") // must match the Common Name (CN) in the self-signed cert
+            .assume_http2(true)
+    } else {
+        // TODO(RR-3480): This will fail to connect to unencrypted IPv6 addresses (e.g. `rerun+http://[fd00:4b21:6f7a:2022::10]:51234`).
+        tonic::transport::ClientTlsConfig::new()
+            .with_enabled_roots()
+            .assume_http2(true)
+    };
+
     let endpoint = {
         let mut endpoint = Endpoint::new(http_url)
-            .and_then(|ep| {
-                ep.tls_config(
-                    tonic::transport::ClientTlsConfig::new()
-                        .with_enabled_roots()
-                        .assume_http2(true),
-                )
-            })
-            .map_err(|err| ApiError::connection(err, "connecting to server"))?
+            .and_then(|ep| ep.tls_config(tls_config))
+            .map_err(|err| ApiError::connection_with_source(err, "connecting to server"))?
             .http2_adaptive_window(true) // Optimize for throughput
             .connect_timeout(std::time::Duration::from_secs(10));
 
@@ -59,7 +78,10 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         }
 
         endpoint.connect().await.map_err(|err| {
-            ApiError::connection(err, format!("failed to connect to server at {origin}"))
+            ApiError::connection_with_source(
+                err,
+                format!("failed to connect to server at {origin}"),
+            )
         })
     };
 
@@ -85,11 +107,9 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
             let endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
 
             if endpoint.connect().await.is_ok() {
-                Err(ApiError {
-                    message: "server is expecting an unencrypted connection (try `rerun+http://` if you are sure)".to_owned(),
-                    kind: crate::ApiErrorKind::Connection,
-                    source: None,
-                })
+                Err(ApiError::connection(
+                    "the server is expecting an unencrypted connection (try `rerun+http://` if you are sure)",
+                ))
             } else {
                 Err(original_error)
             }
@@ -216,7 +236,7 @@ where
 
                         use re_log_encoding::ToApplication as _;
                         let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                            ApiError::serialization(
+                            ApiError::serialization_with_source(
                                 err,
                                 "failed to get arrow data for item in /FetchChunks response stream",
                             )
@@ -224,7 +244,7 @@ where
 
                         let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
                             |err| {
-                                ApiError::serialization(
+                                ApiError::serialization_with_source(
                                     err,
                                     "failed to parse item in /FetchChunks response stream",
                                 )
@@ -238,7 +258,10 @@ where
         })
         .map(|res| {
             res.map_err(|err| {
-                ApiError::internal(err, "failed to sync on /FetchChunks response stream")
+                ApiError::internal_with_source(
+                    err,
+                    "failed to sync on /FetchChunks response stream",
+                )
             })
             .and_then(std::convert::identity)
         })
@@ -268,7 +291,7 @@ where
 
                 use re_log_encoding::ToApplication as _;
                 let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                    ApiError::serialization(
+                    ApiError::serialization_with_source(
                         err,
                         "failed to get arrow data for item in /FetchChunks response stream",
                     )
@@ -276,7 +299,7 @@ where
 
                 let chunk =
                     re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
-                        ApiError::serialization(
+                        ApiError::serialization_with_source(
                             err,
                             "failed to parse item in /FetchChunks response stream",
                         )
@@ -288,7 +311,7 @@ where
     })
 }
 
-/// Canonical way to ingest segment data from a Rerun data platform server, dealing with
+/// Canonical way to ingest segment data from a Rerun Data Platform server, dealing with
 /// server-stored blueprints if any.
 ///
 /// The current strategy currently consists of _always_ downloading the blueprint first and setting
@@ -476,7 +499,10 @@ async fn stream_segment_from_server(
                     StoreKind::Blueprint => {
                         // Load all of the chunks in one go; most important first:
                         let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
-                            ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                            ApiError::invalid_arguments_with_source(
+                                err,
+                                "Failed to sort chunk index",
+                            )
                         })?;
                         return load_chunks(client, tx, &store_id, batch).await;
                     }
@@ -528,12 +554,13 @@ async fn stream_segment_from_server(
                 &time_selection_batches,
             )
             .map_err(|err| {
-                ApiError::invalid_arguments(err, "Failed to concat chunk index batches")
+                ApiError::invalid_arguments_with_source(err, "Failed to concat chunk index batches")
             })?;
 
             // Prioritize the chunks:
-            let batch = sort_batch(&batch)
-                .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
+            let batch = sort_batch(&batch).map_err(|err| {
+                ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+            })?;
 
             if let Some(chunk_ids) = chunk_id_column(&batch) {
                 already_loaded_chunk_ids = chunk_ids.iter().copied().collect();
@@ -567,12 +594,14 @@ async fn stream_segment_from_server(
         return Ok(ControlFlow::Continue(()));
     }
 
-    let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches)
-        .map_err(|err| ApiError::invalid_arguments(err, "Failed to concat chunk index batches"))?;
+    let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches).map_err(|err| {
+        ApiError::invalid_arguments_with_source(err, "Failed to concat chunk index batches")
+    })?;
 
     // Prioritize the chunks:
-    let batch = sort_batch(&batch)
-        .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
+    let batch = sort_batch(&batch).map_err(|err| {
+        ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+    })?;
 
     if let Some(chunk_ids) = chunk_id_column(&batch)
         && !already_loaded_chunk_ids.is_empty()
@@ -599,7 +628,7 @@ async fn stream_segment_from_server(
                     .collect::<Vec<u32>>(),
             ),
         )
-        .map_err(|err| ApiError::invalid_arguments(err, "take_record_batch"))?;
+        .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
 
         load_chunks(client, tx, &store_id, filtered_batch).await
     } else {
@@ -673,7 +702,7 @@ async fn load_small_chunk_batch(
                         store_id.clone(),
                         // TODO(#10229): this looks to be converting back and forth?
                         chunk.to_arrow_msg().map_err(|err| {
-                            ApiError::serialization(
+                            ApiError::serialization_with_source(
                                 err,
                                 "failed to parse chunk in /FetchChunks response stream",
                             )

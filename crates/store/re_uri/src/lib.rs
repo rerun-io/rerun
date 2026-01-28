@@ -16,7 +16,7 @@
 //!
 //! ```
 //! for uri in [
-//!     // Access the dataplatform catalog.
+//!     // Access the Data Platform catalog.
 //!     "rerun://rerun.io",
 //!     "rerun://rerun.io:51234/catalog",
 //!     "rerun+http://localhost:51234/catalog",
@@ -25,7 +25,7 @@
 //!     // Proxy to send messages to another viewer.
 //!     "rerun+http://localhost:51234/proxy",
 //!
-//!     // Links to recording on the dataplatform (optionally with timestamp).
+//!     // Links to recording on the Data Platform (optionally with timestamp).
 //!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1.23s..72s",
 //! ] {
 //!     assert!(uri.parse::<re_uri::RedapUri>().is_ok());

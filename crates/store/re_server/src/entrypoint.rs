@@ -17,7 +17,7 @@ use crate::{ServerBuilder, ServerHandle};
 #[clap(author, version, about)]
 pub struct Args {
     /// IP address to listen on.
-    #[clap(long, default_value = "::")]
+    #[clap(long, default_value = "0.0.0.0")]
     pub host: String,
 
     /// Port to bind to.
@@ -52,7 +52,7 @@ pub struct Args {
 impl Default for Args {
     fn default() -> Self {
         Self {
-            host: "::".into(),
+            host: "0.0.0.0".into(),
             port: 51234,
             datasets: vec![],
             dataset_prefixes: vec![],

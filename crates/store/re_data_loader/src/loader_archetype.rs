@@ -26,7 +26,7 @@ impl DataLoader for ArchetypeLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
@@ -61,7 +61,7 @@ impl DataLoader for ArchetypeLoader {
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         let extension = crate::extension(&filepath);
         if !crate::is_supported_file_extension(&extension) {

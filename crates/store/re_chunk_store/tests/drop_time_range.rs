@@ -112,16 +112,16 @@ fn drop_time_range() -> anyhow::Result<()> {
         assert_eq!(num_events(&store), 12);
 
         // Drop nothing:
-        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(10, 100));
-        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(-100, -10));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(10, 100));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(-100, -10));
         assert_eq!(num_events(&store), 12);
 
         // Drop stuff from the middle of the first chunk, and the start of the second:
-        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(1, 2));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(1, 2));
         assert_eq!(num_events(&store), 9);
 
         // Drop a bunch in the middle (including all of middle chunk):
-        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(2, 5));
+        store.drop_time_range_deep(timeline.name(), AbsoluteTimeRange::new(2, 5));
         assert_eq!(num_events(&store), 3);
     }
 

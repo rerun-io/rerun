@@ -1,3 +1,5 @@
+use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
+use crate::batch_coalescer::coalescer::CoalescerOptions;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::HashSet;
 use arrow::array::{
@@ -14,14 +16,14 @@ use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusio
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
-use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{
-    FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse, ScanSegmentTableResponse,
+    FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
+    ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -39,16 +41,17 @@ use std::sync::Arc;
 /// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
 /// the pitfall of executing a single row at a time, but we will likely want to consider
 /// at some point moving to a dynamic sizing.
-const DEFAULT_BATCH_SIZE: usize = 2048;
+const DEFAULT_BATCH_BYTES: u64 = 200 * 1024 * 1024;
+const DEFAULT_BATCH_ROWS: usize = 2048;
 
 #[derive(Debug)]
-pub struct DataframeQueryTableProvider {
+pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     pub schema: SchemaRef,
     query_expression: QueryExpression,
     query_dataset_request: QueryDatasetRequest,
     sort_index: Option<Index>,
     dataset_id: EntryId,
-    client: ConnectionClient,
+    client: T,
 
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
@@ -56,7 +59,66 @@ pub struct DataframeQueryTableProvider {
     trace_headers: Option<crate::TraceHeaders>,
 }
 
-impl DataframeQueryTableProvider {
+/// This trait provides the specific methods used when interacting with the
+/// gRPC services for the datafusion client services. By implementing this
+/// as a trait we can provide an alternative implementation in our testing
+/// facility to remove all gRPC layers and test the server responses
+/// more directly.
+#[async_trait]
+pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
+    async fn get_dataset_schema(
+        &mut self,
+        request: tonic::Request<GetDatasetSchemaRequest>,
+    ) -> Result<tonic::Response<GetDatasetSchemaResponse>, tonic::Status>;
+
+    async fn query_dataset(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
+    ) -> std::result::Result<
+        tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>,
+        tonic::Status,
+    >;
+
+    async fn fetch_chunks(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
+    ) -> std::result::Result<
+        tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
+        tonic::Status,
+    >;
+}
+
+#[async_trait]
+impl DataframeClientAPI for ConnectionClient {
+    async fn get_dataset_schema(
+        &mut self,
+        request: tonic::Request<GetDatasetSchemaRequest>,
+    ) -> Result<tonic::Response<GetDatasetSchemaResponse>, tonic::Status> {
+        self.inner().get_dataset_schema(request).await
+    }
+
+    async fn query_dataset(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
+    ) -> std::result::Result<
+        tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>,
+        tonic::Status,
+    > {
+        self.inner().query_dataset(request).await
+    }
+
+    async fn fetch_chunks(
+        &mut self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
+    ) -> std::result::Result<
+        tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
+        tonic::Status,
+    > {
+        self.inner().fetch_chunks(request).await
+    }
+}
+
+impl DataframeQueryTableProvider<ConnectionClient> {
     /// Create a table provider for a gRPC query. This function is async
     /// because we need to make gRPC calls to determine the schema at the
     /// creation of the table provider.
@@ -69,13 +131,33 @@ impl DataframeQueryTableProvider {
         segment_ids: &[impl AsRef<str> + Sync],
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
-        let mut client = connection
+        let client = connection
             .client(origin)
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
+        Self::new_from_client(
+            client,
+            dataset_id,
+            query_expression,
+            segment_ids,
+            #[cfg(not(target_arch = "wasm32"))]
+            trace_headers,
+        )
+        .await
+    }
+}
+
+impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn new_from_client(
+        mut client: T,
+        dataset_id: EntryId,
+        query_expression: &QueryExpression,
+        segment_ids: &[impl AsRef<str> + Sync],
+        #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
+    ) -> Result<Self, DataFusionError> {
         let schema = client
-            .inner()
             .get_dataset_schema(
                 tonic::Request::new(GetDatasetSchemaRequest {})
                     .with_entry_id(dataset_id)
@@ -197,7 +279,7 @@ impl DataframeQueryTableProvider {
 }
 
 #[async_trait]
-impl TableProvider for DataframeQueryTableProvider {
+impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -230,11 +312,11 @@ impl TableProvider for DataframeQueryTableProvider {
         let mut query_expression = self.query_expression.clone();
 
         let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
+
         for dataset_query in dataset_queries {
             let response_stream = self
                 .client
                 .clone()
-                .inner()
                 .query_dataset(
                     tonic::Request::new(dataset_query.into())
                         .with_entry_id(self.dataset_id)
@@ -286,8 +368,14 @@ impl TableProvider for DataframeQueryTableProvider {
         )
         .map(Arc::new)
         .map(|exec| {
-            Arc::new(CoalesceBatchesExec::new(exec, DEFAULT_BATCH_SIZE).with_fetch(limit))
-                as Arc<dyn ExecutionPlan>
+            Arc::new(SizedCoalesceBatchesExec::new(
+                exec,
+                CoalescerOptions {
+                    target_batch_rows: DEFAULT_BATCH_ROWS,
+                    target_batch_bytes: DEFAULT_BATCH_BYTES,
+                    max_rows: limit,
+                },
+            )) as Arc<dyn ExecutionPlan>
         })
     }
 
@@ -326,7 +414,7 @@ impl TableProvider for DataframeQueryTableProvider {
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
-/// on the data platform, we will get the schema for all entities and all components. This
+/// on the Data Platform, we will get the schema for all entities and all components. This
 /// method is used to down select from that full schema based on `query_expression`.
 #[tracing::instrument(level = "trace", skip_all)]
 fn compute_schema_for_query(

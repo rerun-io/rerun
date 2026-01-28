@@ -237,12 +237,12 @@ impl TransformForest {
             // Process the stack we accumulated.
             debug_assert!(
                 !transform_stack.is_empty(),
-                "There should be at least one element in the transform stack since we know we had at least one unprocessed element to start with."
+                "DEBUG ASSERT: There should be at least one element in the transform stack since we know we had at least one unprocessed element to start with."
             );
             forest.add_stack_of_transforms(transform_cache, &mut transform_stack);
             debug_assert!(
                 transform_stack.is_empty(),
-                "Expected add_stack_of_transforms to consume an entire transform stack."
+                "DEBUG ASSERT: Expected add_stack_of_transforms to consume an entire transform stack."
             );
         }
 
@@ -271,7 +271,10 @@ impl TransformForest {
             // We have a connection further up the stack. That means we must have stopped because we already know that target!
             if let Some(root_from_frame) = self.root_from_frame.get(&parent_frame) {
                 // Yes, we can short-circuit to a known root!
-                debug_assert!(self.roots.contains_key(&root_from_frame.root));
+                debug_assert!(
+                    self.roots.contains_key(&root_from_frame.root),
+                    "DEBUG ASSERT: Known root must be registered as such"
+                );
                 (root_from_frame.root, root_from_frame.target_from_source)
             } else {
                 // We didn't know the target. Must mean that the target is a new root!
@@ -280,7 +283,10 @@ impl TransformForest {
                     // There's apparently no information about this root, so it can't be a pinhole!
                     TransformTreeRootInfo::TransformFrameRoot,
                 );
-                debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+                debug_assert!(
+                    previous_root.is_none(),
+                    "DEBUG ASSERT: Root was added already"
+                ); // TODO(RR-2667): Build out into cycle detection
 
                 // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
                 // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
@@ -307,7 +313,10 @@ impl TransformForest {
                     TransformTreeRootInfo::TransformFrameRoot,
                 )
             };
-            debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+            debug_assert!(
+                previous_root.is_none(),
+                "DEBUG ASSERT: Root was added already"
+            ); // TODO(RR-2667): Build out into cycle detection
 
             (top_of_stack.child_frame, glam::DAffine3::IDENTITY)
         };
@@ -334,7 +343,7 @@ impl TransformForest {
                 let previous_root = self.roots.insert(root_frame, new_root_info);
                 debug_assert!(
                     previous_root.is_none(),
-                    "Root was added already at {:?} as {previous_root:?}",
+                    "DEBUG ASSERT: Root was added already at {:?} as {previous_root:?}",
                     cache.frame_id_registry().lookup_frame_id(root_frame)
                 ); // TODO(RR-2667): Build out into cycle detection
 
@@ -353,7 +362,7 @@ impl TransformForest {
             // TODO(RR-2667): Build out into cycle detection
             debug_assert!(
                 previous_transform.is_none(),
-                "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                "DEBUG ASSERT: Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
                 cache
                     .frame_id_registry()
                     .lookup_frame_id(transforms.child_frame),
@@ -397,7 +406,7 @@ fn walk_towards_parent(
 
     debug_assert!(
         transform_stack.is_empty(),
-        "Didn't process the last transform stack fully."
+        "DEBUG ASSERT: Didn't process the last transform stack fully."
     );
 
     let mut next_frame = Some(current_frame);
@@ -421,7 +430,7 @@ fn implicit_transform_parent(
 ) -> Option<TransformFrameIdHash> {
     debug_assert!(
         &id_registry.lookup_frame_id(frame).is_some(),
-        "Frame id hash {frame:?} is not known to the cache at all."
+        "DEBUG ASSERT: Frame id hash {frame:?} is not known to the cache at all."
     );
 
     Some(TransformFrameIdHash::from_entity_path(
@@ -1376,6 +1385,72 @@ mod tests {
                 )]
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_implicit_transform_at_root_being_ignored_with_warning()
+    -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+
+        // Add a transform that tries to make a root frame a child of something else
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::root())
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder("/child")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+
+        let mut transform_cache = TransformResolutionCache::default();
+        transform_cache.add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+
+        // Child still connects up to the root.
+        assert_eq!(
+            transform_forest
+                .transform_from_to(
+                    TransformFrameIdHash::from_entity_path(&"child".into()),
+                    std::iter::once(TransformFrameIdHash::from_entity_path(&EntityPath::root())),
+                    &|_| 1.0
+                )
+                .collect::<Vec<_>>(),
+            vec![(
+                TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                Ok(TreeTransform {
+                    root: TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                    target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                        0.0, -1.0, 0.0
+                    )),
+                })
+            )]
+        );
+
+        let received_log = log_rx.try_recv()?;
+        assert_eq!(received_log.level, re_log::Level::Warn);
+        assert!(
+            received_log
+                .msg
+                .contains("Ignoring transform at root entity"),
+            "Expected warning about ignoring implicit root parent frame, got: {}",
+            received_log.msg
+        );
 
         Ok(())
     }

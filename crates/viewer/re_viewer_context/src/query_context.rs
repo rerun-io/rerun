@@ -84,7 +84,7 @@ pub struct DataQueryResult {
     pub num_visualized_entities: usize,
 
     /// Latest-at results for all component defaults in this view.
-    pub component_defaults: re_query::LatestAtResults,
+    pub view_defaults: re_query::LatestAtResults,
 }
 
 impl Default for DataQueryResult {
@@ -93,7 +93,7 @@ impl Default for DataQueryResult {
             tree: Default::default(),
             num_matching_entities: 0,
             num_visualized_entities: 0,
-            component_defaults: re_query::LatestAtResults {
+            view_defaults: re_query::LatestAtResults {
                 entity_path: "<defaults>".into(),
                 query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
                 missing: Default::default(),
@@ -125,7 +125,7 @@ impl Clone for DataQueryResult {
             tree: self.tree.clone(),
             num_matching_entities: self.num_matching_entities,
             num_visualized_entities: self.num_visualized_entities,
-            component_defaults: self.component_defaults.clone(),
+            view_defaults: self.view_defaults.clone(),
         }
     }
 }

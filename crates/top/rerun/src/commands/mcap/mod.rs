@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::BufWriter;
-use std::sync::mpsc::Receiver;
 
 use clap::Subcommand;
 use re_log_encoding::Encoder;
@@ -81,7 +80,7 @@ impl ConvertCommand {
             &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
-        let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();
+        let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);
         loader.load_from_path(
             &DataLoaderSettings {
                 application_id: Some(application_id),
@@ -128,7 +127,7 @@ impl McapCommands {
 
 fn process_mcap<W: std::io::Write>(
     writer: W,
-    receiver: &Receiver<LoadedData>,
+    receiver: &crossbeam::channel::Receiver<LoadedData>,
 ) -> anyhow::Result<()> {
     let mut num_total_msgs = 0;
     let mut topics = BTreeSet::new();

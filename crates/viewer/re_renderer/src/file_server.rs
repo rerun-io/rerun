@@ -116,7 +116,7 @@ mod file_server_impl {
     // Private details
     impl FileServer {
         fn new() -> anyhow::Result<Self> {
-            let (events_tx, events_rx) = crossbeam::channel::unbounded();
+            let (events_tx, events_rx) = crossbeam::channel::bounded(32 * 1024);
 
             let watcher = notify::recommended_watcher(move |res| match res {
                 Ok(event) => {

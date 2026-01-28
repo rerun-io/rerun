@@ -1,5 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
+mod batch_coalescer;
 mod catalog_provider;
 mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
@@ -15,7 +16,9 @@ mod table_entry_provider;
 mod wasm_compat;
 
 pub use catalog_provider::{DEFAULT_CATALOG_NAME, RedapCatalogProvider, get_all_catalog_names};
-pub use dataframe_query_common::{DataframeQueryTableProvider, query_from_query_expression};
+pub use dataframe_query_common::{
+    DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use dataframe_query_provider::SegmentStreamExec;
 #[cfg(target_arch = "wasm32")]

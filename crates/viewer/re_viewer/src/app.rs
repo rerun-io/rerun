@@ -82,7 +82,7 @@ pub struct App {
     profiler: re_tracing::Profiler,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
     component_fallback_registry: FallbackProviderRegistry,
@@ -157,6 +157,7 @@ impl App {
         connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
+        let is_test = app_env == crate::AppEnvironment::Test;
         Self::with_commands(
             main_thread_token,
             build_info,
@@ -166,7 +167,7 @@ impl App {
             connection_registry,
             tokio_runtime,
             crate::register_text_log_receiver(),
-            command_channel(),
+            command_channel(is_test),
         )
     }
 
@@ -180,7 +181,7 @@ impl App {
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
-        text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+        text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();

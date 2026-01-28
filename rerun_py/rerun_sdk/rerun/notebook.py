@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime, timedelta
 
+    import datafusion
     import numpy as np
 
     from .blueprint import BlueprintLike
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
-from .event import (
+from ._event import (
     ViewerEvent,
     _viewer_event_from_json_str,
 )
@@ -67,7 +68,7 @@ class Viewer:
     """
     A viewer embeddable in a notebook.
 
-    This viewer is a wrapper around the [`rerun_notebook.Viewer`][] widget.
+    This viewer is a wrapper around the `rerun_notebook.Viewer` widget.
     """
 
     def __init__(
@@ -86,7 +87,7 @@ class Viewer:
         Any data logged to the recording after initialization will be sent directly to the viewer.
 
         This widget can be displayed by returning it at the end of your cells execution, or immediately
-        by calling [`Viewer.display`][].
+        by calling [`rerun.notebook.Viewer.display`][].
 
         Parameters
         ----------
@@ -266,7 +267,7 @@ class Viewer:
     def send_table(
         self,
         id: str,
-        table: RecordBatch,
+        table: RecordBatch | list[RecordBatch] | datafusion.DataFrame,
     ) -> None:
         """
         Sends a table in the form of a dataframe to the viewer.
@@ -277,10 +278,13 @@ class Viewer:
             The name that uniquely identifies the table in the viewer.
             This name will also be shown in the recording panel.
         table:
-            The table as a single Arrow record batch.
+            The table data as an Arrow RecordBatch, list of RecordBatches, or a datafusion DataFrame.
 
         """
-        new_table = self._add_table_id(table, id)
+        from rerun._arrow import to_record_batch
+
+        record_batch = to_record_batch(table)
+        new_table = self._add_table_id(record_batch, id)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)
         writer.write_batch(new_table)
@@ -454,10 +458,6 @@ class Viewer:
             Whether to start playing from the specified time point. Defaults to paused.
         timeline:
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
-        nanoseconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead, with "seconds" as the unit.
-        seconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:

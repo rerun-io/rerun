@@ -29,19 +29,25 @@ pub enum ComponentSourceKind {
     /// Use an explicit selection defined by `source_component`.
     ///
     /// May or may not make use of a selector string.
+    ///
+    /// If the source component is not found on the entity,
+    /// a heuristically determined value will be used instead.
     SourceComponent = 1,
 
     /// Use a timeless override value that is defined in the blueprint.
     ///
     /// The override value is stored on the same entity as the visualizer instruction
     /// and uses the `target` as its component name.
+    ///
+    /// If there is no override value with the target component name,
+    /// a heuristically determined value will be used instead.
     Override = 2,
 
     /// Default as specified on the view's blueprint.
+    ///
+    /// If the view doesn't specify a default for the target component name,
+    /// a heuristically determined value will be used instead.
     Default = 3,
-
-    /// Make use of the viewer's fallback logic to produce a value.
-    Fallback = 4,
 }
 
 ::re_types_core::macros::impl_into_cow!(ComponentSourceKind);
@@ -109,7 +115,6 @@ impl ::re_types_core::Loggable for ComponentSourceKind {
                 Some(1) => Ok(Some(Self::SourceComponent)),
                 Some(2) => Ok(Some(Self::Override)),
                 Some(3) => Ok(Some(Self::Default)),
-                Some(4) => Ok(Some(Self::Fallback)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -128,7 +133,6 @@ impl std::fmt::Display for ComponentSourceKind {
             Self::SourceComponent => write!(f, "SourceComponent"),
             Self::Override => write!(f, "Override"),
             Self::Default => write!(f, "Default"),
-            Self::Fallback => write!(f, "Fallback"),
         }
     }
 }
@@ -136,25 +140,21 @@ impl std::fmt::Display for ComponentSourceKind {
 impl ::re_types_core::reflection::Enum for ComponentSourceKind {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[
-            Self::SourceComponent,
-            Self::Override,
-            Self::Default,
-            Self::Fallback,
-        ]
+        &[Self::SourceComponent, Self::Override, Self::Default]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
             Self::SourceComponent => {
-                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string."
+                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string.\n\nIf the source component is not found on the entity,\na heuristically determined value will be used instead."
             }
             Self::Override => {
-                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name."
+                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name.\n\nIf there is no override value with the target component name,\na heuristically determined value will be used instead."
             }
-            Self::Default => "Default as specified on the view's blueprint.",
-            Self::Fallback => "Make use of the viewer's fallback logic to produce a value.",
+            Self::Default => {
+                "Default as specified on the view's blueprint.\n\nIf the view doesn't specify a default for the target component name,\na heuristically determined value will be used instead."
+            }
         }
     }
 }

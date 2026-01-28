@@ -1,6 +1,6 @@
 use saturating_cast::SaturatingCast as _;
 
-/// Represents a limit in how much RAM to use for the entire process.
+/// Represents a limit in how much RAM to use.
 ///
 /// Different systems can chose to heed the memory limit in different ways,
 /// e.g. by dropping old data when it is exceeded.
@@ -14,10 +14,24 @@ pub struct MemoryLimit {
     /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('counted').
     /// We limit based on this instead of `resident` (RSS) because `counted` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
+    ///
+    /// None means "unlimited".
     pub max_bytes: Option<u64>,
 }
 
+impl std::fmt::Display for MemoryLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.max_bytes {
+            Some(max_bytes) => write!(f, "{}", re_format::format_bytes(max_bytes as _)),
+            None => write!(f, "unlimited"),
+        }
+    }
+}
+
 impl MemoryLimit {
+    /// Lowest possible limit: use as little memory as possible.
+    pub const ZERO: Self = Self { max_bytes: Some(0) };
+
     /// No limit.
     pub const UNLIMITED: Self = Self { max_bytes: None };
 
@@ -87,6 +101,11 @@ impl MemoryLimit {
         }
     }
 
+    /// Returns [`u64::MAX`] if unlimited.
+    pub fn as_bytes(&self) -> u64 {
+        self.max_bytes.unwrap_or(u64::MAX)
+    }
+
     #[inline]
     pub fn is_limited(&self) -> bool {
         self.max_bytes.is_some()
@@ -95,6 +114,29 @@ impl MemoryLimit {
     #[inline]
     pub fn is_unlimited(&self) -> bool {
         self.max_bytes.is_none()
+    }
+
+    /// Split the memory limit into two limits according to the given fraction.
+    ///
+    /// The first returned limit will have `fraction` of the bytes,
+    /// and the second will have the rest.
+    ///
+    /// `fraction` should be between 0.0 and 1.0.
+    pub fn split(self, fraction: f32) -> (Self, Self) {
+        debug_assert!(
+            (0.0..=1.0).contains(&fraction),
+            "fraction must be between 0.0 and 1.0, got {fraction}"
+        );
+        if let Some(max_bytes) = self.max_bytes {
+            let first_bytes = (fraction as f64 * max_bytes as f64).round() as u64;
+            let second_bytes = max_bytes - first_bytes;
+            (
+                Self::from_bytes(first_bytes),
+                Self::from_bytes(second_bytes),
+            )
+        } else {
+            (Self::UNLIMITED, Self::UNLIMITED)
+        }
     }
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.

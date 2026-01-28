@@ -18,7 +18,7 @@ impl crate::DataLoader for DirectoryLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         dirpath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // NOTE: Checking whether this is a file is _not_ enough. It could also be a fifo, a
         // socket, a named pipe, a symlink to any of these things, etc.
@@ -85,7 +85,7 @@ impl crate::DataLoader for DirectoryLoader {
         _settings: &crate::DataLoaderSettings,
         path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        _tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(cmc): This could make sense to implement for e.g. archive formats (zip, tar, …)
         Err(crate::DataLoaderError::Incompatible(path))

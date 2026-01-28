@@ -74,6 +74,7 @@ re_datafusion = { path = "crates/store/re_datafusion", version = "=0.29.0-alpha.
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.29.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.29.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.29.0-alpha.1", default-features = false }
+re_lenses = { path = "crates/store/re_lenses", version = "=0.29.0-alpha.1", default-features = false }
 re_log_channel = { path = "crates/store/re_log_channel", version = "=0.29.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.29.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.29.0-alpha.1", default-features = false }
@@ -313,7 +314,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.16"
-ply-rs-bw = { version = "=2.0.3", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
+ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
@@ -340,7 +341,7 @@ raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
-rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 ron = { version = "0.11.0", features = ["integer128"] }
 roxmltree = "0.20.0"
 rustdoc-json = "0.9.7"
@@ -355,7 +356,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11.19"
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
 serde-wasm-bindgen = "0.6.5"
-serde_yaml = { version = "0.9.34", default-features = false }
 sha2 = "0.10.9"
 similar-asserts = "1.7.0"
 slotmap = { version = "1.0.7", features = ["serde"] }

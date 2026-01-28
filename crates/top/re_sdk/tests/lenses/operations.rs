@@ -138,7 +138,7 @@ fn test_destructure_cast() {
     .output_columns_at("nullability/a", |out| {
         out.component(
             Scalars::descriptor_scalars(),
-            [Op::access_field("a"), Op::cast(DataType::Float64)],
+            [Op::selector(".a"), Op::cast(DataType::Float64)],
         )
     })
     .unwrap()
@@ -168,7 +168,7 @@ fn test_destructure() {
         "structs",
     )
     .output_columns_at("nullability/b", |out| {
-        out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
+        out.component(Scalars::descriptor_scalars(), [Op::selector(".b")])
     })
     .unwrap()
     .build();
@@ -418,8 +418,10 @@ fn create_test_struct_list() -> arrow::array::ListArray {
 
 #[test]
 fn test_scatter_columns() {
+    use re_arrow_combinators::{Selector, Transform as _};
     use re_log_types::TimeType;
     use re_sdk::lenses::OpError;
+    use std::str::FromStr as _;
 
     // Create a chunk with list of structs that should be exploded/scattered
     // Each element is a struct with {timestamp: i64, value: String}
@@ -442,18 +444,12 @@ fn test_scatter_columns() {
 
     // Helper to extract value field from structs: List<Struct> -> List<String>
     let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::Transform as _;
-        use re_arrow_combinators::map::MapList;
-        use re_arrow_combinators::reshape::GetField;
-        Ok(MapList::new(GetField::new("value")).transform(list_array)?)
+        Ok(Selector::from_str(".value")?.transform(list_array)?)
     };
 
     // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
     let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::Transform as _;
-        use re_arrow_combinators::map::MapList;
-        use re_arrow_combinators::reshape::GetField;
-        Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
+        Ok(Selector::from_str(".timestamp")?.transform(list_array)?)
     };
 
     // Create a scatter lens that explodes the nested lists
@@ -523,8 +519,10 @@ fn test_scatter_columns() {
 
 #[test]
 fn test_scatter_columns_static() {
+    use re_arrow_combinators::{Selector, Transform as _};
     use re_log_types::TimeType;
     use re_sdk::lenses::OpError;
+    use std::str::FromStr as _;
 
     // Test scatter with no existing timelines - only exploded timeline outputs
     let struct_list = create_test_struct_list();
@@ -545,18 +543,12 @@ fn test_scatter_columns_static() {
 
     // Helper to extract value field from structs: List<Struct> -> List<String>
     let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::Transform as _;
-        use re_arrow_combinators::map::MapList;
-        use re_arrow_combinators::reshape::GetField;
-        Ok(MapList::new(GetField::new("value")).transform(list_array)?)
+        Ok(Selector::from_str(".value")?.transform(list_array)?)
     };
 
     // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
     let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::Transform as _;
-        use re_arrow_combinators::map::MapList;
-        use re_arrow_combinators::reshape::GetField;
-        Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
+        Ok(Selector::from_str(".timestamp")?.transform(list_array)?)
     };
 
     // Create a scatter lens that explodes the nested lists

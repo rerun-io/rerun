@@ -331,7 +331,7 @@ impl ConnectionRegistryHandle {
             {
                 Ok(res) => res,
                 Err(err) => {
-                    return Err(ApiError::connection_simple(format!(
+                    return Err(ApiError::connection(format!(
                         "failed to connect to server '{origin}': {err}"
                     )));
                 }
@@ -360,7 +360,7 @@ impl ConnectionRegistryHandle {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
                 if let Some(credentials) = credentials {
-                    Err(ApiError::credentials(
+                    Err(ApiError::credentials_with_source(
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
                             credentials,
@@ -368,7 +368,7 @@ impl ConnectionRegistryHandle {
                         "verifying connection to server",
                     ))
                 } else {
-                    Err(ApiError::credentials(
+                    Err(ApiError::credentials_with_source(
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
                         "verifying connection to server",
                     ))
@@ -380,14 +380,18 @@ impl ConnectionRegistryHandle {
                     s.downcast_ref::<re_auth::credentials::CredentialsProviderError>()
                 }) {
                     match cred_error {
-                        CredentialsProviderError::SessionExpired => Err(ApiError::credentials(
-                            ClientCredentialsError::SessionExpired,
-                            "session expired",
-                        )),
-                        CredentialsProviderError::Custom(_) => Err(ApiError::credentials(
-                            ClientCredentialsError::RefreshError(err.into()),
-                            "refreshing credentials",
-                        )),
+                        CredentialsProviderError::SessionExpired => {
+                            Err(ApiError::credentials_with_source(
+                                ClientCredentialsError::SessionExpired,
+                                "session expired",
+                            ))
+                        }
+                        CredentialsProviderError::Custom(_) => {
+                            Err(ApiError::credentials_with_source(
+                                ClientCredentialsError::RefreshError(err.into()),
+                                "refreshing credentials",
+                            ))
+                        }
                     }
                 } else {
                     Err(ApiError::tonic(err, "verifying connection to server"))

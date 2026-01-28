@@ -86,7 +86,7 @@ pub struct RerunArgs {
     newest_first: bool,
 
     /// What bind address IP to use.
-    #[clap(long, default_value = "::")]
+    #[clap(long, default_value = "0.0.0.0")]
     bind: String,
 }
 

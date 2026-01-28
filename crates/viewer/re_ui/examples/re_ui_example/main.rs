@@ -4,6 +4,7 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
+use crossbeam::channel::Receiver;
 use egui::{Modifiers, os};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
@@ -14,7 +15,7 @@ use re_ui::{
 };
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
@@ -25,7 +26,7 @@ impl UICommandSender for CommandSender {
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -38,7 +39,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let (sender, receiver) = crossbeam::channel::bounded(256);
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
@@ -74,7 +75,7 @@ pub struct ExampleApp {
     notifications: NotificationUi,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: Receiver<re_log::LogMsg>,
 
     tree: egui_tiles::Tree<Tab>,
 

@@ -39,7 +39,9 @@ jobs:
         with:
           mode: minimum
           count: 1
+          #NOLINT_START: skip lint rules on labels (dataplatform)
           labels: "📊 analytics, 🟦 blueprint, 🪳 bug, CLI, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 🪵 Log & send APIs, 📉 performance, sdk-python, sdk-cpp, sdk-rust, ⛃ re_datastore, 🔍 re_query, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🔨 testing, ui, 🕸️ web, 🧢 MCAP, OSS-server, dataplatform"
+          #NOLINT_END
 
   wasm-bindgen-check:
     name: Check wasm-bindgen version

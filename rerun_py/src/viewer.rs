@@ -11,26 +11,23 @@ use crate::utils::wait_for_future;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyViewerClient>()?;
+    m.add_class::<PyViewerClientInternal>()?;
 
     Ok(())
 }
 
 /// A connection to an instance of a Rerun viewer.
-#[pyclass(name = "ViewerClient", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyViewerClient {
+#[pyclass( // NOLINT: ignore[py-cls-eq] internal object
+    name = "ViewerClientInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyViewerClientInternal {
     conn: ViewerConnectionHandle,
 }
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyViewerClient {
-    /// Create a new viewer client object.
-    ///
-    /// Parameters
-    /// ----------
-    /// addr:
-    ///     The address of the viewer.
+impl PyViewerClientInternal {
     #[new]
-    #[pyo3(text_signature = "(self, addr=\"127.0.0.1:9876\")")]
+    #[pyo3(text_signature = "(self, addr)")]
     fn new(py: Python<'_>, addr: &str) -> PyResult<Self> {
         let origin = addr.parse::<re_uri::Origin>().map_err(to_py_err)?;
 
@@ -39,9 +36,6 @@ impl PyViewerClient {
         Ok(Self { conn })
     }
 
-    /// Sends a table to the viewer.
-    ///
-    /// A table is represented as a dataframe defined by an Arrow record batch.
     fn send_table(
         self_: Py<Self>,
         id: String,
@@ -53,21 +47,6 @@ impl PyViewerClient {
         conn.send_table(py, id, table)
     }
 
-    /// Saves a screenshot to a file.
-    ///
-    /// .. warning::
-    ///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    ///
-    /// Parameters
-    /// ----------
-    /// file_path : str
-    ///     The path where the screenshot will be saved.
-    ///     ⚠️ This path is relative to the viewer's filesystem, not the client's! ⚠️
-    ///     If your viewer runs on a different machine, the screenshot will be saved there.
-    /// view_id : str | UUID | None
-    ///     Optional view ID to screenshot.
-    ///     If None, screenshots the entire viewer.
-    #[pyo3(signature = (file_path, view_id = None))]
     fn save_screenshot(
         self_: Py<Self>,
         file_path: String,

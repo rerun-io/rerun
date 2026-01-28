@@ -2,8 +2,8 @@
 
 use std::io::Cursor;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 
+use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{LayerRegistry, SelectedLayers};
@@ -67,7 +67,7 @@ impl DataLoader for McapLoader {
         settings: &crate::DataLoaderSettings,
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
-    ) -> std::result::Result<(), DataLoaderError> {
+    ) -> Result<(), DataLoaderError> {
         if !is_mcap_file(&path) {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
@@ -107,7 +107,7 @@ impl DataLoader for McapLoader {
         filepath: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
-    ) -> std::result::Result<(), crate::DataLoaderError> {
+    ) -> Result<(), crate::DataLoaderError> {
         if !is_mcap_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
@@ -148,7 +148,7 @@ impl DataLoader for McapLoader {
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
-    ) -> std::result::Result<(), DataLoaderError> {
+    ) -> Result<(), DataLoaderError> {
         if !is_mcap_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
@@ -172,7 +172,7 @@ fn load_mcap_mmap(
     tx: &Sender<LoadedData>,
     selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
-) -> std::result::Result<(), DataLoaderError> {
+) -> Result<(), DataLoaderError> {
     use std::fs::File;
     let file = File::open(filepath)?;
 

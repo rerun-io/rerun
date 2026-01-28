@@ -1,3 +1,5 @@
+"""Efficiently time align multirate columns."""
+
 # region: setup
 from __future__ import annotations
 

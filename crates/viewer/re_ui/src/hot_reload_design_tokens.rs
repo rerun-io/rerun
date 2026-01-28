@@ -103,6 +103,7 @@ mod design_token_access {
             thread::Builder::new()
                 .name("re_ui design token hot reloader".to_owned())
                 .spawn(|| {
+                    #[expect(clippy::disallowed_methods)] // Only used in dev builds
                     let (tx, rx) = mpsc::channel();
 
                     let mut watcher: RecommendedWatcher = match Watcher::new(

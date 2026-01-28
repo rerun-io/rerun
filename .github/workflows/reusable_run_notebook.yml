@@ -30,7 +30,7 @@ jobs:
     name: Run notebook
     runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubuntu-latest runner is not enough).
     container:
-      image: ghcr.io/rerun-io/ci_docker:0.16.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
+      image: ghcr.io/rerun-io/ci_docker:0.17.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

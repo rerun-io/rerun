@@ -32,7 +32,7 @@ impl Transform for GetField {
     type Target = ArrayRef;
 
     fn transform(&self, source: &StructArray) -> Result<ArrayRef, Error> {
-        source
+        let field_array = source
             .column_by_name(&self.field_name)
             .ok_or_else(|| {
                 let available_fields = source.fields().iter().map(|f| f.name().clone()).collect();
@@ -40,8 +40,35 @@ impl Transform for GetField {
                     field_name: self.field_name.clone(),
                     available_fields,
                 }
-            })
-            .map(Clone::clone)
+            })?
+            .clone();
+
+        // If the struct has nulls, we need to combine them with the field's nulls
+        // because in Arrow, when a struct is null, its fields should also be null
+        if let Some(struct_nulls) = source.nulls() {
+            let field_data = field_array.to_data();
+
+            // Combine struct nulls with field nulls
+            let combined_nulls = if let Some(field_nulls) = field_data.nulls() {
+                // Both struct and field have nulls - combine them with AND
+                let combined: Vec<bool> = (0..source.len())
+                    .map(|i| struct_nulls.is_valid(i) && field_nulls.is_valid(i))
+                    .collect();
+                NullBuffer::from(combined)
+            } else {
+                // Only struct has nulls - use those
+                struct_nulls.clone()
+            };
+
+            let new_data = field_data
+                .into_builder()
+                .nulls(Some(combined_nulls))
+                .build()?;
+            Ok(arrow::array::make_array(new_data))
+        } else {
+            // No struct nulls - just return the field as-is
+            Ok(field_array)
+        }
     }
 }
 

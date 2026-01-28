@@ -1122,9 +1122,8 @@ impl RerunCloudService for RerunCloudHandler {
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
-            re_log::info_once!(
-                "query_dataset: scan_parameters are not yet implemented and will be ignored"
-            );
+            // Logged at a low debug-level, because of https://github.com/rerun-io/rerun/pull/12578
+            re_log::debug_once!("   scan_parameters are not yet implemented and will be ignored");
         }
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();

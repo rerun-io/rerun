@@ -815,3 +815,94 @@ pub fn create_minimal_binary_recording_in(
 
     Ok(tmp_path)
 }
+
+/// Creates a recording that can be split into multiple chunks.
+///
+/// This function creates an intentionally unsorted RRD. Each entity will have 9
+/// rows of unsorted data. When combined with the environment variable
+/// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED=3` it will produce 3 chunks of 3 rows each.
+/// The middle chunk will have nulls in some of the data.
+pub fn multi_chunked_entities_recording(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    entity_paths: &[&str],
+) -> anyhow::Result<TempPath> {
+    use re_chunk::{Chunk, TimePoint};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+
+    let tmp_dir = tempfile::tempdir()?;
+    let in_dir = tmp_dir.path();
+
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let tmp_path = in_dir.join(format!("{segment_id}.rrd"));
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    for base_time in [0, 30, 60] {
+        for entity_path in entity_paths {
+            let entity_path = EntityPath::from(*entity_path);
+
+            // Sequential frames
+            let frame1 = TimeInt::new_temporal(10 + base_time);
+            let frame2 = TimeInt::new_temporal(20 + base_time);
+            let frame3 = TimeInt::new_temporal(30 + base_time);
+
+            // Data for each frame
+            let points1 = MyPoint::from_iter(0..1);
+            let points2 = MyPoint::from_iter(1..2);
+            let points3 = MyPoint::from_iter(2..3);
+
+            let colors1 = MyColor::from_iter(0..1);
+            let colors2 = MyColor::from_iter(1..2);
+            let colors3 = MyColor::from_iter(2..3);
+
+            let labels = vec![MyLabel("simple".to_owned())];
+
+            let mut component1 = vec![(MyPoints::descriptor_points(), Some(&points1 as _))];
+            let mut component2 = vec![(MyPoints::descriptor_points(), Some(&points2 as _))];
+            let mut component3 = vec![(MyPoints::descriptor_points(), Some(&points3 as _))];
+
+            // Send nulls for the middle batch for the color component
+            if base_time != 30 {
+                component1.push((MyPoints::descriptor_colors(), Some(&colors1 as _)));
+                component2.push((MyPoints::descriptor_colors(), Some(&colors2 as _)));
+                component3.push((MyPoints::descriptor_colors(), Some(&colors3 as _)));
+            }
+
+            let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+                .with_sparse_component_batches(next_row_id(), [build_frame_nr(frame1)], component1)
+                .with_sparse_component_batches(next_row_id(), [build_frame_nr(frame3)], component2)
+                .with_sparse_component_batches(next_row_id(), [build_frame_nr(frame2)], component3)
+                .build()?;
+
+            rec.send_chunk(chunk);
+
+            // send static data only once
+            if base_time == 0 {
+                let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+                    .with_sparse_component_batches(
+                        next_row_id(),
+                        TimePoint::default(),
+                        [(MyPoints::descriptor_labels(), Some(&labels as _))],
+                    )
+                    .build()?;
+
+                rec.send_chunk(static_chunk);
+            }
+        }
+    }
+
+    rec.flush_blocking()?;
+
+    Ok(TempPath::new(tmp_dir, tmp_path))
+}

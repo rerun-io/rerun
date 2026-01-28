@@ -82,11 +82,11 @@ fn main() -> anyhow::Result<()> {
         .output_columns_at("nested/a", |out| {
             out.component(
                 Scalars::descriptor_scalars(),
-                [Op::access_field("a"), Op::cast(DataType::Float64)],
+                [Op::selector(".a"), Op::cast(DataType::Float64)],
             )
         })?
         .output_columns_at("nested/b", |out| {
-            out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
+            out.component(Scalars::descriptor_scalars(), [Op::selector(".b")])
         })?
         .build();
 

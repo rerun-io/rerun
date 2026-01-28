@@ -195,7 +195,8 @@ impl EntityPath {
 
     #[inline]
     pub fn is_property(&self) -> bool {
-        self.is_descendant_of(&Self::properties())
+        // `RecordingInfo` is logged directly under `__properties`, so this cannot be `is_descendant_of`
+        self.starts_with(&Self::properties())
     }
 
     /// Is this equals to, or a descendant of, the given path.

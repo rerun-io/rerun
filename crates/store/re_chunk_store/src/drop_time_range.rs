@@ -10,13 +10,44 @@ impl ChunkStore {
     ///
     /// Note that matching events will be dropped from all timelines they appear on.
     ///
+    /// Chunks are [*shallowly* removed]: they can be recovered if they were originally fetched
+    /// from a known RRD manifest.
     /// Static chunks are unaffected.
     ///
-    /// Used to implement undo (erase the last event from the blueprint db).
-    pub fn drop_time_range(
+    /// [*shallowly* removed]: [`Self::remove_chunks_shallow`]
+    pub fn drop_time_range_shallow(
         &mut self,
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
+    ) -> Vec<ChunkStoreEvent> {
+        let deep_removal = false;
+        self.drop_time_range(timeline, drop_range, deep_removal)
+    }
+
+    /// Drop all events that are in the given range on the given timeline.
+    ///
+    /// Note that matching events will be dropped from all timelines they appear on.
+    ///
+    /// Chunks are [*deeply* removed]: they won't be recoverable.
+    /// Static chunks are unaffected.
+    ///
+    /// Used to implement undo (erase the last event from the blueprint db).
+    ///
+    /// [*deeply* removed]: [`Self::remove_chunks_deep`]
+    pub fn drop_time_range_deep(
+        &mut self,
+        timeline: &TimelineName,
+        drop_range: AbsoluteTimeRange,
+    ) -> Vec<ChunkStoreEvent> {
+        let deep_removal = true;
+        self.drop_time_range(timeline, drop_range, deep_removal)
+    }
+
+    fn drop_time_range(
+        &mut self,
+        timeline: &TimelineName,
+        drop_range: AbsoluteTimeRange,
+        deep_removal: bool,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -95,7 +126,13 @@ impl ChunkStore {
         let mut events: Vec<ChunkStoreEvent> = vec![];
 
         for chunk in chunks_to_drop {
-            for del in self.remove_chunks_shallow(vec![chunk], None) {
+            let dels = if deep_removal {
+                self.remove_chunks_deep(vec![chunk], None)
+            } else {
+                self.remove_chunks_shallow(vec![chunk], None)
+            };
+
+            for del in dels {
                 events.push(ChunkStoreEvent {
                     store_id: self.id.clone(),
                     store_generation: generation.clone(),

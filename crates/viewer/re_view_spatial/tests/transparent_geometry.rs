@@ -7,6 +7,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::{FillMode, Position3D};
 use re_sdk_types::{AsComponents, RowId, archetypes};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::OsThreshold;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
@@ -60,11 +61,20 @@ fn test_transparent_geometry<A: AsComponents>(
 
     let size = egui::vec2(300.0, 300.0);
 
-    let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
+    let default_options = re_ui::testing::default_snapshot_options_for_3d(size);
+    let mut harness = test_context.setup_kittest_for_rendering_3d(size);
+    harness.with_options(
+        re_ui::testing::default_snapshot_options_for_3d(size)
+            // Transparency rendering on MacOS diverges significantly from the other platforms.
+            // (not just on CI but also locally)
+            .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
+            .failed_pixel_count_threshold(
+                OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
+            ),
+    );
+    let mut harness = harness.build_ui(|ui| {
+        test_context.run_with_single_view(ui, view_id);
+    });
 
     for (i, orientation_y) in [-1.0, 1.0].into_iter().enumerate() {
         // Flip the camera orientation to ensure sorting works as expected.

@@ -133,7 +133,7 @@ impl std::fmt::Display for Origin {
 
 fn format_host(host: &url::Host<String>) -> String {
     if is_host_unspecified(host) {
-        // We usually cannot connect to "0.0.0.0" or "::" so we swap it for:
+        // We usually cannot connect to "0.0.0.0" so we swap it for:
         "127.0.0.1".to_owned()
     } else {
         host.to_string()

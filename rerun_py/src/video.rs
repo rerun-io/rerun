@@ -24,7 +24,7 @@ pub fn asset_video_read_frame_timestamps_nanos(
         .and_then(|arr| arr.values().downcast_array_ref::<arrow::array::UInt8Array>())
         .ok_or_else(|| {
             PyRuntimeError::new_err(format!(
-                "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {:?}",
+                "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {}",
                 video_bytes_arrow_array.data_type()
             ))
         })?;

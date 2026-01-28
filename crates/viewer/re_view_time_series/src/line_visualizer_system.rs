@@ -152,14 +152,14 @@ impl SeriesLinesSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
-            else {
+            let all_scalar_chunks =
+                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
+            if all_scalar_chunks.is_empty() {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
                     err: "No valid scalar data found".to_owned(),
                 });
-            };
+            }
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
@@ -195,14 +195,12 @@ impl SeriesLinesSystem {
             // * For the secondary components (colors, radii, names, etc), this is a problem
             //   though: you don't want your plot to change color depending on what the currently
             //   visible time range is! Secondary components have to be bootstrapped.
-            let query_shadowed_components = false;
             let bootstrapped_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &LatestAtQuery::new(query.timeline, query.range.min()),
                 data_result,
                 archetypes::SeriesLines::all_component_identifiers(),
-                query_shadowed_components,
                 Some(instruction),
             );
 
@@ -229,10 +227,12 @@ impl SeriesLinesSystem {
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = bootstrapped_results
                 .get_optional_chunks(aggregation_policy_descr.component)
+                .chunks
                 .iter()
                 .chain(
                     results
                         .get_optional_chunks(aggregation_policy_descr.component)
+                        .chunks
                         .iter(),
                 )
                 .find(|chunk| !chunk.is_empty())
@@ -335,6 +335,7 @@ impl SeriesLinesSystem {
                     label,
                     aggregator,
                     &mut series,
+                    instruction.id.clone(),
                 )
                 .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),

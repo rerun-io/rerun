@@ -40,7 +40,7 @@ impl re_data_loader::DataLoader for HashLoader {
         &self,
         settings: &rerun::external::re_data_loader::DataLoaderSettings,
         path: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+        tx: crossbeam::channel::Sender<re_data_loader::LoadedData>,
     ) -> Result<(), re_data_loader::DataLoaderError> {
         let contents = std::fs::read(&path)?;
         if path.is_dir() {
@@ -54,7 +54,7 @@ impl re_data_loader::DataLoader for HashLoader {
         settings: &rerun::external::re_data_loader::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+        tx: crossbeam::channel::Sender<re_data_loader::LoadedData>,
     ) -> Result<(), re_data_loader::DataLoaderError> {
         hash_and_log(settings, &tx, &filepath, &contents)
     }
@@ -62,7 +62,7 @@ impl re_data_loader::DataLoader for HashLoader {
 
 fn hash_and_log(
     settings: &rerun::external::re_data_loader::DataLoaderSettings,
-    tx: &std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+    tx: &crossbeam::channel::Sender<re_data_loader::LoadedData>,
     filepath: &std::path::Path,
     contents: &[u8],
 ) -> Result<(), re_data_loader::DataLoaderError> {

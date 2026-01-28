@@ -47,22 +47,19 @@ impl VisualizerSystem for TensorSystem {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;
-            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 annotations,
                 &timeline_query,
                 data_result,
                 Tensor::all_component_identifiers(),
-                query_shadowed_defaults,
                 Some(instruction),
             );
 
-            let Some(all_tensor_chunks) =
-                results.get_required_chunks(Tensor::descriptor_data().component)
-            else {
+            let all_tensor_chunks = results.get_required_chunk(Tensor::descriptor_data().component);
+            if all_tensor_chunks.is_empty() {
                 continue;
-            };
+            }
 
             let timeline = query.timeline;
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {

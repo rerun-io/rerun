@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender};
 
+use crossbeam::channel::{Receiver, RecvTimeoutError, SendError, Sender};
 use parking_lot::Mutex;
 use re_log_types::LogMsg;
 
@@ -41,14 +41,12 @@ pub enum FileSinkError {
 
 enum Command {
     Send(LogMsg),
-    Flush {
-        on_done: SyncSender<Result<(), String>>,
-    },
+    Flush { on_done: Sender<Result<(), String>> },
 }
 
 impl Command {
     fn flush() -> (Self, Receiver<Result<(), String>>) {
-        let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
+        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
         (Self::Flush { on_done: tx }, rx)
     }
 }
@@ -80,7 +78,7 @@ impl FileSink {
         // We always compress on disk
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crossbeam::channel::bounded(1024);
 
         let path = path.into();
 
@@ -107,7 +105,7 @@ impl FileSink {
     pub fn stdout() -> Result<Self, FileSinkError> {
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = crossbeam::channel::bounded(1024);
 
         re_log::debug!("Writing to stdout…");
 

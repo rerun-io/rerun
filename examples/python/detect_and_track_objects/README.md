@@ -8,7 +8,7 @@ include_in_manifest = true
 allow_warnings = true # TODO(emilk): torch produces a warning because of `transformers` (I think?). We should fix that, if we can.
 -->
 
-Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
+Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and optical flow tracking from OpenCV.
 
 <picture data-inline-viewer="examples/detect_and_track_objects">
   <img src="https://static.rerun.io/detact_and_track_objects/ce1939b8f2d22b36c4ca8b36dc0441e106b51da5/full.png" alt="">
@@ -22,7 +22,7 @@ Visualize object detection and segmentation using the [Huggingface's Transformer
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`AssetVideo`](https://www.rerun.io/docs/reference/types/archetypes/asset_video), [`VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
 ## Background
-In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames.
+In this example, optical flow tracking from OpenCV is employed for tracking objects across frames.
 Additionally, the example showcases basic object detection and segmentation on a video using the Huggingface transformers library.
 
 

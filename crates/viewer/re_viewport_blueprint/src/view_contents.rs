@@ -329,7 +329,7 @@ impl ViewContents {
             tree: DataResultTree::new(data_results, root_handle),
             num_matching_entities,
             num_visualized_entities,
-            component_defaults,
+            view_defaults: component_defaults,
         };
 
         // TODO(andreas): integrate with `add_entity_tree_to_data_results_recursive` above.

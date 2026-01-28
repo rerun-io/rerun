@@ -41,7 +41,9 @@ The Rerun command-line interface:
 * `--bind <BIND>`
 > What bind address IP to use.
 >
-> [Default: `::`]
+> `::` will listen on all interfaces, IPv6 and IPv4.
+>
+> [Default: `0.0.0.0`]
 
 * `--memory-limit <MEMORY_LIMIT>`
 > An upper limit on how much memory the Rerun Viewer should use.
@@ -248,7 +250,7 @@ Authentication with the redap.
 
 Log into Rerun.
 
-This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+This command opens a page in your default browser, allowing you to log in to the Rerun Data Platform.
 
 Once you've logged in, your credentials are stored on your machine.
 
@@ -272,7 +274,7 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 
 Generate a fresh access token.
 
-You can use this token to authorize requests to the Rerun data platform.
+You can use this token to authorize requests to the Rerun Data Platform.
 
 It's closer to an API key than an access token, as it can be revoked before it expires.
 
@@ -658,7 +660,7 @@ In-memory Rerun data server.
 * `--host <HOST>`
 > IP address to listen on.
 >
-> [Default: `::`]
+> [Default: `0.0.0.0`]
 
 * `-p, --port <PORT>`
 > Port to bind to.

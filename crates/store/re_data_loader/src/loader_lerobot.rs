@@ -1,6 +1,7 @@
-use std::{sync::mpsc::Sender, thread};
+use std::thread;
 
 use anyhow::{Context as _, anyhow};
+use crossbeam::channel::Sender;
 
 use crate::lerobot::{LeRobotDatasetVersion, datasetv2, datasetv3, is_lerobot_dataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};

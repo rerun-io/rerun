@@ -24,6 +24,11 @@ pub enum TransformError {
 
     #[error("missing transform on entity `{entity_path}`")]
     MissingTransform { entity_path: EntityPath },
+
+    #[error(
+        "Ignoring transform at root entity /. Transforms require either a parent entity that can be used as implicit frame, or the parent_frame field to be set."
+    )]
+    ImplicitRootParentFrame,
 }
 
 /// Returns true if any of the given components is non-null on the given row.
@@ -131,7 +136,7 @@ fn atomic_latest_at_query(
                 let Some(frame_id_row) =
                     frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
                 else {
-                    re_log::error_once!("Expected at {condition_frame_id_component:?} @ {entity_path:?} to be a string array, but its type is instead {:?}", frame_id_row_untyped.data_type());
+                    re_log::error_once!("Expected at {condition_frame_id_component:?} @ {entity_path:?} to be a string array, but its type is instead {}", frame_id_row_untyped.data_type());
                     return false;
                 };
                 // Right now everything is singular on a single row, so check only the first element of this string array.
@@ -258,7 +263,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
 
     // TODO(andreas): silently ignores deserialization error right now.
 
-    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
+    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame)?;
 
     #[expect(clippy::useless_let_if_seq)]
     let mut transform = DAffine3::IDENTITY;
@@ -541,7 +546,7 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
         .component_mono::<components::Resolution>(identifier_resolution)
         .and_then(|v| v.ok());
 
-    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
+    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame)?;
 
     Ok(ResolvedPinholeProjection {
         parent,
@@ -562,17 +567,18 @@ fn get_parent_frame(
     unit_chunk: &UnitChunkShared,
     entity_path: &EntityPath,
     identifier_parent_frame: ComponentIdentifier,
-) -> TransformFrameIdHash {
+) -> Result<TransformFrameIdHash, TransformError> {
     unit_chunk
         .component_mono::<components::TransformFrameId>(identifier_parent_frame)
         .and_then(|v| v.ok())
         .map_or_else(
             || {
-                TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or_else(EntityPath::root),
-                )
+                entity_path
+                    .parent()
+                    .ok_or(TransformError::ImplicitRootParentFrame)
+                    .map(|parent| TransformFrameIdHash::from_entity_path(&parent))
             },
-            |frame_id| TransformFrameIdHash::new(&frame_id),
+            |frame_id| Ok(TransformFrameIdHash::new(&frame_id)),
         )
 }
 

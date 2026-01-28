@@ -84,6 +84,8 @@ impl ControlApp {
 
     async fn handle_connection(&self, socket: TcpStream) {
         let (read_half, write_half) = tokio::io::split(socket);
+
+        #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
         let (tx, rx) = unbounded_channel();
 
         // Add the client to the list

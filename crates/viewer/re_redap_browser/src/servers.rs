@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
@@ -329,8 +328,8 @@ pub struct RedapServers {
     pending_servers: Vec<re_uri::Origin>,
 
     // message queue for commands
-    command_sender: Sender<Command>,
-    command_receiver: Receiver<Command>,
+    command_sender: crossbeam::channel::Sender<Command>,
+    command_receiver: crossbeam::channel::Receiver<Command>,
 
     server_modal_ui: ServerModal,
 }
@@ -368,7 +367,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
 
 impl Default for RedapServers {
     fn default() -> Self {
-        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+        let (command_sender, command_receiver) = create_channel(256);
 
         Self {
             servers: Default::default(),
@@ -376,6 +375,23 @@ impl Default for RedapServers {
             command_sender,
             command_receiver,
             server_modal_ui: Default::default(),
+        }
+    }
+}
+
+/// Create a blocking channel on native, and an unbounded channel on web.
+fn create_channel<T>(
+    size: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            _ = size;
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        } else {
+            crossbeam::channel::bounded(size)
         }
     }
 }

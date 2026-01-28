@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
+crossbeam = "0.8"
 rerun = { path = "../../../crates/top/rerun", features = ["native_viewer", "run"] }
 
 [build-dependencies]

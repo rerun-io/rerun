@@ -798,7 +798,7 @@ impl EntityDb {
             .storage_engine
             .write()
             .store()
-            .drop_time_range(timeline, drop_range);
+            .drop_time_range_deep(timeline, drop_range);
 
         self.on_store_events(&store_events);
 

@@ -69,11 +69,13 @@ impl FrameIdRegistry {
         self.register_frame_id_from_entity_path(chunk.entity_path());
 
         let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
+        let identifier_pinhole_child_frame =
+            archetypes::Pinhole::descriptor_child_frame().component;
 
         let frame_components = [
             identifier_child_frame,
+            identifier_pinhole_child_frame,
             archetypes::Transform3D::descriptor_parent_frame().component,
-            archetypes::Pinhole::descriptor_child_frame().component,
             archetypes::Pinhole::descriptor_parent_frame().component,
             archetypes::CoordinateFrame::descriptor_frame().component,
         ];
@@ -87,7 +89,9 @@ impl FrameIdRegistry {
                         );
 
                     // Keep track of child frames and which entities they belong to.
-                    if component == identifier_child_frame {
+                    if component == identifier_child_frame
+                        || component == identifier_pinhole_child_frame
+                    {
                         self.child_frames_per_entity
                             .entry(chunk.entity_path().hash())
                             .or_default()
