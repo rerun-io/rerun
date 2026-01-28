@@ -72,12 +72,17 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
 ]
-snippets = ["rerun-sdk", "av", "pandas"]
+snippets = ["rerun-sdk", "av", "pandas", "rerun_export"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
   "opencv-python>=4.6",
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
+  "torch>=2.5.1", # require at least 2.5.1 for some examples
+  "torchvision>=0.20.1", # require at least 0.20.1 for some examples
+  # lerobot and rerun_export are not listed here to avoid override-dependencies
+  # conflicts during normal uv sync. Use `uv sync --package rerun_export` to
+  # install rerun_export with its lerobot dependency.
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -143,6 +148,9 @@ docs = [
 [tool.uv]
 package = false
 
+# Override lerobot's dependency on rerun-sdk to use the workspace version
+override-dependencies = ["rerun-sdk"]
+
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
@@ -182,6 +190,7 @@ nv12 = { workspace = true }
 objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
+rerun_export = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -234,6 +243,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
+  "examples/python/rerun_export",
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
