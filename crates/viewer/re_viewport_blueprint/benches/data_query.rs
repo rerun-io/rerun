@@ -12,8 +12,8 @@ use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    Caches, PerVisualizer, PerVisualizerInViewClass, QueryRange, StoreContext, ViewClassRegistry,
-    VisualizableEntities, VisualizableReason, blueprint_timeline,
+    Caches, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, StoreContext,
+    ViewClassRegistry, VisualizableEntities, VisualizableReason, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
 
@@ -55,7 +55,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
     group.throughput(criterion::Throughput::Elements(num_entities as _));
 
     let (recording, visualizable_entities) = build_entity_tree(view_class_id);
-    let indicated_entities = PerVisualizer(
+    let indicated_entities = PerVisualizerType(
         // Indicate everything.
         visualizable_entities
             .per_visualizer
@@ -152,7 +152,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
 
 fn build_entity_tree(
     view_class_id: ViewClassIdentifier,
-) -> (EntityDb, PerVisualizerInViewClass<VisualizableEntities>) {
+) -> (EntityDb, PerVisualizerTypeInViewClass<VisualizableEntities>) {
     use rand::{Rng as _, SeedableRng as _};
     // Use a fixed seed for deterministic, reproducible benchmarks
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -204,7 +204,7 @@ fn build_entity_tree(
 
     // Set up visualizable entities - make most entities visualizable
     let mut visualizable_entities =
-        PerVisualizerInViewClass::<VisualizableEntities>::empty(view_class_id);
+        PerVisualizerTypeInViewClass::<VisualizableEntities>::empty(view_class_id);
     let visualizable_set = all_entities
         .iter()
         .filter(|_| rng.random_bool(0.7)) // 70% of entities are visualizable

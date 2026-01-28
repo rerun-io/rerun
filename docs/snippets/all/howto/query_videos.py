@@ -1,8 +1,20 @@
 """Query video streams."""
 
-# region: setup
+# ruff: noqa: E402
+
 from __future__ import annotations
 
+import atexit
+import pathlib
+import shutil
+import tempfile
+
+
+TMP_DIR = pathlib.Path(tempfile.mkdtemp())
+atexit.register(lambda: shutil.rmtree(TMP_DIR) if TMP_DIR.exists() else None)
+
+
+# region: setup
 from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
@@ -85,7 +97,7 @@ input_container = av.open(sample_bytes_io, mode="r", format="h264")
 input_stream = input_container.streams.video[0]
 
 # Setup output container (MP4)
-output_path = "/tmp/output.mp4"
+output_path = TMP_DIR / "output.mp4"
 output_container = av.open(output_path, mode="w")
 output_stream = output_container.add_stream_from_template(input_stream)
 

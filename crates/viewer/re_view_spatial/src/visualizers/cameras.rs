@@ -305,7 +305,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 entity_highlight,
                 view_kind,
             ) {
-                output.report_error_for(data_result.entity_path.clone(), err);
+                output.report_error_for(instruction.id, err);
             }
         }
 

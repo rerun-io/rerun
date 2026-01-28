@@ -1,5 +1,6 @@
 //! Ensures that 2D/3D visualizer report errors on incompatible topology.
 
+use re_chunk_store::external::re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_types::TimePoint;
 use re_sdk_types::{ViewClassIdentifier, archetypes};
 use re_test_context::TestContext;
@@ -200,10 +201,16 @@ fn test_topology_errors() {
             view_id
         });
 
+        let query_result_tree = AtomicCell::new(Default::default());
         let mut harness = test_context
             .setup_kittest_for_rendering_ui([100.0, 100.0])
             .build_ui(|ui| {
-                test_context.run_with_single_view(ui, view_id);
+                test_context.run_ui(ui, |ctx, ui| {
+                    test_context.ui_for_single_view(ui, ctx, view_id);
+
+                    let query_results = ctx.query_results.get(&view_id).unwrap();
+                    query_result_tree.store(query_results.tree.clone());
+                });
             });
         harness.run();
 
@@ -214,6 +221,32 @@ fn test_topology_errors() {
             .cloned()
             .unwrap_or_default();
 
-        insta::assert_debug_snapshot!(scenario.name, visualizer_errors);
+        // Don't show the UUIDs since they're not all that useful in the snapshot.
+        let query_result_tree = query_result_tree.take();
+        let snapshot_content = visualizer_errors
+            .iter()
+            .map(|(visualizer_type, error)| {
+                let error = match error {
+                    re_viewer_context::VisualizerExecutionErrorState::Overall(err) => {
+                        re_error::format_ref(&err)
+                    }
+                    re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
+                        errors
+                            .iter()
+                            .map(|(instr_id, err)| {
+                                let data_result = query_result_tree
+                                    .lookup_result_by_visualizer_instruction(*instr_id);
+                                format!("{:?}: {err}", data_result.unwrap().entity_path)
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    }
+                };
+                format!("{visualizer_type:?}: {error}")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        insta::assert_snapshot!(scenario.name, snapshot_content);
     }
 }

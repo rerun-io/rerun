@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::mesh_loader::NativeMesh3D;
 use crate::view_kind::SpatialViewKind;
 
@@ -42,7 +42,7 @@ impl Mesh3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;

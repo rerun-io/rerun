@@ -121,7 +121,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in entity_db.entity_paths() {
+            for entity_path in entity_db.sorted_entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
                     entity_ui(ui, entity_db, timeline, entity_path);
                 });

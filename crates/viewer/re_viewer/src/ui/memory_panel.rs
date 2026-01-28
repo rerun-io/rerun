@@ -460,8 +460,9 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                if let Some(max_bytes) = limit.max_bytes {
-                    plot_ui.hline(egui_plot::HLine::new("Limit", max_bytes as f64).width(2.0));
+                if limit.is_limited() {
+                    plot_ui
+                        .hline(egui_plot::HLine::new("Limit", limit.as_bytes() as f64).width(2.0));
                 }
 
                 for &time in &self.memory_purge_times {

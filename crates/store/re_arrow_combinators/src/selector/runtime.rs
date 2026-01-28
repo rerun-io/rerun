@@ -11,7 +11,7 @@ use crate::{
     reshape::{Flatten, GetField},
 };
 
-use super::parser::Expr;
+use super::parser::{Expr, Segment};
 
 pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<ListArray, crate::Error> {
     // TODO(grtlr): It would be much cleaner if `MapList` (or equivalent would be called on this level).
@@ -26,13 +26,12 @@ pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<ListArray, cra
     Ok(result)
 }
 
-impl Transform for Expr {
+impl Transform for Segment {
     type Source = ListArray;
     type Target = ListArray;
 
     fn transform(&self, source: &Self::Source) -> std::result::Result<Self::Target, crate::Error> {
         match self {
-            Self::Dot => Ok(source.clone()),
             Self::Field(field_name) => {
                 MapList::new(GetField::new(field_name.clone())).transform(source)
             }
@@ -56,6 +55,24 @@ impl Transform for Expr {
                         context: "Each ([]) operator requires nested lists".into(),
                     })
                 }
+            }
+        }
+    }
+}
+
+impl Transform for Expr {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &Self::Source) -> std::result::Result<Self::Target, crate::Error> {
+        match self {
+            Self::Identity => Ok(source.clone()),
+            Self::Path(segments) => {
+                let mut result = source.clone();
+                for segment in segments {
+                    result = segment.transform(&result)?;
+                }
+                Ok(result)
             }
             Self::Pipe(left, right) => {
                 let intermediate = left.as_ref().transform(source)?;

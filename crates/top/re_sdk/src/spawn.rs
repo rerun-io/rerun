@@ -34,7 +34,7 @@ pub struct SpawnOptions {
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
     ///
-    /// Defaults to `0B`.
+    /// Defaults to `1GiB`.
     pub server_memory_limit: String,
 
     /// Specifies the name of the Rerun executable.
@@ -72,7 +72,7 @@ impl Default for SpawnOptions {
             port: re_grpc_server::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
-            server_memory_limit: "0B".into(),
+            server_memory_limit: "1GiB".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),

@@ -12,7 +12,7 @@ use re_viewer_context::{
 };
 
 use super::{SpatialViewVisualizerData, process_radius_slice};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::utilities::{LabeledBatch, process_labels_3d};
 
@@ -38,7 +38,7 @@ impl Lines3DVisualizer {
         ctx: &QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Lines3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;

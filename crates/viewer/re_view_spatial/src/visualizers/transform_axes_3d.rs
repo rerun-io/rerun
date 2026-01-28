@@ -132,7 +132,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     if let Err(err_msg) =
                         format_transform_info_result(transforms, coordinate_frame_transform_result)
                     {
-                        output.report_error_for(entity_path.clone(), err_msg);
+                        output.report_error_for(instruction.id, err_msg);
                     }
                 }
             }
@@ -194,7 +194,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                             "[DEBUG ASSERT] unable to resolve frame id hash {label_id_hash:?}"
                         );
                         output.report_error_for(
-                            data_result.entity_path.clone(),
+                            instruction.id,
                             format!("Could not resolve frame id hash {label_id_hash:?}"),
                         );
                     }

@@ -104,8 +104,11 @@ impl SeriesLinesSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err.into());
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
-                    output.report_error_for(entity_path, err);
+                Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id,
+                    err,
+                }) => {
+                    output.report_error_for(instruction_id, err);
                 }
                 Ok(series) => {
                     self.all_series.extend(series);
@@ -155,8 +158,8 @@ impl SeriesLinesSystem {
             let all_scalar_chunks =
                 results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
             if all_scalar_chunks.is_empty() {
-                return Err(LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
+                return Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
                     err: "No valid scalar data found".to_owned(),
                 });
             }
@@ -335,11 +338,13 @@ impl SeriesLinesSystem {
                     label,
                     aggregator,
                     &mut series,
-                    instruction.id.clone(),
+                    instruction.id,
                 )
-                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
-                    err,
+                .map_err(|err| {
+                    LoadSeriesError::InstructionSpecificVisualizerError {
+                        instruction_id: instruction.id,
+                        err,
+                    }
                 })?;
             }
 

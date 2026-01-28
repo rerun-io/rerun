@@ -14,6 +14,7 @@ use itertools::Itertools as _;
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
@@ -345,6 +346,10 @@ pub struct DataResultData {
     pub entity_path: EntityPath,
     pub visible: bool,
 
+    // Exclude the id from serialization for snapshot tests. We could also do the redaction later, but `VisualizerInstructionId` doesn't implement `serde::Serialize` to begin with.
+    #[cfg_attr(feature = "testing", serde(skip))]
+    pub visualizer_instruction_ids: Vec<VisualizerInstructionId>,
+
     #[cfg_attr(feature = "testing", serde(skip))]
     pub view_id: ViewId,
 
@@ -527,10 +532,21 @@ impl DataResultData {
                             .unwrap_or_default()
                     };
 
+                let visualizer_instruction_ids = data_result_node
+                    .map(|node| {
+                        node.data_result
+                            .visualizer_instructions
+                            .iter()
+                            .map(|instr| instr.id)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
                 Self {
                     kind: node_info.kind,
                     entity_path,
                     visible,
+                    visualizer_instruction_ids,
                     view_id: view_blueprint.id,
                     label,
                     highlight_sections,

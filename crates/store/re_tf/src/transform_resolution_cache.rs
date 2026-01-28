@@ -1040,7 +1040,11 @@ impl TransformResolutionCache {
     }
 
     fn add_temporal_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(format!(
+            "{} rows, {}",
+            chunk.num_rows(),
+            chunk.entity_path()
+        ));
 
         debug_assert!(!chunk.is_static());
 
@@ -1059,6 +1063,7 @@ impl TransformResolutionCache {
                 .or_insert_with(|| CachedTransformsForTimeline::new(timeline, static_timeline));
 
             if aspects.contains(TransformAspect::Frame) {
+                re_tracing::profile_scope!("TransformAspect::Frame");
                 for (time, frame) in
                     iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
                 {
@@ -1074,6 +1079,7 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
+                re_tracing::profile_scope!("TransformAspect::Pose");
                 let poses = per_timeline
                     .get_or_create_pose_transforms_temporal(entity_path, static_timeline);
                 for (time, _) in chunk.iter_indices(timeline) {
@@ -1081,6 +1087,7 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                re_tracing::profile_scope!("TransformAspect::PinholeOrViewCoordinates");
                 for (time, frame) in
                     iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
                 {
@@ -1098,6 +1105,7 @@ impl TransformResolutionCache {
 
             // Keep track of clears.
             if aspects.contains(TransformAspect::Clear) {
+                re_tracing::profile_scope!("TransformAspect::Clear");
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
                 for ((time, _row_id), is_recursive_slice) in chunk
@@ -1302,7 +1310,7 @@ impl TransformResolutionCache {
 ///
 /// Yields an entry for every row. Note that there may be many entries per time though.
 /// (Currently, there can be only a single frame id per row)
-pub fn iter_child_frames_in_chunk(
+fn iter_child_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
     frame_component: ComponentIdentifier,

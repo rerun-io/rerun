@@ -6,7 +6,7 @@
 use ahash::HashMap;
 
 use crate::{
-    PerVisualizer, SystemExecutionOutput, ViewClass, ViewId, ViewState,
+    PerVisualizerType, SystemExecutionOutput, ViewClass, ViewId, ViewState,
     VisualizerExecutionErrorState,
 };
 
@@ -21,7 +21,7 @@ pub struct ViewStates {
     /// This is cleared out each frame and populated after all visualizers have been executed.
     // TODO(andreas): Would be nice to bundle this with `ViewState` by making `ViewState` a struct containing errors & generic data.
     // But at point of writing this causes too much needless churn.
-    visualizer_errors: HashMap<ViewId, PerVisualizer<VisualizerExecutionErrorState>>,
+    visualizer_errors: HashMap<ViewId, PerVisualizerType<VisualizerExecutionErrorState>>,
 }
 
 impl re_byte_size::SizeBytes for ViewStates {
@@ -84,7 +84,7 @@ impl ViewStates {
     pub fn visualizer_errors(
         &self,
         view_id: ViewId,
-    ) -> Option<&PerVisualizer<VisualizerExecutionErrorState>> {
+    ) -> Option<&PerVisualizerType<VisualizerExecutionErrorState>> {
         self.visualizer_errors.get(&view_id)
     }
 }

@@ -290,3 +290,15 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn extract_scalar_fields_from_nested_struct() {
+    let list_array = fixtures::nested_struct_column();
+
+    let selectors = re_arrow_combinators::extract_nested_fields(&list_array, |dt| {
+        matches!(dt, DataType::Float64)
+    });
+
+    assert_eq!(selectors[0].to_string(), ".location.x");
+    assert_eq!(selectors[1].to_string(), ".location.y");
+}

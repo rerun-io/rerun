@@ -376,7 +376,7 @@ impl SizeBytes for ChunkStore {
             leaky_compactions,
             temporal_physical_chunks_stats,
             static_chunks_stats,
-            missing_chunk_ids,
+            queried_chunk_id_tracker,
             insert_id,
             gc_id,
             event_id: _, // no heap data
@@ -401,10 +401,12 @@ impl SizeBytes for ChunkStore {
                 static_chunk_ids_per_entity.heap_size_bytes()
             }
             + {
+                // SLOW!
                 profile_scope!("temporal_chunk_ids_per_entity");
                 temporal_chunk_ids_per_entity.heap_size_bytes()
             }
             + {
+                // SLOW!
                 profile_scope!("temporal_chunk_ids_per_entity_per_component");
                 temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
             }
@@ -447,8 +449,8 @@ impl SizeBytes for ChunkStore {
                 static_chunks_stats.heap_size_bytes()
             }
             + {
-                profile_scope!("missing_chunk_ids");
-                missing_chunk_ids.heap_size_bytes()
+                profile_scope!("queried_chunk_id_tracker");
+                queried_chunk_id_tracker.heap_size_bytes()
             }
             + insert_id.heap_size_bytes()
             + gc_id.heap_size_bytes()

@@ -176,19 +176,15 @@ namespace rerun {
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
         ///
         /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-        /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        /// You can control the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-        ///
-        /// If server & client are running on the same machine and all clients are expected to connect before
-        /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
-        /// otherwise you're potentially doubling your memory usage!
         ///
         /// Returns the URI of the gRPC server so you can connect to it from a viewer.
         ///
         /// This function returns immediately.
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
-            std::string_view server_memory_limit = "25%",
+            std::string_view server_memory_limit = "1GiB",
             PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
         ) const;
 

@@ -106,8 +106,8 @@ pub use self::time_control::{
     time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    DatatypeMatchKind, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
-    VisualizableEntities, VisualizableReason,
+    DatatypeMatchKind, IndicatedEntities, PerVisualizerInstruction, PerVisualizerType,
+    PerVisualizerTypeInViewClass, VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{

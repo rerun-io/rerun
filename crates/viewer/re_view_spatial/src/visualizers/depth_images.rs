@@ -14,7 +14,7 @@ use re_viewer_context::{
 
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
-use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
+use crate::contexts::{SpatialSceneVisualizerInstructionContext, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
@@ -52,7 +52,7 @@ pub struct DepthImageComponentData {
 #[expect(clippy::too_many_arguments)]
 pub fn process_depth_image_data(
     ctx: &QueryContext<'_>,
-    ent_context: &mut SpatialSceneEntityContext<'_>,
+    ent_context: &mut SpatialSceneVisualizerInstructionContext<'_>,
     data_store: &mut SpatialViewVisualizerData,
     depth_cloud_entities: &mut IntMap<EntityPathHash, DepthImageProcessResult>,
     depth_clouds: &mut Vec<DepthCloud>,
@@ -107,9 +107,7 @@ pub fn process_depth_image_data(
     ) {
         Ok(textured_rect) => textured_rect,
         Err(err) => {
-            ent_context
-                .output
-                .report_error_for(ctx.target_entity_path.clone(), re_error::format(err));
+            ent_context.report_error(re_error::format(err));
 
             // If we can't create a textured rect from this, we don't have to bother with clouds either.
             return;
@@ -152,10 +150,8 @@ pub fn process_depth_image_data(
             );
             depth_clouds.push(cloud);
         } else {
-            ent_context.output.report_error_for(
-                ctx.target_entity_path.clone(),
-                "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera."
-                    .to_owned(),
+            ent_context.report_error(
+                "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera.",
             );
         }
     } else {
@@ -174,7 +170,7 @@ pub fn process_depth_image_data(
 }
 
 fn process_entity_view_as_depth_cloud(
-    ent_context: &SpatialSceneEntityContext<'_>,
+    ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
     ent_path: &EntityPath,
     pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
     world_from_view: glam::Affine3A,
@@ -303,17 +299,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(buffer) = buffers.first() else {
-                        spatial_ctx.output.report_error_for(
-                            ctx.target_entity_path.clone(),
-                            "Depth image buffer is empty.".to_owned(),
-                        );
+                        spatial_ctx.report_error("Depth image buffer is empty.");
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
-                        spatial_ctx.output.report_error_for(
-                            ctx.target_entity_path.clone(),
-                            "Depth image format is missing.".to_owned(),
-                        );
+                        spatial_ctx.report_error("Depth image format is missing.");
                         continue;
                     };
 

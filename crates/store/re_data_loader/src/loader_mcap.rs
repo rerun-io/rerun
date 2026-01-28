@@ -2,9 +2,11 @@
 
 use std::io::Cursor;
 use std::path::Path;
+use std::sync::Arc;
 
 use crossbeam::channel::Sender;
 use re_chunk::RowId;
+use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{LayerRegistry, SelectedLayers};
 
@@ -24,9 +26,14 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// to an .rrd. Here are a few examples:
 /// - [`re_mcap::layers::McapProtobufLayer`]
 /// - [`re_mcap::layers::McapRawLayer`]
+///
+/// Optionally, [`Lenses`] can be configured via [`Self::with_lenses`] to transform
+/// chunks as they are loaded (e.g., converting raw protobuf data into semantic Rerun components).
 pub struct McapLoader {
     selected_layers: SelectedLayers,
+    // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
+    lenses: Option<Arc<Lenses>>,
 }
 
 impl Default for McapLoader {
@@ -34,6 +41,7 @@ impl Default for McapLoader {
         Self {
             selected_layers: SelectedLayers::All,
             raw_fallback_enabled: true,
+            lenses: None,
         }
     }
 }
@@ -44,6 +52,7 @@ impl McapLoader {
         Self {
             selected_layers,
             raw_fallback_enabled: true,
+            lenses: None,
         }
     }
 
@@ -52,7 +61,14 @@ impl McapLoader {
         Self {
             selected_layers,
             raw_fallback_enabled,
+            lenses: None,
         }
+    }
+
+    /// Configures lenses to apply to chunks as they are loaded.
+    pub fn with_lenses(mut self, lenses: Lenses) -> Self {
+        self.lenses = Some(Arc::new(lenses));
+        self
     }
 }
 
@@ -82,6 +98,7 @@ impl DataLoader for McapLoader {
         let settings = settings.clone();
         let selected_layers = self.selected_layers.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
+        let lenses = self.lenses.clone();
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
@@ -91,6 +108,7 @@ impl DataLoader for McapLoader {
                     &tx,
                     &selected_layers,
                     raw_fallback_enabled,
+                    lenses.as_deref(),
                 ) {
                     re_log::error!("Failed to load MCAP file: {err}");
                 }
@@ -117,6 +135,7 @@ impl DataLoader for McapLoader {
         let settings = settings.clone();
         let selected_layers = self.selected_layers.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
+        let lenses = self.lenses.clone();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -132,6 +151,7 @@ impl DataLoader for McapLoader {
                     &tx,
                     &selected_layers,
                     raw_fallback_enabled,
+                    lenses.as_deref(),
                 ) {
                     re_log::error!("Failed to load MCAP file: {err}");
                 }
@@ -161,6 +181,7 @@ impl DataLoader for McapLoader {
             &tx,
             &self.selected_layers,
             self.raw_fallback_enabled,
+            self.lenses.as_deref(),
         )
     }
 }
@@ -172,6 +193,7 @@ fn load_mcap_mmap(
     tx: &Sender<LoadedData>,
     selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
+    lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
     use std::fs::File;
     let file = File::open(filepath)?;
@@ -180,7 +202,14 @@ fn load_mcap_mmap(
     #[expect(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
-    load_mcap(&mmap, settings, tx, selected_layers, raw_fallback_enabled)
+    load_mcap(
+        &mmap,
+        settings,
+        tx,
+        selected_layers,
+        raw_fallback_enabled,
+        lenses,
+    )
 }
 
 pub fn load_mcap(
@@ -189,6 +218,7 @@ pub fn load_mcap(
     tx: &Sender<LoadedData>,
     selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
+    lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
     let store_id = settings.recommended_store_id();
@@ -207,19 +237,26 @@ pub fn load_mcap(
         return Ok(());
     }
 
-    let mut send_chunk = |chunk| {
-        if tx
-            .send(LoadedData::Chunk(
-                MCAP_LOADER_NAME.to_owned(),
-                store_id.clone(),
-                chunk,
-            ))
-            .is_err()
-        {
-            // If the other side decided to hang up this is not our problem.
-            re_log::debug_once!(
-                "Failed to send chunk because the smart channel has been closed unexpectedly."
-            );
+    let mut send_chunk = |chunk: re_chunk::Chunk| {
+        // Apply lenses if configured, otherwise forward the chunk directly.
+        if let Some(lenses) = lenses {
+            for result in lenses.apply(&chunk) {
+                match result {
+                    Ok(transformed_chunk) => {
+                        send_chunk_to_channel(tx, &store_id, transformed_chunk);
+                    }
+                    Err(partial_chunk) => {
+                        for error in partial_chunk.errors() {
+                            re_log::error_once!("Lens error: {error}");
+                        }
+                        if let Some(chunk) = partial_chunk.take() {
+                            send_chunk_to_channel(tx, &store_id, chunk);
+                        }
+                    }
+                }
+            }
+        } else {
+            send_chunk_to_channel(tx, &store_id, chunk);
         }
     };
 
@@ -235,6 +272,22 @@ pub fn load_mcap(
         .run(mcap, &summary, &mut send_chunk)?;
 
     Ok(())
+}
+
+fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
+    if tx
+        .send(LoadedData::Chunk(
+            MCAP_LOADER_NAME.to_owned(),
+            store_id.clone(),
+            chunk,
+        ))
+        .is_err()
+    {
+        // If the other side decided to hang up this is not our problem.
+        re_log::debug_once!(
+            "Failed to send chunk because the smart channel has been closed unexpectedly."
+        );
+    }
 }
 
 pub fn store_info(store_id: StoreId) -> SetStoreInfo {

@@ -18,7 +18,7 @@ use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
-    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass, SelectionChange,
+    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerTypeInViewClass, SelectionChange,
     StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
     TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
     blueprint_timeline,
@@ -331,7 +331,7 @@ impl AppState {
 
                 // Execute the queries for every `View`
                 let query_results = {
-                    re_tracing::profile_scope!("query_results");
+                    re_tracing::profile_wait!("query_results");
 
                     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
@@ -346,12 +346,14 @@ impl AppState {
                         .collect::<Vec<_>>()
                         .into_par_iter()
                         .map(|view| {
+                            re_tracing::profile_scope!("view", view.display_name_or_default().to_string().as_str());
+
                             // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
                             // but we don't have access to `ViewerContext` just yet.
                             let visualizable_entities = if let Some(view_class) =
                                 view_class_registry.class_entry(view.class_identifier())
                             {
-                                PerVisualizerInViewClass {
+                                PerVisualizerTypeInViewClass {
                                     view_class_identifier: view.class_identifier(),
                                     per_visualizer: visualizable_entities_per_visualizer
                                         .iter()
@@ -364,7 +366,7 @@ impl AppState {
                                         .collect(),
                                 }
                             } else {
-                                PerVisualizerInViewClass::empty(view.class_identifier())
+                                PerVisualizerTypeInViewClass::empty(view.class_identifier())
                             };
 
                             let view_state = view_states
@@ -756,7 +758,7 @@ impl AppState {
             .memory(|mem| mem.focused())
             .and_then(|id| TextEditState::load(ui.ctx(), id))
             .is_none()
-            && ui
+            && !ui
                 .ctx()
                 .plugin::<LabelSelectionState>()
                 .lock()

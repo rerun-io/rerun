@@ -106,14 +106,13 @@ Example: `16GB` or `50%` (of system total)."
 
     #[clap(
         long,
-        default_value = None,
+        default_value = "1GiB",
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total).
-Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
+Example: `16GB` or `50%` (of system total)."
     )]
-    server_memory_limit: Option<String>,
+    server_memory_limit: String,
 
     /// If true, play back the most recent data first when new clients connect.
     #[clap(long)]
@@ -154,8 +153,6 @@ When persisted, the state will be stored at the following locations:
     ///
     /// If started, the web server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
-    ///
-    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     //
     // TODO(andreas): The Rust/Python APIs deprecated `serve_web` and instead encourage separate usage of `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead.
     // It's worth considering doing the same here.
@@ -166,8 +163,6 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
-    ///
-    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_grpc: bool,
 
@@ -743,19 +738,9 @@ fn run_impl(
 
         memory_limit: {
             re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
-            let value = match &args.server_memory_limit {
-                Some(v) => v.as_str(),
-                None => {
-                    // When spawning just a server, we don't want the memory limit to be 0.
-                    if args.serve_web || args.serve_grpc {
-                        "25%"
-                    } else {
-                        "0B"
-                    }
-                }
-            };
-            re_log::debug!("Server memory limit: {value}");
-            re_memory::MemoryLimit::parse(value)
+            let limit = args.server_memory_limit.as_str();
+            re_log::debug!("Server memory limit: {limit}");
+            re_memory::MemoryLimit::parse(limit)
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
         },
     };

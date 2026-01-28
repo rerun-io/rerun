@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
 use crate::view_kind::SpatialViewKind;
 
@@ -33,7 +33,7 @@ impl Cylinders3DVisualizer {
     fn process_data<'a>(
         builder: &mut ProcMeshDrawableBuilder<'_>,
         query_context: &QueryContext<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         batches: impl Iterator<Item = Cylinders3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         for batch in batches {

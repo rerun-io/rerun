@@ -21,15 +21,16 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Single visualizer override the visualizers for an entity.
+/// **Component**: ID for a visualizer instruction.
 ///
+/// IDs are only guaranteed to be unique in the scope of a view.
 /// For details see [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, Default, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Hash, Copy)]
 #[repr(transparent)]
 pub struct VisualizerInstructionId(
-    /// Names of a visualizer that should be active.
+    /// IDs of a single visualizer instruction.
     pub crate::datatypes::Uuid,
 );
 

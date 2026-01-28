@@ -20,6 +20,8 @@ impl crate::DataUi for EntityDb {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
+        re_tracing::profile_function!();
+
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui` (this is
             // probably dead code, as `entity_db_button_ui` is actually used in all single line
@@ -139,22 +141,23 @@ impl crate::DataUi for EntityDb {
                     ui.grid_left_hand_label("Downloaded");
 
 
-                    let (memory_limit, max_downloaded) = if let Some(limit) = ctx.global_context.memory_limit.max_bytes && limit < static_size {
-                        (true, limit)
+                    let memory_limit = ctx.global_context.memory_limit;
+                    let max_downloaded = if memory_limit.is_limited() {
+                        memory_limit.as_bytes()
                     } else {
-                        (false, static_size)
+                        static_size
                     };
 
                     let current = re_format::format_bytes(total_size_bytes as _);
-                    let max_downloaded =  re_format::format_bytes(max_downloaded as _);
+                    let max_downloaded = re_format::format_bytes(max_downloaded as _);
 
                     ui.horizontal(|ui| {
                         ui.label(format!("{current} / {max_downloaded}"));
 
-                        if memory_limit {
+                        if memory_limit.is_limited() {
                             let rect = ui.small_icon(&re_ui::icons::INFO, Some(ui.visuals().text_color()));
 
-                            ui.allocate_rect(rect, egui::Sense::hover()).on_hover_text(format!("Download limited to {max_downloaded} memory budget"));
+                            ui.allocate_rect(rect, egui::Sense::hover()).on_hover_text(format!("Download limited to {memory_limit} memory budget"));
                         }
                     });
 

@@ -7,7 +7,7 @@ def _spawn_viewer(
     *,
     port: int = 9876,
     memory_limit: str = "75%",
-    server_memory_limit: str = "0B",
+    server_memory_limit: str = "1GiB",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
 ) -> None:
@@ -32,7 +32,7 @@ def _spawn_viewer(
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
 
-        Defaults to `0B`.
+        Defaults to `1GiB`.
     hide_welcome_screen:
         Hide the normal Rerun welcome screen.
     detach_process:

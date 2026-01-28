@@ -279,7 +279,7 @@ fn add_series_runs(
         aggregator,
         aggregation_factor,
         min_time,
-        visualizer_instruction_id: visualizer_instruction_id.clone(),
+        visualizer_instruction_id,
     };
 
     for (i, p) in points.into_iter().enumerate() {
@@ -306,7 +306,7 @@ fn add_series_runs(
                     aggregator,
                     aggregation_factor,
                     min_time,
-                    visualizer_instruction_id: visualizer_instruction_id.clone(),
+                    visualizer_instruction_id,
                 },
             );
 

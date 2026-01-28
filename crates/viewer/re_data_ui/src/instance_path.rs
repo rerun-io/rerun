@@ -24,6 +24,8 @@ impl DataUi for InstancePath {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
+        re_tracing::profile_function!();
+
         let Self {
             entity_path,
             instance,

@@ -144,7 +144,7 @@ impl View {
                     )?;
                 }
 
-                visualizer_ids.push(visualizer.id.clone());
+                visualizer_ids.push(visualizer.id);
             }
 
             // Log the active visualizers list

@@ -2839,14 +2839,6 @@ impl App {
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
-        fn format_limit(limit: Option<u64>) -> String {
-            if let Some(bytes) = limit {
-                format_bytes(bytes as _)
-            } else {
-                "∞".to_owned()
-            }
-        }
-
         use re_format::format_bytes;
         use re_memory::MemoryUse;
 
@@ -2854,14 +2846,11 @@ impl App {
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
-            re_log::info_once!(
-                "Reached memory limit of {}. Freeing up data…",
-                format_limit(limit.max_bytes)
-            );
+            re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
 
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {}", format_limit(limit.max_bytes));
+            re_log::trace!("RAM limit: {limit}");
             if let Some(resident) = mem_use_before.resident {
                 re_log::trace!("Resident: {}", format_bytes(resident as _),);
             }
@@ -3240,7 +3229,8 @@ impl App {
                 let mut store_events = Vec::new();
                 for chunk in db
                     .rrd_manifest_index
-                    .resolve_pending_promises(self.egui_ctx.time())
+                    .chunk_promises_mut()
+                    .resolve_pending(self.egui_ctx.time())
                 {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
@@ -3262,7 +3252,7 @@ impl App {
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
 
-                if db.rrd_manifest_index.has_pending_promises() {
+                if db.rrd_manifest_index.chunk_promises().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }

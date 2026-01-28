@@ -66,6 +66,8 @@ impl FrameIdRegistry {
     /// Having the registration of frame ids separate from other frame id related bookkeeping makes things more modular
     /// at the price of additional overhead. However, we generally assume that retrieving `TransformFrameId`/`TransformFrameIdHash` from a string is fast.
     pub fn register_all_frames_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
+        re_tracing::profile_function!(chunk.entity_path().to_string());
+
         self.register_frame_id_from_entity_path(chunk.entity_path());
 
         let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;

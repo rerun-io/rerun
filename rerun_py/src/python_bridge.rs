@@ -915,7 +915,7 @@ fn send_mem_sink_as_default_blueprint(
 #[pyo3(signature = (
     port = 9876,
     memory_limit = "75%".to_owned(),
-    server_memory_limit = "0B".to_owned(),
+    server_memory_limit = "1GiB".to_owned(),
     hide_welcome_screen = false,
     detach_process = true,
     executable_name = "rerun".to_owned(),

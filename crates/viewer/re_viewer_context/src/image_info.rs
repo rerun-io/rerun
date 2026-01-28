@@ -15,6 +15,8 @@ pub fn resolution_of_image_at(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<components::Resolution> {
+    re_tracing::profile_function!();
+
     let entity_db = ctx.recording();
     let storage_engine = entity_db.storage_engine();
 

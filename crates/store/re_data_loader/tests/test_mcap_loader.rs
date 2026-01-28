@@ -16,7 +16,15 @@ mod tests {
         let mcap_data = std::fs::read(path).unwrap();
         let (tx, rx) = crossbeam::channel::bounded(1024);
         let settings = DataLoaderSettings::recommended("test");
-        load_mcap(&mcap_data, &settings, &tx, &SelectedLayers::All, false).unwrap();
+        load_mcap(
+            &mcap_data,
+            &settings,
+            &tx,
+            &SelectedLayers::All,
+            false,
+            None,
+        )
+        .unwrap();
         drop(tx);
 
         // Collect chunks

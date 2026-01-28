@@ -11,7 +11,6 @@ mod series_query;
 mod util;
 mod view_class;
 
-use re_log_types::EntityPath;
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
     components::{AggregationPolicy, MarkerShape},
@@ -125,8 +124,8 @@ impl PlotSeries {
 /// Error that can occur when loading a single series.
 enum LoadSeriesError {
     ViewPropertyQuery(ViewPropertyQueryError),
-    EntitySpecificVisualizerError {
-        entity_path: EntityPath,
+    InstructionSpecificVisualizerError {
+        instruction_id: VisualizerInstructionId,
         err: String,
     },
 }

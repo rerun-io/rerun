@@ -983,6 +983,7 @@ impl StoreHub {
                     protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
+                    protected_chunks: HashSet::default(),
                     furthest_from: None,
                     // There is no point in keeping old virtual indices for blueprint data.
                     perform_deep_deletions: true,

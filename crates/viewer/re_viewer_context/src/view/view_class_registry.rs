@@ -10,7 +10,7 @@ use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
 use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryContext, ViewClass,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizerType, QueryContext, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizerCollection, VisualizerSystem,
 };
@@ -328,10 +328,10 @@ impl ViewClassRegistry {
     pub fn visualizable_entities_for_visualizer_systems(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<VisualizableEntities> {
+    ) -> PerVisualizerType<VisualizableEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<VisualizableEntities>(
+        PerVisualizerType::<VisualizableEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -353,10 +353,10 @@ impl ViewClassRegistry {
     pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<IndicatedEntities> {
+    ) -> PerVisualizerType<IndicatedEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<IndicatedEntities>(
+        PerVisualizerType::<IndicatedEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {

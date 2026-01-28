@@ -12,7 +12,7 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
     ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
@@ -173,6 +173,8 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
+        re_tracing::profile_function!();
+
         match item {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
@@ -622,9 +624,10 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
+    re_tracing::profile_function!();
+
     let mut property_entities = db
-        .entity_paths()
-        .into_iter()
+        .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
     property_entities.sort();
@@ -679,7 +682,7 @@ fn entity_selection_ui(
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
-        let empty_errors = PerVisualizer::default();
+        let empty_errors = PerVisualizerType::default();
         let visualizer_errors = view_states
             .visualizer_errors(*view_id)
             .unwrap_or(&empty_errors);
@@ -1293,6 +1296,15 @@ mod tests {
             });
 
         harness.run();
+
+        // Redact size estimation, since small changes to our code can change it slightly:
+        let recording_size_label = harness
+            .get_all_by_label_contains(" KiB")
+            .next()
+            .unwrap()
+            .rect();
+        harness.mask(recording_size_label);
+
         harness.snapshot("selection_panel_recording");
     }
 

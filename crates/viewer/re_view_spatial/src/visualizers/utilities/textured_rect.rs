@@ -4,17 +4,19 @@ use re_renderer::renderer;
 use re_sdk_types::ArchetypeName;
 use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerContext, gpu_bridge};
 
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
-    ent_context: &SpatialSceneEntityContext<'_>,
+    ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
     image: &ImageInfo,
     colormap: Option<&ColormapWithRange>,
     multiplicative_tint: egui::Rgba,
     archetype_name: ArchetypeName,
 ) -> anyhow::Result<renderer::TexturedRect> {
+    re_tracing::profile_function!();
+
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
         .store_context
