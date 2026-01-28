@@ -1,3 +1,4 @@
+use re_renderer::video::{InsufficientSampleDataError, VideoPlayerError};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
@@ -223,13 +224,23 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
+                    let severity = match err {
+                        VideoPlayerError::InsufficientSampleData(
+                            InsufficientSampleDataError::NoKeyFrames
+                            | InsufficientSampleDataError::NoSamples
+                            | InsufficientSampleDataError::ExpectedSampleNotAvailable
+                            | InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp,
+                        ) => VideoPlaybackIssueSeverity::Informational,
+                        _ => VideoPlaybackIssueSeverity::Error,
+                    };
+
                     show_video_playback_issue(
                         ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
                         err.to_string(),
-                        VideoPlaybackIssueSeverity::Error,
+                        severity,
                         video_resolution,
                         entity_path,
                     );

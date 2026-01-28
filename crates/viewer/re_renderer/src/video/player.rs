@@ -194,11 +194,11 @@ impl VideoPlayer {
         ) -> Result<(), VideoPlayerError>,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if video_description.keyframe_indices.is_empty() {
-            return Err(InsufficientSampleDataError::NoKeyFrames.into());
-        }
         if video_description.samples.is_empty() {
             return Err(InsufficientSampleDataError::NoSamples.into());
+        }
+        if video_description.keyframe_indices.is_empty() {
+            return Err(InsufficientSampleDataError::NoKeyFrames.into());
         }
         if requested_pts.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
