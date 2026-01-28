@@ -16,7 +16,7 @@ pub struct MemoryLimit {
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
     ///
     /// None means "unlimited".
-    pub max_bytes: Option<u64>,
+    max_bytes: Option<u64>,
 }
 
 impl std::fmt::Display for MemoryLimit {

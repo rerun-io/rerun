@@ -828,7 +828,7 @@ impl EventLoop {
         // This will block if the broadcast channel is full, applying back-pressure
         self.broadcast_log_tx.send_async(msg.clone()).await.ok();
 
-        if self.is_history_disabled() {
+        if !self.is_history_enabled() {
             // no need to gc or maintain history
             return;
         }
@@ -838,17 +838,14 @@ impl EventLoop {
         self.history.add_msg(msg);
     }
 
-    fn is_history_disabled(&self) -> bool {
-        self.options.memory_limit.max_bytes.is_some_and(|b| b == 0)
+    fn is_history_enabled(&self) -> bool {
+        self.options.memory_limit != MemoryLimit::ZERO
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        let Some(max_bytes) = self.options.memory_limit.max_bytes else {
-            // Unlimited memory!
-            return;
-        };
-
-        self.history.gc(max_bytes);
+        if self.options.memory_limit.is_limited() {
+            self.history.gc(self.options.memory_limit.as_bytes());
+        }
     }
 }
 

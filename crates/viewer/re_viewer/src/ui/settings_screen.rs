@@ -3,6 +3,7 @@ use std::str::FromStr as _;
 use egui::{NumExt as _, Ui};
 use re_data_source::StreamMode;
 use re_log_types::{Timestamp, TimestampFormat};
+use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
@@ -179,7 +180,7 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     const BYTES_PER_GIB: u64 = 1024 * 1024 * 1024;
     const UPPER_LIMIT_BYTES: u64 = 1_000 * BYTES_PER_GIB;
 
-    let mut bytes = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
+    let mut bytes = startup_options.memory_limit.as_bytes();
 
     let speed = (0.02 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
 
@@ -207,9 +208,9 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
     );
 
     if bytes < UPPER_LIMIT_BYTES {
-        startup_options.memory_limit.max_bytes = Some(bytes);
+        startup_options.memory_limit = MemoryLimit::from_bytes(bytes);
     } else {
-        startup_options.memory_limit.max_bytes = None;
+        startup_options.memory_limit = MemoryLimit::UNLIMITED;
     }
 }
 

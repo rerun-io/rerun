@@ -22,7 +22,7 @@ pub fn prefetch_chunks_for_active_recording(
     let redap_uri = recording.redap_uri()?.clone();
     let origin = redap_uri.origin.clone();
 
-    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
+    let memory_limit = startup_options.memory_limit.as_bytes();
     // Use 75% of memory limit minus 100MB for headroom. The extra 100MB buffer accounts for
     // caches, intermediate allocations, and other non-chunk memory usage.
     let total_byte_budget = (memory_limit as f64 * 0.75 - 1e8).max(0.0) as u64;
