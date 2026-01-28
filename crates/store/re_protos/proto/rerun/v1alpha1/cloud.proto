@@ -200,6 +200,9 @@ message VersionRequest {}
 
 message VersionResponse {
   rerun.common.v1alpha1.BuildInfo build_info = 1;
+
+  // A single version string representing the version of the whole stack.
+  string version = 2;
 }
 
 // Application level error - used as `details` in the `google.rpc.Status` message
