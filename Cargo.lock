@@ -8676,6 +8676,7 @@ dependencies = [
  "re_chunk_store",
  "re_crash_handler",
  "re_error",
+ "re_lenses",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
