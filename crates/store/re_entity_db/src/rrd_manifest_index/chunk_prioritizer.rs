@@ -372,7 +372,14 @@ impl ChunkPrioritizer {
         let mut manifest_chunks_scratch = Vec::new();
         let mut physical_chunks_scratch = Vec::new();
 
-        for chunk_id in chunk_ids_in_priority_order {
+        'outer: for chunk_id in chunk_ids_in_priority_order {
+            // If we've already marked this as to be loaded, ignore it.
+            if self.in_limit_chunks.contains(&chunk_id)
+                || self.checked_virtual_chunks.contains(&chunk_id)
+            {
+                continue;
+            }
+
             match remote_chunks.get_mut(&chunk_id) {
                 Some(
                     remote_chunk @ ChunkInfo {
@@ -380,11 +387,6 @@ impl ChunkPrioritizer {
                         ..
                     },
                 ) => {
-                    // If we've already marked this as to be loaded, ignore it.
-                    if self.checked_virtual_chunks.contains(&chunk_id) {
-                        continue;
-                    }
-
                     let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
 
                     // We count only the chunks we are interested in as being part of the memory budget.
@@ -417,7 +419,7 @@ impl ChunkPrioritizer {
                         // chunks inbetween we have to download first. After
                         // which we won't stop prioritizing which chunks should
                         // be in memory here.
-                        break;
+                        break 'outer;
                     }
                     self.checked_virtual_chunks.insert(chunk_id);
                     store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
@@ -427,9 +429,9 @@ impl ChunkPrioritizer {
                 Some(ChunkInfo {
                     state: LoadState::Loaded,
                     ..
-                })
-                | None => {
-                    {
+                }) => {
+                    store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
+                    for chunk_id in physical_chunks_scratch.drain(..) {
                         if self.in_limit_chunks.contains(&chunk_id) {
                             continue;
                         }
@@ -438,30 +440,44 @@ impl ChunkPrioritizer {
                             re_log::warn_once!("Couldn't get physical chunk from chunk store");
                             continue;
                         };
-
                         // Can we still fit this chunk in memory with our new prioritization?
                         remaining_byte_budget =
                             remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
                         if remaining_byte_budget == 0 {
-                            break; // We've already loaded too much.
+                            break 'outer; // We've already loaded too much.
                         }
-
-                        // We want to skip trying to load in chunks from the rrd manifest for
-                        // physical chunks.
-                        //
-                        // Either this is a compaction/root chunk and we already have the whole chunk.
-                        // Or this is a split, which we only do for large chunks, which we don't want
-                        // download unnecessarily. Especially since we only gc these splits if the
-                        // memory budget gets hit.
-                        //
-                        // If these missing splits are missing we can let the `missing` chunk detection
-                        // handle that.
-                        store.collect_root_rrd_manifests(&chunk_id, &mut manifest_chunks_scratch);
-                        self.checked_virtual_chunks
-                            .extend(manifest_chunks_scratch.drain(..).map(|(id, _)| id));
-
                         self.in_limit_chunks.insert(chunk_id);
                     }
+
+                    self.checked_virtual_chunks.insert(chunk_id);
+                }
+                None => {
+                    // If it's not in the rrd manifest it should be a physical chunk.
+                    let Some(chunk) = store.physical_chunk(&chunk_id) else {
+                        re_log::warn_once!("Couldn't get physical chunk from chunk store");
+                        continue;
+                    };
+
+                    // Can we still fit this chunk in memory with our new prioritization?
+                    remaining_byte_budget =
+                        remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
+                    if remaining_byte_budget == 0 {
+                        break 'outer; // We've already loaded too much.
+                    }
+
+                    // We want to skip trying to load in chunks from the rrd manifest for
+                    // physical chunks.
+                    //
+                    // Either this is a compaction/root chunk and we already have the whole chunk.
+                    // Or this is a split, which we only do for large chunks, which we don't want
+                    // download unnecessarily. Especially since we only gc these splits if the
+                    // memory budget gets hit.
+                    //
+                    // If these missing splits are missing we can let the `missing` chunk detection
+                    // handle that.
+                    store.collect_root_rrd_manifests(&chunk_id, &mut manifest_chunks_scratch);
+                    self.checked_virtual_chunks
+                        .extend(manifest_chunks_scratch.drain(..).map(|(id, _)| id));
                 }
             }
         }
