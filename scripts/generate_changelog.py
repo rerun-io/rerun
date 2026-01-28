@@ -233,8 +233,8 @@ def main() -> None:
 
         if pr_number is None:
             # Someone committed straight to main:
-            summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
-            if f"[{hexsha}]" in previous_changelog:
+            summary = f"{title} [{hexsha[:7]}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
+            if f"[{hexsha[:7]}]" in previous_changelog or f"[{hexsha}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
 
