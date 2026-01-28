@@ -9125,6 +9125,7 @@ dependencies = [
  "nohash-hasher",
  "num-derive",
  "num-traits",
+ "parking_lot",
  "re_arrow_util",
  "re_build_info",
  "re_byte_size",

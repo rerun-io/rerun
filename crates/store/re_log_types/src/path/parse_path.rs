@@ -1,8 +1,15 @@
 use std::str::FromStr;
+use std::sync::LazyLock;
 
+use nohash_hasher::IntMap;
+use parking_lot::RwLock;
 use re_types_core::ComponentIdentifier;
 
-use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
+use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance, hash::Hash64};
+
+/// Global cache for parsed entity paths, keyed by the hash of the input string.
+static FORGIVING_PARSE_CACHE: LazyLock<RwLock<IntMap<Hash64, EntityPath>>> =
+    LazyLock::new(|| RwLock::new(IntMap::default()));
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -178,6 +185,13 @@ impl EntityPath {
     ///
     /// For a strict parses, use [`Self::parse_strict`] instead.
     pub fn parse_forgiving(input: &str) -> Self {
+        let string_hash = Hash64::hash(input);
+
+        // Fast path: check if we've already parsed this string
+        if let Some(cached) = FORGIVING_PARSE_CACHE.read().get(&string_hash) {
+            return cached.clone();
+        }
+
         let mut warnings = vec![];
 
         // TODO(#9193): Ideally we'd want to print a warning here, but that
@@ -208,6 +222,11 @@ impl EntityPath {
                 "When parsing the entity path {input:?}: {warning}. The path will be interpreted as {path}"
             );
         }
+
+        // Cache the parsed path for future lookups
+        FORGIVING_PARSE_CACHE
+            .write()
+            .insert(string_hash, path.clone());
 
         path
     }
