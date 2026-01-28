@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::sync::Arc;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -7,9 +8,36 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 
+/// A wrapper around a cache that allows for shared access with its own lock.
+///
+/// This reduces lock contention by having one lock per cache type
+/// instead of a single lock for all caches.
+struct SharedCache {
+    name: &'static str,
+    cache: Mutex<Box<dyn Cache>>,
+}
+
+impl SharedCache {
+    fn new<C: Cache + Default>() -> Self {
+        let cache = Box::<C>::default();
+        Self {
+            name: cache.name(),
+            cache: Mutex::new(cache),
+        }
+    }
+
+    fn lock(&self) -> parking_lot::MutexGuard<'_, Box<dyn Cache>> {
+        self.cache.lock()
+    }
+}
+
 /// Does memoization of different objects for the immediate mode UI.
 pub struct Caches {
-    caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
+    /// Master map from cache type to the cache itself.
+    ///
+    /// The master mutex is only held briefly to look up or insert a cache.
+    /// Each cache has its own mutex for actual access.
+    caches: Mutex<HashMap<TypeId, Arc<SharedCache>>>,
 
     /// The store for which these caches are caching data.
     pub store_id: StoreId,
@@ -24,20 +52,13 @@ impl Caches {
         }
     }
 
-    /// Call a function with a reference to the caches map.
-    pub fn with_caches<R>(&self, f: impl FnOnce(&HashMap<TypeId, Box<dyn Cache>>) -> R) -> R {
-        let guard = self.caches.lock();
-
-        f(&guard)
-    }
-
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.begin_frame();
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            cache.lock().begin_frame();
         }
     }
 
@@ -51,8 +72,9 @@ impl Caches {
             .caches
             .lock()
             .values()
-            .map(|cache| (cache.name(), cache.vram_usage()))
+            .map(|cache| (cache.name, cache.lock().vram_usage()))
             .collect();
+
         cache_vram.sort_by_key(|(cache_name, _)| *cache_name);
 
         for (cache_name, vram_tree) in cache_vram {
@@ -66,9 +88,9 @@ impl Caches {
     pub fn purge_memory(&self) {
         re_tracing::profile_function!();
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.purge_memory();
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            cache.lock().purge_memory();
         }
     }
 
@@ -82,9 +104,9 @@ impl Caches {
             return;
         }
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.on_rrd_manifest(entity_db);
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            cache.lock().on_rrd_manifest(entity_db);
         }
     }
 
@@ -102,9 +124,9 @@ impl Caches {
             return;
         }
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.on_store_events(&relevant_events, entity_db);
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            cache.lock().on_store_events(&relevant_events, entity_db);
         }
     }
 
@@ -112,11 +134,22 @@ impl Caches {
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        let mut guard = self.caches.lock();
-        let cache = guard
-            .entry(TypeId::of::<C>())
-            .or_insert_with(|| Box::<C>::default())
-            .as_mut();
+        let shared_cache = {
+            re_tracing::profile_wait!("master-cache-lock");
+            // Only hold master lock briefly to get or create the cache entry
+            let mut guard = self.caches.lock();
+            guard
+                .entry(TypeId::of::<C>())
+                .or_insert_with(|| Arc::new(SharedCache::new::<C>()))
+                .clone()
+        };
+
+        // Now lock only this specific cache
+        let mut cache_guard = {
+            re_tracing::profile_wait!("cache-lock", shared_cache.name);
+            shared_cache.lock()
+        };
+        let cache = cache_guard.as_mut();
         f((cache as &mut dyn std::any::Any)
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
@@ -170,7 +203,7 @@ impl MemUsageTreeCapture for Caches {
             .caches
             .lock()
             .values()
-            .map(|cache| (cache.name(), cache.capture_mem_usage_tree()))
+            .map(|cache| (cache.name, cache.lock().capture_mem_usage_tree()))
             .collect();
         cache_trees.sort_by_key(|(cache_name, _)| *cache_name);
 
