@@ -14,9 +14,9 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, PerVisualizer, UiLayout, ViewContext, ViewSystemIdentifier,
-    VisualizerCollection, VisualizerComponentSource, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    BlueprintContext as _, DataResult, PerVisualizerType, UiLayout, ViewContext,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
+    VisualizerExecutionErrorState, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 

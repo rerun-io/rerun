@@ -20,7 +20,6 @@ pub struct HarnessOptions {
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
-    pub edit_app_options: Option<AppOptionsEditor>,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.
@@ -61,9 +60,6 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         app.app_options_mut().video.override_ffmpeg_path = true;
         app.app_options_mut().experimental.component_mapping = options.enable_component_mapping;
 
-        if let Some(edit_app_options) = &options.edit_app_options {
-            edit_app_options(app.app_options_mut());
-        }
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.
         // Opening a URL directly after creation is much closer to the behavior when opening URL from command line start.
