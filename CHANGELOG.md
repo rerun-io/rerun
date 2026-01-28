@@ -32,6 +32,22 @@ We also updated our [`animated_urdf.py` demo](https://github.com/rerun-io/rerun/
 https://github.com/user-attachments/assets/e0b6882f-b5dd-47d9-9afc-3ea30bc38e28
 
 
+#### Experimental screenshots from Python
+
+There's now an experimental screenshot API which allows to take screenshots of the Viewer or individual views:
+```py
+# Connect to a local viewer.
+viewer = ViewerClient()
+# Screenshot the entire viewer.
+viewer.save_screenshot("entire_viewer.jpg")
+# Screenshot only the view we created earlier.
+viewer.save_screenshot("my_view.png", view_id=view.id)
+```
+For a full snippet check [here](https://github.com/rerun-io/rerun/blob/0.29.0/docs/snippets/all/howto/screenshot.py).
+
+⚠️ There's still a lot of [rough edges](https://github.com/rerun-io/rerun/issues/12482) and this API may change in the future.
+
+
 #### Improved target frame selection UI
 
 The target frame selection UI now shows matching suggestions, making it easier to select a frame name from the transforms in your data.
@@ -78,11 +94,11 @@ You can now get some insight on which parts of your recording use how much memor
 
 #### 🪵 Log API
 - Fix dropping of entities when using `rerun rrd filter` [#12584](https://github.com/rerun-io/rerun/pull/12584)
-- Apply backpressure in gRPC proxy server [cac538e05e122ad7363aa99248d14a9c4a411581](https://github.com/rerun-io/rerun/commit/cac538e05e122ad7363aa99248d14a9c4a411581)
-- Enforce `Selector` usage in `re_sdk::lenses` [521c7967355c4a0cf06d9fcf4e2b52001e79bc87](https://github.com/rerun-io/rerun/commit/521c7967355c4a0cf06d9fcf4e2b52001e79bc87)
+- Apply backpressure in gRPC proxy server [cac538e](https://github.com/rerun-io/rerun/commit/cac538e05e122ad7363aa99248d14a9c4a411581)
+- Enforce `Selector` usage in `re_sdk::lenses` [521c796](https://github.com/rerun-io/rerun/commit/521c7967355c4a0cf06d9fcf4e2b52001e79bc87)
 
 #### 🐍 Python API
-- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132) (thanks [@swallez](https://github.com/swallez)!)
+- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132)
 - Remove deprecated dataframe API (`rerun.dataframe`) [#12320](https://github.com/rerun-io/rerun/pull/12320)
 - Remove deprecated APIs in `rerun.catalog` [#12321](https://github.com/rerun-io/rerun/pull/12321)
 - Deprecate `Entry.update` in favor of `Entry.set_name` [#12370](https://github.com/rerun-io/rerun/pull/12370)
@@ -91,18 +107,18 @@ You can now get some insight on which parts of your recording use how much memor
 - Rename `address` to `url` or `host` depending on context [#12402](https://github.com/rerun-io/rerun/pull/12402)
 - Check for unset attr from extension class init [#12376](https://github.com/rerun-io/rerun/pull/12376)
 - Add time axis in snippet in time series view snippet [#12506](https://github.com/rerun-io/rerun/pull/12506)
-- Fix `RecordingStream` so it has a unique recording id when none is provided [eb14e163c0d58df77244b69281b160cd6f47416f](https://github.com/rerun-io/rerun/commit/eb14e163c0d58df77244b69281b160cd6f47416f)
-- Do not assume top-level bindings in `RecordingStream.__del__` [201e7c31680fcd69e8ab4d7625340a32e7133c94](https://github.com/rerun-io/rerun/commit/201e7c31680fcd69e8ab4d7625340a32e7133c94)
-- Fix rare deadlock in Python send/log API [7f72b23203ce842dbfb3dd334c7cde6bfd70378e](https://github.com/rerun-io/rerun/commit/7f72b23203ce842dbfb3dd334c7cde6bfd70378e)
+- Fix `RecordingStream` so it has a unique recording id when none is provided [eb14e16](https://github.com/rerun-io/rerun/commit/eb14e163c0d58df77244b69281b160cd6f47416f)
+- Do not assume top-level bindings in `RecordingStream.__del__` [201e7c3](https://github.com/rerun-io/rerun/commit/201e7c31680fcd69e8ab4d7625340a32e7133c94)
+- Fix rare deadlock in Python send/log API [7f72b23](https://github.com/rerun-io/rerun/commit/7f72b23203ce842dbfb3dd334c7cde6bfd70378e)
 - Catch keyboard interrupt in `rerun-sdk` CLI and return exit codes [#12496](https://github.com/rerun-io/rerun/pull/12496)
-- Make `rr.experimental.ViewerClient.send_table` more flexible [ba733ad9b1ec1677028fbd21a00634276a991871](https://github.com/rerun-io/rerun/commit/ba733ad9b1ec1677028fbd21a00634276a991871)
+- Make `rr.experimental.ViewerClient.send_table` more flexible [ba733ad](https://github.com/rerun-io/rerun/commit/ba733ad9b1ec1677028fbd21a00634276a991871)
 
 #### 🦀 Rust API
-- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132) (thanks [@swallez](https://github.com/swallez)!)
+- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132)
 - Rust SDK: `blueprint` support [#12307](https://github.com/rerun-io/rerun/pull/12307) (thanks [@sectore](https://github.com/sectore)!)
 - Update MSRV to 1.90 [#12337](https://github.com/rerun-io/rerun/pull/12337)
 - Make `RecordingStreamBuilder::with_blueprint()` apply to everything, not just `spawn()` [#12347](https://github.com/rerun-io/rerun/pull/12347) (thanks [@kpreid](https://github.com/kpreid)!)
-- Rust SDK: Change default server memory limit [5cb7213e90823092ec67ae805419a9dd19660c09](https://github.com/rerun-io/rerun/commit/5cb7213e90823092ec67ae805419a9dd19660c09)
+- Rust SDK: Change default server memory limit [5cb7213](https://github.com/rerun-io/rerun/commit/5cb7213e90823092ec67ae805419a9dd19660c09)
 - Update ply-rs-bw to 3.0.0 (corrected) [#12593](https://github.com/rerun-io/rerun/pull/12593) (thanks [@bourumir-wyngs](https://github.com/bourumir-wyngs)!)
 
 #### 🪳 Bug fixes
@@ -121,7 +137,7 @@ You can now get some insight on which parts of your recording use how much memor
 - Fix ignoring nested `oneof` fields in `protobuf` MCAP messages [#12462](https://github.com/rerun-io/rerun/pull/12462)
 - Fix early disconnect with `--newest-first` [#12484](https://github.com/rerun-io/rerun/pull/12484)
 - Fix: tap stream view to move time cursor [#12476](https://github.com/rerun-io/rerun/pull/12476)
-- Fix `RecordingInfo` properties not included in the segment table [3781b1867ea70193d9b2a0479874b70c68c4debb](https://github.com/rerun-io/rerun/commit/3781b1867ea70193d9b2a0479874b70c68c4debb)
+- Fix `RecordingInfo` properties not included in the segment table [3781b18](https://github.com/rerun-io/rerun/commit/3781b1867ea70193d9b2a0479874b70c68c4debb)
 - Fix DAE import crash caused by duplicate XML id attributes [#12555](https://github.com/rerun-io/rerun/pull/12555) (thanks [@yujeong1jeong](https://github.com/yujeong1jeong)!)
 - Warn when logging transform at `/` without set `parent_frame` [#12588](https://github.com/rerun-io/rerun/pull/12588)
 
@@ -136,10 +152,10 @@ You can now get some insight on which parts of your recording use how much memor
 - Allow multiple visualizers of same type per `Entity` [#12275](https://github.com/rerun-io/rerun/pull/12275)
 - Warn if an entity has multiple `CoordinateFrame` instances [#12514](https://github.com/rerun-io/rerun/pull/12514)
 - Fix case of unstable camera image plane distance [#12559](https://github.com/rerun-io/rerun/pull/12559)
-- Simplify memory panel with more tabs [9dada34153435b37fbbf2e4269f70ce8eee37c70](https://github.com/rerun-io/rerun/commit/9dada34153435b37fbbf2e4269f70ce8eee37c70)
+- Simplify memory panel with more tabs [9dada34](https://github.com/rerun-io/rerun/commit/9dada34153435b37fbbf2e4269f70ce8eee37c70)
 
 #### 🚀 Performance improvements
-- Implement backpressure in `re_log_channel` [3a25a25db3765fac3dba445d3002c95906ebf7e2](https://github.com/rerun-io/rerun/commit/3a25a25db3765fac3dba445d3002c95906ebf7e2)
+- Implement backpressure in `re_log_channel` [3a25a25](https://github.com/rerun-io/rerun/commit/3a25a25db3765fac3dba445d3002c95906ebf7e2)
 
 #### 🧑‍🏫 Examples
 - Modernize `ros_node` example and documentation [#11968](https://github.com/rerun-io/rerun/pull/11968)
@@ -152,8 +168,8 @@ You can now get some insight on which parts of your recording use how much memor
 - Reshuffle documentation organization [#12355](https://github.com/rerun-io/rerun/pull/12355)
 - Update documentation about MCAP ROS 2 message support [#12406](https://github.com/rerun-io/rerun/pull/12406)
 - feat: Add the SAM 3D Body example [#12499](https://github.com/rerun-io/rerun/pull/12499) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
-- Add how to guide on querying videos [5a36526c61f70ffdbbcf776378b81b7af0e3b703](https://github.com/rerun-io/rerun/commit/5a36526c61f70ffdbbcf776378b81b7af0e3b703)
-- Mention memory limit settings UI in docs [50ebee6475a186064db7a30ed90ea96ab10549ed](https://github.com/rerun-io/rerun/commit/50ebee6475a186064db7a30ed90ea96ab10549ed)
+- Add how to guide on querying videos [5a36526](https://github.com/rerun-io/rerun/commit/5a36526c61f70ffdbbcf776378b81b7af0e3b703)
+- Mention memory limit settings UI in docs [50ebee6](https://github.com/rerun-io/rerun/commit/50ebee6475a186064db7a30ed90ea96ab10549ed)
 - docs(sdk): add thread safety warning for log() with mutexes [#12579](https://github.com/rerun-io/rerun/pull/12579) (thanks [@ecto](https://github.com/ecto)!)
 
 #### 🖼 UI improvements
@@ -162,7 +178,7 @@ You can now get some insight on which parts of your recording use how much memor
 - Improved auth section in server modal [#12369](https://github.com/rerun-io/rerun/pull/12369)
 - Show info message after screenshot from command palette [#12465](https://github.com/rerun-io/rerun/pull/12465)
 - Display chunk download bandwidth [#12451](https://github.com/rerun-io/rerun/pull/12451)
-- Fix icon colors in light theme [edac1a15d6aec2e344017bcf9b8148af8e6389bd](https://github.com/rerun-io/rerun/commit/edac1a15d6aec2e344017bcf9b8148af8e6389bd)
+- Fix icon colors in light theme [edac1a1](https://github.com/rerun-io/rerun/commit/edac1a15d6aec2e344017bcf9b8148af8e6389bd)
 
 
 ## [0.28.2](https://github.com/rerun-io/rerun/compare/0.28.1...0.28.2) - 2025-12-18 - Fix RRD compaction, plot panning, and Collada mesh loader
