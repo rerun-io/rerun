@@ -627,8 +627,7 @@ fn show_recording_properties(
     re_tracing::profile_function!();
 
     let mut property_entities = db
-        .entity_paths()
-        .into_iter()
+        .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
     property_entities.sort();
@@ -1297,6 +1296,15 @@ mod tests {
             });
 
         harness.run();
+
+        // Redact size estimation, since small changes to our code can change it slightly:
+        let recording_size_label = harness
+            .get_all_by_label_contains(" KiB")
+            .next()
+            .unwrap()
+            .rect();
+        harness.mask(recording_size_label);
+
         harness.snapshot("selection_panel_recording");
     }
 

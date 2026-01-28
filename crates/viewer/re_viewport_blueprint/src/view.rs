@@ -621,8 +621,7 @@ mod tests {
             // Reset blueprint store for each scenario.
             {
                 let blueprint_entities = blueprint_store
-                    .entity_paths()
-                    .iter()
+                    .sorted_entity_paths()
                     .map(|path| (*path).clone())
                     .collect::<Vec<_>>();
                 for entity_path in blueprint_entities {

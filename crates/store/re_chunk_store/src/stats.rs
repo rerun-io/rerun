@@ -401,10 +401,12 @@ impl SizeBytes for ChunkStore {
                 static_chunk_ids_per_entity.heap_size_bytes()
             }
             + {
+                // SLOW!
                 profile_scope!("temporal_chunk_ids_per_entity");
                 temporal_chunk_ids_per_entity.heap_size_bytes()
             }
             + {
+                // SLOW!
                 profile_scope!("temporal_chunk_ids_per_entity_per_component");
                 temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
             }
