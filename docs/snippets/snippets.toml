@@ -24,6 +24,7 @@ features = [
     "Query Data Platform",
     [
       "howto/dataframe_operations",
+      "howto/dataframe_performance",
       "howto/lerobot_export",
       "howto/query_images",
       "howto/query_videos",
@@ -121,6 +122,7 @@ backwards_check = [
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
+  "howto/dataframe_performance",
   "howto/layers",
   "howto/lerobot_export",
   "howto/query_images",
@@ -224,7 +226,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
-
+"howto/dataframe_performance" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/layers" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -469,6 +474,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/dataframe_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_performance" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",

@@ -9,7 +9,7 @@ Since Rerun depends on [DataFusion](https://datafusion.apache.org/), some of the
 
 First, generate a DataFrame for comparison:
 
-snippet: reference/dataframe_performance[get_df]
+snippet: howto/dataframe_performance[get_df]
 
 ## Extract Python types from a DataFrame
 
@@ -23,7 +23,7 @@ Similar patterns using Polars or Pandas also apply.
 This is technically a [PyArrow](https://arrow.apache.org/docs/python/index.html) and general Python detail.
 For example, when extracting data from a PyArrow table, `to_pylist` can be multiple orders of magnitude slower, even when using `to_numpy(zero_copy_only=False)`.
 
-snippet: reference/dataframe_performance[to_list_bad]
+snippet: howto/dataframe_performance[to_list_bad]
 
 
 ## Fine-tune data collection
@@ -31,11 +31,11 @@ snippet: reference/dataframe_performance[to_list_bad]
 Similar to the approach described above to collect a DataFusion `DataFrame` into a PyArrow table, you can instead collect the results in memory and keep them as a `DataFrame`.
 Then any operations on this in-memory (cached) `DataFrame` are typically _very_ fast.
 
-snippet: reference/dataframe_performance[cache]
+snippet: howto/dataframe_performance[cache]
 
 ## Leverage sparsity to minimize scans
 In a write once, read many paradigm adding an additional sparse column can enable cheap access to data of interest via filtering.
 The Rerun Data Platform has the ability to "push down" filters to greatly reduce the amount of data returned, improving query performance.
 In this example we take advantage of this fact by filtering based on a sparse marker we have intentionally inserted into the recording.
 
-snippet: reference/dataframe_performance[sparsity]
+snippet: howto/dataframe_performance[sparsity]

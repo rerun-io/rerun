@@ -21,6 +21,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 | Feature | Example | Description | Python | Rust | C+⁠+ |
 | ------- | ------- | ----------- | :----: | :--: | :-------: |
 | **Query Data Platform** | `dataframe_operations` | Demonstrate common dataframe operations with Rerun Data Platform | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataframe_operations.py) |  |  |
+| **Query Data Platform** | `dataframe_performance` | Sample snippets highlighting common performance-related improvements | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/dataframe_performance.py) |  |  |
 | **Query Data Platform** | `lerobot_export` | Demonstrate converting Rerun recording to LeRobot dataset | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/lerobot_export.py) |  |  |
 | **Query Data Platform** | `query_images` | Query various image representations | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_images.py) |  |  |
 | **Query Data Platform** | `query_videos` | Query video streams | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_videos.py) |  |  |
