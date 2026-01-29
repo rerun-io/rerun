@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, FixedSizeListArray, Float32Array};
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
-use re_log_types::{TimePoint, TimeType, Timeline, build_index_value};
+use re_log_types::{EntityPath, TimePoint, TimeType, Timeline, build_index_value};
 use re_sdk::RecordingStreamBuilder;
 use re_tuid::Tuid;
 use re_types_core::AsComponents;
@@ -748,6 +748,40 @@ pub fn create_recording_with_properties(
                 chunk_builder.with_archetype(next_row_id(), TimePoint::default(), property);
         }
 
+        let chunk = chunk_builder.build()?;
+        rec.send_chunk(chunk);
+    }
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
+pub fn create_recording_with_static_components(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    components: BTreeMap<EntityPath, Box<dyn AsComponents>>,
+) -> anyhow::Result<TempPath> {
+    use re_chunk::Chunk;
+
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{segment_id}.rrd"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_properties")
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    for (entity_path, components) in components {
+        let mut chunk_builder = Chunk::builder_with_id(next_chunk_id(), entity_path);
+        chunk_builder =
+            chunk_builder.with_archetype(next_row_id(), TimePoint::default(), components.as_ref());
         let chunk = chunk_builder.build()?;
         rec.send_chunk(chunk);
     }

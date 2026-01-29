@@ -175,6 +175,9 @@ impl Dataset {
             .flat_map(|segment| segment.iter_layers().map(|(_, layer)| layer))
     }
 
+    // TODO(ab): now that we systematically check the merged schema upon registration, we could
+    // switch to keeping around a fully merged dataset schema instead of the present caching
+    // strategy. (That is, if performance requires it.)
     pub fn schema(&self) -> arrow::error::Result<Schema> {
         let mut cache = self.cached_schema.lock();
 
@@ -522,6 +525,18 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
+
+        // Validate schema compatibility before inserting
+        let current_schema = self.schema()?;
+        let new_layer_schema = {
+            let fields = store_handle.read().schema().arrow_fields();
+            Schema::new_with_metadata(fields, HashMap::default())
+        };
+        Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {
+            Error::SchemaConflict(format!(
+                "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"
+            ))
+        })?;
 
         let overwritten = self
             .inner

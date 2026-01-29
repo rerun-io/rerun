@@ -19,6 +19,7 @@ use re_types_core::{ComponentBatch as _, Loggable as _};
 use crate::OnError;
 use crate::entrypoint::NamedPath;
 use crate::store::table::TableType;
+use crate::store::task_registry::TaskRegistry;
 use crate::store::{ChunkKey, Dataset, Error, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
@@ -27,6 +28,7 @@ pub struct InMemoryStore {
     datasets: HashMap<EntryId, Dataset>,
     tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
+    task_registry: TaskRegistry,
 }
 
 impl Default for InMemoryStore {
@@ -35,6 +37,7 @@ impl Default for InMemoryStore {
             tables: HashMap::default(),
             datasets: HashMap::default(),
             id_by_name: HashMap::default(),
+            task_registry: TaskRegistry::default(),
         };
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
@@ -469,6 +472,10 @@ impl InMemoryStore {
 
     pub fn id_exists(&self, id: &EntryId) -> bool {
         self.tables.contains_key(id) || self.datasets.contains_key(id)
+    }
+
+    pub fn task_registry(&self) -> &TaskRegistry {
+        &self.task_registry
     }
 
     pub async fn create_table_entry(

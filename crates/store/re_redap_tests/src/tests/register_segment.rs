@@ -1,11 +1,19 @@
 #![expect(clippy::unwrap_used)]
 
-use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
+use std::sync::Arc;
+
+use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
+use crate::{
+    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
+};
+use arrow::array::{
+    Float32Array, Float64Array, ListArray, RecordBatch, StringArray, TimestampNanosecondArray,
+};
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_types::TimeType;
+use re_log_types::{EntityPath, TimeType};
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, RegisterWithDatasetRequest};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -13,13 +21,12 @@ use re_protos::cloud::v1alpha1::{
     GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
     ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
 };
+use re_protos::common::v1alpha1::IfDuplicateBehavior;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_sdk_types::AnyValues;
+use re_types_core::AsComponents;
 use url::Url;
-
-use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
-use crate::{
-    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
-};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -498,6 +505,261 @@ pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
         after_layer_updated_at_nanos > after_register_updated_at_nanos,
         "Timestamp should be updated after adding a layer. After register: {after_register_updated_at_nanos}, After layer: {after_layer_updated_at_nanos}"
     );
+}
+
+/// Test that two RRDs with conflicting data schemas cannot be registered together.
+pub async fn register_conflicting_schema(service: impl RerunCloudService) {
+    let results = register_and_wait_for_task_result(
+        &service,
+        "test_conflicting_schema",
+        DataSourcesDefinition::new_with_tuid_prefix(
+            1,
+            [
+                // Float64
+                LayerDefinition::static_components(
+                    "segment1",
+                    [(
+                        EntityPath::from("/data"),
+                        Box::new(AnyValues::default().with_component_from_data(
+                            "test",
+                            Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                        )) as Box<dyn AsComponents>,
+                    )],
+                ),
+                // Float32
+                LayerDefinition::static_components(
+                    "segment2",
+                    [(
+                        EntityPath::from("/data"),
+                        Box::new(AnyValues::default().with_component_from_data(
+                            "test",
+                            Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
+                        )) as Box<dyn AsComponents>,
+                    )],
+                ),
+            ],
+        ),
+    )
+    .await;
+
+    let failed_tasks: Vec<_> = results.iter().filter(|r| r.status != "success").collect();
+    assert_eq!(
+        failed_tasks.len(),
+        1,
+        "Expected exactly one task to fail with schema conflict"
+    );
+
+    let error_message = &failed_tasks[0].message;
+    assert!(
+        error_message
+            .to_lowercase()
+            .contains("schema incompatibility "),
+        "error should mention schema conflict, got: {error_message}"
+    );
+}
+
+/// Test that two RRDs with conflicting property schemas cannot be registered together.
+pub async fn register_conflicting_property_schema(service: impl RerunCloudService) {
+    let results = register_and_wait_for_task_result(
+        &service,
+        "test_conflicting_property_schema",
+        DataSourcesDefinition::new_with_tuid_prefix(
+            2,
+            [
+                // Float64
+                LayerDefinition::properties(
+                    "segment1",
+                    [(
+                        "prop".to_owned(),
+                        Box::new(AnyValues::default().with_component_from_data(
+                            "test",
+                            Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                        )) as Box<dyn AsComponents>,
+                    )],
+                ),
+                // Float32
+                LayerDefinition::properties(
+                    "segment2",
+                    [(
+                        "prop".to_owned(),
+                        Box::new(AnyValues::default().with_component_from_data(
+                            "test",
+                            Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
+                        )) as Box<dyn AsComponents>,
+                    )],
+                ),
+            ],
+        ),
+    )
+    .await;
+
+    let failed_tasks: Vec<_> = results.iter().filter(|r| r.status != "success").collect();
+    assert_eq!(
+        failed_tasks.len(),
+        1,
+        "Expected exactly one task to fail with schema conflict"
+    );
+
+    let error_message = &failed_tasks[0].message;
+    assert!(
+        error_message
+            .to_lowercase()
+            .contains("schema incompatibility "),
+        "error should mention schema conflict, got: {error_message}"
+    );
+}
+
+// ---
+
+/// Result of a registered task, including which segments/layers were registered.
+#[derive(Debug)]
+struct TaskResult {
+    #[expect(dead_code)]
+    task_id: String,
+    status: String,
+    message: String,
+    #[expect(dead_code)]
+    layers: Vec<(SegmentId, String)>,
+}
+
+/// Helper to register data sources and wait for task completion.
+/// Returns a vec of task results, one per unique task.
+async fn register_and_wait_for_task_result(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    data_sources_def: DataSourcesDefinition,
+) -> Vec<TaskResult> {
+    use futures::StreamExt as _;
+    use re_protos::cloud::v1alpha1::{
+        QueryTasksOnCompletionRequest, QueryTasksResponse, RegisterWithDatasetResponse,
+    };
+    use re_protos::common::v1alpha1::TaskId;
+    use std::collections::HashMap;
+
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
+        data_sources: data_sources_def.to_data_sources(),
+        on_duplicate: IfDuplicateBehavior::Error as i32,
+    })
+    .with_entry_name(dataset_name)
+    .unwrap();
+
+    let resp = service
+        .register_with_dataset(request)
+        .await
+        .expect("registration should succeed");
+
+    let batch: RecordBatch = resp
+        .into_inner()
+        .data
+        .expect("data expected")
+        .try_into()
+        .expect("record batch expected");
+
+    // Extract task IDs and group segments by task
+    let task_id_col = batch
+        .column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
+        .expect("task_id column expected")
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .expect("task_id column should be a string array");
+
+    let segment_id_col = batch
+        .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)
+        .expect("segment_id column expected")
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .expect("segment_id column should be a string array");
+
+    let layer_col = batch
+        .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_LAYER)
+        .expect("layer column expected")
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .expect("layer column should be a string array");
+
+    // Group (segment_id, layer) by task_id
+    let mut task_layers: HashMap<String, Vec<(SegmentId, String)>> = HashMap::default();
+    for i in 0..batch.num_rows() {
+        let task_id = task_id_col.value(i).to_owned();
+        let segment_id = SegmentId::from(segment_id_col.value(i));
+        let layer_name = layer_col.value(i).to_owned();
+        task_layers
+            .entry(task_id)
+            .or_default()
+            .push((segment_id, layer_name));
+    }
+
+    let task_ids: Vec<TaskId> = task_layers
+        .keys()
+        .map(|id| TaskId { id: id.clone() })
+        .collect();
+
+    // Wait for task completion
+    let query_results: Vec<RecordBatch> = service
+        .query_tasks_on_completion(tonic::Request::new(QueryTasksOnCompletionRequest {
+            ids: task_ids,
+            timeout: Some(prost_types::Duration {
+                seconds: 20,
+                nanos: 0,
+            }),
+        }))
+        .await
+        .expect("should get query results")
+        .into_inner()
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .map(|resp| {
+            resp.expect("Failed to get task completion response")
+                .data
+                .expect("Expected response data")
+                .try_into()
+                .expect("Failed to decode response data")
+        })
+        .collect();
+
+    // Build TaskResult for each task
+    let mut results = Vec::new();
+    for batch in &query_results {
+        let task_id_col = batch
+            .column_by_name(QueryTasksResponse::FIELD_TASK_ID)
+            .expect("task_id column expected")
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("task_id should be string array");
+
+        let status_col = batch
+            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
+            .expect("exec_status column expected")
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("exec_status should be string array");
+
+        let msgs_col = batch
+            .column_by_name(QueryTasksResponse::FIELD_MSGS)
+            .expect("msgs column expected")
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("msgs should be string array");
+
+        for i in 0..batch.num_rows() {
+            let task_id = task_id_col.value(i).to_owned();
+            let status = status_col.value(i).to_owned();
+            let message = msgs_col.value(i).to_owned();
+            let layers = task_layers.remove(&task_id).unwrap_or_default();
+
+            results.push(TaskResult {
+                task_id,
+                status,
+                message,
+                layers,
+            });
+        }
+    }
+
+    results
 }
 
 // ---

@@ -27,6 +27,7 @@ pub use self::utils::path::TempPath;
 pub use self::utils::rerun::{
     TuidPrefix, create_minimal_binary_recording_in, create_nasty_recording,
     create_recording_with_embeddings, create_recording_with_properties,
-    create_recording_with_scalars, create_recording_with_text, create_simple_blueprint,
-    create_simple_recording, create_simple_recording_in,
+    create_recording_with_scalars, create_recording_with_static_components,
+    create_recording_with_text, create_simple_blueprint, create_simple_recording,
+    create_simple_recording_in,
 }; // convenience

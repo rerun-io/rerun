@@ -1,5 +1,8 @@
+use std::hash::Hasher as _;
+
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::error::ArrowError;
+
 use re_log_types::external::re_types_core::ComponentDescriptor;
 use re_log_types::{RecordingId, StoreKind, TableId};
 
@@ -206,6 +209,25 @@ impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
             entry_id: value.id.map(Into::into),
             store_kind: crate::common::v1alpha1::StoreKind::from(value.store_kind) as i32,
             dataset_url: Some(value.url.to_string()),
+        }
+    }
+}
+
+// --- TaskId ---
+
+//TODO(ab): we should migrate the full `TaskId` wrapper from `redap_tasks`
+impl crate::common::v1alpha1::TaskId {
+    pub fn new() -> Self {
+        Self::from_hashable(re_tuid::Tuid::new())
+    }
+
+    pub fn from_hashable<H: std::hash::Hash>(hashable: H) -> Self {
+        let mut hasher = std::hash::DefaultHasher::new();
+        hashable.hash(&mut hasher);
+        let id = hasher.finish();
+
+        Self {
+            id: format!("task_{id:016x}"),
         }
     }
 }

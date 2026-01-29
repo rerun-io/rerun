@@ -257,3 +257,49 @@ def test_register_same_segment_id(
     # TODO(RR-3177): we need to extend the APIs for this
     # assert result.failed_uris == [uris[2]]
     # assert "duplicate segment id" in result.something_something_error_message
+
+
+@pytest.mark.local_only
+def test_register_conflicting_schema(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """Test that two RRDs with conflicting schemas are not allowed to be registered to a dataset."""
+
+    import pyarrow as pa
+
+    seg_1_path = tmp_path / "segment1.rrd"
+    seg_2_path = tmp_path / "segment2.rrd"
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment1") as rec:
+        rec.save(seg_1_path)
+        rec.log("/data", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float64())))
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment2") as rec:
+        rec.save(seg_2_path)
+        rec.log("/data", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float32())))
+
+    dataset = entry_factory.create_dataset("test_conflicting_schema")
+
+    with pytest.raises(ValueError, match="schema"):
+        dataset.register([seg_1_path.as_uri(), seg_2_path.as_uri()]).wait()
+
+
+@pytest.mark.local_only
+def test_register_conflicting_property_schema(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """Test that two RRDs with conflicting schemas are not allowed to be registered to a dataset."""
+
+    import pyarrow as pa
+
+    seg_1_path = tmp_path / "segment1.rrd"
+    seg_2_path = tmp_path / "segment2.rrd"
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment1") as rec:
+        rec.save(seg_1_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float64())))
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment2") as rec:
+        rec.save(seg_2_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float32())))
+
+    dataset = entry_factory.create_dataset("test_conflicting_property_schema")
+
+    with pytest.raises(ValueError, match="schema"):
+        dataset.register([seg_1_path.as_uri(), seg_2_path.as_uri()]).wait()

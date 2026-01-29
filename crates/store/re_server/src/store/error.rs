@@ -66,6 +66,9 @@ pub enum Error {
 
     #[error("Failed to extract properties: {0:#?}")]
     FailedToExtractProperties(String),
+
+    #[error("{0}")]
+    SchemaConflict(String),
 }
 
 impl Error {
@@ -105,6 +108,8 @@ impl From<Error> for tonic::Status {
             | Error::IndexAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
 
             Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
+
+            Error::SchemaConflict(_) => Self::invalid_argument(format!("{err:#}")),
         }
     }
 }

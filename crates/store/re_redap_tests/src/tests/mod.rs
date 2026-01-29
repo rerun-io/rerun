@@ -79,6 +79,8 @@ define_redap_tests! {
     register_segment::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_segment::register_and_scan_simple_dataset_multiple_timelines,
     register_segment::register_bad_file_uri_should_error,
+    register_segment::register_conflicting_property_schema,
+    register_segment::register_conflicting_schema,
     register_segment::register_segment_bumps_timestamp,
     register_segment::register_with_prefix,
     rrd_manifest::segment_id_not_found,
