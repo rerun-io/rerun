@@ -469,15 +469,16 @@ async fn stream_segment_from_server(
     // See the attached issues for more information.
 
     if stream_mode == StreamMode::OnDemand {
+        let start_time = web_time::Instant::now();
         let manifest_result = client
             .get_rrd_manifest(dataset_id, segment_id.clone())
             .await;
         match manifest_result {
             Ok(rrd_manifest) => {
-                re_log::debug_once!("The server supports larger-than-RAM");
                 re_log::debug_once!(
-                    "Downloaded RRD manifest; {} (deflated)",
-                    re_format::format_bytes(rrd_manifest.total_size_bytes() as _)
+                    "The server supports larger-than-RAM. RRD manifest ({} deflated) loaded in {:.1}s",
+                    re_format::format_bytes(rrd_manifest.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
                 );
 
                 if tx

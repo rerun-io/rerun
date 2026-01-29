@@ -446,6 +446,7 @@ impl re_byte_size::SizeBytes for TimeHistogram {
 
 impl re_byte_size::SizeBytes for TimeHistogramPerTimeline {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
         let Self { times, has_static } = self;
         times.heap_size_bytes() + has_static.heap_size_bytes()
     }

@@ -577,11 +577,14 @@ pub fn build_density_graph<'a>(
 
     {
         re_tracing::profile_scope!("unloaded chunks");
-        for entry in db.rrd_manifest_index().unloaded_temporal_entries_for(
+        let entries = db.rrd_manifest_index().unloaded_temporal_entries_for(
             timeline,
             &item.entity_path,
             item.component,
-        ) {
+        );
+
+        re_tracing::profile_scope!("add_chunk_range");
+        for entry in entries {
             data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
         }
     }
