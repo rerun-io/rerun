@@ -242,6 +242,22 @@ pub struct DataframePart {
     /// Data payload is Arrow IPC encoded RecordBatch
     #[prost(bytes = "bytes", optional, tag = "2")]
     pub payload: ::core::option::Option<::prost::bytes::Bytes>,
+    /// Compression used.
+    ///
+    /// This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+    /// in many real world recordings out there.
+    /// Unspecified is synonymous with uncompressed in this case.
+    #[prost(enumeration = "Compression", tag = "3")]
+    pub compression: i32,
+    /// How large is the uncompressed data?
+    ///
+    /// The value is undefined if `self.compression == Off`.
+    ///
+    /// This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+    /// in many real world recordings out there (which is fine, because they are all implicitly
+    /// using `Compression::Off`).
+    #[prost(uint64, tag = "4")]
+    pub uncompressed_size: u64,
 }
 impl ::prost::Name for DataframePart {
     const NAME: &'static str = "DataframePart";
@@ -485,6 +501,38 @@ impl ::prost::Name for DevAlpha {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.DevAlpha".into()
+    }
+}
+/// The type of compression used on the payload.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Compression {
+    Unspecified = 0,
+    /// No compression.
+    None = 1,
+    /// LZ4 block compression.
+    Lz4 = 2,
+}
+impl Compression {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "COMPRESSION_UNSPECIFIED",
+            Self::None => "COMPRESSION_NONE",
+            Self::Lz4 => "COMPRESSION_LZ4",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "COMPRESSION_UNSPECIFIED" => Some(Self::Unspecified),
+            "COMPRESSION_NONE" => Some(Self::None),
+            "COMPRESSION_LZ4" => Some(Self::Lz4),
+            _ => None,
+        }
     }
 }
 /// supported encoder versions for encoding data

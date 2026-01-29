@@ -60,9 +60,8 @@ impl StatsCommand {
                     let mut uncompressed = Vec::new();
 
                     const COMPRESSION_NONE: i32 =
-                        re_protos::log_msg::v1alpha1::Compression::None as _;
-                    const COMPRESSION_LZ4: i32 =
-                        re_protos::log_msg::v1alpha1::Compression::Lz4 as _;
+                        re_protos::common::v1alpha1::Compression::None as _;
+                    const COMPRESSION_LZ4: i32 = re_protos::common::v1alpha1::Compression::Lz4 as _;
 
                     match msg.compression {
                         COMPRESSION_NONE => {}
