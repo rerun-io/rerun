@@ -155,7 +155,7 @@ impl VideoSampleDecoder {
             if latest_sample_idx + 1 == sample_idx {
                 // All good!
             } else if latest_sample_idx < sample_idx {
-                // This is okay with skips included.
+                return Err(InsufficientSampleDataError::MissingSamples.into());
             } else if sample_idx == latest_sample_idx {
                 return Err(InsufficientSampleDataError::DuplicateSampleIdx.into());
             } else {
@@ -189,6 +189,14 @@ impl VideoSampleDecoder {
     /// This can be used as a workaround for decoders that are known to need additional samples to produce outputs.
     pub fn min_num_samples_to_enqueue_ahead(&self) -> usize {
         self.decoder.min_num_samples_to_enqueue_ahead()
+    }
+
+    pub fn max_num_samples_to_enqueue_ahead(&self) -> usize {
+        // To not fill memory up too much, only queue up a limited amount of samples.
+        //
+        // 25 here is arbitrary so far, but seems to work well with the encoder
+        // giving back frames and not waiting for a secondary keyframe.
+        self.min_num_samples_to_enqueue_ahead() + 25
     }
 
     /// Returns the latest decoded frame at the given PTS and drops all earlier frames than the given PTS.

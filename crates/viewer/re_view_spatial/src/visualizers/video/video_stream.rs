@@ -166,7 +166,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine.store().physical_chunk(&id)?;
+                    let chunk = storage_engine
+                        .store()
+                        .use_physical_chunk_or_report_missing(&id)?;
 
                     let sample_component = VideoStream::descriptor_sample().component;
 
@@ -228,7 +230,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         VideoPlayerError::InsufficientSampleData(
                             InsufficientSampleDataError::NoKeyFrames
                             | InsufficientSampleDataError::NoSamples
-                            | InsufficientSampleDataError::ExpectedSampleNotAvailable
+                            | InsufficientSampleDataError::NoLoadedSamples
+                            | InsufficientSampleDataError::ExpectedSampleNotLoaded
                             | InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp,
                         ) => VideoPlaybackIssueSeverity::Informational,
                         _ => VideoPlaybackIssueSeverity::Error,

@@ -832,6 +832,20 @@ impl ChunkStore {
         self.chunks_per_chunk_id.get(id)
     }
 
+    /// Get a *physical* chunk based on its ID and track the chunk as either
+    /// used or missing, to signal that it should be kept or fetched.
+    pub fn use_physical_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        let chunk = self.physical_chunk(id);
+
+        if chunk.is_some() {
+            self.insert_used_chunk_id(*id);
+        } else {
+            self.insert_missing_chunk_id(*id);
+        }
+
+        chunk
+    }
+
     /// Get the number of *physical* chunks in the store.
     #[inline]
     pub fn num_physical_chunks(&self) -> usize {
@@ -910,6 +924,22 @@ impl ChunkStore {
     /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
     pub fn take_tracked_chunk_ids(&self) -> QueriedChunkIdTracker {
         std::mem::take(&mut self.queried_chunk_id_tracker.write())
+    }
+
+    /// Signal that the chunk was used and should not be evicted by gc.
+    fn insert_used_chunk_id(&self, chunk_id: ChunkId) {
+        self.queried_chunk_id_tracker
+            .write()
+            .used_physical
+            .insert(chunk_id);
+    }
+
+    /// Signal that a chunk is missing and should be fetched when possible.
+    fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
+        self.queried_chunk_id_tracker
+            .write()
+            .missing
+            .insert(chunk_id);
     }
 
     /// How many missing chunk IDs are currently registered?
