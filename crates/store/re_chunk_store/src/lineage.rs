@@ -243,10 +243,10 @@ impl ChunkStore {
             // from an RRD manifest whether it is static or not, if possible.
             for (_, rrd_manifest) in store.find_root_rrd_manifests(chunk_id) {
                 for (id, is_static) in itertools::izip!(
-                    rrd_manifest.col_chunk_id(),
+                    rrd_manifest.col_chunk_ids(),
                     rrd_manifest.col_chunk_is_static(),
                 ) {
-                    if *chunk_id == id {
+                    if chunk_id == id {
                         return if is_static { "yes" } else { "no" };
                     }
                 }

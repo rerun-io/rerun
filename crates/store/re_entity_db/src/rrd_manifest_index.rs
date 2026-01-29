@@ -9,7 +9,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
-use crate::chunk_promise::{ChunkPromise, ChunkPromises};
+pub use crate::chunk_promise::{BatchInfo, ChunkPromise, ChunkPromises};
 
 mod chunk_prioritizer;
 mod time_range_merger;
@@ -147,7 +147,7 @@ impl RrdManifestIndex {
             &self.native_temporal_map,
         );
 
-        for chunk_id in manifest.col_chunk_id() {
+        for &chunk_id in manifest.col_chunk_ids() {
             self.remote_chunks.insert(chunk_id, Default::default());
         }
 

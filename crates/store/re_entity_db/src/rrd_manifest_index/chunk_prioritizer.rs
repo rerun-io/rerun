@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, ops::RangeInclusive};
+use std::collections::{BTreeMap, BTreeSet};
+use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
@@ -8,7 +9,7 @@ use re_chunk_store::ChunkStore;
 use re_log_encoding::RrdManifest;
 
 use crate::{
-    chunk_promise::{ChunkPromise, ChunkPromiseBatch, ChunkPromises},
+    chunk_promise::{BatchInfo, ChunkPromise, ChunkPromiseBatch, ChunkPromises},
     rrd_manifest_index::{ChunkInfo, LoadState},
     sorted_range_map::SortedRangeMap,
 };
@@ -48,6 +49,13 @@ pub struct ChunkPrefetchOptions {
     pub max_uncompressed_bytes_in_transit: u64,
 }
 
+#[derive(Default)]
+struct CurrentBatch {
+    row_indices: Vec<usize>,
+    uncompressed_bytes: u64,
+    bytes: u64,
+}
+
 /// Helper struct responsible for batching requests and creating
 /// promises for missing chunks.
 struct ChunkRequestBatcher<'a> {
@@ -59,9 +67,7 @@ struct ChunkRequestBatcher<'a> {
     max_uncompressed_bytes_per_batch: u64,
 
     remaining_bytes_in_transit_budget: u64,
-    uncompressed_bytes_in_batch: u64,
-    bytes_in_batch: u64,
-    indices: Vec<usize>,
+    current_batch: CurrentBatch,
 }
 
 impl<'a> ChunkRequestBatcher<'a> {
@@ -82,25 +88,36 @@ impl<'a> ChunkRequestBatcher<'a> {
                 .max_uncompressed_bytes_in_transit
                 .saturating_sub(chunk_promises.num_uncompressed_bytes_pending()),
             chunk_promises,
-            uncompressed_bytes_in_batch: 0,
-            bytes_in_batch: 0,
-            indices: Vec::new(),
+            current_batch: Default::default(),
         }
     }
 
     /// Create promise from the current batch.
     fn finish_batch(&mut self) -> Result<(), PrefetchError> {
+        let row_indices: BTreeSet<usize> = self.current_batch.row_indices.iter().copied().collect();
+
+        let col_chunk_ids: &[ChunkId] = self.manifest.col_chunk_ids();
+
+        let mut chunk_ids = BTreeSet::default();
+        for &row_idx in &row_indices {
+            chunk_ids.insert(col_chunk_ids[row_idx]);
+        }
+
         let rb = re_arrow_util::take_record_batch(
             self.manifest.data(),
-            &std::mem::take(&mut self.indices),
+            &std::mem::take(&mut self.current_batch.row_indices),
         )?;
         self.chunk_promises.add(ChunkPromiseBatch {
             promise: parking_lot::Mutex::new(Some((self.load_chunks)(rb))),
-            size_bytes_uncompressed: self.uncompressed_bytes_in_batch,
-            size_bytes: self.bytes_in_batch,
+            info: std::sync::Arc::new(BatchInfo {
+                chunk_ids,
+                row_indices,
+                size_bytes_uncompressed: self.current_batch.uncompressed_bytes,
+                size_bytes: self.current_batch.bytes,
+            }),
         });
-        self.bytes_in_batch = 0;
-        self.uncompressed_bytes_in_batch = 0;
+        self.current_batch.bytes = 0;
+        self.current_batch.uncompressed_bytes = 0;
         Ok(())
     }
 
@@ -120,14 +137,13 @@ impl<'a> ChunkRequestBatcher<'a> {
         let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
         let chunk_byte_size = self.chunk_byte_size[chunk_row_idx];
 
-        self.indices.push(chunk_row_idx);
-
-        self.uncompressed_bytes_in_batch += uncompressed_chunk_size;
-        self.bytes_in_batch += chunk_byte_size;
+        self.current_batch.row_indices.push(chunk_row_idx);
+        self.current_batch.uncompressed_bytes += uncompressed_chunk_size;
+        self.current_batch.bytes += chunk_byte_size;
 
         remote_chunk.state = LoadState::InTransit;
 
-        if self.max_uncompressed_bytes_per_batch < self.uncompressed_bytes_in_batch {
+        if self.max_uncompressed_bytes_per_batch < self.current_batch.uncompressed_bytes {
             self.finish_batch()?;
         }
         self.remaining_bytes_in_transit_budget = self
@@ -138,7 +154,7 @@ impl<'a> ChunkRequestBatcher<'a> {
 
     /// Fetch a last request batch if one is prepared.
     fn finish(&mut self) -> Result<(), PrefetchError> {
-        if !self.indices.is_empty() {
+        if !self.current_batch.row_indices.is_empty() {
             self.finish_batch()?;
         }
 
@@ -219,8 +235,8 @@ impl ChunkPrioritizer {
 
     fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
         self.manifest_row_from_chunk_id.clear();
-        let chunk_id = manifest.col_chunk_id();
-        for (row_idx, chunk_id) in chunk_id.enumerate() {
+        let col_chunk_ids = manifest.col_chunk_ids();
+        for (row_idx, &chunk_id) in col_chunk_ids.iter().enumerate() {
             self.manifest_row_from_chunk_id.insert(chunk_id, row_idx);
         }
     }

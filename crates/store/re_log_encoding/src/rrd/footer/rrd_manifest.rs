@@ -5,7 +5,6 @@ use arrow::buffer::{BooleanBuffer, ScalarBuffer};
 use re_chunk::ChunkId;
 use re_chunk::external::re_byte_size;
 use re_log_types::StoreId;
-use re_log_types::external::re_tuid::Tuid;
 
 use super::{RawRrdManifest, RrdManifestSha256, RrdManifestStaticMap, RrdManifestTemporalMap};
 use crate::CodecResult;
@@ -59,6 +58,12 @@ impl RrdManifest {
         }
 
         let chunk_ids = manifest.col_chunk_id_raw()?.clone();
+
+        // Validate:
+        ChunkId::try_slice_from_arrow(&chunk_ids).map_err(|err| {
+            crate::CodecError::FrameDecoding(format!("chunk_id column has wrong datatype: {err}"))
+        })?;
+
         let chunk_entity_paths = manifest.col_chunk_entity_path_raw()?.clone();
 
         let chunk_is_static_array = manifest.col_chunk_is_static_raw()?;
@@ -193,29 +198,11 @@ impl RrdManifest {
         &self.raw.data
     }
 
-    /// Returns the raw Arrow array for chunk IDs.
+    /// Returns all the chunk ids
     #[inline]
-    pub fn col_chunk_id_raw(&self) -> &FixedSizeBinaryArray {
-        &self.chunk_ids
-    }
-
-    /// Returns an iterator over the decoded chunk IDs.
-    ///
-    /// This incurs a very cheap copy per chunk ID.
-    pub fn col_chunk_id(&self) -> impl Iterator<Item = ChunkId> + '_ {
-        self.chunk_ids.iter().flatten().filter_map(|bytes| {
-            let bytes: [u8; 16] = bytes
-                .try_into()
-                .inspect_err(|err| {
-                    tracing::error!(
-                        %err,
-                        ?bytes,
-                        "failed to parse chunk ID from fixed-size binary array"
-                    );
-                })
-                .ok()?;
-            Some(ChunkId::from_tuid(Tuid::from_bytes(bytes)))
-        })
+    pub fn col_chunk_ids(&self) -> &[ChunkId] {
+        #[expect(clippy::unwrap_used)] // Validated in constructor
+        ChunkId::try_slice_from_arrow(&self.chunk_ids).unwrap()
     }
 
     /// Returns the raw Arrow array for entity paths.

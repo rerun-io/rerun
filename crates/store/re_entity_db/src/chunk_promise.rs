@@ -1,11 +1,30 @@
 //! Responsible for tracking in-progress chunk downloads for larger-than-RAM.
 
+use std::collections::BTreeSet;
+use std::sync::Arc;
+
 use emath::NumExt as _;
 use parking_lot::Mutex;
-use re_chunk::Chunk;
+use re_chunk::{Chunk, ChunkId};
 
 /// A batch of chunks being loaded from a remote server.
 pub type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
+
+/// Information about a batch of chunks being downloaded.
+#[derive(Clone, Debug)]
+pub struct BatchInfo {
+    /// What chunks are included in this batch.
+    pub chunk_ids: BTreeSet<ChunkId>,
+
+    /// Row indices in the RRD manifest.
+    pub row_indices: BTreeSet<usize>,
+
+    /// Total uncompressed size of all chunks in bytes.
+    pub size_bytes_uncompressed: u64,
+
+    /// Size on the wire of all chunks in bytes.
+    pub size_bytes: u64,
+}
 
 /// Represents a batch of chunks being downloaded.
 pub struct ChunkPromiseBatch {
@@ -15,11 +34,7 @@ pub struct ChunkPromiseBatch {
     // There is room for something better here at some point.
     pub promise: Mutex<Option<ChunkPromise>>,
 
-    /// Total size of all the chunks in bytes.
-    pub size_bytes_uncompressed: u64,
-
-    /// Size on the wire of all the chunks in bytes.
-    pub size_bytes: u64,
+    pub info: Arc<BatchInfo>,
 }
 
 #[derive(Clone, Copy)]
@@ -90,7 +105,10 @@ impl ChunkPromises {
     }
 
     pub fn num_uncompressed_bytes_pending(&self) -> u64 {
-        self.batches.iter().map(|b| b.size_bytes_uncompressed).sum()
+        self.batches
+            .iter()
+            .map(|b| b.info.size_bytes_uncompressed)
+            .sum()
     }
 
     /// Average of bytes/second over recent history.
@@ -128,7 +146,7 @@ impl ChunkPromises {
                 match promise.try_take() {
                     Ok(Ok(chunks)) => {
                         all_chunks.extend(chunks);
-                        history.add(time, ByteFloat(batch.size_bytes as f64));
+                        history.add(time, ByteFloat(batch.info.size_bytes as f64));
                         false
                     }
                     Ok(Err(())) => false,
@@ -147,5 +165,13 @@ impl ChunkPromises {
 
     pub fn add(&mut self, batch: ChunkPromiseBatch) {
         self.batches.push(batch);
+    }
+
+    /// Returns info about all in-progress downloads.
+    pub fn batch_infos(&self) -> Vec<Arc<BatchInfo>> {
+        self.batches
+            .iter()
+            .map(|batch| Arc::clone(&batch.info))
+            .collect()
     }
 }
