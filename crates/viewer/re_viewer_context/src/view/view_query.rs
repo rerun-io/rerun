@@ -60,6 +60,14 @@ impl VisualizerComponentSource {
             Self::Default => ComponentSourceKind::Default,
         }
     }
+
+    pub fn component_source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+        }
+    }
 }
 
 /// Component mappings for a visualizer instruction.
