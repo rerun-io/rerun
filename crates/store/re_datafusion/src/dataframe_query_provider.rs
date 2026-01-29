@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crate::dataframe_query_common::{
-    DataframeClientAPI, group_chunk_infos_by_segment_id, prepend_string_column_schema,
+    DataframeClientAPI, IndexValuesMap, group_chunk_infos_by_segment_id,
+    prepend_string_column_schema,
 };
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
 use arrow::compute::SortOptions;
@@ -78,6 +79,7 @@ fn attach_trace_context(
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     props: PlanProperties,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
+    index_values: IndexValuesMap,
 
     /// Describes the chunks per partition, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
@@ -219,6 +221,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         num_partitions: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
+        index_values: IndexValuesMap,
         client: T,
         trace_headers: Option<crate::TraceHeaders>,
     ) -> datafusion::common::Result<Self> {
@@ -316,6 +319,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             chunk_info_batches,
             chunk_info,
             query_expression,
+            index_values,
             projected_schema,
             target_partitions: num_partitions,
             worker_runtime,
@@ -381,6 +385,7 @@ async fn chunk_store_cpu_worker_thread(
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
+    index_values: IndexValuesMap,
 ) -> Result<(), DataFusionError> {
     let mut current_stores: Option<(String, ChunkStoreHandle, QueryHandle<StorageEngine>)> = None;
     while let Some(chunks_and_segment_ids) = input_channel.recv().await {
@@ -390,6 +395,11 @@ async fn chunk_store_cpu_worker_thread(
         for (chunk, segment_id) in chunks_and_segment_ids {
             let segment_id = segment_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a segment id"))?;
+            if let Some(idx_values) = &index_values
+                && !idx_values.contains_key(&segment_id)
+            {
+                continue;
+            }
 
             if let Some((current_segment, _, query_handle)) = &current_stores {
                 // When we change segments, flush the outputs
@@ -417,7 +427,13 @@ async fn chunk_store_cpu_worker_thread(
 
                 let query_engine =
                     QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
-                let query_handle = query_engine.query(query_expression.clone());
+                let mut individual_query = query_expression.clone();
+                if let Some(values_map) = &index_values
+                    && let Some(values) = values_map.get(&segment_id)
+                {
+                    individual_query.using_index_values = Some(values.clone());
+                }
+                let query_handle = query_engine.query(individual_query);
 
                 (segment_id.clone(), store, query_handle)
             });
@@ -790,7 +806,13 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            chunk_store_cpu_worker_thread(chunk_rx, batches_tx, query_expression, projected_schema),
+            chunk_store_cpu_worker_thread(
+                chunk_rx,
+                batches_tx,
+                query_expression,
+                projected_schema,
+                self.index_values.clone(),
+            ),
         ));
 
         let stream = DataframeSegmentStreamInner {
@@ -825,6 +847,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             chunk_info_batches: self.chunk_info_batches.clone(),
             chunk_info: self.chunk_info.clone(),
             query_expression: self.query_expression.clone(),
+            index_values: self.index_values.clone(),
             projected_schema: self.projected_schema.clone(),
             target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),

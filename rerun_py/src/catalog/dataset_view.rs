@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
 use arrow::datatypes::Schema as ArrowSchema;
@@ -234,13 +234,18 @@ impl PyDatasetViewInternal {
         include_semantically_empty_columns: bool,
         include_tombstone_columns: bool,
         fill_latest_at: bool,
-        using_index_values: Option<IndexValuesLike<'_>>,
+        using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
 
         // Convert IndexValuesLike to BTreeSet<TimeInt>
         let using_index_values = using_index_values
-            .map(|v| v.to_index_values())
+            .map(|values_map| {
+                values_map
+                    .into_iter()
+                    .map(|(k, v)| v.to_index_values().map(|v| (k, v)))
+                    .collect::<Result<BTreeMap<_, _>, _>>()
+            })
             .transpose()?;
 
         // Build table provider with query parameters
@@ -339,7 +344,7 @@ fn build_dataframe_query_table_provider(
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
     fill_latest_at: bool,
-    using_index_values: Option<BTreeSet<TimeInt>>,
+    using_index_values: Option<BTreeMap<String, BTreeSet<TimeInt>>>,
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
@@ -367,7 +372,7 @@ fn build_dataframe_query_table_provider(
         filtered_index: index.map(Into::into),
         filtered_index_range: None,
         filtered_index_values: None,
-        using_index_values,
+        using_index_values: None,
         filtered_is_not_null: None,
         sparse_fill_strategy: if fill_latest_at {
             SparseFillStrategy::LatestAtGlobal
@@ -390,6 +395,7 @@ fn build_dataframe_query_table_provider(
     #[cfg(not(all(feature = "perf_telemetry", not(target_arch = "wasm32"))))]
     let trace_headers_opt = None;
 
+    let index_values = using_index_values.map(Arc::new);
     wait_for_future(py, async move {
         DataframeQueryTableProvider::new(
             connection.origin().clone(),
@@ -397,6 +403,7 @@ fn build_dataframe_query_table_provider(
             dataset_id,
             &query_expression,
             &segment_ids,
+            index_values,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers_opt,
         )

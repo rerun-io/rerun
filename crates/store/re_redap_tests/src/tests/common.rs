@@ -173,6 +173,7 @@ pub enum LayerType {
     /// See [`crate::utils::rerun::create_simple_recording`]
     Simple {
         entities: &'static [&'static str],
+        start_time: i64,
         time_type: TimeType,
     },
 
@@ -212,13 +213,19 @@ impl LayerType {
     pub fn simple(entities: &'static [&'static str]) -> Self {
         Self::Simple {
             entities,
+            start_time: 0,
             time_type: TimeType::Sequence,
         }
     }
 
-    pub fn simple_with_time_type(entities: &'static [&'static str], time_type: TimeType) -> Self {
+    pub fn simple_with_time(
+        entities: &'static [&'static str],
+        start_time: i64,
+        time_type: TimeType,
+    ) -> Self {
         Self::Simple {
             entities,
+            start_time,
             time_type,
         }
     }
@@ -266,8 +273,9 @@ impl LayerType {
         match self {
             Self::Simple {
                 entities,
+                start_time,
                 time_type,
-            } => create_simple_recording(tuid_prefix, segment_id, entities, time_type),
+            } => create_simple_recording(tuid_prefix, segment_id, entities, start_time, time_type),
 
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
@@ -328,15 +336,16 @@ impl LayerDefinition {
         }
     }
 
-    pub fn simple_with_time_type(
+    pub fn simple_with_time(
         segment_id: &'static str,
         entities: &'static [&'static str],
+        start_time: i64,
         time_type: TimeType,
     ) -> Self {
         Self {
             segment_id,
             layer_name: None,
-            layer_type: LayerType::simple_with_time_type(entities, time_type),
+            layer_type: LayerType::simple_with_time(entities, start_time, time_type),
         }
     }
 

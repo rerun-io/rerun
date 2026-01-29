@@ -18,7 +18,7 @@ use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{Index, QueryExpression};
+use re_dataframe::{Index, IndexValue, QueryExpression};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{
@@ -44,6 +44,11 @@ use std::sync::Arc;
 const DEFAULT_BATCH_BYTES: u64 = 200 * 1024 * 1024;
 const DEFAULT_BATCH_ROWS: usize = 2048;
 
+/// Mapping of `rerun_segment_id` to set of `IndexValues` to be used for querying
+/// a specific set of index values per segment. If the option is None, then
+/// `using_index_values` will not be applied to the dataset queries.
+pub(crate) type IndexValuesMap = Option<Arc<BTreeMap<String, BTreeSet<IndexValue>>>>;
+
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     pub schema: SchemaRef,
@@ -52,6 +57,7 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     sort_index: Option<Index>,
     dataset_id: EntryId,
     client: T,
+    index_values: IndexValuesMap,
 
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
@@ -129,6 +135,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
+        index_values: IndexValuesMap,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         let client = connection
@@ -141,6 +148,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
             dataset_id,
             query_expression,
             segment_ids,
+            index_values,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
         )
@@ -155,6 +163,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
+        index_values: IndexValuesMap,
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         let schema = client
@@ -223,6 +232,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             sort_index: query_expression.filtered_index,
             dataset_id,
             client,
+            index_values,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
         })
@@ -362,6 +372,7 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             state.config().target_partitions(),
             chunk_info_batches,
             query_expression,
+            self.index_values.clone(),
             self.client.clone(),
             #[cfg(not(target_arch = "wasm32"))]
             self.trace_headers.clone(),

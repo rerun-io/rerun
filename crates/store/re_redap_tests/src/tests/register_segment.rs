@@ -255,14 +255,16 @@ pub async fn register_and_scan_simple_dataset_multiple_timelines(service: impl R
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple_with_time_type(
+            LayerDefinition::simple_with_time(
                 "my_segment_id1",
                 &["my/entity", "my/other/entity"],
+                0,
                 TimeType::Sequence,
             ),
-            LayerDefinition::simple_with_time_type(
+            LayerDefinition::simple_with_time(
                 "my_segment_id2",
                 &["my/entity"],
+                0,
                 TimeType::DurationNs,
             ),
             LayerDefinition::properties(
@@ -273,14 +275,16 @@ pub async fn register_and_scan_simple_dataset_multiple_timelines(service: impl R
                 )],
             )
             .layer_name("props"),
-            LayerDefinition::simple_with_time_type(
+            LayerDefinition::simple_with_time(
                 "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
+                0,
                 TimeType::TimestampNs,
             ),
-            LayerDefinition::simple_with_time_type(
+            LayerDefinition::simple_with_time(
                 "my_segment_id2",
                 &["my/entity", "my/fourth/entity"],
+                0,
                 TimeType::Sequence,
             )
             .layer_name("layer_two"),
@@ -308,6 +312,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix1,
         "my_segment_id1",
         &["my/entity", "my/other/entity"],
+        0,
         TimeType::Sequence,
         root_dir.path(),
     )
@@ -318,6 +323,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix2,
         "my_segment_id2",
         &["my/entity"],
+        0,
         TimeType::Sequence,
         root_dir.path(),
     )
@@ -328,6 +334,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
         tuid_prefix3,
         "my_segment_id3",
         &["my/entity", "another/one", "yet/another/one"],
+        0,
         TimeType::Sequence,
         root_dir.path(),
     )

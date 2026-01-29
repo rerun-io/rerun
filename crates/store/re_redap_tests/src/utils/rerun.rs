@@ -46,6 +46,7 @@ pub fn create_simple_recording(
     tuid_prefix: TuidPrefix,
     segment_id: &str,
     entity_paths: &[&str],
+    start_time: i64,
     time_type: TimeType,
 ) -> anyhow::Result<TempPath> {
     let tmp_dir = tempfile::tempdir()?;
@@ -53,6 +54,7 @@ pub fn create_simple_recording(
         tuid_prefix,
         segment_id,
         entity_paths,
+        start_time,
         time_type,
         tmp_dir.path(),
     )?;
@@ -68,6 +70,7 @@ pub fn create_simple_recording_in(
     tuid_prefix: TuidPrefix,
     segment_id: &str,
     entity_paths: &[&str],
+    start_time: i64,
     time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
@@ -93,10 +96,10 @@ pub fn create_simple_recording_in(
         let entity_path = EntityPath::from(*entity_path);
 
         // Sequential frames
-        let frame1 = TimeInt::new_temporal(10);
-        let frame2 = TimeInt::new_temporal(20);
-        let frame3 = TimeInt::new_temporal(30);
-        let frame4 = TimeInt::new_temporal(40);
+        let frame1 = TimeInt::new_temporal(start_time + 10);
+        let frame2 = TimeInt::new_temporal(start_time + 20);
+        let frame3 = TimeInt::new_temporal(start_time + 30);
+        let frame4 = TimeInt::new_temporal(start_time + 40);
 
         // Data for each frame
         let points1 = MyPoint::from_iter(0..1);
