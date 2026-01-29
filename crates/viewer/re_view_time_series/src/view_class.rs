@@ -857,6 +857,27 @@ impl ViewClass for TimeSeriesView {
     }
 }
 
+/// Returns a priority score for a given Arrow datatype.
+/// Lower scores are preferred.
+fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes::DataType) -> u32 {
+    use re_log_types::external::arrow::datatypes::DataType;
+    match datatype {
+        DataType::Float64 => 0,
+        DataType::Float32 => 1,
+        DataType::Float16 => 2,
+        DataType::Int64 => 3,
+        DataType::Int32 => 5,
+        DataType::Int16 => 7,
+        DataType::Int8 => 9,
+        DataType::Boolean => 11,
+        DataType::UInt64 => 4,
+        DataType::UInt32 => 6,
+        DataType::UInt16 => 8,
+        DataType::UInt8 => 10,
+        _ => 100, // Any other type gets lowest priority
+    }
+}
+
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
@@ -867,24 +888,39 @@ fn scalar_mapping_selector(
 
     let target_component = Scalars::descriptor_scalars().component;
 
-    // Priorities:
-    // * Full native (identity mapping)
-    // * First native semantic match
-    // * First physical datatype match
+    // Sorting priorities:
+    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
+    // 2. Component type: unknown/custom > known Rerun type
+    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
+    //      different known semantics (e.g., Color, LinearSpeed)
+    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
+    // 4. Alphabetical order as final tiebreaker
     matches
         .iter()
-        .sorted_by_key(|(source_component, match_kind)| {
-            let primary_order = if **source_component == target_component {
+        .sorted_by_key(|(source_component, match_info)| {
+            let primary_match_order = if **source_component == target_component {
+                // Full native match - exact component identifier
                 0
             } else {
-                match match_kind {
+                match match_info.kind {
+                    // Native semantic match - same semantic type but different component identifier
                     re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
+                    // Physical datatype match - compatible datatype but different semantics
                     re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
                 }
             };
 
-            // Alphabetical order as tiebreaker
-            (primary_order, *source_component)
+            let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
+            let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
+
+            // Sort by: match order, prefer custom types (inverted boolean so false/custom sorts first),
+            // then datatype priority, then alphabetically.
+            (
+                primary_match_order,
+                is_rerun_native_type, // custom types (false) sort before Rerun types (true)
+                datatype_order,
+                *source_component,
+            )
         })
         .next()
         .map(

@@ -170,6 +170,23 @@ impl ComponentType {
             || self.full_name().to_lowercase() == other.to_lowercase()
             || self.short_name().to_lowercase() == other.to_lowercase()
     }
+
+    /// Returns `true` if this is a known Rerun component type (e.g., `rerun.components.*`, `rerun.blueprint.components.*`).
+    ///
+    /// Returns `false` for custom user-defined components.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use re_types_core::ComponentType;
+    /// assert!(ComponentType::from("rerun.components.Position2D").is_rerun_type());
+    /// assert!(ComponentType::from("rerun.blueprint.components.Active").is_rerun_type());
+    /// assert!(!ComponentType::from("my_custom.MyComponent").is_rerun_type());
+    /// ```
+    #[inline]
+    pub fn is_rerun_type(&self) -> bool {
+        self.0.as_str().starts_with("rerun.")
+    }
 }
 
 // ---

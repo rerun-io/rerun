@@ -1,7 +1,6 @@
 //! Various strongly typed sets of entities to express intent and avoid mistakes.
 
 use ahash::HashMap;
-use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
@@ -23,6 +22,18 @@ pub enum DatatypeMatchKind {
     NativeSemantics,
 }
 
+/// Information about a datatype match, including the match kind and the actual Arrow datatype.
+#[derive(Clone, Debug)]
+pub struct DatatypeMatchInfo {
+    pub kind: DatatypeMatchKind,
+    pub arrow_datatype: arrow::datatypes::DataType,
+
+    /// The semantic component type if any.
+    ///
+    /// Note that `Some` doesn't necessarily mean that this is a Rerun type, it may still be a user supplied type.
+    pub component_type: Option<re_chunk::ComponentType>,
+}
+
 /// Describes why a given entity was marked as visualizable.
 #[derive(Clone, Debug)]
 pub enum VisualizableReason {
@@ -37,7 +48,7 @@ pub enum VisualizableReason {
 
     /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
     DatatypeMatchAny {
-        matches: IntMap<ComponentIdentifier, DatatypeMatchKind>,
+        matches: IntMap<ComponentIdentifier, DatatypeMatchInfo>,
     },
 }
 
@@ -60,7 +71,7 @@ impl VisualizableReason {
             Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
             Self::DatatypeMatchAny { matches } => matches
                 .values()
-                .contains(&DatatypeMatchKind::NativeSemantics),
+                .any(|info| info.kind == DatatypeMatchKind::NativeSemantics),
         }
     }
 
@@ -68,9 +79,10 @@ impl VisualizableReason {
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
             Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
-            Self::DatatypeMatchAny { matches } => {
-                matches.get(&component_identifier) == Some(&DatatypeMatchKind::NativeSemantics)
-            }
+            Self::DatatypeMatchAny { matches } => matches
+                .get(&component_identifier)
+                .map(|info| info.kind == DatatypeMatchKind::NativeSemantics)
+                .unwrap_or(false),
         }
     }
 }

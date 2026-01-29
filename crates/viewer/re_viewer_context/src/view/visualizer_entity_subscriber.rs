@@ -10,6 +10,7 @@ use re_sdk_types::ComponentSet;
 use re_types_core::SerializedComponentColumn;
 
 use crate::DatatypeMatchKind;
+use crate::typed_entity_collections::DatatypeMatchInfo;
 use crate::view::visualizer_system::AnyPhysicalDatatypeRequirement;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
@@ -342,8 +343,10 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                             continue;
                         }
 
-                        let is_physical_match = physical_types.contains(&list_array.value_type());
-                        let is_semantic_match = descriptor.component_type == Some(*semantic_type);
+                        let arrow_datatype = list_array.value_type();
+                        let component_type = descriptor.component_type;
+                        let is_physical_match = physical_types.contains(&arrow_datatype);
+                        let is_semantic_match = component_type == Some(*semantic_type);
 
                         let match_kind = match (is_physical_match, is_semantic_match) {
                             (false, false) => None,
@@ -352,15 +355,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
 
                             (false, true) => {
                                 re_log::warn_once!(
-                                    "Component {:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {:?} for this semantic type.",
-                                    descriptor.component,
-                                    list_array.value_type()
+                                    "Component {:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {arrow_datatype:?} for this semantic type.",
+                                    descriptor.component
                                 );
                                 None
                             }
                         };
 
-                        if let Some(match_kind) = match_kind {
+                        if let Some(kind) = match_kind {
                             // The component might be present, but logged completely empty.
                             if !list_array.values().is_empty() {
                                 has_any_datatype = true;
@@ -375,7 +377,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                         if let VisualizableReason::DatatypeMatchAny { matches } =
                                             occupied_entry.get_mut()
                                         {
-                                            matches.insert(descriptor.component, match_kind);
+                                            matches.insert(
+                                                descriptor.component,
+                                                DatatypeMatchInfo {
+                                                    kind,
+                                                    arrow_datatype,
+                                                    component_type,
+                                                },
+                                            );
                                         } else {
                                             // We already had a different kind of match? Shouldn't happen.
                                             debug_assert!(
@@ -390,7 +399,11 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                         vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
                                             matches: std::iter::once((
                                                 descriptor.component,
-                                                match_kind,
+                                                DatatypeMatchInfo {
+                                                    kind,
+                                                    arrow_datatype,
+                                                    component_type,
+                                                },
                                             ))
                                             .collect(),
                                         });

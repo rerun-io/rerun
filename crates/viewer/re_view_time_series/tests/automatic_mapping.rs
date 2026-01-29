@@ -3,6 +3,9 @@
 //! This test verifies that the time series view correctly picks components
 //! for visualization and installs mappings when needed.
 
+use std::sync::Arc;
+
+use re_log_types::external::arrow::array::{Float64Array, Int16Array, Int32Array};
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::components;
 use re_sdk_types::{DynamicArchetype, archetypes};
@@ -65,10 +68,10 @@ fn setup_store(test_context: &mut TestContext) {
         });
     }
 
-    // Scenario 4: Entity with multiple custom Float64 components (temporal)
+    // Scenario 4: Entity with multiple known Rerun component types (LinearSpeed) on custom archetype
     // Expected: Should pick the first one alphabetically
     for i in 0..10 {
-        test_context.log_entity("entity_multiple_custom_temporal", |builder| {
+        test_context.log_entity("entity_multiple_rerun_types_temporal", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, i)],
                 &DynamicArchetype::new("custom")
@@ -79,34 +82,100 @@ fn setup_store(test_context: &mut TestContext) {
         });
     }
 
-    // Scenario 5: Entity with both static and temporal custom components
+    // Scenario 5: Entity with both static and temporal known Rerun component type (LinearSpeed)
     // Expected: Should pick temporal component, not static
-    test_context.log_entity("entity_custom_static_and_temporal", |builder| {
+    test_context.log_entity("entity_rerun_type_static_and_temporal", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
             &DynamicArchetype::new("custom")
-                .with_component::<components::LinearSpeed>("static_custom", [100.0]),
+                .with_component::<components::LinearSpeed>("static_linear_speed", [100.0]),
         )
     });
     for i in 0..10 {
-        test_context.log_entity("entity_custom_static_and_temporal", |builder| {
+        test_context.log_entity("entity_rerun_type_static_and_temporal", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, i)],
-                &DynamicArchetype::new("custom")
-                    .with_component::<components::LinearSpeed>("temporal_custom", [i as f64 * 8.0]),
+                &DynamicArchetype::new("custom").with_component::<components::LinearSpeed>(
+                    "temporal_linear_speed",
+                    [i as f64 * 8.0],
+                ),
             )
         });
     }
 
-    // Scenario 6: Entity with only static custom component
+    // Scenario 6: Entity with only static known Rerun component type (LinearSpeed)
     // Expected: Should not visualize (can't plot static data in time series)
-    test_context.log_entity("entity_custom_static_only", |builder| {
+    test_context.log_entity("entity_rerun_type_static_only", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
             &DynamicArchetype::new("custom")
                 .with_component::<components::LinearSpeed>("static_only", [999.0]),
         )
     });
+
+    // Scenario 7: Entity with multiple fully custom components (no known Rerun types)
+    // Expected: Should pick Float64 over Int types, preferring higher precision
+    for i in 0..10 {
+        test_context.log_entity("entity_fully_custom_mixed_types", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data(
+                        "beta_component",
+                        Arc::new(Float64Array::from(vec![i as f64 * 5.0])),
+                    )
+                    .with_component_from_data(
+                        "alpha_component",
+                        Arc::new(Int16Array::from(vec![i as i16 * 8])),
+                    )
+                    .with_component_from_data(
+                        "zebra_component",
+                        Arc::new(Int32Array::from(vec![i as i32 * 7])),
+                    ),
+            )
+        });
+    }
+
+    // Scenario 8: Entity with fully custom Float64 vs known Rerun component type (LinearSpeed)
+    // Expected: Should prefer the fully custom component over LinearSpeed (both PhysicalDatatypeOnly)
+    // Note: Fully custom component is named "zebra_custom" (alphabetically after "linear_speed")
+    //       to ensure preference is based on component type metadata, not alphabetical ordering
+    for i in 0..10 {
+        test_context.log_entity("entity_fully_custom_vs_rerun_type", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    // Known Rerun component type (LinearSpeed) - has semantic meaning
+                    .with_component::<components::LinearSpeed>("linear_speed", [i as f64 * 20.0])
+                    // Fully custom Float64 - no ComponentType metadata (alphabetically after linear_speed)
+                    .with_component_from_data(
+                        "zebra_custom",
+                        Arc::new(Float64Array::from(vec![i as f64 * 10.0])),
+                    ),
+            )
+        });
+    }
+
+    // Scenario 9: Entity with fully custom Float64 vs Scalars component (NativeSemantics match)
+    // Expected: Should prefer Scalars (NativeSemantics match) over fully custom Float64 (PhysicalDatatypeOnly)
+    // Note: Fully custom component is named "aaa_custom" (alphabetically before "scalars")
+    //       to ensure preference is based on semantic match (NativeSemantics > PhysicalDatatypeOnly),
+    //       not alphabetical ordering
+    for i in 0..10 {
+        test_context.log_entity("entity_fully_custom_vs_scalars", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    // Fully custom Float64 - no ComponentType metadata (alphabetically first)
+                    .with_component_from_data(
+                        "aaa_custom",
+                        Arc::new(Float64Array::from(vec![i as f64 * 10.0])),
+                    )
+                    // Known Rerun Scalars component (NativeSemantics - the exact type we're expecting!)
+                    .with_component::<components::Scalar>("scalars", [i as f64 * 30.0]),
+            )
+        });
+    }
 
     test_context.send_time_commands(
         test_context.active_store_id(),
@@ -207,10 +276,10 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
         }
     }
 
-    // Scenario 4: Entity with multiple custom Float64 components
+    // Scenario 4: Entity with multiple known Rerun component types (LinearSpeed)
     {
         let instruction =
-            single_visualizer_for(data_result_tree, "entity_multiple_custom_temporal");
+            single_visualizer_for(data_result_tree, "entity_multiple_rerun_types_temporal");
         let mapping = scalar_mapping_for(instruction);
 
         match mapping {
@@ -233,10 +302,10 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
         }
     }
 
-    // Scenario 5: Entity with static and temporal custom components
+    // Scenario 5: Entity with static and temporal known Rerun component type (LinearSpeed)
     {
         let instruction =
-            single_visualizer_for(data_result_tree, "entity_custom_static_and_temporal");
+            single_visualizer_for(data_result_tree, "entity_rerun_type_static_and_temporal");
         let mapping = scalar_mapping_for(instruction);
 
         match mapping {
@@ -245,8 +314,8 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
                 ..
             } => {
                 assert!(
-                    source_component.as_str().contains("temporal_custom"),
-                    "Should pick temporal custom component, not static: {}",
+                    source_component.as_str().contains("temporal"),
+                    "Should pick temporal LinearSpeed component, not static: {}",
                     source_component.as_str()
                 );
             }
@@ -254,16 +323,93 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
         }
     }
 
-    // Scenario 6: Entity with only static custom component
+    // Scenario 6: Entity with only static known Rerun component type (LinearSpeed)
     {
         // We don't emit data result elements if there's no visualizer instructions in the first place,
         // so the lookup should come back empty.
         let result = data_result_tree
-            .lookup_result_by_path(EntityPath::from("entity_custom_static_only").hash());
+            .lookup_result_by_path(EntityPath::from("entity_rerun_type_static_only").hash());
 
         assert!(
             result.is_none(),
-            "entity_custom_static_only should not have any data result out of the box since it is marked as non-visualizable, but got: {result:?}",
+            "entity_rerun_type_static_only should not have any data result out of the box since it is marked as non-visualizable, but got: {result:?}",
         );
+    }
+
+    // Scenario 7: Entity with multiple fully custom components (Float64 and Int types)
+    {
+        let instruction =
+            single_visualizer_for(data_result_tree, "entity_fully_custom_mixed_types");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:beta_component",
+                    "Should pick Float64 component (beta_component) over Int types: {}",
+                    source_component.as_str()
+                );
+                assert!(
+                    selector.is_empty(),
+                    "Expected empty selector for direct component mapping"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for entity_fully_custom_mixed_types"),
+        }
+    }
+
+    // Scenario 8: Entity with fully custom Float64 vs known Rerun type (LinearSpeed)
+    {
+        let instruction =
+            single_visualizer_for(data_result_tree, "entity_fully_custom_vs_rerun_type");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:zebra_custom",
+                    "Should pick fully custom Float64 (zebra_custom, no ComponentType) over known Rerun type (linear_speed, LinearSpeed ComponentType), even though it's alphabetically after it: {}",
+                    source_component.as_str()
+                );
+                assert!(
+                    selector.is_empty(),
+                    "Expected empty selector for direct component mapping"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for fully custom component"),
+        }
+    }
+
+    // Scenario 9: Entity with fully custom Float64 vs Scalars (NativeSemantics match)
+    {
+        let instruction = single_visualizer_for(data_result_tree, "entity_fully_custom_vs_scalars");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:scalars",
+                    "Should pick Scalars component (NativeSemantics match) over fully custom Float64 (PhysicalDatatypeOnly), even though fully custom is alphabetically first: {}",
+                    source_component.as_str()
+                );
+                assert!(
+                    selector.is_empty(),
+                    "Expected empty selector for direct component mapping"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for Scalars component"),
+        }
     }
 }
