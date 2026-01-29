@@ -894,12 +894,12 @@ impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart
     fn from(value: &arrow::array::RecordBatch) -> Self {
         let version = crate::common::v1alpha1::EncoderVersion::V0;
         // TODO(cmc): enable compression by default as soon as rr0.29/dp0.8 are out the door.
-        let compression = Compression::Off;
-        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(value, compression);
+        let compression = crate::common::v1alpha1::Compression::None;
+        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(value, compression.into());
         Self {
-            encoder_version: version as i32,
+            encoder_version: version as i32, // make sure `version` is using the transport type!!
             payload: Some(payload.into()),
-            compression: compression as i32,
+            compression: compression as i32, // make sure `compression` is using the transport type!!
             uncompressed_size,
         }
     }
