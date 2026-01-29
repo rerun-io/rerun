@@ -397,7 +397,7 @@ fn arrow_msg_app_to_transport(
     Ok(re_protos::log_msg::v1alpha1::ArrowMsg {
         store_id: Some(store_id.into()),
         chunk_id: Some((*chunk_id).into()),
-        compression: re_protos::log_msg::v1alpha1::Compression::from(compression) as i32,
+        compression: re_protos::common::v1alpha1::Compression::from(compression) as i32,
         uncompressed_size: payload.uncompressed_size,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),

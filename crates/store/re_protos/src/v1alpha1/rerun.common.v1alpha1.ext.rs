@@ -8,6 +8,35 @@ use re_log_types::{RecordingId, StoreKind, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
+/// Compression format used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Compression {
+    Off = 0,
+
+    /// Very fast compression and decompression, but not very good compression ratio.
+    LZ4 = 1,
+}
+
+impl From<crate::common::v1alpha1::Compression> for Compression {
+    fn from(value: crate::common::v1alpha1::Compression) -> Self {
+        match value {
+            crate::common::v1alpha1::Compression::Unspecified
+            | crate::common::v1alpha1::Compression::None => Self::Off,
+            crate::common::v1alpha1::Compression::Lz4 => Self::LZ4,
+        }
+    }
+}
+
+impl From<Compression> for crate::common::v1alpha1::Compression {
+    fn from(value: Compression) -> Self {
+        match value {
+            Compression::Off => Self::None,
+            Compression::LZ4 => Self::Lz4,
+        }
+    }
+}
+
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -799,7 +828,9 @@ impl TryFrom<&crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch
                         "payload"
                     ));
                 };
-                let Some(batch) = record_batch_from_ipc_bytes(bytes)? else {
+                let Some(batch) =
+                    record_batch_from_ipc_bytes(bytes, Compression::Off, bytes.len() as u64)?
+                else {
                     return Err(invalid_field!(
                         crate::common::v1alpha1::RerunChunk,
                         "payload",
@@ -823,7 +854,7 @@ impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
         let version = crate::common::v1alpha1::EncoderVersion::V0;
         Self {
             encoder_version: version as i32,
-            payload: Some(record_batch_to_ipc_bytes(value).into()),
+            payload: Some(record_batch_to_ipc_bytes(value, Compression::Off).0.into()),
         }
     }
 }
@@ -855,7 +886,14 @@ impl TryFrom<&crate::common::v1alpha1::DataframePart> for arrow::array::RecordBa
                         "payload"
                     ));
                 };
-                let Some(batch) = record_batch_from_ipc_bytes(bytes)? else {
+
+                let compression =
+                    crate::common::v1alpha1::Compression::try_from(value.compression)?;
+                let compression = Compression::from(compression);
+
+                let Some(batch) =
+                    record_batch_from_ipc_bytes(bytes, compression, value.uncompressed_size)?
+                else {
                     return Err(invalid_field!(
                         crate::common::v1alpha1::RerunChunk,
                         "payload",
@@ -877,46 +915,80 @@ impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart 
 impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
     fn from(value: &arrow::array::RecordBatch) -> Self {
         let version = crate::common::v1alpha1::EncoderVersion::V0;
+        // TODO(cmc): enable compression by default as soon as rr0.29/dp0.8 are out the door.
+        let compression = Compression::Off;
+        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(value, compression);
         Self {
             encoder_version: version as i32,
-            payload: Some(record_batch_to_ipc_bytes(value).into()),
+            payload: Some(payload.into()),
+            compression: compression as i32,
+            uncompressed_size,
         }
     }
 }
 
 /// `RecordBatch` to IPC bytes. No I/O, no failures.
-///
-/// Note that this is never compressed in any way. It is assumed that for `DataframePart`s and
-/// `RerunChunk`s, transport-level compression will be used where needed.
 #[tracing::instrument(level = "debug", skip_all)]
-fn record_batch_to_ipc_bytes(batch: &arrow::array::RecordBatch) -> Vec<u8> {
+fn record_batch_to_ipc_bytes(
+    batch: &arrow::array::RecordBatch,
+    compression: Compression,
+) -> (Vec<u8>, u64) {
     let schema = batch.schema_ref().as_ref();
 
-    let mut out = Vec::new();
-
-    let mut sw = {
-        let _span = tracing::trace_span!("schema").entered();
-        arrow::ipc::writer::StreamWriter::try_new(&mut out, schema)
-            .expect("encoding the schema of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail")
-    };
+    let mut uncompressed = Vec::new();
 
     {
-        let _span = tracing::trace_span!("data").entered();
-        sw.write(batch)
-            .expect("encoding the data of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+        let mut sw = {
+            let _span = tracing::trace_span!("schema").entered();
+            arrow::ipc::writer::StreamWriter::try_new(&mut uncompressed, schema)
+                .expect("encoding the schema of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail")
+        };
+
+        {
+            let _span = tracing::trace_span!("data").entered();
+            sw.write(batch)
+                .expect("encoding the data of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+        }
+
+        sw.finish()
+            .expect("encoding a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
     }
 
-    sw.finish()
-        .expect("encoding a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+    let uncompressed_size = uncompressed.len() as u64;
 
-    out
+    let data = match compression {
+        Compression::Off => uncompressed,
+        Compression::LZ4 => {
+            re_tracing::profile_scope!("lz4::compress");
+            let _span = tracing::trace_span!("lz4::compress").entered();
+            lz4_flex::block::compress(&uncompressed)
+        }
+    };
+
+    (data, uncompressed_size)
 }
 
 /// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
 #[tracing::instrument(level = "debug", skip_all)]
 fn record_batch_from_ipc_bytes(
     bytes: &[u8],
+    compression: Compression,
+    uncompressed_size: u64,
 ) -> Result<Option<arrow::array::RecordBatch>, ArrowError> {
+    let mut uncompressed = Vec::new();
+    let bytes = match compression {
+        Compression::Off => bytes,
+        Compression::LZ4 => {
+            re_tracing::profile_scope!("LZ4-decompress");
+            let _span = tracing::trace_span!("lz4::decompress").entered();
+            uncompressed.resize(uncompressed_size as usize, 0);
+            lz4_flex::block::decompress_into(bytes, &mut uncompressed).map_err(|err| {
+                ArrowError::ParseError(format!("LZ4 decompression failure: {err:#}"))
+            })?;
+            uncompressed.as_slice()
+        }
+    };
+
     let mut stream = {
         let _span = tracing::trace_span!("schema").entered();
         arrow::ipc::reader::StreamReader::try_new(bytes, None)?
