@@ -9,6 +9,23 @@ pub struct TimeSelection {
     pub range: AbsoluteTimeRange,
 }
 
+impl std::cmp::PartialOrd for TimeSelection {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::cmp::Ord for TimeSelection {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let Self { timeline, range } = self;
+
+        timeline
+            .cmp(&other.timeline)
+            .then_with(|| range.min().cmp(&other.range.min()))
+            .then_with(|| range.max().cmp(&other.range.max()))
+    }
+}
+
 // We shouldn't implement display for this as it's too ambiguous, instead create specific functions.
 static_assertions::assert_not_impl_any!(TimeSelection: std::fmt::Display);
 

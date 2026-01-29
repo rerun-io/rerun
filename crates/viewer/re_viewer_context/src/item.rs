@@ -7,7 +7,7 @@ use crate::{BlueprintId, ContainerId, Contents, ViewId};
 /// One "thing" in the UI.
 ///
 /// This is the granularity of what is selectable and hoverable.
-#[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
     /// Select a specific application, to see which recordings and blueprints are loaded for it.
     AppId(re_log_types::ApplicationId),
