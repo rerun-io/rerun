@@ -13,7 +13,7 @@ use crate::{EntityPath, Instance};
 /// * `points:Color`
 /// * `points[#42]`
 /// * `points[#42]:Color`
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct DataPath {
     pub entity_path: EntityPath,
     pub instance: Option<Instance>,
