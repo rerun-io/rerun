@@ -40,8 +40,8 @@ pub use view_query::{
 };
 pub use view_states::ViewStates;
 pub use visualizer_system::{
-    RequiredComponents, VisualizerCollection, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem,
+    AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------

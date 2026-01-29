@@ -540,7 +540,7 @@ impl DataQueryPropertyResolver<'_> {
                     .collect();
             } else {
                 // Otherwise ask the `ViewClass` to choose.
-                let recommended_visualizers = self.view_class.choose_default_visualizers(
+                let recommended_visualizers = self.view_class.recommended_visualizers_for_entity(
                     &node.data_result.entity_path,
                     self.visualizable_entities_per_visualizer,
                     self.indicated_entities_per_visualizer,

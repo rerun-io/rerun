@@ -320,8 +320,8 @@ impl ViewClass for SpatialView3D {
         .flatten()
     }
 
-    /// Choose the default visualizers to enable for this entity.
-    fn choose_default_visualizers(
+    /// Auto picked visualizers for an entity if there was not explicit selection.
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,

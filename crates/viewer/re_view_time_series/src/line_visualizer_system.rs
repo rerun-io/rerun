@@ -10,8 +10,9 @@ use re_view::{
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::series_query::{
@@ -40,10 +41,13 @@ impl VisualizerSystem for SeriesLinesSystem {
         if app_options.experimental.component_mapping {
             VisualizerQueryInfo {
                 relevant_archetype: archetypes::SeriesLines::name().into(),
-                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
+                required: AnyPhysicalDatatypeRequirement {
                     semantic_type: components::Scalar::name(),
                     physical_types: util::series_supported_datatypes().into_iter().collect(),
-                },
+                    allow_static_data: false,
+                }
+                .into(),
+
                 queried: archetypes::Scalars::all_components()
                     .iter()
                     .chain(archetypes::SeriesLines::all_components().iter())

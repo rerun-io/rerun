@@ -129,7 +129,7 @@ impl ViewClass for ColorCoordinatesView {
     /// The default implementation of `choose_default_visualizers` activates visualizers only
     /// if the respective indicator is present.
     /// We want to enable the visualizer here though for any visualizable entity instead!
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,

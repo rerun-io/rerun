@@ -39,6 +39,30 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
 
 pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnyPhysicalDatatypeRequirement {
+    /// The semantic type the visualizer is working with.
+    ///
+    /// Matches with the semantic type are generally preferred.
+    pub semantic_type: ComponentType,
+
+    /// All supported physical Arrow data types.
+    ///
+    /// Has to contain the physical data type that is covered by the Rerun semantic type.
+    pub physical_types: DatatypeSet,
+
+    /// If false, ignores all static components.
+    ///
+    /// This is useful if you rely on ranges queries as done by the time series view.
+    pub allow_static_data: bool,
+}
+
+impl From<AnyPhysicalDatatypeRequirement> for RequiredComponents {
+    fn from(req: AnyPhysicalDatatypeRequirement) -> Self {
+        Self::AnyPhysicalDatatype(req)
+    }
+}
+
 /// Specifies how component requirements should be evaluated for visualizer entity matching.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RequiredComponents {
@@ -55,10 +79,7 @@ pub enum RequiredComponents {
     /// Entity must have _any one_ of these physical Arrow data types.
     ///
     /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
-    AnyPhysicalDatatype {
-        semantic_type: ComponentType,
-        physical_types: DatatypeSet,
-    },
+    AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement),
 }
 
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.

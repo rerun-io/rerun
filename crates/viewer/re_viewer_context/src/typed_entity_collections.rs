@@ -1,14 +1,27 @@
 //! Various strongly typed sets of entities to express intent and avoid mistakes.
 
 use ahash::HashMap;
+use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_types_core::ViewClassIdentifier;
-use vec1::smallvec_v1::SmallVec1;
 
 use crate::ViewSystemIdentifier;
+
+/// Types of matches when matching [`crate::RequiredComponents::AnyPhysicalDatatype`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DatatypeMatchKind {
+    /// Only the physical datatype was matched, but semantics aren't the native ones.
+    PhysicalDatatypeOnly,
+
+    /// The Rerun native datatype was matched.
+    ///
+    /// For example the native type for a Rerun point cloud is `rerun.components.Position3D`.
+    /// This is *not* concerned with the column name of the data, only the datatype.
+    NativeSemantics,
+}
 
 /// Describes why a given entity was marked as visualizable.
 #[derive(Clone, Debug)]
@@ -24,18 +37,42 @@ pub enum VisualizableReason {
 
     /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
     DatatypeMatchAny {
-        components: SmallVec1<[(ComponentIdentifier, DatatypeMatchKind); 1]>,
+        matches: IntMap<ComponentIdentifier, DatatypeMatchKind>,
     },
 }
 
-/// Types of matches when matching [`crate::RequiredComponents::AnyPhysicalDatatype`].
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DatatypeMatchKind {
-    /// Only the physical datatype was matched, but semantics aren't the native ones.
-    PhysicalDatatypeOnly,
+impl VisualizableReason {
+    /// Returns true if this reason includes a match with native semantics.
+    ///
+    /// The component identifier of the match may not be equal to the one the visualizer's associated archetype expects.
+    /// To ensure that, use [`Self::full_native_match`].
+    /// This distinction is only ever relevant if we want to distinguish with the component name as well.
+    ///
+    /// Example:
+    /// `SeriesLines` visualizer expects a component named "Scalars:scalars" with component (semantic) type "rerun.components.Scalars".
+    /// For an incoming entity with a component named "OtherScalars:scalars" with component type "rerun.components.Scalars",
+    /// [`Self::any_match_with_native_semantics`] would return true, but [`Self::full_native_match`] would return false.
+    //
+    // TODO(andreas): We'll likely move into a direction where semantic match will always be sufficient and emits a mapping to the
+    // component if needed (not needed == full_native_match) which should be preferred when possible.
+    pub fn any_match_with_native_semantics(&self) -> bool {
+        match self {
+            Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
+            Self::DatatypeMatchAny { matches } => matches
+                .values()
+                .contains(&DatatypeMatchKind::NativeSemantics),
+        }
+    }
 
-    /// The native datatype was matched, so we have full
-    NativeSemantics,
+    /// Returns true if this match reason is a perfect match for the given component identifier.
+    pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
+        match self {
+            Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
+            Self::DatatypeMatchAny { matches } => {
+                matches.get(&component_identifier) == Some(&DatatypeMatchKind::NativeSemantics)
+            }
+        }
+    }
 }
 
 /// List of entities that are visualizable with a given visualizer.

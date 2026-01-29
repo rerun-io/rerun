@@ -96,7 +96,7 @@ Set the displayed dimensions in a selection panel.",
         Box::<ViewTensorState>::default()
     }
 
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,

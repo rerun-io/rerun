@@ -52,10 +52,11 @@ pub fn range_with_blueprint_resolved_data<'a>(
         for (target, source) in &visualizer_instruction.component_mappings {
             component_sources.insert(*target, source.source_kind());
 
-            if let re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector: _, // TODO(RR-3308): implement selector logic
-            } = source
+            if !source.is_identity_mapping(*target)
+                && let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: _, // TODO(RR-3308): implement selector logic
+                } = source
                 && components.remove(target)
             {
                 components.insert(*source_component);
@@ -157,10 +158,11 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         for (target, source) in &visualizer_instruction.component_mappings {
             component_sources.insert(*target, source.source_kind());
 
-            if let re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector: _, // TODO(RR-3308): implement selector logic
-            } = source
+            if !source.is_identity_mapping(*target)
+                && let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector: _, // TODO(RR-3308): implement selector logic
+                } = source
                 && components.remove(target)
             {
                 components.insert(*source_component);

@@ -115,15 +115,16 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, PerSystemDataResults,
-    PerSystemEntities, RecommendedView, RecommendedVisualizers, RequiredComponents,
-    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
-    ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
-    ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
-    ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionErrorState,
-    VisualizerExecutionOutput, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
+    PerSystemDataResults, PerSystemEntities, RecommendedView, RecommendedVisualizers,
+    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
+    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionErrorState, VisualizerExecutionOutput,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

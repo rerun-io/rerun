@@ -13,9 +13,9 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, PerVisualizerType, QueryContext, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, PerVisualizerType,
+    QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
+    VisualizerExecutionErrorState, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -568,10 +568,9 @@ fn source_component_ui(
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
     // casting in some special cases. Eventually this should always be the case, leaving us always with a list of valid physical types that we filter on.
     let allowed_physical_types = if is_required_component
-        && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-            semantic_type: _,
-            physical_types,
-        } = &query_info.required
+        && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+            AnyPhysicalDatatypeRequirement { physical_types, .. },
+        ) = &query_info.required
     {
         physical_types.clone()
     } else {

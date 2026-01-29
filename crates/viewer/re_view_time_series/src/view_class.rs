@@ -1,6 +1,7 @@
 use egui::ahash::{HashMap, HashSet};
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
@@ -323,18 +324,8 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(
                 maybe_visualizable
                     .iter()
-                    .filter_map(|(ent, reason)| match reason {
-                        re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
-                            components
-                                .iter()
-                                .any(|(_, match_kind)| {
-                                    // It has to have the native semantics for this though!
-                                    *match_kind
-                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
-                                })
-                                .then_some(ent)
-                        }
-                        _ => Some(ent),
+                    .filter_map(|(ent, reason)| {
+                        reason.any_match_with_native_semantics().then_some(ent)
                     })
                     .cloned(),
             );
@@ -388,8 +379,8 @@ impl ViewClass for TimeSeriesView {
         }))
     }
 
-    /// Choose the default visualizers to enable for this entity.
-    fn choose_default_visualizers(
+    /// Auto picked visualizers for an entity if there was not explicit selection.
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
@@ -869,30 +860,36 @@ impl ViewClass for TimeSeriesView {
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
-    let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
+    let Some(re_viewer_context::VisualizableReason::DatatypeMatchAny { matches }) = reason_opt
+    else {
         return None;
     };
 
     let target_component = Scalars::descriptor_scalars().component;
 
-    let mut first_native_semantic_match = None;
-    for (physical_component, match_kind) in components {
-        if first_native_semantic_match.is_none()
-            && *match_kind == re_viewer_context::DatatypeMatchKind::NativeSemantics
-        {
-            first_native_semantic_match = Some(*physical_component);
-        }
-        if first_native_semantic_match.is_some() && physical_component == &target_component {
-            // Perfect match, don't do any mapping.
-            return None;
-        }
-    }
+    // Priorities:
+    // * Full native (identity mapping)
+    // * First native semantic match
+    // * First physical datatype match
+    matches
+        .iter()
+        .sorted_by_key(|(source_component, match_kind)| {
+            let primary_order = if **source_component == target_component {
+                0
+            } else {
+                match match_kind {
+                    re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
+                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
+                }
+            };
 
-    first_native_semantic_match
-        .or_else(|| Some(components.first().0))
+            // Alphabetical order as tiebreaker
+            (primary_order, *source_component)
+        })
+        .next()
         .map(
-            |source_component| VisualizerComponentSource::SourceComponent {
-                source_component,
+            |(source_component, _)| VisualizerComponentSource::SourceComponent {
+                source_component: *source_component,
                 selector: String::new(),
             },
         )

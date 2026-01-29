@@ -101,7 +101,7 @@ impl ViewClass for BarChartView {
         None
     }
 
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,

@@ -3,20 +3,18 @@ use std::collections::hash_map::Entry;
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier, ComponentType};
+use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
 use re_types_core::SerializedComponentColumn;
-use vec1::smallvec_v1::SmallVec1;
 
 use crate::DatatypeMatchKind;
+use crate::view::visualizer_system::AnyPhysicalDatatypeRequirement;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
     VisualizableEntities, VisualizerSystem, typed_entity_collections::VisualizableReason,
 };
-
-use super::visualizer_system::DatatypeSet;
 
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.
@@ -54,12 +52,6 @@ struct AllComponentsRequirement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AnyComponentRequirement {
     relevant_components: ComponentSet,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct AnyPhysicalDatatypeRequirement {
-    semantic_type: ComponentType,
-    relevant_datatypes: DatatypeSet,
 }
 
 /// Internal representation of how to check required components.
@@ -127,13 +119,9 @@ impl From<RequiredComponents> for Requirement {
             RequiredComponents::None => Self::None,
             RequiredComponents::AllComponents(components) => Self::AllComponents(components.into()),
             RequiredComponents::AnyComponent(components) => Self::AnyComponent(components.into()),
-            RequiredComponents::AnyPhysicalDatatype {
-                semantic_type,
-                physical_types,
-            } => Self::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
-                semantic_type,
-                relevant_datatypes: physical_types,
-            }),
+            RequiredComponents::AnyPhysicalDatatype(requirement) => {
+                Self::AnyPhysicalDatatype(requirement)
+            }
         }
     }
 }
@@ -337,7 +325,8 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
 
                 Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
                     semantic_type,
-                    relevant_datatypes,
+                    physical_types,
+                    allow_static_data,
                 }) => {
                     // Entity must have any of the required components
                     let mut has_any_datatype = false;
@@ -348,8 +337,12 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         descriptor,
                     } in delta_chunk.components().values()
                     {
-                        let is_physical_match =
-                            relevant_datatypes.contains(&list_array.value_type());
+                        if !allow_static_data && delta_chunk.is_static() {
+                            // Skip static components if we require non-static data.
+                            continue;
+                        }
+
+                        let is_physical_match = physical_types.contains(&list_array.value_type());
                         let is_semantic_match = descriptor.component_type == Some(*semantic_type);
 
                         let match_kind = match (is_physical_match, is_semantic_match) {
@@ -379,18 +372,27 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                     .entry(entity_path.clone())
                                 {
                                     Entry::Occupied(mut occupied_entry) => {
-                                        if let VisualizableReason::DatatypeMatchAny { components } =
+                                        if let VisualizableReason::DatatypeMatchAny { matches } =
                                             occupied_entry.get_mut()
                                         {
-                                            components.push((descriptor.component, match_kind));
+                                            matches.insert(descriptor.component, match_kind);
+                                        } else {
+                                            // We already had a different kind of match? Shouldn't happen.
+                                            debug_assert!(
+                                                false,
+                                                "[DEBUG ASSERT] entity {entity_path:?} already marked visualizable for visualizer {:?} with a different reason than `DatatypeMatchAny`",
+                                                self.visualizer
+                                            );
                                         }
                                     }
+
                                     Entry::Vacant(vacant_entry) => {
                                         vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
-                                            components: SmallVec1::new((
+                                            matches: std::iter::once((
                                                 descriptor.component,
                                                 match_kind,
-                                            )),
+                                            ))
+                                            .collect(),
                                         });
                                     }
                                 }
