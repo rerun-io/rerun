@@ -1,10 +1,7 @@
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use ahash::{HashMap, HashSet};
-use arrow::{
-    array::{Int32Array, RecordBatch},
-    compute::take_record_batch,
-};
+use arrow::array::RecordBatch;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, TimeInt, Timeline};
 use re_chunk_store::ChunkStore;
@@ -30,9 +27,6 @@ pub enum PrefetchError {
 
     #[error("Arrow: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("Row index too large: {0}")]
-    BadIndex(usize),
 }
 
 /// How to calculate which chunks to prefetch.
@@ -67,7 +61,7 @@ struct ChunkRequestBatcher<'a> {
     remaining_bytes_in_transit_budget: u64,
     uncompressed_bytes_in_batch: u64,
     bytes_in_batch: u64,
-    indices: Vec<i32>,
+    indices: Vec<usize>,
 }
 
 impl<'a> ChunkRequestBatcher<'a> {
@@ -96,9 +90,9 @@ impl<'a> ChunkRequestBatcher<'a> {
 
     /// Create promise from the current batch.
     fn finish_batch(&mut self) -> Result<(), PrefetchError> {
-        let rb = take_record_batch(
+        let rb = re_arrow_util::take_record_batch(
             self.manifest.data(),
-            &Int32Array::from(std::mem::take(&mut self.indices)),
+            &std::mem::take(&mut self.indices),
         )?;
         self.chunk_promises.add(ChunkPromiseBatch {
             promise: parking_lot::Mutex::new(Some((self.load_chunks)(rb))),
@@ -126,11 +120,7 @@ impl<'a> ChunkRequestBatcher<'a> {
         let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
         let chunk_byte_size = self.chunk_byte_size[chunk_row_idx];
 
-        let Ok(row_idx) = i32::try_from(chunk_row_idx) else {
-            return Err(PrefetchError::BadIndex(chunk_row_idx)); // Very improbable
-        };
-
-        self.indices.push(row_idx);
+        self.indices.push(chunk_row_idx);
 
         self.uncompressed_bytes_in_batch += uncompressed_chunk_size;
         self.bytes_in_batch += chunk_byte_size;

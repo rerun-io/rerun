@@ -1,11 +1,23 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, UInt64Array};
 use arrow::datatypes::{Field, Schema, SchemaBuilder};
 use itertools::Itertools as _;
 
 use crate::MissingColumnError;
+
+/// Takes rows from a [`RecordBatch`] at the specified indices.
+///
+/// This is a convenience wrapper around [`arrow::compute::take_record_batch`]
+/// that accepts `usize` indices instead of requiring a specific Arrow array type.
+pub fn take_record_batch(
+    batch: &RecordBatch,
+    indices: &[usize],
+) -> Result<RecordBatch, arrow::error::ArrowError> {
+    let indices: UInt64Array = indices.iter().map(|&i| i as u64).collect();
+    arrow::compute::take_record_batch(batch, &indices)
+}
 
 // ---
 

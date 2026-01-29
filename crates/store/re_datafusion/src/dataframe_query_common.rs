@@ -527,11 +527,7 @@ pub(crate) fn group_chunk_infos_by_segment_id(
                 continue;
             }
 
-            // Create indices array for take operation
-            let indices = arrow::array::UInt32Array::from(
-                row_indices.iter().map(|&i| i as u32).collect::<Vec<_>>(),
-            );
-            let segment_batch = arrow::compute::take_record_batch(batch, &indices)?;
+            let segment_batch = re_arrow_util::take_record_batch(batch, &row_indices)?;
 
             results
                 .entry(segment_id)

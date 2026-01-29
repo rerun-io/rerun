@@ -574,13 +574,7 @@ fn split_large_segments(
             current_size += chunk_size;
         } else {
             // Create batch from current indices
-            let indices_array = arrow::array::UInt32Array::from(
-                current_indices
-                    .iter()
-                    .map(|&i| i as u32)
-                    .collect::<Vec<_>>(),
-            );
-            let batch = arrow::compute::take_record_batch(chunk_info, &indices_array)?;
+            let batch = re_arrow_util::take_record_batch(chunk_info, &current_indices)?;
             result_batches.push(batch);
 
             // Start new batch with current chunk
@@ -591,13 +585,7 @@ fn split_large_segments(
 
     // Don't forget the last batch
     if !current_indices.is_empty() {
-        let indices_array = arrow::array::UInt32Array::from(
-            current_indices
-                .iter()
-                .map(|&i| i as u32)
-                .collect::<Vec<_>>(),
-        );
-        let batch = arrow::compute::take_record_batch(chunk_info, &indices_array)?;
+        let batch = re_arrow_util::take_record_batch(chunk_info, &current_indices)?;
         result_batches.push(batch);
     }
 

@@ -627,16 +627,8 @@ async fn stream_segment_from_server(
             })
             .collect();
 
-        let filtered_batch = arrow::compute::take_record_batch(
-            &batch,
-            &arrow::array::UInt32Array::from(
-                filtered_indices
-                    .iter()
-                    .map(|&i| i as u32)
-                    .collect::<Vec<u32>>(),
-            ),
-        )
-        .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
+        let filtered_batch = re_arrow_util::take_record_batch(&batch, &filtered_indices)
+            .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
 
         load_chunks(client, tx, &store_id, filtered_batch).await
     } else {
