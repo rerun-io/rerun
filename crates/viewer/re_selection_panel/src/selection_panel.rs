@@ -1297,13 +1297,16 @@ mod tests {
 
         harness.run();
 
-        // Redact size estimation, since small changes to our code can change it slightly:
-        let recording_size_label = harness
-            .get_all_by_label_contains(" KiB")
-            .next()
-            .unwrap()
-            .rect();
-        harness.mask(recording_size_label);
+        {
+            // Redact size estimation, since small changes to our code can change it slightly:
+            let mut recording_size_label = harness
+                .get_all_by_label_contains(" KiB")
+                .next()
+                .unwrap()
+                .rect();
+            recording_size_label.set_width(80.0); // Compensate for different number of digits
+            harness.mask(recording_size_label);
+        }
 
         harness.snapshot("selection_panel_recording");
     }

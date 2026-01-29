@@ -158,15 +158,17 @@ fn footer_roundtrip() {
         re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();
     let mut rrd_footer = rrd_footer.to_application(()).unwrap();
 
-    let rrd_manifest_recording = rrd_footer.manifests.remove(&store_id_recording).unwrap();
-    let rrd_manifest_blueprint = rrd_footer.manifests.remove(&store_id_blueprint).unwrap();
+    let rrd_manifest_recording =
+        RrdManifest::try_new(rrd_footer.manifests.remove(&store_id_recording).unwrap()).unwrap();
+    let rrd_manifest_blueprint =
+        RrdManifest::try_new(rrd_footer.manifests.remove(&store_id_blueprint).unwrap()).unwrap();
 
     fn decode_messages(msgs_encoded: &[u8], rrd_manifest: &RrdManifest) -> Vec<ArrowMsg> {
         itertools::izip!(
-            rrd_manifest.col_chunk_byte_offset().unwrap(),
-            rrd_manifest.col_chunk_byte_size().unwrap()
+            rrd_manifest.col_chunk_byte_offset(),
+            rrd_manifest.col_chunk_byte_size(),
         )
-        .map(|(offset, size)| {
+        .map(|(&offset, &size)| {
             let chunk_start_excluding_header = offset as usize;
             let chunk_end_excluding_header = chunk_start_excluding_header + size as usize;
             let buf = &msgs_encoded[chunk_start_excluding_header..chunk_end_excluding_header];
@@ -218,25 +220,25 @@ fn footer_roundtrip() {
 
     similar_asserts::assert_eq!(
         rrd_manifest_recording_sequential.data.format_snapshot(true),
-        rrd_manifest_recording.data.format_snapshot(true),
+        rrd_manifest_recording.data().format_snapshot(true),
         "RRD manifest decoded sequentially should be identical to the one decoded by jumping via the footer",
     );
     // Same test but check everything, not just the manifest data (we do both cause we want a nice diff for the manifest data)
     similar_asserts::assert_eq!(
         &rrd_manifest_recording_sequential,
-        &rrd_manifest_recording,
+        rrd_manifest_recording.raw(),
         "RRD manifest decoded sequentially should be identical to the one decoded by jumping via the footer",
     );
 
     similar_asserts::assert_eq!(
         rrd_manifest_blueprint_sequential.data.format_snapshot(true),
-        rrd_manifest_blueprint.data.format_snapshot(true),
+        rrd_manifest_blueprint.data().format_snapshot(true),
         "RRD manifest decoded sequentially should be identical to the one decoded by jumping via the footer",
     );
     // Same test but check everything, not just the manifest data (we do both cause we want a nice diff for the manifest data)
     similar_asserts::assert_eq!(
         &rrd_manifest_blueprint_sequential,
-        &rrd_manifest_blueprint,
+        rrd_manifest_blueprint.raw(),
         "RRD manifest decoded sequentially should be identical to the one decoded by jumping via the footer",
     );
 
@@ -295,18 +297,26 @@ fn footer_roundtrip() {
                 .unwrap();
         let mut reencoded_rrd_footer = reencoded_rrd_footer.to_application(()).unwrap();
 
-        let reencoded_rrd_manifest_recording = reencoded_rrd_footer
-            .manifests
-            .remove(&store_id_recording)
-            .unwrap();
-        let reencoded_rrd_manifest_blueprint = reencoded_rrd_footer
-            .manifests
-            .remove(&store_id_blueprint)
-            .unwrap();
+        let reencoded_rrd_manifest_recording = RrdManifest::try_new(
+            reencoded_rrd_footer
+                .manifests
+                .remove(&store_id_recording)
+                .unwrap(),
+        )
+        .unwrap();
+        let reencoded_rrd_manifest_blueprint = RrdManifest::try_new(
+            reencoded_rrd_footer
+                .manifests
+                .remove(&store_id_blueprint)
+                .unwrap(),
+        )
+        .unwrap();
 
         similar_asserts::assert_eq!(
-            rrd_manifest_recording.data.format_snapshot(true),
-            reencoded_rrd_manifest_recording.data.format_snapshot(true),
+            rrd_manifest_recording.data().format_snapshot(true),
+            reencoded_rrd_manifest_recording
+                .data()
+                .format_snapshot(true),
             "Reencoded RRD manifest should be identical to the original one",
         );
         // Same test but check everything, not just the manifest data (we do both cause we want a nice diff for the manifest data)
@@ -317,8 +327,10 @@ fn footer_roundtrip() {
         );
 
         similar_asserts::assert_eq!(
-            rrd_manifest_blueprint.data.format_snapshot(true),
-            reencoded_rrd_manifest_blueprint.data.format_snapshot(true),
+            rrd_manifest_blueprint.data().format_snapshot(true),
+            reencoded_rrd_manifest_blueprint
+                .data()
+                .format_snapshot(true),
             "Reencoded RRD manifest should be identical to the original one",
         );
         // Same test but check everything, not just the manifest data (we do both cause we want a nice diff for the manifest data)

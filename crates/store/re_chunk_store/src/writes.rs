@@ -52,7 +52,7 @@ impl ChunkStore {
         } = self;
 
         let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
-            rrd_manifest.sorbet_schema.clone(),
+            rrd_manifest.sorbet_schema().clone(),
         ))?;
 
         time_type_registry.extend(

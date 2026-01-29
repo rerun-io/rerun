@@ -8,7 +8,7 @@ use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_log_encoding::RrdManifest;
+use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
@@ -410,7 +410,7 @@ impl Dataset {
             .map_err(Error::failed_to_extract_properties)
     }
 
-    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RrdManifest, Error> {
+    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RawRrdManifest, Error> {
         let partition = self.segment(segment_id)?;
 
         let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
@@ -480,7 +480,7 @@ impl Dataset {
             let schema = {
                 let mut schema = Arc::unwrap_or_clone(schema);
                 let mut fields = schema.fields.to_vec();
-                fields.push(Arc::new(RrdManifest::field_chunk_key()));
+                fields.push(Arc::new(RawRrdManifest::field_chunk_key()));
                 schema.fields = fields.into();
                 schema
             };

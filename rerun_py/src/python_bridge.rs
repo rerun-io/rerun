@@ -2428,7 +2428,7 @@ fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
 fn check_for_rrd_footer(file_path: std::path::PathBuf) -> PyResult<bool> {
     let rrd_bytes =
         std::fs::read(file_path).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    let rrd_manifests = re_log_encoding::RrdManifest::from_rrd_bytes(&rrd_bytes)
+    let rrd_manifests = re_log_encoding::RawRrdManifest::from_rrd_bytes(&rrd_bytes)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     Ok(!rrd_manifests.is_empty())

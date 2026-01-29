@@ -474,17 +474,24 @@ async fn stream_segment_from_server(
             .get_rrd_manifest(dataset_id, segment_id.clone())
             .await;
         match manifest_result {
-            Ok(rrd_manifest) => {
+            Ok(raw_rrd_manifest) => {
                 re_log::debug_once!(
                     "The server supports larger-than-RAM. RRD manifest ({} deflated) loaded in {:.1}s",
-                    re_format::format_bytes(rrd_manifest.total_size_bytes() as _),
+                    re_format::format_bytes(raw_rrd_manifest.total_size_bytes() as _),
                     start_time.elapsed().as_secs_f32(),
                 );
+
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(raw_rrd_manifest)
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(err, "Invalid RRD manifest")
+                    })?;
+
+                let rrd_manifest = Arc::new(rrd_manifest);
 
                 if tx
                     .send(DataSourceMessage::RrdManifest(
                         store_id.clone(),
-                        rrd_manifest.clone().into(),
+                        rrd_manifest.clone(),
                     ))
                     .is_err()
                 {
@@ -499,7 +506,7 @@ async fn stream_segment_from_server(
                     }
                     StoreKind::Blueprint => {
                         // Load all of the chunks in one go; most important first:
-                        let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                        let batch = sort_batch(rrd_manifest.data()).map_err(|err| {
                             ApiError::invalid_arguments_with_source(
                                 err,
                                 "Failed to sort chunk index",

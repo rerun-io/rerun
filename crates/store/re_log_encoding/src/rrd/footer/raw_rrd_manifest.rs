@@ -13,33 +13,7 @@ use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
-// ---
-
-/// This is the payload that is carried in messages of type `::End` in RRD streams.
-///
-/// It keeps track of various useful information about the associated recording.
-///
-/// During normal operations, there can only be a single `::End` message in an RRD stream, and
-/// therefore a single `RrdFooter`.
-/// It is possible to break that invariant by concatenating streams using external tools,
-/// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
-/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
-/// would once again guarantee that only one `::End` message is present though.
-/// I.e. that invariant holds as long as one stays within our ecosystem of tools.
-///
-/// This is an application-level type, the associated transport-level type can be found
-/// over at [`re_protos::log_msg::v1alpha1::RrdFooter`].
-#[derive(Default, Debug)]
-pub struct RrdFooter {
-    /// All the [`RrdManifest`]s that were found in this RRD footer.
-    ///
-    /// Each [`RrdManifest`] corresponds to one, and exactly one, RRD stream (i.e. recording).
-    ///
-    /// The order is unspecified.
-    pub manifests: HashMap<StoreId, RrdManifest>,
-}
-
-/// The payload found in [`RrdFooter`]s.
+/// The payload found in [`super::RrdFooter`]s.
 ///
 /// Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
 /// This restriction exists to make working with multiple RRD streams much simpler: due to the way
@@ -156,7 +130,7 @@ pub struct RrdFooter {
 ///
 /// Filtering RRD manifests is very non trivial and should only be performed with great care.
 #[derive(Clone, Debug)]
-pub struct RrdManifest {
+pub struct RawRrdManifest {
     /// The recording ID that was used to identify the original recording.
     ///
     /// This is extracted from the `SetStoreInfo` message of the associated RRD stream.
@@ -180,15 +154,15 @@ pub struct RrdManifest {
     /// This can be used to compute relevancy queries (latest-at, range, dataframe), without needing to load
     /// any of the actual data in memory.
     ///
-    /// Note in particular that there isn't any recording ID column in here, since an [`RrdManifest`]
-    /// is always scoped to a single recording: the one specified in [`RrdManifest::store_id`].
+    /// Note in particular that there isn't any recording ID column in here, since an [`RawRrdManifest`]
+    /// is always scoped to a single recording: the one specified in [`RawRrdManifest::store_id`].
     //
     // TODO(cmc): should we slap a sorbet:version on this? that probably should be part of the sorbet ABI as
     // much as anything else?
     pub data: arrow::array::RecordBatch,
 }
 
-impl re_byte_size::SizeBytes for RrdManifest {
+impl re_byte_size::SizeBytes for RawRrdManifest {
     fn heap_size_bytes(&self) -> u64 {
         re_tracing::profile_function!();
 
@@ -203,7 +177,7 @@ impl re_byte_size::SizeBytes for RrdManifest {
     }
 }
 
-/// A map based representation of the static data within an [`RrdManifest`].
+/// A map based representation of the static data within an [`RawRrdManifest`].
 pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
 /// The individual entries in an [`RrdManifestTemporalMap`].
@@ -230,7 +204,7 @@ impl re_byte_size::SizeBytes for RrdManifestTemporalMapEntry {
     }
 }
 
-/// A map based representation of the temporal data within an [`RrdManifest`].
+/// A map based representation of the temporal data within an [`RawRrdManifest`].
 pub type RrdManifestTemporalMap = IntMap<
     EntityPath,
     IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, RrdManifestTemporalMapEntry>>>,
@@ -240,9 +214,9 @@ pub type RrdManifestTemporalMap = IntMap<
 ///
 /// Can be used as a unique and/or content-addressable ID.
 ///
-/// Refer to [`RrdManifest::compute_sha256`] to see how exactly this is computed.
+/// Refer to [`RawRrdManifest::compute_sha256`] to see how exactly this is computed.
 ///
-/// [RRD manifest's payload]: `RrdManifest::data`
+/// [RRD manifest's payload]: `RawRrdManifest::data`
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RrdManifestSha256(pub [u8; 32]);
 
@@ -258,8 +232,8 @@ impl std::fmt::Display for RrdManifestSha256 {
     }
 }
 
-impl RrdManifest {
-    /// High-level helper to parse [`RrdManifest`]s from raw RRD bytes.
+impl RawRrdManifest {
+    /// High-level helper to parse [`RawRrdManifest`]s from raw RRD bytes.
     ///
     /// This does not decode all the data, but rather goes straight to the RRD footer (if any).
     ///
@@ -327,7 +301,7 @@ impl RrdManifest {
         Ok(manifests)
     }
 
-    /// This builds an [`RrdManifest`] from a collection of chunks, assuming an in-memory backend.
+    /// This builds an [`RawRrdManifest`] from a collection of chunks, assuming an in-memory backend.
     ///
     /// This is only useful for developement/testing purposes.
     /// All sanity checking methods, including the costly ones, will be called before returning.
@@ -337,7 +311,7 @@ impl RrdManifest {
     pub fn build_in_memory_from_chunks<'a>(
         store_id: StoreId,
         chunks: impl Iterator<Item = &'a re_chunk::Chunk>,
-    ) -> CodecResult<std::sync::Arc<Self>> {
+    ) -> CodecResult<Self> {
         let mut rrd_manifest_builder = crate::RrdManifestBuilder::default();
 
         let mut offset = 0;
@@ -365,7 +339,7 @@ impl RrdManifest {
         rrd_manifest.sanity_check_cheap()?;
         rrd_manifest.sanity_check_heavy()?;
 
-        Ok(std::sync::Arc::new(rrd_manifest))
+        Ok(rrd_manifest)
     }
 
     /// Computes the sha256 hash of the manifest's data, which can be used as a unique ID.
@@ -635,7 +609,7 @@ impl RrdManifest {
 }
 
 // Schema fields are stored as Vecs, but we don't want their order to matter when performing comparisons.
-impl PartialEq for RrdManifest {
+impl PartialEq for RawRrdManifest {
     fn eq(&self, other: &Self) -> bool {
         let Self {
             store_id,
@@ -662,7 +636,7 @@ impl PartialEq for RrdManifest {
 }
 
 // Helpers
-impl RrdManifest {
+impl RawRrdManifest {
     pub fn compute_sorbet_schema_sha256(
         schema: &arrow::datatypes::Schema,
     ) -> Result<[u8; 32], arrow::error::ArrowError> {
@@ -737,15 +711,16 @@ impl RrdManifest {
 }
 
 // Sanity checks
-impl RrdManifest {
+impl RawRrdManifest {
     /// Checks the manifest for any traces of corruption.
     ///
-    /// This is cheap to compute and is automatically performed when converting an [`RrdManifest`]
+    /// This is cheap to compute and is automatically performed when converting an [`RawRrdManifest`]
     /// from its transport-level to its application-level representation (and vice-versa).
     ///
     /// See [`Self::sanity_check_heavy`] for a more costly version that is not suitable to use in
     /// production, but can be useful in e.g. tests.
     pub fn sanity_check_cheap(&self) -> CodecResult<()> {
+        re_tracing::profile_function!();
         self.check_global_columns_are_correct()?;
         self.check_index_columns_are_correct()?;
         self.check_manifest_schema_matches_sorbet_schema()?;
@@ -757,6 +732,7 @@ impl RrdManifest {
     /// This is quite costly and therefore should not be used on the happy production path.
     /// Prefer [`Self::sanity_check_cheap`] for that instead.
     pub fn sanity_check_heavy(&self) -> CodecResult<()> {
+        re_tracing::profile_function!();
         self.check_sorbet_schema_sha256_is_correct()?;
         Ok(())
     }
@@ -1144,7 +1120,7 @@ impl RrdManifest {
 }
 
 // Fields
-impl RrdManifest {
+impl RawRrdManifest {
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
     pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
@@ -1322,7 +1298,7 @@ impl RrdManifest {
 }
 
 // Column accessors
-impl RrdManifest {
+impl RawRrdManifest {
     /// Returns the raw Arrow data for the entity path column.
     pub fn col_chunk_entity_path_raw(&self) -> CodecResult<&StringArray> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -1473,7 +1449,7 @@ impl RrdManifest {
 
     /// Returns the raw Arrow data for the byte-size column.
     ///
-    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
+    /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE;
@@ -1494,7 +1470,7 @@ impl RrdManifest {
 
     /// Returns an iterator over the decoded Arrow data for the byte-size column.
     ///
-    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
+    /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
@@ -1503,7 +1479,7 @@ impl RrdManifest {
 
     /// Returns the raw Arrow data for the *uncompressed* byte-size column.
     ///
-    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
+    /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
         let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
@@ -1524,7 +1500,7 @@ impl RrdManifest {
 
     /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-size column.
     ///
-    /// See also the `Understand size/offset columns` section of the [`RrdManifest`] documentation.
+    /// See also the `Understand size/offset columns` section of the [`RawRrdManifest`] documentation.
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {

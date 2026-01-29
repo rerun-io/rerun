@@ -1,8 +1,9 @@
 use std::{
     collections::BTreeSet,
     fmt::{Debug, Formatter},
+    ops::Deref,
+    sync::Arc,
 };
-use std::{ops::Deref, sync::Arc};
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
@@ -619,7 +620,7 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) {
         re_tracing::profile_function!();
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
@@ -627,7 +628,7 @@ impl EntityDb {
             .storage_engine
             .write()
             .store()
-            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
+            .insert_rrd_manifest(rrd_manifest.clone())
         {
             re_log::error!("Failed to load RRD Manifest into store: {err}");
         }

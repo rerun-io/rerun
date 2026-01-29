@@ -3,7 +3,6 @@ use std::{iter::once, ops::Range, sync::Arc};
 use crossbeam::channel::{Receiver, Sender};
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
-use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
 use re_renderer::video::{
     InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
@@ -634,13 +633,13 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
 }
 
 fn load_into_rrd_manifest(store: &mut EntityDb, chunks: &[Arc<Chunk>]) {
-    let manifest = RrdManifest::build_in_memory_from_chunks(
+    let manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
         store.store_id().clone(),
         chunks.iter().map(|c| &**c),
     )
     .unwrap();
 
-    store.add_rrd_manifest_message((*manifest).clone());
+    store.add_rrd_manifest_message(manifest);
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
@@ -101,7 +101,7 @@ pub struct RrdManifestIndex {
     /// The raw manifest.
     ///
     /// This is known ahead-of-time for _some_ data sources.
-    manifest: Option<RrdManifest>,
+    manifest: Option<Arc<RrdManifest>>,
 
     /// These are the chunks known to exist in the data source (e.g. remote server).
     ///
@@ -131,7 +131,7 @@ impl std::fmt::Debug for RrdManifestIndex {
 }
 
 impl RrdManifestIndex {
-    pub fn append(&mut self, manifest: RrdManifest) -> CodecResult<()> {
+    pub fn append(&mut self, manifest: Arc<RrdManifest>) -> CodecResult<()> {
         re_tracing::profile_function!();
 
         self.native_static_map = manifest.get_static_data_as_a_map()?;
@@ -145,9 +145,9 @@ impl RrdManifestIndex {
             &manifest,
             &self.native_static_map,
             &self.native_temporal_map,
-        )?;
+        );
 
-        for chunk_id in manifest.col_chunk_id()? {
+        for chunk_id in manifest.col_chunk_id() {
             self.remote_chunks.insert(chunk_id, Default::default());
         }
 
@@ -179,11 +179,7 @@ impl RrdManifestIndex {
             );
         }
 
-        self.full_uncompressed_size = manifest
-            .col_chunk_byte_size_uncompressed_raw()?
-            .values()
-            .iter()
-            .sum();
+        self.full_uncompressed_size = manifest.col_chunk_byte_size_uncompressed().iter().sum();
 
         self.manifest = Some(manifest);
 
@@ -277,7 +273,7 @@ impl RrdManifestIndex {
 
     /// The full manifest, if known.
     pub fn manifest(&self) -> Option<&RrdManifest> {
-        self.manifest.as_ref()
+        self.manifest.as_deref()
     }
 
     pub fn native_temporal_map(&self) -> &re_log_encoding::RrdManifestTemporalMap {

@@ -1,6 +1,8 @@
 // TODO(andreas): Conceptually these should go to `re_data_source`.
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
+use std::sync::Arc;
+
 use re_log_encoding::RrdManifest;
 use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 
@@ -12,7 +14,7 @@ pub enum DataSourceMessage {
     /// The index of all the chunks in a recording.
     ///
     /// Some sources may send this, others may not.
-    RrdManifest(StoreId, Box<RrdManifest>),
+    RrdManifest(StoreId, Arc<RrdManifest>),
 
     /// See [`LogMsg`].
     LogMsg(LogMsg),

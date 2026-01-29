@@ -4,7 +4,7 @@ use anyhow::Context as _;
 use crossbeam::channel;
 use itertools::Itertools as _;
 use re_chunk::external::crossbeam;
-use re_log_encoding::RrdManifest;
+use re_log_encoding::RawRrdManifest;
 
 // ---
 
@@ -42,7 +42,7 @@ pub fn read_rrd_streams_from_file_or_stdin(
     paths: &[String],
 ) -> (
     channel::Receiver<(InputSource, anyhow::Result<re_log_types::LogMsg>)>,
-    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RrdManifest)>>)>,
+    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RawRrdManifest)>>)>,
 ) {
     read_any_rrd_streams_from_file_or_stdin::<re_log_types::LogMsg>(paths)
 }
@@ -79,7 +79,7 @@ pub fn read_raw_rrd_streams_from_file_or_stdin(
         InputSource,
         anyhow::Result<re_protos::log_msg::v1alpha1::log_msg::Msg>,
     )>,
-    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RrdManifest)>>)>,
+    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RawRrdManifest)>>)>,
 ) {
     read_any_rrd_streams_from_file_or_stdin::<re_protos::log_msg::v1alpha1::log_msg::Msg>(paths)
 }
@@ -91,7 +91,7 @@ fn read_any_rrd_streams_from_file_or_stdin<
     paths: &[String],
 ) -> (
     channel::Receiver<(InputSource, anyhow::Result<T>)>,
-    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RrdManifest)>>)>,
+    channel::Receiver<(u64, anyhow::Result<Vec<(InputSource, RawRrdManifest)>>)>,
 ) {
     let path_to_input_rrds = paths
         .iter()

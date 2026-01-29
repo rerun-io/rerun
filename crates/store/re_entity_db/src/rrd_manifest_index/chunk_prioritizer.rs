@@ -8,7 +8,7 @@ use arrow::{
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, TimeInt, Timeline};
 use re_chunk_store::ChunkStore;
-use re_log_encoding::{CodecResult, RrdManifest};
+use re_log_encoding::RrdManifest;
 
 use crate::{
     chunk_promise::{ChunkPromise, ChunkPromiseBatch, ChunkPromises},
@@ -60,8 +60,8 @@ struct ChunkRequestBatcher<'a> {
     load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
     manifest: &'a RrdManifest,
     chunk_promises: &'a mut ChunkPromises,
-    chunk_byte_size_uncompressed_raw: &'a [u64],
-    chunk_byte_size_raw: &'a [u64],
+    chunk_byte_size_uncompressed: &'a [u64],
+    chunk_byte_size: &'a [u64],
     max_uncompressed_bytes_per_batch: u64,
 
     remaining_bytes_in_transit_budget: u64,
@@ -76,13 +76,11 @@ impl<'a> ChunkRequestBatcher<'a> {
         manifest: &'a RrdManifest,
         chunk_promises: &'a mut ChunkPromises,
         options: &ChunkPrefetchOptions,
-    ) -> Result<Self, re_log_encoding::CodecError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             load_chunks,
-            chunk_byte_size_uncompressed_raw: manifest
-                .col_chunk_byte_size_uncompressed_raw()?
-                .values(),
-            chunk_byte_size_raw: manifest.col_chunk_byte_size_raw()?.values(),
+            chunk_byte_size_uncompressed: manifest.col_chunk_byte_size_uncompressed(),
+            chunk_byte_size: manifest.col_chunk_byte_size(),
             manifest,
             max_uncompressed_bytes_per_batch: options.max_uncompressed_bytes_per_batch,
 
@@ -93,13 +91,13 @@ impl<'a> ChunkRequestBatcher<'a> {
             uncompressed_bytes_in_batch: 0,
             bytes_in_batch: 0,
             indices: Vec::new(),
-        })
+        }
     }
 
     /// Create promise from the current batch.
     fn finish_batch(&mut self) -> Result<(), PrefetchError> {
         let rb = take_record_batch(
-            &self.manifest.data,
+            self.manifest.data(),
             &Int32Array::from(std::mem::take(&mut self.indices)),
         )?;
         self.chunk_promises.add(ChunkPromiseBatch {
@@ -125,8 +123,8 @@ impl<'a> ChunkRequestBatcher<'a> {
             return Ok(false);
         }
 
-        let uncompressed_chunk_size = self.chunk_byte_size_uncompressed_raw[chunk_row_idx];
-        let chunk_byte_size = self.chunk_byte_size_raw[chunk_row_idx];
+        let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
+        let chunk_byte_size = self.chunk_byte_size[chunk_row_idx];
 
         let Ok(row_idx) = i32::try_from(chunk_row_idx) else {
             return Err(PrefetchError::BadIndex(chunk_row_idx)); // Very improbable
@@ -223,22 +221,18 @@ impl ChunkPrioritizer {
         manifest: &RrdManifest,
         native_static_map: &re_log_encoding::RrdManifestStaticMap,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) -> CodecResult<()> {
+    ) {
         self.update_static_chunks(native_static_map);
         self.update_chunk_intervals(native_temporal_map);
-        self.update_manifest_row_from_chunk_id(manifest)?;
-
-        Ok(())
+        self.update_manifest_row_from_chunk_id(manifest);
     }
 
-    fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) -> CodecResult<()> {
+    fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
         self.manifest_row_from_chunk_id.clear();
-        let chunk_id = manifest.col_chunk_id()?;
+        let chunk_id = manifest.col_chunk_id();
         for (row_idx, chunk_id) in chunk_id.enumerate() {
             self.manifest_row_from_chunk_id.insert(chunk_id, row_idx);
         }
-
-        Ok(())
     }
 
     fn update_static_chunks(&mut self, native_static_map: &re_log_encoding::RrdManifestStaticMap) {
@@ -358,12 +352,12 @@ impl ChunkPrioritizer {
         let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 
         let mut chunk_batcher =
-            ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options)?;
+            ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options);
 
         let chunk_ids_in_priority_order =
             Self::chunks_in_priority(&self.static_chunk_ids, store, options.start_time, chunks);
 
-        let entity_paths = manifest.col_chunk_entity_path_raw()?;
+        let entity_paths = manifest.col_chunk_entity_path_raw();
 
         self.in_limit_chunks.clear();
         self.checked_virtual_chunks.clear();
@@ -392,7 +386,7 @@ impl ChunkPrioritizer {
                     // We count only the chunks we are interested in as being part of the memory budget.
                     // The others can/will be evicted as needed.
                     let uncompressed_chunk_size =
-                        chunk_batcher.chunk_byte_size_uncompressed_raw[row_idx];
+                        chunk_batcher.chunk_byte_size_uncompressed[row_idx];
 
                     if options.total_uncompressed_byte_budget < uncompressed_chunk_size {
                         warn_entity_exceeds_memory(entity_paths, row_idx);

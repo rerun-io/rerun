@@ -257,7 +257,7 @@ fn with_unloaded_chunks() {
     )
     .unwrap();
 
-    test_context.add_rrd_manifest((*rrd_manifest).clone());
+    test_context.add_rrd_manifest(rrd_manifest);
 
     let height = 250.0;
     let mut snapshot_results = SnapshotResults::new();
