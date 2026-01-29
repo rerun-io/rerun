@@ -198,6 +198,9 @@ pub struct ChunkPrioritizer {
     /// All static root chunks in the rrd manifest.
     static_chunk_ids: HashSet<ChunkId>,
 
+    /// Chunks that should be downloaded before any else.
+    high_priority_chunks: Vec<ChunkId>,
+
     /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
     manifest_row_from_chunk_id: HashMap<ChunkId, usize>,
 }
@@ -210,6 +213,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             chunk_promises: _, // not yet implemented
             remote_chunk_intervals,
             static_chunk_ids,
+            high_priority_chunks,
             manifest_row_from_chunk_id,
         } = self;
 
@@ -217,6 +221,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + checked_virtual_chunks.heap_size_bytes()
             + remote_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
+            + high_priority_chunks.heap_size_bytes()
             + manifest_row_from_chunk_id.heap_size_bytes()
     }
 }
@@ -231,6 +236,60 @@ impl ChunkPrioritizer {
         self.update_static_chunks(native_static_map);
         self.update_chunk_intervals(native_temporal_map);
         self.update_manifest_row_from_chunk_id(manifest);
+        self.update_high_priority_chunks(native_static_map, native_temporal_map);
+    }
+
+    /// Find all chunk IDs that contain components with the given prefix.
+    fn find_chunks_with_component_prefix(
+        native_static_map: &re_log_encoding::RrdManifestStaticMap,
+        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
+        prefix: &str,
+    ) -> Vec<ChunkId> {
+        let mut chunk_ids = Vec::new();
+
+        for components in native_static_map.values() {
+            for (component, chunk_id) in components {
+                if component.as_str().starts_with(prefix) {
+                    chunk_ids.push(*chunk_id);
+                }
+            }
+        }
+
+        for timelines in native_temporal_map.values() {
+            for components in timelines.values() {
+                for (component, chunks) in components {
+                    if component.as_str().starts_with(prefix) {
+                        chunk_ids.extend(chunks.keys().copied());
+                    }
+                }
+            }
+        }
+
+        chunk_ids.sort();
+        chunk_ids.dedup();
+
+        chunk_ids
+    }
+
+    fn update_high_priority_chunks(
+        &mut self,
+        native_static_map: &re_log_encoding::RrdManifestStaticMap,
+        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
+    ) {
+        // Find chunks containing transform-related components.
+        // We need to download _all_ of them because any one of them could
+        // contain a crucial part of the transform hierarchy.
+        // Latest-at fails, because a single entity can define the transform of multiple
+        // parts of a hierarchy, and not all of the transform are required to be
+        // available at each time point.
+        // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
+        self.high_priority_chunks = Self::find_chunks_with_component_prefix(
+            native_static_map,
+            native_temporal_map,
+            "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
+        );
+
+        re_log::debug!("Found {} transform chunks", self.high_priority_chunks.len());
     }
 
     fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
@@ -293,6 +352,7 @@ impl ChunkPrioritizer {
     /// See [`Self::prioritize_and_prefetch`] for more details.
     fn chunks_in_priority<'a>(
         static_chunk_ids: &'a HashSet<ChunkId>,
+        high_priority_chunks: &'a [ChunkId],
         store: &'a ChunkStore,
         start_time: TimeInt,
         chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
@@ -324,6 +384,7 @@ impl ChunkPrioritizer {
             used,
             missing_roots,
             static_chunk_ids.iter().copied(),
+            high_priority_chunks.iter().copied(),
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );
@@ -360,8 +421,13 @@ impl ChunkPrioritizer {
         let mut chunk_batcher =
             ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options);
 
-        let chunk_ids_in_priority_order =
-            Self::chunks_in_priority(&self.static_chunk_ids, store, options.start_time, chunks);
+        let chunk_ids_in_priority_order = Self::chunks_in_priority(
+            &self.static_chunk_ids,
+            &self.high_priority_chunks,
+            store,
+            options.start_time,
+            chunks,
+        );
 
         let entity_paths = manifest.col_chunk_entity_path_raw();
 
