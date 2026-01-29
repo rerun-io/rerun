@@ -131,8 +131,11 @@ impl View {
                 let visualizer_path = base_visualizer_path
                     .join(&EntityPath::from_single_string(visualizer.id.0.to_string()));
 
-                // TODO(RR-3255): Support mappings
-                let instruction = VisualizerInstruction::new(visualizer.visualizer_type.clone());
+                let mut instruction =
+                    VisualizerInstruction::new(visualizer.visualizer_type.clone());
+                if !visualizer.mappings.is_empty() {
+                    instruction = instruction.with_component_map(visualizer.mappings.clone());
+                }
                 stream.log(visualizer_path.clone(), &instruction)?;
 
                 // Log the overrides if any

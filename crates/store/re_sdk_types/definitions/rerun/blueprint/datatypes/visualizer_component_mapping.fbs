@@ -34,6 +34,8 @@ enum ComponentSourceKind: ubyte (
 
 
 /// Associate components of an entity to components of a visualizer.
+/// \py
+/// \py ⚠ TODO(#12600): The API for component mappings is still evolving, so this may change in the future.
 table VisualizerComponentMapping (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq"
@@ -52,6 +54,10 @@ table VisualizerComponentMapping (
   source_component: rerun.datatypes.Utf8 (nullable, order: 300);
 
   /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+  ///
+  /// ⚠ TODO(RR-3308): Not fully implemented yet.
+  ///
+  /// Example: ".x" picks a field called "x" from the `source_component` if present.
   ///
   /// Defaults to empty string if not specified.
   selector: rerun.datatypes.Utf8 (nullable, order: 400);

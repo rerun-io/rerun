@@ -222,6 +222,9 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/component_mapping" = [
+  "cpp", # Not implemented
+]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
   "rust", # Not implemented

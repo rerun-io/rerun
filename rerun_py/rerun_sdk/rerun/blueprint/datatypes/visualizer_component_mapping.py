@@ -61,6 +61,8 @@ class VisualizerComponentMapping:
     """
     **Datatype**: Associate components of an entity to components of a visualizer.
 
+    ⚠ TODO(#12600): The API for component mappings is still evolving, so this may change in the future.
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
@@ -89,6 +91,10 @@ class VisualizerComponentMapping:
             Defaults to `target` if not specified.
         selector:
             Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+
+            ⚠ TODO(RR-3308): Not fully implemented yet.
+
+            Example: ".x" picks a field called "x" from the `source_component` if present.
 
             Defaults to empty string if not specified.
 
@@ -124,6 +130,10 @@ class VisualizerComponentMapping:
         default=None, converter=_visualizer_component_mapping__selector__special_field_converter_override
     )
     # Optional selector string using jq-like syntax to pick a specific field on `source_component`.
+    #
+    # ⚠ TODO(RR-3308): Not fully implemented yet.
+    #
+    # Example: ".x" picks a field called "x" from the `source_component` if present.
     #
     # Defaults to empty string if not specified.
     #
