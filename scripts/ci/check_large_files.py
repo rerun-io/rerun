@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 # These files are allowed to be larger than our limit
 FILES_ALLOWED_TO_BE_LARGE = {
@@ -80,9 +81,10 @@ def main() -> None:
     script_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(os.path.join(script_path, "../.."))
 
-    all_tracked_files = set(subprocess.check_output(["git", "ls-files"]).decode().splitlines())
+    all_tracked_files = set(subprocess.check_output(["git", "ls-files", "--full-name"]).decode().splitlines())
     lfs_files = set(subprocess.check_output(["git", "lfs", "ls-files", "-n"]).decode().splitlines())
     not_lfs_files = all_tracked_files - lfs_files
+    not_lfs_files = {str(Path(f).relative_to(Path.cwd().name)) for f in not_lfs_files}
 
     result = check_large_files(not_lfs_files)
     if result != 0:
@@ -90,6 +92,7 @@ def main() -> None:
 
     all_tracked_pngs = {f for f in all_tracked_files if f.endswith(".png")}
     not_lfs_pngs = all_tracked_pngs - lfs_files
+    not_lfs_pngs = {str(Path(f).relative_to(Path.cwd().name)) for f in not_lfs_pngs}
 
     result = check_for_non_lfs_pngs(not_lfs_pngs)
     if result != 0:

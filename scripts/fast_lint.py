@@ -18,7 +18,11 @@ from git import Repo
 
 
 def changed_files() -> list[str]:
-    repo = Repo(os.getcwd())
+    try:
+        repo = Repo(os.getcwd())
+    except Exception as e:
+        logging.error(f"Failed to open git repo at {os.getcwd()}: {e}")
+        repo = Repo(os.path.dirname(os.getcwd()))
 
     current_branch = repo.active_branch
     common_ancestor = repo.merge_base(current_branch, "main")[0]
