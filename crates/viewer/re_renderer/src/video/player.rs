@@ -219,8 +219,16 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
         found_loaded_sample_idx.saturating_sub(1),
         get_video_buffer,
     ) {
-        // Can end up here if the player requests a timestamp before the first sample in the video.
-        Ok(_) => InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into(),
+        // Can end up here if the player requests a timestamp before the first sample in the video…
+        Ok(_) => {
+            // … which could also mean no keyframes at all, so check
+            // that for a more accurate error.
+            if video_description.keyframe_indices.is_empty() {
+                InsufficientSampleDataError::NoKeyFrames.into()
+            } else {
+                InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into()
+            }
+        }
         Err(err) => err,
     }
 }
@@ -309,9 +317,6 @@ impl VideoPlayer {
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if video_description.samples.is_empty() {
             return Err(InsufficientSampleDataError::NoSamples.into());
-        }
-        if video_description.keyframe_indices.is_empty() {
-            return Err(InsufficientSampleDataError::NoKeyFrames.into());
         }
         if requested_pts.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
