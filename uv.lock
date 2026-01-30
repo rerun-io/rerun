@@ -2716,6 +2716,40 @@ wheels = [
 ]
 
 [[package]]
+name = "lerobot"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "av" },
+    { name = "cmake" },
+    { name = "datasets" },
+    { name = "deepdiff" },
+    { name = "diffusers" },
+    { name = "draccus" },
+    { name = "einops" },
+    { name = "gymnasium" },
+    { name = "huggingface-hub", extra = ["cli", "hf-transfer"] },
+    { name = "imageio", extra = ["ffmpeg"] },
+    { name = "jsonlines" },
+    { name = "opencv-python-headless" },
+    { name = "packaging" },
+    { name = "pynput" },
+    { name = "pyserial" },
+    { name = "rerun-sdk" },
+    { name = "setuptools" },
+    { name = "termcolor" },
+    { name = "torch" },
+    { name = "torchcodec", marker = "(platform_machine != 'aarch64' and platform_machine != 'arm64' and platform_machine != 'armv7l' and sys_platform == 'linux') or (platform_machine != 'x86_64' and sys_platform == 'darwin') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')" },
+    { name = "torchvision" },
+    { name = "wandb" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/6b/f80861cb1dbc908a45a7c96bdd88cf77de1e259f3b5a183ff859cca71fe7/lerobot-0.4.2.tar.gz", hash = "sha256:9fe72d9f2ad26438c03277f90b13efef126dd680ac082d112f9eef804be78101", size = 576787, upload-time = "2025-11-27T21:42:53.349Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/58/f5f9d6c0451df3e5cf9c484b1eb6a3abb93016677630a615b925c9da189a/lerobot-0.4.2-py3-none-any.whl", hash = "sha256:af4e5c709522c8022703e10431c14ae65b2e967e7ab608f51a07c03c38cefe04", size = 758780, upload-time = "2025-11-27T21:42:51.687Z" },
+]
+
+[[package]]
 name = "librt"
 version = "0.7.8"
 source = { registry = "https://pypi.org/simple" }
