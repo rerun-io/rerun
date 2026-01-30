@@ -791,3 +791,16 @@ pub struct MagneticField {
     /// 0 is interpreted as variance unknown.
     pub magnetic_field_covariance: [f64; 9],
 }
+
+/// Reports the state of a joystick's axes and buttons.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Joy {
+    /// Timestamp in the header is the time the data was received from the joystick.
+    pub header: Header,
+
+    /// The axes measurements from a joystick.
+    pub axes: Vec<f32>,
+
+    /// The buttons measurements from a joystick.
+    pub buttons: Vec<i32>,
+}
