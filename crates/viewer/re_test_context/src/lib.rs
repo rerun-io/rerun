@@ -502,6 +502,25 @@ impl TestContext {
 
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches();
+
+        if let Some(db) = store_hub.active_recording_mut()
+            && db.rrd_manifest_index().has_manifest()
+            && let Some(timeline) = self.time_ctrl.read().timeline()
+        {
+            let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();
+            let _err = rrd_manifest.prefetch_chunks(
+                storage_engine.store(),
+                &re_entity_db::ChunkPrefetchOptions {
+                    timeline: *timeline,
+                    start_time: re_chunk::TimeInt::ZERO,
+                    max_uncompressed_bytes_per_batch: 0,
+                    total_uncompressed_byte_budget: 0,
+                    max_uncompressed_bytes_in_transit: 0,
+                },
+                &|_| panic!("We have 0 bytes allowed memory"),
+            );
+        }
+
         let (storage_context, store_context) = store_hub.read_context();
         let store_context = store_context
             .expect("TestContext should always have enough information to provide a store context");

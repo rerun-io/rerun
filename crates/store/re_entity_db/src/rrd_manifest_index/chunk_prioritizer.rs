@@ -187,6 +187,9 @@ pub struct ChunkPrioritizer {
     /// These chunks are protected from being gc'd.
     pub(super) in_limit_chunks: HashSet<ChunkId>,
 
+    /// Tracks whether the viewer was missing any chunks last time we prioritized chunks.
+    had_missing_chunks: bool,
+
     checked_virtual_chunks: HashSet<ChunkId>,
 
     /// Chunks that are in the progress of being downloaded.
@@ -209,6 +212,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             in_limit_chunks,
+            had_missing_chunks: _,
             checked_virtual_chunks,
             chunk_promises: _, // not yet implemented
             remote_chunk_intervals,
@@ -237,6 +241,11 @@ impl ChunkPrioritizer {
         self.update_chunk_intervals(native_temporal_map);
         self.update_manifest_row_from_chunk_id(manifest);
         self.update_high_priority_chunks(native_static_map, native_temporal_map);
+    }
+
+    /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
+    pub fn had_missing_chunks(&self) -> bool {
+        self.had_missing_chunks
     }
 
     /// Find all chunk IDs that contain components with the given prefix.
@@ -356,6 +365,7 @@ impl ChunkPrioritizer {
         store: &'a ChunkStore,
         start_time: TimeInt,
         chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
+        had_missing_chunks: &mut bool,
     ) -> impl Iterator<Item = ChunkId> + use<'a> {
         let store_tracked = store.take_tracked_chunk_ids();
         let used = store_tracked.used_physical.into_iter();
@@ -368,6 +378,8 @@ impl ChunkPrioritizer {
             store.collect_root_rrd_manifests(&missing, &mut scratch);
             missing_roots.extend(scratch.drain(..).map(|(id, _)| id));
         }
+
+        *had_missing_chunks = !missing_roots.is_empty();
 
         let chunks_ids_after_time_cursor = move || {
             chunks
@@ -427,6 +439,7 @@ impl ChunkPrioritizer {
             store,
             options.start_time,
             chunks,
+            &mut self.had_missing_chunks,
         );
 
         let entity_paths = manifest.col_chunk_entity_path_raw();

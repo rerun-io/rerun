@@ -46,10 +46,13 @@ pub fn time_panel_two_sections() {
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        300.0,
-        false,
         "time_panel_two_sections",
         &mut snapshot_results,
+        RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: None,
+        },
     );
 }
 
@@ -93,10 +96,13 @@ pub fn time_panel_dense_data() {
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        300.0,
-        false,
         "time_panel_dense_data",
         &mut snapshot_results,
+        RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: None,
+        },
     );
 }
 
@@ -160,10 +166,13 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     run_time_panel_and_save_snapshot(
         &test_context,
         time_panel,
-        300.0,
-        false,
         snapshot_name,
         &mut snapshot_results,
+        RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: None,
+        },
     );
 }
 
@@ -200,10 +209,13 @@ pub fn test_various_entity_kinds_in_time_panel() {
             run_time_panel_and_save_snapshot(
                 &test_context,
                 time_panel,
-                1200.0,
-                true,
                 &format!("various_entity_kinds_{timeline}_{time}"),
                 &mut snapshot_results,
+                RunOptions {
+                    height: 1200.0,
+                    expand_all: true,
+                    mark_chunk_used_or_missing: None,
+                },
             );
         }
     }
@@ -231,10 +243,13 @@ pub fn test_focused_item_is_focused() {
     run_time_panel_and_save_snapshot(
         &test_context,
         time_panel,
-        200.0,
-        false,
         "focused_item_is_focused",
         &mut snapshot_results,
+        RunOptions {
+            height: 200.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: None,
+        },
     );
 }
 
@@ -259,15 +274,19 @@ fn with_unloaded_chunks() {
 
     test_context.add_rrd_manifest(rrd_manifest);
 
-    let height = 250.0;
     let mut snapshot_results = SnapshotResults::new();
+
+    let first_id = chunks[0].id();
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_only_unloaded_chunks",
         &mut snapshot_results,
+        RunOptions {
+            height: 250.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: Some(first_id),
+        },
     );
 
     // Load some chunks in the list.
@@ -276,10 +295,14 @@ fn with_unloaded_chunks() {
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_partially_unloaded_chunks",
         &mut snapshot_results,
+        RunOptions {
+            height: 250.0,
+            expand_all: false,
+            // Should now be loaded.
+            mark_chunk_used_or_missing: Some(first_id),
+        },
     );
 
     test_context.send_time_commands(
@@ -290,10 +313,13 @@ fn with_unloaded_chunks() {
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_loading_unloaded_chunks",
         &mut snapshot_results,
+        RunOptions {
+            height: 250.0,
+            expand_all: false,
+            mark_chunk_used_or_missing: Some(chunks[0].id()),
+        },
     );
 }
 
@@ -403,19 +429,37 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     });
 }
 
+#[derive(Clone, Copy)]
+struct RunOptions {
+    height: f32,
+    expand_all: bool,
+
+    /// Marks the given chunks as missing, to cause the time-panel to
+    /// indicate that something is loading. This has to be a chunk coming
+    /// with a root in the rrd manifest.
+    mark_chunk_used_or_missing: Option<re_chunk::ChunkId>,
+}
+
 fn run_time_panel_and_save_snapshot(
     test_context: &TestContext,
     mut time_panel: TimePanel,
-    height: f32,
-    expand_all: bool,
     snapshot_name: &str,
     snapshot_results: &mut SnapshotResults,
+    options: RunOptions,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering_ui([700.0, height])
+        .setup_kittest_for_rendering_ui([700.0, options.height])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                if expand_all {
+                if let Some(chunk_id) = options.mark_chunk_used_or_missing {
+                    viewer_ctx
+                        .recording()
+                        .storage_engine()
+                        .store()
+                        .use_physical_chunk_or_report_missing(&chunk_id);
+                }
+
+                if options.expand_all {
                     re_context_menu::collapse_expand::collapse_expand_instance_path(
                         viewer_ctx,
                         viewer_ctx.recording(),
