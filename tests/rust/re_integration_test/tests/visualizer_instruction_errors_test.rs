@@ -16,12 +16,7 @@ use re_viewport_blueprint::ViewBlueprint;
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn per_visualizer_instruction_errors() {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-        edit_app_options: Some(Box::new(|app_options| {
-            app_options.experimental.component_mapping = true;
-        })),
-        ..Default::default()
-    });
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
     harness.set_blueprint_panel_opened(false);
     harness.set_selection_panel_opened(true);

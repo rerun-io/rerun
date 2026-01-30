@@ -61,6 +61,14 @@ impl VisualizerComponentSource {
         }
     }
 
+    pub fn component_source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+        }
+    }
+
     /// True if the mapping have no effect on the target.
     ///
     /// I.e. it maps directly from the target back to the target.

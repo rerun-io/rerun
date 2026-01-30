@@ -578,7 +578,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-            crate::visualizer_ui::remove_and_reset_override_buttons(
+            crate::visualizer_ui::reset_override_button(
                 ctx,
                 ui,
                 component_descr.clone(),
