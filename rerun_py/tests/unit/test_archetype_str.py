@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 import rerun as rr
 
@@ -89,3 +91,15 @@ rr.Points3D(
 )
 def test_archetype_str(archetype: rr._baseclasses.Archetype, expected: str) -> None:
     assert str(archetype) == expected
+
+
+def test_archetype_str_normalization() -> None:
+    """Test that archetype names are correct regardless of import path."""
+    # `import rerun`
+    assert rr.Points3D.archetype() == "rerun.archetypes.Points3D"
+    assert rr.Points3D.archetype_short_name() == "Points3D"
+
+    # `import rerun_sdk.rerun`
+    with patch.object(rr.Points3D, "__module__", "rerun_sdk.rerun.archetypes.points3d"):
+        assert rr.Points3D.archetype() == "rerun.archetypes.Points3D"
+        assert rr.Points3D.archetype_short_name() == "Points3D"
