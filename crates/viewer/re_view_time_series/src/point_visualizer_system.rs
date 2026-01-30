@@ -36,32 +36,21 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(
         &self,
-        app_options: &re_viewer_context::AppOptions,
+        _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        if app_options.experimental.component_mapping {
-            VisualizerQueryInfo {
-                relevant_archetype: archetypes::SeriesPoints::name().into(),
-                required: AnyPhysicalDatatypeRequirement {
-                    semantic_type: components::Scalar::name(),
-                    physical_types: util::series_supported_datatypes().into_iter().collect(),
-                    allow_static_data: false,
-                }
-                .into(),
-                queried: archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesPoints::all_components().iter())
-                    .cloned()
-                    .collect(),
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesPoints::name().into(),
+            required: AnyPhysicalDatatypeRequirement {
+                semantic_type: components::Scalar::name(),
+                physical_types: util::series_supported_datatypes().into_iter().collect(),
+                allow_static_data: false,
             }
-        } else {
-            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-            query_info
-                .queried
-                .extend(archetypes::SeriesPoints::all_components().iter().cloned());
-
-            query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
-
-            query_info
+            .into(),
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesPoints::all_components().iter())
+                .cloned()
+                .collect(),
         }
     }
 

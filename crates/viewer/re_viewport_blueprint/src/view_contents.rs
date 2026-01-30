@@ -338,7 +338,6 @@ impl ViewContents {
             view_class: view_class_registry.get_class_or_log_error(self.view_class_identifier),
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
-            enable_component_mappings: app_options.experimental.component_mapping,
         };
 
         resolver.update_overrides(
@@ -458,9 +457,6 @@ struct DataQueryPropertyResolver<'a> {
     view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer: &'a PerVisualizerTypeInViewClass<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
-
-    // TODO(RR-3382): Should always be enabled.
-    enable_component_mappings: bool,
 }
 
 impl DataQueryPropertyResolver<'_> {
@@ -671,10 +667,6 @@ impl DataQueryPropertyResolver<'_> {
                             ),
                         )
                     }));
-            }
-
-            if !self.enable_component_mappings {
-                instruction.component_mappings.clear();
             }
         }
 

@@ -85,6 +85,28 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_component_from_data("sigmoid", sigmoid_multi_array);
 
         rec.log("float32/multi", &float32_multi_archetype)?;
+
+        // 6. Log using DynamicArchetype with all integer types on same entity
+        let int64_value = i;
+        let int32_value = (i * i) as i32;
+        let int16_value = ((i % 20) * if i % 2 == 0 { 1 } else { -1 }) as i16;
+        let uint64_value = 2_u64.pow((i % 20) as u32);
+
+        let linear_int64_array = Arc::new(arrow::array::Int64Array::from(vec![int64_value]));
+        let quadratic_int32_array =
+            Arc::new(arrow::array::Int32Array::from(vec![int32_value / 100])); // Scale down for better visualization
+        let int16_array = Arc::new(arrow::array::Int16Array::from(vec![int16_value]));
+        let uint64_array = Arc::new(arrow::array::UInt64Array::from(vec![
+            uint64_value.min(1000),
+        ])); // Cap for better visualization
+
+        let integer_archetype = DynamicArchetype::new("IntegerScalars")
+            .with_component_from_data("linear", linear_int64_array)
+            .with_component_from_data("quadratic", quadratic_int32_array)
+            .with_component_from_data("alternating", int16_array)
+            .with_component_from_data("exponential", uint64_array);
+
+        rec.log("integers", &integer_archetype)?;
     }
 
     Ok(())

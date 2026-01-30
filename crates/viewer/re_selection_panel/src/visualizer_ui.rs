@@ -1,11 +1,12 @@
 use arrow::datatypes::DataType;
 use itertools::Itertools as _;
-use re_chunk::{ComponentIdentifier, RowId};
+use re_chunk::ComponentIdentifier;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -13,8 +14,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, PerVisualizerType,
-    QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
+    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, PerVisualizerType, UiLayout,
+    ViewContext, ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
     VisualizerExecutionErrorState, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
@@ -189,16 +190,6 @@ pub fn visualizer_ui_impl(
     });
 }
 
-/// Possible sources for a value in the component resolve stack.
-///
-/// Mostly for convenience and readability.
-enum ValueSource {
-    Override,
-    Store,
-    Default,
-    FallbackOrPlaceholder,
-}
-
 fn visualizer_components(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
@@ -298,15 +289,13 @@ fn visualizer_components(
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
+        // TODO(RR-3529): update this logic to take component mappings into account.
         let (value_source, (current_value_row_id, raw_current_value)) =
             match (raw_override.clone(), raw_store.clone(), raw_default.clone()) {
-                (Some(override_value), _, _) => (ValueSource::Override, override_value),
-                (None, Some(store_value), _) => (ValueSource::Store, store_value),
-                (None, None, Some(default_value)) => (ValueSource::Default, default_value),
-                (None, None, None) => (
-                    ValueSource::FallbackOrPlaceholder,
-                    (None, raw_fallback.clone()),
-                ),
+                (Some(override_value), _, _) => (ComponentSourceKind::Override, override_value),
+                (None, Some(store_value), _) => (ComponentSourceKind::SourceComponent, store_value),
+                (None, None, Some(default_value)) => (ComponentSourceKind::Default, default_value),
+                (None, None, None) => (ComponentSourceKind::Default, (None, raw_fallback.clone())),
             };
 
         let override_path = &instruction.override_path;
@@ -333,7 +322,7 @@ fn visualizer_components(
                 // In fact some display UIs will struggle since they try to query additional data from the store.
                 // so we have to figure out what store and path things come from.
                 let (query, db, component_path_latest_at) = match value_source {
-                    ValueSource::Override => (
+                    ComponentSourceKind::Override => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         re_data_ui::ComponentPathLatestAtResults {
@@ -344,7 +333,7 @@ fn visualizer_components(
                             unit: result_override.expect("This value was validated earlier."),
                         },
                     ),
-                    ValueSource::Store => (
+                    ComponentSourceKind::SourceComponent => (
                         &store_query,
                         ctx.recording(),
                         re_data_ui::ComponentPathLatestAtResults {
@@ -355,109 +344,20 @@ fn visualizer_components(
                             unit: result_store.expect("This value was validated earlier."),
                         },
                     ),
-                    ValueSource::Default => (
-                        ctx.blueprint_query(),
-                        ctx.blueprint_db(),
-                        re_data_ui::ComponentPathLatestAtResults {
-                            component_path: ComponentPath::new(
-                                ViewBlueprint::defaults_path(ctx.view_id),
-                                target_component,
-                            ),
-                            unit: result_default.expect("This value was validated earlier."),
-                        },
-                    ),
-                    ValueSource::FallbackOrPlaceholder => {
-                        // Fallback values are always single values, so we can directly go to the component ui.
-                        // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry().component_ui_raw(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                            &data_result.entity_path,
-                            unmapped_component_descr,
-                            current_value_row_id,
-                            raw_current_value.as_ref(),
-                        );
-                        return;
-                    }
-                };
-
-                component_path_latest_at.data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
-            }
-        };
-
-        let add_children = |ui: &mut egui::Ui| {
-            // NOTE: each of the override/store/etc. UI elements may well resemble each other much,
-            // e.g. be the same edit UI. We must ensure that we seed egui kd differently for each of
-            // them to avoid id clashes.
-
-            // Override (if available)
-            if let Some((row_id, raw_override)) = raw_override.as_ref() {
-                ui.push_id("override", |ui| {
-                    editable_blueprint_component_list_item(
-                        &query_ctx,
-                        ui,
-                        "Override",
-                        override_path.clone(),
-                        unmapped_component_descr,
-                        *row_id,
-                        raw_override.as_ref(),
-                    )
-                    .on_hover_text("Override value for this specific entity in the current view");
-                });
-            }
-
-            // Store (if available)
-            if let Some(unit) = result_store {
-                ui.push_id("store", |ui| {
-                    ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                            re_data_ui::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    data_result.entity_path.clone(),
-                                    unmapped_component_descr.component,
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx.viewer_ctx,
-                                ui,
-                                UiLayout::List,
-                                &store_query,
-                                ctx.recording(),
-                            );
-                        }),
-                    )
-                    .on_hover_text("The value that was logged to the data store");
-                });
-            }
-
-            // Default (if available)
-            if let Some((row_id, raw_default)) = raw_default.as_ref() {
-                ui.push_id("default", |ui| {
-                    editable_blueprint_component_list_item(
-                        &query_ctx,
-                        ui,
-                        "Default",
-                        ViewBlueprint::defaults_path(ctx.view_id),
-                        unmapped_component_descr,
-                        *row_id,
-                        raw_default.as_ref(),
-                    )
-                    .on_hover_text(
-                        "Default value for all components of this type is the current view",
-                    );
-                });
-            }
-
-            // Fallback (always there)
-            {
-                ui.push_id("fallback", |ui| {
-                    ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                            // TODO(andreas): db & entity path don't make sense here.
+                    ComponentSourceKind::Default => {
+                        if let Some(result_default) = result_default {
+                            (
+                                ctx.blueprint_query(),
+                                ctx.blueprint_db(),
+                                re_data_ui::ComponentPathLatestAtResults {
+                                    component_path: ComponentPath::new(
+                                        ViewBlueprint::defaults_path(ctx.view_id),
+                                        target_component,
+                                    ),
+                                    unit: result_default,
+                                },
+                            )
+                        } else {
                             ctx.viewer_ctx.component_ui_registry().component_ui_raw(
                                 ctx.viewer_ctx,
                                 ui,
@@ -466,21 +366,23 @@ fn visualizer_components(
                                 ctx.recording(),
                                 &data_result.entity_path,
                                 unmapped_component_descr,
-                                None,
-                                raw_fallback.as_ref(),
+                                current_value_row_id,
+                                raw_current_value.as_ref(),
                             );
-                        }),
-                    )
-                    .on_hover_text(
-                        "Context sensitive fallback value for this component type, used only if \
-                    nothing else was specified. Unlike the other values, this may differ per \
-                    visualizer.",
-                    );
-                });
-            }
+                            return;
+                        }
+                    }
+                };
 
+                component_path_latest_at.data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
+            }
+        };
+
+        let raw_override_batch = raw_override.map(|(_, raw_override)| raw_override);
+        let raw_default_batch = raw_default.map(|(_, raw_override)| raw_override);
+
+        let add_children = |ui: &mut egui::Ui| {
             // Source component (if available).
-            // TODO(RR-3338): Implement a new source componentselector UI.
             source_component_ui(
                 ctx,
                 ui,
@@ -488,6 +390,7 @@ fn visualizer_components(
                 unmapped_component_descr,
                 instruction,
                 &query_info,
+                &raw_override_batch,
             );
         };
 
@@ -512,8 +415,8 @@ fn visualizer_components(
                         ui,
                         unmapped_component_descr.clone(),
                         override_path,
-                        &raw_override.clone().map(|(_, raw_override)| raw_override),
-                        raw_default.clone().map(|(_, raw_override)| raw_override),
+                        &raw_override_batch,
+                        &raw_default_batch,
                         raw_fallback.clone(),
                         raw_current_value.clone(),
                     );
@@ -534,20 +437,19 @@ fn visualizer_components(
     }
 }
 
-fn source_component_ui(
+fn collect_source_component_options(
     ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
-    instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
-) {
-    if !ctx.viewer_ctx.app_options().experimental.component_mapping {
-        return;
-    }
+) -> Vec<VisualizerComponentSource> {
+    let no_mapping_mapping = VisualizerComponentSource::SourceComponent {
+        source_component: component_descr.component,
+        selector: String::new(),
+    };
 
     let Some(target_component_type) = &component_descr.component_type else {
-        return;
+        return vec![no_mapping_mapping];
     };
 
     let reflection = ctx.viewer_ctx.reflection();
@@ -577,122 +479,154 @@ fn source_component_ui(
         // Get arrow datatype of the target component.
         let Some(target_component_reflection) = reflection.components.get(target_component_type)
         else {
-            return;
+            // No reflection for target component type, that should never happen.
+            re_log::warn_once!(
+                "No reflection information for visualizer target component type {:?} found. Unable to determine valid component mappings.",
+                target_component_type
+            );
+            return Vec::new();
         };
         std::iter::once(target_component_reflection.datatype.clone()).collect()
     };
 
-    let all_source_options = entity_components_with_datatype
+    entity_components_with_datatype
         .iter()
-        .filter(|entity_component| allowed_physical_types.contains(&entity_component.1))
-        .map(|entity_component| entity_component.0.as_str())
-        .collect::<Vec<_>>();
-    if all_source_options.is_empty() {
-        return;
-    }
+        .filter(|(_, datatype)| allowed_physical_types.contains(datatype))
+        .map(
+            |(component_id, _)| VisualizerComponentSource::SourceComponent {
+                source_component: *component_id,
+                selector: String::new(),
+            },
+        )
+        .collect()
+}
+
+fn source_component_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
+    component_descr: &ComponentDescriptor,
+    instruction: &VisualizerInstruction,
+    query_info: &VisualizerQueryInfo,
+    raw_override: &Option<ArrayRef>,
+) {
+    // TODO(aedm): In some cases, there should be no separate source selector. Eg. when the value is as enum:
+    // we should offer "default" and enum options in a single dropdown. Simpler UI.
+
+    let mut options = collect_source_component_options(
+        ctx,
+        entity_components_with_datatype,
+        component_descr,
+        query_info,
+    );
+
+    // TODO(andreas): Which order should these be in?
+    options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Custom` eventually?
+
+    options.push(VisualizerComponentSource::Default);
+
+    let current = current_component_source(
+        instruction,
+        &component_descr.component,
+        raw_override.is_some(),
+        entity_components_with_datatype,
+    );
 
     ui.push_id("source_component", |ui| {
-        ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
-                // Get the current source component from the component mapping.
-                let current = instruction
-                    .component_mappings
-                    .get(&component_descr.component)
-                    .and_then(|mapping| match mapping {
-                        re_viewer_context::VisualizerComponentSource::SourceComponent {
-                            source_component,
-                            selector: _, // TODO(RR-3308): implement selector logic
-                        } => Some(source_component.as_str()),
-
-                        re_viewer_context::VisualizerComponentSource::Override
-                        | re_viewer_context::VisualizerComponentSource::Default => {
-                            // TODO(RR-3338): Implement ui for other types.
-                            None
-                        }
-                    })
-                    .unwrap_or("");
-
-                egui::ComboBox::new("source_component_combo_box", "")
-                    .selected_text(current)
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
+            |ui, _| {
+                let response = egui::ComboBox::new("source_component_combo_box", "")
+                    .selected_text(component_source_string(&current))
                     .show_ui(ui, |ui| {
-                        for option in std::iter::once("").chain(all_source_options.into_iter()) {
-                            if ui.button(option).clicked() {
+                        for source in options {
+                            if ui.button(component_source_string(&source)).clicked() {
                                 save_component_mapping(
                                     ctx,
                                     instruction,
-                                    option.into(),
+                                    source,
                                     component_descr.component,
                                 );
                             }
                         }
                     });
-            }),
-        );
+                response.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(
+                        egui::WidgetType::ComboBox,
+                        ui.is_enabled(),
+                        // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
+                        format!("{}_$source", component_descr.component),
+                    )
+                });
+            },
+        ));
     });
+}
+
+/// Determines which component source is currently active.
+///
+/// If none is encoded in the visualizer instruction, we apply the same logic as `re_view::query`.
+/// TODO(andreas): Can we deduplicate this somehow?
+fn current_component_source<'a>(
+    instruction: &'a VisualizerInstruction,
+    component: &'a ComponentIdentifier,
+    has_override: bool,
+    entity_components_with_datatype: &'a [(ComponentIdentifier, DataType)],
+) -> VisualizerComponentSource {
+    // Use mapping if available.
+    if let Some(mapping) = instruction.component_mappings.get(component) {
+        return mapping.clone();
+    }
+
+    // Otherwise we follow the stack of:
+    // * override
+    // * store
+    // * default / fallback
+    // And pick the first one that is available.
+
+    if has_override {
+        return VisualizerComponentSource::Override;
+    }
+
+    // Any exact match in the store?
+    if entity_components_with_datatype
+        .iter()
+        .any(|(id, _)| id == component)
+    {
+        return VisualizerComponentSource::SourceComponent {
+            source_component: *component,
+            selector: String::new(),
+        };
+    }
+
+    VisualizerComponentSource::Default
+}
+
+fn component_source_string(source: &VisualizerComponentSource) -> &'static str {
+    match source {
+        VisualizerComponentSource::SourceComponent {
+            source_component,
+            selector: _,
+        } => source_component.as_str(),
+        VisualizerComponentSource::Override => "Override",
+        VisualizerComponentSource::Default => "View Default",
+    }
 }
 
 fn save_component_mapping(
     ctx: &ViewContext<'_>,
     instruction: &VisualizerInstruction,
-    source_component: ComponentIdentifier,
+    source_component: VisualizerComponentSource,
     target: ComponentIdentifier,
 ) {
     let mut updated_instruction = instruction.clone();
 
     // Set or override the mapping
-    match updated_instruction.component_mappings.entry(target) {
-        std::collections::btree_map::Entry::Occupied(mut entry) => {
-            *entry.get_mut() = re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector: String::new(), // TODO(RR-3308): implement selector logic
-            };
-        }
-
-        std::collections::btree_map::Entry::Vacant(entry) => {
-            entry.insert(
-                re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector: String::new(), // TODO(RR-3308): implement selector logic
-                },
-            );
-        }
-    }
+    updated_instruction
+        .component_mappings
+        .insert(target, source_component);
 
     // TODO(andreas): Don't write the type if it hasn't changed
     updated_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-}
-
-fn editable_blueprint_component_list_item(
-    query_ctx: &QueryContext<'_>,
-    ui: &mut egui::Ui,
-    name: &'static str,
-    blueprint_path: EntityPath,
-    component_descr: &ComponentDescriptor,
-    row_id: Option<RowId>,
-    raw_override: &dyn arrow::array::Array,
-) -> egui::Response {
-    let blueprint_path_clone = blueprint_path.clone();
-    ui.list_item_flat_noninteractive(
-        list_item::PropertyContent::new(name)
-            .value_fn(|ui, _style| {
-                let allow_multiline = false;
-                query_ctx.viewer_ctx().component_ui_registry().edit_ui_raw(
-                    query_ctx,
-                    ui,
-                    query_ctx.viewer_ctx().blueprint_db(),
-                    blueprint_path_clone,
-                    component_descr,
-                    row_id,
-                    raw_override,
-                    allow_multiline,
-                );
-            })
-            .with_action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
-                query_ctx
-                    .viewer_ctx()
-                    .clear_blueprint_component(blueprint_path, component_descr.clone());
-            }),
-    )
 }
 
 /// "More" menu for a component line in the visualizer ui.
@@ -703,11 +637,11 @@ fn menu_more(
     component_descr: ComponentDescriptor,
     override_path: &EntityPath,
     raw_override: &Option<ArrayRef>,
-    raw_default: Option<ArrayRef>,
+    raw_default: &Option<ArrayRef>,
     raw_fallback: ArrayRef,
     raw_current_value: ArrayRef,
 ) {
-    remove_and_reset_override_buttons(
+    reset_override_button(
         ctx,
         ui,
         component_descr.clone(),
@@ -724,7 +658,7 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default {
-            ctx.save_blueprint_array(override_path.clone(), component_descr, raw_default);
+            ctx.save_blueprint_array(override_path.clone(), component_descr, raw_default.clone());
         }
         ui.close();
         return;
@@ -746,23 +680,13 @@ fn menu_more(
     }
 }
 
-pub fn remove_and_reset_override_buttons(
+pub fn reset_override_button(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     component_descr: ComponentDescriptor,
     override_path: &EntityPath,
     raw_override: &Option<ArrayRef>,
 ) {
-    if ui
-        .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
-        .on_disabled_hover_text("There's no override active")
-        .clicked()
-    {
-        ctx.clear_blueprint_component(override_path.clone(), component_descr);
-        ui.close();
-        return;
-    }
-
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
@@ -776,7 +700,7 @@ pub fn remove_and_reset_override_buttons(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component(override_path.clone(), component_descr.clone());
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
         ui.close();
     }
 }

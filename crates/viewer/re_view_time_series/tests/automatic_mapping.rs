@@ -18,7 +18,6 @@ use re_viewport_blueprint::ViewBlueprint;
 #[test]
 pub fn test_automatic_component_mapping() {
     let mut test_context = TestContext::new();
-    test_context.app_options.experimental.component_mapping = true;
     test_context.register_view_class::<TimeSeriesView>();
 
     setup_store(&mut test_context);
