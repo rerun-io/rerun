@@ -1249,7 +1249,7 @@ pub trait UiExt {
     fn markdown_ui(&mut self, markdown: &str) {
         use std::sync::Arc;
 
-        use parking_lot::Mutex;
+        use re_mutex::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {

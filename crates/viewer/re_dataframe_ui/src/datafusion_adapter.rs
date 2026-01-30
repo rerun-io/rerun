@@ -9,9 +9,9 @@ use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use futures::{StreamExt as _, TryStreamExt as _};
-use parking_lot::Mutex;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
+use re_mutex::Mutex;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 

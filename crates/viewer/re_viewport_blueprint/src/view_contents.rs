@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
-use parking_lot::Mutex;
 use re_entity_db::external::re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::path::RuleEffect;
@@ -10,6 +9,7 @@ use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
     ResolvedEntityPathRule, Timeline,
 };
+use re_mutex::Mutex;
 use re_sdk_types::blueprint::components::{QueryExpression, VisualizerInstructionId};
 use re_sdk_types::blueprint::{
     archetypes as blueprint_archetypes, components as blueprint_components,

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use indicatif::ProgressBar;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 fn main() {
     re_log::setup_logging();

@@ -1,4 +1,4 @@
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 use super::Item;
 use crate::command_sender::{SelectionSource, SetSelection};

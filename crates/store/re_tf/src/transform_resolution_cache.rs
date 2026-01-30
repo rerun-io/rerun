@@ -4,13 +4,13 @@ use ahash::HashMap;
 use glam::DAffine3;
 use itertools::{Either, izip};
 use nohash_hasher::IntMap;
-use parking_lot::Mutex;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
+use re_mutex::Mutex;
 use re_sdk_types::{ComponentIdentifier, archetypes, components};
 
 use crate::TransformFrameIdHash;

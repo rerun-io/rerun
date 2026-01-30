@@ -5,9 +5,9 @@ use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 pub use chunk_decoder::VideoSampleDecoder;
-use parking_lot::Mutex;
 pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
+use re_mutex::Mutex;
 use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;

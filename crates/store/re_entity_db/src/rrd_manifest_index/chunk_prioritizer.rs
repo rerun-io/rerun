@@ -108,7 +108,7 @@ impl<'a> ChunkRequestBatcher<'a> {
             &std::mem::take(&mut self.current_batch.row_indices),
         )?;
         self.chunk_promises.add(ChunkPromiseBatch {
-            promise: parking_lot::Mutex::new(Some((self.load_chunks)(rb))),
+            promise: re_mutex::Mutex::new(Some((self.load_chunks)(rb))),
             info: std::sync::Arc::new(BatchInfo {
                 chunk_ids,
                 row_indices,

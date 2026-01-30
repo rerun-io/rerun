@@ -9,7 +9,7 @@ use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use re_quota_channel::{Receiver, SendError, Sender};
 
 use super::version::FFmpegVersionParseError;

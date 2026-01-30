@@ -2,11 +2,11 @@ use std::any::TypeId;
 use std::sync::Arc;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
+use re_mutex::Mutex;
 
 /// A wrapper around a cache that allows for shared access with its own lock.
 ///
@@ -26,7 +26,7 @@ impl SharedCache {
         }
     }
 
-    fn lock(&self) -> parking_lot::MutexGuard<'_, Box<dyn Cache>> {
+    fn lock(&self) -> re_mutex::MutexGuard<'_, Box<dyn Cache>> {
         self.cache.lock()
     }
 }
