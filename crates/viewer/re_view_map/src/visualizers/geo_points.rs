@@ -4,8 +4,7 @@ use re_renderer::renderer::PointCloudDrawDataError;
 use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::Radius;
 use re_view::{
-    AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
-    process_color_slice,
+    AnnotationSceneContext, DataResultQuery as _, process_annotation_slices, process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -47,6 +46,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
@@ -61,12 +61,26 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_positions =
-                results.iter_as(timeline, GeoPoints::descriptor_positions().component);
-            let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors().component);
-            let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii().component);
-            let all_class_ids =
-                results.iter_as(timeline, GeoPoints::descriptor_class_ids().component);
+            let all_positions = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoPoints::descriptor_positions().component,
+            );
+            let all_colors = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoPoints::descriptor_colors().component,
+            );
+            let all_radii = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoPoints::descriptor_radii().component,
+            );
+            let all_class_ids = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoPoints::descriptor_class_ids().component,
+            );
 
             // fallback component values
             let query_context = ctx.query_context(data_result, &latest_at_query);
@@ -129,7 +143,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }
 

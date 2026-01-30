@@ -50,6 +50,7 @@ impl VisualizerSystem for TextLogSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut output = VisualizerExecutionOutput::default();
         let query =
             re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
@@ -57,7 +58,7 @@ impl VisualizerSystem for TextLogSystem {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            self.process_visualizer_instruction(ctx, &query, data_result, instruction);
+            self.process_visualizer_instruction(ctx, &query, data_result, instruction, &mut output);
         }
 
         {
@@ -66,7 +67,7 @@ impl VisualizerSystem for TextLogSystem {
             self.entries.sort_by_key(|e| e.time);
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }
 
@@ -77,6 +78,7 @@ impl TextLogSystem {
         query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
+        output: &mut VisualizerExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
@@ -89,7 +91,9 @@ impl TextLogSystem {
             instruction,
         );
 
-        let all_text_chunks = results.get_required_chunk(TextLog::descriptor_text().component);
+        let all_text_chunks = results
+            .get_required_chunk(TextLog::descriptor_text().component)
+            .ensure_required(|err| output.report_error_for(instruction.id, err));
         if all_text_chunks.is_empty() {
             return;
         }
@@ -102,9 +106,21 @@ impl TextLogSystem {
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, TextLog::descriptor_text().component);
-        let all_levels = results.iter_as(timeline, TextLog::descriptor_level().component);
-        let all_colors = results.iter_as(timeline, TextLog::descriptor_color().component);
+        let all_texts = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_text().component,
+        );
+        let all_levels = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_level().component,
+        );
+        let all_colors = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_color().component,
+        );
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),

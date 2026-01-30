@@ -21,7 +21,9 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
-pub use chunks_with_component::{ChunkWithComponent, ChunksWithComponent};
+pub use chunks_with_component::{
+    ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
+};
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
@@ -43,6 +45,8 @@ pub use view_property_ui::{
 pub mod external {
     pub use re_entity_db::external::*;
 }
+
+pub type ComponentMappingError = String;
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///

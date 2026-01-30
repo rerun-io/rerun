@@ -138,18 +138,25 @@ impl VisualizerSystem for Asset3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_blob_chunks =
-                    results.get_required_chunk(Asset3D::descriptor_blob().component);
+                let all_blob_chunks = results
+                    .get_required_chunk(Asset3D::descriptor_blob().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_blob_chunks.is_empty() {
                     return Ok(());
                 }
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_media_types =
-                    results.iter_as(timeline, Asset3D::descriptor_media_type().component);
-                let all_albedo_factors =
-                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor().component);
+                let all_media_types = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Asset3D::descriptor_media_type().component,
+                );
+                let all_albedo_factors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Asset3D::descriptor_albedo_factor().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 

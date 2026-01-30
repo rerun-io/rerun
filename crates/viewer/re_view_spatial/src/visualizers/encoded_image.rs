@@ -89,16 +89,25 @@ impl EncodedImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let all_blob_chunks = results.get_required_chunk(EncodedImage::descriptor_blob().component);
+        let all_blob_chunks = results
+            .get_required_chunk(EncodedImage::descriptor_blob().component)
+            .ensure_required(|err| spatial_ctx.report_error(err));
         if all_blob_chunks.is_empty() {
             return;
         }
 
         let timeline = ctx.query.timeline();
         let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-        let all_media_types =
-            results.iter_as(timeline, EncodedImage::descriptor_media_type().component);
-        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity().component);
+        let all_media_types = results.iter_as(
+            |err| spatial_ctx.report_warning(err),
+            timeline,
+            EncodedImage::descriptor_media_type().component,
+        );
+        let all_opacities = results.iter_as(
+            |err| spatial_ctx.report_warning(err),
+            timeline,
+            EncodedImage::descriptor_opacity().component,
+        );
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,

@@ -1,6 +1,6 @@
 use rerun::external::egui;
 use rerun::external::re_log_types::{EntityPath, Instance};
-use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
+use rerun::external::re_view::DataResultQuery;
 use rerun::external::re_viewer_context::{
     AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
@@ -50,6 +50,8 @@ impl VisualizerSystem for Points3DColorVisualizer {
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -66,6 +68,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // For latest-at queries should be only a single slice`,
             // but if visible history is enabled, there might be several!
             let colors_per_time = results.iter_as(
+                |err| output.report_error_for(instruction.id, err),
                 query.timeline,
                 rerun::Points3D::descriptor_colors().component,
             );
@@ -93,6 +96,6 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }

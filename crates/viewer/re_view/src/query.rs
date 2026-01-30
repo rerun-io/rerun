@@ -50,7 +50,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     let store_results = {
         // Apply component mappings when querying the recording.]
         for (target, source) in &visualizer_instruction.component_mappings {
-            component_sources.insert(*target, source.source_kind());
+            component_sources.insert(*target, Ok(source.source_kind()));
 
             if !source.is_identity_mapping(*target)
                 && let re_viewer_context::VisualizerComponentSource::SourceComponent {
@@ -98,7 +98,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     ComponentSourceKind::Default
                 };
 
-                entry.insert(source);
+                entry.insert(Ok(source));
             }
         }
     }
@@ -156,7 +156,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let mut component_sources = IntMap::default();
     if let Some(visualizer_instruction) = visualizer_instruction {
         for (target, source) in &visualizer_instruction.component_mappings {
-            component_sources.insert(*target, source.source_kind());
+            component_sources.insert(*target, Ok(source.source_kind()));
 
             if !source.is_identity_mapping(*target)
                 && let re_viewer_context::VisualizerComponentSource::SourceComponent {
@@ -201,7 +201,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                     ComponentSourceKind::Default
                 };
 
-                entry.insert(source);
+                entry.insert(Ok(source));
             }
         }
     }

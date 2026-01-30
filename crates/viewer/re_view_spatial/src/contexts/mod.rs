@@ -28,6 +28,11 @@ impl SpatialSceneVisualizerInstructionContext<'_> {
     pub fn report_error(&mut self, error: impl Into<String>) {
         self.output.report_error_for(*self.instruction_id, error);
     }
+
+    /// Convenience method to report a warning for this visualizer instruction.
+    pub fn report_warning(&mut self, error: impl Into<String>) {
+        self.output.report_warning_for(*self.instruction_id, error);
+    }
 }
 
 pub fn register_spatial_contexts(

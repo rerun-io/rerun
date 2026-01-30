@@ -7,7 +7,7 @@ use re_sdk_types::components::{
     Color, {self},
 };
 use re_sdk_types::{self, ArrowString, archetypes};
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_view::DataResultQuery as _;
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -73,6 +73,8 @@ impl VisualizerSystem for NodeVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
+        let mut output = VisualizerExecutionOutput::default();
+
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
             let results = data_result
@@ -82,16 +84,41 @@ impl VisualizerSystem for NodeVisualizer {
                     Some(instruction),
                 );
 
-            let all_nodes =
-                results.iter_as(query.timeline, GraphNodes::descriptor_node_ids().component);
-            let all_colors =
-                results.iter_as(query.timeline, GraphNodes::descriptor_colors().component);
-            let all_positions =
-                results.iter_as(query.timeline, GraphNodes::descriptor_positions().component);
-            let all_labels =
-                results.iter_as(query.timeline, GraphNodes::descriptor_labels().component);
-            let all_radii =
-                results.iter_as(query.timeline, GraphNodes::descriptor_radii().component);
+            let all_nodes = results.iter_as(
+                |err| {
+                    output.report_error_for(instruction.id, err);
+                },
+                query.timeline,
+                GraphNodes::descriptor_node_ids().component,
+            );
+            let all_colors = results.iter_as(
+                |err| {
+                    output.report_warning_for(instruction.id, err);
+                },
+                query.timeline,
+                GraphNodes::descriptor_colors().component,
+            );
+            let all_positions = results.iter_as(
+                |err| {
+                    output.report_warning_for(instruction.id, err);
+                },
+                query.timeline,
+                GraphNodes::descriptor_positions().component,
+            );
+            let all_labels = results.iter_as(
+                |err| {
+                    output.report_warning_for(instruction.id, err);
+                },
+                query.timeline,
+                GraphNodes::descriptor_labels().component,
+            );
+            let all_radii = results.iter_as(
+                |err| {
+                    output.report_warning_for(instruction.id, err);
+                },
+                query.timeline,
+                GraphNodes::descriptor_radii().component,
+            );
             let show_label = results
                 .get_mono::<components::ShowLabels>(GraphNodes::descriptor_show_labels().component)
                 .is_none_or(bool::from);
@@ -154,6 +181,6 @@ impl VisualizerSystem for NodeVisualizer {
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }
