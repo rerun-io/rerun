@@ -219,13 +219,8 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
         found_loaded_sample_idx.saturating_sub(1),
         get_video_buffer,
     ) {
-        Ok(_) => {
-            debug_assert!(
-                false,
-                "We should not get here if there's a loaded keyframe before our timestamp."
-            );
-            InsufficientSampleDataError::ExpectedSampleNotLoaded.into()
-        }
+        // Can end up here if the player requests a timestamp before the first sample in the video.
+        Ok(_) => InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into(),
         Err(err) => err,
     }
 }

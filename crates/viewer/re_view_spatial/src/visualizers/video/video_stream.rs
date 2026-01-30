@@ -230,6 +230,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     let severity = match err {
                         VideoPlayerError::InsufficientSampleData(
                             InsufficientSampleDataError::NoKeyFrames
+                            | InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp
                             | InsufficientSampleDataError::NoSamples
                             | InsufficientSampleDataError::NoLoadedSamples
                             | InsufficientSampleDataError::ExpectedSampleNotLoaded
