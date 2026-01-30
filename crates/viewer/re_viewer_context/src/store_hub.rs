@@ -5,7 +5,7 @@ use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -807,6 +807,15 @@ impl StoreHub {
     /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
         self.retain_recordings(|entity_db| !entity_db.is_empty());
+    }
+
+    pub fn total_memory_used_by_recordings(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        self.store_bundle
+            .recordings()
+            .map(|db| db.total_size_bytes())
+            .sum()
     }
 
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording

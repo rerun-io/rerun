@@ -5,11 +5,9 @@ use re_entity_db::EntityDb;
 use re_redap_client::{ApiResult, ConnectionClient};
 use re_viewer_context::TimeControl;
 
-use crate::StartupOptions;
-
 pub fn prefetch_chunks_for_active_recording(
     egui_ctx: &egui::Context,
-    startup_options: &StartupOptions,
+    memory_budget: re_memory::MemoryLimit,
     recording: &mut EntityDb,
     time_ctrl: &TimeControl,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
@@ -21,11 +19,6 @@ pub fn prefetch_chunks_for_active_recording(
 
     let redap_uri = recording.redap_uri()?.clone();
     let origin = redap_uri.origin.clone();
-
-    let memory_limit = startup_options.memory_limit.as_bytes();
-    // Use 75% of memory limit minus 100MB for headroom. The extra 100MB buffer accounts for
-    // caches, intermediate allocations, and other non-chunk memory usage.
-    let total_byte_budget = (memory_limit as f64 * 0.75 - 1e8).max(0.0) as u64;
 
     // Load data from slightly before the current time to give some room for latest-at.
     // This is a bit hacky, but works for now.
@@ -42,7 +35,7 @@ pub fn prefetch_chunks_for_active_recording(
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
         start_time,
-        total_uncompressed_byte_budget: total_byte_budget,
+        total_uncompressed_byte_budget: memory_budget.as_bytes(),
 
         // Batch small chunks together.
         max_uncompressed_bytes_per_batch: 1_000_000,

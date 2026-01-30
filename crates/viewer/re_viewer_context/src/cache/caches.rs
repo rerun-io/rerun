@@ -41,6 +41,9 @@ pub struct Caches {
 
     /// The store for which these caches are caching data.
     pub store_id: StoreId,
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    memory_use_after_last_purge: u64,
 }
 
 impl Caches {
@@ -49,6 +52,7 @@ impl Caches {
         Self {
             caches: Mutex::new(HashMap::default()),
             store_id,
+            memory_use_after_last_purge: 0,
         }
     }
 
@@ -60,6 +64,16 @@ impl Caches {
         for cache in self.caches.lock().values() {
             cache.lock().begin_frame();
         }
+    }
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    ///
+    /// This is the lower bound on how much memory we need.
+    ///
+    /// Some caches just cannot shrink below a certain size,
+    /// and we need to take that into account when budgeting for other things.
+    pub fn memory_use_after_last_purge(&self) -> u64 {
+        self.memory_use_after_last_purge
     }
 
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
@@ -85,13 +99,15 @@ impl Caches {
     }
 
     /// Attempt to free up memory.
-    pub fn purge_memory(&self) {
+    pub fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
             cache.lock().purge_memory();
         }
+
+        self.memory_use_after_last_purge = self.capture_mem_usage_tree().size_bytes();
     }
 
     /// React to the chunk store's changelog, if needed.
