@@ -3,7 +3,7 @@ title = "ROS TF"
 tags = ["ROS", "TF", "Transform", "Coordinate Frame", "ROS 2"]
 source = "https://github.com/rerun-io/ros_tf_example"
 thumbnail = "https://static.rerun.io/ros_tf_example/6fd0961787faa8ed6428769d7cbe37d136915535/480w.png"
-thumbnail_dimensions = [480, 305]
+thumbnail_dimensions = [480, 308]
 -->
 
 <video width="100%" autoplay loop muted controls>
