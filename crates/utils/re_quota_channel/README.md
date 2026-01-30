@@ -2,8 +2,8 @@
 
 Part of the [Rerun](https://github.com/rerun-io/rerun) project.
 
-[![Latest version](https://img.shields.io/crates/v/re_quota_channel.svg?speculative-link)](https://crates.io/crates/re_quota_channel?speculative-link)
-[![Documentation](https://docs.rs/re_quota_channel/badge.svg?speculative-link)](https://docs.rs/re_quota_channel?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_quota_channel.svg)](https://crates.io/crates/re_quota_channel)
+[![Documentation](https://docs.rs/re_quota_channel/badge.svg)](https://docs.rs/re_quota_channel)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
