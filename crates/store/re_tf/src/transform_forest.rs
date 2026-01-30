@@ -70,6 +70,22 @@ impl SizeBytes for TreeTransform {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for TreeTransform {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            root,
+            target_from_source,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child("root", root.total_size_bytes())
+            .with_child("target_from_source", target_from_source.total_size_bytes())
+            .into_tree()
+    }
+}
+
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum TransformFromToError {
     #[error("No transform relationships about the target frame {0:?} are known")]
@@ -385,6 +401,22 @@ impl SizeBytes for TransformForest {
         } = self;
 
         roots.heap_size_bytes() + root_from_frame.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for TransformForest {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            roots,
+            root_from_frame,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child("roots", roots.total_size_bytes())
+            .with_child("root_from_frame", root_from_frame.total_size_bytes())
+            .into_tree()
     }
 }
 

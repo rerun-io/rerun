@@ -94,6 +94,28 @@ impl Cache for TransformDatabaseStoreCache {
 
 impl re_byte_size::MemUsageTreeCapture for TransformDatabaseStoreCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
-        re_byte_size::MemUsageTree::Bytes(self.total_size_bytes())
+        re_tracing::profile_function!();
+
+        let Self {
+            initialized: _, // just a bool
+            transform_cache,
+            transform_forest,
+        } = self;
+
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        node.add(
+            "transform_cache",
+            transform_cache.read().capture_mem_usage_tree(),
+        );
+
+        if let Some(transform_forest) = &transform_forest {
+            node.add(
+                "transform_forest",
+                transform_forest.capture_mem_usage_tree(),
+            );
+        }
+
+        node.into_tree()
     }
 }

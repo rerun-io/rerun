@@ -108,7 +108,7 @@ impl re_byte_size::SizeBytes for VideoPlayer {
 
 impl Drop for VideoPlayer {
     fn drop(&mut self) {
-        re_log::debug!("Dropping VideoPlayer {:?}", self.debug_name());
+        re_log::trace!("Dropping VideoPlayer {:?}", self.debug_name());
     }
 }
 

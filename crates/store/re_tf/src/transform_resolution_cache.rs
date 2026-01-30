@@ -77,6 +77,24 @@ impl SizeBytes for TransformResolutionCache {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for TransformResolutionCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            frame_id_registry,
+            per_timeline,
+            static_timeline,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child("frame_id_registry", frame_id_registry.total_size_bytes())
+            .with_child("per_timeline", per_timeline.capture_mem_usage_tree())
+            .with_child("static_timeline", static_timeline.total_size_bytes())
+            .into_tree()
+    }
+}
+
 /// A transform from a child frame to a parent frame.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParentFromChildTransform {
@@ -391,6 +409,32 @@ impl SizeBytes for CachedTransformsForTimeline {
             + non_recursive_clears.heap_size_bytes()
             + recursive_clears.heap_size_bytes()
             + per_entity_poses.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for CachedTransformsForTimeline {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            per_child_frame_transforms,
+            non_recursive_clears,
+            recursive_clears,
+            per_entity_poses,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child(
+                "per_child_frame_transforms",
+                per_child_frame_transforms.total_size_bytes(),
+            )
+            .with_child(
+                "non_recursive_clears",
+                non_recursive_clears.total_size_bytes(),
+            )
+            .with_child("recursive_clears", recursive_clears.total_size_bytes())
+            .with_child("per_entity_poses", per_entity_poses.total_size_bytes())
+            .into_tree()
     }
 }
 

@@ -2883,7 +2883,7 @@ impl App {
                 && 0 < counted_diff
             {
                 re_log::debug!(
-                    "Freed up {} ({:.1}%)",
+                    "GC freed up {} ({:.1}%)",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
                 );

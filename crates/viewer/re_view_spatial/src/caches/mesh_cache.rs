@@ -88,6 +88,7 @@ impl MeshCache {
             .or_default()
             .entry(key)
             .or_insert_with(|| {
+                re_tracing::profile_scope!("MeshCache-miss");
                 re_log::trace!("Loading CPU mesh {name:?}…");
 
                 let result = LoadedMesh::load(name.to_owned(), mesh, render_ctx);
