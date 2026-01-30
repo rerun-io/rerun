@@ -219,12 +219,15 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
         found_loaded_sample_idx.saturating_sub(1),
         get_video_buffer,
     ) {
+        // Can end up here if the player requests a timestamp before the first sample in the video…
         Ok(_) => {
-            debug_assert!(
-                false,
-                "We should not get here if there's a loaded keyframe before our timestamp."
-            );
-            InsufficientSampleDataError::ExpectedSampleNotLoaded.into()
+            // … which could also mean no keyframes at all, so check
+            // that for a more accurate error.
+            if video_description.keyframe_indices.is_empty() {
+                InsufficientSampleDataError::NoKeyFrames.into()
+            } else {
+                InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp.into()
+            }
         }
         Err(err) => err,
     }
@@ -315,9 +318,6 @@ impl VideoPlayer {
         if video_description.samples.is_empty() {
             return Err(InsufficientSampleDataError::NoSamples.into());
         }
-        if video_description.keyframe_indices.is_empty() {
-            return Err(InsufficientSampleDataError::NoKeyFrames.into());
-        }
         if requested_pts.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
@@ -326,6 +326,7 @@ impl VideoPlayer {
         let Some(requested_sample_idx) =
             video_description.latest_sample_index_at_presentation_timestamp(requested_pts)
         else {
+            self.reset(video_description)?;
             return Err(try_request_missing_samples_at_presentation_timestamp(
                 requested_pts,
                 video_description,
@@ -460,7 +461,11 @@ impl VideoPlayer {
         // required for the encoder to work if we've already enqueued the frames,
         // but it does make it more stable to still have those in-memory.
         let requested_keyframe_idx =
-            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)?;
+            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)
+                .inspect_err(|_err| {
+                    // We're already returning an error here.
+                    let _res = self.reset(video_description);
+                })?;
 
         self.handle_errors_and_reset_decoder_if_needed(
             video_description,

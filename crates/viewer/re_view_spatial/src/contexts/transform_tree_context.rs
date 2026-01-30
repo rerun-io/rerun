@@ -163,25 +163,22 @@ impl ViewContextSystem for TransformTreeContext {
         re_tracing::profile_function!();
 
         let caches = ctx.store_context.caches;
-        let (transform_forest, transform_cache) =
-            caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.update_transform_forest(ctx.recording(), &ctx.current_query());
-                (
-                    c.get_transform_forest(),
-                    c.read_lock_transform_cache(ctx.recording()),
-                )
-            });
+        let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.update_transform_forest(ctx.recording(), &ctx.current_query());
+            c.transform_forest()
+        });
 
         // We update this here so it should exist.
         let transform_forest = transform_forest.unwrap_or_default();
 
-        let frame_ids = transform_cache
-            .frame_id_registry()
+        let frame_id_registry = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
+
+        let frame_ids = frame_id_registry
             .iter_frame_ids()
             .map(|(k, v)| (*k, v.clone()));
 
-        let child_frames_per_entity = transform_cache
-            .frame_id_registry()
+        let child_frames_per_entity = frame_id_registry
             .iter_entities_with_child_frames()
             .map(|(k, v)| (*k, v.clone()));
 
@@ -280,8 +277,8 @@ impl ViewContextSystem for TransformTreeContext {
         }
 
         let caches = ctx.viewer_ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
+        let transforms_for_timeline = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.transforms_for_timeline(ctx.recording(), query.timeline)
         });
 
         let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
@@ -290,9 +287,8 @@ impl ViewContextSystem for TransformTreeContext {
             // From that entity we'd like to know what image frame distance we should be using.
             // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
 
-            let Some(frame_transforms) = transform_cache
-                .transforms_for_timeline(query.timeline)
-                .frame_transforms(transform_frame_id_hash)
+            let Some(frame_transforms) =
+                transforms_for_timeline.frame_transforms(transform_frame_id_hash)
             else {
                 debug_assert!(
                     false,
@@ -342,7 +338,7 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let transforms = transform_cache.transforms_for_timeline(query.timeline);
+            let transforms = &*transforms_for_timeline;
 
             let latest_at_query = &query.latest_at_query();
 

@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::external::arrow;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
-use re_view::{ChunksWithComponent, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
+use re_view::{HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
 use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
@@ -16,7 +16,7 @@ use crate::{PlotPoint, PlotSeriesKind};
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
-pub fn determine_num_series(all_scalar_chunks: &ChunksWithComponent<'_>) -> usize {
+pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>) -> usize {
     // TODO(andreas): We should determine this only once and cache the result.
     // As data comes in we can validate that the number of series is consistent.
     // Keep in mind clears here.
@@ -41,11 +41,11 @@ pub fn collect_series_visibility(
     visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
     bootstrapped_results
-        .iter_as(*query.timeline(), visibility_component)
+        .iter_as(|_| {}, *query.timeline(), visibility_component)
         .slice::<bool>()
         .chain(
             results
-                .iter_as(*query.timeline(), visibility_component)
+                .iter_as(|_| {}, *query.timeline(), visibility_component)
                 .slice::<bool>(),
         )
         .next()
@@ -69,7 +69,7 @@ pub fn collect_series_visibility(
 pub fn allocate_plot_points(
     query: &RangeQuery,
     default_point: &PlotPoint,
-    all_scalar_chunks: &ChunksWithComponent<'_>,
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     num_series: usize,
 ) -> PlotPointsPerSeries {
     re_tracing::profile_function!();
@@ -90,7 +90,7 @@ pub fn allocate_plot_points(
 
 /// Allocates scalars per series into pre-allocated plot points.
 pub fn collect_scalars(
-    all_scalar_chunks: &ChunksWithComponent<'_>,
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut PlotPointsPerSeries,
 ) {
     re_tracing::profile_function!();
@@ -137,7 +137,7 @@ pub fn collect_colors(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithComponent<'_>,
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
 ) {
@@ -153,27 +153,24 @@ pub fn collect_colors(
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
 
-    let all_color_chunks = bootstrapped_results
-        .get_optional_chunks(color_descriptor.component)
-        .chunks
-        .iter()
-        .cloned()
-        .chain(
-            results
-                .get_optional_chunks(color_descriptor.component)
-                .chunks
-                .iter()
-                .cloned(),
-        )
+    let bootstrapped_color_chunks =
+        bootstrapped_results.get_optional_chunks(color_descriptor.component);
+    let results_color_chunks = results.get_optional_chunks(color_descriptor.component);
+    let all_color_chunks = bootstrapped_color_chunks
+        .iter(|err| {
+            // TODO(RR-3506): This should be a visualizer warning instead!
+            re_log::warn_once!("could not retrieve all colors: {err}");
+        })
+        .chain(results_color_chunks.iter(|err| {
+            // TODO(RR-3506): This should be a visualizer warning instead!
+            re_log::warn_once!("could not retrieve result colors: {err}");
+        }))
         .collect_vec();
 
-    if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
+    if all_color_chunks.len() == 1 && all_color_chunks[0].chunk.is_static() {
         re_tracing::profile_scope!("override/default fast path");
 
-        if let Some(colors) = all_color_chunks[0]
-            .iter_slices::<u32>(color_descriptor.component)
-            .next()
-        {
+        if let Some(colors) = all_color_chunks[0].iter_slices::<u32>().next() {
             for (points, color) in points_per_series
                 .iter_mut()
                 .zip(clamped_or_nothing(colors, num_series))
@@ -208,8 +205,8 @@ pub fn collect_colors(
 
         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(*query.timeline(), color_descriptor.component),
-                chunk.iter_slices::<u32>(color_descriptor.component)
+                chunk.iter_component_indices(*query.timeline()),
+                chunk.iter_slices::<u32>()
             )
         });
 
@@ -250,22 +247,20 @@ pub fn collect_series_name(
 ) -> Vec<String> {
     re_tracing::profile_function!();
 
-    let mut series_names: Vec<String> = bootstrapped_results
-        .get_optional_chunks(name_descriptor.component)
-        .chunks
-        .iter()
-        .chain(
-            results
-                .get_optional_chunks(name_descriptor.component)
-                .chunks
-                .iter(),
-        )
-        .find(|chunk| !chunk.is_empty())
-        .and_then(|chunk| {
-            chunk
-                .iter_slices::<String>(name_descriptor.component)
-                .next()
+    let bootstrapped_name_chunks =
+        bootstrapped_results.get_optional_chunks(name_descriptor.component);
+    let results_name_chunks = results.get_optional_chunks(name_descriptor.component);
+    let mut series_names: Vec<String> = bootstrapped_name_chunks
+        .iter(|err| {
+            // TODO(RR-3506): This should be a visualizer warning instead!
+            re_log::warn_once!("could not retrieve bootstrapped names: {err}");
         })
+        .chain(results_name_chunks.iter(|err| {
+            // TODO(RR-3506): This should be a visualizer warning instead!
+            re_log::warn_once!("could not retrieve result names: {err}");
+        }))
+        .find(|chunk| !chunk.chunk.is_empty())
+        .and_then(|chunk| chunk.iter_slices::<String>().next())
         .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
         .unwrap_or_default();
 
@@ -290,7 +285,7 @@ pub fn collect_radius_ui(
     query: &RangeQuery,
     bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
-    all_scalar_chunks: &ChunksWithComponent<'_>,
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,
     radius_multiplier: f32,
@@ -300,27 +295,24 @@ pub fn collect_radius_ui(
     let num_series = points_per_series.len();
 
     {
-        let all_radius_chunks = bootstrapped_results
-            .get_optional_chunks(radius_descriptor.component)
-            .chunks
-            .iter()
-            .cloned()
-            .chain(
-                results
-                    .get_optional_chunks(radius_descriptor.component)
-                    .chunks
-                    .iter()
-                    .cloned(),
-            )
+        let bootstrapped_radius_chunks =
+            bootstrapped_results.get_optional_chunks(radius_descriptor.component);
+        let results_radius_chunks = results.get_optional_chunks(radius_descriptor.component);
+        let all_radius_chunks = bootstrapped_radius_chunks
+            .iter(|err| {
+                // TODO(RR-3506): This should be a visualizer warning instead!
+                re_log::warn_once!("could not retrieve bootstrapped radius: {err}");
+            })
+            .chain(results_radius_chunks.iter(|err| {
+                // TODO(RR-3506): This should be a visualizer warning instead!
+                re_log::warn_once!("could not retrieve result radius: {err}");
+            }))
             .collect_vec();
 
-        if all_radius_chunks.len() == 1 && all_radius_chunks[0].is_static() {
+        if all_radius_chunks.len() == 1 && all_radius_chunks[0].chunk.is_static() {
             re_tracing::profile_scope!("override/default fast path");
 
-            if let Some(radius) = all_radius_chunks[0]
-                .iter_slices::<f32>(radius_descriptor.component)
-                .next()
-            {
+            if let Some(radius) = all_radius_chunks[0].iter_slices::<f32>().next() {
                 for (points, radius) in points_per_series
                     .iter_mut()
                     .zip(clamped_or_nothing(radius, num_series))
@@ -336,8 +328,8 @@ pub fn collect_radius_ui(
 
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(*query.timeline(), radius_descriptor.component),
-                    chunk.iter_slices::<f32>(radius_descriptor.component)
+                    chunk.iter_component_indices(*query.timeline()),
+                    chunk.iter_slices::<f32>()
                 )
             });
 
@@ -371,7 +363,7 @@ pub fn collect_radius_ui(
 
 pub fn all_scalars_indices<'a>(
     query: &'a RangeQuery,
-    all_scalar_chunks: &'a ChunksWithComponent<'_>,
+    all_scalar_chunks: &'a re_view::ChunksWithComponent<'_>,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ())> + 'a {
     all_scalar_chunks
         .iter()

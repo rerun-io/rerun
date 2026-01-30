@@ -41,6 +41,7 @@ re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
+re_mutex.workspace = true
 re_query.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
@@ -54,7 +55,6 @@ emath.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
 poll-promise.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 static_assertions.workspace = true

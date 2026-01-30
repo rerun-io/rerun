@@ -229,10 +229,8 @@ impl TransformForest {
         // Repeat steps 1) & 2) until we've processed all frames.
 
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
-        let mut unprocessed_frames: IntSet<_> = transform_cache
-            .frame_id_registry()
-            .iter_frame_id_hashes()
-            .collect();
+        let frame_id_registry = transform_cache.frame_id_registry();
+        let mut unprocessed_frames: IntSet<_> = frame_id_registry.iter_frame_id_hashes().collect();
         let mut transform_stack = Vec::new(); // Keep pushing & draining from the same vector as a simple performance optimization.
 
         let mut forest = Self::default();
@@ -244,8 +242,8 @@ impl TransformForest {
                 entity_db,
                 query,
                 current_frame,
-                transform_cache.frame_id_registry(),
-                transforms,
+                &frame_id_registry,
+                &transforms,
                 &mut unprocessed_frames,
                 &mut transform_stack,
             );
@@ -371,20 +369,22 @@ impl TransformForest {
                 target_from_source: root_from_current_frame,
             };
 
-            let previous_transform = self
+            let _previous_transform = self
                 .root_from_frame
                 .insert(transforms.child_frame, transform_root_from_current);
 
             // TODO(RR-2667): Build out into cycle detection
-            debug_assert!(
-                previous_transform.is_none(),
-                "DEBUG ASSERT: Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
-                cache
-                    .frame_id_registry()
-                    .lookup_frame_id(transforms.child_frame),
-                cache.frame_id_registry().lookup_frame_id(root_frame),
-                previous_transform.and_then(|f| cache.frame_id_registry().lookup_frame_id(f.root))
-            );
+            #[cfg(debug_assertions)]
+            {
+                let frame_id_registry = cache.frame_id_registry();
+                debug_assert!(
+                    _previous_transform.is_none(),
+                    "DEBUG ASSERT: Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                    frame_id_registry.lookup_frame_id(transforms.child_frame),
+                    frame_id_registry.lookup_frame_id(root_frame),
+                    _previous_transform.and_then(|f| frame_id_registry.lookup_frame_id(f.root))
+                );
+            }
 
             root_from_target = root_from_current_frame;
         }

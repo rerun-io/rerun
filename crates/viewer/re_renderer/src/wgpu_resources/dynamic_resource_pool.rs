@@ -5,7 +5,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
-use parking_lot::RwLock;
+use re_mutex::RwLock;
 use slotmap::{Key, SlotMap};
 use smallvec::SmallVec;
 

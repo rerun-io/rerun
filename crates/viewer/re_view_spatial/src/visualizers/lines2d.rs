@@ -187,8 +187,9 @@ impl VisualizerSystem for Lines2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_strip_chunks =
-                    results.get_required_chunk(LineStrips2D::descriptor_strips().component);
+                let all_strip_chunks = results
+                    .get_required_chunk(LineStrips2D::descriptor_strips().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_strip_chunks.is_empty() {
                     return Ok(());
                 }
@@ -213,16 +214,31 @@ impl VisualizerSystem for Lines2DVisualizer {
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let all_strips_indexed = iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline);
-                let all_colors =
-                    results.iter_as(timeline, LineStrips2D::descriptor_colors().component);
-                let all_radii =
-                    results.iter_as(timeline, LineStrips2D::descriptor_radii().component);
-                let all_labels =
-                    results.iter_as(timeline, LineStrips2D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_as(timeline, LineStrips2D::descriptor_class_ids().component);
-                let all_show_labels =
-                    results.iter_as(timeline, LineStrips2D::descriptor_show_labels().component);
+                let all_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    LineStrips2D::descriptor_colors().component,
+                );
+                let all_radii = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    LineStrips2D::descriptor_radii().component,
+                );
+                let all_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    LineStrips2D::descriptor_labels().component,
+                );
+                let all_class_ids = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    LineStrips2D::descriptor_class_ids().component,
+                );
+                let all_show_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    LineStrips2D::descriptor_show_labels().component,
+                );
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,

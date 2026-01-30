@@ -5,7 +5,7 @@ use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
 use re_view::{
-    RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
+    ChunksWithComponent, RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -148,8 +148,14 @@ impl SeriesLinesSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let all_scalar_chunks =
-                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
+            let all_scalar_chunks: ChunksWithComponent<'_> = results
+                .get_required_chunk(archetypes::Scalars::descriptor_scalars().component)
+                .try_into()
+                .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
+                    err,
+                })?;
+
             if all_scalar_chunks.is_empty() {
                 return Err(LoadSeriesError::InstructionSpecificVisualizerError {
                     instruction_id: instruction.id,
@@ -223,18 +229,23 @@ impl SeriesLinesSystem {
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = bootstrapped_results
                 .get_optional_chunks(aggregation_policy_descr.component)
-                .chunks
-                .iter()
+                .iter(|err| {
+                    // TODO(RR-3506): This should be a visualizer warning instead!
+                    re_log::warn_once!("could not retrieve aggregation policy: {err}");
+                })
                 .chain(
                     results
                         .get_optional_chunks(aggregation_policy_descr.component)
-                        .chunks
-                        .iter(),
+                        .iter(|err| {
+                            // TODO(RR-3506): This should be a visualizer warning instead!
+                            re_log::warn_once!("could not retrieve aggregation policy: {err}");
+                        }),
                 )
-                .find(|chunk| !chunk.is_empty())
+                .find(|chunk| !chunk.chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
-                        .component_mono::<AggregationPolicy>(aggregation_policy_descr.component, 0)?
+                        .chunk
+                        .component_mono::<AggregationPolicy>(chunk.component, 0)?
                         .ok()
                 })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
@@ -368,8 +379,14 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.component)
-                .slice::<bool>()
+                .get_chunks(clear_descriptor.component, false)
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline()),
+                        chunk.iter_slices::<bool>()
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
@@ -387,8 +404,14 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.component)
-                .slice::<bool>()
+                .get_chunks(clear_descriptor.component, false)
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline()),
+                        chunk.iter_slices::<bool>()
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);

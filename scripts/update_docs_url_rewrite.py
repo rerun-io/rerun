@@ -30,16 +30,26 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import logging
 import sys
-import json
 
+from google.api_core import exceptions as google_exceptions
+from google.api_core import retry
+from google.api_core.retry.retry_base import if_transient_error
 from google.cloud import compute_v1
 
 
 def format_url_map(url_map: compute_v1.UrlMap) -> str:
     """Format URL map as a readable JSON string."""
     return json.dumps(compute_v1.UrlMap.to_dict(url_map), indent=2, sort_keys=True)
+
+
+def is_resource_not_ready_error(exc: Exception) -> bool:
+    """Check if an exception is a 'resource not ready' error that should be retried."""
+
+    # fall back to the default `if_transient_error` to ensure those are still retried
+    return if_transient_error(exc) or isinstance(exc, google_exceptions.BadRequest) and "is not ready" in str(exc)
 
 
 def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_run: bool = False) -> None:
@@ -146,7 +156,15 @@ def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_
         return
 
     logging.info(f"\nApplying changes to URL map: {balancer_name}")
-    operation = client.update(project=project, url_map=balancer_name, url_map_resource=url_map)
+
+    operation = client.update(
+        project=project,
+        url_map=balancer_name,
+        url_map_resource=url_map,
+        # Retry in case of "Resource is not ready" errors, which may occur when this script
+        # is called in parallel from different jobs.
+        retry=retry.Retry(predicate=is_resource_not_ready_error),
+    )
 
     logging.info("Waiting for operation to complete…")
     operation.result()

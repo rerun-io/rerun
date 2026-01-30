@@ -26,6 +26,7 @@ re_chunk_store.workspace = true
 re_entity_db.workspace = true # It would be nice not to depend on this, but we need this in order to do queries right now.
 re_log.workspace = true
 re_log_types.workspace = true
+re_mutex.workspace = true
 re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["glam"] }
 

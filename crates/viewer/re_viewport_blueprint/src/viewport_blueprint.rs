@@ -6,10 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use parking_lot::Mutex;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
+use re_mutex::Mutex;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::{
     AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,

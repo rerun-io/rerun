@@ -77,8 +77,9 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 use super::entity_iterator::iter_slices;
                 use re_view::RangeResultsExt as _;
 
-                let all_blob_chunks =
-                    results.get_required_chunk(EncodedDepthImage::descriptor_blob().component);
+                let all_blob_chunks = results
+                    .get_required_chunk(EncodedDepthImage::descriptor_blob().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_blob_chunks.is_empty() {
                     return Ok(());
                 }
@@ -86,18 +87,27 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
                 let all_media_types = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     EncodedDepthImage::descriptor_media_type().component,
                 );
-                let all_colormaps =
-                    results.iter_as(timeline, EncodedDepthImage::descriptor_colormap().component);
+                let all_colormaps = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    EncodedDepthImage::descriptor_colormap().component,
+                );
                 let all_value_ranges = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     EncodedDepthImage::descriptor_depth_range().component,
                 );
-                let all_depth_meters =
-                    results.iter_as(timeline, EncodedDepthImage::descriptor_meter().component);
+                let all_depth_meters = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    EncodedDepthImage::descriptor_meter().component,
+                );
                 let all_fill_ratios = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     EncodedDepthImage::descriptor_point_fill_ratio().component,
                 );

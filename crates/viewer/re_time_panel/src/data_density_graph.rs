@@ -445,17 +445,11 @@ pub fn paint_loaded_indicator_bar(
         .timeline_range(time_ctrl.timeline_name())
         .unwrap_or(AbsoluteTimeRange::EMPTY);
 
-    let loaded_ranges_on_timeline = db
+    let is_loading = db
         .rrd_manifest_index()
-        .loaded_ranges_on_timeline(timeline)
-        .collect::<Vec<_>>();
-
-    let is_loading_at_current_time = time_ctrl.time_int().is_some_and(|time| {
-        full_time_range.contains(time)
-            && !loaded_ranges_on_timeline.iter().any(|r| r.contains(time))
-    });
-
-    if is_loading_at_current_time
+        .chunk_prioritizer()
+        .had_missing_chunks();
+    if is_loading
         && let Some(start) = time_ranges_ui.x_from_time(full_time_range.min.into())
         && let Some(end) = time_ranges_ui.x_from_time(full_time_range.max.into())
     {
@@ -485,6 +479,11 @@ pub fn paint_loaded_indicator_bar(
     }
 
     if paint_fully_loaded_ranges {
+        let loaded_ranges_on_timeline = db
+            .rrd_manifest_index()
+            .loaded_ranges_on_timeline(timeline)
+            .collect::<Vec<_>>();
+
         for range in loaded_ranges_on_timeline {
             let Some(start) = time_ranges_ui.x_from_time(range.min.into()) else {
                 continue;

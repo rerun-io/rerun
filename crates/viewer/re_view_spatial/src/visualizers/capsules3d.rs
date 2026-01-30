@@ -165,13 +165,15 @@ impl VisualizerSystem for Capsules3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_length_chunks =
-                    results.get_required_chunk(Capsules3D::descriptor_lengths().component);
+                let all_length_chunks = results
+                    .get_required_chunk(Capsules3D::descriptor_lengths().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_length_chunks.is_empty() {
                     return Ok(());
                 }
-                let all_radius_chunks =
-                    results.get_required_chunk(Capsules3D::descriptor_radii().component);
+                let all_radius_chunks = results
+                    .get_required_chunk(Capsules3D::descriptor_radii().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_radius_chunks.is_empty() {
                     return Ok(());
                 }
@@ -194,26 +196,51 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
                 let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
-                let all_translations =
-                    results.iter_as(timeline, Capsules3D::descriptor_translations().component);
+                let all_translations = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_translations().component,
+                );
                 let all_rotation_axis_angles = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     Capsules3D::descriptor_rotation_axis_angles().component,
                 );
-                let all_quaternions =
-                    results.iter_as(timeline, Capsules3D::descriptor_quaternions().component);
-                let all_colors =
-                    results.iter_as(timeline, Capsules3D::descriptor_colors().component);
-                let all_labels =
-                    results.iter_as(timeline, Capsules3D::descriptor_labels().component);
-                let all_show_labels =
-                    results.iter_as(timeline, Capsules3D::descriptor_show_labels().component);
-                let all_fill_modes =
-                    results.iter_as(timeline, Capsules3D::descriptor_fill_mode().component);
-                let all_line_radii =
-                    results.iter_as(timeline, Capsules3D::descriptor_line_radii().component);
-                let all_class_ids =
-                    results.iter_as(timeline, Capsules3D::descriptor_class_ids().component);
+                let all_quaternions = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_quaternions().component,
+                );
+                let all_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_colors().component,
+                );
+                let all_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_labels().component,
+                );
+                let all_show_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_show_labels().component,
+                );
+                let all_fill_modes = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_fill_mode().component,
+                );
+                let all_line_radii = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_line_radii().component,
+                );
+                let all_class_ids = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Capsules3D::descriptor_class_ids().component,
+                );
 
                 let data = re_query::range_zip_2x9(
                     all_lengths_indexed,

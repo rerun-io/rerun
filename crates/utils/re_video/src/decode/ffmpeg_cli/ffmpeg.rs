@@ -9,7 +9,6 @@ use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
-use parking_lot::Mutex;
 use re_quota_channel::{Receiver, SendError, Sender};
 
 use super::version::FFmpegVersionParseError;
@@ -189,17 +188,23 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-/// Output sender is mutex protected `Option` so that we can stop sending output frames on ffmpeg shutdown by setting it to `None`.
-type OutputSender = Mutex<Option<Sender<FrameResult>>>;
+/// A sender with a signal to know if it should stop.
+struct OutputSender {
+    sender: Sender<FrameResult>,
+
+    /// After this is true the sender won't try to send additional
+    /// [`FrameResult`]s. The sender might still be blocked because of
+    /// backpressure, and send one last frame after this has been set to true.
+    stop_signal: AtomicBool,
+}
 
 /// Send a result to the output sender.
 fn send_output(
     output_sender: &OutputSender,
     result: FrameResult,
 ) -> Result<(), SendError<FrameResult>> {
-    let output_sender_guard = output_sender.lock();
-    if let Some(output_sender) = output_sender_guard.as_ref() {
-        output_sender.send(result)
+    if !output_sender.stop_signal.load(Ordering::Acquire) {
+        output_sender.sender.send(result)
     } else {
         Err(SendError(result))
     }
@@ -339,7 +344,10 @@ impl FFmpegProcessAndListener {
 
         // Mutex protect `output_sender` so that we can shut down the threads at a defined point in time at which we
         // no longer receive any new frames or errors from this process.
-        let output_sender = Arc::new(Mutex::new(Some(output_sender)));
+        let output_sender = Arc::new(OutputSender {
+            sender: output_sender,
+            stop_signal: AtomicBool::new(false),
+        });
 
         // Reads the output from the ffmpeg process:
         let listen_thread = std::thread::Builder::new()
@@ -441,12 +449,15 @@ impl Drop for FFmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
-        // Stop all outputs from being written to - any attempt from here on out will fail and cause thread shutdown.
-        // This way, we ensure all ongoing writes are finished and won't get any more on_output callbacks from this process
+        // Stop all outputs from being written to - any new attempt from here on out will fail and cause thread shutdown.
+        // This way, we ensure there won't be any new writes and won't get any more on_output callbacks from this process
         // before we take any other action on the shutdown sequence.
-        {
-            self.output_sender.lock().take();
-        }
+        //
+        // This does mean the encoder can send one final message if it's blocked, which is fine since either it will be
+        // cleaned up the next time we receive decode outputs. Or it will be overridden when said sample is decoded again.
+        self.output_sender
+            .stop_signal
+            .store(true, Ordering::Release);
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
         self.frame_data_tx.send(FFmpegFrameData::Quit).ok();

@@ -2,11 +2,11 @@ use std::any::TypeId;
 use std::sync::Arc;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
+use re_mutex::Mutex;
 
 /// A wrapper around a cache that allows for shared access with its own lock.
 ///
@@ -26,7 +26,7 @@ impl SharedCache {
         }
     }
 
-    fn lock(&self) -> parking_lot::MutexGuard<'_, Box<dyn Cache>> {
+    fn lock(&self) -> re_mutex::MutexGuard<'_, Box<dyn Cache>> {
         self.cache.lock()
     }
 }
@@ -41,6 +41,9 @@ pub struct Caches {
 
     /// The store for which these caches are caching data.
     pub store_id: StoreId,
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    memory_use_after_last_purge: u64,
 }
 
 impl Caches {
@@ -49,6 +52,7 @@ impl Caches {
         Self {
             caches: Mutex::new(HashMap::default()),
             store_id,
+            memory_use_after_last_purge: 0,
         }
     }
 
@@ -60,6 +64,16 @@ impl Caches {
         for cache in self.caches.lock().values() {
             cache.lock().begin_frame();
         }
+    }
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    ///
+    /// This is the lower bound on how much memory we need.
+    ///
+    /// Some caches just cannot shrink below a certain size,
+    /// and we need to take that into account when budgeting for other things.
+    pub fn memory_use_after_last_purge(&self) -> u64 {
+        self.memory_use_after_last_purge
     }
 
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
@@ -85,13 +99,15 @@ impl Caches {
     }
 
     /// Attempt to free up memory.
-    pub fn purge_memory(&self) {
+    pub fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
             cache.lock().purge_memory();
         }
+
+        self.memory_use_after_last_purge = self.capture_mem_usage_tree().size_bytes();
     }
 
     /// React to the chunk store's changelog, if needed.

@@ -169,12 +169,9 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             'scope: {
                 let caches = ctx.store_ctx().caches;
-                let (transforms, transform_forest) =
+                let (frame_id_registry, transform_forest) =
                     caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        (
-                            c.read_lock_transform_cache(ctx.recording()),
-                            c.get_transform_forest(),
-                        )
+                        (c.frame_id_registry(ctx.recording()), c.transform_forest())
                     });
 
                 let Some(transform_forest) = transform_forest else {
@@ -236,7 +233,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 // Pick the first (alphabetical order) non-entity path root if
                 // we can find one.
                 if let Some(frame) = found_root
-                    && let Some(frame) = transforms.frame_id_registry().lookup_frame_id(frame)
+                    && let Some(frame) = frame_id_registry.lookup_frame_id(frame)
                 {
                     return frame.clone();
                 }

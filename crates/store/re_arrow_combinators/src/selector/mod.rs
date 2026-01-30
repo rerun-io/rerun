@@ -17,7 +17,7 @@ use arrow::{
 use parser::{Expr, Segment};
 
 /// A parsed selector expression that can be executed against Arrow arrays.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Selector(Expr);
 
 impl std::fmt::Display for Selector {

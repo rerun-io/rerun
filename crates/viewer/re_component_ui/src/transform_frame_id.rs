@@ -20,13 +20,12 @@ pub fn edit_or_view_transform_frame_id(
         MaybeMutRef::MutRef(frame_id) => {
             let suggestions = {
                 let caches = ctx.store_context.caches;
-                let transform_cache =
+                let frame_id_registry =
                     caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        c.read_lock_transform_cache(ctx.recording())
+                        c.frame_id_registry(ctx.recording())
                     });
 
-                transform_cache
-                    .frame_id_registry()
+                frame_id_registry
                     .iter_frame_ids()
                     .filter(|(_, id)| !id.is_entity_path_derived())
                     .map(|(_, id)| id.to_string())

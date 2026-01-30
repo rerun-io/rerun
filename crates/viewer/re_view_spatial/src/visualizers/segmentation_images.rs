@@ -64,13 +64,15 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let all_buffer_chunks =
-                    results.get_required_chunk(SegmentationImage::descriptor_buffer().component);
+                let all_buffer_chunks = results
+                    .get_required_chunk(SegmentationImage::descriptor_buffer().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_buffer_chunks.is_empty() {
                     return Ok(());
                 }
-                let all_formats_chunks =
-                    results.get_required_chunk(SegmentationImage::descriptor_format().component);
+                let all_formats_chunks = results
+                    .get_required_chunk(SegmentationImage::descriptor_format().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_formats_chunks.is_empty() {
                     return Ok(());
                 }
@@ -79,8 +81,11 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_formats_chunks, timeline);
-                let all_opacities =
-                    results.iter_as(timeline, SegmentationImage::descriptor_opacity().component);
+                let all_opacities = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    SegmentationImage::descriptor_opacity().component,
+                );
 
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,

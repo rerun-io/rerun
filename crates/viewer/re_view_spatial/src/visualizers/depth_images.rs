@@ -256,13 +256,15 @@ impl VisualizerSystem for DepthImageVisualizer {
                 use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
-                let all_buffer_chunks =
-                    results.get_required_chunk(DepthImage::descriptor_buffer().component);
+                let all_buffer_chunks = results
+                    .get_required_chunk(DepthImage::descriptor_buffer().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_buffer_chunks.is_empty() {
                     return Ok(());
                 }
-                let all_format_chunks =
-                    results.get_required_chunk(DepthImage::descriptor_format().component);
+                let all_format_chunks = results
+                    .get_required_chunk(DepthImage::descriptor_format().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_format_chunks.is_empty() {
                     return Ok(());
                 }
@@ -271,13 +273,23 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_format_chunks, timeline);
-                let all_colormaps =
-                    results.iter_as(timeline, DepthImage::descriptor_colormap().component);
-                let all_value_ranges =
-                    results.iter_as(timeline, DepthImage::descriptor_depth_range().component);
-                let all_depth_meters =
-                    results.iter_as(timeline, DepthImage::descriptor_meter().component);
+                let all_colormaps = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    DepthImage::descriptor_colormap().component,
+                );
+                let all_value_ranges = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    DepthImage::descriptor_depth_range().component,
+                );
+                let all_depth_meters = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    DepthImage::descriptor_meter().component,
+                );
                 let all_fill_ratios = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     DepthImage::descriptor_point_fill_ratio().component,
                 );

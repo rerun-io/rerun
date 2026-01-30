@@ -9,7 +9,7 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use smallvec::smallvec;
 
 use crate::allocator::create_and_fill_uniform_buffer;

@@ -563,13 +563,12 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
             let suggestions = {
                 let caches = ctx.viewer_ctx.store_context.caches;
-                let transform_cache =
+                let frame_id_registry =
                     caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        c.read_lock_transform_cache(ctx.viewer_ctx.recording())
+                        c.frame_id_registry(ctx.viewer_ctx.recording())
                     });
 
-                transform_cache
-                    .frame_id_registry()
+                frame_id_registry
                     .iter_frame_ids()
                     .filter(|(_, id)| !id.is_entity_path_derived())
                     .map(|(_, id)| id.to_string())

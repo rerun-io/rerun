@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use emath::History;
-use parking_lot::Mutex;
 use re_chunk::Chunk;
 use re_chunk_store::{ChunkStoreDiffAddition, ChunkStoreEvent};
+use re_mutex::Mutex;
 use re_sorbet::{TimestampLocation, TimestampMetadata};
 use web_time::SystemTime;
 

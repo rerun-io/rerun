@@ -131,8 +131,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_half_size_chunks =
-                    results.get_required_chunk(Boxes3D::descriptor_half_sizes().component);
+                let all_half_size_chunks = results
+                    .get_required_chunk(Boxes3D::descriptor_half_sizes().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_half_size_chunks.is_empty() {
                     return Ok(());
                 }
@@ -149,25 +150,53 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
                     iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
-                let all_centers =
-                    results.iter_as(timeline, Boxes3D::descriptor_centers().component);
+                let all_centers = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_centers().component,
+                );
                 let all_rotation_axis_angles = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     Boxes3D::descriptor_rotation_axis_angles().component,
                 );
-                let all_quaternions =
-                    results.iter_as(timeline, Boxes3D::descriptor_quaternions().component);
-                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels().component);
-                let all_class_ids =
-                    results.iter_as(timeline, Boxes3D::descriptor_class_ids().component);
-                let all_show_labels =
-                    results.iter_as(timeline, Boxes3D::descriptor_show_labels().component);
+                let all_quaternions = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_quaternions().component,
+                );
+                let all_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_colors().component,
+                );
+                let all_radii = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_radii().component,
+                );
+                let all_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_labels().component,
+                );
+                let all_class_ids = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_class_ids().component,
+                );
+                let all_show_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_show_labels().component,
+                );
 
                 // Deserialized because it's a union.
-                let all_fill_modes =
-                    results.iter_as(timeline, Boxes3D::descriptor_fill_mode().component);
+                let all_fill_modes = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Boxes3D::descriptor_fill_mode().component,
+                );
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()

@@ -72,12 +72,11 @@ impl TransformFramesUi {
         let mut frame_id_hash = TransformFrameIdHash::new(&frame_id);
 
         let caches = ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
+        let frame_ids = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
+        let transforms = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.transforms_for_timeline(ctx.recording(), *ctx.time_ctrl.timeline_name())
         });
-
-        let frame_ids = transform_cache.frame_id_registry();
-        let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline_name());
 
         let mut frames = Vec::new();
 

@@ -75,15 +75,18 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let all_video_timestamp_chunks = results
-                    .get_required_chunk(VideoFrameReference::descriptor_timestamp().component);
+                    .get_required_chunk(VideoFrameReference::descriptor_timestamp().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_video_timestamp_chunks.is_empty() {
                     return Ok(());
                 }
                 let all_video_references = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     VideoFrameReference::descriptor_video_reference().component,
                 );
                 let all_opacities = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     VideoFrameReference::descriptor_opacity().component,
                 );

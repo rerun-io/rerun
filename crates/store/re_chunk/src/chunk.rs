@@ -378,24 +378,25 @@ impl Chunk {
     /// Clones the chunk and renames a component.
     ///
     /// Note: archetype information and component type information is lost.
-    pub fn with_renamed_component(
+    pub fn with_mapped_component<E>(
         &self,
-        selector: ComponentIdentifier,
+        source: ComponentIdentifier,
         target: ComponentIdentifier,
-    ) -> Self {
+        f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
+    ) -> Result<Self, E> {
         let mut new_chunk = self.clone();
-        if let Some(old_entry) = new_chunk.components.remove(&selector) {
+        if let Some(old_entry) = new_chunk.components.remove(&source) {
             new_chunk.components.insert(SerializedComponentColumn {
                 descriptor: ComponentDescriptor {
                     component: target,
                     archetype: None,
                     component_type: None,
                 },
-                list_array: old_entry.list_array,
+                list_array: f(old_entry.list_array)?,
             });
         }
 
-        new_chunk
+        Ok(new_chunk)
     }
 }
 

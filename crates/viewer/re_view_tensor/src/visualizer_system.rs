@@ -42,6 +42,8 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut output = VisualizerExecutionOutput::default();
+
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
@@ -56,7 +58,9 @@ impl VisualizerSystem for TensorSystem {
                 Some(instruction),
             );
 
-            let all_tensor_chunks = results.get_required_chunk(Tensor::descriptor_data().component);
+            let all_tensor_chunks = results
+                .get_required_chunk(Tensor::descriptor_data().component)
+                .ensure_required(|err| output.report_error_for(instruction.id, err));
             if all_tensor_chunks.is_empty() {
                 continue;
             }
@@ -67,7 +71,11 @@ impl VisualizerSystem for TensorSystem {
                     .iter_component_indices(timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range().component);
+            let all_ranges = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                Tensor::descriptor_value_range().component,
+            );
 
             for ((_, tensor_row_id), tensors, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
@@ -97,6 +105,6 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }

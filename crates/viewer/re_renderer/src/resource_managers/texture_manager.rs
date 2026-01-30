@@ -1,5 +1,5 @@
 use ahash::{HashMap, HashSet};
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 use super::ImageDataToTextureError;
 use super::image_data_to_texture::transfer_image_data_to_texture;

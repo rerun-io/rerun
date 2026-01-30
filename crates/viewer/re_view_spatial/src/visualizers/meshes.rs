@@ -140,8 +140,9 @@ impl VisualizerSystem for Mesh3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let all_vertex_position_chunks =
-                    results.get_required_chunk(Mesh3D::descriptor_vertex_positions().component);
+                let all_vertex_position_chunks = results
+                    .get_required_chunk(Mesh3D::descriptor_vertex_positions().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
                 if all_vertex_position_chunks.is_empty() {
                     return Ok(());
                 }
@@ -149,21 +150,38 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_vertex_positions_indexed =
                     iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
-                let all_vertex_normals =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals().component);
-                let all_vertex_colors =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors().component);
-                let all_vertex_texcoords =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords().component);
-                let all_triangle_indices =
-                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices().component);
-                let all_albedo_factors =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor().component);
+                let all_vertex_normals = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_normals().component,
+                );
+                let all_vertex_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_colors().component,
+                );
+                let all_vertex_texcoords = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_texcoords().component,
+                );
+                let all_triangle_indices = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_triangle_indices().component,
+                );
+                let all_albedo_factors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_albedo_factor().component,
+                );
                 let all_albedo_buffers = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     Mesh3D::descriptor_albedo_texture_buffer().component,
                 );
                 let all_albedo_formats = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
                     timeline,
                     Mesh3D::descriptor_albedo_texture_format().component,
                 );

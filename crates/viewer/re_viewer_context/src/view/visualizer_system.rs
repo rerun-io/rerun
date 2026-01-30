@@ -160,6 +160,16 @@ impl VisualizerExecutionOutput {
             .insert(instruction_id, error.into());
     }
 
+    /// Marks the given visualizer instruction as having encountered a warning during visualization.
+    pub fn report_warning_for(
+        &mut self,
+        instruction_id: VisualizerInstructionId,
+        error: impl Into<String>,
+    ) {
+        // TODO(RR-3506): We should differentiate between errors and warnings from visualizers.
+        self.report_error_for(instruction_id, error);
+    }
+
     pub fn with_draw_data(
         mut self,
         draw_data: impl IntoIterator<Item = re_renderer::QueueableDrawData>,

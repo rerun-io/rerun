@@ -2883,7 +2883,7 @@ impl App {
                 && 0 < counted_diff
             {
                 re_log::debug!(
-                    "GC freed up {} ({:.1}%)",
+                    "GC result: -{} (-{:.1}%).",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
                 );
@@ -3258,13 +3258,47 @@ impl App {
             }
         }
 
+        // Even if we wanted, we cannot get rid of this overhead
+        let unpurgable_cache_size = store_hub
+            .active_caches()
+            .map_or(0, |caches| caches.memory_use_after_last_purge());
+
         // Prefetch new chunks for the active recording (if any):
         if let Some(recording) = store_hub.active_recording_mut()
             && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
         {
+            // What is our memory budget for this recording?
+            // If need be, we can evict all other recordings and their caches.
+
+            // There is some fixed overhead in the process that we cannot purge.
+            // This includes things like fonts, icons, etc.
+            // We also want some headroom for spikes.
+            let fixed_memory_overhead = 300_000_000;
+
+            // Leave some extra headroom (beyond the fixed overhead) for
+            // * secondary indices
+            // * failures in our accounting
+            let fixed_fraction_overhead = 0.20;
+
+            let memory_budget = self
+                .startup_options
+                .memory_limit
+                .saturating_sub(fixed_memory_overhead + unpurgable_cache_size);
+
+            let memory_budget = memory_budget.split(fixed_fraction_overhead).1;
+
+            if memory_budget == re_memory::MemoryLimit::ZERO {
+                re_log::warn_once!("Very little memory budget left for active recording.");
+            }
+
+            // If we can't afford at least this much for the active recording, then what is even the point?
+            let memory_budget = memory_budget.at_least(100_000_000);
+
+            // eprintln!("Memory budget for active recording: {memory_budget}");
+
             crate::prefetch_chunks::prefetch_chunks_for_active_recording(
                 &self.egui_ctx,
-                &self.startup_options,
+                memory_budget,
                 recording,
                 time_ctrl,
                 self.connection_registry(),
