@@ -326,6 +326,7 @@ impl VideoPlayer {
         let Some(requested_sample_idx) =
             video_description.latest_sample_index_at_presentation_timestamp(requested_pts)
         else {
+            self.reset(video_description)?;
             return Err(try_request_missing_samples_at_presentation_timestamp(
                 requested_pts,
                 video_description,
@@ -460,7 +461,11 @@ impl VideoPlayer {
         // required for the encoder to work if we've already enqueued the frames,
         // but it does make it more stable to still have those in-memory.
         let requested_keyframe_idx =
-            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)?;
+            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)
+                .inspect_err(|_err| {
+                    // We're already returning an error here.
+                    let _res = self.reset(video_description);
+                })?;
 
         self.handle_errors_and_reset_decoder_if_needed(
             video_description,
