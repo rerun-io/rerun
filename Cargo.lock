@@ -10084,6 +10084,7 @@ dependencies = [
  "glam",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_arrow_combinators",
  "re_chunk_store",
  "re_entity_db",
  "re_log",

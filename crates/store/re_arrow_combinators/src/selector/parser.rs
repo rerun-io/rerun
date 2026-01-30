@@ -28,7 +28,7 @@ where
     tokens: std::iter::Peekable<I>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Segment {
     Field(String),
     Index(u64),
@@ -45,7 +45,7 @@ impl std::fmt::Display for Segment {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Identity,
     Path(Vec<Segment>),

@@ -10,7 +10,15 @@ use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerCo
 use crate::HybridResults;
 use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
-// ---
+/// All information required to rewrite a source component into a target component.
+///
+/// Also applies a [`re_arrow_combinators::Selector`], if specified.
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct ActiveRemapping {
+    target: ComponentIdentifier,
+    source: ComponentIdentifier,
+    selector: Option<re_arrow_combinators::Selector>,
+}
 
 /// Queries for the given `components` using range semantics with blueprint support.
 ///
@@ -48,20 +56,41 @@ pub fn range_with_blueprint_resolved_data<'a>(
     let mut active_remappings = Vec::new();
     let mut component_sources = IntMap::default();
     let store_results = {
-        // Apply component mappings when querying the recording.]
-        for (target, source) in &visualizer_instruction.component_mappings {
-            component_sources.insert(*target, Ok(source.source_kind()));
-
-            if !source.is_identity_mapping(*target)
-                && let re_viewer_context::VisualizerComponentSource::SourceComponent {
-                    source_component,
-                    selector: _, // TODO(RR-3308): implement selector logic
-                } = source
-                && components.remove(target)
+        // Apply component mappings when querying the recording.
+        for (target_component, source) in &visualizer_instruction.component_mappings {
+            let source = if let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } = source
+                && components.remove(target_component)
             {
                 components.insert(*source_component);
-                active_remappings.push((*target, *source_component));
-            }
+
+                if selector.is_empty() {
+                    active_remappings.push(ActiveRemapping {
+                        target: *target_component,
+                        source: *source_component,
+                        selector: None,
+                    });
+                    Ok(source.source_kind())
+                } else {
+                    match selector.parse::<re_arrow_combinators::Selector>() {
+                        Ok(selector) => {
+                            active_remappings.push(ActiveRemapping {
+                                target: *target_component,
+                                source: *source_component,
+                                selector: Some(selector),
+                            });
+                            Ok(source.source_kind())
+                        }
+                        Err(err) => Err(format!("parsing selector failed: {err}")),
+                    }
+                }
+            } else {
+                Ok(source.source_kind())
+            };
+
+            component_sources.insert(*target_component, source);
         }
 
         let mut results = ctx.recording_engine().cache().range(
@@ -71,13 +100,39 @@ pub fn range_with_blueprint_resolved_data<'a>(
         );
 
         // Apply mapping to the results.
-        for (target, selector) in &active_remappings {
-            if let Some(mut chunks) = results.components.remove(selector) {
-                for chunk in &mut chunks {
-                    *chunk = chunk.with_renamed_component(*selector, *target);
-                }
+        for ActiveRemapping {
+            target,
+            source,
+            selector,
+        } in &active_remappings
+        {
+            // TODO(RR-3498): Move the casting in here too!
+            if let Some(mut chunks) = results.components.remove(source) {
+                'ctx: {
+                    for chunk in &mut chunks {
+                        let result = if let Some(sel) = selector {
+                            chunk.with_mapped_component(*source, *target, move |arr| {
+                                sel.execute_per_row(&arr)
+                            })
+                        } else {
+                            chunk.with_mapped_component::<re_arrow_combinators::SelectorError>(
+                                *source, *target, Ok,
+                            )
+                        };
 
-                results.components.insert(*target, chunks);
+                        match result {
+                            Ok(modified_chunk) => *chunk = modified_chunk,
+                            Err(err) => {
+                                component_sources.insert(
+                                    *target,
+                                    Err(format!("failed to execute selector: {err}")),
+                                );
+                                break 'ctx;
+                            }
+                        }
+                    }
+                    results.components.insert(*target, chunks);
+                }
             }
         }
 
@@ -155,19 +210,41 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let mut active_remappings = Vec::new();
     let mut component_sources = IntMap::default();
     if let Some(visualizer_instruction) = visualizer_instruction {
-        for (target, source) in &visualizer_instruction.component_mappings {
-            component_sources.insert(*target, Ok(source.source_kind()));
-
-            if !source.is_identity_mapping(*target)
-                && let re_viewer_context::VisualizerComponentSource::SourceComponent {
+        for (target_component, source) in &visualizer_instruction.component_mappings {
+            let source_result =
+                if let re_viewer_context::VisualizerComponentSource::SourceComponent {
                     source_component,
-                    selector: _, // TODO(RR-3308): implement selector logic
+                    selector,
                 } = source
-                && components.remove(target)
-            {
-                components.insert(*source_component);
-                active_remappings.push((*target, *source_component));
-            }
+                    && components.remove(target_component)
+                {
+                    components.insert(*source_component);
+
+                    if selector.is_empty() {
+                        active_remappings.push(ActiveRemapping {
+                            target: *target_component,
+                            source: *source_component,
+                            selector: None,
+                        });
+                        Ok(source.source_kind())
+                    } else {
+                        match selector.parse::<re_arrow_combinators::Selector>() {
+                            Ok(selector) => {
+                                active_remappings.push(ActiveRemapping {
+                                    target: *target_component,
+                                    source: *source_component,
+                                    selector: Some(selector),
+                                });
+                                Ok(source.source_kind())
+                            }
+                            Err(err) => Err(format!("parsing selector failed: {err}")),
+                        }
+                    }
+                } else {
+                    Ok(source.source_kind())
+                };
+
+            component_sources.insert(*target_component, source_result);
         }
     }
 
@@ -178,12 +255,33 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     );
 
     // Apply mapping to the results.
-    for (target, selector) in &active_remappings {
-        if let Some(chunk) = store_results.components.remove(selector) {
-            let chunk = std::sync::Arc::new(chunk.with_renamed_component(*selector, *target))
-                .to_unit()
-                .expect("The source chunk was a unit chunk.");
-            store_results.components.insert(*target, chunk);
+    for ActiveRemapping {
+        target,
+        source,
+        selector,
+    } in &active_remappings
+    {
+        if let Some(chunk) = store_results.components.remove(source) {
+            let result = if let Some(sel) = selector {
+                chunk.with_mapped_component(*source, *target, move |arr| sel.execute_per_row(&arr))
+            } else {
+                chunk.with_mapped_component::<re_arrow_combinators::SelectorError>(
+                    *source, *target, Ok,
+                )
+            };
+
+            match result {
+                Ok(modified_chunk) => {
+                    let chunk = std::sync::Arc::new(modified_chunk)
+                        .to_unit()
+                        .expect("The source chunk was a unit chunk.");
+                    store_results.components.insert(*target, chunk);
+                }
+                Err(err) => {
+                    component_sources
+                        .insert(*target, Err(format!("failed to execute selector: {err}")));
+                }
+            }
         }
     }
 

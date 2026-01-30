@@ -22,6 +22,7 @@ all-features = true
 default = []
 
 [dependencies]
+re_arrow_combinators.workspace = true
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
 re_log_types.workspace = true
