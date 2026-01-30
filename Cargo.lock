@@ -9855,6 +9855,7 @@ dependencies = [
  "itertools 0.14.0",
  "mimalloc",
  "nohash-hasher",
+ "parking_lot",
  "re_arrow_util",
  "re_byte_size",
  "re_chunk_store",

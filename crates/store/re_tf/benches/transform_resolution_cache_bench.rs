@@ -79,10 +79,8 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
                 cache
             },
             |cold_cache| {
-                let frame_transforms = cold_cache
-                    .transforms_for_timeline(query.timeline())
-                    .frame_transforms(queried_frame)
-                    .unwrap();
+                let timeline_transforms = cold_cache.transforms_for_timeline(query.timeline());
+                let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
                 frame_transforms
                     .latest_at_transform(&entity_db, &query)
                     .unwrap()
@@ -93,18 +91,16 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
 
     let mut warm_cache = TransformResolutionCache::default();
     warm_cache.process_store_events(events.iter());
-    warm_cache
-        .transforms_for_timeline(query.timeline())
+    let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
+    timeline_transforms
         .frame_transforms(queried_frame)
         .unwrap()
         .latest_at_transform(&entity_db, &query);
 
     c.bench_function("query_cached_frame", |b| {
         b.iter(|| {
-            let frame_transforms = warm_cache
-                .transforms_for_timeline(query.timeline())
-                .frame_transforms(queried_frame)
-                .unwrap();
+            let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
+            let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
             frame_transforms
                 .latest_at_transform(&entity_db, &query)
                 .unwrap()

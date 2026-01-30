@@ -2,7 +2,7 @@
 
 pub use crossbeam::channel::{Receiver, Sender};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LogMsg {
     /// The verbosity level.
     pub level: log::Level,

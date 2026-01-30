@@ -36,6 +36,7 @@ bitflags.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
