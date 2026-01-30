@@ -123,7 +123,10 @@ class Archetype(AsComponents):
 
     @classmethod
     def archetype(cls) -> str:
-        return ".".join([*cls.__module__.rsplit(".", 1)[:-1], cls.__name__])
+        # Make sure to not include a leading "rerun_sdk.",
+        # to support both `import rerun_sdk.rerun` and `import rerun`.
+        module = cls.__module__.removeprefix("rerun_sdk.")
+        return ".".join([*module.rsplit(".", 1)[:-1], cls.__name__])
 
     @classmethod
     def archetype_short_name(cls) -> str:
