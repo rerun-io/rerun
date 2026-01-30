@@ -9220,7 +9220,7 @@ dependencies = [
 
 [[package]]
 name = "re_mutex"
-version = "0.29.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 dependencies = [
  "cfg-if",
  "parking_lot",
