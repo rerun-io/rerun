@@ -8,11 +8,13 @@ use crate::parsers::ros2msg::rcl_interfaces::LogMessageParser;
 use crate::parsers::ros2msg::sensor_msgs::{
     BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
     FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser, ImuMessageParser,
-    JointStateMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
+    JointStateMessageParser, JoyMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
     PointCloud2MessageParser, RangeMessageParser, RelativeHumidityMessageParser,
     TemperatureMessageParser,
 };
-use crate::parsers::ros2msg::std_msgs::StringMessageParser;
+use crate::parsers::ros2msg::std_msgs::{
+    Float64ArrayMessageParser, Float64MultiArrayMessageParser, StringMessageParser,
+};
 use crate::parsers::ros2msg::tf2_msgs::tf_message::TfMessageParser;
 
 type ParserFactory = fn(usize) -> Box<dyn MessageParser>;
@@ -46,6 +48,7 @@ impl McapRos2Layer {
             .register_parser::<IlluminanceMessageParser>("sensor_msgs/msg/Illuminance")
             .register_parser::<ImageMessageParser>("sensor_msgs/msg/Image")
             .register_parser::<ImuMessageParser>("sensor_msgs/msg/Imu")
+            .register_parser::<JoyMessageParser>("sensor_msgs/msg/Joy")
             .register_parser::<JointStateMessageParser>("sensor_msgs/msg/JointState")
             .register_parser::<MagneticFieldMessageParser>("sensor_msgs/msg/MagneticField")
             .register_parser::<NavSatFixMessageParser>("sensor_msgs/msg/NavSatFix")
@@ -54,6 +57,8 @@ impl McapRos2Layer {
             .register_parser::<RelativeHumidityMessageParser>("sensor_msgs/msg/RelativeHumidity")
             .register_parser::<TemperatureMessageParser>("sensor_msgs/msg/Temperature")
             // std_msgs
+            .register_parser::<Float64ArrayMessageParser>("std_msgs/msg/Float64Array")
+            .register_parser::<Float64MultiArrayMessageParser>("std_msgs/msg/Float64MultiArray")
             .register_parser::<StringMessageParser>("std_msgs/msg/String")
             // tf2_msgs
             .register_parser::<TfMessageParser>("tf2_msgs/msg/TFMessage")
