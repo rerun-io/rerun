@@ -120,9 +120,9 @@ def compare(
                 current = current_bytes / div
 
             if previous == current:
-                change_pct = 0  # e.g. both are zero
+                change_pct = 0.0  # e.g. both are zero
             elif previous == 0:
-                change_pct = 100
+                change_pct = 100.0
             else:
                 change_pct = 100 * (current - previous) / previous
 

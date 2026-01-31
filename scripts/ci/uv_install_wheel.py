@@ -84,9 +84,7 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
     assert returncode == 0, f"process exited with error code {returncode}"
 
     # Install the wheel
-    # Note: the --no-config flag is used to prevent uv from trying to read the pyproject.toml
-    # which contains override-dependencies for `rerun-sdk`, which would prevent the wheel from being installed.
-    cmd = ["uv", "pip", "install", f"{pkg}[tests] @ {path_to_file_url(wheel)}", "--no-config"]
+    cmd = ["uv", "pip", "install", f"{pkg}[tests] @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"

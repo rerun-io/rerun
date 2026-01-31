@@ -74,6 +74,7 @@ exclude_path = [
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
+  ".typos.toml",
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [

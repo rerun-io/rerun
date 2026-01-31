@@ -91,7 +91,7 @@ Output:
 
 Properties are stored under the reserved `/__properties` entity path and are logged as [static data](../logging-and-ingestion/static.md), meaning they have no timeline association.
 Logging directly under this entity path is not recommended.
-Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/common/property_functions/#rerun.send_property?speculative-link) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream.send_property?speculative-link) API instead.
+Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/common/property_functions/#rerun.send_property) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream.send_property) API instead.
 
 ### How are property columns named?
 

@@ -164,7 +164,7 @@ for backtrace, props in backtrace_list:
         "\n"
         "Backtrace:\n"
         "```\n"
-        f"   {backtrace.decode('utf-8')}\n"
+        f"   {backtrace}\n"
         "```\n"
         "-------------------------------------------------------------------------------\n",
     )
