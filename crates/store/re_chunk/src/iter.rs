@@ -908,8 +908,13 @@ impl Chunk {
         let values = match C::from_arrow(&values) {
             Ok(values) => values,
             Err(err) => {
+                #[expect(clippy::panic)]
                 if cfg!(debug_assertions) {
-                    panic_deserialization_failed::<C, _>(err);
+                    panic!(
+                        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
+                        C::name(),
+                        re_error::format_ref(&err),
+                    )
                 } else {
                     re_log::error_once!(
                         "deserialization failed for {}, data discarded: {}",
@@ -930,15 +935,6 @@ impl Chunk {
             offsets: Either::Right(self.iter_component_offsets(component)),
         }
     }
-}
-
-#[expect(clippy::panic)]
-fn panic_deserialization_failed<C: Component, E: std::error::Error>(err: E) -> ! {
-    panic!(
-        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
-        C::name(),
-        re_error::format_ref(&err),
-    )
 }
 
 // ---
