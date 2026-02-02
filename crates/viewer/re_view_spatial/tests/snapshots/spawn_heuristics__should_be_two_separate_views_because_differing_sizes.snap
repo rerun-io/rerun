@@ -19,11 +19,13 @@ RecommendedViews {
                     ],
                 },
             ],
+            max_views_spawned: 8,
         },
     ),
     views_3d: Some(
         ViewSpawnHeuristics {
             recommended_views: [],
+            max_views_spawned: 8,
         },
     ),
 }

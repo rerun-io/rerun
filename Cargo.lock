@@ -9001,6 +9001,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "egui_tiles",
+ "insta",
  "ndarray",
  "parking_lot",
  "re_build_info",

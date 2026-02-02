@@ -38,5 +38,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 [dev-dependencies]
 re_view_text_document.workspace = true
 
+insta.workspace = true
+
 [lints]
 workspace = true

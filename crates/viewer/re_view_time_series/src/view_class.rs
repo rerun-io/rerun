@@ -1,8 +1,8 @@
-use egui::ahash::{HashMap, HashSet};
+use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
@@ -13,19 +13,19 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType,
-    PerVisualizerTypeInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
-    VisualizerComponentSource,
+    BlueprintContext as _, DatatypeMatchInfo, IdentifiedViewSystem as _, IndicatedEntities,
+    PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
+    RecommendedVisualizers, SystemExecutionOutput, TimeControlCommand, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
+    VisualizerComponentMappings, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -302,81 +302,59 @@ impl ViewClass for TimeSeriesView {
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
-        let mut indicated_entities = IndicatedEntities::default();
-
-        for indicated in [
-            SeriesLinesSystem::identifier(),
-            SeriesPointsSystem::identifier(),
-        ]
-        .iter()
-        .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
-        {
-            indicated_entities.0.extend(indicated.0.iter().cloned());
-        }
-
-        // Because SeriesLines is our fallback visualizer, also include any entities for which
-        // SeriesLines is visualizable, even if not indicated.
-        if let Some(maybe_visualizable) = ctx
+        // Note that point series has the same visualizable conditions, it doesn't matter which one we look at here.
+        let Some(visualizable_entities) = ctx
             .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
-        {
-            indicated_entities.0.extend(
-                maybe_visualizable
-                    .iter()
-                    .filter_map(|(ent, reason)| {
-                        reason.any_match_with_native_semantics().then_some(ent)
-                    })
-                    .cloned(),
-            );
-        }
-
-        // Ensure we don't modify this list anymore before we check the `include_entity`.
-        let indicated_entities = indicated_entities;
-
-        if !indicated_entities.iter().any(include_entity) {
+        else {
             return ViewSpawnHeuristics::empty();
-        }
+        };
 
-        // Spawn time series data at the root if theres 'either:
-        // * time series data directly at the root
-        // * all time series data are direct children of the root
-        //
-        // This heuristic was last edited in 2015-04-11 by @emilk,
-        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
-        // Maybe we should remove it completely?
-        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
-        // but we now support logging multiple scalars in one entity.
-        //
-        // This is the last hold out of "child of root" spawning, which we removed otherwise
-        // (see https://github.com/rerun-io/rerun/issues/4926)
-        let root_entities: IntSet<EntityPath> = ctx
-            .recording()
-            .tree()
-            .children
-            .values()
-            .map(|subtree| subtree.path.clone())
-            .collect();
-        if indicated_entities.contains(&EntityPath::root())
-            || indicated_entities.is_subset(&root_entities)
-        {
-            return ViewSpawnHeuristics::root();
-        }
+        // Collect entities with their match priority for sorting.
+        // We want things to be sorted for a) determinism and b) preferring important entities over less important ones in case we hit the max number
+        let mut entities_with_priority: Vec<(&EntityPath, ScalarMatchPriorityKey)> =
+            visualizable_entities
+                .iter()
+                .filter_map(|(entity_path, reason)| {
+                    if !include_entity(entity_path) {
+                        return None;
+                    }
 
-        // If there's other entities that have the right indicator & didn't match the above,
-        // spawn a time series view for each child of the root that has any entities with the right indicator.
-        let mut child_of_root_entities = HashSet::default();
-        #[expect(clippy::iter_over_hash_type)]
-        for entity in indicated_entities.iter() {
-            if let Some(child_of_root) = entity.iter().next() {
-                child_of_root_entities.insert(child_of_root);
-            }
-        }
+                    if let re_viewer_context::VisualizableReason::DatatypeMatchAny { matches } =
+                        reason
+                    {
+                        // Calculate the best match priority for this entity
+                        let priority = matches
+                            .iter()
+                            .filter(|(_, match_info)| {
+                                // Skip Rerun types without native semantics (like Color, LinearSpeed etc.) so we
+                                // don't spawn views for those.
+                                match match_info.kind {
+                                    re_viewer_context::DatatypeMatchKind::NativeSemantics => true,
+                                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => {
+                                        match_info.component_type.is_none_or(|t| !t.is_rerun_type())
+                                    }
+                                }
+                            })
+                            .map(|(source_component, match_info)| {
+                                scalar_match_priority(*source_component, match_info)
+                            })
+                            .min()?;
 
-        ViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
-            let entity = EntityPath::new(vec![path_part.clone()]);
-            RecommendedView::new_subtree(entity)
-        }))
+                        Some((entity_path, priority))
+                    } else {
+                        // No need to check other matches since that's the only type or reason we're using.
+                        None
+                    }
+                })
+                .collect();
+
+        // Sort by priority: best matches first, entity path as tie breaker.
+        entities_with_priority.sort_by_key(|(entity_path, priority)| (*priority, *entity_path));
+
+        ViewSpawnHeuristics::new_with_order_preserved(entities_with_priority.into_iter().map(
+            |(entity_path, _priority)| RecommendedView::new_single_entity(entity_path.clone()),
+        ))
     }
 
     /// Auto picked visualizers for an entity if there was not explicit selection.
@@ -878,6 +856,47 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
     }
 }
 
+type ScalarMatchPriorityKey = (u32, bool, u32, ComponentIdentifier);
+
+/// Calculate a priority key for sorting datatype matches for scalar.
+/// Lower values mean that a mapping is preferred.
+fn scalar_match_priority(
+    source_component: ComponentIdentifier,
+    match_info: &DatatypeMatchInfo,
+) -> ScalarMatchPriorityKey {
+    // Sorting priorities:
+    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
+    // 2. Component type: unknown/custom > known Rerun type
+    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
+    //      different known semantics (e.g., Color, LinearSpeed)
+    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
+    // 4. Alphabetical order as final tiebreaker
+
+    let target_component = Scalars::descriptor_scalars().component;
+
+    let primary_match_order = if source_component == target_component {
+        // Full native match - exact component identifier
+        0
+    } else {
+        match match_info.kind {
+            // Native semantic match - same semantic type but different component identifier
+            re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
+            // Physical datatype match - compatible datatype but different semantics
+            re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
+        }
+    };
+
+    let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
+    let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
+
+    (
+        primary_match_order,
+        is_rerun_native_type, // custom types (false) sort before Rerun types (true)
+        datatype_order,
+        source_component,
+    )
+}
+
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
@@ -886,41 +905,10 @@ fn scalar_mapping_selector(
         return None;
     };
 
-    let target_component = Scalars::descriptor_scalars().component;
-
-    // Sorting priorities:
-    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
-    // 2. Component type: unknown/custom > known Rerun type
-    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
-    //      different known semantics (e.g., Color, LinearSpeed)
-    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
-    // 4. Alphabetical order as final tiebreaker
     matches
         .iter()
         .sorted_by_key(|(source_component, match_info)| {
-            let primary_match_order = if **source_component == target_component {
-                // Full native match - exact component identifier
-                0
-            } else {
-                match match_info.kind {
-                    // Native semantic match - same semantic type but different component identifier
-                    re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
-                    // Physical datatype match - compatible datatype but different semantics
-                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
-                }
-            };
-
-            let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
-            let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
-
-            // Sort by: match order, prefer custom types (inverted boolean so false/custom sorts first),
-            // then datatype priority, then alphabetically.
-            (
-                primary_match_order,
-                is_rerun_native_type, // custom types (false) sort before Rerun types (true)
-                datatype_order,
-                *source_component,
-            )
+            scalar_match_priority(**source_component, match_info)
         })
         .next()
         .map(
