@@ -54,26 +54,20 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
+            let mut results = re_view::VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output: &mut output,
+                timeline: view_query.timeline,
+            };
 
             let mut batch_data = GeoLineStringsBatch::default();
 
             // gather all relevant chunks
-            let timeline = view_query.timeline;
-            let all_lines = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_line_strings().component,
-            );
-            let all_colors = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_colors().component,
-            );
-            let all_radii = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_radii().component,
-            );
+            let all_lines =
+                results.iter_required(GeoLineStrings::descriptor_line_strings().component);
+            let all_colors = results.iter_optional(GeoLineStrings::descriptor_colors().component);
+            let all_radii = results.iter_optional(GeoLineStrings::descriptor_radii().component);
 
             // fallback component values
             let fallback_color: Color = typed_fallback_for(

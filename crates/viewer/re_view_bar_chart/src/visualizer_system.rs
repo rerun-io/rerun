@@ -7,7 +7,10 @@ use re_sdk_types::{
     components::{self, Length},
     datatypes,
 };
-use re_view::{ComponentMappingError, DataResultQuery as _, clamped_vec_or_else};
+use re_view::{
+    BlueprintResolvedResultsExt as _, ComponentMappingError, DataResultQuery as _,
+    clamped_vec_or_else,
+};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
@@ -76,7 +79,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let abscissa: components::TensorData =
                     results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
                 let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
-                let widths = results.iter_as(
+                let widths = results.iter_optional(
                     warning_reporter,
                     view_query.timeline,
                     BarChart::descriptor_widths().component,

@@ -7,8 +7,10 @@ use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
-use crate::HybridResults;
-use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
+use crate::BlueprintResolvedResults;
+use crate::blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
+};
 
 /// All information required to rewrite a source component into a target component.
 ///
@@ -29,8 +31,8 @@ struct ActiveRemapping {
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
     ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
@@ -38,7 +40,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     data_result: &re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-) -> HybridRangeResults<'a> {
+) -> BlueprintResolvedRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -158,7 +160,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         }
     }
 
-    HybridRangeResults {
+    BlueprintResolvedRangeResults {
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
@@ -176,8 +178,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
@@ -185,7 +187,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-) -> HybridLatestAtResults<'a> {
+) -> BlueprintResolvedLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -304,7 +306,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         }
     }
 
-    HybridLatestAtResults {
+    BlueprintResolvedLatestAtResults {
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
@@ -324,7 +326,7 @@ pub fn query_archetype_with_history<'a>(
     components: impl IntoIterator<Item = ComponentIdentifier>,
     data_result: &'a re_viewer_context::DataResult,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-) -> HybridResults<'a> {
+) -> BlueprintResolvedResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -414,7 +416,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a>;
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
         &'a self,
@@ -422,7 +424,7 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a>;
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
     /// * visible history if enabled
@@ -433,7 +435,7 @@ pub trait DataResultQuery {
         view_query: &ViewQuery<'_>,
         component_descriptors: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a>;
+    ) -> BlueprintResolvedResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
     /// * visible history if enabled
@@ -443,7 +445,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a> {
+    ) -> BlueprintResolvedResults<'a> {
         self.query_components_with_history(
             ctx,
             view_query,
@@ -459,7 +461,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a> {
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
@@ -476,7 +478,7 @@ impl DataResultQuery for DataResult {
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a> {
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
@@ -493,7 +495,7 @@ impl DataResultQuery for DataResult {
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a> {
+    ) -> BlueprintResolvedResults<'a> {
         query_archetype_with_history(
             ctx,
             &view_query.timeline,

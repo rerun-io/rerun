@@ -177,7 +177,7 @@ impl VisualizerSystem for Lines2DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, LineStrips2D, _>(
             ctx,
             view_query,
@@ -185,18 +185,14 @@ impl VisualizerSystem for Lines2DVisualizer {
             &mut output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_strip_chunks = results
-                    .get_required_chunk(LineStrips2D::descriptor_strips().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_strip_chunks.is_empty() {
+                let all_strips = results.iter_required(LineStrips2D::descriptor_strips().component);
+                if all_strips.is_empty() {
                     return Ok(());
                 }
 
-                let timeline = ctx.query.timeline();
-
-                let num_strips = all_strip_chunks
+                // TODO(andreas): Introduce a utility for this?
+                let num_strips = all_strips
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.len())
@@ -206,42 +202,23 @@ impl VisualizerSystem for Lines2DVisualizer {
                 }
                 line_builder.reserve_strips(num_strips)?;
 
-                let num_vertices = all_strip_chunks
+                let num_vertices = all_strips
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
-
-                let all_strips_indexed = iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline);
-                let all_colors = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    LineStrips2D::descriptor_colors().component,
-                );
-                let all_radii = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    LineStrips2D::descriptor_radii().component,
-                );
-                let all_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    LineStrips2D::descriptor_labels().component,
-                );
-                let all_class_ids = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    LineStrips2D::descriptor_class_ids().component,
-                );
-                let all_show_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    LineStrips2D::descriptor_show_labels().component,
-                );
+                let all_colors = results.iter_optional(LineStrips2D::descriptor_colors().component);
+                let all_radii = results.iter_optional(LineStrips2D::descriptor_radii().component);
+                let all_labels = results.iter_optional(LineStrips2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_optional(LineStrips2D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_optional(LineStrips2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x5(
-                    all_strips_indexed,
+                    all_strips.slice::<&[[f32; 2]]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),

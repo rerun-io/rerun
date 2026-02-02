@@ -5,8 +5,7 @@ use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
 use re_view::{
-    ChunksWithComponent, RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
-    range_with_blueprint_resolved_data,
+    ChunksWithComponent, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
@@ -127,7 +126,7 @@ impl SeriesLinesSystem {
         let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
-            use re_view::RangeResultsExt as _;
+            use re_view::BlueprintResolvedResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
@@ -149,7 +148,7 @@ impl SeriesLinesSystem {
 
             // If we have no scalars, we can't do anything.
             let all_scalar_chunks: ChunksWithComponent<'_> = results
-                .get_required_chunk(archetypes::Scalars::descriptor_scalars().component)
+                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
                 .try_into()
                 .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
                     instruction_id: instruction.id,
@@ -379,12 +378,12 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .get_chunks(clear_descriptor.component, false)
+                .get(clear_descriptor.component)
                 .iter()
                 .flat_map(|chunk| {
                     itertools::izip!(
-                        chunk.iter_component_indices(*query.timeline()),
-                        chunk.iter_slices::<bool>()
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
                     )
                 })
                 .filter_map(|(index, is_recursive_buffer)| {
@@ -404,12 +403,13 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .get_chunks(clear_descriptor.component, false)
+                .get(clear_descriptor.component)
+                .unwrap_or_default()
                 .iter()
                 .flat_map(|chunk| {
                     itertools::izip!(
-                        chunk.iter_component_indices(*query.timeline()),
-                        chunk.iter_slices::<bool>()
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
                     )
                 })
                 .filter_map(|(index, is_recursive_buffer)| {

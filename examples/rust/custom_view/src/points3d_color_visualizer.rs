@@ -1,6 +1,6 @@
 use rerun::external::egui;
 use rerun::external::re_log_types::{EntityPath, Instance};
-use rerun::external::re_view::DataResultQuery;
+use rerun::external::re_view::{DataResultQuery, VisualizerInstructionQueryResults};
 use rerun::external::re_viewer_context::{
     AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
@@ -63,15 +63,18 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
             );
+            let mut results = VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output: &mut output,
+                timeline: query.timeline,
+            };
 
             // From the query result, get all the color arrays as `[u32]` slices.
             // For latest-at queries should be only a single slice`,
             // but if visible history is enabled, there might be several!
-            let colors_per_time = results.iter_as(
-                |err| output.report_error_for(instruction.id, err),
-                query.timeline,
-                rerun::Points3D::descriptor_colors().component,
-            );
+            let colors_per_time =
+                results.iter_optional(rerun::Points3D::descriptor_colors().component);
             let color_slices_per_time = colors_per_time.slice::<u32>();
 
             // Collect all different kinds of colors that are returned from the cache.

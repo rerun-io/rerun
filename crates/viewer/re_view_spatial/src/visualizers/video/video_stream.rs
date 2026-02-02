@@ -2,7 +2,7 @@ use re_renderer::video::{InsufficientSampleDataError, VideoPlayerError};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
-use re_view::DataResultQuery as _;
+use re_view::{BlueprintResolvedResultsExt as _, DataResultQuery as _};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -101,7 +101,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 VideoStream::descriptor_opacity().component,
                 Some(instruction),
             );
-            let all_opacities = opacity_result.iter_as(
+            let all_opacities = opacity_result.iter_optional(
                 |error| output.report_warning_for(instruction.id, error),
                 view_query.timeline,
                 VideoStream::descriptor_opacity().component,

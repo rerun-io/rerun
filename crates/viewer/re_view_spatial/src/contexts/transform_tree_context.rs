@@ -8,7 +8,7 @@ use re_sdk_types::components::ImagePlaneDistance;
 use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_view::{
-    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+    BlueprintResolvedLatestAtResults, DataResultQuery as _, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
@@ -556,7 +556,7 @@ impl EntityTransformIdMapping {
     /// Build a lookup table from entity paths to their transform frame id hashes.
     fn new(
         ctx: &ViewContext<'_>,
-        results: &[HybridLatestAtResults<'_>],
+        results: &[BlueprintResolvedLatestAtResults<'_>],
         space_origin: &EntityPath,
     ) -> Self {
         // This is blueprint-dependent data and may also change over recording time,
@@ -603,7 +603,7 @@ impl EntityTransformIdMapping {
     fn determine_frame_id_mapping_for(
         &mut self,
         ctx: &ViewContext<'_>,
-        results: &HybridLatestAtResults<'_>,
+        results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;

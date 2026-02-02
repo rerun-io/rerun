@@ -19,9 +19,9 @@ use crate::{
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
-pub struct HybridLatestAtResults<'a> {
+pub struct BlueprintResolvedLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
@@ -39,10 +39,10 @@ pub struct HybridLatestAtResults<'a> {
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
 #[derive(Debug)]
-pub struct HybridRangeResults<'a> {
+pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: RangeResults,
     pub(crate) view_defaults: &'a LatestAtResults,
@@ -54,7 +54,7 @@ pub struct HybridRangeResults<'a> {
     pub(crate) component_mappings_hash: Hash64,
 }
 
-impl HybridLatestAtResults<'_> {
+impl BlueprintResolvedLatestAtResults<'_> {
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
     pub fn get_required_mono<C: re_types_core::Component>(
@@ -117,82 +117,13 @@ impl HybridLatestAtResults<'_> {
     }
 }
 
-impl HybridLatestAtResults<'_> {
-    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
-    ///
-    /// **WARNING**: For latest-at queries, the row IDs are always zeroed out to allow for range zipping.
-    /// Blueprint row IDs are always discarded.
-    ///
-    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::slice`]
-    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
-    pub fn iter_as(
-        &self,
-        mut reporter: impl FnMut(&ComponentMappingError),
-        timeline: TimelineName,
-        component: ComponentIdentifier,
-    ) -> HybridResultsChunkIter<'_> {
-        let MaybeChunksWithComponent {
-            maybe_chunks,
-            component,
-        } = self.get_optional_chunks(component);
-
-        let chunks_with_component = match maybe_chunks {
-            Ok(chunks) => ChunksWithComponent { chunks, component },
-            Err(err) => {
-                reporter(&err);
-                ChunksWithComponent::empty(component)
-            }
-        };
-
-        HybridResultsChunkIter {
-            chunks_with_component,
-            timeline,
-        }
-    }
+/// An enum wrapping either latest-at or range blueprint resolved results.
+pub enum BlueprintResolvedResults<'a> {
+    LatestAt(LatestAtQuery, BlueprintResolvedLatestAtResults<'a>),
+    Range(RangeQuery, BlueprintResolvedRangeResults<'a>),
 }
 
-impl HybridRangeResults<'_> {
-    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
-    ///
-    /// **WARNING**: For latest-at queries, the row IDs are always zeroed out to allow for range zipping.
-    /// Blueprint row IDs are always discarded.
-    ///
-    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::slice`]
-    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
-    pub fn iter_as(
-        &self,
-        mut reporter: impl FnMut(&ComponentMappingError),
-        timeline: TimelineName,
-        component: ComponentIdentifier,
-    ) -> HybridResultsChunkIter<'_> {
-        let MaybeChunksWithComponent {
-            maybe_chunks,
-            component,
-        } = self.get_optional_chunks(component);
-
-        let chunks_with_component = match maybe_chunks {
-            Ok(chunks) => ChunksWithComponent { chunks, component },
-            Err(err) => {
-                reporter(&err);
-                ChunksWithComponent::empty(component)
-            }
-        };
-
-        HybridResultsChunkIter {
-            chunks_with_component,
-            timeline,
-        }
-    }
-}
-
-pub enum HybridResults<'a> {
-    LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
-    Range(RangeQuery, HybridRangeResults<'a>),
-}
-
-impl HybridResults<'_> {
+impl BlueprintResolvedResults<'_> {
     pub fn query_result_hash(&self) -> Hash64 {
         // This is called very frequently, don't put a profile scope here.
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
@@ -256,44 +187,22 @@ impl HybridResults<'_> {
             }
         }
     }
-
-    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
-    ///
-    /// **WARNING**: For latest-at queries, the row IDs are always zeroed out to allow for range zipping.
-    /// Blueprint row IDs are always discarded.
-    ///
-    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::slice`]
-    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
-    pub fn iter_as(
-        &self,
-        reporter: impl FnMut(&ComponentMappingError),
-        timeline: TimelineName,
-        component: ComponentIdentifier,
-    ) -> HybridResultsChunkIter<'_> {
-        match self {
-            HybridResults::LatestAt(_, hybrid_latest_at_results) => {
-                hybrid_latest_at_results.iter_as(reporter, timeline, component)
-            }
-            HybridResults::Range(_, hybrid_range_results) => {
-                hybrid_range_results.iter_as(reporter, timeline, component)
-            }
-        }
-    }
 }
 
 // ---
 
-impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> {
+impl<'a> From<(LatestAtQuery, BlueprintResolvedLatestAtResults<'a>)>
+    for BlueprintResolvedResults<'a>
+{
     #[inline]
-    fn from((query, results): (LatestAtQuery, HybridLatestAtResults<'a>)) -> Self {
+    fn from((query, results): (LatestAtQuery, BlueprintResolvedLatestAtResults<'a>)) -> Self {
         Self::LatestAt(query, results)
     }
 }
 
-impl<'a> From<(RangeQuery, HybridRangeResults<'a>)> for HybridResults<'a> {
+impl<'a> From<(RangeQuery, BlueprintResolvedRangeResults<'a>)> for BlueprintResolvedResults<'a> {
     #[inline]
-    fn from((query, results): (RangeQuery, HybridRangeResults<'a>)) -> Self {
+    fn from((query, results): (RangeQuery, BlueprintResolvedRangeResults<'a>)) -> Self {
         Self::Range(query, results)
     }
 }
@@ -302,7 +211,7 @@ impl<'a> From<(RangeQuery, HybridRangeResults<'a>)> for HybridResults<'a> {
 ///
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
-pub trait RangeResultsExt<'a, T = ChunksWithComponent<'a>> {
+pub trait BlueprintResolvedResultsExt<'a> {
     /// Returns component data for the given component or an empty array.
     ///
     /// For results that are aware of the blueprint, overrides, store results, and defaults will be
@@ -319,7 +228,7 @@ pub trait RangeResultsExt<'a, T = ChunksWithComponent<'a>> {
         &'a self,
         component: ComponentIdentifier,
         force_preserve_store_row_ids: bool,
-    ) -> T;
+    ) -> MaybeChunksWithComponent<'a>;
 
     /// Returns required component chunks with preserved store row IDs.
     ///
@@ -327,7 +236,10 @@ pub trait RangeResultsExt<'a, T = ChunksWithComponent<'a>> {
     ///
     /// Blueprint row IDs are always discarded.
     #[inline]
-    fn get_required_chunk(&'a self, component: ComponentIdentifier) -> T {
+    fn get_required_chunks(
+        &'a self,
+        component: ComponentIdentifier,
+    ) -> MaybeChunksWithComponent<'a> {
         self.get_chunks(component, true)
     }
 
@@ -338,51 +250,82 @@ pub trait RangeResultsExt<'a, T = ChunksWithComponent<'a>> {
     ///
     /// Blueprint row IDs are always discarded.
     #[inline]
-    fn get_optional_chunks(&'a self, component: ComponentIdentifier) -> T {
-        self.get_chunks(component, false)
-    }
-}
-
-impl<'a> RangeResultsExt<'a, ChunksWithComponent<'a>> for LatestAtResults {
-    #[inline]
-    fn get_chunks(
-        &self,
-        component: ComponentIdentifier,
-        force_preserve_store_row_ids: bool,
-    ) -> ChunksWithComponent<'a> {
-        let chunks = self.get(component).cloned().map_or_else(
-            || Cow::Owned(vec![]),
-            |chunk| {
-                let mut chunk = Arc::unwrap_or_clone(chunk.into_chunk());
-                if !force_preserve_store_row_ids {
-                    chunk = chunk.into_static().zeroed();
-                }
-                Cow::Owned(vec![chunk])
-            },
-        );
-        ChunksWithComponent { chunks, component }
-    }
-}
-
-impl<'a> RangeResultsExt<'a, ChunksWithComponent<'a>> for RangeResults {
-    #[inline]
-    fn get_chunks(
+    fn get_optional_chunks(
         &'a self,
         component: ComponentIdentifier,
-        _force_preserve_store_row_ids: bool,
-    ) -> ChunksWithComponent<'a> {
-        // Range queries always preserve row IDs
-        let chunks = Cow::Borrowed(self.get(component).unwrap_or_default());
-        ChunksWithComponent { chunks, component }
+    ) -> MaybeChunksWithComponent<'a> {
+        self.get_chunks(component, false)
+    }
+
+    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
+    ///
+    /// Reports an error if there's no chunks for the given component and returns an empty iterator.
+    /// Use this for required components where row IDs are needed for caching or identification.
+    ///
+    /// Blueprint row IDs are always discarded.
+    ///
+    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
+    /// * [`HybridResultsChunkIter::slice`]
+    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
+    fn iter_required(
+        &'a self,
+        mut reporter: impl FnMut(&ComponentMappingError),
+        timeline: TimelineName,
+        component: ComponentIdentifier,
+    ) -> HybridResultsChunkIter<'a> {
+        let chunks_with_component = match self.get_required_chunks(component).try_into() {
+            Ok(chunks) => chunks,
+            Err(err) => {
+                reporter(&err);
+                ChunksWithComponent::empty(component)
+            }
+        };
+
+        HybridResultsChunkIter {
+            chunks_with_component,
+            timeline,
+        }
+    }
+
+    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
+    ///
+    /// Does *not* report an error if there's no chunks for the given component and returns an empty iterator.
+    /// Use this for optional/recommended components where the original row IDs would otherwise
+    /// interfere with range zipping on latest-at queries.
+    ///
+    /// **WARNING**: For latest-at queries, the row IDs are always zeroed out to allow for range zipping.
+    /// Blueprint row IDs are always discarded.
+    ///
+    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
+    /// * [`HybridResultsChunkIter::slice`]
+    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
+    fn iter_optional(
+        &'a self,
+        mut reporter: impl FnMut(&ComponentMappingError),
+        timeline: TimelineName,
+        component: ComponentIdentifier,
+    ) -> HybridResultsChunkIter<'a> {
+        let chunks_with_component = match self.get_optional_chunks(component).try_into() {
+            Ok(chunks) => chunks,
+            Err(err) => {
+                reporter(&err);
+                ChunksWithComponent::empty(component)
+            }
+        };
+
+        HybridResultsChunkIter {
+            chunks_with_component,
+            timeline,
+        }
     }
 }
 
-impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridRangeResults<'_> {
+impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
     #[inline]
     fn get_chunks(
         &self,
         component: ComponentIdentifier,
-        force_preserve_store_row_ids: bool,
+        _force_preserve_store_row_ids: bool,
     ) -> MaybeChunksWithComponent<'_> {
         let source = match self.component_sources.get(&component) {
             Some(Ok(source)) => source,
@@ -403,16 +346,14 @@ impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridRangeResult
                         .zeroed()
                 });
 
-                let results_chunks = self
-                    .store_results
-                    .get_chunks(component, force_preserve_store_row_ids);
+                let results_chunks = self.store_results.get(component).unwrap_or_default();
 
                 // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
                 // becomes an issue.
                 Cow::Owned(
                     defaults
                         .into_iter()
-                        .chain(results_chunks.chunks.iter().cloned())
+                        .chain(results_chunks.iter().cloned())
                         .collect_vec(),
                 )
             }
@@ -450,7 +391,7 @@ impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridRangeResult
     }
 }
 
-impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridLatestAtResults<'_> {
+impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedLatestAtResults<'_> {
     #[inline]
     fn get_chunks(
         &'a self,
@@ -466,10 +407,20 @@ impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridLatestAtRes
 
         let unit_chunk = match source {
             ComponentSourceKind::SourceComponent => {
-                return self
-                    .store_results
-                    .get_chunks(component, force_preserve_store_row_ids)
-                    .into();
+                let chunks = self.store_results.get(component).cloned().map_or_else(
+                    || Cow::Owned(vec![]),
+                    |chunk| {
+                        let mut chunk = Arc::unwrap_or_clone(chunk.into_chunk());
+                        if !force_preserve_store_row_ids {
+                            chunk = chunk.into_static().zeroed();
+                        }
+                        Cow::Owned(vec![chunk])
+                    },
+                );
+                return MaybeChunksWithComponent {
+                    maybe_chunks: Ok(chunks),
+                    component,
+                };
             }
             ComponentSourceKind::Override => self.overrides.get(component),
             ComponentSourceKind::Default => self.view_defaults.get(component),
@@ -492,7 +443,7 @@ impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridLatestAtRes
     }
 }
 
-impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridResults<'_> {
+impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
     #[inline]
     fn get_chunks(
         &'a self,
@@ -513,13 +464,19 @@ impl<'a> RangeResultsExt<'a, MaybeChunksWithComponent<'a>> for HybridResults<'_>
 use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, TimelineName};
 use re_chunk_store::external::re_chunk;
 
-/// The iterator type backing [`HybridResults::iter_as`].
+/// The iterator type backing [`BlueprintResolvedResultsExt::iter_required`] and [`BlueprintResolvedResultsExt::iter_optional`].
 pub struct HybridResultsChunkIter<'a> {
     chunks_with_component: ChunksWithComponent<'a>,
     timeline: TimelineName,
 }
 
 impl<'a> HybridResultsChunkIter<'a> {
+    /// True if there's no chunks to iterate on.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.chunks_with_component.chunks.is_empty()
+    }
+
     /// Iterate as indexed deserialized batches.
     ///
     /// TODO(#5305): Note that this uses the old codegen'd deserialization path, which does some
@@ -586,5 +543,11 @@ impl<'a> HybridResultsChunkIter<'a> {
                     )
                 )
             })
+    }
+
+    /// Access the underlying chunks.
+    #[inline]
+    pub fn chunks(&'a self) -> &'a ChunksWithComponent<'a> {
+        &self.chunks_with_component
     }
 }

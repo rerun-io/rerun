@@ -16,7 +16,7 @@ use crate::PickableTexturedRect;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
-use crate::visualizers::entity_iterator::{self, process_archetype};
+use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
     VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
     visualize_video_frame_texture,
@@ -69,30 +69,21 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
                 // Same is true for the image visualizers in general - there seems to be no practical reason to do range queries
                 // for visualization here.
-                use re_view::RangeResultsExt as _;
 
-                let timeline = ctx.query.timeline();
                 let entity_path = ctx.target_entity_path;
 
-                let all_video_timestamp_chunks = results
-                    .get_required_chunk(VideoFrameReference::descriptor_timestamp().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_video_timestamp_chunks.is_empty() {
+                let all_video_timestamps =
+                    results.iter_required(VideoFrameReference::descriptor_timestamp().component);
+                if all_video_timestamps.is_empty() {
                     return Ok(());
                 }
-                let all_video_references = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    VideoFrameReference::descriptor_video_reference().component,
-                );
-                let all_opacities = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    VideoFrameReference::descriptor_opacity().component,
-                );
+                let all_video_references = results
+                    .iter_optional(VideoFrameReference::descriptor_video_reference().component);
+                let all_opacities =
+                    results.iter_optional(VideoFrameReference::descriptor_opacity().component);
 
                 for (_index, video_timestamps, video_references, opacity) in re_query::range_zip_1x2(
-                    entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),
+                    all_video_timestamps.component_slow(),
                     all_video_references.slice::<String>(),
                     all_opacities.slice::<f32>(),
                 ) {

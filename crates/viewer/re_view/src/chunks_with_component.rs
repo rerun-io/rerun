@@ -97,7 +97,7 @@ pub struct MaybeChunksWithComponent<'chunk> {
     pub component: ComponentIdentifier,
 }
 
-impl<'a> MaybeChunksWithComponent<'a> {
+impl MaybeChunksWithComponent<'_> {
     /// Iterates over chunks, or reports an error if chunk resolution failed.
     ///
     /// If the chunks were successfully resolved, returns an iterator over them.
@@ -126,29 +126,6 @@ impl<'a> MaybeChunksWithComponent<'a> {
         }
     }
 
-    /// Converts to [`ChunksWithComponent`], reporting any error and returning empty chunks on failure.
-    ///
-    /// This is useful for required components where you want to report the error but continue
-    /// processing with an empty result rather than propagating the error.
-    #[inline]
-    pub fn ensure_required(
-        self,
-        mut reporter: impl FnMut(&ComponentMappingError),
-    ) -> ChunksWithComponent<'a> {
-        let Self {
-            maybe_chunks,
-            component,
-        } = self;
-
-        match maybe_chunks {
-            Ok(chunks) => ChunksWithComponent { chunks, component },
-            Err(err) => {
-                reporter(&err);
-                ChunksWithComponent::empty(component)
-            }
-        }
-    }
-
     /// Creates a new instance with no chunks (successful but empty result).
     #[inline]
     pub fn empty(component: ComponentIdentifier) -> Self {
@@ -171,6 +148,7 @@ impl<'a> MaybeChunksWithComponent<'a> {
 impl<'a> TryFrom<MaybeChunksWithComponent<'a>> for ChunksWithComponent<'a> {
     type Error = ComponentMappingError;
 
+    #[inline]
     fn try_from(value: MaybeChunksWithComponent<'a>) -> Result<Self, Self::Error> {
         Ok(ChunksWithComponent {
             chunks: value.maybe_chunks?,
@@ -180,6 +158,7 @@ impl<'a> TryFrom<MaybeChunksWithComponent<'a>> for ChunksWithComponent<'a> {
 }
 
 impl<'a> From<ChunksWithComponent<'a>> for MaybeChunksWithComponent<'a> {
+    #[inline]
     fn from(ChunksWithComponent { chunks, component }: ChunksWithComponent<'a>) -> Self {
         Self {
             maybe_chunks: Ok(chunks),

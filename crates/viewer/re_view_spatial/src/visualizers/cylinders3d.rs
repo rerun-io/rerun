@@ -145,7 +145,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             "cylinders3d",
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Cylinders3D, _>(
             ctx,
             view_query,
@@ -153,26 +153,23 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             &mut output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_length_chunks = results
-                    .get_required_chunk(Cylinders3D::descriptor_lengths().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_length_chunks.is_empty() {
+                let all_lengths =
+                    results.iter_required(Cylinders3D::descriptor_lengths().component);
+                if all_lengths.is_empty() {
                     return Ok(());
                 }
-                let all_radius_chunks = results
-                    .get_required_chunk(Cylinders3D::descriptor_radii().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_radius_chunks.is_empty() {
+                let all_radii = results.iter_required(Cylinders3D::descriptor_radii().component);
+                if all_radii.is_empty() {
                     return Ok(());
                 }
-                let num_lengths: usize = all_length_chunks
+                let num_lengths: usize = all_lengths
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|lengths| lengths.len())
                     .sum();
-                let num_radii: usize = all_radius_chunks
+                let num_radii: usize = all_radii
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|radii| radii.len())
@@ -181,59 +178,26 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                 if num_instances == 0 {
                     return Ok(());
                 }
-
-                let timeline = ctx.query.timeline();
-                let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
-                let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
-                let all_centers = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_centers().component,
-                );
-                let all_rotation_axis_angles = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_rotation_axis_angles().component,
-                );
-                let all_quaternions = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_quaternions().component,
-                );
-                let all_colors = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_colors().component,
-                );
-                let all_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_labels().component,
-                );
-                let all_fill_modes = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_fill_mode().component,
-                );
-                let all_line_radii = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_line_radii().component,
-                );
-                let all_show_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_show_labels().component,
-                );
-                let all_class_ids = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Cylinders3D::descriptor_class_ids().component,
-                );
+                let all_centers =
+                    results.iter_optional(Cylinders3D::descriptor_centers().component);
+                let all_rotation_axis_angles =
+                    results.iter_optional(Cylinders3D::descriptor_rotation_axis_angles().component);
+                let all_quaternions =
+                    results.iter_optional(Cylinders3D::descriptor_quaternions().component);
+                let all_colors = results.iter_optional(Cylinders3D::descriptor_colors().component);
+                let all_labels = results.iter_optional(Cylinders3D::descriptor_labels().component);
+                let all_fill_modes =
+                    results.iter_optional(Cylinders3D::descriptor_fill_mode().component);
+                let all_line_radii =
+                    results.iter_optional(Cylinders3D::descriptor_line_radii().component);
+                let all_show_labels =
+                    results.iter_optional(Cylinders3D::descriptor_show_labels().component);
+                let all_class_ids =
+                    results.iter_optional(Cylinders3D::descriptor_class_ids().component);
 
                 let data = re_query::range_zip_2x9(
-                    all_lengths_indexed,
-                    all_radii_indexed,
+                    all_lengths.slice::<f32>(),
+                    all_radii.slice::<f32>(),
                     all_centers.slice::<[f32; 3]>(),
                     all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
                     all_quaternions.slice::<[f32; 4]>(),

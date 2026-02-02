@@ -8,7 +8,9 @@ use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::external::arrow;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
-use re_view::{HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
+use re_view::{
+    BlueprintResolvedRangeResults, BlueprintResolvedResultsExt as _, clamped_or_nothing,
+};
 use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
@@ -35,17 +37,17 @@ pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
     query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &HybridRangeResults<'_>,
+    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    results: &BlueprintResolvedRangeResults<'_>,
     num_series: usize,
     visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
     bootstrapped_results
-        .iter_as(|_| {}, *query.timeline(), visibility_component)
+        .iter_optional(|_| {}, *query.timeline(), visibility_component)
         .slice::<bool>()
         .chain(
             results
-                .iter_as(|_| {}, *query.timeline(), visibility_component)
+                .iter_optional(|_| {}, *query.timeline(), visibility_component)
                 .slice::<bool>(),
         )
         .next()
@@ -135,8 +137,8 @@ pub fn collect_scalars(
 pub fn collect_colors(
     entity_path: &EntityPath,
     query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    results: &re_view::BlueprintResolvedRangeResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
@@ -240,8 +242,8 @@ pub fn collect_colors(
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
     query_ctx: &QueryContext<'_>,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    results: &re_view::BlueprintResolvedRangeResults<'_>,
     num_series: usize,
     name_descriptor: &ComponentDescriptor,
 ) -> Vec<String> {
@@ -283,8 +285,8 @@ pub fn collect_series_name(
 /// Collects `radius_ui` for the series into pre-allocated plot points.
 pub fn collect_radius_ui(
     query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    results: &re_view::BlueprintResolvedRangeResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,

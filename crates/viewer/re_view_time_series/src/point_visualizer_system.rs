@@ -130,7 +130,7 @@ impl SeriesPointsSystem {
         let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
-            use re_view::RangeResultsExt as _;
+            use re_view::BlueprintResolvedResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
@@ -149,7 +149,7 @@ impl SeriesPointsSystem {
 
             // If we have no scalars, we can't do anything.
             let all_scalar_chunks: ChunksWithComponent<'_> = results
-                .get_required_chunk(archetypes::Scalars::descriptor_scalars().component)
+                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
                 .try_into()
                 .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
                     instruction_id: instruction.id,

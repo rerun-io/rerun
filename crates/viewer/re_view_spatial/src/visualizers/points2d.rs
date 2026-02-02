@@ -202,7 +202,7 @@ impl VisualizerSystem for Points2DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Points2D, _>(
             ctx,
             view_query,
@@ -210,16 +210,14 @@ impl VisualizerSystem for Points2DVisualizer {
             &mut output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_position_chunks = results
-                    .get_required_chunk(Points2D::descriptor_positions().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_position_chunks.is_empty() {
+                let all_positions =
+                    results.iter_required(Points2D::descriptor_positions().component);
+                if all_positions.is_empty() {
                     return Ok(());
                 }
 
-                let num_positions = all_position_chunks
+                let num_positions = all_positions
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|points| points.len())
@@ -230,42 +228,18 @@ impl VisualizerSystem for Points2DVisualizer {
                 }
 
                 point_builder.reserve(num_positions)?;
-
-                let timeline = ctx.query.timeline();
-                let all_positions_indexed = iter_slices::<[f32; 2]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_colors().component,
-                );
-                let all_radii = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_radii().component,
-                );
-                let all_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_labels().component,
-                );
-                let all_class_ids = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_class_ids().component,
-                );
-                let all_keypoint_ids = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_keypoint_ids().component,
-                );
-                let all_show_labels = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Points2D::descriptor_show_labels().component,
-                );
+                let all_colors = results.iter_optional(Points2D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Points2D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Points2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_optional(Points2D::descriptor_class_ids().component);
+                let all_keypoint_ids =
+                    results.iter_optional(Points2D::descriptor_keypoint_ids().component);
+                let all_show_labels =
+                    results.iter_optional(Points2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_positions_indexed,
+                    all_positions.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
