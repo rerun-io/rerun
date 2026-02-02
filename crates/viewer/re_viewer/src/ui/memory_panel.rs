@@ -516,20 +516,14 @@ fn summarize_callstack(callstack: &str) -> String {
         ("epaint::text::text_layout", "text_layout"),
         ("egui_wgpu", "egui_wgpu"),
         ("decode_arrow", "decode_arrow"),
+        ("transform_resolution_cache", "transform_resolution_cache"),
         ("wgpu_hal", "wgpu_hal"),
         ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
         ("epaint::texture_atlas", "egui font texture"),
-        (
-            "alloc::collections::btree::map::BTreeSet<K,V,A>",
-            "BTreeSet",
-        ),
-        (
-            "alloc::collections::btree::map::BTreeMap<K,V,A>",
-            "BTreeMap",
-        ),
+        ("alloc::collections::btree", "BTree"),
         ("std::collections::hash::map::HashMap<K,V,S>", "HashMap"),
     ];
 

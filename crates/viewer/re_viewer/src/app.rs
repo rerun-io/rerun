@@ -3538,7 +3538,7 @@ impl eframe::App for App {
 
         self.check_keyboard_shortcuts(egui_ctx);
 
-        self.purge_memory_if_needed(&mut store_hub);
+        self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
@@ -3546,7 +3546,7 @@ impl eframe::App for App {
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
-            store_hub.begin_frame_caches();
+            store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
         self.receive_messages(&mut store_hub, egui_ctx);

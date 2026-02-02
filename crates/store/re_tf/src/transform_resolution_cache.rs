@@ -8,7 +8,7 @@ use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
 use re_chunk_store::external::arrow;
-use re_chunk_store::{Chunk, LatestAtQuery};
+use re_chunk_store::{Chunk, ChunkStore, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
 use re_mutex::Mutex;
@@ -43,7 +43,12 @@ pub struct TransformResolutionCache {
     /// thus allowing us to access debug information across the stack.
     frame_id_registry: ArcRwLock<FrameIdRegistry>,
 
+    /// The timelines for which we have cached transforms for.
+    ///
+    /// Some timelines may be missing from this map.
+    /// They will be lazily initialized from scratch on-demand.
     per_timeline: HashMap<TimelineName, ArcRwLock<CachedTransformsForTimeline>>,
+
     static_timeline: ArcRwLock<CachedTransformsForTimeline>,
 }
 
@@ -55,6 +60,37 @@ impl Default for TransformResolutionCache {
             per_timeline: Default::default(),
             static_timeline: Arc::new(RwLock::new(CachedTransformsForTimeline::new_static())),
         }
+    }
+}
+
+impl TransformResolutionCache {
+    /// Creates a new cache, initialized with the static timeline and frame registry from the given entity database.
+    ///
+    /// Per-timeline data will be lazily initialized on demand.
+    pub fn new(entity_db: &EntityDb) -> Self {
+        re_tracing::profile_function!();
+
+        let mut cache = Self::default();
+
+        for chunk in entity_db.storage_engine().store().iter_physical_chunks() {
+            // Register all frames even if this chunk doesn't have transform data.
+            cache
+                .frame_id_registry
+                .write()
+                .register_all_frames_in_chunk(chunk);
+
+            let aspects = TransformAspect::transform_aspects_of(chunk);
+            if aspects.is_empty() {
+                continue;
+            }
+
+            // Only process static chunks - temporal data will be lazily initialized per-timeline.
+            if chunk.is_static() {
+                cache.add_static_chunk(chunk, aspects);
+            }
+        }
+
+        cache
     }
 }
 
@@ -155,8 +191,16 @@ impl CachedTransformsForTimeline {
         }
     }
 
-    fn new(timeline: &TimelineName, static_transforms: &Self) -> Self {
-        Self {
+    fn new_temporal(
+        timeline: TimelineName,
+        static_transforms: &Self,
+        frame_id_registry: &FrameIdRegistry,
+        chunk_store: &ChunkStore,
+    ) -> Self {
+        re_tracing::profile_function!(timeline);
+
+        // First create the base structure from static transforms.
+        let mut result = Self {
             per_child_frame_transforms: static_transforms
                 .per_child_frame_transforms
                 .iter()
@@ -164,7 +208,7 @@ impl CachedTransformsForTimeline {
                     (
                         *transform_frame,
                         TreeTransformsForChildFrame::new_for_new_empty_timeline(
-                            *timeline,
+                            timeline,
                             static_transforms,
                         ),
                     )
@@ -173,7 +217,166 @@ impl CachedTransformsForTimeline {
             per_entity_poses: static_transforms.per_entity_poses.clone(),
             non_recursive_clears: IntMap::default(),
             recursive_clears: IntMap::default(),
+        };
+
+        re_tracing::profile_scope!("chunks");
+
+        // Then process all temporal chunks for this timeline.
+        for chunk in chunk_store.iter_physical_chunks() {
+            if chunk.is_static() || !chunk.timelines().contains_key(&timeline) {
+                continue;
+            }
+
+            let aspects = TransformAspect::transform_aspects_of(chunk);
+            if aspects.is_empty() {
+                continue;
+            }
+
+            result.add_temporal_chunk(
+                chunk,
+                aspects,
+                timeline,
+                static_transforms,
+                frame_id_registry,
+            );
         }
+
+        result
+    }
+
+    /// Adds a temporal chunk to this timeline's cache.
+    fn add_temporal_chunk(
+        &mut self,
+        chunk: &Chunk,
+        aspects: TransformAspect,
+        timeline: TimelineName,
+        static_timeline: &Self,
+        frame_id_registry: &FrameIdRegistry,
+    ) {
+        re_tracing::profile_function!();
+
+        let entity_path = chunk.entity_path();
+
+        let transform_child_frame_component =
+            archetypes::Transform3D::descriptor_child_frame().component;
+        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
+
+        if aspects.contains(TransformAspect::Frame) {
+            for (time, frame) in
+                iter_child_frames_in_chunk(chunk, timeline, transform_child_frame_component)
+            {
+                self.get_or_create_tree_transforms_temporal(
+                    entity_path,
+                    frame,
+                    timeline,
+                    static_timeline,
+                    frame_id_registry,
+                )
+                .invalidate_transform_at(time);
+            }
+        }
+        if aspects.contains(TransformAspect::Pose) {
+            let poses = self.get_or_create_pose_transforms_temporal(entity_path, static_timeline);
+            for (time, _) in chunk.iter_indices(&timeline) {
+                poses.invalidate_at(time);
+            }
+        }
+        if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+            for (time, frame) in
+                iter_child_frames_in_chunk(chunk, timeline, pinhole_child_frame_component)
+            {
+                self.get_or_create_tree_transforms_temporal(
+                    entity_path,
+                    frame,
+                    timeline,
+                    static_timeline,
+                    frame_id_registry,
+                )
+                .invalidate_pinhole_projection_at(time);
+            }
+        }
+
+        // Keep track of clears.
+        if aspects.contains(TransformAspect::Clear) {
+            let component = archetypes::Clear::descriptor_is_recursive().component;
+
+            for ((time, _row_id), is_recursive_slice) in chunk
+                .iter_component_indices(timeline, component)
+                .zip(chunk.iter_slices::<bool>(component))
+            {
+                if let Some(is_recursive) = is_recursive_slice.values().first()
+                    && *is_recursive != 0
+                {
+                    self.add_recursive_clear(entity_path, time);
+                } else {
+                    self.add_clear(entity_path, time);
+                }
+            }
+        }
+    }
+
+    /// Removes a temporal chunk from this timeline's cache.
+    fn remove_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect, timeline: TimelineName) {
+        re_tracing::profile_function!();
+
+        let entity_path = chunk.entity_path();
+
+        let transform_child_frame_component =
+            archetypes::Transform3D::descriptor_child_frame().component;
+        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
+
+        // Remove any affected clears.
+        if aspects.contains(TransformAspect::Clear) {
+            let component = archetypes::Clear::descriptor_is_recursive().component;
+
+            for ((time, _row_id), is_recursive_slice) in chunk
+                .iter_component_indices(timeline, component)
+                .zip(chunk.iter_slices::<bool>(component))
+            {
+                if let Some(is_recursive) = is_recursive_slice.values().first()
+                    && *is_recursive != 0
+                {
+                    self.remove_recursive_clear(entity_path, time);
+                } else {
+                    self.remove_clear(entity_path, time);
+                }
+            }
+        }
+
+        // Remove existing data.
+        if aspects.contains(TransformAspect::Frame) {
+            for (time, frame) in
+                iter_child_frames_in_chunk(chunk, timeline, transform_child_frame_component)
+            {
+                if let Some(transforms) = self.per_child_frame_transforms.get_mut(&frame) {
+                    transforms.events.get_mut().frame_transforms.remove(&time);
+                }
+            }
+        }
+        if aspects.contains(TransformAspect::Pose)
+            && let Some(poses) = self.per_entity_poses.get_mut(&entity_path.hash())
+        {
+            for (time, _) in chunk.iter_indices(&timeline) {
+                poses.poses_per_time.get_mut().remove(&time);
+            }
+        }
+        if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+            for (time, frame) in
+                iter_child_frames_in_chunk(chunk, timeline, pinhole_child_frame_component)
+            {
+                if let Some(transforms) = self.per_child_frame_transforms.get_mut(&frame) {
+                    transforms
+                        .events
+                        .get_mut()
+                        .pinhole_projections
+                        .remove(&time);
+                }
+            }
+        }
+
+        // Remove any empty transform collection.
+        self.per_child_frame_transforms
+            .retain(|_frame, transforms| !transforms.events.get_mut().is_empty());
     }
 
     fn get_or_create_tree_transforms_temporal(
@@ -181,7 +384,7 @@ impl CachedTransformsForTimeline {
         entity_path: &EntityPath,
         child_frame: TransformFrameIdHash,
         timeline: TimelineName,
-        static_timeline: &mut Self,
+        static_timeline: &Self,
         frame_registry: &FrameIdRegistry,
     ) -> &mut TreeTransformsForChildFrame {
         match self.per_child_frame_transforms.entry(child_frame) {
@@ -260,7 +463,7 @@ impl CachedTransformsForTimeline {
     fn get_or_create_pose_transforms_temporal(
         &mut self,
         entity_path: &EntityPath,
-        static_timeline: &mut Self,
+        static_timeline: &Self,
     ) -> &mut PoseTransformForEntity {
         self.per_entity_poses
             .entry(entity_path.hash())
@@ -583,7 +786,7 @@ pub struct TreeTransformsForChildFrame {
 
     child_frame: TransformFrameIdHash,
 
-    events: Mutex<TransformsForChildFrameEvents>,
+    events: RwLock<TransformsForChildFrameEvents>,
 }
 
 impl Clone for TreeTransformsForChildFrame {
@@ -594,7 +797,7 @@ impl Clone for TreeTransformsForChildFrame {
             associated_entity_path_temporal: self.associated_entity_path_temporal.clone(),
             associated_entity_path_static: self.associated_entity_path_static.clone(),
             child_frame: self.child_frame,
-            events: Mutex::new(self.events.lock().clone()),
+            events: RwLock::new(self.events.read().clone()),
         }
     }
 }
@@ -613,7 +816,7 @@ impl PartialEq for TreeTransformsForChildFrame {
         associated_entity_path_temporal == &other.associated_entity_path_temporal
             && associated_entity_path_static == &other.associated_entity_path_static
             && child_frame == &other.child_frame
-            && *events.lock() == *other.events.lock()
+            && *events.read() == *other.events.read()
     }
 }
 
@@ -632,7 +835,7 @@ impl SizeBytes for TreeTransformsForChildFrame {
         associated_entity_path_temporal.heap_size_bytes()
             + associated_entity_path_static.heap_size_bytes()
             + child_frame.heap_size_bytes()
-            + events.lock().heap_size_bytes()
+            + events.read().heap_size_bytes()
     }
 }
 
@@ -687,18 +890,17 @@ impl TreeTransformsForChildFrame {
         associated_entity_path: EntityPath,
         child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
-        static_timeline: &mut CachedTransformsForTimeline,
+        static_timeline: &CachedTransformsForTimeline,
         non_recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
         recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
     ) -> Self {
         let mut events = TransformsForChildFrameEvents::new_empty();
 
         // Take over static events.
-        let associated_entity_path_static = if let Some(static_transforms) = static_timeline
-            .per_child_frame_transforms
-            .get_mut(&child_frame)
+        let associated_entity_path_static = if let Some(static_transforms) =
+            static_timeline.per_child_frame_transforms.get(&child_frame)
         {
-            events = static_transforms.events.get_mut().clone();
+            events = static_transforms.events.read().clone();
 
             debug_assert!(static_transforms.associated_entity_path_static.is_some());
             static_transforms.associated_entity_path_static.clone()
@@ -722,7 +924,7 @@ impl TreeTransformsForChildFrame {
             associated_entity_path_temporal: Some(associated_entity_path),
             associated_entity_path_static,
             child_frame,
-            events: Mutex::new(events),
+            events: RwLock::new(events),
         }
     }
 
@@ -741,7 +943,7 @@ impl TreeTransformsForChildFrame {
             associated_entity_path_temporal: None,
             associated_entity_path_static: Some(associated_entity_path),
             child_frame,
-            events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
+            events: RwLock::new(TransformsForChildFrameEvents::new_empty()),
         }
     }
 
@@ -783,7 +985,7 @@ impl TreeTransformsForChildFrame {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        let mut events = self.events.lock();
+        let mut events = self.events.write();
 
         events
             .frame_transforms
@@ -843,7 +1045,7 @@ impl TreeTransformsForChildFrame {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
-        let mut events = self.events.lock();
+        let mut events = self.events.write();
 
         events
             .pinhole_projections
@@ -926,7 +1128,7 @@ impl SizeBytes for PoseTransformForEntity {
 impl PoseTransformForEntity {
     fn new(
         entity_path: EntityPath,
-        static_timeline: &mut CachedTransformsForTimeline,
+        static_timeline: &CachedTransformsForTimeline,
         non_recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
         recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
     ) -> Self {
@@ -935,9 +1137,9 @@ impl PoseTransformForEntity {
         // Take over static events.
         if let Some(static_transforms) = static_timeline
             .per_entity_poses
-            .get_mut(&poses.entity_path.hash())
+            .get(&poses.entity_path.hash())
         {
-            *poses.poses_per_time.get_mut() = static_transforms.poses_per_time.get_mut().clone();
+            *poses.poses_per_time.get_mut() = static_transforms.poses_per_time.lock().clone();
         }
 
         // Take over clear events.
@@ -1030,6 +1232,39 @@ impl TransformResolutionCache {
         }
     }
 
+    /// Returns an iterator over all initialized timelines.
+    #[inline]
+    pub fn cached_timelines(&self) -> impl Iterator<Item = TimelineName> + '_ {
+        self.per_timeline.keys().copied()
+    }
+
+    /// Ensure we have a cache for this timeline.
+    pub fn ensure_timeline_is_initialized(
+        &mut self,
+        chunk_store: &ChunkStore,
+        timeline: TimelineName,
+    ) {
+        re_tracing::profile_function!(timeline);
+
+        let static_timeline = self.static_timeline.read();
+        let frame_id_registry = self.frame_id_registry.read();
+
+        self.per_timeline.entry(timeline).or_insert_with(|| {
+            Arc::new(RwLock::new(CachedTransformsForTimeline::new_temporal(
+                timeline,
+                &static_timeline,
+                &frame_id_registry,
+                chunk_store,
+            )))
+        });
+    }
+
+    /// Evicts a timeline from the cache.
+    pub fn evict_timeline_cache(&mut self, timeline: TimelineName) {
+        re_tracing::profile_function!(); // There can be A LOT of tiny allocations to drop.
+        self.per_timeline.remove(&timeline);
+    }
+
     /// Makes sure the internal transform index is up to date and outdated cache entries are discarded.
     ///
     /// This needs to be called once per frame prior to any transform propagation.
@@ -1040,16 +1275,11 @@ impl TransformResolutionCache {
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
     ///     * this may invalidate previous entries at the same position
     /// * remove cached entries if chunks were GC'ed
-    ///
-    /// See also [`Self::add_chunks`].
     pub fn process_store_events<'a>(
         &mut self,
         events: impl Iterator<Item = &'a re_chunk_store::ChunkStoreEvent>,
     ) {
         re_tracing::profile_function!();
-
-        // TODO(andreas): We eagerly index for all timelines even if they're never used.
-        // Instead, we should do so lazily when results for a timeline are queried.
 
         for event in events {
             // This doesn't maintain a collection of chunks that needs to be kept in sync 1:1 with
@@ -1080,40 +1310,7 @@ impl TransformResolutionCache {
         }
     }
 
-    /// Adds chunks to the transform cache.
-    ///
-    /// This will internally…
-    /// * keep track of which child frames are influenced by which entity
-    /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
-    ///     * this may invalidate previous entries at the same position
-    ///
-    /// See also [`Self::process_store_events`].
-    pub fn add_chunks<'a>(&mut self, chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>) {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): We eagerly index for all timelines even if they're never used.
-        // Instead, we should do so lazily when results for a timeline are queried.
-
-        for chunk in chunks {
-            // Since entity paths lead to implicit frames, we have to prime our lookup table with them even if this chunk doesn't have transform data.
-            self.frame_id_registry
-                .write()
-                .register_all_frames_in_chunk(chunk);
-
-            let aspects = TransformAspect::transform_aspects_of(chunk);
-            if aspects.is_empty() {
-                continue;
-            }
-
-            if chunk.is_static() {
-                self.add_static_chunk(chunk, aspects);
-            } else {
-                self.add_temporal_chunk(chunk, aspects);
-            }
-        }
-    }
-
-    fn add_temporal_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
+    fn add_temporal_chunk(&self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!(format!(
             "{} rows, {}",
             chunk.num_rows(),
@@ -1122,83 +1319,23 @@ impl TransformResolutionCache {
 
         debug_assert!(!chunk.is_static());
 
-        let entity_path = chunk.entity_path();
-
-        let transform_child_frame_component =
-            archetypes::Transform3D::descriptor_child_frame().component;
-        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
-
-        let mut static_timeline = self.static_timeline.write();
+        let static_timeline = self.static_timeline.read();
         let frame_id_registry = self.frame_id_registry.read();
 
         for timeline in chunk.timelines().keys() {
-            let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
-                Arc::new(RwLock::new(CachedTransformsForTimeline::new(
-                    timeline,
-                    &static_timeline,
-                )))
-            });
+            // Skip timelines that haven't been requested yet (lazy initialization).
+            let Some(per_timeline) = self.per_timeline.get(timeline) else {
+                continue;
+            };
             let mut per_timeline = per_timeline.write();
 
-            if aspects.contains(TransformAspect::Frame) {
-                re_tracing::profile_scope!("TransformAspect::Frame");
-                for (time, frame) in
-                    iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
-                {
-                    per_timeline
-                        .get_or_create_tree_transforms_temporal(
-                            entity_path,
-                            frame,
-                            *timeline,
-                            &mut static_timeline,
-                            &frame_id_registry,
-                        )
-                        .invalidate_transform_at(time);
-                }
-            }
-            if aspects.contains(TransformAspect::Pose) {
-                re_tracing::profile_scope!("TransformAspect::Pose");
-                let poses = per_timeline
-                    .get_or_create_pose_transforms_temporal(entity_path, &mut static_timeline);
-                for (time, _) in chunk.iter_indices(timeline) {
-                    poses.invalidate_at(time);
-                }
-            }
-            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                re_tracing::profile_scope!("TransformAspect::PinholeOrViewCoordinates");
-                for (time, frame) in
-                    iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
-                {
-                    per_timeline
-                        .get_or_create_tree_transforms_temporal(
-                            entity_path,
-                            frame,
-                            *timeline,
-                            &mut static_timeline,
-                            &frame_id_registry,
-                        )
-                        .invalidate_pinhole_projection_at(time);
-                }
-            }
-
-            // Keep track of clears.
-            if aspects.contains(TransformAspect::Clear) {
-                re_tracing::profile_scope!("TransformAspect::Clear");
-                let component = archetypes::Clear::descriptor_is_recursive().component;
-
-                for ((time, _row_id), is_recursive_slice) in chunk
-                    .iter_component_indices(*timeline, component)
-                    .zip(chunk.iter_slices::<bool>(component))
-                {
-                    if let Some(is_recursive) = is_recursive_slice.values().first()
-                        && *is_recursive != 0
-                    {
-                        per_timeline.add_recursive_clear(entity_path, time);
-                    } else {
-                        per_timeline.add_clear(entity_path, time);
-                    }
-                }
-            }
+            per_timeline.add_temporal_chunk(
+                chunk,
+                aspects,
+                *timeline,
+                &static_timeline,
+                &frame_id_registry,
+            );
         }
     }
 
@@ -1262,7 +1399,7 @@ impl TransformResolutionCache {
             for per_timeline in self.per_timeline.values_mut() {
                 per_timeline
                     .write()
-                    .get_or_create_pose_transforms_temporal(entity_path, &mut static_timeline)
+                    .get_or_create_pose_transforms_temporal(entity_path, &static_timeline)
                     .invalidate_at(TimeInt::STATIC);
             }
         }
@@ -1308,12 +1445,6 @@ impl TransformResolutionCache {
     fn remove_chunk(&mut self, chunk: &Chunk, aspects: TransformAspect) {
         re_tracing::profile_function!();
 
-        let entity_path = chunk.entity_path();
-
-        let transform_child_frame_component =
-            archetypes::Transform3D::descriptor_child_frame().component;
-        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
-
         // TODO(andreas): handle removal of static chunks?
         for timeline in chunk.timelines().keys() {
             let Some(per_timeline_rw) = self.per_timeline.get_mut(timeline) else {
@@ -1321,64 +1452,7 @@ impl TransformResolutionCache {
             };
 
             let mut per_timeline = per_timeline_rw.write();
-
-            // Remove any affected recursive clears.
-            if aspects.contains(TransformAspect::Clear) {
-                re_tracing::profile_scope!("check for recursive clears");
-
-                let component = archetypes::Clear::descriptor_is_recursive().component;
-
-                for ((time, _row_id), is_recursive_slice) in chunk
-                    .iter_component_indices(*timeline, component)
-                    .zip(chunk.iter_slices::<bool>(component))
-                {
-                    if let Some(is_recursive) = is_recursive_slice.values().first()
-                        && *is_recursive != 0
-                    {
-                        per_timeline.remove_recursive_clear(entity_path, time);
-                    } else {
-                        per_timeline.remove_clear(entity_path, time);
-                    }
-                }
-            }
-
-            // Remove existing data.
-            if aspects.contains(TransformAspect::Frame) {
-                for (time, frame) in
-                    iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
-                {
-                    if let Some(transforms) =
-                        per_timeline.per_child_frame_transforms.get_mut(&frame)
-                    {
-                        let events = transforms.events.get_mut();
-                        events.frame_transforms.remove(&time);
-                    }
-                }
-            }
-            if aspects.contains(TransformAspect::Pose)
-                && let Some(poses) = per_timeline.per_entity_poses.get_mut(&entity_path.hash())
-            {
-                for (time, _) in chunk.iter_indices(timeline) {
-                    poses.poses_per_time.get_mut().remove(&time);
-                }
-            }
-            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                for (time, frame) in
-                    iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
-                {
-                    if let Some(transforms) =
-                        per_timeline.per_child_frame_transforms.get_mut(&frame)
-                    {
-                        let events = transforms.events.get_mut();
-                        events.pinhole_projections.remove(&time);
-                    }
-                }
-            }
-
-            // Remove any empty transform collection.
-            per_timeline
-                .per_child_frame_transforms
-                .retain(|_frame, transforms| !transforms.events.get_mut().is_empty());
+            per_timeline.remove_chunk(chunk, aspects, *timeline);
 
             // Remove the entire timeline if it's empty.
             let is_empty = per_timeline.per_child_frame_transforms.is_empty();
@@ -1528,8 +1602,26 @@ mod tests {
         }
     }
 
+    /// Test helper that applies store subscriber events to the cache.
+    ///
+    /// This also initializes any new timelines from the events.
     fn apply_store_subscriber_events(cache: &mut TransformResolutionCache, entity_db: &EntityDb) {
         let events = TestStoreSubscriber::take_transform_events(entity_db.store_id());
+
+        // Initialize any new timelines from the events.
+        for event in &events {
+            if let Some(chunk) = event.delta_chunk() {
+                for timeline in chunk.timelines().keys() {
+                    if !cache.per_timeline.contains_key(timeline) {
+                        cache.ensure_timeline_is_initialized(
+                            entity_db.storage_engine().store(),
+                            *timeline,
+                        );
+                    }
+                }
+            }
+        }
+
         cache.process_store_events(events.iter());
     }
 
@@ -1627,8 +1719,8 @@ mod tests {
             .unwrap();
         #[cfg(debug_assertions)]
         assert_eq!(transforms.timeline, Some(*timeline.name()));
-        assert_eq!(transforms.events.lock().frame_transforms.len(), 1);
-        assert_eq!(transforms.events.lock().pinhole_projections.len(), 0);
+        assert_eq!(transforms.events.read().frame_transforms.len(), 1);
+        assert_eq!(transforms.events.read().pinhole_projections.len(), 0);
         Ok(())
     }
 
@@ -2910,7 +3002,13 @@ mod tests {
         let time_point = if time.is_static() {
             TimePoint::STATIC
         } else {
-            [(Timeline::new_sequence("t"), time)].into()
+            let timeline = Timeline::new_sequence("t");
+            // Initialize the timeline (lazy initialization).
+            cache.ensure_timeline_is_initialized(
+                entity_db.storage_engine().store(),
+                *timeline.name(),
+            );
+            [(timeline, time)].into()
         };
 
         // First, create temporal transform
@@ -3192,6 +3290,9 @@ mod tests {
         let timeline = Timeline::new_sequence("t");
         let timeline_name = *timeline.name();
         let frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("my_entity"));
+
+        // Initialize the timeline (lazy initialization).
+        cache.ensure_timeline_is_initialized(entity_db.storage_engine().store(), timeline_name);
 
         // Initial chunk with various events, some of which don't do anything about transforms.
         let chunk = Chunk::builder(EntityPath::from("my_entity"))

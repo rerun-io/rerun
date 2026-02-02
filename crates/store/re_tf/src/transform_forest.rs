@@ -928,8 +928,11 @@ mod tests {
     #[test]
     fn test_simple_entity_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = entity_hierarchy_test_scene()?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1133,8 +1136,11 @@ mod tests {
         multiple_entities: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = simple_frame_hierarchy_test_scene(multiple_entities)?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1312,9 +1318,12 @@ mod tests {
 
         // Handle creation from partially filled cache gracefully.
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline(),
+            );
 
             // Add a connection the cache doesn't know about.
             test_scene.add_chunk(&Arc::new(
@@ -1351,7 +1360,6 @@ mod tests {
         // Extra nasty case: given a cold cache, the cache knows about everything except for a row _on the same time_ which talks about a new frame.
         // (this also makes sure that we get the right transform back for the known frames even when a latest-at query would yield something the cache doesn't know about)
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
 
             test_scene.add_chunk(&Arc::new(
@@ -1364,7 +1372,11 @@ mod tests {
                     )
                     .build()?,
             ))?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline(),
+            );
 
             test_scene.add_chunk(&Arc::new(
                 // Add a connection the cache doesn't know about.
@@ -1448,10 +1460,10 @@ mod tests {
                 .build()?,
         ))?;
 
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
-
         let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let mut transform_cache = TransformResolutionCache::new(&entity_db);
+        transform_cache
+            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
         // Child still connects up to the root.

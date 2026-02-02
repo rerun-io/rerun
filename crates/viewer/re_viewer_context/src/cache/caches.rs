@@ -62,6 +62,7 @@ impl Caches {
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
             cache.lock().begin_frame();
         }
     }
@@ -104,6 +105,7 @@ impl Caches {
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
             cache.lock().purge_memory();
         }
 
@@ -122,6 +124,7 @@ impl Caches {
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
             cache.lock().on_rrd_manifest(entity_db);
         }
     }
@@ -142,6 +145,7 @@ impl Caches {
 
         #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
         for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
             cache.lock().on_store_events(&relevant_events, entity_db);
         }
     }
@@ -182,6 +186,8 @@ pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture
     fn begin_frame(&mut self) {}
 
     /// Attempt to free up memory.
+    ///
+    /// Called BEFORE `begin_frame` (if at all).
     fn purge_memory(&mut self);
 
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
