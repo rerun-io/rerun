@@ -229,14 +229,17 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
         .body(|mut body| {
             tokens.setup_table_body(&mut body, table_style);
 
+            let loaded_samples: Vec<_> = video_descr
+                .samples
+                .iter_indexed()
+                .filter_map(|(idx, s)| Some((idx, s.sample()?)))
+                .collect();
+
             body.rows(
                 tokens.table_row_height(table_style),
-                video_descr.samples.num_elements(),
+                loaded_samples.len(),
                 |mut row| {
-                    let sample_idx = row.index() + video_descr.samples.min_index();
-                    let Some(sample) = video_descr.samples[sample_idx].sample() else {
-                        return;
-                    };
+                    let (sample_idx, sample) = loaded_samples[row.index()];
                     let re_video::SampleMetadata {
                         is_sync,
                         frame_nr,
