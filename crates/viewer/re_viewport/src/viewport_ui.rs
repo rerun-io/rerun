@@ -764,8 +764,8 @@ impl TilesDelegate<'_, '_> {
                         .tint(ui.visuals().error_fg_color),
                 ))
                 .on_hover_text(format!(
-                    "Show {error_count} visualizer error{}",
-                    re_format::format_plural_s(error_count)
+                    "Show {}",
+                    re_format::format_plural_s(error_count, "visualizer error")
                 ));
 
             egui::Popup::menu(&response)

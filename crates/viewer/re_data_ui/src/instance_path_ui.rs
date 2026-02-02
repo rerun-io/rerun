@@ -5,6 +5,7 @@ use itertools::Itertools as _;
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
+use re_format::format_plural_s;
 use re_log_types::ComponentPath;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
@@ -115,16 +116,12 @@ impl DataUi for InstancePath {
         const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
 
         if ui_layout.is_single_line() {
-            let archetype_count = components_by_archetype.len();
-            let component_count = unordered_components.len();
             ui_layout.label(
                 ui,
                 format!(
-                    "{} archetype{} with {} total component{}",
-                    archetype_count,
-                    if archetype_count > 1 { "s" } else { "" },
-                    component_count,
-                    if component_count > 1 { "s" } else { "" }
+                    "{} with {}",
+                    format_plural_s(components_by_archetype.len(), "archetype"),
+                    format_plural_s(unordered_components.len(), "total component")
                 ),
             );
         } else if ui_layout == UiLayout::Tooltip
@@ -189,18 +186,12 @@ impl DataUi for InstancePath {
             if !show_only_instanced {
                 // Show just a rough summary:
 
-                let component_count = unordered_components.len();
-                ui.list_item_label(format!(
-                    "{} component{}",
-                    component_count,
-                    if component_count > 1 { "s" } else { "" }
-                ));
+                ui.list_item_label(format_plural_s(unordered_components.len(), "component"));
 
                 let archetype_count = components_by_archetype.len();
                 ui.list_item_label(format!(
-                    "{} archetype{}: {}",
-                    archetype_count,
-                    if archetype_count > 1 { "s" } else { "" },
+                    "{}: {}",
+                    format_plural_s(archetype_count, "archetype"),
                     components_by_archetype
                         .keys()
                         .map(|archetype| {

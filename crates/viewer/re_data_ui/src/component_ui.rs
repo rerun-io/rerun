@@ -94,9 +94,8 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     .num_temporal_events_for_component_on_all_timelines(entity_path, component);
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
-                        "Static component has {} event{} logged on timelines.",
-                        temporal_message_count,
-                        if temporal_message_count > 1 { "s" } else { "" }
+                        "Static component has {} logged on timelines.",
+                        re_format::format_plural_s(temporal_message_count, "event")
                     ))
                     .on_hover_text(
                         "Components should be logged either as static or on timelines, but \

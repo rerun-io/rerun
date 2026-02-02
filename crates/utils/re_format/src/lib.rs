@@ -3,12 +3,14 @@
 //! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
 mod duration;
+mod plural;
 pub mod time;
 
 use std::cmp::PartialOrd;
 use std::fmt::Display;
 
 pub use self::duration::DurationFormatOptions;
+pub use self::plural::{format_plural_s, format_plural_signed_s};
 
 // --- Numbers ---
 
@@ -826,10 +828,4 @@ fn test_remove_number_formatting() {
         remove_number_formatting(&format_uint(123_456_789_u32)),
         "123456789"
     );
-}
-
-/// Returns "s" if `count` is not one, otherwise returns an empty string.
-#[expect(clippy::needless_pass_by_value)]
-pub fn format_plural_s(count: impl num_traits::Num) -> &'static str {
-    if count.is_one() { "" } else { "s" }
 }
