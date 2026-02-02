@@ -2,7 +2,7 @@ use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
@@ -39,10 +39,10 @@ use crate::point_visualizer_system::SeriesPointsSystem;
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
-    scalar_range: Range1D,
+    pub(crate) scalar_range: Range1D,
 
     /// The size of the current range of time which covers the whole time series.
-    max_time_view_range: AbsoluteTimeRange,
+    pub(crate) max_time_view_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
@@ -56,6 +56,12 @@ pub struct TimeSeriesViewState {
     /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
     /// forwarded to the default providers.
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+
+    /// The number of time series rendered emitted by visualizers last frame.
+    ///
+    /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
+    /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
+    pub(crate) num_time_series_last_frame_per_entity: HashMap<EntityPath, IntSet<egui::Id>>,
 }
 
 impl Default for TimeSeriesViewState {
@@ -65,6 +71,7 @@ impl Default for TimeSeriesViewState {
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
             default_names_for_entities: Default::default(),
+            num_time_series_last_frame_per_entity: Default::default(),
         }
     }
 }
@@ -153,77 +160,7 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        for component in [
-            SeriesLines::descriptor_names().component,
-            SeriesPoints::descriptor_names().component,
-        ] {
-            system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
-                component,
-                |ctx| {
-                    let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-                    state
-                        .ok()
-                        .and_then(|state| {
-                            state
-                                .default_names_for_entities
-                                .get(ctx.target_entity_path)
-                                .map(|name| name.clone().into())
-                        })
-                        .or_else(|| {
-                            ctx.target_entity_path
-                                .last()
-                                .map(|part| part.ui_string().into())
-                        })
-                        .unwrap_or_default()
-                },
-            );
-        }
-        system_registry.register_fallback_provider(
-            ScalarAxis::descriptor_range().component,
-            |ctx| {
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| make_range_sane(s.scalar_range))
-                    .unwrap_or_default()
-            },
-        );
-        system_registry.register_fallback_provider(
-            TimeAxis::descriptor_view_range().component,
-            |ctx| {
-                let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
-                let (timeline_min, timeline_max) = timeline_histograms
-                    .get(ctx.viewer_ctx().time_ctrl.timeline_name())
-                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
-                    .unzip();
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| {
-                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                            start: if Some(s.max_time_view_range.min) == timeline_min {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.min.into(),
-                                )
-                            },
-                            end: if Some(s.max_time_view_range.max) == timeline_max {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.max.into(),
-                                )
-                            },
-                        })
-                    })
-                    .unwrap_or(re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                        start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                        end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                    }))
-            },
-        );
+        crate::fallbacks::register_fallbacks(system_registry);
 
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
@@ -432,6 +369,15 @@ impl ViewClass for TimeSeriesView {
             .chain(line_series.all_series.iter())
             .chain(point_series.all_series.iter())
             .collect();
+
+        state.num_time_series_last_frame_per_entity.clear();
+        for series in &all_plot_series {
+            state
+                .num_time_series_last_frame_per_entity
+                .entry(series.instance_path.entity_path.clone())
+                .or_default()
+                .insert(series.id());
+        }
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
@@ -1230,7 +1176,7 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
 }
 
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
-fn make_range_sane(y_range: Range1D) -> Range1D {
+pub fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
 
     if !start.is_finite() {

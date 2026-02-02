@@ -301,6 +301,7 @@ impl SeriesLinesSystem {
             }
 
             let series_visibility = collect_series_visibility(
+                &query_ctx,
                 &query,
                 &bootstrapped_results,
                 &results,

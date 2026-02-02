@@ -5,9 +5,12 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_chunk_store::external::re_chunk::CastToPrimitive;
 use re_log_types::{EntityPath, TimeInt};
+use re_sdk_types::components::SeriesVisible;
 use re_sdk_types::external::arrow;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
+use re_sdk_types::{
+    Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
+};
 use re_view::{
     BlueprintResolvedRangeResults, BlueprintResolvedResultsExt as _, clamped_or_nothing,
 };
@@ -36,13 +39,16 @@ pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>
 
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
+    query_ctx: &QueryContext<'_>,
     query: &RangeQuery,
     bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
     results: &BlueprintResolvedRangeResults<'_>,
     num_series: usize,
     visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
-    bootstrapped_results
+    use re_sdk_types::external::arrow::{array::BooleanArray, buffer::BooleanBuffer};
+
+    let boolean_buffer: BooleanBuffer = bootstrapped_results
         .iter_optional(|_| {}, *query.timeline(), visibility_component)
         .slice::<bool>()
         .chain(
@@ -52,19 +58,35 @@ pub fn collect_series_visibility(
         )
         .next()
         .map_or_else(
-            || vec![true; num_series], // By default all series are visible.
-            |(_, visible)| {
-                let mut flags = visible.iter().collect_vec();
-                if flags.len() < num_series {
-                    // If there are less flags than series, repeat the last flag (or true if there are no flags).
-                    flags.extend(std::iter::repeat_n(
-                        *flags.last().unwrap_or(&true),
-                        num_series - flags.len(),
-                    ));
-                }
-                flags
+            || {
+                query_ctx
+                    .viewer_ctx()
+                    .component_fallback_registry
+                    .fallback_for(visibility_component, Some(SeriesVisible::name()), query_ctx)
+                    .as_any()
+                    .downcast_ref::<BooleanArray>()
+                    .map(|arr| arr.values().clone())
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "Failed to cast visibility fallback to BooleanArray, defaulting to true"
+                        );
+                        BooleanBuffer::new_set(1)
+                    })
             },
-        )
+            |(_, visible)| visible,
+        );
+
+    let mut flags = boolean_buffer.iter().take(num_series).collect_vec();
+
+    // If there are less flags than series, repeat the last flag (or true if there are no flags).
+    if flags.len() < num_series {
+        flags.extend(std::iter::repeat_n(
+            *flags.last().unwrap_or(&true),
+            num_series - flags.len(),
+        ));
+    }
+
+    flags
 }
 
 /// Allocates all points for the series.

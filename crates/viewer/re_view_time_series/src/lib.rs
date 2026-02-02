@@ -5,6 +5,7 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod aggregation;
+mod fallbacks;
 mod line_visualizer_system;
 mod point_visualizer_system;
 mod series_query;
