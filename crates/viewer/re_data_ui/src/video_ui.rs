@@ -17,7 +17,7 @@ use re_viewer_context::{
     ViewerContext, video_stream_time_from_query,
 };
 
-use crate::image::texture_preview_size;
+use crate::image_ui::texture_preview_size;
 
 pub fn video_asset_result_ui(
     ui: &mut egui::Ui,
@@ -371,7 +371,7 @@ fn decoded_frame_ui<'a>(
             };
 
             let response = if let Some(texture) = texture {
-                crate::image::texture_preview_ui(
+                crate::image_ui::texture_preview_ui(
                     ctx.render_ctx(),
                     ui,
                     ui_layout,

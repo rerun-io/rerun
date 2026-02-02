@@ -9,8 +9,8 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
 
-use crate::image::ImageUi;
-use crate::video::VideoUi;
+use crate::image_ui::ImageUi;
+use crate::video_ui::VideoUi;
 use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
 
 impl EntityDataUi for Blob {
