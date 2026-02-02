@@ -60,7 +60,7 @@ Videos are specified as `key:path`:
 - `key`: Camera identifier (e.g., `front`, `wrist`)
 - `path`: Entity path to the video stream (e.g., `/camera/front`)
 
-The converter expects [VideoStream](../../../docs/content/reference/types/archetypes/video_stream.md) components at the specified paths.
+The converter expects [VideoStream](https://www.rerun.io/docs/reference/types/archetypes/video_stream), components at the specified paths.
 
 ## Example workflow
 
