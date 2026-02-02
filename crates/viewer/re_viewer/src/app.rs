@@ -2617,6 +2617,8 @@ impl App {
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
+        re_tracing::profile_function!();
+
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some(entity_db) = store_hub.entity_db(store_id)
@@ -3209,11 +3211,8 @@ impl App {
         })
     }
 
-    /// Prefetch chunks for the open recording (stream from server)
-    ///
-    /// There is logic duplicated between this and [`Self::receive_log_msg`].
-    /// Make sure they are kept in sync!
-    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+    /// Receive in-transit chunks (previously prefetched):
+    fn receive_fetched_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
         let store_ids: Vec<_> = store_hub
@@ -3221,11 +3220,13 @@ impl App {
             .recordings()
             .map(|db| db.store_id().clone())
             .collect();
-        // Receive in-transit chunks (previously prefetched):
+
         for store_id in store_ids {
             let db = store_hub.entity_db_mut(&store_id);
 
             if db.rrd_manifest_index.has_manifest() {
+                re_tracing::profile_scope!("recording");
+
                 let mut store_events = Vec::new();
                 for chunk in db
                     .rrd_manifest_index
@@ -3257,6 +3258,14 @@ impl App {
                 }
             }
         }
+    }
+
+    /// Prefetch chunks for the open recording (stream from server)
+    ///
+    /// There is logic duplicated between this and [`Self::receive_log_msg`].
+    /// Make sure they are kept in sync!
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+        re_tracing::profile_function!();
 
         // Even if we wanted, we cannot get rid of this overhead
         let unpurgable_cache_size = store_hub
@@ -3588,6 +3597,7 @@ impl eframe::App for App {
             }
         }
 
+        self.receive_fetched_chunks(&mut store_hub);
         self.prefetch_chunks(&mut store_hub);
 
         {

@@ -680,6 +680,7 @@ impl EntityDb {
 
     /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
