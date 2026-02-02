@@ -49,6 +49,7 @@ examples = [
   "imu_signals",
   "mcap",
   "eye_control",
+  "ros_tf",
 ]
 
 [categories.generative-vision]
@@ -136,6 +137,7 @@ examples = [
   "arflow",
   "air_traffic_data",
   "mcap",
+  "ros_tf",
 ]
 
 [categories.feature-showcase]
