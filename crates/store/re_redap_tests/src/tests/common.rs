@@ -7,10 +7,11 @@ use re_log_types::{EntityPath, TimeType};
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
-    QueryTasksResponse, RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest, QueryTasksResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetResponse, ext,
 };
-use re_protos::common::v1alpha1::{IfDuplicateBehavior, TaskId};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_types_core::AsComponents;
 use tonic::async_trait;
@@ -34,6 +35,13 @@ pub trait RerunCloudServiceExt: RerunCloudService {
         &self,
         dataset_name: &str,
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
+    );
+
+    async fn register_with_dataset_name_blocking_with_behavior(
+        &self,
+        dataset_name: &str,
+        data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
+        on_duplicate: IfDuplicateBehavior,
     );
 
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
@@ -60,9 +68,24 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         dataset_name: &str,
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
     ) {
+        self.register_with_dataset_name_blocking_with_behavior(
+            dataset_name,
+            data_sources,
+            IfDuplicateBehavior::Error,
+        )
+        .await;
+    }
+
+    async fn register_with_dataset_name_blocking_with_behavior(
+        &self,
+        dataset_name: &str,
+        data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) {
         let request = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
-            on_duplicate: IfDuplicateBehavior::Error as i32,
+            on_duplicate: re_protos::common::v1alpha1::IfDuplicateBehavior::from(on_duplicate)
+                as i32,
         })
         .with_entry_name(dataset_name)
         .expect("Failed to create a request");
@@ -117,6 +140,11 @@ pub async fn register_and_wait(
         .map(|s| TaskId { id: s.to_owned() })
         .unique() // dups are possible because of batching partitions per task
         .collect();
+
+    // Early return if no tasks were created (e.g., all partitions were skipped)
+    if task_ids.is_empty() {
+        return vec![];
+    }
 
     service
         .query_tasks_on_completion(tonic::Request::new(QueryTasksOnCompletionRequest {
@@ -481,15 +509,24 @@ impl DataSourcesDefinition {
         }
     }
 
-    pub fn to_data_sources(&self) -> Vec<DataSource> {
+    pub fn to_data_sources_ext(&self) -> Vec<ext::DataSource> {
         self.layers
             .iter()
-            .map(|(layer_name, path)| DataSource {
-                storage_url: Some(Url::from_file_path(path.as_path()).unwrap().to_string()),
-                layer: layer_name.clone(),
-                prefix: false,
-                typ: DataSourceKind::Rrd as i32,
+            .map(|(layer_name, path)| ext::DataSource {
+                storage_url: Url::from_file_path(path.as_path()).unwrap(),
+                layer: layer_name
+                    .clone()
+                    .unwrap_or_else(|| ext::DataSource::DEFAULT_LAYER.to_owned()),
+                is_prefix: false,
+                kind: ext::DataSourceKind::Rrd,
             })
+            .collect()
+    }
+
+    pub fn to_data_sources(&self) -> Vec<DataSource> {
+        self.to_data_sources_ext()
+            .into_iter()
+            .map(Into::into)
             .collect()
     }
 }

@@ -617,15 +617,6 @@ impl RerunCloudService for RerunCloudHandler {
             on_duplicate,
         } = request.into_inner().try_into()?;
 
-        let mut segment_ids: Vec<String> = vec![];
-        let mut segment_layers: Vec<String> = vec![];
-        let mut segment_types: Vec<String> = vec![];
-        let mut storage_urls: Vec<String> = vec![];
-        let mut task_ids: Vec<String> = vec![];
-
-        // Collect task results to register after all dataset operations complete
-        let mut failed_task_results: Vec<(TaskId, TaskResult)> = vec![];
-
         let data_sources = Self::resolve_data_sources(&data_sources)?;
         if data_sources.is_empty() {
             return Err(tonic::Status::invalid_argument(
@@ -633,92 +624,159 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        // Process data sources within a block to limit the mutable borrow of dataset
+        // Phase 1: Load all RRDs and check for intra-request duplicates (early-out on duplicate)
+        //
+        // We load each RRD and collect (segment_id, layer) pairs. If any duplicate is found,
+        // we fail immediately without loading the remaining files.
+        // The `on_duplicate` flag only affects cross-request duplicates (conflicts with
+        // already-registered segments), not intra-request duplicates.
+        //
+        // Note: we load the full RRD to obtain its recording ID. This is fine for the happy path
+        // because we use the loaded chunk stores anyways. However, it makes the unhappy path slower
+        // since we discard the loaded chunk stores. If this proves to be an issue, we can resort to
+        // just loading the RRD's store info (e.g. as in `RrdMapper::load_store_info`).
+        struct PendingRegistration {
+            segment_id: SegmentId,
+            layer: String,
+            storage_url: url::Url,
+            chunk_store: ChunkStoreHandle,
+        }
+
+        let mut seen: std::collections::HashSet<(String, String)> =
+            std::collections::HashSet::new();
+        let mut pending: Vec<PendingRegistration> = Vec::new();
+
+        let store_kind = store.dataset(dataset_id)?.store_kind();
+
+        for source in data_sources {
+            let ext::DataSource {
+                storage_url,
+                is_prefix,
+                layer,
+                kind,
+            } = source;
+
+            // TODO(ab): Should some or all of these errors be returned as task error instead?
+            // (No point in doing so unless this is tested in re_redap_tests.)
+            if is_prefix {
+                return Err(tonic::Status::internal(
+                    "register_with_dataset: prefix data sources should have been resolved already",
+                ));
+            }
+
+            if kind != ext::DataSourceKind::Rrd {
+                return Err(tonic::Status::unimplemented(
+                    "register_with_dataset: only RRD data sources are implemented",
+                ));
+            }
+
+            let Ok(rrd_path) = storage_url.to_file_path() else {
+                return if storage_url.scheme() == "file" && storage_url.host().is_some() {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
+                    )))
+                } else {
+                    Err(tonic::Status::not_found(format!(
+                        "RRD file not found, could not load URI: {storage_url}"
+                    )))
+                };
+            };
+
+            if !rrd_path.exists() {
+                return Err(tonic::Status::not_found(format!(
+                    "RRD file not found, file does not exists: {rrd_path:?}"
+                )));
+            }
+
+            if !rrd_path.is_file() {
+                return Err(tonic::Status::not_found(format!(
+                    "RRD file not found, path is not a file: {rrd_path:?}"
+                )));
+            }
+
+            // Load the RRD
+            re_log::info!("Loading RRD: {}", rrd_path.display());
+            let contents = ChunkStore::handle_from_rrd_filepath(
+                &InMemoryStore::chunk_store_config(),
+                &rrd_path,
+            )
+            .map_err(|err| tonic::Status::internal(format!("Failed to load RRD: {err:#}")))?;
+
+            let layer = if layer.is_empty() {
+                DataSource::DEFAULT_LAYER.to_owned()
+            } else {
+                layer
+            };
+
+            for (store_id, chunk_store) in contents {
+                if store_id.kind() != store_kind {
+                    continue;
+                }
+
+                let segment_id_str = store_id.recording_id().to_string();
+                let key = (segment_id_str.clone(), layer.clone());
+
+                // Early out on duplicate
+                if !seen.insert(key) {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "duplicate segment in request: ({segment_id_str}, {layer})"
+                    )));
+                }
+
+                pending.push(PendingRegistration {
+                    segment_id: SegmentId::new(segment_id_str),
+                    layer: layer.clone(),
+                    storage_url: storage_url.clone(),
+                    chunk_store,
+                });
+            }
+        }
+
+        // Phase 2: Register all loaded RRDs (no intra-request duplicates)
+        let mut segment_ids: Vec<String> = vec![];
+        let mut segment_layers: Vec<String> = vec![];
+        let mut segment_types: Vec<String> = vec![];
+        let mut storage_urls: Vec<String> = vec![];
+        let mut task_ids: Vec<String> = vec![];
+        let mut failed_task_results: Vec<(TaskId, TaskResult)> = vec![];
+
         {
             let dataset = store.dataset_mut(dataset_id)?;
 
-            for source in data_sources {
-                let ext::DataSource {
-                    storage_url,
-                    is_prefix,
-                    layer,
-                    kind,
-                } = source;
+            for reg in pending {
+                let add_result = dataset
+                    .add_layer(
+                        reg.segment_id.clone(),
+                        reg.layer.clone(),
+                        reg.chunk_store,
+                        on_duplicate,
+                    )
+                    .await;
 
-                // TODO(ab): Should some or all of these errors be returned as task error instead?
-                // (No point in doing so unless this is tested in re_redap_tests.)
-                if is_prefix {
-                    return Err(tonic::Status::internal(
-                        "register_with_dataset: prefix data sources should have been resolved already",
-                    ));
-                }
-
-                if kind != ext::DataSourceKind::Rrd {
-                    return Err(tonic::Status::unimplemented(
-                        "register_with_dataset: only RRD data sources are implemented",
-                    ));
-                }
-
-                if let Ok(rrd_path) = storage_url.to_file_path() {
-                    if !rrd_path.exists() {
-                        return Err(tonic::Status::not_found(format!(
-                            "RRD file not found, file does not exists: {rrd_path:?}"
-                        )));
+                match add_result {
+                    Ok(()) => {
+                        segment_ids.push(reg.segment_id.to_string());
+                        segment_layers.push(reg.layer);
+                        segment_types.push("rrd".to_owned());
+                        storage_urls.push(reg.storage_url.to_string());
+                        task_ids.push(TASK_ID_SUCCESS.to_owned());
                     }
 
-                    if !rrd_path.is_file() {
-                        return Err(tonic::Status::not_found(format!(
-                            "RRD file not found, path is not a file: {rrd_path:?}"
-                        )));
+                    Err(Error::SchemaConflict(msg)) => {
+                        // Capture the failure in the returned tasks, but do not fail the rpc call.
+                        segment_ids.push(String::new());
+                        segment_layers.push(reg.layer);
+                        segment_types.push("rrd".to_owned());
+                        storage_urls.push(reg.storage_url.to_string());
+
+                        let task_id = TaskId::new();
+                        task_ids.push(task_id.id.clone());
+                        failed_task_results.push((task_id, TaskResult::failed(&msg)));
                     }
 
-                    // Try to load the RRD, capturing schema conflicts as task failures
-                    let load_result = dataset
-                        .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
-                        .await;
-
-                    match load_result {
-                        Ok(new_segment_ids) => {
-                            for segment_id in new_segment_ids {
-                                segment_ids.push(segment_id.to_string());
-                                segment_layers.push(layer.clone());
-                                segment_types.push("rrd".to_owned());
-                                storage_urls.push(storage_url.to_string());
-
-                                task_ids.push(TASK_ID_SUCCESS.to_owned());
-                            }
-                        }
-
-                        Err(Error::SchemaConflict(msg)) => {
-                            // In that case, we capture the failure in the returned tasks, but do
-                            // not fail the rpc call.
-                            // Generate a unique task ID for this data source
-
-                            segment_ids.push(String::new());
-                            segment_layers.push(layer.clone());
-                            segment_types.push("rrd".to_owned());
-                            storage_urls.push(storage_url.to_string());
-
-                            let task_id = TaskId::new();
-                            task_ids.push(task_id.id.clone());
-                            failed_task_results.push((task_id, TaskResult::failed(&msg)));
-                        }
-
-                        Err(other_err) => {
-                            // For other errors, still fail the RPC
-                            return Err(other_err.into());
-                        }
+                    Err(other_err) => {
+                        return Err(other_err.into());
                     }
-                } else {
-                    return if storage_url.scheme() == "file" && storage_url.host().is_some() {
-                        Err(tonic::Status::not_found(format!(
-                            "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
-                        )))
-                    } else {
-                        Err(tonic::Status::not_found(format!(
-                            "RRD file not found, could not load URI: {storage_url}"
-                        )))
-                    };
                 }
             }
         }
